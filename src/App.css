@@ -44,31 +44,30 @@ header p {
   color: #666;
 }
 
-/* Navigation styles */
-nav ul {
+/* Main content styles */
+main ul {
   list-style: none;
   padding: 0;
   display: flex;
-  justify-content: center;
+  justify-content: left;
   gap: 1.5rem;
 }
 
-nav ul li {
+main ul li {
   display: inline;
 }
 
-nav ul li a {
+main ul li a {
   text-decoration: none;
   color: #0073e6;
   font-weight: bold;
   transition: color 0.3s;
 }
 
-nav ul li a:hover {
+main ul li a:hover {
   color: #005bb5;
 }
 
-/* Main content styles */
 main {
   text-align: left;
 }
