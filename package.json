@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist -p 0"
+    "deploy": "gh-pages -d dist --cname gagnechris.com"
   },
   "dependencies": {
     "react": "^18.3.1",
