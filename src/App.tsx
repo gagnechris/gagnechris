@@ -1,4 +1,5 @@
 import profile from './assets/profile.jpg'
+import { Link } from 'react-router-dom'
 import './App.css'
 
 function App() {
@@ -19,9 +20,12 @@ function App() {
             technology to improve the lives of everyday people.
           </p>
         </section>
-        <section id="quick-linkes">
+        <section id="quick-links">
           <h2>Quick Links</h2>
           <ul>
+            <li>
+              <Link to="/resume">Resume</Link>
+            </li>
             <li>
               <a href="https://www.linkedin.com/in/christophergagne/">LinkedIn</a>
             </li>
