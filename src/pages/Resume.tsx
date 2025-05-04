@@ -1,10 +1,16 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './Resume.css'
-import DownloadModal from '../components/DownloadModal'
 
 function Resume() {
-  const [showDownloadModal, setShowDownloadModal] = useState(false)
+  const handleDownload = () => {
+    const link = document.createElement('a')
+    link.href = "/Christopher M Gagne Resume 2025.pdf"
+    link.download = "Christopher M Gagne Resume 2025.pdf"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+  
   return (
     <div className="resume-page">
       <header>
@@ -13,7 +19,7 @@ function Resume() {
         </div>
         <div className="nav-section">
           <button 
-            onClick={() => setShowDownloadModal(true)}
+            onClick={handleDownload}
             className="subtle-download"
             title="Download Resume as PDF"
           >
@@ -109,14 +115,6 @@ function Resume() {
           </div>
         </section>
       </main>
-      
-      {showDownloadModal && (
-        <DownloadModal 
-          onClose={() => setShowDownloadModal(false)}
-          resumePath="/Christopher M Gagne Resume 2025.pdf"
-          recipientEmail="gagnechris@me.com"
-        />
-      )}
     </div>
   )
 }
