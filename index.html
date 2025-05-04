@@ -5,7 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/cg-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Christopher Gagne</title>
-    <script type="module" crossorigin src="/assets/index-AYEFBSG3.js"></script>
+    <script type="text/javascript">
+      // Check if we have a saved path from a 404 redirect
+      (function() {
+        window.addEventListener('DOMContentLoaded', function() {
+          var redirectPath = sessionStorage.getItem('redirect_path');
+          if (redirectPath) {
+            // Clear the saved path
+            sessionStorage.removeItem('redirect_path');
+            
+            // Use history API to update the URL without a page reload
+            if (redirectPath !== '/' && redirectPath !== '/index.html') {
+              window.history.replaceState(null, null, redirectPath);
+            }
+          }
+        });
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-B2Hsth0K.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-B0g-NPwf.css">
   </head>
   <body>
