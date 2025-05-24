@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "types": ["jest", "@testing-library/jest-dom"],
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/**/*",
+    "netlify/**/*"
+  ]
+}

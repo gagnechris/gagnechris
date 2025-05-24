@@ -71,7 +71,7 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
       
       // Close the modal
       onClose()
-    } catch (err) {
+    } catch {
       setError('There was an error processing your request. Please try again.')
       setIsSubmitting(false)
     }

@@ -2,16 +2,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Resume from './Resume';
 
-// Mock the DownloadModal component
-jest.mock('../components/DownloadModal', () => {
-  const DownloadModal = ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="mock-download-modal">
-      <button onClick={onClose}>Close</button>
-    </div>
-  );
-  return DownloadModal;
-});
-
 describe('Resume Page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,44 +21,39 @@ describe('Resume Page', () => {
     expect(screen.getByRole('heading', { name: /professional experience/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /education/i })).toBeInTheDocument();
     
-    // Check for download link
-    expect(screen.getByText(/resume/i)).toBeInTheDocument();
+    // Check for download button
+    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
   });
   
-  test('opens download modal when the resume link is clicked', () => {
+  test('triggers download when the resume button is clicked', () => {
     render(
       <BrowserRouter>
         <Resume />
       </BrowserRouter>
     );
     
-    // Initially, the modal should not be visible
-    expect(screen.queryByTestId('mock-download-modal')).not.toBeInTheDocument();
+    // Mock DOM methods after render
+    const mockAnchor = {
+      href: '',
+      download: '',
+      click: jest.fn(),
+    };
     
-    // Click the download link
-    fireEvent.click(screen.getByText(/resume/i));
+    const originalCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      if (tag === 'a') return mockAnchor as unknown as HTMLElement;
+      return originalCreateElement(tag);
+    });
     
-    // Now the modal should be visible
-    expect(screen.getByTestId('mock-download-modal')).toBeInTheDocument();
-  });
-  
-  test('closes download modal when the close function is called', () => {
-    render(
-      <BrowserRouter>
-        <Resume />
-      </BrowserRouter>
-    );
+    jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor as unknown as Node);
+    jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor as unknown as Node);
     
-    // Open the modal
-    fireEvent.click(screen.getByText(/resume/i));
+    // Click the download button
+    fireEvent.click(screen.getByRole('button', { name: /resume/i }));
     
-    // The modal should be visible
-    expect(screen.getByTestId('mock-download-modal')).toBeInTheDocument();
-    
-    // Click the close button
-    fireEvent.click(screen.getByText(/close/i));
-    
-    // The modal should be gone
-    expect(screen.queryByTestId('mock-download-modal')).not.toBeInTheDocument();
+    // Verify download was triggered
+    expect(mockAnchor.click).toHaveBeenCalled();
+    expect(mockAnchor.href).toBe('/Christopher M Gagne Resume 2025.pdf');
+    expect(mockAnchor.download).toBe('Christopher M Gagne Resume 2025.pdf');
   });
 });

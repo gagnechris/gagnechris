@@ -10,6 +10,10 @@ describe('DownloadModal', () => {
     jest.clearAllMocks();
     jest.spyOn(console, 'log').mockImplementation(() => {});
   });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
   
   test('renders all form fields and elements', () => {
     render(
@@ -49,21 +53,6 @@ describe('DownloadModal', () => {
   });
   
   test('handles form submission and triggers download in DEV mode', async () => {
-    // Mock document.createElement for the download link
-    const mockAnchor = {
-      href: '',
-      download: '',
-      click: jest.fn(),
-    };
-    
-    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
-      if (tag === 'a') return mockAnchor as unknown as HTMLElement;
-      return document.createElement(tag);
-    });
-    
-    jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-    jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
-    
     render(
       <DownloadModal 
         onClose={mockOnClose} 
@@ -71,6 +60,22 @@ describe('DownloadModal', () => {
         recipientEmail={mockRecipientEmail} 
       />
     );
+    
+    // Mock document.createElement for the download link after render
+    const mockAnchor = {
+      href: '',
+      download: '',
+      click: jest.fn(),
+    };
+    
+    const originalCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      if (tag === 'a') return mockAnchor as unknown as HTMLElement;
+      return originalCreateElement(tag);
+    });
+    
+    jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor as unknown as Node);
+    jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor as unknown as Node);
     
     // Fill out the form
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Test User' } });
@@ -86,7 +91,7 @@ describe('DownloadModal', () => {
       expect(mockAnchor.click).toHaveBeenCalled();
       // Check if the modal was closed
       expect(mockOnClose).toHaveBeenCalled();
-    });
+    }, { timeout: 2000 });
     
     // Verify anchor properties
     expect(mockAnchor.href).toContain(mockResumePath);
@@ -94,8 +99,9 @@ describe('DownloadModal', () => {
   });
   
   test('displays error message when submission fails', async () => {
-    // Mock a failed fetch in production mode
-    Object.defineProperty(import.meta.env, 'DEV', { value: false });
+    // Mock production environment
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
     
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
     
@@ -123,8 +129,8 @@ describe('DownloadModal', () => {
     // The modal should not be closed
     expect(mockOnClose).not.toHaveBeenCalled();
     
-    // Reset DEV flag
-    Object.defineProperty(import.meta.env, 'DEV', { value: true });
+    // Restore environment
+    process.env.NODE_ENV = originalEnv;
   });
   
   test('disables submit button during submission', async () => {
