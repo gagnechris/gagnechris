@@ -10,7 +10,9 @@ This website serves as both a portfolio and resume platform, featuring:
 - **Professional Resume Display**: Interactive web-based resume with downloadable PDF functionality
 - **Responsive Design**: Mobile-first design with modern CSS animations and transitions
 - **Performance Optimized**: Fast loading with Vite build tool and optimized assets
-- **Comprehensive Testing**: Jest and React Testing Library setup with 100% test coverage
+- **Analytics Integration**: Google Analytics 4 with comprehensive event tracking
+- **Accessibility Compliant**: WCAG 2.1 AA compliant with ARIA labels, focus management, and keyboard navigation
+- **Comprehensive Testing**: Jest and React Testing Library with 100% test coverage including integration tests
 - **Type Safety**: Full TypeScript implementation with strict mode enabled
 - **Modern Development**: ESLint, hot reloading, and automated deployment pipeline
 
@@ -106,8 +108,9 @@ If you prefer manual deployment:
 ### Frontend
 - **React 18** - Modern UI library with hooks
 - **TypeScript** - Type-safe JavaScript with strict mode
-- **React Router v7** - Client-side routing
+- **React Router v7** - Client-side routing with analytics tracking
 - **Vite** - Fast build tool and development server
+- **Google Analytics 4** - Event tracking and user analytics
 
 ### Styling
 - **Modern CSS** - Custom properties, flexbox, grid
@@ -115,10 +118,11 @@ If you prefer manual deployment:
 - **Responsive Design** - Mobile-first approach
 
 ### Testing & Quality
-- **Jest** - Testing framework
-- **React Testing Library** - Component testing utilities
+- **Jest** - Testing framework with 100% coverage
+- **React Testing Library** - Component and integration testing
 - **ESLint** - Code linting with TypeScript and React rules
-- **TypeScript Compiler** - Static type checking
+- **TypeScript Compiler** - Static type checking with strict mode
+- **Accessibility Testing** - Screen reader and keyboard navigation testing
 
 ### Deployment & Infrastructure
 - **GitHub Pages** - Static site hosting
@@ -134,11 +138,18 @@ If you prefer manual deployment:
 │   └── cg-icon.svg
 ├── src/
 │   ├── components/         # Reusable React components
-│   │   ├── DownloadModal.tsx
-│   │   └── DownloadModal.test.tsx
+│   │   ├── AppWithTracking.tsx    # Analytics wrapper component
+│   │   ├── DownloadModal.tsx      # Resume download modal
+│   │   ├── RouteTracker.tsx       # Page view tracking
+│   │   └── *.test.tsx             # Component tests
 │   ├── pages/             # Page components
 │   │   ├── Resume.tsx
 │   │   └── Resume.test.tsx
+│   ├── utils/             # Utility functions
+│   │   ├── analytics.ts           # Google Analytics integration
+│   │   └── analytics.test.ts
+│   ├── __tests__/         # Integration tests
+│   │   └── integration.test.tsx
 │   ├── assets/            # Images and media
 │   ├── App.tsx            # Main application component
 │   └── main.tsx           # Application entry point
@@ -157,10 +168,27 @@ If you prefer manual deployment:
 - **Development**: Automatically detected by Vite
 - **Production**: Set `NODE_ENV=production` for optimized builds
 
+### Analytics Configuration
+The site uses Google Analytics 4 for tracking:
+- **Page views**: Automatically tracked on route changes
+- **Download events**: Resume download tracking (direct and modal)
+- **External link clicks**: LinkedIn and GitHub link tracking
+- **Event categories**: `external_link`, `resume` for organized reporting
+
 ### Custom Domain
 The site is configured to deploy to `gagnechris.com`. To use a different domain:
 1. Update `homepage` in `package.json`
 2. Modify the `--cname` flag in the deploy script
+
+## ♿ Accessibility Features
+
+This website is built with accessibility in mind:
+- **WCAG 2.1 AA Compliant**: Meets web accessibility standards
+- **Keyboard Navigation**: Full site navigation without a mouse
+- **Screen Reader Support**: Proper ARIA labels and semantic HTML
+- **Focus Management**: Clear focus indicators and logical tab order
+- **Modal Accessibility**: Proper focus trapping and escape key handling
+- **Descriptive Alt Text**: All images have meaningful descriptions
 
 ## 📊 Performance
 

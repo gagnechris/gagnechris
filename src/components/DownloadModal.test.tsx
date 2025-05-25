@@ -34,7 +34,7 @@ describe('DownloadModal', () => {
     
     // Check for buttons
     expect(screen.getByRole('button', { name: /download resume/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /×/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /close download modal/i })).toBeInTheDocument();
   });
   
   test('closes the modal when the close button is clicked', () => {
@@ -46,7 +46,7 @@ describe('DownloadModal', () => {
       />
     );
     
-    const closeButton = screen.getByRole('button', { name: /×/i });
+    const closeButton = screen.getByRole('button', { name: /close download modal/i });
     fireEvent.click(closeButton);
     
     expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -98,7 +98,7 @@ describe('DownloadModal', () => {
     expect(mockAnchor.download).toBe('test-resume.pdf');
   });
   
-  test('displays error message when submission fails', async () => {
+  test('displays error message when submission fails with network error', async () => {
     // Mock production environment
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
@@ -117,6 +117,44 @@ describe('DownloadModal', () => {
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Test User' } });
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@example.com' } });
     fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Testing error handling' } });
+    
+    // Submit the form
+    fireEvent.click(screen.getByRole('button', { name: /download resume/i }));
+    
+    // Wait for the error message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/there was an error processing your request/i)).toBeInTheDocument();
+    });
+    
+    // The modal should not be closed
+    expect(mockOnClose).not.toHaveBeenCalled();
+    
+    // Restore environment
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  test('displays error message when API returns error response', async () => {
+    // Mock production environment
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: jest.fn().mockResolvedValue({ error: 'API Error: Invalid request' })
+    } as unknown as Response);
+    
+    render(
+      <DownloadModal 
+        onClose={mockOnClose} 
+        resumePath={mockResumePath} 
+        recipientEmail={mockRecipientEmail} 
+      />
+    );
+    
+    // Fill out the form
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Testing API error' } });
     
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /download resume/i }));

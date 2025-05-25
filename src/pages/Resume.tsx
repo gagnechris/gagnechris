@@ -28,9 +28,9 @@ function Resume() {
           <button 
             onClick={handleDownload}
             className="subtle-download"
-            title="Download Resume as PDF"
+            aria-label="Download resume as PDF"
           >
-            <span className="download-icon">↓</span>
+            <span className="download-icon" aria-hidden="true">↓</span>
             <span className="download-text">Resume</span>
           </button>
           <Link to="/" className="back-link">Back to Home</Link>

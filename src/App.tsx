@@ -1,12 +1,13 @@
 import profile from './assets/profile.jpg'
 import { Link } from 'react-router-dom'
+import { trackEvent } from './utils/analytics'
 import './App.css'
 
 function App() {
   return (
     <>
       <header>
-        <img src={profile} className="profile" alt="profile" />
+        <img src={profile} className="profile" alt="Photo of Chris Gagne" />
         <h1>Chris Gagne</h1>
         <p>Welcome to my personal website!</p>
       </header>
@@ -27,10 +28,24 @@ function App() {
               <Link to="/resume">Resume</Link>
             </li>
             <li>
-              <a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a 
+                href="https://www.linkedin.com/in/christophergagne/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('click', 'external_link', 'linkedin')}
+              >
+                LinkedIn
+              </a>
             </li>
             <li>
-              <a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a>
+              <a 
+                href="https://github.com/gagnechris" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('click', 'external_link', 'github')}
+              >
+                GitHub
+              </a>
             </li>
           </ul>
         </section>

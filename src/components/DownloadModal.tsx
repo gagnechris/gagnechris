@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent, useEffect, useRef } from 'react'
 import { trackResumeDownload } from '../utils/analytics'
 import './DownloadModal.css'
 
@@ -14,6 +14,8 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
   const [reason, setReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   
   useEffect(() => {
     // Only log in dev mode
@@ -22,6 +24,22 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
       console.log('📧 In production, emails will be sent to:', recipientEmail)
     }
   }, [recipientEmail])
+
+  // Focus management and escape key handling
+  useEffect(() => {
+    // Focus first input when modal opens
+    nameInputRef.current?.focus()
+
+    // Handle escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [onClose])
   
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -80,10 +98,12 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
   }
   
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <button className="close-button" onClick={onClose}>×</button>
-        <h2>Download Resume</h2>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="modal-content" ref={modalRef}>
+        <button className="close-button" onClick={onClose} aria-label="Close download modal">
+          <span aria-hidden="true">×</span>
+        </button>
+        <h2 id="modal-title">Download Resume</h2>
         <p>Please provide your information to download the resume:</p>
         
         {error && <div className="error-message">{error}</div>}
@@ -97,6 +117,7 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              ref={nameInputRef}
             />
           </div>
           
