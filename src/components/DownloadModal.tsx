@@ -1,4 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react'
+import { trackResumeDownload } from '../utils/analytics'
 import './DownloadModal.css'
 
 interface DownloadModalProps {
@@ -62,6 +63,7 @@ export default function DownloadModal({ onClose, resumePath, recipientEmail }: D
       }
       
       // Trigger the download
+      trackResumeDownload('modal')
       const link = document.createElement('a')
       link.href = resumePath
       link.download = resumePath.split('/').pop() || 'resume.pdf'

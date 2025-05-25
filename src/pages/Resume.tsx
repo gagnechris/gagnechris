@@ -1,8 +1,15 @@
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { trackResumeView, trackResumeDownload } from '../utils/analytics'
 import './Resume.css'
 
 function Resume() {
+  useEffect(() => {
+    trackResumeView()
+  }, [])
+
   const handleDownload = () => {
+    trackResumeDownload('direct')
     const link = document.createElement('a')
     link.href = "/Christopher M Gagne Resume 2025.pdf"
     link.download = "Christopher M Gagne Resume 2025.pdf"
