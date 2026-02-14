@@ -11,8 +11,8 @@ function Resume() {
   const handleDownload = () => {
     trackResumeDownload('direct')
     const link = document.createElement('a')
-    link.href = "/Christopher M Gagne Resume 2025.pdf"
-    link.download = "Christopher M Gagne Resume 2025.pdf"
+    link.href = "/Christopher M Gagne Resume 2026.pdf"
+    link.download = "Christopher M Gagne Resume 2026.pdf"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -67,38 +67,109 @@ function Resume() {
           
           <div className="experience-item">
             <h3>Director of Software Engineering</h3>
-            <p className="company">Ro | 2019 - Present</p>
+            <p className="company">Ro | July 2019 - Present</p>
             <ul className="experience-list">
-              <li>Scaled engineering organization from 2 to 8 teams.</li>
-              <li>Currently leading a team of 6 engineers focused on Care Delivery Operations, ensuring operational excellence, improving efficiencies and quality while enabling scalable workflows to support Ro's rapid growth and scale.</li>
-              <li>Partnered cross-functionally with Product, Design, Data, and Infrastructure teams to deliver critical care delivery applications, improving patient and provider experiences.</li>
-              <li>Instituted and continuously refined onboarding, incident management, and operational processes, resulting in measurable improvements in team productivity and system reliability.</li>
-              <li>Defined and executed the technical vision for care delivery, aligning engineering initiatives with business goals.</li>
+              <li>Dedicated to aligning engineering initiatives with business goals while leading a high performing team.</li>
+              <li>Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.</li>
+              <li>Instituted onboarding and incident management processes, enhancing team productivity and system reliability.</li>
+              <li>Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability.</li>
             </ul>
           </div>
           
           <div className="experience-item">
             <h3>Director of Software Engineering</h3>
-            <p className="company">JW Player | 2017 - 2019</p>
+            <p className="company">JW Player | March 2017 - July 2019</p>
             <ul className="experience-list">
-              <li>Grew Media Engineering from 3 to 14 engineers, establishing vision and mission, and securing stakeholder buy-in.</li>
-              <li>Structured the organization into three specialized teams, each with dedicated leadership, to optimize delivery of media ingestion, management, and delivery solutions.</li>
-              <li>Managed key vendor relationships and drove cost optimization initiatives.</li>
+              <li>Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.</li>
+              <li>Grew the engineering team and hired three engineering managers to support our expanding team.</li>
+              <li>Established three specialized teams, each with dedicated leadership, to streamline media solutions.</li>
+              <li>Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management.</li>
             </ul>
           </div>
           
           <div className="experience-item">
             <h3>Software Engineering Manager</h3>
-            <p className="company">Shutterstock | 2014 - 2017</p>
+            <p className="company">Shutterstock | September 2014 - March 2017</p>
             <ul className="experience-list">
-              <li>Led two cross-functional engineering teams through multiple large-scale migration projects, including modernizing the media metadata warehouse and media ingestion systems.</li>
-              <li>Transitioned legacy monolithic systems to a distributed, message-driven microservices architecture, improving scalability and reliability.</li>
-              <li>Optimized application performance and database queries</li>
-              <li>Directed Montreal-based team in designing a unified data model for media metadata and building new APIs, enabling seamless integration across all business units and media types.</li>
+              <li>Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.</li>
+              <li>Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.</li>
+              <li>Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.</li>
+              <li>Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Software Architect</h3>
+            <p className="company">Viacom | September 2014 - April 2015</p>
+            <ul className="experience-list">
+              <li>Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Application Development Manager</h3>
+            <p className="company">Getty Images | June 2012 - September 2014</p>
+            <ul className="experience-list">
+              <li>Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.</li>
+              <li>Championed the use of Scala, Akka, and .NET/C# to build robust applications.</li>
+              <li>Fostered a collaborative environment among developers to enhance project outcomes.</li>
+              <li>Gained expertise in cloud technologies and application performance optimization.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Software Engineering Manager</h3>
+            <p className="company">Dealertrack | August 2010 - June 2012</p>
+            <ul className="experience-list">
+              <li>Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.</li>
+              <li>Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.</li>
+              <li>Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.</li>
+              <li>Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Senior Software Engineer</h3>
+            <p className="company">Dealertrack | December 2004 - August 2010</p>
+            <ul className="experience-list">
+              <li>Actively contributed to the development of critical applications and became a subject matter expert in key processes.</li>
+              <li>Developed Java EE, VB 6.0 and C# applications to support diverse business needs.</li>
+              <li>Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.</li>
+              <li>Enhanced application performance through the creation of various supporting web applications.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Software Engineer</h3>
+            <p className="company">Psyche Systems Corporation | July 2000 - December 2004</p>
+            <ul className="experience-list">
+              <li>Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications.</li>
+            </ul>
+          </div>
+
+          <div className="experience-item">
+            <h3>Software Engineer</h3>
+            <p className="company">Daystar Corporation | January 1999 - April 2000</p>
+            <ul className="experience-list">
+              <li>Developed and maintained applications. Supported corporate IT infrastructure.</li>
             </ul>
           </div>
         </section>
-        
+
+        <section className="resume-section">
+          <h2>Technical Skills</h2>
+          <div className="competencies-container">
+            <ul className="competencies-list">
+              <li>Programming Languages: Python, NodeJS, React, Java, Scala, SQL</li>
+              <li>Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures</li>
+              <li>Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)</li>
+              <li>Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases</li>
+              <li>DevOps & Methodologies: Agile, Scrum, Kanban</li>
+              <li>Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines</li>
+            </ul>
+          </div>
+        </section>
+
         <section className="resume-section">
           <h2>Education</h2>
           <div className="education-item">
