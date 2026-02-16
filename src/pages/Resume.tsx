@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { trackResumeView, trackResumeDownload } from '../utils/analytics'
 import './Resume.css'
 
@@ -20,6 +21,20 @@ function Resume() {
   
   return (
     <div className="resume-page">
+      <Helmet>
+        <title>Resume - Chris Gagne</title>
+        <meta
+          name="description"
+          content="View Chris Gagne's professional resume. Director of Engineering with extensive experience in software development, team leadership, and technical innovation."
+        />
+        <meta property="og:title" content="Resume - Chris Gagne" />
+        <meta
+          property="og:description"
+          content="View Chris Gagne's professional resume. Director of Engineering with extensive experience in software development, team leadership, and technical innovation."
+        />
+        <meta property="og:url" content="https://gagnechris.com/resume" />
+        <link rel="canonical" href="https://gagnechris.com/resume" />
+      </Helmet>
       <header>
         <div className="name-section">
           <h1>Chris Gagne</h1>
