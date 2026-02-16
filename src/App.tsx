@@ -8,23 +8,23 @@ function App() {
   return (
     <>
       <Helmet>
-        <title>Chris Gagne - Director of Engineering</title>
+        <title>Chris Gagne - Engineering Leader</title>
         <meta
           name="description"
-          content="Chris Gagne is a Director of Engineering at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
+          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
         />
-        <meta property="og:title" content="Chris Gagne - Director of Engineering" />
+        <meta property="og:title" content="Chris Gagne - Engineering Leader" />
         <meta
           property="og:description"
-          content="Chris Gagne is a Director of Engineering at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
+          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://gagnechris.com" />
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Chris Gagne - Director of Engineering" />
+        <meta name="twitter:title" content="Chris Gagne - Engineering Leader" />
         <meta
           name="twitter:description"
-          content="Chris Gagne is a Director of Engineering at Ro with 20+ years of experience in software engineering."
+          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering."
         />
         <link rel="canonical" href="https://gagnechris.com" />
       </Helmet>
