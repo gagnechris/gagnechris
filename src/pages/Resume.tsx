@@ -25,12 +25,12 @@ function Resume() {
         <title>Resume - Chris Gagne</title>
         <meta
           name="description"
-          content="View Chris Gagne's professional resume. Director of Engineering with extensive experience in software development, team leadership, and technical innovation."
+          content="View Chris Gagne's professional resume. Engineering Leader with extensive experience in software development, team leadership, and technical innovation."
         />
         <meta property="og:title" content="Resume - Chris Gagne" />
         <meta
           property="og:description"
-          content="View Chris Gagne's professional resume. Director of Engineering with extensive experience in software development, team leadership, and technical innovation."
+          content="View Chris Gagne's professional resume. Engineering Leader with extensive experience in software development, team leadership, and technical innovation."
         />
         <meta property="og:url" content="https://gagnechris.com/resume" />
         <link rel="canonical" href="https://gagnechris.com/resume" />
