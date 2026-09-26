@@ -27,15 +27,15 @@ const loadPublishedPosts = (postsDir: string) => {
   return fs
     .readdirSync(postsDir)
     .filter((filename) => filename.endsWith('.md'))
-    .map((filename) => {
+    .flatMap((filename) => {
       const raw = fs.readFileSync(path.join(postsDir, filename), 'utf8')
       const { data } = parseFrontmatter(raw)
-      return {
-        slug: data.slug?.trim(),
-        date: data.date?.trim(),
+      const slug = data.slug?.trim()
+      if (!slug) {
+        return []
       }
+      return [{ slug, date: data.date?.trim() || undefined }]
     })
-    .filter((post): post is { slug: string; date?: string } => Boolean(post.slug))
 }
 
 const buildSitemapXml = (entries: SitemapEntry[]) => {
