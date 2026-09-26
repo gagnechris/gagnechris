@@ -2,5 +2,9 @@
   "hosted-zone:account=172337824039:domainName=gagnechris.com:region=us-east-1": {
     "Id": "/hostedzone/Z3OH52RP1X06LZ",
     "Name": "gagnechris.com."
+  },
+  "hosted-zone:account=111111111111:domainName=gagnechris.com:region=us-east-1": {
+    "Id": "/hostedzone/Z3OH52RP1X06LZ",
+    "Name": "gagnechris.com."
   }
 }
