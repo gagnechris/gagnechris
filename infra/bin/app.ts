@@ -67,7 +67,7 @@ new AuthStack(app, `Auth-${config.name}`, {
   description: `Cognito user pool and managed login (${config.name}).`,
   crossRegionReferences: true,
   config,
-  certificate: certificate.certificate,
+  certificate: certificate.authCertificate,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {

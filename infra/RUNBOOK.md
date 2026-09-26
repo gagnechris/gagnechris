@@ -80,7 +80,7 @@ Prod only by default (no staging deploy). Staging remains available later via `-
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
 - Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod`.
-- ACM cert (apex + www + staging + auth) in **us-east-1** via `Certificate-prod` (DNS validation).
+- ACM cert (apex + www + staging) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing the site certificate (which breaks the Site-prod export).
 - DNSSEC deferred (cost).
 
 ```bash

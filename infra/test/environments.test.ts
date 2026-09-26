@@ -301,10 +301,14 @@ describe('DnsStack and CertificateStack', () => {
       SubjectAlternativeNames: Match.arrayWith([
         'www.gagnechris.com',
         'staging.gagnechris.com',
-        'auth.gagnechris.com',
       ]),
       ValidationMethod: 'DNS',
     });
+    certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName: 'auth.gagnechris.com',
+      ValidationMethod: 'DNS',
+    });
+    certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 2);
   });
 });
 

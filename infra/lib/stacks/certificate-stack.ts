@@ -14,13 +14,16 @@ export interface CertificateStackProps extends StackProps {
 }
 
 /**
- * ACM certificate in us-east-1 for CloudFront and Cognito custom domain
- * (apex, www, staging, auth). Looks up the Route 53 zone in this stack so DNS
- * validation records are created correctly (cross-stack fromLookup zones break
- * validation).
+ * ACM certificates in us-east-1 (CloudFront + Cognito custom domains).
+ * Site and auth use separate certs so adding the auth hostname never replaces
+ * the site certificate (which would break the Site-prod cross-stack export).
+ * Zone lookup stays in this stack so DNS validation records create correctly.
  */
 export class CertificateStack extends Stack {
+  /** Apex / www / staging for CloudFront. */
   readonly certificate: ICertificate;
+  /** `auth.gagnechris.com` for Cognito managed login. */
+  readonly authCertificate: ICertificate;
 
   constructor(scope: Construct, id: string, props: CertificateStackProps) {
     super(scope, id, props);
@@ -34,15 +37,25 @@ export class CertificateStack extends Stack {
       subjectAlternativeNames: [
         `www.${APEX_DOMAIN}`,
         `staging.${APEX_DOMAIN}`,
-        `auth.${APEX_DOMAIN}`,
       ],
+      validation: CertificateValidation.fromDns(hostedZone),
+    });
+
+    this.authCertificate = new Certificate(this, 'AuthCertificate', {
+      domainName: `auth.${APEX_DOMAIN}`,
       validation: CertificateValidation.fromDns(hostedZone),
     });
 
     new CfnOutput(this, 'CertificateArn', {
       value: this.certificate.certificateArn,
       description:
-        'ACM certificate ARN (us-east-1) for CloudFront and Cognito auth domain.',
+        'ACM certificate ARN (us-east-1) for CloudFront — apex, www, staging.',
+    });
+
+    new CfnOutput(this, 'AuthCertificateArn', {
+      value: this.authCertificate.certificateArn,
+      description:
+        'ACM certificate ARN (us-east-1) for Cognito auth.gagnechris.com.',
     });
   }
 }
