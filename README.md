@@ -23,6 +23,14 @@ This website serves as both a portfolio and resume platform, featuring:
 - **Node.js** 22.12+ (see `.nvmrc`)
 - **npm** (comes with Node.js)
 
+If you use nvm:
+
+```bash
+nvm install   # reads .nvmrc
+nvm use
+nvm alias default 22   # so new terminals pick Node 22 automatically
+```
+
 ### Installation
 
 1. **Clone the repository**
@@ -31,11 +39,12 @@ This website serves as both a portfolio and resume platform, featuring:
    cd gagnechris
    ```
 
-2. **Install dependencies**
+2. **Use the project Node version**, then install dependencies
    ```bash
+   nvm use
    npm install
    ```
-
+   `.npmrc` sets `engine-strict=true`, so install fails clearly if Node is too old.
 ## 💻 Development
 
 ### Local Development Server
