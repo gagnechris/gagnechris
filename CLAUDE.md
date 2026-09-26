@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
+- CI: GitHub Actions runs lint, test, and build on pushes and PRs to `main`
 
 ## Hosting & Integrations
 - **Hosting**: GitHub Pages with custom domain `gagnechris.com`

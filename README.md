@@ -90,6 +90,9 @@ This command:
 
 **Live Site**: [https://gagnechris.com](https://gagnechris.com)
 
+### Continuous Integration
+Every push and pull request to `main` runs lint, tests, and build via GitHub Actions. Dependabot opens weekly PRs for npm and GitHub Actions updates.
+
 ### Manual Deployment Steps
 If you prefer manual deployment:
 
