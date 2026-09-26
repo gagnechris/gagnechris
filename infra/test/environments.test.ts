@@ -16,6 +16,7 @@ import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
+import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
@@ -300,8 +301,92 @@ describe('DnsStack and CertificateStack', () => {
       SubjectAlternativeNames: Match.arrayWith([
         'www.gagnechris.com',
         'staging.gagnechris.com',
+        'auth.gagnechris.com',
       ]),
       ValidationMethod: 'DNS',
+    });
+  });
+});
+
+describe('AuthStack', () => {
+  it('creates admin-only pool with passkeys, MFA, managed login, and clients', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'AuthDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const certificate = Certificate.fromCertificateArn(
+      deps,
+      'Cert',
+      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
+    );
+    const auth = new AuthStack(app, 'Auth-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      certificate,
+      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'AuthZone', {
+        hostedZoneId: 'ZXXXXXXXXXXXX',
+        zoneName: 'gagnechris.com',
+      }),
+    });
+    applyStandardTags(auth, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(auth);
+
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      UserPoolName: 'gagnechris-prod',
+      AdminCreateUserConfig: Match.objectLike({
+        AllowAdminCreateUserOnly: true,
+      }),
+      MfaConfiguration: 'ON',
+      UserPoolTier: 'ESSENTIALS',
+      UsernameAttributes: ['email'],
+      Policies: Match.objectLike({
+        PasswordPolicy: Match.objectLike({
+          MinimumLength: 12,
+          RequireLowercase: true,
+          RequireUppercase: true,
+          RequireNumbers: true,
+          RequireSymbols: true,
+        }),
+        SignInPolicy: Match.objectLike({
+          AllowedFirstAuthFactors: Match.arrayWith(['PASSWORD', 'WEB_AUTHN']),
+        }),
+      }),
+      DeletionProtection: 'ACTIVE',
+    });
+
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'web',
+      GenerateSecret: false,
+      AllowedOAuthFlows: ['code'],
+      AllowedOAuthFlowsUserPoolClient: true,
+      ExplicitAuthFlows: Match.arrayWith([
+        'ALLOW_USER_SRP_AUTH',
+        'ALLOW_USER_AUTH',
+      ]),
+    });
+
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'ios',
+      GenerateSecret: false,
+    });
+
+    template.hasResourceProperties('AWS::Cognito::UserPoolDomain', {
+      Domain: 'auth.gagnechris.com',
+      ManagedLoginVersion: 2,
+    });
+
+    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 2);
+
+    template.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'A',
+      Name: 'auth.gagnechris.com.',
+    });
+
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/cognito-user-pool-id',
     });
   });
 });

@@ -80,7 +80,7 @@ Prod only by default (no staging deploy). Staging remains available later via `-
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
 - Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod`.
-- ACM cert (apex + www + staging) in **us-east-1** via `Certificate-prod` (DNS validation).
+- ACM cert (apex + www + staging + auth) in **us-east-1** via `Certificate-prod` (DNS validation).
 - DNSSEC deferred (cost).
 
 ```bash
@@ -111,6 +111,43 @@ Manual / local:
 ```bash
 AWS_PROFILE=gagnechris-admin npm run deploy:web
 ```
+
+## Cognito auth (CHR-27)
+
+`Auth-prod`: single-admin user pool (self sign-up off), passkeys + required TOTP MFA, managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
+
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-auth-domain`.
+
+Deploy (after Certificate has the `auth` SAN):
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Certificate-prod Auth-prod --require-approval never
+```
+
+Create the admin user (never the console). Use your private-note email:
+
+```bash
+POOL_ID=$(aws ssm get-parameter --name /gagnechris/prod/cognito-user-pool-id --query Parameter.Value --output text --profile gagnechris-admin)
+ADMIN_EMAIL='you@example.com'   # from private note
+
+aws cognito-idp admin-create-user \
+  --user-pool-id "$POOL_ID" \
+  --username "$ADMIN_EMAIL" \
+  --user-attributes Name=email,Value="$ADMIN_EMAIL" Name=email_verified,Value=true \
+  --message-action SUPPRESS \
+  --profile gagnechris-admin
+
+# Set a temporary password, then sign in at ManagedLoginUrl (stack output) and enroll a passkey.
+aws cognito-idp admin-set-user-password \
+  --user-pool-id "$POOL_ID" \
+  --username "$ADMIN_EMAIL" \
+  --password 'REPLACE_WITH_STRONG_TEMP_PASSWORD' \
+  --permanent \
+  --profile gagnechris-admin
+```
+
+Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://gagnechris.com/auth/callback`).
 
 ## Existing resources (CDK decisions)
 

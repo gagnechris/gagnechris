@@ -2,6 +2,7 @@ import { Aspects, App } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import { getEnvironment, parseEnvironmentName } from '../lib/config/environments.js';
+import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
@@ -32,7 +33,7 @@ const certificateEnv = {
 
 const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
   env: certificateEnv,
-  description: `ACM certificate in us-east-1 for CloudFront (${config.name}).`,
+  description: `ACM certificate in us-east-1 for CloudFront and Cognito (${config.name}).`,
   crossRegionReferences: true,
   config,
 });
@@ -59,6 +60,14 @@ new DnsStack(app, `Dns-${config.name}`, {
   crossRegionReferences: true,
   config,
   distribution: site.distribution,
+});
+
+new AuthStack(app, `Auth-${config.name}`, {
+  env: stackEnv,
+  description: `Cognito user pool and managed login (${config.name}).`,
+  crossRegionReferences: true,
+  config,
+  certificate: certificate.certificate,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
