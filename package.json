@@ -6,7 +6,8 @@
   "homepage": "https://gagnechris.com",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",

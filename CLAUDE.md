@@ -3,13 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
-- Build: `npm run build` (runs TypeScript build and Vite; generates `sitemap.xml` from published posts)
+- Build: `npm run build` (runs `tsc -b` then Vite; generates `sitemap.xml` from published posts)
+- Typecheck: `npm run typecheck` (runs `tsc -b` only)
 - Lint: `npm run lint` (runs ESLint)
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
 - Test: `npm test` (runs Vitest)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
-- CI: GitHub Actions runs lint, test, and build on pushes and PRs to `main`
+- CI: GitHub Actions runs lint, test, and build (including typecheck) on pushes and PRs to `main`
 
 ## Hosting & Integrations
 - **Hosting**: GitHub Pages with custom domain `gagnechris.com`

@@ -79,7 +79,7 @@ function BlogPost() {
 
   return (
     <div className="blog-post">
-      <title>{post.title} - Chris Gagne</title>
+      <title>{`${post.title} - Chris Gagne`}</title>
       <meta name="description" content={post.excerpt} />
       <meta property="og:title" content={`${post.title} - Chris Gagne`} />
       <meta property="og:description" content={post.excerpt} />
