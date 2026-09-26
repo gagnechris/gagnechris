@@ -1,5 +1,5 @@
 import { Aspects, App, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
@@ -9,8 +9,15 @@ import {
   getEnvironment,
   parseEnvironmentName,
   resolveAccountId,
+  resolveAlertsEmail,
 } from '../lib/config/environments.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
+import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
+
+const testEnv = {
+  CDK_ACCOUNT: '123456789012',
+  ALERTS_EMAIL: 'alerts@example.com',
+};
 
 describe('environments', () => {
   it('defaults to prod and still accepts staging for later', () => {
@@ -29,17 +36,27 @@ describe('environments', () => {
     expect(() => resolveAccountId({})).toThrow(/account unresolved/i);
   });
 
+  it('resolves alerts email from env or context', () => {
+    expect(resolveAlertsEmail(undefined, { ALERTS_EMAIL: 'a@b.co' })).toBe(
+      'a@b.co',
+    );
+    expect(resolveAlertsEmail('c@d.co', {})).toBe('c@d.co');
+    expect(() => resolveAlertsEmail(undefined, {})).toThrow(/Alerts email/);
+  });
+
   it('uses RETAIN for prod and DESTROY for staging stateful resources', () => {
-    const env = { CDK_ACCOUNT: '123456789012' };
-    expect(getEnvironment('prod', env).statefulRemovalPolicy).toBe(
+    expect(getEnvironment('prod', testEnv).statefulRemovalPolicy).toBe(
       RemovalPolicy.RETAIN,
     );
-    expect(getEnvironment('staging', env).statefulRemovalPolicy).toBe(
+    expect(getEnvironment('staging', testEnv).statefulRemovalPolicy).toBe(
       RemovalPolicy.DESTROY,
     );
-    expect(getEnvironment('prod', env).domainName).toBe('gagnechris.com');
-    expect(getEnvironment('staging', env).domainName).toBe(
+    expect(getEnvironment('prod', testEnv).domainName).toBe('gagnechris.com');
+    expect(getEnvironment('staging', testEnv).domainName).toBe(
       'staging.gagnechris.com',
+    );
+    expect(getEnvironment('prod', testEnv).alertsEmail).toBe(
+      'alerts@example.com',
     );
   });
 });
@@ -47,7 +64,7 @@ describe('environments', () => {
 describe('standard tags and removal policy', () => {
   it('applies project, env, and managed-by tags', () => {
     const app = new App();
-    const config = getEnvironment('prod', { CDK_ACCOUNT: '123456789012' });
+    const config = getEnvironment('prod', testEnv);
     const stack = new DnsStack(app, 'Dns-prod', {
       env: { account: config.account, region: config.region },
     });
@@ -82,7 +99,7 @@ describe('standard tags and removal policy', () => {
 
   it('retains prod stateful buckets', () => {
     const app = new App();
-    const config = getEnvironment('prod', { CDK_ACCOUNT: '123456789012' });
+    const config = getEnvironment('prod', testEnv);
     const stack = new Stack(app, 'Probe');
     applyStandardTags(stack, config);
     const bucket = new Bucket(stack, 'Data', {
@@ -98,6 +115,71 @@ describe('standard tags and removal policy', () => {
     );
 
     const template = Template.fromStack(stack);
+    template.hasResource('AWS::S3::Bucket', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+  });
+});
+
+describe('GuardrailsStack', () => {
+  it('defines budget, CloudTrail, SNS, account BPA, and Access Analyzer', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const stack = new GuardrailsStack(app, 'Guardrails-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+    });
+    applyStandardTags(stack, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(stack);
+
+    template.hasResourceProperties('AWS::SNS::Topic', {
+      DisplayName: 'gagnechris-prod-alerts',
+    });
+    template.hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'email',
+      Endpoint: 'alerts@example.com',
+    });
+
+    template.hasResourceProperties('AWS::Budgets::Budget', {
+      Budget: {
+        BudgetName: 'gagnechris-prod-monthly',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: 20, Unit: 'USD' },
+      },
+      NotificationsWithSubscribers: Match.arrayWith([
+        Match.objectLike({
+          Notification: Match.objectLike({
+            NotificationType: 'ACTUAL',
+            Threshold: 50,
+          }),
+        }),
+        Match.objectLike({
+          Notification: Match.objectLike({
+            NotificationType: 'FORECASTED',
+            Threshold: 100,
+          }),
+        }),
+      ]),
+    });
+
+    template.resourceCountIs('AWS::CloudTrail::Trail', 1);
+    template.hasResourceProperties('AWS::CloudTrail::Trail', {
+      IsMultiRegionTrail: true,
+      EnableLogFileValidation: true,
+      IncludeGlobalServiceEvents: true,
+    });
+
+    // Account BPA is applied via AwsCustomResource (S3 Control API).
+    template.resourceCountIs('Custom::AWS', 1);
+
+    template.hasResourceProperties('AWS::AccessAnalyzer::Analyzer', {
+      Type: 'ACCOUNT',
+    });
+
     template.hasResource('AWS::S3::Bucket', {
       DeletionPolicy: 'Retain',
       UpdateReplacePolicy: 'Retain',

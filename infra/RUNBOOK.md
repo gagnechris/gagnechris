@@ -37,10 +37,18 @@ aws sso login --sso-session gagnechris
 
 # Synth / diff default to prod (account from credentials via CDK_DEFAULT_ACCOUNT).
 # Staging is typed and available later with `-c env=staging` — not deployed by default (cost).
+# Alerts email is never committed — set ALERTS_EMAIL (or -c alertsEmail=...).
+export ALERTS_EMAIL='you@example.com'   # use the address from your private note
 npm run cdk -- synth
 npm run cdk -- diff
+npm run cdk -- deploy Guardrails-prod --profile gagnechris-admin
 # npm run cdk -- synth -c env=staging   # when/if staging is needed
 ```
+
+After deploying Guardrails:
+1. Confirm the SNS subscription email (AWS sends a Confirm subscription link).
+2. `aws budgets describe-budgets --account-id "$CDK_DEFAULT_ACCOUNT" --profile gagnechris-readonly`
+3. Optional test: publish to the alerts topic ARN from the stack outputs.
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 

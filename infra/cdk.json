@@ -18,6 +18,7 @@
   "context": {
     "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
     "@aws-cdk/aws-rds:databaseProxyUniqueResourceName": true,
-    "@aws-cdk/core:target-partitions": ["aws"]
+    "@aws-cdk/core:target-partitions": ["aws"],
+    "@aws-cdk/customresources:installLatestAwsSdkDefault": false
   }
 }

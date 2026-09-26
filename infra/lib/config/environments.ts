@@ -17,6 +17,11 @@ export interface EnvironmentConfig {
   readonly domainName: string;
   /** Removal policy for stateful resources (buckets, tables, user pools). */
   readonly statefulRemovalPolicy: RemovalPolicy;
+  /**
+   * Email for SNS alerts and AWS Budgets notifications.
+   * From `ALERTS_EMAIL` or CDK context `alertsEmail` — never commit the value.
+   */
+  readonly alertsEmail: string;
 }
 
 const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
@@ -41,6 +46,26 @@ export function resolveAccountId(
   return account;
 }
 
+/**
+ * Resolve the alerts inbox without committing it.
+ * Prefer `ALERTS_EMAIL`; otherwise CDK context `-c alertsEmail=...`.
+ */
+export function resolveAlertsEmail(
+  contextValue: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const fromEnv = env.ALERTS_EMAIL?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  if (typeof contextValue === 'string' && contextValue.trim().length > 0) {
+    return contextValue.trim();
+  }
+  throw new Error(
+    'Alerts email unresolved. Set ALERTS_EMAIL or pass -c alertsEmail=you@example.com.',
+  );
+}
+
 export function parseEnvironmentName(raw: unknown): EnvironmentName {
   const value = typeof raw === 'string' ? raw : ACTIVE_ENVIRONMENT;
   if ((ENVIRONMENT_NAMES as readonly string[]).includes(value)) {
@@ -54,6 +79,7 @@ export function parseEnvironmentName(raw: unknown): EnvironmentName {
 export function getEnvironment(
   name: EnvironmentName = ACTIVE_ENVIRONMENT,
   env: NodeJS.ProcessEnv = process.env,
+  alertsEmailContext?: unknown,
 ): EnvironmentConfig {
   return {
     name,
@@ -62,5 +88,6 @@ export function getEnvironment(
     domainName: DOMAIN_BY_ENV[name],
     statefulRemovalPolicy:
       name === 'prod' ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    alertsEmail: resolveAlertsEmail(alertsEmailContext, env),
   };
 }
