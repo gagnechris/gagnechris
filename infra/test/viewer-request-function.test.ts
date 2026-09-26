@@ -77,7 +77,21 @@ describe('viewer-request CloudFront Function', () => {
     );
   });
 
-  it('preserves multi-value query keys', () => {
+  it('passes through already-encoded query values (no double-encoding)', () => {
+    const res = runHandler({
+      uri: '/blog',
+      querystring: {
+        q: { value: 'a%20b' },
+        x: { value: '%2Fpath%3Fz%26y' },
+      },
+      headers: { host: { value: 'www.gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe(
+      'https://gagnechris.com/blog?q=a%20b&x=%2Fpath%3Fz%26y',
+    );
+  });
+
+  it('preserves multi-value query keys as received', () => {
     const res = runHandler({
       uri: '/',
       querystring: {
@@ -88,17 +102,6 @@ describe('viewer-request CloudFront Function', () => {
       headers: { host: { value: 'www.gagnechris.com' } },
     });
     expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
-  });
-
-  it('encodes decoded query values (CF event values are not percent-encoded)', () => {
-    const res = runHandler({
-      uri: '/contact',
-      querystring: { q: { value: 'a b&c' } },
-      headers: { host: { value: 'www.gagnechris.com' } },
-    });
-    expect(locationOf(res)).toBe(
-      'https://gagnechris.com/contact?q=a%20b%26c',
-    );
   });
 
   it('rewrites extensionless deep links to the SPA shell', () => {
