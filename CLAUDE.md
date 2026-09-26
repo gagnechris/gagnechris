@@ -3,11 +3,16 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
-- Build: `npm run build` (runs TypeScript build and Vite)
+- Build: `npm run build` (runs TypeScript build and Vite; generates `sitemap.xml` from published posts)
 - Lint: `npm run lint` (runs ESLint)
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
-- Deploy: `npm run deploy` (deploys to GitHub Pages)
+- Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
+
+## Hosting & Integrations
+- **Hosting**: GitHub Pages with custom domain `gagnechris.com`
+- **Contact form**: Formspree
+- **Analytics**: Google Analytics 4
 
 ## Code Style Guidelines
 - **TypeScript**: Strict mode enabled with comprehensive type checking

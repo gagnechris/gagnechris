@@ -82,28 +82,8 @@ describe('analytics utilities', () => {
   });
 
   describe('trackResumeDownload', () => {
-    test('tracks resume download with default method', () => {
+    test('tracks resume download event', () => {
       trackResumeDownload();
-
-      expect(mockGtag).toHaveBeenCalledWith('event', 'download', {
-        event_category: 'resume',
-        event_label: 'resume_download_direct',
-        value: undefined,
-      });
-    });
-
-    test('tracks resume download with modal method', () => {
-      trackResumeDownload('modal');
-
-      expect(mockGtag).toHaveBeenCalledWith('event', 'download', {
-        event_category: 'resume',
-        event_label: 'resume_download_modal',
-        value: undefined,
-      });
-    });
-
-    test('tracks resume download with direct method', () => {
-      trackResumeDownload('direct');
 
       expect(mockGtag).toHaveBeenCalledWith('event', 'download', {
         event_category: 'resume',

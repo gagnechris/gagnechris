@@ -31,6 +31,6 @@ export const trackResumeView = () => {
   trackEvent('view', 'resume', 'resume_page_view');
 };
 
-export const trackResumeDownload = (method: 'direct' | 'modal' = 'direct') => {
-  trackEvent('download', 'resume', `resume_download_${method}`);
+export const trackResumeDownload = () => {
+  trackEvent('download', 'resume', 'resume_download_direct');
 };

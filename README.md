@@ -66,7 +66,6 @@ This serves the built files from `dist/` at `http://localhost:4173`
 npm test                # Run tests once
 npm run test:watch      # Run tests in watch mode (auto-rerun on changes)
 npm run test:coverage   # Run tests with coverage report
-npm run test:serverless # Run serverless function tests only
 ```
 
 ### Code Quality
@@ -77,14 +76,14 @@ npm run lint            # Run ESLint
 
 ## 🚀 Deployment
 
-### Automated Deployment
+### Deploy to GitHub Pages
 Deploy to GitHub Pages with custom domain:
 ```bash
 npm run deploy
 ```
 
 This command:
-1. Runs `npm run build` to create production assets
+1. Runs `npm run build` to create production assets (including a generated `sitemap.xml`)
 2. Deploys to GitHub Pages using `gh-pages`
 3. Configures custom domain (`gagnechris.com`)
 4. Updates the live site automatically
@@ -99,7 +98,7 @@ If you prefer manual deployment:
    npm run build
    ```
 
-2. **Deploy the `dist/` folder** to your hosting provider of choice
+2. **Deploy the `dist/` folder** to GitHub Pages (or another static host)
    - The `dist/` folder contains all static assets
    - Configure your server to serve `index.html` for all routes (SPA routing)
 
@@ -111,6 +110,7 @@ If you prefer manual deployment:
 - **React Router v7** - Client-side routing with analytics tracking
 - **Vite** - Fast build tool and development server
 - **Google Analytics 4** - Event tracking and user analytics
+- **Formspree** - Contact form submissions
 
 ### Styling
 - **Modern CSS** - Custom properties, flexbox, grid
@@ -125,36 +125,37 @@ If you prefer manual deployment:
 - **Accessibility Testing** - Screen reader and keyboard navigation testing
 
 ### Deployment & Infrastructure
-- **GitHub Pages** - Static site hosting
-- **GitHub Actions** - CI/CD (via npm scripts)
-- **Netlify Functions** - Serverless backend (resume download notifications)
-- **Custom Domain** - Professional branding
+- **GitHub Pages** - Static site hosting via `gh-pages`
+- **Custom Domain** - `gagnechris.com`
 
 ## 📁 Project Structure
 
 ```
 ├── public/                 # Static assets
-│   ├── Christopher M Gagne Resume 2025.pdf
+│   ├── Christopher M Gagne Resume 2026.pdf
 │   └── cg-icon.svg
 ├── src/
 │   ├── components/         # Reusable React components
 │   │   ├── AppWithTracking.tsx    # Analytics wrapper component
-│   │   ├── DownloadModal.tsx      # Resume download modal
 │   │   ├── RouteTracker.tsx       # Page view tracking
 │   │   └── *.test.tsx             # Component tests
 │   ├── pages/             # Page components
 │   │   ├── Resume.tsx
-│   │   └── Resume.test.tsx
+│   │   ├── BlogIndex.tsx
+│   │   ├── BlogPost.tsx
+│   │   ├── Contact.tsx
+│   │   └── *.test.tsx
+│   ├── posts/             # Published blog posts (markdown)
 │   ├── utils/             # Utility functions
 │   │   ├── analytics.ts           # Google Analytics integration
+│   │   ├── frontmatter.ts         # Markdown frontmatter parser
 │   │   └── analytics.test.ts
 │   ├── __tests__/         # Integration tests
 │   │   └── integration.test.tsx
 │   ├── assets/            # Images and media
 │   ├── App.tsx            # Main application component
 │   └── main.tsx           # Application entry point
-├── netlify/
-│   └── functions/         # Serverless functions
+├── scripts/               # Build helpers (e.g. sitemap generation)
 ├── dist/                  # Production build output
 ├── package.json           # Dependencies and scripts
 ├── tsconfig.json          # TypeScript configuration
@@ -171,9 +172,12 @@ If you prefer manual deployment:
 ### Analytics Configuration
 The site uses Google Analytics 4 for tracking:
 - **Page views**: Automatically tracked on route changes
-- **Download events**: Resume download tracking (direct and modal)
+- **Download events**: Resume download tracking
 - **External link clicks**: LinkedIn and GitHub link tracking
 - **Event categories**: `external_link`, `resume` for organized reporting
+
+### Contact Form
+The contact page submits through Formspree, which works with static GitHub Pages hosting.
 
 ### Custom Domain
 The site is configured to deploy to `gagnechris.com`. To use a different domain:
@@ -187,7 +191,6 @@ This website is built with accessibility in mind:
 - **Keyboard Navigation**: Full site navigation without a mouse
 - **Screen Reader Support**: Proper ARIA labels and semantic HTML
 - **Focus Management**: Clear focus indicators and logical tab order
-- **Modal Accessibility**: Proper focus trapping and escape key handling
 - **Descriptive Alt Text**: All images have meaningful descriptions
 
 ## 📊 Performance

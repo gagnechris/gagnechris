@@ -10,7 +10,7 @@ function Resume() {
   }, [])
 
   const handleDownload = () => {
-    trackResumeDownload('direct')
+    trackResumeDownload()
     const link = document.createElement('a')
     link.href = "/Christopher M Gagne Resume 2026.pdf"
     link.download = "Christopher M Gagne Resume 2026.pdf"

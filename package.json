@@ -12,7 +12,6 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist --cname gagnechris.com",
     "test": "jest --config=jest.config.cjs",
-    "test:serverless": "jest --config=jest.config.cjs netlify/functions/",
     "test:watch": "jest --watch --config=jest.config.cjs",
     "test:coverage": "jest --coverage --config=jest.config.cjs"
   },

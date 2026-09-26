@@ -6,7 +6,6 @@
     "esModuleInterop": true
   },
   "include": [
-    "src/**/*",
-    "netlify/**/*"
+    "src/**/*"
   ]
 }
