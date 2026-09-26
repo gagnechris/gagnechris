@@ -17,6 +17,7 @@ import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
+import { ApiStack } from '../lib/stacks/api-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
@@ -468,6 +469,69 @@ describe('SiteStack', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/cloudfront-distribution-id',
       Type: 'String',
+    });
+  });
+});
+
+describe('ApiStack', () => {
+  it('creates HTTP API with JWT on admin routes and health public', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'ApiDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
+    const certificate = Certificate.fromCertificateArn(
+      deps,
+      'Cert',
+      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
+    );
+    const site = new SiteStack(app, 'SiteForApi', {
+      env: { account: config.account, region: config.region },
+      config,
+      certificate,
+      alertsTopic,
+      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'ApiSiteZone', {
+        hostedZoneId: 'ZXXXXXXXXXXXX',
+        zoneName: 'gagnechris.com',
+      }),
+    });
+    const auth = new AuthStack(app, 'AuthForApi', {
+      env: { account: config.account, region: config.region },
+      config,
+      certificate,
+      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'ApiAuthZone', {
+        hostedZoneId: 'ZXXXXXXXXXXXX',
+        zoneName: 'gagnechris.com',
+      }),
+    });
+    const api = new ApiStack(app, 'Api-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      userPool: auth.userPool,
+      webClient: auth.webClient,
+      iosClient: auth.iosClient,
+      distribution: site.distribution,
+      alertsTopic,
+    });
+    applyStandardTags(api, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(api);
+
+    template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
+      Name: 'gagnechris-prod',
+      ProtocolType: 'HTTP',
+    });
+    template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+      AuthorizerType: 'JWT',
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Runtime: 'nodejs24.x',
+      Architectures: ['arm64'],
+    });
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/http-api-id',
     });
   });
 });

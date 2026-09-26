@@ -2,6 +2,7 @@ import { Aspects, App } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import { getEnvironment, parseEnvironmentName } from '../lib/config/environments.js';
+import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
@@ -62,12 +63,23 @@ new DnsStack(app, `Dns-${config.name}`, {
   distribution: site.distribution,
 });
 
-new AuthStack(app, `Auth-${config.name}`, {
+const auth = new AuthStack(app, `Auth-${config.name}`, {
   env: stackEnv,
   description: `Cognito user pool and managed login (${config.name}).`,
   crossRegionReferences: true,
   config,
   certificate: certificate.authCertificate,
+});
+
+new ApiStack(app, `Api-${config.name}`, {
+  env: stackEnv,
+  description: `HTTP API + Lambda behind CloudFront /api (${config.name}).`,
+  config,
+  userPool: auth.userPool,
+  webClient: auth.webClient,
+  iosClient: auth.iosClient,
+  distribution: site.distribution,
+  alertsTopic: guardrails.alertsTopic,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {

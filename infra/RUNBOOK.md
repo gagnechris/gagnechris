@@ -149,6 +149,27 @@ aws cognito-idp admin-set-user-password \
 
 Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://gagnechris.com/auth/callback`).
 
+## HTTP API (CHR-28)
+
+`Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizer on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
+
+OpenAPI contract: `packages/shared/openapi/openapi.json` (regenerate with `npm run openapi -w @gagnechris/shared`).
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Api-prod Site-prod --require-approval never
+```
+
+Smoke:
+
+```bash
+curl -sS https://gagnechris.com/api/health
+# Expect: {"status":"ok","service":"gagnechris-api"}
+
+curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
+# Expect: 401 without Authorization header
+```
+
 ## Existing resources (CDK decisions)
 
 | Resource | Decision |
