@@ -6,21 +6,21 @@ A modern, responsive personal website and portfolio built with React, TypeScript
 
 This website serves as both a portfolio and resume platform, featuring:
 
-- **Modern React Architecture**: Built with React 18, TypeScript, and React Router for client-side routing
+- **Modern React Architecture**: Built with React 19, TypeScript, and React Router for client-side routing
 - **Professional Resume Display**: Interactive web-based resume with downloadable PDF functionality
 - **Responsive Design**: Mobile-first design with modern CSS animations and transitions
 - **Performance Optimized**: Fast loading with Vite build tool and optimized assets
 - **Analytics Integration**: Google Analytics 4 with comprehensive event tracking
 - **Accessibility Compliant**: WCAG 2.1 AA compliant with ARIA labels, focus management, and keyboard navigation
-- **Comprehensive Testing**: Jest and React Testing Library with 100% test coverage including integration tests
+- **Comprehensive Testing**: Vitest and React Testing Library with unit and integration coverage
 - **Type Safety**: Full TypeScript implementation with strict mode enabled
-- **Modern Development**: ESLint, hot reloading, and automated deployment pipeline
+- **Modern Development**: ESLint, hot reloading, and GitHub Actions CI
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Node.js** (v16 or higher recommended)
+- **Node.js** 22.12+ (see `.nvmrc`)
 - **npm** (comes with Node.js)
 
 ### Installation
@@ -108,10 +108,10 @@ If you prefer manual deployment:
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 18** - Modern UI library with hooks
-- **TypeScript** - Type-safe JavaScript with strict mode
+- **React 19** - Modern UI library with hooks and native document metadata
+- **TypeScript 5.9** - Type-safe JavaScript with strict mode
 - **React Router v7** - Client-side routing with analytics tracking
-- **Vite** - Fast build tool and development server
+- **Vite 8** - Fast build tool and development server
 - **Google Analytics 4** - Event tracking and user analytics
 - **Formspree** - Contact form submissions
 
@@ -121,9 +121,9 @@ If you prefer manual deployment:
 - **Responsive Design** - Mobile-first approach
 
 ### Testing & Quality
-- **Jest** - Testing framework with 100% coverage
+- **Vitest** - Vite-native unit and integration testing
 - **React Testing Library** - Component and integration testing
-- **ESLint** - Code linting with TypeScript and React rules
+- **ESLint 10** - Code linting with TypeScript and React rules
 - **TypeScript Compiler** - Static type checking with strict mode
 - **Accessibility Testing** - Screen reader and keyboard navigation testing
 

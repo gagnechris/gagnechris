@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useState, FormEvent } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 
@@ -91,9 +90,7 @@ function Contact() {
   if (submitted) {
     return (
       <div className="contact-page">
-        <Helmet>
-          <title>Thank You - Chris Gagne</title>
-        </Helmet>
+        <title>Thank You - Chris Gagne</title>
         <header>
           <h1>Contact</h1>
           <Link to="/" className="back-link">Back to Home</Link>
@@ -111,20 +108,18 @@ function Contact() {
 
   return (
     <div className="contact-page">
-      <Helmet>
-        <title>Contact - Chris Gagne</title>
-        <meta
-          name="description"
-          content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
-        />
-        <meta property="og:title" content="Contact - Chris Gagne" />
-        <meta
-          property="og:description"
-          content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
-        />
-        <meta property="og:url" content="https://gagnechris.com/contact" />
-        <link rel="canonical" href="https://gagnechris.com/contact" />
-      </Helmet>
+      <title>Contact - Chris Gagne</title>
+      <meta
+        name="description"
+        content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
+      />
+      <meta property="og:title" content="Contact - Chris Gagne" />
+      <meta
+        property="og:description"
+        content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
+      />
+      <meta property="og:url" content="https://gagnechris.com/contact" />
+      <link rel="canonical" href="https://gagnechris.com/contact" />
       <header>
         <h1>Contact</h1>
         <Link to="/" className="back-link">Back to Home</Link>

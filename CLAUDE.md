@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Lint: `npm run lint` (runs ESLint)
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
+- Test: `npm test` (runs Vitest)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
 - CI: GitHub Actions runs lint, test, and build on pushes and PRs to `main`
 
@@ -14,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Hosting**: GitHub Pages with custom domain `gagnechris.com`
 - **Contact form**: Formspree
 - **Analytics**: Google Analytics 4
+- **Node**: requires Node.js 22.12+ (see `.nvmrc`)
 
 ## Code Style Guidelines
 - **TypeScript**: Strict mode enabled with comprehensive type checking

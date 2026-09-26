@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { parseFrontmatter } from '../utils/frontmatter';
 import './BlogIndex.css';
 
@@ -51,9 +50,7 @@ function BlogIndex() {
   if (loading) {
     return (
       <div className="blog-index">
-        <Helmet>
-          <title>Blog - Chris Gagne</title>
-        </Helmet>
+        <title>Blog - Chris Gagne</title>
         <header>
           <h1>Blog</h1>
           <Link to="/" className="back-link">Back to Home</Link>
@@ -67,20 +64,18 @@ function BlogIndex() {
 
   return (
     <div className="blog-index">
-      <Helmet>
-        <title>Blog - Chris Gagne</title>
-        <meta
-          name="description"
-          content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
-        />
-        <meta property="og:title" content="Blog - Chris Gagne" />
-        <meta
-          property="og:description"
-          content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
-        />
-        <meta property="og:url" content="https://gagnechris.com/blog" />
-        <link rel="canonical" href="https://gagnechris.com/blog" />
-      </Helmet>
+      <title>Blog - Chris Gagne</title>
+      <meta
+        name="description"
+        content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
+      />
+      <meta property="og:title" content="Blog - Chris Gagne" />
+      <meta
+        property="og:description"
+        content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
+      />
+      <meta property="og:url" content="https://gagnechris.com/blog" />
+      <link rel="canonical" href="https://gagnechris.com/blog" />
       <header>
         <h1>Blog</h1>
         <Link to="/" className="back-link">Back to Home</Link>

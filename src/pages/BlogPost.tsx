@@ -1,6 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { parseFrontmatter } from '../utils/frontmatter';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -80,18 +79,16 @@ function BlogPost() {
 
   return (
     <div className="blog-post">
-      <Helmet>
-        <title>{post.title} - Chris Gagne</title>
-        <meta name="description" content={post.excerpt} />
-        <meta property="og:title" content={`${post.title} - Chris Gagne`} />
-        <meta property="og:description" content={post.excerpt} />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://gagnechris.com/blog/${slug}`} />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content={`${post.title} - Chris Gagne`} />
-        <meta name="twitter:description" content={post.excerpt} />
-        <link rel="canonical" href={`https://gagnechris.com/blog/${slug}`} />
-      </Helmet>
+      <title>{post.title} - Chris Gagne</title>
+      <meta name="description" content={post.excerpt} />
+      <meta property="og:title" content={`${post.title} - Chris Gagne`} />
+      <meta property="og:description" content={post.excerpt} />
+      <meta property="og:type" content="article" />
+      <meta property="og:url" content={`https://gagnechris.com/blog/${slug}`} />
+      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:title" content={`${post.title} - Chris Gagne`} />
+      <meta name="twitter:description" content={post.excerpt} />
+      <link rel="canonical" href={`https://gagnechris.com/blog/${slug}`} />
       <header>
         <Link to="/blog" className="back-link">← Back to Blog</Link>
         <Link to="/" className="home-link">Back to Home</Link>

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
-import { parseFrontmatter } from '../src/utils/frontmatter'
+import { parseFrontmatter } from '../src/utils/frontmatter.ts'
 
 const SITE_URL = 'https://gagnechris.com'
 

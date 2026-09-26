@@ -1,61 +1,62 @@
-import { screen, fireEvent } from '@testing-library/react';
-import App from './App';
-import { renderWithProviders } from './test-utils';
-import * as analytics from './utils/analytics';
+import { screen, fireEvent } from '@testing-library/react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import App from './App'
+import { renderWithProviders } from './test-utils'
+import * as analytics from './utils/analytics'
 
-jest.mock('./utils/analytics');
+vi.mock('./utils/analytics')
 
-const mockTrackEvent = jest.mocked(analytics.trackEvent);
+const mockTrackEvent = vi.mocked(analytics.trackEvent)
 
 describe('App', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   test('renders all main sections', () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />)
 
-    expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
-    expect(screen.getByText('About Me')).toBeInTheDocument();
-    expect(screen.getByText('Quick Links')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'LinkedIn' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'GitHub' })).toBeInTheDocument();
-  });
+    expect(screen.getByText('Chris Gagne')).toBeInTheDocument()
+    expect(screen.getByText('About Me')).toBeInTheDocument()
+    expect(screen.getByText('Quick Links')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'LinkedIn' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'GitHub' })).toBeInTheDocument()
+  })
 
   test('tracks LinkedIn link clicks', () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />)
 
-    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' });
-    fireEvent.click(linkedInLink);
+    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
+    fireEvent.click(linkedInLink)
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin');
-  });
+    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin')
+  })
 
   test('tracks GitHub link clicks', () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />)
 
-    const githubLink = screen.getByRole('link', { name: 'GitHub' });
-    fireEvent.click(githubLink);
+    const githubLink = screen.getByRole('link', { name: 'GitHub' })
+    fireEvent.click(githubLink)
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github');
-  });
+    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github')
+  })
 
   test('LinkedIn link has correct attributes', () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />)
 
-    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' });
-    expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/');
-    expect(linkedInLink).toHaveAttribute('target', '_blank');
-    expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer');
-  });
+    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
+    expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/')
+    expect(linkedInLink).toHaveAttribute('target', '_blank')
+    expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
 
   test('GitHub link has correct attributes', () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />)
 
-    const githubLink = screen.getByRole('link', { name: 'GitHub' });
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris');
-    expect(githubLink).toHaveAttribute('target', '_blank');
-    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
-  });
-});
+    const githubLink = screen.getByRole('link', { name: 'GitHub' })
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris')
+    expect(githubLink).toHaveAttribute('target', '_blank')
+    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+})

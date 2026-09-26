@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
 import './NotFound.css'
 
 function NotFound() {
   return (
     <div className="not-found">
-      <Helmet>
-        <title>Page Not Found - Chris Gagne</title>
-        <meta name="robots" content="noindex" />
-        <meta
-          name="description"
-          content="The page you are looking for could not be found."
-        />
-      </Helmet>
+      <title>Page Not Found - Chris Gagne</title>
+      <meta name="robots" content="noindex" />
+      <meta
+        name="description"
+        content="The page you are looking for could not be found."
+      />
       <header>
         <h1>Page not found</h1>
         <Link to="/" className="back-link">
