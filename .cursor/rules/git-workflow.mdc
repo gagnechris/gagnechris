@@ -1,0 +1,11 @@
+---
+description: Branch and PR workflow for Linear tickets
+alwaysApply: true
+---
+
+# Git workflow
+
+- One Linear ticket → one branch → one PR into `main`. Do not commit or push directly to `main`.
+- Prefer the branch name from the Linear issue (`gitBranchName`), e.g. `gagnechris/chr-57-…`.
+- Open a PR and wait for the **Lint, test, and build** check to pass before merging.
+- Branch protection on `main` is defined in `scripts/main-branch-ruleset.json` and applied via `scripts/apply-branch-protection.sh`.

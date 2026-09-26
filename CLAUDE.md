@@ -11,6 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Test: `npm test` (runs Vitest)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
 - CI: GitHub Actions runs lint, test, and build (including typecheck) on pushes and PRs to `main`
+- Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)
+
+## Workflow
+- One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
+- Prefer the Linear issue `gitBranchName` when creating the branch.
+- Merge only after CI is green on the PR.
 
 ## Hosting & Integrations
 - **Hosting**: GitHub Pages with custom domain `gagnechris.com`
