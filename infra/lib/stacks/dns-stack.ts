@@ -100,6 +100,9 @@ export class DnsStack extends Stack {
       comment: 'iCloud DKIM',
     });
 
+    // MX / DMARC deferred (CHR-63): waiting on confirmation that iCloud Mail
+    // for @gagnechris.com should be enabled.
+
     new CfnOutput(this, 'HostedZoneId', {
       value: this.hostedZone.hostedZoneId,
       description: `Route 53 hosted zone for ${APEX_DOMAIN}`,

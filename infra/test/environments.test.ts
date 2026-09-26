@@ -30,11 +30,11 @@ const testEnv = {
 };
 
 describe('environments', () => {
-  it('defaults to prod and still accepts staging for later', () => {
+  it('defaults to prod and rejects staging', () => {
     expect(ACTIVE_ENVIRONMENT).toBe('prod');
     expect(parseEnvironmentName(undefined)).toBe('prod');
     expect(parseEnvironmentName('prod')).toBe('prod');
-    expect(parseEnvironmentName('staging')).toBe('staging');
+    expect(() => parseEnvironmentName('staging')).toThrow(/Unknown env/);
   });
 
   it('rejects unknown env names', () => {
@@ -54,20 +54,16 @@ describe('environments', () => {
     expect(() => resolveAlertsEmail(undefined, {})).toThrow(/Alerts email/);
   });
 
-  it('uses RETAIN for prod and DESTROY for staging stateful resources', () => {
-    expect(getEnvironment('prod', testEnv).statefulRemovalPolicy).toBe(
-      RemovalPolicy.RETAIN,
-    );
-    expect(getEnvironment('staging', testEnv).statefulRemovalPolicy).toBe(
-      RemovalPolicy.DESTROY,
-    );
-    expect(getEnvironment('prod', testEnv).domainName).toBe('gagnechris.com');
-    expect(getEnvironment('staging', testEnv).domainName).toBe(
-      'staging.gagnechris.com',
-    );
-    expect(getEnvironment('prod', testEnv).alertsEmail).toBe(
-      'alerts@example.com',
-    );
+  it('pins region to us-east-1 and uses RETAIN for prod stateful resources', () => {
+    const prod = getEnvironment('prod', {
+      ...testEnv,
+      CDK_DEFAULT_REGION: 'us-west-2',
+    });
+    expect(prod.statefulRemovalPolicy).toBe(RemovalPolicy.RETAIN);
+    expect(prod.domainName).toBe('gagnechris.com');
+    expect(prod.region).toBe('us-east-1');
+    expect(prod.account).toBe('123456789012');
+    expect(prod.alertsEmail).toBe('alerts@example.com');
   });
 });
 
@@ -231,6 +227,29 @@ describe('CiDeployRoleStack', () => {
     expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
     expect(JSON.stringify(diff)).toContain('pull_request');
     expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
+
+    const policies = Object.values(
+      template.findResources('AWS::IAM::Policy'),
+    );
+    const diffPolicy = policies.find((p) =>
+      JSON.stringify(p).includes('CdkLookupAssumeRole'),
+    );
+    expect(diffPolicy).toBeDefined();
+    const policyJson = JSON.stringify(diffPolicy);
+    expect(policyJson).toContain('cdk-*-lookup-role-*');
+    expect(policyJson).toContain('sts:AssumeRole');
+    // Must not allow AssumeRole on * (admin escalation via bootstrap deploy role).
+    const statements = (
+      diffPolicy?.Properties?.PolicyDocument?.Statement ?? []
+    ) as Array<{ Action?: string | string[]; Resource?: string | string[] }>;
+    const assumeStar = statements.some((s) => {
+      const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+      const resources = Array.isArray(s.Resource) ? s.Resource : [s.Resource];
+      return (
+        actions.includes('sts:AssumeRole') && resources.includes('*')
+      );
+    });
+    expect(assumeStar).toBe(false);
   });
 });
 
@@ -397,7 +416,7 @@ describe('AuthStack', () => {
 });
 
 describe('SiteStack', () => {
-  it('creates private S3, CloudFront OAC, security headers, SPA fn, and staging DNS', () => {
+  it('creates private S3, CloudFront OAC, security headers, and path rewrite fn', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'Deps', {
@@ -414,10 +433,6 @@ describe('SiteStack', () => {
       config,
       certificate,
       alertsTopic,
-      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'SiteZone', {
-        hostedZoneId: 'ZXXXXXXXXXXXX',
-        zoneName: 'gagnechris.com',
-      }),
     });
     applyStandardTags(site, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
@@ -442,24 +457,21 @@ describe('SiteStack', () => {
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
-        Aliases: Match.arrayWith([
-          'gagnechris.com',
-          'www.gagnechris.com',
-          'staging.gagnechris.com',
-        ]),
+        Aliases: ['gagnechris.com', 'www.gagnechris.com'],
         HttpVersion: 'http2and3',
         IPV6Enabled: Match.anyValue(),
+        CustomErrorResponses: Match.absent(),
       },
     });
 
-    template.hasResourceProperties('AWS::Route53::RecordSet', {
-      Name: 'staging.gagnechris.com.',
-      Type: 'A',
-    });
-    template.hasResourceProperties('AWS::Route53::RecordSet', {
-      Name: 'staging.gagnechris.com.',
-      Type: 'AAAA',
-    });
+    // No staging DNS on the site stack.
+    const records = template.findResources('AWS::Route53::RecordSet');
+    expect(Object.keys(records)).toHaveLength(0);
+
+    const bucketPolicies = Object.values(
+      template.findResources('AWS::S3::BucketPolicy'),
+    );
+    expect(JSON.stringify(bucketPolicies)).toContain('s3:ListBucket');
 
     template.resourceCountIs('AWS::CloudWatch::Alarm', 1);
     template.hasResourceProperties('AWS::SSM::Parameter', {
@@ -491,10 +503,6 @@ describe('ApiStack', () => {
       config,
       certificate,
       alertsTopic,
-      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'ApiSiteZone', {
-        hostedZoneId: 'ZXXXXXXXXXXXX',
-        zoneName: 'gagnechris.com',
-      }),
     });
     const auth = new AuthStack(app, 'AuthForApi', {
       env: { account: config.account, region: config.region },

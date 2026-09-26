@@ -1,0 +1,15 @@
+---
+description: Definition of done for tickets — verify live before closing
+alwaysApply: true
+---
+
+# Definition of done
+
+A ticket is **Done** only when all of the following are true:
+
+1. The PR is merged into `main`.
+2. CI finished successfully, including CDK deploy / web deploy when the change requires it (not merely "workflow started").
+3. Acceptance criteria were checked **against production** (e.g. `curl` output, `aws … --profile gagnechris-readonly` output).
+4. Evidence is pasted into a Linear comment on the ticket before moving it to Done.
+
+Do not mark Done while a deploy is still in progress or based only on local synth/unit tests.

@@ -18,15 +18,18 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
 - Test: `npm test` (Vitest for web + infra)
-- CDK: `npm run cdk -- synth` (defaults to prod; `-c env=staging` available later; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
+- CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
 - CI: lint/test/build/synth; OIDC CDK diff on PRs, deploy on main, nightly drift
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)
+- GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 
 ## Workflow
 - One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
 - Prefer the Linear issue `gitBranchName` when creating the branch.
 - Merge only after CI is green on the PR.
+- **Definition of done:** ticket is Done only after merge, deploy finished, and acceptance criteria verified live (paste evidence in Linear). See `.cursor/rules/definition-of-done.mdc`.
+- **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `.cursor/rules/aws-changes.mdc`.
 
 ## Hosting & Integrations
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`

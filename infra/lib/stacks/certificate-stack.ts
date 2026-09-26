@@ -20,7 +20,7 @@ export interface CertificateStackProps extends StackProps {
  * Zone lookup stays in this stack so DNS validation records create correctly.
  */
 export class CertificateStack extends Stack {
-  /** Apex / www / staging for CloudFront. */
+  /** Apex / www (staging SAN retained until a two-phase cert rotation). */
   readonly certificate: ICertificate;
   /** `auth.gagnechris.com` for Cognito managed login. */
   readonly authCertificate: ICertificate;
@@ -32,6 +32,8 @@ export class CertificateStack extends Stack {
       domainName: APEX_DOMAIN,
     });
 
+    // staging SAN is unused (no CF alias / DNS) but kept for now: removing it
+    // replaces this certificate and breaks the Site-prod cross-stack export.
     this.certificate = new Certificate(this, 'SiteCertificate', {
       domainName: APEX_DOMAIN,
       subjectAlternativeNames: [
@@ -49,7 +51,7 @@ export class CertificateStack extends Stack {
     new CfnOutput(this, 'CertificateArn', {
       value: this.certificate.certificateArn,
       description:
-        'ACM certificate ARN (us-east-1) for CloudFront — apex, www, staging.',
+        'ACM certificate ARN (us-east-1) for CloudFront - apex, www (unused staging SAN retained).',
     });
 
     new CfnOutput(this, 'AuthCertificateArn', {

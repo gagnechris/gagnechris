@@ -1,18 +1,20 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
 
-export const ENVIRONMENT_NAMES = ['staging', 'prod'] as const;
+export const ENVIRONMENT_NAMES = ['prod'] as const;
 
 export type EnvironmentName = (typeof ENVIRONMENT_NAMES)[number];
 
-/** Environments we actually synthesize/deploy today. Staging is typed and
- * selectable via `-c env=staging` but not used by default (cost). */
+/** Only prod is supported (no staging — cost and DNS collision risk). */
 export const ACTIVE_ENVIRONMENT: EnvironmentName = 'prod';
+
+/** CloudFront, ACM (us-east-1), and this app's stacks all live here. */
+export const STACK_REGION = 'us-east-1' as const;
 
 export interface EnvironmentConfig {
   readonly name: EnvironmentName;
   /** AWS account ID — resolved from the environment, never committed. */
   readonly account: string;
-  readonly region: string;
+  readonly region: typeof STACK_REGION;
   /** Apex or site hostname for this environment. */
   readonly domainName: string;
   /** Removal policy for stateful resources (buckets, tables, user pools). */
@@ -25,7 +27,6 @@ export interface EnvironmentConfig {
 }
 
 const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
-  staging: 'staging.gagnechris.com',
   prod: 'gagnechris.com',
 };
 
@@ -72,7 +73,7 @@ export function parseEnvironmentName(raw: unknown): EnvironmentName {
     return value as EnvironmentName;
   }
   throw new Error(
-    `Unknown env "${String(raw)}". Expected one of: ${ENVIRONMENT_NAMES.join(', ')}. Pass -c env=staging|prod.`,
+    `Unknown env "${String(raw)}". Expected: ${ENVIRONMENT_NAMES.join(', ')}. Pass -c env=prod (or omit).`,
   );
 }
 
@@ -84,10 +85,9 @@ export function getEnvironment(
   return {
     name,
     account: resolveAccountId(env),
-    region: env.CDK_DEFAULT_REGION ?? 'us-east-1',
+    region: STACK_REGION,
     domainName: DOMAIN_BY_ENV[name],
-    statefulRemovalPolicy:
-      name === 'prod' ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    statefulRemovalPolicy: RemovalPolicy.RETAIN,
     alertsEmail: resolveAlertsEmail(alertsEmailContext, env),
   };
 }

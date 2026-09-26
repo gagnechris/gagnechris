@@ -1,0 +1,154 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const fnSource = readFileSync(
+  join(__dirname, '../lib/cloudfront/viewer-request-function.js'),
+  'utf8',
+);
+
+type CfRequest = {
+  uri: string;
+  querystring?: Record<
+    string,
+    { value?: string; multiValue?: Array<{ value: string }> }
+  >;
+  headers: { host: { value: string } };
+};
+
+type CfResponse =
+  | CfRequest
+  | {
+      statusCode: number;
+      statusDescription: string;
+      headers: { location: { value: string } };
+    };
+
+function runHandler(request: CfRequest): CfResponse {
+  // CloudFront Functions expose handler(event); eval in a sandbox.
+  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
+  const run = new Function(
+    `${fnSource}\nreturn handler;`,
+  )() as (event: { request: CfRequest }) => CfResponse;
+  return run({ request });
+}
+
+function locationOf(res: CfResponse): string {
+  return (res as { headers: { location: { value: string } } }).headers.location
+    .value;
+}
+
+describe('viewer-request CloudFront Function', () => {
+  it('redirects www to apex without a query string', () => {
+    const res = runHandler({
+      uri: '/blog',
+      headers: { host: { value: 'www.gagnechris.com' } },
+    });
+    expect(res).toMatchObject({
+      statusCode: 301,
+      headers: { location: { value: 'https://gagnechris.com/blog' } },
+    });
+  });
+
+  it('preserves a single query parameter on www redirect', () => {
+    const res = runHandler({
+      uri: '/blog',
+      querystring: { utm_source: { value: 'linkedin' } },
+      headers: { host: { value: 'www.gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe(
+      'https://gagnechris.com/blog?utm_source=linkedin',
+    );
+  });
+
+  it('preserves multiple query parameters on www redirect', () => {
+    const res = runHandler({
+      uri: '/blog',
+      querystring: {
+        utm_source: { value: 'x' },
+        a: { value: '1' },
+      },
+      headers: { host: { value: 'WWW.gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe(
+      'https://gagnechris.com/blog?utm_source=x&a=1',
+    );
+  });
+
+  it('preserves multi-value query keys', () => {
+    const res = runHandler({
+      uri: '/',
+      querystring: {
+        tag: {
+          multiValue: [{ value: 'a' }, { value: 'b' }],
+        },
+      },
+      headers: { host: { value: 'www.gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
+  });
+
+  it('encodes decoded query values (CF event values are not percent-encoded)', () => {
+    const res = runHandler({
+      uri: '/contact',
+      querystring: { q: { value: 'a b&c' } },
+      headers: { host: { value: 'www.gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe(
+      'https://gagnechris.com/contact?q=a%20b%26c',
+    );
+  });
+
+  it('rewrites extensionless deep links to the SPA shell', () => {
+    for (const uri of [
+      '/resume',
+      '/blog',
+      '/blog/welcome',
+      '/contact',
+      '/auth/callback',
+    ]) {
+      const req = runHandler({
+        uri,
+        headers: { host: { value: 'gagnechris.com' } },
+      }) as CfRequest;
+      expect(req.uri).toBe('/index.html');
+    }
+  });
+
+  it('rewrites trailing-slash paths to the SPA shell', () => {
+    const req = runHandler({
+      uri: '/resume/',
+      headers: { host: { value: 'gagnechris.com' } },
+    }) as CfRequest;
+    expect(req.uri).toBe('/index.html');
+  });
+
+  it('does not rewrite /api or /media paths', () => {
+    expect(
+      (
+        runHandler({
+          uri: '/api/nope',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/api/nope');
+    expect(
+      (
+        runHandler({
+          uri: '/media/photo.png',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/media/photo.png');
+  });
+
+  it('passes through paths with a file extension', () => {
+    const req = runHandler({
+      uri: '/assets/app.js',
+      headers: { host: { value: 'gagnechris.com' } },
+    }) as CfRequest;
+    expect(req.uri).toBe('/assets/app.js');
+  });
+});

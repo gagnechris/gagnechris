@@ -1,0 +1,11 @@
+---
+description: Never hand-edit AWS resources; adopt via CDK import instead
+alwaysApply: true
+---
+
+# AWS changes
+
+- Never create, modify, or delete AWS resources outside CDK/CI — including with the `gagnechris-admin` SSO profile.
+- If CloudFormation conflicts with an existing resource, use `cdk import` / resource import, or retain-and-adopt. See `infra/RUNBOOK.md`.
+- **Stop and ask Chris** before any manual change to production.
+- The admin SSO profile is for bootstrap and break-glass only; record each use in the RUNBOOK when it is not a routine documented bootstrap step.
