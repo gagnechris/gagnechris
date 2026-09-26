@@ -109,16 +109,6 @@ function Contact() {
   return (
     <div className="contact-page">
       <title>Contact - Chris Gagne</title>
-      <meta
-        name="description"
-        content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
-      />
-      <meta property="og:title" content="Contact - Chris Gagne" />
-      <meta
-        property="og:description"
-        content="Get in touch with Chris Gagne. Send a message and I'll get back to you as soon as possible."
-      />
-      <meta property="og:url" content="https://gagnechris.com/contact" />
       <link rel="canonical" href="https://gagnechris.com/contact" />
       <header>
         <h1>Contact</h1>

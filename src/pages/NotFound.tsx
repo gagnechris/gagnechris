@@ -6,10 +6,6 @@ function NotFound() {
     <div className="not-found">
       <title>Page Not Found - Chris Gagne</title>
       <meta name="robots" content="noindex" />
-      <meta
-        name="description"
-        content="The page you are looking for could not be found."
-      />
       <header>
         <h1>Page not found</h1>
         <Link to="/" className="back-link">

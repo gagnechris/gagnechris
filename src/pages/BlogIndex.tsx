@@ -65,16 +65,6 @@ function BlogIndex() {
   return (
     <div className="blog-index">
       <title>Blog - Chris Gagne</title>
-      <meta
-        name="description"
-        content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
-      />
-      <meta property="og:title" content="Blog - Chris Gagne" />
-      <meta
-        property="og:description"
-        content="Read Chris Gagne's insights on software engineering, leadership, and technology trends."
-      />
-      <meta property="og:url" content="https://gagnechris.com/blog" />
       <link rel="canonical" href="https://gagnechris.com/blog" />
       <header>
         <h1>Blog</h1>
