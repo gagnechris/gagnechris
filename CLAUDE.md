@@ -2,8 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Layout
+npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
+
+- `apps/web` — React/Vite site
+- `infra` — AWS CDK app (later)
+- `services/api` — Lambda handlers (later)
+- `packages/shared` — types shared by the site, API, and publisher (later)
+- `scripts/` — repo tooling (branch protection), not the site build
+
 ## Commands
-- Build: `npm run build` (runs `tsc -b` then Vite; generates `sitemap.xml` from published posts)
+- Build: `npm run build` (runs `tsc -b` then Vite in `apps/web`; generates `sitemap.xml` from published posts)
 - Typecheck: `npm run typecheck` (runs `tsc -b` only)
 - Lint: `npm run lint` (runs ESLint)
 - Dev: `npm run dev` (starts Vite development server)

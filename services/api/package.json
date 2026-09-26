@@ -1,0 +1,7 @@
+{
+  "name": "@gagnechris/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Lambda API handlers."
+}
