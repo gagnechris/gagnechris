@@ -14,7 +14,7 @@ dist-ssr
 
 # CDK
 cdk.out
-infra/cdk.context.json
+# cdk.context.json is committed so CI can synth HostedZone.fromLookup without live AWS.
 
 # Test coverage reports
 coverage
