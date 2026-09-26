@@ -74,7 +74,6 @@ export interface SiteStackProps extends StackProps {
 
 /**
  * Private S3 origin + CloudFront (OAC, security headers, SPA routing).
- * Apex/www DNS stay on GitHub Pages until cutover; staging points here now.
  */
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
@@ -308,7 +307,7 @@ export class SiteStack extends Stack {
       },
     ]);
 
-    // staging → CloudFront now (apex/www stay on GitHub Pages until CHR-25).
+    // staging → CloudFront (preview alias on the same prod distribution).
     const stagingName = `staging.${APEX_DOMAIN}`;
     new ARecord(this, 'StagingA', {
       zone: hostedZone,

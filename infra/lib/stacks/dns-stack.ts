@@ -53,7 +53,7 @@ export class DnsStack extends Stack {
       zone: this.hostedZone,
     });
 
-    // Apex → CloudFront (CHR-25 cutover from GitHub Pages).
+    // Apex → CloudFront.
     new ARecord(this, 'ApexA', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
