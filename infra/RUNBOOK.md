@@ -79,9 +79,9 @@ Prod only by default (no staging deploy). Staging remains available later via `-
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www GitHub Pages + iCloud TXT/DKIM records live in `Dns-prod`.
+- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod`.
 - ACM cert (apex + www + staging) in **us-east-1** via `Certificate-prod` (DNS validation).
-- DNSSEC deferred (cost). Old ACM validation CNAMEs can be deleted after the new cert is ISSUED.
+- DNSSEC deferred (cost).
 
 ```bash
 export ALERTS_EMAIL='you@example.com'
@@ -92,7 +92,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
 - Security headers (HSTS, CSP for GA4 + Formspree), SPA viewer-request function, `/assets/*` long cache, reserved `/api/*` and `/media/*`.
-- Custom domains on the distribution: apex, www, staging. **DNS:** only `staging` aliases to CloudFront for now; apex/www stay on GitHub Pages until cutover.
+- Custom domains on the distribution: apex, www, staging. DNS: apex/www/staging all alias to CloudFront after CHR-25.
 - 5xx alarm publishes to the Guardrails alerts topic.
 
 ```bash
