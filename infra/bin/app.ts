@@ -30,16 +30,18 @@ const certificateEnv = {
   region: 'us-east-1' as const,
 };
 
-new DnsStack(app, `Dns-${config.name}`, {
+const dns = new DnsStack(app, `Dns-${config.name}`, {
   env: stackEnv,
-  description: `DNS lookups and records (${config.name}). Filled in by CHR-21.`,
+  description: `DNS records for gagnechris.com (${config.name}).`,
   crossRegionReferences: true,
+  config,
 });
 
 new CertificateStack(app, `Certificate-${config.name}`, {
   env: certificateEnv,
-  description: `ACM certificate in us-east-1 for CloudFront (${config.name}). Filled in by CHR-21.`,
+  description: `ACM certificate in us-east-1 for CloudFront (${config.name}).`,
   crossRegionReferences: true,
+  config,
 });
 
 new SiteStack(app, `Site-${config.name}`, {

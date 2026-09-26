@@ -75,6 +75,19 @@ gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 
 Prod only by default (no staging deploy). Staging remains available later via `-c env=staging`.
 
+## DNS and TLS (CHR-21)
+
+- Hosted zone for `gagnechris.com` is **looked up** (never recreated).
+- Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
+- Apex/www GitHub Pages + iCloud TXT/DKIM records live in `Dns-prod`.
+- ACM cert (apex + www + staging) in **us-east-1** via `Certificate-prod` (DNS validation).
+- DNSSEC deferred (cost). Old ACM validation CNAMEs can be deleted after the new cert is ISSUED.
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --require-approval never
+```
+
 ## Existing resources (CDK decisions)
 
 | Resource | Decision |

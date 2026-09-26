@@ -14,6 +14,8 @@ import {
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
+import { CertificateStack } from '../lib/stacks/certificate-stack.js';
+import { HostedZone } from 'aws-cdk-lib/aws-route53';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -66,7 +68,7 @@ describe('standard tags and removal policy', () => {
   it('applies project, env, and managed-by tags', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
-    const stack = new DnsStack(app, 'Dns-prod', {
+    const stack = new Stack(app, 'TagStack', {
       env: { account: config.account, region: config.region },
     });
     applyStandardTags(stack, config);
@@ -222,5 +224,62 @@ describe('CiDeployRoleStack', () => {
     expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
     expect(JSON.stringify(diff)).toContain('pull_request');
     expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
+  });
+});
+
+describe('DnsStack and CertificateStack', () => {
+  it('defines apex GitHub Pages, www, iCloud mail records, and ACM cert', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const dns = new DnsStack(app, 'Dns-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'Zone', {
+        hostedZoneId: 'ZXXXXXXXXXXXX',
+        zoneName: 'gagnechris.com',
+      }),
+    });
+    const certificate = new CertificateStack(app, 'Certificate-prod', {
+      env: { account: config.account, region: 'us-east-1' },
+      config,
+    });
+    applyStandardTags(dns, config);
+    applyStandardTags(certificate, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const dnsTemplate = Template.fromStack(dns);
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'A',
+      Name: 'gagnechris.com.',
+    });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'AAAA',
+      Name: 'gagnechris.com.',
+    });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'A',
+      Name: 'www.gagnechris.com.',
+    });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'CAA',
+    });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'TXT',
+      Name: 'gagnechris.com.',
+    });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'CNAME',
+      Name: 'sig1._domainkey.gagnechris.com.',
+    });
+
+    const certTemplate = Template.fromStack(certificate);
+    certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName: 'gagnechris.com',
+      SubjectAlternativeNames: Match.arrayWith([
+        'www.gagnechris.com',
+        'staging.gagnechris.com',
+      ]),
+      ValidationMethod: 'DNS',
+    });
   });
 });
