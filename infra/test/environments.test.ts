@@ -5,6 +5,7 @@ import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import {
+  ACTIVE_ENVIRONMENT,
   getEnvironment,
   parseEnvironmentName,
   resolveAccountId,
@@ -12,10 +13,11 @@ import {
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 
 describe('environments', () => {
-  it('parses staging and prod', () => {
-    expect(parseEnvironmentName('staging')).toBe('staging');
+  it('defaults to prod and still accepts staging for later', () => {
+    expect(ACTIVE_ENVIRONMENT).toBe('prod');
+    expect(parseEnvironmentName(undefined)).toBe('prod');
     expect(parseEnvironmentName('prod')).toBe('prod');
-    expect(parseEnvironmentName(undefined)).toBe('staging');
+    expect(parseEnvironmentName('staging')).toBe('staging');
   });
 
   it('rejects unknown env names', () => {
@@ -27,7 +29,7 @@ describe('environments', () => {
     expect(() => resolveAccountId({})).toThrow(/account unresolved/i);
   });
 
-  it('uses RETAIN for prod stateful resources and DESTROY for staging', () => {
+  it('uses RETAIN for prod and DESTROY for staging stateful resources', () => {
     const env = { CDK_ACCOUNT: '123456789012' };
     expect(getEnvironment('prod', env).statefulRemovalPolicy).toBe(
       RemovalPolicy.RETAIN,
@@ -45,15 +47,14 @@ describe('environments', () => {
 describe('standard tags and removal policy', () => {
   it('applies project, env, and managed-by tags', () => {
     const app = new App();
-    const config = getEnvironment('staging', { CDK_ACCOUNT: '123456789012' });
-    const stack = new DnsStack(app, 'Dns-staging', {
+    const config = getEnvironment('prod', { CDK_ACCOUNT: '123456789012' });
+    const stack = new DnsStack(app, 'Dns-prod', {
       env: { account: config.account, region: config.region },
     });
     applyStandardTags(stack, config);
 
     const bucket = new Bucket(stack, 'TagProbe', {
       removalPolicy: config.statefulRemovalPolicy,
-      autoDeleteObjects: true,
     });
     NagSuppressions.addResourceSuppressions(
       bucket,
@@ -73,7 +74,7 @@ describe('standard tags and removal policy', () => {
     expect(tags).toEqual(
       expect.arrayContaining([
         { Key: 'project', Value: 'gagnechris' },
-        { Key: 'env', Value: 'staging' },
+        { Key: 'env', Value: 'prod' },
         { Key: 'managed-by', Value: 'cdk' },
       ]),
     );

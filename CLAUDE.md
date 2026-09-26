@@ -18,7 +18,7 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
 - Test: `npm test` (Vitest for web + infra)
-- CDK: `npm run cdk -- synth -c env=staging|prod` (account from AWS credentials / `CDK_ACCOUNT`)
+- CDK: `npm run cdk -- synth` (defaults to prod; `-c env=staging` available later; account from credentials / `CDK_ACCOUNT`)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
 - CI: GitHub Actions runs lint, test, CDK synth, and build on pushes and PRs to `main`
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)

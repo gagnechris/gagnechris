@@ -35,11 +35,11 @@ Concrete IDs and values: private note. Commands:
 export AWS_PROFILE=gagnechris-readonly   # or gagnechris-admin for deploy
 aws sso login --sso-session gagnechris
 
-# Synth / diff (account comes from credentials via CDK_DEFAULT_ACCOUNT)
-npm run cdk -- synth -c env=staging
-npm run cdk -- synth -c env=prod
-npm run cdk -- diff -c env=staging
-npm run cdk -- diff -c env=prod
+# Synth / diff default to prod (account from credentials via CDK_DEFAULT_ACCOUNT).
+# Staging is typed and available later with `-c env=staging` — not deployed by default (cost).
+npm run cdk -- synth
+npm run cdk -- diff
+# npm run cdk -- synth -c env=staging   # when/if staging is needed
 ```
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`

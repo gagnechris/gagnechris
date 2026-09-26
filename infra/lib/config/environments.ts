@@ -4,6 +4,10 @@ export const ENVIRONMENT_NAMES = ['staging', 'prod'] as const;
 
 export type EnvironmentName = (typeof ENVIRONMENT_NAMES)[number];
 
+/** Environments we actually synthesize/deploy today. Staging is typed and
+ * selectable via `-c env=staging` but not used by default (cost). */
+export const ACTIVE_ENVIRONMENT: EnvironmentName = 'prod';
+
 export interface EnvironmentConfig {
   readonly name: EnvironmentName;
   /** AWS account ID — resolved from the environment, never committed. */
@@ -38,7 +42,7 @@ export function resolveAccountId(
 }
 
 export function parseEnvironmentName(raw: unknown): EnvironmentName {
-  const value = typeof raw === 'string' ? raw : 'staging';
+  const value = typeof raw === 'string' ? raw : ACTIVE_ENVIRONMENT;
   if ((ENVIRONMENT_NAMES as readonly string[]).includes(value)) {
     return value as EnvironmentName;
   }
@@ -48,7 +52,7 @@ export function parseEnvironmentName(raw: unknown): EnvironmentName {
 }
 
 export function getEnvironment(
-  name: EnvironmentName,
+  name: EnvironmentName = ACTIVE_ENVIRONMENT,
   env: NodeJS.ProcessEnv = process.env,
 ): EnvironmentConfig {
   return {
