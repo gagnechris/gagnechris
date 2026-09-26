@@ -1,8 +1,9 @@
 /**
- * CloudFront Function (cloudfront-js-2.0) — viewer-request.
- * - www → apex 301 (preserves query string)
+ * CloudFront Function (cloudfront-js-2.0) - viewer-request.
+ * - www -> apex 301 (preserves query string)
  * - Skip rewrite for /api/* and /media/* (proxied origins)
- * - Extensionless paths → {path}/index.html (Option B pre-rendered pages)
+ * - Extensionless paths -> /index.html (SPA shell) until CHR-34 Option B
+ *   writes per-path index.html objects
  * - Paths with a file extension pass through unchanged
  *
  * Missing objects return real 404/403 from the origin (no distribution-wide
@@ -28,13 +29,16 @@ function handler(event) {
     return request;
   }
 
+  // SPA shell until the publisher emits Option B {path}/index.html objects.
+  // Trailing slash and extensionless routes all map to the root index.html so
+  // client-side routes (/resume, /blog, /auth/callback, ...) keep working.
   if (uri.endsWith('/')) {
-    request.uri = uri + 'index.html';
+    request.uri = '/index.html';
   } else {
     var lastSlash = uri.lastIndexOf('/');
     var lastSegment = lastSlash === -1 ? uri : uri.substring(lastSlash + 1);
     if (lastSegment.indexOf('.') === -1) {
-      request.uri = uri + '/index.html';
+      request.uri = '/index.html';
     }
   }
 
@@ -43,7 +47,8 @@ function handler(event) {
 
 /**
  * Rebuild ?a=1&b=2 from CloudFront's querystring object.
- * Supports multiValue entries and percent-encoding.
+ * Per AWS event-structure docs, values are decoded (e.g. spaces, not %20),
+ * so we encodeURIComponent both keys and values when rebuilding the Location.
  */
 function serializeQueryString(qs) {
   if (!qs) {

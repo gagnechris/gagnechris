@@ -92,8 +92,8 @@ Prod only — there is no staging environment.
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM/MX + DMARC in `Dns-prod`.
-- ACM site cert (apex + www; unused `staging` SAN retained until a two-phase cert rotation) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing the site certificate (which breaks the Site-prod export).
+- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod` (MX/DMARC deferred — CHR-63).
+- ACM site cert (apex + www; unused `staging` SAN retained until a two-phase cert rotation — follow-up to CHR-66) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing the site certificate (which breaks the Site-prod export).
 - DNSSEC deferred (cost).
 
 ```bash
@@ -104,7 +104,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site (CHR-22)
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Formspree), viewer-request function (www→apex with query string; Option B `{path}/index.html` rewrite), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Security headers (HSTS, CSP for GA4 + Formspree), viewer-request function (www→apex with query string; extensionless routes → SPA `/index.html` until CHR-34 Option B), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s.
 - 5xx alarm publishes to the Guardrails alerts topic.

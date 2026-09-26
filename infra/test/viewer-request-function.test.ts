@@ -35,6 +35,11 @@ function runHandler(request: CfRequest): CfResponse {
   return run({ request });
 }
 
+function locationOf(res: CfResponse): string {
+  return (res as { headers: { location: { value: string } } }).headers.location
+    .value;
+}
+
 describe('viewer-request CloudFront Function', () => {
   it('redirects www to apex without a query string', () => {
     const res = runHandler({
@@ -53,14 +58,9 @@ describe('viewer-request CloudFront Function', () => {
       querystring: { utm_source: { value: 'linkedin' } },
       headers: { host: { value: 'www.gagnechris.com' } },
     });
-    expect(res).toMatchObject({
-      statusCode: 301,
-      headers: {
-        location: {
-          value: 'https://gagnechris.com/blog?utm_source=linkedin',
-        },
-      },
-    });
+    expect(locationOf(res)).toBe(
+      'https://gagnechris.com/blog?utm_source=linkedin',
+    );
   });
 
   it('preserves multiple query parameters on www redirect', () => {
@@ -72,7 +72,7 @@ describe('viewer-request CloudFront Function', () => {
       },
       headers: { host: { value: 'WWW.gagnechris.com' } },
     });
-    expect((res as { headers: { location: { value: string } } }).headers.location.value).toBe(
+    expect(locationOf(res)).toBe(
       'https://gagnechris.com/blog?utm_source=x&a=1',
     );
   });
@@ -87,50 +87,60 @@ describe('viewer-request CloudFront Function', () => {
       },
       headers: { host: { value: 'www.gagnechris.com' } },
     });
-    expect((res as { headers: { location: { value: string } } }).headers.location.value).toBe(
-      'https://gagnechris.com/?tag=a&tag=b',
-    );
+    expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
   });
 
-  it('percent-encodes query values on www redirect', () => {
+  it('encodes decoded query values (CF event values are not percent-encoded)', () => {
     const res = runHandler({
       uri: '/contact',
       querystring: { q: { value: 'a b&c' } },
       headers: { host: { value: 'www.gagnechris.com' } },
     });
-    expect((res as { headers: { location: { value: string } } }).headers.location.value).toBe(
+    expect(locationOf(res)).toBe(
       'https://gagnechris.com/contact?q=a%20b%26c',
     );
   });
 
-  it('rewrites extensionless paths to Option B index.html', () => {
-    const req = runHandler({
-      uri: '/blog/welcome',
-      headers: { host: { value: 'gagnechris.com' } },
-    }) as CfRequest;
-    expect(req.uri).toBe('/blog/welcome/index.html');
+  it('rewrites extensionless deep links to the SPA shell', () => {
+    for (const uri of [
+      '/resume',
+      '/blog',
+      '/blog/welcome',
+      '/contact',
+      '/auth/callback',
+    ]) {
+      const req = runHandler({
+        uri,
+        headers: { host: { value: 'gagnechris.com' } },
+      }) as CfRequest;
+      expect(req.uri).toBe('/index.html');
+    }
   });
 
-  it('rewrites trailing-slash paths to index.html', () => {
+  it('rewrites trailing-slash paths to the SPA shell', () => {
     const req = runHandler({
       uri: '/resume/',
       headers: { host: { value: 'gagnechris.com' } },
     }) as CfRequest;
-    expect(req.uri).toBe('/resume/index.html');
+    expect(req.uri).toBe('/index.html');
   });
 
   it('does not rewrite /api or /media paths', () => {
     expect(
-      (runHandler({
-        uri: '/api/nope',
-        headers: { host: { value: 'gagnechris.com' } },
-      }) as CfRequest).uri,
+      (
+        runHandler({
+          uri: '/api/nope',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
     ).toBe('/api/nope');
     expect(
-      (runHandler({
-        uri: '/media/photo.png',
-        headers: { host: { value: 'gagnechris.com' } },
-      }) as CfRequest).uri,
+      (
+        runHandler({
+          uri: '/media/photo.png',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
     ).toBe('/media/photo.png');
   });
 

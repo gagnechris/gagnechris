@@ -51,7 +51,7 @@ export class CertificateStack extends Stack {
     new CfnOutput(this, 'CertificateArn', {
       value: this.certificate.certificateArn,
       description:
-        'ACM certificate ARN (us-east-1) for CloudFront — apex, www (unused staging SAN retained).',
+        'ACM certificate ARN (us-east-1) for CloudFront - apex, www (unused staging SAN retained).',
     });
 
     new CfnOutput(this, 'AuthCertificateArn', {

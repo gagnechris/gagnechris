@@ -244,8 +244,8 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into 200 HTML. Option B uses viewer-request rewrites
-      // to {path}/index.html; missing objects return real 404 (ListBucket below).
+      // /assets 403/404 into 200 HTML. Extensionless routes rewrite to the
+      // SPA shell (/index.html) in the viewer-request function until CHR-34.
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.

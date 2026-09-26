@@ -67,10 +67,10 @@ jobs:
           code=${PIPESTATUS[0]}
           set -e
           # aws-cdk 2.x: exit 0 with or without diffs unless --fail is passed.
-          # Any non-zero exit is a real error (role, lookup, synth) — fail the job.
+          # Any non-zero exit is a real error (role, lookup, synth) - fail the job.
           if [ "$code" -ne 0 ]; then
             {
-              echo '## CDK diff ⚠️ failed'
+              echo '## CDK diff failed'
               echo ''
               echo '```'
               head -c 60000 cdk-diff.txt
@@ -90,22 +90,25 @@ jobs:
           } > cdk-diff-comment.md
 
       - name: Post diff comment
-        if: always()
+        if: ${{ !cancelled() && hashFiles('cdk-diff-comment.md') != '' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: cdk-diff
           path: cdk-diff-comment.md
 
+  # Single job for CDK + web so they cannot interleave across pushes
+  # (GitHub keeps only one pending job per concurrency group).
   deploy:
-    name: CDK deploy (main)
+    name: CDK + web deploy (main)
     if: >
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment: prod
     concurrency:
-      group: cdk-deploy-${{ github.ref }}
+      # Shared with drift so a nightly check queues behind (or after) deploys.
+      group: cdk-prod
       cancel-in-progress: false
     steps:
       - name: Checkout
@@ -138,38 +141,6 @@ jobs:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never
 
-  web:
-    name: Web deploy (main)
-    # Prod only — sync site build to Site-prod S3 + invalidate CloudFront.
-    needs: [deploy]
-    if: >
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: prod
-    concurrency:
-      group: cdk-deploy-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Configure AWS credentials (deploy role)
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Build, sync to S3, invalidate CloudFront
         run: bash scripts/deploy-web.sh
         env:
@@ -184,7 +155,8 @@ jobs:
     timeout-minutes: 30
     environment: prod
     concurrency:
-      group: cdk-drift
+      # Same group as deploy so drift never overlaps an in-progress stack update.
+      group: cdk-prod
       cancel-in-progress: false
     steps:
       - name: Checkout
