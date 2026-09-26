@@ -19,7 +19,7 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Preview: `npm run preview` (previews production build locally)
 - Test: `npm test` (Vitest for web + infra)
 - CDK: `npm run cdk -- synth` (defaults to prod; `-c env=staging` available later; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
-- Deploy: `npm run deploy` (GitHub Pages via `gh-pages` until AWS cutover)
+- Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
 - CI: lint/test/build/synth; OIDC CDK diff on PRs, deploy on main, nightly drift
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)
 
@@ -29,7 +29,7 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Merge only after CI is green on the PR.
 
 ## Hosting & Integrations
-- **Hosting**: GitHub Pages with custom domain `gagnechris.com`
+- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`
 - **Contact form**: Formspree
 - **Analytics**: Google Analytics 4
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)

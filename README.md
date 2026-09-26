@@ -85,34 +85,24 @@ npm run lint            # Run ESLint
 
 ## 🚀 Deployment
 
-### Deploy to GitHub Pages
-Deploy to GitHub Pages with custom domain:
-```bash
-npm run deploy
-```
+### Production (AWS)
+Merges to `main` deploy automatically via GitHub Actions (OIDC):
 
-This command:
-1. Runs `npm run build` to create production assets (including a generated `sitemap.xml`)
-2. Deploys to GitHub Pages using `gh-pages`
-3. Configures custom domain (`gagnechris.com`)
-4. Updates the live site automatically
+1. CDK deploy (infra)
+2. Build `apps/web` → sync to the private Site S3 bucket → CloudFront invalidation
+
+Manual web deploy (with AWS SSO admin/deploy credentials):
+
+```bash
+npm run deploy:web
+```
 
 **Live Site**: [https://gagnechris.com](https://gagnechris.com)
 
+Infra details: `infra/RUNBOOK.md`.
+
 ### Continuous Integration
-Every push and pull request to `main` runs lint, tests, and build via GitHub Actions. Dependabot opens weekly PRs for npm and GitHub Actions updates.
-
-### Manual Deployment Steps
-If you prefer manual deployment:
-
-1. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy the `apps/web/dist/` folder** to GitHub Pages (or another static host)
-   - That folder contains all static assets
-   - Configure your server to serve `index.html` for all routes (SPA routing)
+Every pull request to `main` runs lint, tests, build, and CDK synth. Dependabot opens weekly PRs for npm and GitHub Actions updates.
 
 ## 🛠️ Tech Stack
 
@@ -137,8 +127,8 @@ If you prefer manual deployment:
 - **Accessibility Testing** - Screen reader and keyboard navigation testing
 
 ### Deployment & Infrastructure
-- **GitHub Pages** - Static site hosting via `gh-pages`
-- **Custom Domain** - `gagnechris.com`
+- **AWS** - Private S3 + CloudFront (`gagnechris.com`)
+- **CDK** - Infrastructure as code in `infra/`
 
 ## 📁 Project Structure
 
@@ -152,10 +142,10 @@ npm workspaces. Commands like `npm run dev`, `npm run build`, `npm test`, and `n
 │   ├── index.html
 │   ├── vite.config.ts
 │   └── package.json       # @gagnechris/web
-├── infra/                 # AWS CDK app (later)
+├── infra/                 # AWS CDK app
 ├── services/api/          # Lambda handlers (later)
 ├── packages/shared/       # Types shared by the site, API, and publisher (later)
-├── scripts/               # Repo tooling (branch protection)
+├── scripts/               # Repo tooling (branch protection, web deploy)
 └── package.json           # Workspace root
 ```
 
@@ -173,12 +163,10 @@ The site uses Google Analytics 4 for tracking:
 - **Event categories**: `external_link`, `resume` for organized reporting
 
 ### Contact Form
-The contact page submits through Formspree, which works with static GitHub Pages hosting.
+The contact page submits through Formspree.
 
 ### Custom Domain
-The site is configured to deploy to `gagnechris.com`. To use a different domain:
-1. Update `homepage` in `apps/web/package.json`
-2. Modify the `--cname` flag in the deploy script
+The site is served at `gagnechris.com` via Route 53 + CloudFront (see `infra/`).
 
 ## ♿ Accessibility Features
 
