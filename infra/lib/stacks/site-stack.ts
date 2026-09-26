@@ -49,6 +49,7 @@ import {
   StorageClass,
 } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -339,6 +340,18 @@ export class SiteStack extends Stack {
     });
     alarm.addAlarmAction(new SnsAction(alertsTopic));
     alarm.addOkAction(new SnsAction(alertsTopic));
+
+    // CI reads these for web deploy (no hard-coded bucket/distribution IDs).
+    new StringParameter(this, 'SiteBucketParam', {
+      parameterName: `/gagnechris/${config.name}/site-bucket-name`,
+      stringValue: this.siteBucket.bucketName,
+      description: 'Static site S3 bucket name (web deploy pipeline)',
+    });
+    new StringParameter(this, 'DistributionIdParam', {
+      parameterName: `/gagnechris/${config.name}/cloudfront-distribution-id`,
+      stringValue: this.distribution.distributionId,
+      description: 'CloudFront distribution ID (web deploy pipeline)',
+    });
 
     new CfnOutput(this, 'SiteBucketName', {
       value: this.siteBucket.bucketName,
