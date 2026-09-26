@@ -56,7 +56,8 @@ new GuardrailsStack(app, `Guardrails-${config.name}`, {
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
   env: stackEnv,
-  description: `GitHub Actions OIDC deploy role (${config.name}). Filled in by CHR-19.`,
+  description: `GitHub Actions OIDC deploy/diff roles (${config.name}).`,
+  config,
 });
 
 Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));

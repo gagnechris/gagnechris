@@ -13,6 +13,7 @@ import {
 } from '../lib/config/environments.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
+import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -184,5 +185,42 @@ describe('GuardrailsStack', () => {
       DeletionPolicy: 'Retain',
       UpdateReplacePolicy: 'Retain',
     });
+  });
+});
+
+describe('CiDeployRoleStack', () => {
+  it('creates GitHub OIDC provider plus deploy and diff roles', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const stack = new CiDeployRoleStack(app, 'CiDeployRole-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+    });
+    applyStandardTags(stack, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(stack);
+
+    template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 1);
+
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-gha-deploy',
+    });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-gha-diff',
+    });
+
+    const roles = Object.values(template.findResources('AWS::IAM::Role'));
+    const deploy = roles.find(
+      (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-deploy',
+    );
+    const diff = roles.find(
+      (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-diff',
+    );
+    expect(JSON.stringify(deploy)).toContain('ref:refs/heads/main');
+    expect(JSON.stringify(deploy)).toContain('environment:prod');
+    expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
+    expect(JSON.stringify(diff)).toContain('pull_request');
+    expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
   });
 });
