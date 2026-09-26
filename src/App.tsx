@@ -4,28 +4,25 @@ import { Helmet } from 'react-helmet-async'
 import { trackEvent } from './utils/analytics'
 import './App.css'
 
+const PAGE_TITLE = 'Chris Gagne - Engineering Leader'
+const SITE_DESCRIPTION =
+  'Chris Gagne is an Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems.'
+const ABOUT_COPY =
+  "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives."
+
 function App() {
   return (
     <>
       <Helmet>
-        <title>Chris Gagne - Engineering Leader</title>
-        <meta
-          name="description"
-          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
-        />
-        <meta property="og:title" content="Chris Gagne - Engineering Leader" />
-        <meta
-          property="og:description"
-          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems."
-        />
+        <title>{PAGE_TITLE}</title>
+        <meta name="description" content={SITE_DESCRIPTION} />
+        <meta property="og:title" content={PAGE_TITLE} />
+        <meta property="og:description" content={SITE_DESCRIPTION} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://gagnechris.com" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Chris Gagne - Engineering Leader" />
-        <meta
-          name="twitter:description"
-          content="Chris Gagne is a Engineering Leader at Ro with 20+ years of experience in software engineering."
-        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={PAGE_TITLE} />
+        <meta name="twitter:description" content={SITE_DESCRIPTION} />
         <link rel="canonical" href="https://gagnechris.com" />
       </Helmet>
       <header>
@@ -36,12 +33,7 @@ function App() {
       <main>
         <section id="about">
           <h2>About Me</h2>
-          <p>
-            I am the Engineering Leader at Ro. I have more than 20 years
-            experience in software engineering building modern web technologies
-            to solve critical business problems with a passion for using
-            technology to improve the lives of everyday people.
-          </p>
+          <p>{ABOUT_COPY}</p>
         </section>
         <section id="quick-links">
           <h2>Quick Links</h2>

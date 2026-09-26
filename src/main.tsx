@@ -8,10 +8,9 @@ import Resume from './pages/Resume.tsx'
 import BlogIndex from './pages/BlogIndex.tsx'
 import BlogPost from './pages/BlogPost.tsx'
 import Contact from './pages/Contact.tsx'
+import NotFound from './pages/NotFound.tsx'
 import AppWithTracking from './components/AppWithTracking.tsx'
 
-// Configure Router with basename to handle GitHub Pages path prefix if needed
-// and add a catch-all route for 404 handling
 const router = createBrowserRouter([
   {
     path: '/',
@@ -38,14 +37,12 @@ const router = createBrowserRouter([
         element: <Contact />
       },
       {
-        // Catch-all route - will redirect to home
         path: '*',
-        element: <App />
+        element: <NotFound />
       }
     ]
   }
 ], {
-  // Handle GitHub Pages pathnames correctly
   basename: import.meta.env.BASE_URL || '/'
 })
 

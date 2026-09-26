@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { parseFrontmatter } from '../utils/frontmatter';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import NotFound from './NotFound';
 import './BlogPost.css';
 
 interface PostData {
@@ -74,18 +75,7 @@ function BlogPost() {
   }
 
   if (error || !post) {
-    return (
-      <div className="blog-post">
-        <header>
-          <Link to="/blog" className="back-link">← Back to Blog</Link>
-          <Link to="/" className="home-link">Back to Home</Link>
-        </header>
-        <main>
-          <h1>Post Not Found</h1>
-          <p>{error || 'The blog post you are looking for does not exist.'}</p>
-        </main>
-      </div>
-    );
+    return <NotFound />;
   }
 
   return (
