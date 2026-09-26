@@ -11,11 +11,14 @@ import {
   resolveAccountId,
   resolveAlertsEmail,
 } from '../lib/config/environments.js';
+import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
+import { HostedZone } from 'aws-cdk-lib/aws-route53';
+import { Topic } from 'aws-cdk-lib/aws-sns';
+import { CertificateStack } from '../lib/stacks/certificate-stack.js';
+import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
-import { CertificateStack } from '../lib/stacks/certificate-stack.js';
-import { HostedZone } from 'aws-cdk-lib/aws-route53';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -281,5 +284,74 @@ describe('DnsStack and CertificateStack', () => {
       ]),
       ValidationMethod: 'DNS',
     });
+  });
+});
+
+describe('SiteStack', () => {
+  it('creates private S3, CloudFront OAC, security headers, SPA fn, and staging DNS', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'Deps', {
+      env: { account: config.account, region: config.region },
+    });
+    const certificate = Certificate.fromCertificateArn(
+      deps,
+      'Cert',
+      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
+    );
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
+    const site = new SiteStack(app, 'Site-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      certificate,
+      alertsTopic,
+      hostedZone: HostedZone.fromHostedZoneAttributes(app, 'SiteZone', {
+        hostedZoneId: 'ZXXXXXXXXXXXX',
+        zoneName: 'gagnechris.com',
+      }),
+    });
+    applyStandardTags(site, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(site);
+
+    template.resourceCountIs('AWS::S3::Bucket', 2);
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      VersioningConfiguration: { Status: 'Enabled' },
+      PublicAccessBlockConfiguration: {
+        BlockPublicAcls: true,
+        BlockPublicPolicy: true,
+        IgnorePublicAcls: true,
+        RestrictPublicBuckets: true,
+      },
+    });
+
+    template.resourceCountIs('AWS::CloudFront::Distribution', 1);
+    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
+    template.resourceCountIs('AWS::CloudFront::Function', 1);
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 1);
+
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: {
+        Aliases: Match.arrayWith([
+          'gagnechris.com',
+          'www.gagnechris.com',
+          'staging.gagnechris.com',
+        ]),
+        HttpVersion: 'http2and3',
+        IPV6Enabled: Match.anyValue(),
+      },
+    });
+
+    template.hasResourceProperties('AWS::Route53::RecordSet', {
+      Name: 'staging.gagnechris.com.',
+      Type: 'A',
+    });
+    template.hasResourceProperties('AWS::Route53::RecordSet', {
+      Name: 'staging.gagnechris.com.',
+      Type: 'AAAA',
+    });
+
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 1);
   });
 });

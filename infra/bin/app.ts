@@ -30,17 +30,23 @@ const certificateEnv = {
   region: 'us-east-1' as const,
 };
 
-const dns = new DnsStack(app, `Dns-${config.name}`, {
+new DnsStack(app, `Dns-${config.name}`, {
   env: stackEnv,
   description: `DNS records for gagnechris.com (${config.name}).`,
   crossRegionReferences: true,
   config,
 });
 
-new CertificateStack(app, `Certificate-${config.name}`, {
+const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
   env: certificateEnv,
   description: `ACM certificate in us-east-1 for CloudFront (${config.name}).`,
   crossRegionReferences: true,
+  config,
+});
+
+const guardrails = new GuardrailsStack(app, `Guardrails-${config.name}`, {
+  env: stackEnv,
+  description: `Cost and security guardrails (${config.name}).`,
   config,
 });
 
@@ -48,12 +54,9 @@ new SiteStack(app, `Site-${config.name}`, {
   env: stackEnv,
   description: `Static site hosting (${config.name}).`,
   crossRegionReferences: true,
-});
-
-new GuardrailsStack(app, `Guardrails-${config.name}`, {
-  env: stackEnv,
-  description: `Cost and security guardrails (${config.name}).`,
   config,
+  certificate: certificate.certificate,
+  alertsTopic: guardrails.alertsTopic,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
