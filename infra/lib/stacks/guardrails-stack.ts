@@ -73,6 +73,18 @@ export class GuardrailsStack extends Stack {
       }),
     );
 
+    this.alertsTopic.addToResourcePolicy(
+      new PolicyStatement({
+        sid: 'AllowCloudWatchAlarmsPublish',
+        principals: [new ServicePrincipal('cloudwatch.amazonaws.com')],
+        actions: ['sns:Publish'],
+        resources: [this.alertsTopic.topicArn],
+        conditions: {
+          StringEquals: { 'aws:SourceAccount': this.account },
+        },
+      }),
+    );
+
     NagSuppressions.addResourceSuppressions(this.alertsTopic, [
       {
         id: 'AwsSolutions-SNS2',

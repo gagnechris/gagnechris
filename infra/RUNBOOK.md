@@ -88,6 +88,21 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --require-approval never
 ```
 
+## Static site (CHR-22)
+
+- Private S3 + CloudFront (OAC) in `Site-prod`.
+- Security headers (HSTS, CSP for GA4 + Formspree), SPA viewer-request function, `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Custom domains on the distribution: apex, www, staging. **DNS:** only `staging` aliases to CloudFront for now; apex/www stay on GitHub Pages until cutover.
+- 5xx alarm publishes to the Guardrails alerts topic.
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --require-approval never
+# Upload a build (until a deploy pipeline exists):
+# aws s3 sync apps/web/dist "s3://$SITE_BUCKET/" --delete --profile gagnechris-admin
+# aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*' --profile gagnechris-admin
+```
+
 ## Existing resources (CDK decisions)
 
 | Resource | Decision |
