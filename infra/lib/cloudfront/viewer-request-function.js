@@ -47,8 +47,8 @@ function handler(event) {
 
 /**
  * Rebuild ?a=1&b=2 from CloudFront's querystring object.
- * Per AWS event-structure docs, values are decoded (e.g. spaces, not %20),
- * so we encodeURIComponent both keys and values when rebuilding the Location.
+ * Runtime values (and keys) arrive already percent-encoded — do not
+ * encodeURIComponent again (live #35 deploy produced a%2520b).
  */
 function serializeQueryString(qs) {
   if (!qs) {
@@ -62,12 +62,12 @@ function serializeQueryString(qs) {
     var item = qs[key];
     if (item.multiValue) {
       for (var i = 0; i < item.multiValue.length; i++) {
-        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.multiValue[i].value));
+        parts.push(key + '=' + item.multiValue[i].value);
       }
     } else if (item.value !== undefined) {
-      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.value));
+      parts.push(key + '=' + item.value);
     } else {
-      parts.push(encodeURIComponent(key) + '=');
+      parts.push(key + '=');
     }
   }
   return parts.length ? '?' + parts.join('&') : '';
