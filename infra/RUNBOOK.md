@@ -114,7 +114,7 @@ AWS_PROFILE=gagnechris-admin npm run deploy:web
 
 ## Cognito auth (CHR-27)
 
-`Auth-prod`: single-admin user pool (self sign-up off), passkeys + required TOTP MFA, managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
+`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
 SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-auth-domain`.
 

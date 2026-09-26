@@ -343,7 +343,7 @@ describe('AuthStack', () => {
       AdminCreateUserConfig: Match.objectLike({
         AllowAdminCreateUserOnly: true,
       }),
-      MfaConfiguration: 'ON',
+      MfaConfiguration: 'OPTIONAL',
       UserPoolTier: 'ESSENTIALS',
       UsernameAttributes: ['email'],
       Policies: Match.objectLike({
