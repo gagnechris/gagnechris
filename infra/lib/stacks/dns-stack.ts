@@ -1,4 +1,5 @@
 import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import {
   AaaaRecord,
   ARecord,
@@ -9,30 +10,17 @@ import {
   RecordTarget,
   TxtRecord,
 } from 'aws-cdk-lib/aws-route53';
+import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 
 /** Apex zone for the site (registration nameservers must match this zone). */
 export const APEX_DOMAIN = 'gagnechris.com';
 
-/** GitHub Pages IPv4 anycast addresses (apex A until CloudFront cutover). */
-const GITHUB_PAGES_IPV4 = [
-  '185.199.108.153',
-  '185.199.109.153',
-  '185.199.110.153',
-  '185.199.111.153',
-];
-
-/** GitHub Pages IPv6 anycast addresses (apex AAAA until CloudFront cutover). */
-const GITHUB_PAGES_IPV6 = [
-  '2606:50c0:8000::153',
-  '2606:50c0:8001::153',
-  '2606:50c0:8002::153',
-  '2606:50c0:8003::153',
-];
-
 export interface DnsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
+  /** CloudFront distribution for apex and www (CHR-25 cutover). */
+  readonly distribution: IDistribution;
   /**
    * Optional zone override for unit tests. Production uses
    * `HostedZone.fromLookup` so nameservers are never replaced.
@@ -42,7 +30,7 @@ export interface DnsStackProps extends StackProps {
 
 /**
  * Looks up the existing Route 53 hosted zone and defines all non-system
- * records in code (GitHub Pages + iCloud mail until later cutovers).
+ * records in code (CloudFront site + iCloud mail).
  */
 export class DnsStack extends Stack {
   readonly hostedZone: IHostedZone;
@@ -56,44 +44,43 @@ export class DnsStack extends Stack {
         domainName: APEX_DOMAIN,
       });
 
+    const cfTarget = RecordTarget.fromAlias(
+      new CloudFrontTarget(props.distribution),
+    );
+
     // Allow Amazon ACM to issue for this zone (and wildcards).
     new CaaAmazonRecord(this, 'CaaAmazon', {
       zone: this.hostedZone,
     });
 
-    // Apex → GitHub Pages (CHR-25 will point these at CloudFront).
+    // Apex → CloudFront (CHR-25 cutover from GitHub Pages).
     new ARecord(this, 'ApexA', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
-      ttl: Duration.minutes(5),
-      target: RecordTarget.fromValues(...GITHUB_PAGES_IPV4),
-      comment: 'GitHub Pages (pre-CloudFront cutover)',
+      target: cfTarget,
+      comment: 'Apex → CloudFront',
     });
 
     new AaaaRecord(this, 'ApexAaaa', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
-      ttl: Duration.minutes(5),
-      target: RecordTarget.fromValues(...GITHUB_PAGES_IPV6),
-      comment: 'GitHub Pages IPv6 (pre-CloudFront cutover)',
+      target: cfTarget,
+      comment: 'Apex → CloudFront IPv6',
     });
 
-    // www as A/AAAA (not CNAME). A www CNAME makes ACM CAA follow github.io,
-    // which does not authorize Amazon — cert validation fails with CAA_ERROR.
+    // www → CloudFront (viewer-request function 301s to apex).
     new ARecord(this, 'WwwA', {
       zone: this.hostedZone,
       recordName: `www.${APEX_DOMAIN}`,
-      ttl: Duration.minutes(5),
-      target: RecordTarget.fromValues(...GITHUB_PAGES_IPV4),
-      comment: 'www GitHub Pages IPv4 (A not CNAME for ACM CAA)',
+      target: cfTarget,
+      comment: 'www → CloudFront (redirects to apex)',
     });
 
     new AaaaRecord(this, 'WwwAaaa', {
       zone: this.hostedZone,
       recordName: `www.${APEX_DOMAIN}`,
-      ttl: Duration.minutes(5),
-      target: RecordTarget.fromValues(...GITHUB_PAGES_IPV6),
-      comment: 'www GitHub Pages IPv6 (A not CNAME for ACM CAA)',
+      target: cfTarget,
+      comment: 'www → CloudFront IPv6',
     });
 
     // iCloud custom email domain

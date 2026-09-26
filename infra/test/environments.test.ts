@@ -12,6 +12,8 @@ import {
   resolveAlertsEmail,
 } from '../lib/config/environments.js';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
+import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
+import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
@@ -231,12 +233,19 @@ describe('CiDeployRoleStack', () => {
 });
 
 describe('DnsStack and CertificateStack', () => {
-  it('defines apex GitHub Pages, www, iCloud mail records, and ACM cert', () => {
+  it('defines apex/www CloudFront aliases, iCloud mail records, and ACM cert', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'DnsDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const distribution = new Distribution(deps, 'Dist', {
+      defaultBehavior: { origin: new HttpOrigin('example.com') },
+    });
     const dns = new DnsStack(app, 'Dns-prod', {
       env: { account: config.account, region: config.region },
       config,
+      distribution,
       hostedZone: HostedZone.fromHostedZoneAttributes(app, 'Zone', {
         hostedZoneId: 'ZXXXXXXXXXXXX',
         zoneName: 'gagnechris.com',
@@ -254,14 +263,24 @@ describe('DnsStack and CertificateStack', () => {
     dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'A',
       Name: 'gagnechris.com.',
+      AliasTarget: Match.objectLike({
+        DNSName: Match.anyValue(),
+        HostedZoneId: Match.anyValue(),
+      }),
     });
     dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'AAAA',
       Name: 'gagnechris.com.',
+      AliasTarget: Match.objectLike({
+        DNSName: Match.anyValue(),
+      }),
     });
     dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'A',
       Name: 'www.gagnechris.com.',
+      AliasTarget: Match.objectLike({
+        DNSName: Match.anyValue(),
+      }),
     });
     dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'CAA',

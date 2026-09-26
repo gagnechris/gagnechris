@@ -30,13 +30,6 @@ const certificateEnv = {
   region: 'us-east-1' as const,
 };
 
-new DnsStack(app, `Dns-${config.name}`, {
-  env: stackEnv,
-  description: `DNS records for gagnechris.com (${config.name}).`,
-  crossRegionReferences: true,
-  config,
-});
-
 const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
   env: certificateEnv,
   description: `ACM certificate in us-east-1 for CloudFront (${config.name}).`,
@@ -50,13 +43,22 @@ const guardrails = new GuardrailsStack(app, `Guardrails-${config.name}`, {
   config,
 });
 
-new SiteStack(app, `Site-${config.name}`, {
+const site = new SiteStack(app, `Site-${config.name}`, {
   env: stackEnv,
   description: `Static site hosting (${config.name}).`,
   crossRegionReferences: true,
   config,
   certificate: certificate.certificate,
   alertsTopic: guardrails.alertsTopic,
+});
+
+// DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
+new DnsStack(app, `Dns-${config.name}`, {
+  env: stackEnv,
+  description: `DNS records for gagnechris.com (${config.name}).`,
+  crossRegionReferences: true,
+  config,
+  distribution: site.distribution,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
