@@ -253,15 +253,7 @@ export class SiteStack extends Stack {
           cachePolicy: assetsCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
-        // Reserved for Blog CMS (CHR later) — same origin, no cache until wired.
-        '/api/*': {
-          origin,
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_ALL,
-          cachePolicy: CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          responseHeadersPolicy: securityHeaders,
-        },
+        // /api/* is attached by ApiStack (HTTP API origin).
         '/media/*': {
           origin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

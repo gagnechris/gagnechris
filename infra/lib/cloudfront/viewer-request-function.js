@@ -1,6 +1,7 @@
 /**
  * CloudFront Function (cloudfront-js-2.0) — viewer-request.
  * - www → apex 301
+ * - Skip rewrite for /api/* and /media/* (proxied origins)
  * - Extensionless paths → {path}/index.html (Option B pre-rendered pages)
  * - Paths with a file extension pass through unchanged
  */
@@ -20,6 +21,10 @@ function handler(event) {
   }
 
   var uri = request.uri;
+  if (uri === '/api' || uri.indexOf('/api/') === 0 || uri === '/media' || uri.indexOf('/media/') === 0) {
+    return request;
+  }
+
   if (uri.endsWith('/')) {
     request.uri = uri + 'index.html';
   } else {

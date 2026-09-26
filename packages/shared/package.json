@@ -3,5 +3,26 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Shared TypeScript types and helpers for the site, API, and publisher."
+  "description": "Shared TypeScript types and helpers for the site, API, and publisher.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "openapi": "tsx src/generate-openapi.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.2"
+  }
 }
