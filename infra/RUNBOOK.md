@@ -98,9 +98,18 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --require-approval never
-# Upload a build (until a deploy pipeline exists):
-# aws s3 sync apps/web/dist "s3://$SITE_BUCKET/" --delete --profile gagnechris-admin
-# aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*' --profile gagnechris-admin
+```
+
+## Web deploy pipeline (CHR-23)
+
+On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only** — no staging promote.
+
+Publisher-owned paths are never deleted by the sync: `blog/*`, `media/*`, `sitemap.xml`, `rss.xml`.
+
+Manual / local:
+
+```bash
+AWS_PROFILE=gagnechris-admin npm run deploy:web
 ```
 
 ## Existing resources (CDK decisions)

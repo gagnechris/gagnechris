@@ -353,5 +353,13 @@ describe('SiteStack', () => {
     });
 
     template.resourceCountIs('AWS::CloudWatch::Alarm', 1);
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/site-bucket-name',
+      Type: 'String',
+    });
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/cloudfront-distribution-id',
+      Type: 'String',
+    });
   });
 });
