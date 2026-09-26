@@ -28,16 +28,11 @@ function BlogPost() {
         // Load all markdown files eagerly to find the one with matching slug
         const postModules = import.meta.glob('../posts/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>;
 
-        console.log('Looking for post with slug:', slug);
-        console.log('Available modules:', Object.keys(postModules));
-
         let foundPost = false;
         for (const path in postModules) {
           const content = postModules[path];
-          console.log('Loaded content from', path, typeof content);
           const { data, content: markdownContent } = parseFrontmatter(content);
 
-          console.log('Post slug:', data.slug);
           if (data.slug === slug) {
             setPost({
               title: data.title || 'Untitled',

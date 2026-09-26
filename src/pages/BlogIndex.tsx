@@ -22,11 +22,8 @@ function BlogIndex() {
         const postModules = import.meta.glob('../posts/*.md', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>;
         const loadedPosts: BlogPost[] = [];
 
-        console.log('Found post modules:', Object.keys(postModules));
-
         for (const path in postModules) {
           const content = postModules[path];
-          console.log('Loaded content for', path, typeof content);
           const { data } = parseFrontmatter(content);
 
           loadedPosts.push({
@@ -40,7 +37,6 @@ function BlogIndex() {
         // Sort posts by date (newest first)
         loadedPosts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        console.log('Loaded posts:', loadedPosts);
         setPosts(loadedPosts);
       } catch (error) {
         console.error('Error loading posts:', error);
