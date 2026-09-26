@@ -79,7 +79,9 @@ export class AuthStack extends Stack {
         tempPasswordValidity: Duration.days(7),
       },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
-      mfa: Mfa.REQUIRED,
+      // Cognito forbids MFA=REQUIRED with WebAuthn as a first factor (SINGLE_FACTOR).
+      // Passkeys are the primary factor; TOTP remains available for password sign-in.
+      mfa: Mfa.OPTIONAL,
       mfaSecondFactor: { otp: true, sms: false },
       featurePlan: FeaturePlan.ESSENTIALS,
       signInPolicy: {
@@ -96,6 +98,11 @@ export class AuthStack extends Stack {
     });
 
     NagSuppressions.addResourceSuppressions(this.userPool, [
+      {
+        id: 'AwsSolutions-COG2',
+        reason:
+          'MFA cannot be REQUIRED when WebAuthn is an allowed first auth factor (Cognito SINGLE_FACTOR constraint). Passkeys are phishing-resistant; TOTP MFA is OPTIONAL for password fallback.',
+      },
       {
         id: 'AwsSolutions-COG8',
         reason:
