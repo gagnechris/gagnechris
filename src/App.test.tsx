@@ -1,19 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { screen, fireEvent } from '@testing-library/react';
 import App from './App';
+import { renderWithProviders } from './test-utils';
 import * as analytics from './utils/analytics';
 
-// Mock the analytics module
 jest.mock('./utils/analytics');
 
 const mockTrackEvent = jest.mocked(analytics.trackEvent);
-
-// Wrapper component for router context
-const AppWithRouter = () => (
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
-);
 
 describe('App', () => {
   beforeEach(() => {
@@ -21,8 +13,8 @@ describe('App', () => {
   });
 
   test('renders all main sections', () => {
-    render(<AppWithRouter />);
-    
+    renderWithProviders(<App />);
+
     expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
     expect(screen.getByText('About Me')).toBeInTheDocument();
     expect(screen.getByText('Quick Links')).toBeInTheDocument();
@@ -32,26 +24,26 @@ describe('App', () => {
   });
 
   test('tracks LinkedIn link clicks', () => {
-    render(<AppWithRouter />);
-    
+    renderWithProviders(<App />);
+
     const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' });
     fireEvent.click(linkedInLink);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin');
   });
 
   test('tracks GitHub link clicks', () => {
-    render(<AppWithRouter />);
-    
+    renderWithProviders(<App />);
+
     const githubLink = screen.getByRole('link', { name: 'GitHub' });
     fireEvent.click(githubLink);
-    
+
     expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github');
   });
 
   test('LinkedIn link has correct attributes', () => {
-    render(<AppWithRouter />);
-    
+    renderWithProviders(<App />);
+
     const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' });
     expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/');
     expect(linkedInLink).toHaveAttribute('target', '_blank');
@@ -59,8 +51,8 @@ describe('App', () => {
   });
 
   test('GitHub link has correct attributes', () => {
-    render(<AppWithRouter />);
-    
+    renderWithProviders(<App />);
+
     const githubLink = screen.getByRole('link', { name: 'GitHub' });
     expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris');
     expect(githubLink).toHaveAttribute('target', '_blank');
