@@ -12,7 +12,11 @@ const app = new App();
 
 // Default is prod. Staging is available later via `-c env=staging` (not deployed by default).
 const envName = parseEnvironmentName(app.node.tryGetContext('env'));
-const config = getEnvironment(envName);
+const config = getEnvironment(
+  envName,
+  process.env,
+  app.node.tryGetContext('alertsEmail'),
+);
 
 applyStandardTags(app, config);
 
@@ -46,7 +50,8 @@ new SiteStack(app, `Site-${config.name}`, {
 
 new GuardrailsStack(app, `Guardrails-${config.name}`, {
   env: stackEnv,
-  description: `Cost and security guardrails (${config.name}). Filled in by CHR-20.`,
+  description: `Cost and security guardrails (${config.name}).`,
+  config,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
