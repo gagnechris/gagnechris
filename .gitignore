@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# CDK
+cdk.out
+infra/cdk.context.json
+
 # Test coverage reports
 coverage
 *.lcov

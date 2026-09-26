@@ -1,0 +1,23 @@
+{
+  "app": "npx tsx bin/app.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "yarn.lock",
+      "node_modules",
+      "test",
+      "cdk.out"
+    ]
+  },
+  "context": {
+    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
+    "@aws-cdk/aws-rds:databaseProxyUniqueResourceName": true,
+    "@aws-cdk/core:target-partitions": ["aws"]
+  }
+}

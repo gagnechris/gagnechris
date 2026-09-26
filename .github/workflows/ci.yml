@@ -36,5 +36,11 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: CDK synth
+        env:
+          CDK_DEFAULT_ACCOUNT: "111111111111"
+          CDK_DEFAULT_REGION: us-east-1
+        run: npm run cdk -- synth --quiet
+
       - name: Build
         run: npm run build

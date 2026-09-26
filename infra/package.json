@@ -2,5 +2,26 @@
   "name": "@gagnechris/infra",
   "private": true,
   "version": "0.0.0",
-  "description": "AWS CDK app. Scaffolded in a later ticket."
+  "type": "module",
+  "description": "AWS CDK app for gagnechris.com",
+  "scripts": {
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170.0",
+    "cdk-nag": "^2.35.0",
+    "constructs": "^10.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "aws-cdk": "^2.1000.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.2"
+  }
 }
