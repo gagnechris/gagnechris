@@ -1,0 +1,6 @@
+{
+  "name": "@gagnechris/infra",
+  "private": true,
+  "version": "0.0.0",
+  "description": "AWS CDK app. Scaffolded in a later ticket."
+}

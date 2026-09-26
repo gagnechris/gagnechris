@@ -59,14 +59,14 @@ Create an optimized production build:
 ```bash
 npm run build
 ```
-Build files will be generated in the `dist/` directory.
+Build files will be generated in `apps/web/dist/`.
 
 ### Preview Production Build
 Test the production build locally:
 ```bash
 npm run preview
 ```
-This serves the built files from `dist/` at `http://localhost:4173`
+This serves the built files from `apps/web/dist/` at `http://localhost:4173`
 
 ## 🧪 Testing
 
@@ -110,8 +110,8 @@ If you prefer manual deployment:
    npm run build
    ```
 
-2. **Deploy the `dist/` folder** to GitHub Pages (or another static host)
-   - The `dist/` folder contains all static assets
+2. **Deploy the `apps/web/dist/` folder** to GitHub Pages (or another static host)
+   - That folder contains all static assets
    - Configure your server to serve `index.html` for all routes (SPA routing)
 
 ## 🛠️ Tech Stack
@@ -142,37 +142,21 @@ If you prefer manual deployment:
 
 ## 📁 Project Structure
 
+npm workspaces. Commands like `npm run dev`, `npm run build`, `npm test`, and `npm run lint` run from the repo root and delegate to the web app.
+
 ```
-├── public/                 # Static assets
-│   ├── Christopher M Gagne Resume 2026.pdf
-│   └── cg-icon.svg
-├── src/
-│   ├── components/         # Reusable React components
-│   │   ├── AppWithTracking.tsx    # Analytics wrapper component
-│   │   ├── RouteTracker.tsx       # Page view tracking
-│   │   └── *.test.tsx             # Component tests
-│   ├── pages/             # Page components
-│   │   ├── Resume.tsx
-│   │   ├── BlogIndex.tsx
-│   │   ├── BlogPost.tsx
-│   │   ├── Contact.tsx
-│   │   └── *.test.tsx
-│   ├── posts/             # Published blog posts (markdown)
-│   ├── utils/             # Utility functions
-│   │   ├── analytics.ts           # Google Analytics integration
-│   │   ├── frontmatter.ts         # Markdown frontmatter parser
-│   │   └── analytics.test.ts
-│   ├── __tests__/         # Integration tests
-│   │   └── integration.test.tsx
-│   ├── assets/            # Images and media
-│   ├── App.tsx            # Main application component
-│   └── main.tsx           # Application entry point
-├── scripts/               # Build helpers (e.g. sitemap generation)
-├── dist/                  # Production build output
-├── package.json           # Dependencies and scripts
-├── tsconfig.json          # TypeScript configuration
-├── vite.config.ts         # Vite configuration
-└── README.md              # This file
+├── apps/web/              # Public React/Vite site
+│   ├── public/            # Static assets (resume PDF, icons, og image)
+│   ├── src/               # Pages, components, posts, tests
+│   ├── scripts/           # Site build helpers (sitemap generation)
+│   ├── index.html
+│   ├── vite.config.ts
+│   └── package.json       # @gagnechris/web
+├── infra/                 # AWS CDK app (later)
+├── services/api/          # Lambda handlers (later)
+├── packages/shared/       # Types shared by the site, API, and publisher (later)
+├── scripts/               # Repo tooling (branch protection)
+└── package.json           # Workspace root
 ```
 
 ## 🔧 Configuration
@@ -193,7 +177,7 @@ The contact page submits through Formspree, which works with static GitHub Pages
 
 ### Custom Domain
 The site is configured to deploy to `gagnechris.com`. To use a different domain:
-1. Update `homepage` in `package.json`
+1. Update `homepage` in `apps/web/package.json`
 2. Modify the `--cname` flag in the deploy script
 
 ## ♿ Accessibility Features

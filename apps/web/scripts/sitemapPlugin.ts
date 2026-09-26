@@ -1,7 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 import { parseFrontmatter } from '../src/utils/frontmatter.ts'
+
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const SITE_URL = 'https://gagnechris.com'
 
@@ -62,8 +65,7 @@ export function sitemapPlugin(): Plugin {
     name: 'generate-sitemap',
     apply: 'build',
     closeBundle() {
-      const root = process.cwd()
-      const postsDir = path.join(root, 'src/posts')
+      const postsDir = path.join(appRoot, 'src/posts')
       const today = formatDate()
 
       const staticEntries: SitemapEntry[] = [
@@ -81,7 +83,7 @@ export function sitemapPlugin(): Plugin {
       }))
 
       const xml = buildSitemapXml([...staticEntries, ...postEntries])
-      const outPath = path.join(root, 'dist/sitemap.xml')
+      const outPath = path.join(appRoot, 'dist/sitemap.xml')
       fs.writeFileSync(outPath, xml)
     },
   }

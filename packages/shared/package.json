@@ -1,0 +1,7 @@
+{
+  "name": "@gagnechris/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Shared TypeScript types and helpers for the site, API, and publisher."
+}
