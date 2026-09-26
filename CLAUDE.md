@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 
 - `apps/web` — React/Vite site
-- `infra` — AWS CDK app (later); bootstrap steps in `infra/RUNBOOK.md`
+- `infra` — AWS CDK app; bootstrap steps in `infra/RUNBOOK.md`
 - `services/api` — Lambda handlers (later)
 - `packages/shared` — types shared by the site, API, and publisher (later)
 - `scripts/` — repo tooling (branch protection), not the site build
@@ -17,9 +17,10 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Lint: `npm run lint` (runs ESLint)
 - Dev: `npm run dev` (starts Vite development server)
 - Preview: `npm run preview` (previews production build locally)
-- Test: `npm test` (runs Vitest)
+- Test: `npm test` (Vitest for web + infra)
+- CDK: `npm run cdk -- synth -c env=staging|prod` (account from AWS credentials / `CDK_ACCOUNT`)
 - Deploy: `npm run deploy` (deploys to GitHub Pages via `gh-pages`)
-- CI: GitHub Actions runs lint, test, and build (including typecheck) on pushes and PRs to `main`
+- CI: GitHub Actions runs lint, test, CDK synth, and build on pushes and PRs to `main`
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)
 
 ## Workflow

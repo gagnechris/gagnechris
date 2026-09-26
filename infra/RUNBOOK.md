@@ -29,6 +29,21 @@ Concrete IDs and values: private note. Commands:
    `npx aws-cdk bootstrap aws://ACCOUNT/us-east-1 --profile gagnechris-admin`  
    (us-east-1 required for CloudFront certificates.)
 
+## CDK app (`infra/`)
+
+```bash
+export AWS_PROFILE=gagnechris-readonly   # or gagnechris-admin for deploy
+aws sso login --sso-session gagnechris
+
+# Synth / diff (account comes from credentials via CDK_DEFAULT_ACCOUNT)
+npm run cdk -- synth -c env=staging
+npm run cdk -- synth -c env=prod
+npm run cdk -- diff -c env=staging
+npm run cdk -- diff -c env=prod
+```
+
+Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
+
 ## Existing resources (CDK decisions)
 
 | Resource | Decision |

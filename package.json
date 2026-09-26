@@ -16,9 +16,10 @@
     "lint": "npm run lint -w @gagnechris/web",
     "preview": "npm run preview -w @gagnechris/web",
     "deploy": "npm run deploy -w @gagnechris/web",
-    "test": "npm run test -w @gagnechris/web",
+    "test": "npm run test -w @gagnechris/web && npm run test -w @gagnechris/infra",
     "test:watch": "npm run test:watch -w @gagnechris/web",
-    "test:coverage": "npm run test:coverage -w @gagnechris/web"
+    "test:coverage": "npm run test:coverage -w @gagnechris/web",
+    "cdk": "npm run cdk -w @gagnechris/infra --"
   },
   "engines": {
     "node": "^22.12.0"
