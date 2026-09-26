@@ -4,8 +4,6 @@ import { trackEvent } from './utils/analytics'
 import './App.css'
 
 const PAGE_TITLE = 'Chris Gagne - Engineering Leader'
-const SITE_DESCRIPTION =
-  'Chris Gagne is an Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems.'
 const ABOUT_COPY =
   "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives."
 
@@ -13,14 +11,6 @@ function App() {
   return (
     <>
       <title>{PAGE_TITLE}</title>
-      <meta name="description" content={SITE_DESCRIPTION} />
-      <meta property="og:title" content={PAGE_TITLE} />
-      <meta property="og:description" content={SITE_DESCRIPTION} />
-      <meta property="og:type" content="website" />
-      <meta property="og:url" content="https://gagnechris.com" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={PAGE_TITLE} />
-      <meta name="twitter:description" content={SITE_DESCRIPTION} />
       <link rel="canonical" href="https://gagnechris.com" />
       <header>
         <img src={profile} className="profile" alt="Photo of Chris Gagne" />
