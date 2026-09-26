@@ -33,14 +33,7 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import {
-  AaaaRecord,
-  ARecord,
-  HostedZone,
-  type IHostedZone,
-  RecordTarget,
-} from 'aws-cdk-lib/aws-route53';
-import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
+import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import {
   BlockPublicAccess,
   Bucket,
@@ -51,9 +44,9 @@ import {
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 import type { Construct } from 'constructs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { APEX_DOMAIN } from './dns-stack.js';
 
@@ -61,19 +54,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface SiteStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** ACM cert in us-east-1 covering apex, www, and staging. */
+  /** ACM cert in us-east-1 covering apex and www. */
   readonly certificate: ICertificate;
   /** Guardrails alerts topic for 5xx alarms. */
   readonly alertsTopic: ITopic;
-  /**
-   * Optional zone override for unit tests. Production uses
-   * `HostedZone.fromLookup`.
-   */
-  readonly hostedZone?: IHostedZone;
 }
 
 /**
- * Private S3 origin + CloudFront (OAC, security headers, SPA routing).
+ * Private S3 origin + CloudFront (OAC, security headers, Option B path rewrite).
  */
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
@@ -84,16 +72,7 @@ export class SiteStack extends Stack {
 
     const { config, certificate, alertsTopic } = props;
 
-    const hostedZone =
-      props.hostedZone ??
-      HostedZone.fromLookup(this, 'HostedZone', {
-        domainName: APEX_DOMAIN,
-      });
-
-    const domainNames =
-      config.name === 'prod'
-        ? [APEX_DOMAIN, `www.${APEX_DOMAIN}`, `staging.${APEX_DOMAIN}`]
-        : [config.domainName];
+    const domainNames = [APEX_DOMAIN, `www.${APEX_DOMAIN}`];
 
     const accessLogs = new Bucket(this, 'AccessLogs', {
       encryption: BucketEncryption.S3_MANAGED,
@@ -187,7 +166,7 @@ export class SiteStack extends Stack {
 
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
       functionName: `gagnechris-${config.name}-viewer-request`,
-      comment: 'www→apex redirect + SPA / Option B path rewrite',
+      comment: 'www→apex redirect + Option B path rewrite',
       runtime: FunctionRuntime.JS_2_0,
       code: FunctionCode.fromFile({
         filePath: path.join(__dirname, '../cloudfront/viewer-request-function.js'),
@@ -264,22 +243,25 @@ export class SiteStack extends Stack {
           responseHeadersPolicy: securityHeaders,
         },
       },
-      // Missing pre-rendered path → SPA shell (client router).
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: Duration.minutes(1),
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: Duration.minutes(1),
-        },
-      ],
+      // No distribution-wide errorResponses: they would rewrite /api and
+      // /assets 403/404 into 200 HTML. Option B uses viewer-request rewrites
+      // to {path}/index.html; missing objects return real 404 (ListBucket below).
     });
+
+    // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
+    this.siteBucket.addToResourcePolicy(
+      new PolicyStatement({
+        sid: 'AllowCloudFrontListBucket',
+        actions: ['s3:ListBucket'],
+        resources: [this.siteBucket.bucketArn],
+        principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
+        conditions: {
+          StringEquals: {
+            'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${this.distribution.distributionId}`,
+          },
+        },
+      }),
+    );
 
     NagSuppressions.addResourceSuppressions(this.distribution, [
       {
@@ -298,21 +280,6 @@ export class SiteStack extends Stack {
           'TLS 1.2+ is enforced via minimumProtocolVersion TLS_V1_2_2021.',
       },
     ]);
-
-    // staging → CloudFront (preview alias on the same prod distribution).
-    const stagingName = `staging.${APEX_DOMAIN}`;
-    new ARecord(this, 'StagingA', {
-      zone: hostedZone,
-      recordName: stagingName,
-      target: RecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
-      comment: 'staging → CloudFront (CHR-22)',
-    });
-    new AaaaRecord(this, 'StagingAaaa', {
-      zone: hostedZone,
-      recordName: stagingName,
-      target: RecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
-      comment: 'staging → CloudFront IPv6 (CHR-22)',
-    });
 
     const error5xx = this.distribution.metric5xxErrorRate({
       period: Duration.minutes(5),
@@ -357,11 +324,6 @@ export class SiteStack extends Stack {
     new CfnOutput(this, 'DistributionDomainName', {
       value: this.distribution.distributionDomainName,
       description: 'CloudFront default domain (*.cloudfront.net)',
-    });
-
-    new CfnOutput(this, 'StagingUrl', {
-      value: `https://${stagingName}`,
-      description: 'Custom domain for staging (DNS alias to this distribution)',
     });
   }
 }

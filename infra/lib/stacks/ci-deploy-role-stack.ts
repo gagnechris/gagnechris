@@ -83,19 +83,16 @@ export class CiDeployRoleStack extends Stack {
     this.diffRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
     );
-    // cdk diff --no-change-set still needs bootstrap lookup / asset reads.
+    // cdk diff needs the bootstrap lookup role only — never deploy/cfn-exec
+    // (those trust the whole account; AssumeRole * would escalate to admin).
     this.diffRole.addToPolicy(
       new PolicyStatement({
-        sid: 'CdkBootstrapRead',
+        sid: 'CdkLookupAssumeRole',
         effect: Effect.ALLOW,
-        actions: [
-          'sts:AssumeRole',
-          'cloudformation:Describe*',
-          'cloudformation:Get*',
-          'cloudformation:List*',
-          'ssm:GetParameter',
+        actions: ['sts:AssumeRole'],
+        resources: [
+          `arn:aws:iam::${props.config.account}:role/cdk-*-lookup-role-*`,
         ],
-        resources: ['*'],
       }),
     );
 
@@ -128,7 +125,10 @@ export class CiDeployRoleStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'Diff role may assume CDK bootstrap lookup roles and read CFN/SSM across the account; scoped further would break cdk diff.',
+            'Diff role may assume CDK bootstrap lookup roles (cdk-*-lookup-role-* only); ReadOnlyAccess covers CFN/SSM reads for cdk diff.',
+          appliesTo: [
+            `Resource::arn:aws:iam::${props.config.account}:role/cdk-*-lookup-role-*`,
+          ],
         },
       ],
       true,

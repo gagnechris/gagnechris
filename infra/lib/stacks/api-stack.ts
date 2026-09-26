@@ -145,7 +145,6 @@ export class ApiStack extends Stack {
         ],
         allowOrigins: [
           `https://${APEX_DOMAIN}`,
-          `https://staging.${APEX_DOMAIN}`,
           'http://localhost:5173',
           'http://localhost:3000',
         ],

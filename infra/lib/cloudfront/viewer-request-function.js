@@ -1,9 +1,12 @@
 /**
  * CloudFront Function (cloudfront-js-2.0) — viewer-request.
- * - www → apex 301
+ * - www → apex 301 (preserves query string)
  * - Skip rewrite for /api/* and /media/* (proxied origins)
  * - Extensionless paths → {path}/index.html (Option B pre-rendered pages)
  * - Paths with a file extension pass through unchanged
+ *
+ * Missing objects return real 404/403 from the origin (no distribution-wide
+ * custom error pages), so /api and /assets keep correct status codes.
  */
 function handler(event) {
   var request = event.request;
@@ -15,7 +18,7 @@ function handler(event) {
       statusCode: 301,
       statusDescription: 'Moved Permanently',
       headers: {
-        location: { value: 'https://' + apex + request.uri },
+        location: { value: 'https://' + apex + request.uri + serializeQueryString(request.querystring) },
       },
     };
   }
@@ -36,4 +39,31 @@ function handler(event) {
   }
 
   return request;
+}
+
+/**
+ * Rebuild ?a=1&b=2 from CloudFront's querystring object.
+ * Supports multiValue entries and percent-encoding.
+ */
+function serializeQueryString(qs) {
+  if (!qs) {
+    return '';
+  }
+  var parts = [];
+  for (var key in qs) {
+    if (!Object.prototype.hasOwnProperty.call(qs, key)) {
+      continue;
+    }
+    var item = qs[key];
+    if (item.multiValue) {
+      for (var i = 0; i < item.multiValue.length; i++) {
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.multiValue[i].value));
+      }
+    } else if (item.value !== undefined) {
+      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.value));
+    } else {
+      parts.push(encodeURIComponent(key) + '=');
+    }
+  }
+  return parts.length ? '?' + parts.join('&') : '';
 }

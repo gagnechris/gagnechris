@@ -13,7 +13,7 @@ aws sso login --sso-session gagnechris
 aws sts get-caller-identity
 ```
 
-Use profile `gagnechris-admin` only for bootstrap and break-glass.
+Use profile `gagnechris-admin` only for bootstrap and break-glass. Day-to-day CLI is SSO only — no long-lived access keys in `~/.aws/credentials`.
 
 ## Rebuild outline (CLI only)
 
@@ -35,14 +35,12 @@ Concrete IDs and values: private note. Commands:
 export AWS_PROFILE=gagnechris-readonly   # or gagnechris-admin for deploy
 aws sso login --sso-session gagnechris
 
-# Synth / diff default to prod (account from credentials via CDK_DEFAULT_ACCOUNT).
-# Staging is typed and available later with `-c env=staging` — not deployed by default (cost).
+# Synth / diff are prod-only (region pinned to us-east-1; account from credentials via CDK_DEFAULT_ACCOUNT).
 # Alerts email is never committed — set ALERTS_EMAIL (or -c alertsEmail=...).
 export ALERTS_EMAIL='you@example.com'   # use the address from your private note
 npm run cdk -- synth
 npm run cdk -- diff
 npm run cdk -- deploy Guardrails-prod --profile gagnechris-admin
-# npm run cdk -- synth -c env=staging   # when/if staging is needed
 ```
 
 After deploying Guardrails:
@@ -51,6 +49,15 @@ After deploying Guardrails:
 3. Optional test: publish to the alerts topic ARN from the stack outputs.
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
+
+### Adopting existing resources (`cdk import`)
+
+If CloudFormation reports a resource already exists, **do not delete it by hand**. Prefer:
+
+1. `cdk import StackName` (or add the resource to the template with the same physical name and import), or
+2. Retain the live resource and adopt it via lookup (`fromLookup` / `from*Attributes`) when CDK already supports that pattern (e.g. hosted zones).
+
+Ask before any production change that is not a stack deploy.
 
 ## GitHub Actions OIDC (CHR-19)
 
@@ -68,19 +75,25 @@ gh variable set AWS_DIFF_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-p
 gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 ```
 
-2. Workflows (`.github/workflows/cdk.yml`):
-   - **PR:** `cdk synth` + `cdk diff` (diff role); posts a sticky PR comment
-   - **main / workflow_dispatch deploy:** `cdk deploy --all` (deploy role, `prod` environment)
-   - **Nightly / workflow_dispatch drift:** `cdk drift --fail`; SNS alert on failure
+2. Lock the GitHub `prod` environment to `main` only (CHR-60):
 
-Prod only by default (no staging deploy). Staging remains available later via `-c env=staging`.
+```bash
+bash scripts/apply-github-environments.sh
+```
+
+3. Workflows (`.github/workflows/cdk.yml`):
+   - **PR:** `cdk synth` + `cdk diff` (diff role); posts a sticky PR comment
+   - **main / workflow_dispatch deploy:** `cdk deploy --all` (deploy role, `prod` environment; concurrency does not cancel in-flight deploys)
+   - **Nightly / workflow_dispatch drift:** `cdk drift --fail` (separate concurrency group); SNS alert on failure
+
+Prod only — there is no staging environment.
 
 ## DNS and TLS (CHR-21)
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod`.
-- ACM cert (apex + www + staging) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing the site certificate (which breaks the Site-prod export).
+- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM/MX + DMARC in `Dns-prod`.
+- ACM site cert (apex + www; unused `staging` SAN retained until a two-phase cert rotation) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing the site certificate (which breaks the Site-prod export).
 - DNSSEC deferred (cost).
 
 ```bash
@@ -91,8 +104,9 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site (CHR-22)
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Formspree), SPA viewer-request function, `/assets/*` long cache, reserved `/api/*` and `/media/*`.
-- Custom domains on the distribution: apex, www, staging. DNS: apex/www/staging all alias to CloudFront after CHR-25.
+- Security headers (HSTS, CSP for GA4 + Formspree), viewer-request function (www→apex with query string; Option B `{path}/index.html` rewrite), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Custom domains: apex and www only (no staging alias).
+- No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s.
 - 5xx alarm publishes to the Guardrails alerts topic.
 
 ```bash
@@ -102,7 +116,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 
 ## Web deploy pipeline (CHR-23)
 
-On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only** — no staging promote.
+On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
 
 Publisher-owned paths are never deleted by the sync: `blog/*`, `media/*`, `sitemap.xml`, `rss.xml`.
 

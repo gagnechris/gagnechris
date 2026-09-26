@@ -12,7 +12,7 @@ import { SiteStack } from '../lib/stacks/site-stack.js';
 
 const app = new App();
 
-// Default is prod. Staging is available later via `-c env=staging` (not deployed by default).
+// Prod only (staging was removed — CHR-66 / CHR-68).
 const envName = parseEnvironmentName(app.node.tryGetContext('env'));
 const config = getEnvironment(
   envName,

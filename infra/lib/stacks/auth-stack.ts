@@ -112,12 +112,10 @@ export class AuthStack extends Stack {
 
     const callbackUrls = [
       `https://${APEX_DOMAIN}/auth/callback`,
-      `https://staging.${APEX_DOMAIN}/auth/callback`,
       'http://localhost:5173/auth/callback',
     ];
     const logoutUrls = [
       `https://${APEX_DOMAIN}/`,
-      `https://staging.${APEX_DOMAIN}/`,
       'http://localhost:5173/',
     ];
 

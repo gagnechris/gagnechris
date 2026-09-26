@@ -7,6 +7,7 @@ import {
   CnameRecord,
   HostedZone,
   type IHostedZone,
+  MxRecord,
   RecordTarget,
   TxtRecord,
 } from 'aws-cdk-lib/aws-route53';
@@ -98,6 +99,26 @@ export class DnsStack extends Stack {
       ttl: Duration.minutes(5),
       domainName: 'sig1.dkim.gagnechris.com.at.icloudmailadmin.com',
       comment: 'iCloud DKIM',
+    });
+
+    // iCloud Mail MX (CHR-63) — required for @gagnechris.com delivery.
+    new MxRecord(this, 'IcloudMx', {
+      zone: this.hostedZone,
+      recordName: APEX_DOMAIN,
+      ttl: Duration.minutes(5),
+      values: [
+        { hostName: 'mx01.mail.icloud.com', priority: 10 },
+        { hostName: 'mx02.mail.icloud.com', priority: 10 },
+      ],
+      comment: 'iCloud Mail MX',
+    });
+
+    new TxtRecord(this, 'Dmarc', {
+      zone: this.hostedZone,
+      recordName: `_dmarc.${APEX_DOMAIN}`,
+      ttl: Duration.minutes(5),
+      values: ['v=DMARC1; p=quarantine'],
+      comment: 'DMARC quarantine policy',
     });
 
     new CfnOutput(this, 'HostedZoneId', {
