@@ -1,0 +1,183 @@
+name: CDK
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Nightly drift check (08:00 UTC)
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Job to run"
+        type: choice
+        options:
+          - deploy
+          - drift
+        default: deploy
+
+concurrency:
+  group: cdk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
+  ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL || 'ci-placeholder@example.com' }}
+
+jobs:
+  diff:
+    name: CDK diff (PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials (diff role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK synth
+        run: npm run cdk -- synth --quiet
+
+      - name: CDK diff
+        id: cdk_diff
+        run: |
+          set +e
+          npm run cdk -- diff --no-change-set 2>&1 | tee cdk-diff.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          # cdk diff exits 1 when differences exist — that is expected on PRs.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            exit "$code"
+          fi
+          {
+            echo '## CDK diff'
+            echo ''
+            echo '```'
+            # Keep the comment under GitHub's size limit.
+            head -c 60000 cdk-diff.txt
+            echo ''
+            echo '```'
+          } > cdk-diff-comment.md
+
+      - name: Post diff comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: cdk-diff
+          path: cdk-diff-comment.md
+
+  deploy:
+    name: CDK deploy (main)
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials (deploy role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Require ALERTS_EMAIL
+        run: |
+          if [ -z "${{ vars.ALERTS_EMAIL }}" ]; then
+            echo "Set repository variable ALERTS_EMAIL before deploying."
+            exit 1
+          fi
+
+      - name: CDK deploy
+        env:
+          ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
+        run: npm run cdk -- deploy --all --require-approval never
+
+  drift:
+    name: CDK drift
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'drift')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials (deploy role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK drift
+        id: drift
+        env:
+          ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
+        run: |
+          set +e
+          npm run cdk -- drift --fail 2>&1 | tee cdk-drift.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -ne 0 ]; then
+            echo "Drift detected or drift command failed."
+            exit "$code"
+          fi
+
+      - name: Notify SNS on failure
+        if: failure()
+        env:
+          ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
+        run: |
+          TOPIC_ARN=$(aws cloudformation describe-stacks \
+            --stack-name Guardrails-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='AlertsTopicArn'].OutputValue" \
+            --output text)
+          aws sns publish \
+            --topic-arn "$TOPIC_ARN" \
+            --subject "gagnechris CDK drift detected" \
+            --message "Nightly/manual cdk drift failed on ${GITHUB_SHA}. See Actions run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

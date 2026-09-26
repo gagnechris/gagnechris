@@ -52,6 +52,29 @@ After deploying Guardrails:
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
+## GitHub Actions OIDC (CHR-19)
+
+CI assumes short-lived roles (no AWS keys in GitHub).
+
+1. Deploy the role stack once (laptop admin), then set repo variables:
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy CiDeployRole-prod --require-approval never
+
+# Copy ARNs from stack outputs, then:
+gh variable set AWS_DEPLOY_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-deploy'
+gh variable set AWS_DIFF_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-diff'
+gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
+```
+
+2. Workflows (`.github/workflows/cdk.yml`):
+   - **PR:** `cdk synth` + `cdk diff` (diff role); posts a sticky PR comment
+   - **main / workflow_dispatch deploy:** `cdk deploy --all` (deploy role, `prod` environment)
+   - **Nightly / workflow_dispatch drift:** `cdk drift --fail`; SNS alert on failure
+
+Prod only by default (no staging deploy). Staging remains available later via `-c env=staging`.
+
 ## Existing resources (CDK decisions)
 
 | Resource | Decision |
