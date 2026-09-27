@@ -1,8 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import BearGame from '../games/bears/BearGame'
 import './DontFeedTheBears.css'
 
 function DontFeedTheBears() {
+  const [searchParams] = useSearchParams()
+  const from = searchParams.get('from')?.trim() || 'direct'
+
   return (
     <div className="bears-page">
       <title>Don't Feed the Bears - Chris Gagne</title>
@@ -20,7 +23,7 @@ function DontFeedTheBears() {
         </Link>
       </header>
       <main>
-        <BearGame />
+        <BearGame from={from} />
       </main>
     </div>
   )

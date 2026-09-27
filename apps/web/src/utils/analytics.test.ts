@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { trackPageView, trackEvent, trackResumeView, trackResumeDownload } from './analytics'
+import {
+  trackPageView,
+  trackEvent,
+  trackResumeView,
+  trackResumeDownload,
+  trackBearsGameStart,
+  trackBearsGameComplete,
+  trackBearsTipLinkClick,
+} from './analytics'
 
 const mockGtag = vi.fn()
 
@@ -91,6 +99,34 @@ describe('analytics utilities', () => {
     })
   })
 
+  describe('bears game events', () => {
+    test('tracks bears_game_start with from', () => {
+      trackBearsGameStart('footer')
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'bears_game_start', {
+        from: 'footer',
+      })
+    })
+
+    test('tracks bears_game_complete with from and score', () => {
+      trackBearsGameComplete('resume', 42)
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'bears_game_complete', {
+        from: 'resume',
+        score: 42,
+        value: 42,
+      })
+    })
+
+    test('tracks bears_tip_link_click with from', () => {
+      trackBearsTipLinkClick('404')
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'bears_tip_link_click', {
+        from: '404',
+      })
+    })
+  })
+
   describe('server-side rendering safety', () => {
     test('does not throw error when window is undefined', () => {
       const originalWindow = globalThis.window
@@ -102,6 +138,9 @@ describe('analytics utilities', () => {
         trackEvent('test', 'test')
         trackResumeView()
         trackResumeDownload()
+        trackBearsGameStart('direct')
+        trackBearsGameComplete('direct', 0)
+        trackBearsTipLinkClick('direct')
       }).not.toThrow()
 
       globalThis.window = originalWindow

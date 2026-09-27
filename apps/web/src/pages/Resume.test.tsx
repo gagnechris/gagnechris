@@ -58,19 +58,42 @@ describe('Resume Page', () => {
       click: vi.fn(),
     }
 
+    let interceptNextAnchor = true
     const originalCreateElement = document.createElement.bind(document)
     vi.spyOn(document, 'createElement').mockImplementation((tag) => {
-      if (tag === 'a') return mockAnchor as unknown as HTMLElement
+      if (tag === 'a' && interceptNextAnchor) {
+        interceptNextAnchor = false
+        return mockAnchor as unknown as HTMLElement
+      }
       return originalCreateElement(tag)
     })
 
-    vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor as unknown as Node)
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor as unknown as Node)
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+      if (node === (mockAnchor as unknown as Node)) {
+        return node
+      }
+      return Node.prototype.appendChild.call(document.body, node) as Node
+    })
+    vi.spyOn(document.body, 'removeChild').mockImplementation((node) => {
+      if (node === (mockAnchor as unknown as Node)) {
+        return node
+      }
+      return Node.prototype.removeChild.call(document.body, node) as Node
+    })
 
     fireEvent.click(screen.getByRole('button', { name: /resume/i }))
 
     await waitFor(() => expect(mockAnchor.click).toHaveBeenCalled())
     expect(mockAnchor.href).toBe('/resume.pdf')
     expect(mockAnchor.download).toBe('resume.pdf')
+
+    expect(
+      screen.getByRole('link', { name: /don't feed the bears/i }),
+    ).toHaveAttribute('href', '/dont-feed-the-bears?from=resume')
+
+    fireEvent.click(screen.getByRole('button', { name: /dismiss bear game note/i }))
+    expect(
+      screen.queryByRole('link', { name: /don't feed the bears/i }),
+    ).not.toBeInTheDocument()
   })
 })

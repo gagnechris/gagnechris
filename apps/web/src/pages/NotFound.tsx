@@ -14,6 +14,11 @@ function NotFound() {
       </header>
       <main>
         <p>That URL does not match a page on this site.</p>
+        <p className="not-found-bear">
+          Lost in the woods?{' '}
+          <Link to="/dont-feed-the-bears?from=404">Don't feed the bears</Link>
+          {' '}while you find your way.
+        </p>
         <ul className="not-found-links">
           <li>
             <Link to="/">Home</Link>
