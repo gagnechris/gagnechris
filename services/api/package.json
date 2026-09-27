@@ -2,6 +2,7 @@
   "name": "@gagnechris/api",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "description": "Lambda API handlers.",
   "scripts": {
