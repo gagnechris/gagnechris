@@ -3,26 +3,33 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Layout
-npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
+npm workspaces. Root scripts delegate across workspaces (see Commands).
 
-- `apps/web` — React/Vite site
-- `infra` — AWS CDK app; bootstrap steps in `infra/RUNBOOK.md`
-- `services/api` — Lambda handlers (later)
-- `packages/shared` — types shared by the site, API, and publisher (later)
-- `scripts/` — repo tooling (branch protection), not the site build
+- `apps/web` — React/Vite site + admin
+- `services/api` — Lambda HTTP API
+- `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
+- `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
+- `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
+- `scripts/` — local stack, web deploy, branch protection
+- `docs/` — architecture, development, data model, local E2E
 
 ## Commands
-- Build: `npm run build` (runs `tsc -b` then Vite in `apps/web`; generates `sitemap.xml` from published posts)
-- Typecheck: `npm run typecheck` (runs `tsc -b` only)
-- Lint: `npm run lint` (runs ESLint)
-- Dev: `npm run dev` (starts Vite development server)
-- Preview: `npm run preview` (previews production build locally)
-- Test: `npm test` (Vitest for web + infra)
+- Build: `npm run build` (`tsc -b` then Vite in `apps/web`)
+- Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
+- Lint: `npm run lint` (ESLint for `@gagnechris/web`)
+- Dev (Vite only): `npm run dev` (API proxied to local by default)
+- Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
+- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + Vite; fake auth)
+- Preview: `npm run preview` (production build locally)
+- Test: `npm test` (Vitest for web + shared + infra + api + publisher)
+- Local E2E: `npm run e2e:local`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
-- CI: lint/test/build/synth; OIDC CDK diff on PRs, deploy on main, nightly drift
+- CI: lint/typecheck/test/build/synth; OIDC CDK diff on PRs, deploy on main, nightly drift
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR, require **Lint, test, and build**, block force-push/delete)
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
+
+Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xml`, `sitemap.xml`, and `resume.pdf` on publish.
 
 ## Workflow
 - One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
@@ -30,6 +37,7 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 - Merge only after CI is green on the PR.
 - **Definition of done:** ticket is Done only after merge, deploy finished, and acceptance criteria verified live (paste evidence in Linear). See `.cursor/rules/definition-of-done.mdc`.
 - **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `.cursor/rules/aws-changes.mdc`.
+- **Docs:** if a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, `.github/README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
 
 ## Hosting & Integrations
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`

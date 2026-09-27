@@ -13,3 +13,5 @@ A ticket is **Done** only when all of the following are true:
 4. Evidence is pasted into a Linear comment on the ticket before moving it to Done.
 
 Do not mark Done while a deploy is still in progress or based only on local synth/unit tests.
+
+If a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, `.github/README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.

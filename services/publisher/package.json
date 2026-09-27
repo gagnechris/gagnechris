@@ -2,6 +2,7 @@
   "name": "@gagnechris/publisher",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "description": "DynamoDB Streams publisher: static blog HTML, posts.json, sitemap, RSS.",
   "scripts": {

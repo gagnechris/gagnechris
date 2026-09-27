@@ -2,6 +2,7 @@
   "name": "@gagnechris/infra",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "description": "AWS CDK app for gagnechris.com",
   "scripts": {
