@@ -22,6 +22,7 @@ import {
   type AttractantKind,
   type GameState,
 } from './gameLogic'
+import { playFailSound, playSecureSound, playSuccessSound } from './sound'
 import { BEAR_GUIDANCE_URL, BEAR_TIPS, type BearTip } from './tips'
 import './BearGame.css'
 
@@ -137,6 +138,11 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   )
   const prevPhase = useRef(state.phase)
   const didTrackInitialStart = useRef(false)
+  const soundOnRef = useRef(soundOn)
+
+  useEffect(() => {
+    soundOnRef.current = soundOn
+  }, [soundOn])
 
   const startRound = useCallback(
     (nextRound: number) => {
@@ -185,6 +191,10 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   useEffect(() => {
     if (prevPhase.current === 'playing' && state.phase !== 'playing') {
       trackBearsGameComplete(from, state.score)
+      if (soundOnRef.current) {
+        if (state.phase === 'success') playSuccessSound()
+        else playFailSound()
+      }
     }
     prevPhase.current = state.phase
   }, [state.phase, state.score, from])
@@ -195,7 +205,17 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
 
   const onSecure = (attractant: Attractant) => {
     if (state.phase !== 'playing' || attractant.status === 'secured') return
-    setState((prev) => secureAttractant(prev, attractant.id))
+    setState((prev) => {
+      const next = secureAttractant(prev, attractant.id)
+      if (
+        soundOnRef.current &&
+        next.attractants.find((a) => a.id === attractant.id)?.status ===
+          'secured'
+      ) {
+        playSecureSound()
+      }
+      return next
+    })
   }
 
   const onSecureKey = (
@@ -287,7 +307,11 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
             className="bear-game__btn bear-game__btn--ghost"
             aria-pressed={soundOn}
             onClick={() => setSoundOn((v) => !v)}
-            title="Sound is a stub for now — stays silent either way"
+            title={
+              soundOn
+                ? 'Mute game sounds'
+                : 'Enable short sound effects (off by default)'
+            }
           >
             Sound: {soundOn ? 'On' : 'Off'}
           </button>

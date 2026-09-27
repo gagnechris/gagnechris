@@ -1,13 +1,15 @@
 /**
- * Build-time HTML meta for static marketing routes (CHR-37).
+ * Build-time HTML meta for static marketing routes (CHR-37 / CHR-95).
  * Mirrors the publisher's shell replaceMeta approach without a Runtime React render.
  */
 
 export type StaticPageMeta = {
   /** URL path without trailing slash; empty string = home. */
-  routePath: '' | 'resume' | 'contact'
+  routePath: '' | 'resume' | 'contact' | 'dont-feed-the-bears'
   title: string
   description: string
+  /** Site-absolute path to OG/Twitter image (defaults to /og-image.jpg). */
+  ogImagePath?: string
 }
 
 export const STATIC_PAGE_META: StaticPageMeta[] = [
@@ -29,10 +31,17 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
     description:
       'Contact Chris Gagne — engineering leadership, software collaboration, and speaking.',
   },
+  {
+    routePath: 'dont-feed-the-bears',
+    title: "Don't Feed the Bears - Chris Gagne",
+    description:
+      'A short Vermont camp mini-game: secure attractants before black bears reach them, then learn real tips from Vermont Fish & Wildlife.',
+    ogImagePath: '/og-dont-feed-the-bears.jpg',
+  },
 ]
 
 const APEX = 'https://gagnechris.com'
-const OG_IMAGE = `${APEX}/og-image.jpg`
+const DEFAULT_OG_IMAGE = `${APEX}/og-image.jpg`
 
 const escapeHtml = (value: string): string =>
   value
@@ -74,6 +83,12 @@ export function canonicalUrlFor(routePath: StaticPageMeta['routePath']): string 
   return routePath ? `${APEX}/${routePath}` : APEX
 }
 
+function absoluteOgImage(meta: StaticPageMeta): string {
+  if (!meta.ogImagePath) return DEFAULT_OG_IMAGE
+  if (meta.ogImagePath.startsWith('http')) return meta.ogImagePath
+  return `${APEX}${meta.ogImagePath.startsWith('/') ? '' : '/'}${meta.ogImagePath}`
+}
+
 /** Apply per-page title, description, OG/Twitter, and canonical to a Vite shell. */
 export function applyStaticPageMeta(
   shellHtml: string,
@@ -82,6 +97,7 @@ export function applyStaticPageMeta(
   const title = escapeHtml(meta.title)
   const description = escapeHtml(meta.description)
   const url = canonicalUrlFor(meta.routePath)
+  const image = absoluteOgImage(meta)
 
   let html = shellHtml
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`)
@@ -90,10 +106,10 @@ export function applyStaticPageMeta(
   html = replaceMeta(html, 'property', 'og:description', description)
   html = replaceMeta(html, 'property', 'og:type', 'website')
   html = replaceMeta(html, 'property', 'og:url', url)
-  html = replaceMeta(html, 'property', 'og:image', OG_IMAGE)
+  html = replaceMeta(html, 'property', 'og:image', image)
   html = replaceMeta(html, 'name', 'twitter:title', title)
   html = replaceMeta(html, 'name', 'twitter:description', description)
-  html = replaceMeta(html, 'name', 'twitter:image', OG_IMAGE)
+  html = replaceMeta(html, 'name', 'twitter:image', image)
   html = upsertCanonical(html, url)
   return html
 }
