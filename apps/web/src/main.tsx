@@ -11,10 +11,14 @@ import NotFound from './pages/NotFound.tsx'
 import AppWithTracking from './components/AppWithTracking.tsx'
 import { LazyFallback } from './components/LazyFallback.tsx'
 
+// HydrateFallback must be a static route property (sibling to `lazy`), not returned
+// from lazy(). React Router skips HydrateFallback from lazy() during initial hydration,
+// which is what triggers the console warning on /admin.
 const router = createBrowserRouter([
   {
     path: '/',
     element: <AppWithTracking />,
+    HydrateFallback: LazyFallback,
     children: [
       {
         index: true,
@@ -38,82 +42,88 @@ const router = createBrowserRouter([
       },
       {
         path: 'dont-feed-the-bears',
+        HydrateFallback: LazyFallback,
         lazy: async () => {
           const { default: DontFeedTheBears } = await import(
             './pages/DontFeedTheBears.tsx'
           )
-          return { Component: DontFeedTheBears, HydrateFallback: LazyFallback }
+          return { Component: DontFeedTheBears }
         },
       },
       {
         path: 'auth/callback',
+        HydrateFallback: LazyFallback,
         lazy: async () => {
           const { default: AuthCallback } = await import('./auth/AuthCallback.tsx')
-          return { Component: AuthCallback, HydrateFallback: LazyFallback }
+          return { Component: AuthCallback }
         },
       },
       {
         path: 'admin',
+        HydrateFallback: LazyFallback,
         lazy: async () => {
           const { default: AdminLayout } = await import('./admin/AdminLayout.tsx')
-          return { Component: AdminLayout, HydrateFallback: LazyFallback }
+          return { Component: AdminLayout }
         },
         children: [
           {
             index: true,
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: AdminPostsPage } = await import(
                 './admin/AdminPostsPage.tsx'
               )
-              return { Component: AdminPostsPage, HydrateFallback: LazyFallback }
+              return { Component: AdminPostsPage }
             },
           },
           {
             path: 'posts',
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: AdminPostsPage } = await import(
                 './admin/AdminPostsPage.tsx'
               )
-              return { Component: AdminPostsPage, HydrateFallback: LazyFallback }
+              return { Component: AdminPostsPage }
             },
           },
           {
             path: 'posts/:postId',
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: PostEditorPage } = await import(
                 './admin/PostEditorPage.tsx'
               )
-              return { Component: PostEditorPage, HydrateFallback: LazyFallback }
+              return { Component: PostEditorPage }
             },
           },
           {
             path: 'home',
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: AdminHomePage } = await import(
                 './admin/AdminHomePage.tsx'
               )
-              return { Component: AdminHomePage, HydrateFallback: LazyFallback }
+              return { Component: AdminHomePage }
             },
           },
           {
             path: 'resume',
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: AdminResumePage } = await import(
                 './admin/AdminResumePage.tsx'
               )
-              return { Component: AdminResumePage, HydrateFallback: LazyFallback }
+              return { Component: AdminResumePage }
             },
           },
           {
             path: 'notebook',
+            HydrateFallback: LazyFallback,
             lazy: async () => {
               const { default: AdminNotebookPage } = await import(
                 './admin/AdminNotebookPage.tsx'
               )
-              return {
-                Component: AdminNotebookPage,
-                HydrateFallback: LazyFallback,
-              }
+              return { Component: AdminNotebookPage }
             },
           },
         ],
