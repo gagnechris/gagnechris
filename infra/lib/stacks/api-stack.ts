@@ -29,6 +29,7 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { NagSuppressions } from 'cdk-nag';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +48,8 @@ export interface ApiStackProps extends StackProps {
   readonly iosClient?: IUserPoolClient;
   readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
+  /** Shared single-table (posts + future Notebook). */
+  readonly dataTable: ITable;
 }
 
 /**
@@ -59,7 +62,8 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    const { config, userPool, webClient, distribution, alertsTopic } = props;
+    const { config, userPool, webClient, distribution, alertsTopic, dataTable } =
+      props;
 
     const logGroup = new LogGroup(this, 'ApiLogGroup', {
       retention: RetentionDays.TWO_WEEKS,
@@ -67,7 +71,7 @@ export class ApiStack extends Stack {
 
     this.apiFunction = new NodejsFunction(this, 'ApiFunction', {
       functionName: `gagnechris-${config.name}-api`,
-      description: 'gagnechris HTTP API (health + admin)',
+      description: 'gagnechris HTTP API (health + admin posts; shared data table)',
       entry: join(repoRoot, 'services/api/src/handler.ts'),
       handler: 'handler',
       runtime: Runtime.NODEJS_24_X,
@@ -88,8 +92,11 @@ export class ApiStack extends Stack {
         POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
         POWERTOOLS_METRICS_NAMESPACE: 'gagnechris',
         NODE_OPTIONS: '--enable-source-maps',
+        DATA_TABLE_NAME: dataTable.tableName,
       },
     });
+
+    dataTable.grantReadWriteData(this.apiFunction);
 
     NagSuppressions.addResourceSuppressions(
       this.apiFunction,

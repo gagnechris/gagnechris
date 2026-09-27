@@ -126,6 +126,12 @@ Manual / local:
 AWS_PROFILE=gagnechris-admin npm run deploy:web
 ```
 
+## HTTP API (CHR-28 / CHR-30)
+
+`Api-prod`: HTTP API + Lambda behind CloudFront `/api/*`. Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts CRUD uses the shared `Data-prod` table (`DATA_TABLE_NAME`); Notebook will share the same table with different key prefixes (`docs/data-model.md`).
+
+SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
+
 ## DynamoDB data plane (CHR-29)
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). GSIs `gsi1` (status lists) and `gsi2` (tags). Key design: `docs/data-model.md`.

@@ -13,6 +13,7 @@ import {
   type AdminMeResponse,
   type HealthResponse,
 } from '@gagnechris/shared';
+import { handlePostsRoute } from './posts/handlers.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-api' });
 const tracer = new Tracer({ serviceName: 'gagnechris-api' });
@@ -34,10 +35,8 @@ function json(
   };
 }
 
-function routeKey(event: APIGatewayProxyEventV2): string {
-  const method = event.requestContext.http.method.toUpperCase();
-  const path = event.rawPath.replace(/\/$/, '') || '/';
-  return `${method} ${path}`;
+function normalizePath(rawPath: string): string {
+  return rawPath.replace(/\/$/, '') || '/';
 }
 
 function claimsFromEvent(
@@ -87,8 +86,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   context: Context,
 ) => {
   logger.addContext(context);
+  const method = event.requestContext.http.method.toUpperCase();
+  const path = normalizePath(event.rawPath);
   logger.appendKeys({
-    route: routeKey(event),
+    route: `${method} ${path}`,
     requestId: event.requestContext.requestId,
   });
   const segment = tracer.getSegment();
@@ -98,22 +99,35 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   }
 
   try {
-    const key = routeKey(event);
-    logger.info('request', { path: event.rawPath });
+    logger.info('request', { path });
 
-    switch (key) {
-      case 'GET /api/health':
-      case 'GET /health':
-        metrics.addMetric('HealthCheck', MetricUnit.Count, 1);
-        return handleHealth();
-      case 'GET /api/admin/me':
-      case 'GET /admin/me':
-        metrics.addMetric('AdminMe', MetricUnit.Count, 1);
-        return handleAdminMe(event);
-      default:
-        metrics.addMetric('NotFound', MetricUnit.Count, 1);
-        return json(404, { error: 'not_found', message: `No route for ${key}` });
+    if (
+      (method === 'GET' && path === '/api/health') ||
+      (method === 'GET' && path === '/health')
+    ) {
+      metrics.addMetric('HealthCheck', MetricUnit.Count, 1);
+      return handleHealth();
     }
+
+    if (
+      (method === 'GET' && path === '/api/admin/me') ||
+      (method === 'GET' && path === '/admin/me')
+    ) {
+      metrics.addMetric('AdminMe', MetricUnit.Count, 1);
+      return handleAdminMe(event);
+    }
+
+    const postsResponse = await handlePostsRoute(event, method, path);
+    if (postsResponse) {
+      metrics.addMetric('PostsRoute', MetricUnit.Count, 1);
+      return postsResponse;
+    }
+
+    metrics.addMetric('NotFound', MetricUnit.Count, 1);
+    return json(404, {
+      error: 'not_found',
+      message: `No route for ${method} ${path}`,
+    });
   } catch (error) {
     logger.error('handler error', { error: String(error) });
     metrics.addMetric('HandlerError', MetricUnit.Count, 1);
