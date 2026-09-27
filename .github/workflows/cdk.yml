@@ -91,7 +91,7 @@ jobs:
 
       - name: Post diff comment
         if: ${{ !cancelled() && hashFiles('cdk-diff-comment.md') != '' }}
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: cdk-diff
           path: cdk-diff-comment.md
