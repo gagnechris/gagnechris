@@ -193,6 +193,19 @@ export class SiteStack extends Stack {
       }),
     });
 
+    const viewerResponseFn = new CloudFrontFunction(this, 'ViewerResponseFn', {
+      functionName: `gagnechris-${config.name}-viewer-response`,
+      comment:
+        'Force 404 status for /404.html; replace S3 XML errors with HTML 404 (CHR-102)',
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromFile({
+        filePath: path.join(
+          __dirname,
+          '../cloudfront/viewer-response-function.js',
+        ),
+      }),
+    });
+
     // Long cache for Vite hashed assets under /assets/*
     const assetsCachePolicy = new CachePolicy(this, 'AssetsCachePolicy', {
       cachePolicyName: `gagnechris-${config.name}-assets`,
@@ -251,6 +264,10 @@ export class SiteStack extends Stack {
             function: viewerRequestFn,
             eventType: FunctionEventType.VIEWER_REQUEST,
           },
+          {
+            function: viewerResponseFn,
+            eventType: FunctionEventType.VIEWER_RESPONSE,
+          },
         ],
       },
       additionalBehaviors: {
@@ -275,9 +292,9 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into HTML. Unknown blog slugs and other extensionless
-      // paths are rewritten in viewer-request to /404.html; /admin and /auth
-      // use /spa.html (CHR-102).
+      // /assets 403/404 into HTML. Default-behavior viewer-request routes
+      // unknowns to /404.html (and /admin|/auth to /spa.html); viewer-response
+      // forces HTTP 404 for /404.html and replaces S3 XML errors with HTML.
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
