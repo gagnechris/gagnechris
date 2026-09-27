@@ -62,6 +62,15 @@ describe('publisher render', () => {
     expect(html).toContain('<strong>bold</strong>');
   });
 
+  it('formats midnight UTC publish dates in UTC for prerender', () => {
+    const html = buildArticleHtml(
+      samplePost({ publishedAt: '2026-02-01T00:00:00.000Z' }),
+    );
+    expect(html).toContain(
+      '<time datetime="2026-02-01">February 1, 2026</time>',
+    );
+  });
+
   it('injects OG tags and prerendered HTML into the shell', () => {
     const html = renderPostPage(shell, samplePost());
     expect(html).toContain('<title>Hello World - Chris Gagne</title>');
