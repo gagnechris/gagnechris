@@ -1,4 +1,10 @@
 /**
+ * Pristine Vite SPA shell key. Deploy uploads this; the publisher reads it and
+ * never treats its own `index.html` (home prerender) as the template (CHR-104).
+ */
+export const SITE_SHELL_KEY = '_shell.html';
+
+/**
  * Site artifact storage for the publisher (S3 in prod, filesystem locally).
  */
 export type SiteStorage = {

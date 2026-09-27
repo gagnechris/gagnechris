@@ -15,7 +15,8 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 /**
  * After Vite emits dist/index.html, write per-route shells with page meta
  * (home, /resume, /contact) so LinkedIn/Slack previews are correct (CHR-37).
- * Also emits /spa.html (admin/auth) and /404.html (CHR-102).
+ * Also emits /spa.html (admin/auth), /404.html (CHR-102), and /_shell.html
+ * (pristine publisher template — never overwritten by home prerender; CHR-104).
  */
 export function staticPagesPlugin(): Plugin {
   return {
@@ -28,7 +29,10 @@ export function staticPagesPlugin(): Plugin {
       }
       const shell = fs.readFileSync(shellPath, 'utf8')
 
-      // Capture the pristine Vite shell before home meta is applied.
+      // Publisher reads this only; keep the raw Vite shell before home meta.
+      fs.writeFileSync(path.join(appRoot, 'dist/_shell.html'), shell)
+
+      // Capture spa/404 shells before home meta is applied.
       fs.writeFileSync(
         path.join(appRoot, 'dist/spa.html'),
         applySpaShellMeta(shell),

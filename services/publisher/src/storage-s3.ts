@@ -10,7 +10,7 @@ import {
   CreateInvalidationCommand,
 } from '@aws-sdk/client-cloudfront';
 import { isLocalCloudFront, requireEnv } from './config.js';
-import type { SiteStorage } from './storage.js';
+import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
 
 const s3 = new S3Client({});
 const cloudfront = new CloudFrontClient({});
@@ -21,11 +21,11 @@ export function createS3SiteStorage(): SiteStorage {
   return {
     async readShell(): Promise<string> {
       const out = await s3.send(
-        new GetObjectCommand({ Bucket: bucket, Key: 'index.html' }),
+        new GetObjectCommand({ Bucket: bucket, Key: SITE_SHELL_KEY }),
       );
       const body = await out.Body?.transformToString('utf-8');
       if (!body) {
-        throw new Error('Site shell index.html is empty or missing');
+        throw new Error(`Site shell ${SITE_SHELL_KEY} is empty or missing`);
       }
       return body;
     },

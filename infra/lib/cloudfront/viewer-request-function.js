@@ -8,6 +8,7 @@
  *   unknown slugs -> /404.html (avoids raw S3 XML)
  * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
  * - Other extensionless paths -> /404.html (NotFound, not Home)
+ * - Direct /_shell.html is blocked (publisher template only; CHR-104)
  * - Paths with a file extension pass through unchanged
  *
  * No distribution-wide custom error pages (so /api and /assets keep real 403/404).
@@ -50,6 +51,18 @@ function handler(event) {
 
   if (uri === '/api' || uri.indexOf('/api/') === 0 || uri === '/media' || uri.indexOf('/media/') === 0) {
     return request;
+  }
+
+  // Pristine publisher shell is an origin object only — not a public URL (CHR-104).
+  if (uri === '/_shell.html') {
+    return {
+      statusCode: 404,
+      statusDescription: 'Not Found',
+      headers: {
+        'content-type': { value: 'text/plain; charset=utf-8' },
+      },
+      body: 'Not Found',
+    };
   }
 
   if (uri === '/' || uri === '/index.html') {

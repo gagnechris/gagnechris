@@ -58,10 +58,9 @@ gets the `home-page-prerender` article. The public page at
 `http://localhost:5173/` fetches `/__site/` and falls back to `DEFAULT_HOME`.
 Quick Links and the profile photo are still hard-coded React.
 
-`index.html` is the SPA shell *and* the home page, so the publisher strips the
-previous prerender out of `#root` before reusing it as the shell for other
-pages. `npm run e2e:local` asserts both halves: `/` has the home prerender and
-`/blog/<slug>` does not.
+The publisher reads a pristine `_shell.html` template (never the home
+prerender in `index.html`) when building other pages. `npm run e2e:local`
+asserts both halves: `/` has the home prerender and `/blog/<slug>` does not.
 
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
 

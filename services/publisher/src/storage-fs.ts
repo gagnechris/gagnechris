@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { requireEnv } from './config.js';
-import type { SiteStorage } from './storage.js';
+import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
 
 async function walkFiles(root: string, prefix: string): Promise<string[]> {
   const abs = join(root, prefix);
@@ -31,9 +31,9 @@ export function createFilesystemSiteStorage(
 
   return {
     async readShell(): Promise<string> {
-      const body = await readFile(join(root, 'index.html'), 'utf-8');
+      const body = await readFile(join(root, SITE_SHELL_KEY), 'utf-8');
       if (!body.trim()) {
-        throw new Error('Site shell index.html is empty or missing');
+        throw new Error(`Site shell ${SITE_SHELL_KEY} is empty or missing`);
       }
       return body;
     },

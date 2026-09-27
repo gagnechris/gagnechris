@@ -3,7 +3,7 @@ import { access, mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
-import { postSlugsFromKeys } from '../src/storage.js';
+import { postSlugsFromKeys, SITE_SHELL_KEY } from '../src/storage.js';
 
 describe('postSlugsFromKeys', () => {
   it('extracts post slugs and skips blog index / posts.json', () => {
@@ -45,7 +45,7 @@ describe('filesystem site storage', () => {
 
   it('reads shell and puts blog artifacts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
-    await writeFile(join(root, 'index.html'), '<html>shell</html>');
+    await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(await storage.readShell()).toBe('<html>shell</html>');
     await storage.put(
@@ -56,5 +56,13 @@ describe('filesystem site storage', () => {
     );
     expect(await storage.list('blog/')).toEqual(['blog/hello/index.html']);
     await storage.invalidate(['/blog/hello']);
+  });
+
+  it('does not treat index.html as the shell template', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    await writeFile(join(root, SITE_SHELL_KEY), '<html>pristine</html>');
+    await writeFile(join(root, 'index.html'), '<html>home-prerender</html>');
+    const storage = createFilesystemSiteStorage(root);
+    expect(await storage.readShell()).toBe('<html>pristine</html>');
   });
 });

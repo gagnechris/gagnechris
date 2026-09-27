@@ -91,6 +91,7 @@ ensure_shell() {
   </body>
 </html>
 HTML
+    cp "${SITE_BUCKET_NAME}/index.html" "${SITE_BUCKET_NAME}/_shell.html"
   else
     echo "==> Site shell already present at ${SITE_BUCKET_NAME}"
   fi

@@ -43,14 +43,6 @@ const injectPrerender = (shellHtml: string, body: string): string => {
     : shellHtml.replace(ROOT_EMPTY_RE, () => root);
 };
 
-/**
- * `index.html` is both the Vite shell and the prerendered home page, so the
- * shell read back from the bucket has to be emptied before it is reused for
- * other pages — otherwise home content leaks into /blog and /resume.
- */
-export const normalizeShellHtml = (shellHtml: string): string =>
-  shellHtml.replace(ROOT_PRERENDERED_RE, () => '<div id="root"></div>');
-
 export const postCanonicalUrl = (slug: string): string =>
   `https://${APEX}/blog/${slug}`;
 
@@ -201,8 +193,8 @@ export const renderResumePage = (
 };
 
 /**
- * Home is the SPA shell itself: the publisher rewrites `index.html` in place
- * after every web deploy re-uploads the empty Vite shell.
+ * Home document: publisher writes prerendered markup to `index.html` from the
+ * pristine `_shell.html` template (never reads index.html back as the shell).
  */
 export const renderHomePage = (shellHtml: string, home: Home): string => {
   const title = escapeHtml(home.seo?.title || `${home.name} - ${home.title}`);
