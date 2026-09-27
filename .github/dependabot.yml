@@ -7,6 +7,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    # typescript@7 is the Go rewrite; typescript-eslint still peers <6.1.0.
+    # Bump TypeScript majors deliberately, not via Dependabot.
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       production-dependencies:
         dependency-type: production
