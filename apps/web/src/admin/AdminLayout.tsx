@@ -11,7 +11,7 @@ function AdminChrome({ user }: { user: AuthUser }) {
       <header className="admin-header">
         <div className="admin-brand">
           <span className="admin-brand__title">Admin</span>
-          <span className="admin-brand__user">{user.username}</span>
+          <span className="admin-brand__user">{user.label}</span>
         </div>
         <nav className="admin-nav" aria-label="Admin">
           <NavLink

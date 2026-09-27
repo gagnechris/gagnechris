@@ -7,15 +7,24 @@ import {
 import { ensureAmplifyConfigured } from './config'
 
 export type AuthUser = {
-  username: string
+  /** Preferred display label (email when available). */
+  label: string
   userId: string
 }
 
 export const getAuthUser = async (): Promise<AuthUser | null> => {
   ensureAmplifyConfigured()
   try {
-    const user = await getCurrentUser()
-    return { username: user.username, userId: user.userId }
+    const [user, session] = await Promise.all([
+      getCurrentUser(),
+      fetchAuthSession(),
+    ])
+    const email = session.tokens?.idToken?.payload?.email
+    const label =
+      typeof email === 'string' && email.trim() !== ''
+        ? email
+        : user.signInDetails?.loginId || user.username
+    return { label, userId: user.userId }
   } catch {
     return null
   }

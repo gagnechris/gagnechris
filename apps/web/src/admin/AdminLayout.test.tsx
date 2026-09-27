@@ -6,7 +6,7 @@ import AdminPostsPage from './AdminPostsPage'
 
 vi.mock('../auth/session', () => ({
   getAuthUser: vi.fn(async () => ({
-    username: 'admin@example.com',
+    label: 'admin@example.com',
     userId: 'u1',
   })),
   redirectToSignIn: vi.fn(),
