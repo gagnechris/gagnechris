@@ -37,8 +37,6 @@ const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
   description: `ACM certificate in us-east-1 for CloudFront and Cognito (${config.name}).`,
   crossRegionReferences: true,
   config,
-  // CHR-73 phase 1: leave false so the staging-SAN cert stays until a
-  // follow-up PR (phase 2) after Site has cut over to SiteCertificateV2.
 });
 
 const guardrails = new GuardrailsStack(app, `Guardrails-${config.name}`, {
