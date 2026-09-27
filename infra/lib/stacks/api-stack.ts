@@ -54,6 +54,11 @@ export interface ApiStackProps extends StackProps {
   readonly dataTable: ITable;
   /** SES domain identity for contact / resume notifications (CHR-38). */
   readonly emailIdentity: IEmailIdentity;
+  /**
+   * SES identity for the notify inbox. Required in sandbox because SendEmail
+   * authorizes the destination identity as well as the From domain.
+   */
+  readonly notifyEmailIdentity: IEmailIdentity;
   /** Verified From address (e.g. noreply@apex). */
   readonly fromEmail: string;
 }
@@ -76,6 +81,7 @@ export class ApiStack extends Stack {
       alertsTopic,
       dataTable,
       emailIdentity,
+      notifyEmailIdentity,
       fromEmail,
     } = props;
 
@@ -131,6 +137,8 @@ export class ApiStack extends Stack {
     // Presigned PUT only — objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.apiFunction);
+    // Sandbox SendEmail also checks the destination identity ARN.
+    notifyEmailIdentity.grantSendEmail(this.apiFunction);
 
     NagSuppressions.addResourceSuppressions(
       this.apiFunction,

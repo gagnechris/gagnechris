@@ -18,6 +18,8 @@ export class EmailStack extends Stack {
   readonly emailIdentity: EmailIdentity;
   /** Verified From address used by the API Lambda. */
   readonly fromEmail: string;
+  /** Alerts inbox identity (sandbox delivery target). */
+  readonly notifyEmailIdentity: EmailIdentity;
 
   constructor(scope: Construct, id: string, props: EmailStackProps) {
     super(scope, id, props);
@@ -31,7 +33,7 @@ export class EmailStack extends Stack {
     });
 
     // Sandbox: allow sending to the alerts inbox before production access.
-    new EmailIdentity(this, 'NotifyEmailIdentity', {
+    this.notifyEmailIdentity = new EmailIdentity(this, 'NotifyEmailIdentity', {
       identity: Identity.email(config.alertsEmail),
     });
 

@@ -587,6 +587,7 @@ describe('ApiStack', () => {
       alertsTopic,
       dataTable: data.table,
       emailIdentity: email.emailIdentity,
+      notifyEmailIdentity: email.notifyEmailIdentity,
       fromEmail: email.fromEmail,
     });
     applyStandardTags(api, config);
