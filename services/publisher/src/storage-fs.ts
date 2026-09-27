@@ -40,13 +40,17 @@ export function createFilesystemSiteStorage(
 
     async put(
       key: string,
-      body: string,
+      body: string | Uint8Array,
       _contentType: string,
       _cacheControl: string,
     ): Promise<void> {
       const path = join(root, key);
       await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, body, 'utf-8');
+      if (typeof body === 'string') {
+        await writeFile(path, body, 'utf-8');
+      } else {
+        await writeFile(path, body);
+      }
     },
 
     async delete(key: string): Promise<void> {

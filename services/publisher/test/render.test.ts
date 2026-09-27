@@ -101,7 +101,7 @@ describe('publisher render', () => {
       ).match(/rel="canonical"/g),
     ).toHaveLength(1);
     expect(html).toContain('<div id="root"><article class="resume-page-prerender"');
-    expect(html).toContain('data-pdf="/Christopher M Gagne Resume 2026.pdf"');
+    expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('/assets/index.js');
   });
 

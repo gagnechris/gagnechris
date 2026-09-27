@@ -32,7 +32,7 @@ export function createS3SiteStorage(): SiteStorage {
 
     async put(
       key: string,
-      body: string,
+      body: string | Uint8Array,
       contentType: string,
       cacheControl: string,
     ): Promise<void> {

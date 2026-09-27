@@ -236,7 +236,8 @@ export const ResumeSchema = z
   .object({
     name: z.string().min(1),
     pdfPath: z.string().min(1).openapi({
-      description: 'Site-relative path to the downloadable PDF',
+      description:
+        'Site-relative path to the downloadable PDF (publisher always serves /resume.pdf)',
     }),
     content: ResumeContentSchema,
     status: PostStatusSchema,

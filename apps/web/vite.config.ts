@@ -64,6 +64,12 @@ export default defineConfig(({ mode, command }) => {
       secure: false,
       rewrite: (path) => path.replace(/^\/__site/, '') || '/',
     }
+    // Publisher-generated PDF (same origin as prod `/resume.pdf`).
+    proxy['/resume.pdf'] = {
+      target: localSiteOrigin,
+      changeOrigin: true,
+      secure: false,
+    }
   }
 
   return {
