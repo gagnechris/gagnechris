@@ -8,6 +8,7 @@ import {
 } from '@gagnechris/shared';
 import {
   buildArticleHtml,
+  buildJsonLd,
   buildRssXml,
   buildSitemapXml,
   normalizeShellHtml,
@@ -189,6 +190,53 @@ describe('publisher render', () => {
     const post = renderPostPage(reusedShell, samplePost());
     expect(post).not.toContain('home-page-prerender');
     expect(post).toContain('data-slug="hello-world"');
+  });
+
+
+  it('preserves $$, $&, $`, $\' in titles, OG tags, and prerendered body', () => {
+    const trickyTitle = "Making $$$ with $$ and $& and $` and $'";
+    const trickyBody = "echo $$ and $& and $` and $'";
+    const post = samplePost({
+      title: trickyTitle,
+      excerpt: trickyBody,
+      bodyMarkdown: trickyBody,
+      seo: null,
+    });
+    const html = renderPostPage(shell, post);
+
+    // & is HTML-escaped; $ special patterns must survive replace intact.
+    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $\'';
+    const escapedBody = 'echo $$ and $&amp; and $` and $\'';
+    expect(html).toContain(`<title>${escapedTitle} - Chris Gagne</title>`);
+    expect(html).toContain(`content="${escapedTitle} - Chris Gagne"`);
+    expect(html).toContain(`content="${escapedBody}"`);
+    expect(html).toContain(`<h1>${escapedTitle}</h1>`);
+    expect(html).toContain(escapedBody);
+    // Must not collapse $$ → $ via String.replace special patterns.
+    expect(html).toContain('$$$');
+    expect(html).toContain('$$');
+  });
+
+  it('escapes </script> in JSON-LD so it cannot close the script tag', () => {
+    const post = samplePost({
+      title: 'Break </script><script>alert(1)</script>',
+      excerpt: 'excerpt with </script> too',
+    });
+    const html = renderPostPage(shell, post);
+    const jsonLd = buildJsonLd(post);
+
+    expect(jsonLd).toContain('\\u003c');
+    expect(jsonLd).not.toContain('</script>');
+    expect(html).toContain('type="application/ld+json">');
+    // The raw closing tag must not appear inside the JSON-LD script body.
+    const scriptMatch = html.match(
+      /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+    );
+    expect(scriptMatch).not.toBeNull();
+    expect(scriptMatch![1]).not.toContain('</script>');
+    expect(scriptMatch![1]).toContain('\\u003c/script>');
+    // Title still renders (HTML-escaped) in the visible document.
+    expect(html).toContain('Break &lt;/script&gt;');
   });
 
   it('builds sitemap and RSS for published posts', () => {
