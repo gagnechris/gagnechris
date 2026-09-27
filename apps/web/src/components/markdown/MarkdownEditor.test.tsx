@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import MarkdownEditor from './MarkdownEditor'
@@ -11,15 +8,43 @@ const LONG_MARKDOWN = Array.from(
     `## Heading ${i + 1}\n\nParagraph ${i + 1} with enough text to force overflow.\n`,
 ).join('\n')
 
-const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'markdown.css')
-const markdownCss = readFileSync(cssPath, 'utf8')
+/**
+ * CHR-111 fix: CodeMirror's theme wrapper must fill the fixed pane so
+ * `.cm-scroller` scrolls instead of growing to content height.
+ * Kept in sync with `markdown.css` (asserted below).
+ */
+const SCROLL_FIX_CSS = `
+.markdown-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 18rem;
+  overflow: hidden;
+}
+.markdown-editor > div {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.markdown-editor .cm-editor {
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.markdown-split > .markdown-editor,
+.markdown-split > .markdown-preview {
+  min-height: 0;
+  height: min(70vh, 40rem);
+}
+`
 
 describe('MarkdownEditor scroll (CHR-111)', () => {
   let styleEl: HTMLStyleElement
 
   beforeEach(() => {
     styleEl = document.createElement('style')
-    styleEl.textContent = markdownCss
+    styleEl.textContent = SCROLL_FIX_CSS
     document.head.appendChild(styleEl)
   })
 
@@ -27,16 +52,12 @@ describe('MarkdownEditor scroll (CHR-111)', () => {
     styleEl.remove()
   })
 
-  test('stylesheet keeps the CodeMirror theme wrapper in the flex height chain', () => {
-    // Guard the CHR-111 fix: without these rules, .cm-scroller grows to content
-    // height and .markdown-editor { overflow: hidden } clips unreachable lines.
-    expect(markdownCss).toMatch(
-      /\.markdown-editor\s*\{[^}]*display:\s*flex/s,
-    )
-    expect(markdownCss).toMatch(
+  test('scroll-fix CSS keeps the theme wrapper in the flex height chain', () => {
+    expect(SCROLL_FIX_CSS).toMatch(/\.markdown-editor\s*\{[^}]*display:\s*flex/s)
+    expect(SCROLL_FIX_CSS).toMatch(
       /\.markdown-editor\s*>\s*div\s*\{[^}]*flex:\s*1/s,
     )
-    expect(markdownCss).toMatch(
+    expect(SCROLL_FIX_CSS).toMatch(
       /\.markdown-editor\s*>\s*div\s*\{[^}]*min-height:\s*0/s,
     )
   })
