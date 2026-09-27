@@ -9,6 +9,8 @@ export const SITE_SHELL_KEY = '_shell.html';
  */
 export type SiteStorage = {
   readShell(): Promise<string>;
+  /** Returns undefined when the key is missing. */
+  read(key: string): Promise<string | undefined>;
   put(
     key: string,
     body: string | Uint8Array,

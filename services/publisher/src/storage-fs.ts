@@ -38,6 +38,15 @@ export function createFilesystemSiteStorage(
       return body;
     },
 
+    async read(key: string): Promise<string | undefined> {
+      try {
+        return await readFile(join(root, key), 'utf-8');
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+        throw err;
+      }
+    },
+
     async put(
       key: string,
       body: string | Uint8Array,

@@ -20,6 +20,7 @@ import {
   renderHomePage,
   renderPostPage,
   renderResumePage,
+  renderResumeUnavailablePage,
 } from './render.js';
 import { RESUME_PDF_KEY } from './resume-pdf.js';
 import { publishResumePdf } from './resume-pdf-publish.js';
@@ -35,6 +36,18 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 const CACHE_FEED = 'public,max-age=300';
+
+/**
+ * Publisher-owned snapshot of the last successfully published Home.
+ * Survives web deploys (excluded from s3 sync) so unpublished Home can be
+ * re-injected into a fresh Vite shell instead of falling back to DEFAULT_HOME.
+ */
+export const HOME_LAST_PUBLISHED_KEY = 'home/last-published.json';
+
+export type HomePublishSnapshot = Pick<
+  Home,
+  'name' | 'title' | 'about' | 'seo' | 'publishedAt' | 'updatedAt'
+>;
 
 let storageOverride: SiteStorage | undefined;
 
@@ -207,14 +220,73 @@ export async function getPublishedHome(
   return home;
 }
 
+export function homeToSnapshot(home: Home): HomePublishSnapshot {
+  return {
+    name: home.name,
+    title: home.title,
+    about: home.about,
+    seo: home.seo,
+    publishedAt: home.publishedAt,
+    updatedAt: home.updatedAt,
+  };
+}
+
+export function snapshotToHome(snapshot: HomePublishSnapshot): Home {
+  return {
+    ...snapshot,
+    status: 'published',
+    version: 0,
+  };
+}
+
+export async function readHomePublishSnapshot(
+  storage: SiteStorage,
+): Promise<HomePublishSnapshot | undefined> {
+  const raw = await storage.read(HOME_LAST_PUBLISHED_KEY);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Partial<HomePublishSnapshot>;
+    if (
+      typeof parsed.name !== 'string' ||
+      typeof parsed.title !== 'string' ||
+      typeof parsed.about !== 'string'
+    ) {
+      return undefined;
+    }
+    return {
+      name: parsed.name,
+      title: parsed.title,
+      about: parsed.about,
+      seo: parsed.seo ?? null,
+      publishedAt: parsed.publishedAt ?? null,
+      updatedAt:
+        typeof parsed.updatedAt === 'string'
+          ? parsed.updatedAt
+          : new Date(0).toISOString(),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export type RebuildResult = {
   publishedCount: number;
   removedSlugs: string[];
   resumePublished: boolean;
+  /** True when resume was draft/missing and live artifacts were cleared/replaced. */
+  resumeUnpublished: boolean;
   /** True when resume HTML was published but PDF generation failed (last good PDF kept). */
   resumePdfFailed: boolean;
   homePublished: boolean;
+  /** True when Home is draft/missing but last-published snapshot was restored. */
+  homeRestoredFromSnapshot: boolean;
   invalidated: string[];
+};
+
+export type RebuildSiteSources = {
+  listPublishedPosts: () => Promise<Post[]>;
+  getPublishedResume: () => Promise<Resume | undefined>;
+  getPublishedHome: () => Promise<Home | undefined>;
 };
 
 /**
@@ -224,17 +296,27 @@ export type RebuildResult = {
  *   considered for deletion.
  * - When omitted (republish-all / local), discover existing `blog/<slug>/index.html`
  *   keys and delete orphans not in the published set.
+ * - Unpublished Resume: replace `resume/index.html` with a placeholder and
+ *   delete `resume.pdf` (CHR-103).
+ * - Unpublished Home: re-render `index.html` from `home/last-published.json` so
+ *   the last published copy survives web deploys (CHR-103).
  */
 export async function rebuildPublishedSite(options?: {
   slugsToRemove?: Iterable<string>;
   storage?: SiteStorage;
+  sources?: RebuildSiteSources;
 }): Promise<RebuildResult> {
   const tableName = requireEnv('DATA_TABLE_NAME');
   const storage = options?.storage ?? getSiteStorage();
+  const sources: RebuildSiteSources = options?.sources ?? {
+    listPublishedPosts: () => listPublishedPosts(tableName),
+    getPublishedResume: () => getPublishedResume(tableName),
+    getPublishedHome: () => getPublishedHome(tableName),
+  };
 
   // Pristine Vite shell (_shell.html) — never the home prerender in index.html.
   const shell = await storage.readShell();
-  const published = await listPublishedPosts(tableName);
+  const published = await sources.listPublishedPosts();
   const publishedSlugs = new Set(published.map((p) => p.slug));
 
   let candidates: Iterable<string>;
@@ -286,10 +368,11 @@ export async function rebuildPublishedSite(options?: {
   );
   await syncViewerRequestBlogSlugs(publishedSlugList);
 
-  // Draft / missing resume leaves any live resume HTML/PDF untouched.
+  // Published resume → live HTML + PDF. Unpublished → placeholder HTML, delete PDF.
   // PDF failures must not abort HTML / sitemap / RSS (CHR-97).
-  const resume = await getPublishedResume(tableName);
+  const resume = await sources.getPublishedResume();
   let resumePdfFailed = false;
+  let resumeUnpublished = false;
   if (resume) {
     await storage.put(
       'resume/index.html',
@@ -299,11 +382,21 @@ export async function rebuildPublishedSite(options?: {
     );
     const pdfResult = await publishResumePdf(storage, resume);
     resumePdfFailed = pdfResult.status === 'kept-previous';
+  } else {
+    resumeUnpublished = true;
+    await storage.put(
+      'resume/index.html',
+      renderResumeUnavailablePage(shell),
+      'text/html; charset=utf-8',
+      CACHE_HTML,
+    );
+    await storage.delete(RESUME_PDF_KEY);
   }
 
-  // Draft / missing home leaves the deployed Vite shell (or the last published
-  // prerender) in place; the SPA still renders DEFAULT_HOME on the client.
-  const home = await getPublishedHome(tableName);
+  // Published home → write index.html + durable snapshot.
+  // Draft / missing → restore from snapshot so deploys never fall back to DEFAULT_HOME.
+  const home = await sources.getPublishedHome();
+  let homeRestoredFromSnapshot = false;
   if (home) {
     await storage.put(
       'index.html',
@@ -311,6 +404,23 @@ export async function rebuildPublishedSite(options?: {
       'text/html; charset=utf-8',
       CACHE_HTML,
     );
+    await storage.put(
+      HOME_LAST_PUBLISHED_KEY,
+      JSON.stringify(homeToSnapshot(home)),
+      'application/json; charset=utf-8',
+      CACHE_HTML,
+    );
+  } else {
+    const snapshot = await readHomePublishSnapshot(storage);
+    if (snapshot) {
+      homeRestoredFromSnapshot = true;
+      await storage.put(
+        'index.html',
+        renderHomePage(shell, snapshotToHome(snapshot)),
+        'text/html; charset=utf-8',
+        CACHE_HTML,
+      );
+    }
   }
 
   await storage.put(
@@ -341,10 +451,11 @@ export async function rebuildPublishedSite(options?: {
     ...removedSlugs.map((s) => `/blog/${s}`),
     ...removedSlugs.map((s) => `/blog/${s}/`),
     ...removedSlugs.map((s) => `/blog/${s}/index.html`),
-    ...(resume
-      ? ['/resume', '/resume/', '/resume/index.html', `/${RESUME_PDF_KEY}`]
-      : []),
-    ...(home ? ['/', '/index.html'] : []),
+    '/resume',
+    '/resume/',
+    '/resume/index.html',
+    `/${RESUME_PDF_KEY}`,
+    ...(home || homeRestoredFromSnapshot ? ['/', '/index.html'] : []),
   ];
 
   await storage.invalidate(invalidated);
@@ -353,8 +464,10 @@ export async function rebuildPublishedSite(options?: {
     publishedCount: published.length,
     removedSlugs,
     resumePublished: Boolean(resume),
+    resumeUnpublished,
     resumePdfFailed,
     homePublished: Boolean(home),
+    homeRestoredFromSnapshot,
     invalidated: [...new Set(invalidated)],
   };
 }

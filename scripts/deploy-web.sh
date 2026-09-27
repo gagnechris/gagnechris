@@ -2,7 +2,7 @@
 # Build apps/web and sync to the prod Site bucket, then invalidate CloudFront.
 # Bucket / distribution IDs come from SSM (written by Site-prod) — nothing hard-coded.
 #
-# Publisher-owned paths are never deleted: /blog/*, /resume/*, /media/*, sitemap.xml, rss.xml
+# Publisher-owned paths are never deleted: /blog/*, /resume/*, /home/*, /media/*, sitemap.xml, rss.xml
 set -euo pipefail
 
 ENV_NAME="${ENV_NAME:-prod}"
@@ -68,6 +68,7 @@ fi
 #    previously deployed meta shell stays until then (SPA renders DEFAULT_RESUME).
 #    index.html is the home document (publisher may prerender into it). _shell.html
 #    is the pristine template the publisher reads (CHR-104). spa.html serves /admin|/auth.
+#    home/* holds last-published.json so unpublished Home survives deploys (CHR-103).
 aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
@@ -75,6 +76,7 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --exclude "blog/*" \
   --exclude "resume/*" \
   --exclude "resume.pdf" \
+  --exclude "home/*" \
   --exclude "media/*" \
   --exclude "sitemap.xml" \
   --exclude "rss.xml" \
