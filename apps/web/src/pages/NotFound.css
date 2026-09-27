@@ -11,8 +11,10 @@
 
 .not-found header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-8);
   padding-bottom: var(--space-4);
   border-bottom: 2px solid var(--primary-200);
@@ -43,7 +45,6 @@
 
 .not-found-bear a {
   color: var(--primary-700);
-  font-weight: 500;
   text-decoration: none;
 }
 
@@ -62,6 +63,10 @@
 }
 
 .not-found-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
   color: var(--primary-700);
   text-decoration: none;
   font-weight: 500;

@@ -21,12 +21,12 @@ describe('Integration Tests', () => {
     test('tracks social media link clicks from home page', () => {
       renderWithProviders(<App />)
 
-      const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
+      const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')!
       fireEvent.click(linkedInLink)
 
       expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin')
 
-      const githubLink = screen.getByRole('link', { name: 'GitHub' })
+      const githubLink = document.querySelector('#quick-links a[href*="github.com"]')!
       fireEvent.click(githubLink)
 
       expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github')
@@ -68,14 +68,14 @@ describe('Integration Tests', () => {
       expect(screen.getByText('Quick Links')).toBeInTheDocument()
 
       expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'LinkedIn' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'GitHub' })).toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByRole('link', { name: 'GitHub' }).length).toBeGreaterThanOrEqual(1)
 
-      const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
+      const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')!
       expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/')
       expect(linkedInLink).toHaveAttribute('target', '_blank')
 
-      const githubLink = screen.getByRole('link', { name: 'GitHub' })
+      const githubLink = document.querySelector('#quick-links a[href*="github.com"]')!
       expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris')
       expect(githubLink).toHaveAttribute('target', '_blank')
     })
@@ -88,9 +88,10 @@ describe('Integration Tests', () => {
       expect(screen.getByText('Summary')).toBeInTheDocument()
       expect(screen.getByText('Core Competencies')).toBeInTheDocument()
 
-      expect(screen.getByRole('button', { name: /download resume as pdf/i })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /download resume as pdf/i }).length).toBeGreaterThanOrEqual(1)
 
-      expect(screen.getByRole('link', { name: 'Back to Home' })).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
     })
   })
 })

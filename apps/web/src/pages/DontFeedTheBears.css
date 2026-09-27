@@ -33,6 +33,7 @@
 
 .bears-page__header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
@@ -57,25 +58,6 @@
   font-weight: 700;
 }
 
-.bears-page .back-link {
-  color: var(--primary-600);
-  text-decoration: none;
-  font-weight: 500;
-  transition: all var(--transition-normal);
-  padding: var(--space-2) var(--space-4);
-  background-color: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  white-space: nowrap;
-}
-
-.bears-page .back-link:hover {
-  background-color: var(--primary-50);
-  color: var(--primary-700);
-  text-decoration: none;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
 
 @media (max-width: 640px) {
   .bears-page {

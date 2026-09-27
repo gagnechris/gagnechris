@@ -31,8 +31,8 @@ describe('App', () => {
     expect(screen.getByText('About Me')).toBeInTheDocument()
     expect(screen.getByText('Quick Links')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'LinkedIn' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'GitHub' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByRole('link', { name: 'GitHub' }).length).toBeGreaterThanOrEqual(1)
   })
 
   test('falls back to DEFAULT_HOME when nothing is published yet', () => {
@@ -69,14 +69,14 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Engineering Director')).toBeInTheDocument()
     // Quick Links stay client-rendered (CHR-92 v1).
-    expect(screen.getByRole('link', { name: 'LinkedIn' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
   })
 
   test('tracks LinkedIn link clicks', () => {
     renderWithProviders(<App />)
 
-    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
-    fireEvent.click(linkedInLink)
+    const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')
+    fireEvent.click(linkedInLink!)
 
     expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin')
   })
@@ -84,8 +84,8 @@ describe('App', () => {
   test('tracks GitHub link clicks', () => {
     renderWithProviders(<App />)
 
-    const githubLink = screen.getByRole('link', { name: 'GitHub' })
-    fireEvent.click(githubLink)
+    const githubLink = document.querySelector('#quick-links a[href*="github.com"]')
+    fireEvent.click(githubLink!)
 
     expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github')
   })
@@ -93,7 +93,7 @@ describe('App', () => {
   test('LinkedIn link has correct attributes', () => {
     renderWithProviders(<App />)
 
-    const linkedInLink = screen.getByRole('link', { name: 'LinkedIn' })
+    const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')
     expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/')
     expect(linkedInLink).toHaveAttribute('target', '_blank')
     expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer')
@@ -102,18 +102,28 @@ describe('App', () => {
   test('GitHub link has correct attributes', () => {
     renderWithProviders(<App />)
 
-    const githubLink = screen.getByRole('link', { name: 'GitHub' })
+    const githubLink = document.querySelector('#quick-links a[href*="github.com"]')
     expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris')
     expect(githubLink).toHaveAttribute('target', '_blank')
     expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  test('footer links to the bears game with from=footer', () => {
+  test('footer has copyright, useful links, and bears entry', () => {
     renderWithProviders(<App />)
 
+    expect(screen.getByText(/© \d{4} Chris Gagne/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'RSS' })).toHaveAttribute('href', '/rss.xml')
     const bear = screen.getByRole('link', {
       name: /don't feed the bears/i,
     })
     expect(bear).toHaveAttribute('href', '/dont-feed-the-bears?from=footer')
+    expect(bear).toHaveTextContent(/Don't Feed the Bears/)
+  })
+
+  test('scopes the profile header to .home-header', () => {
+    const { container } = renderWithProviders(<App />)
+    expect(container.querySelector('.home-page')).toBeTruthy()
+    expect(container.querySelector('header.home-header')).toBeTruthy()
+    expect(container.querySelector('header.home-header img.profile')).toBeTruthy()
   })
 })

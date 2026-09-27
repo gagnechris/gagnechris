@@ -12,8 +12,10 @@
 
 .blog-index header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
   margin-bottom: var(--space-8);
   padding-bottom: var(--space-4);
   border-bottom: 2px solid var(--primary-200);
@@ -37,23 +39,6 @@
   font-weight: 600;
 }
 
-.back-link {
-  color: var(--primary-600);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color var(--transition-normal);
-  padding: var(--space-2) var(--space-4);
-  background-color: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.back-link:hover {
-  color: var(--primary-500);
-  background-color: var(--primary-50);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
 
 .posts-list {
   display: flex;
@@ -62,12 +47,13 @@
 }
 
 .post-preview {
-  padding: var(--space-6);
+  padding: 0;
   background-color: white;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
   border-left: 4px solid var(--primary-400);
+  overflow: hidden;
 }
 
 .post-preview:hover {
@@ -75,20 +61,28 @@
   box-shadow: var(--shadow-md);
 }
 
+.post-preview__link {
+  display: block;
+  padding: var(--space-6);
+  color: inherit;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.post-preview__link:hover {
+  text-decoration: none;
+}
+
+.post-preview__link:hover h2 {
+  color: var(--primary-600);
+}
+
 .post-preview h2 {
   margin: 0 0 var(--space-2) 0;
   font-size: var(--text-2xl);
   line-height: var(--line-tight);
-}
-
-.post-preview h2 a {
   color: var(--neutral-900);
-  text-decoration: none;
   transition: color var(--transition-normal);
-}
-
-.post-preview h2 a:hover {
-  color: var(--primary-600);
 }
 
 .post-date {
@@ -108,20 +102,11 @@
 
 .read-more {
   color: var(--primary-600);
-  text-decoration: none;
   font-weight: 500;
-  transition: color var(--transition-normal);
   display: inline-flex;
   align-items: center;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background-color: var(--primary-50);
-}
-
-.read-more:hover {
-  color: var(--primary-500);
-  background-color: var(--primary-100);
-  text-decoration: none;
+  min-height: 44px;
+  padding: var(--space-2) 0;
 }
 
 @media (max-width: 768px) {
@@ -143,7 +128,7 @@
     font-size: var(--text-xl);
   }
 
-  .post-preview {
+  .post-preview__link {
     padding: var(--space-4);
   }
 }
