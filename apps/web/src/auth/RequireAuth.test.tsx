@@ -33,17 +33,17 @@ describe('RequireAuth', () => {
   })
 
   test('renders children when signed in', async () => {
-    getAuthUser.mockResolvedValue({ username: 'admin', userId: 'u1' })
+    getAuthUser.mockResolvedValue({ label: 'admin@example.com', userId: 'u1' })
 
     render(
       <MemoryRouter>
         <RequireAuth>
-          {(user) => <div>hello {user.username}</div>}
+          {(user) => <div>hello {user.label}</div>}
         </RequireAuth>
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('hello admin')).toBeInTheDocument()
+    expect(await screen.findByText('hello admin@example.com')).toBeInTheDocument()
     expect(redirectToSignIn).not.toHaveBeenCalled()
   })
 })
