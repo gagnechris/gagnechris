@@ -475,7 +475,12 @@ export async function rebuildPublishedSite(options?: {
         ),
     ];
     await mapWithConcurrency(feedPuts, PUT_CONCURRENCY, (fn) => fn());
-    await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
+    // KVS slug sync must not abort HTML/feeds (same isolation as resume PDF).
+    try {
+      await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
+    } catch (err) {
+      console.error('CloudFront KVS blog slug sync failed; site rebuild continues', err);
+    }
   }
 
   // Published resume → live HTML + PDF. Unpublished → placeholder HTML, delete PDF.
