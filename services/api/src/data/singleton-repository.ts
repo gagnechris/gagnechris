@@ -1,27 +1,16 @@
 import {
-  ConditionalCheckFailedException,
-  TransactionCanceledException,
-} from '@aws-sdk/client-dynamodb';
-import {
   BatchGetCommand,
   GetCommand,
   PutCommand,
   TransactWriteCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
+import { batchGetAll, isOptimisticLockConflict } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from './client.js';
+import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError } from './errors.js';
 
-/** Put/TransactWrite version conditions surface as ConditionalCheckFailed or a canceled transaction. */
-export function isOptimisticLockConflict(error: unknown): boolean {
-  if (error instanceof ConditionalCheckFailedException) return true;
-  if (error instanceof TransactionCanceledException) {
-    return (error.CancellationReasons ?? []).some(
-      (reason) => reason.Code === 'ConditionalCheckFailed',
-    );
-  }
-  return false;
-}
+export { isOptimisticLockConflict } from '@gagnechris/shared';
 
 export type VersionedSingleton = {
   status: string;
@@ -86,19 +75,30 @@ export class SingletonRepository<
   private async loadDraftAndPublished(): Promise<
     { draft: T; published: T | undefined } | undefined
   > {
-    const result = await this.doc.send(
-      new BatchGetCommand({
-        RequestItems: {
-          [this.tableName]: {
-            Keys: [
-              { pk: this.config.pk(), sk: this.config.metaSk() },
-              { pk: this.config.pk(), sk: this.config.publishedSk() },
-            ],
-          },
+    const responses = await batchGetAll(
+      async (RequestItems) => {
+        const result = await this.doc.send(
+          new BatchGetCommand({ RequestItems }),
+        );
+        return {
+          Responses: result.Responses as
+            | Record<string, Array<Record<string, unknown>>>
+            | undefined,
+          UnprocessedKeys: result.UnprocessedKeys as
+            | Record<string, { Keys: Array<Record<string, unknown>> }>
+            | undefined,
+        };
+      },
+      {
+        [this.tableName]: {
+          Keys: [
+            { pk: this.config.pk(), sk: this.config.metaSk() },
+            { pk: this.config.pk(), sk: this.config.publishedSk() },
+          ],
         },
-      }),
+      },
     );
-    const items = result.Responses?.[this.tableName] ?? [];
+    const items = responses[this.tableName] ?? [];
     let draftItem: TItem | undefined;
     let publishedItem: TItem | undefined;
     for (const item of items) {
@@ -155,7 +155,7 @@ export class SingletonRepository<
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) {
+      if (isOptimisticLockConflict(error)) {
         const raced = await this.get();
         if (raced) return raced;
       }
@@ -270,7 +270,7 @@ export class SingletonRepository<
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) return;
+      if (isOptimisticLockConflict(error)) return;
       throw error;
     }
   }
@@ -286,98 +286,83 @@ export class SingletonRepository<
   }
 
   private async writeDraft(expectedVersion: number, next: T): Promise<void> {
-    try {
-      await this.doc.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: this.config.toItem(next),
-          ConditionExpression:
-            'attribute_not_exists(version) OR version = :v',
-          ExpressionAttributeValues: { ':v': expectedVersion },
-        }),
-      );
-    } catch (error) {
-      if (isOptimisticLockConflict(error)) {
-        throw new ConflictError(
-          `Update conflict (${this.config.conflictLabel} version)`,
-        );
-      }
-      throw error;
-    }
+    await runDynamoWrite(
+      () =>
+        this.doc.send(
+          new PutCommand({
+            TableName: this.tableName,
+            Item: this.config.toItem(next),
+            ConditionExpression:
+              'attribute_not_exists(version) OR version = :v',
+            ExpressionAttributeValues: { ':v': expectedVersion },
+          }),
+        ),
+      `Update conflict (${this.config.conflictLabel} version)`,
+    );
   }
 
   private async writeDraftAndPublished(
     expectedVersion: number,
     next: T,
   ): Promise<void> {
-    try {
-      await this.doc.send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: this.config.toItem(next),
-                ConditionExpression:
-                  'attribute_not_exists(version) OR version = :v',
-                ExpressionAttributeValues: { ':v': expectedVersion },
+    await runDynamoWrite(
+      () =>
+        this.doc.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: this.config.toItem(next),
+                  ConditionExpression:
+                    'attribute_not_exists(version) OR version = :v',
+                  ExpressionAttributeValues: { ':v': expectedVersion },
+                },
               },
-            },
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: this.config.toPublishedItem(next),
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: this.config.toPublishedItem(next),
+                },
               },
-            },
-          ],
-        }),
-      );
-    } catch (error) {
-      if (isOptimisticLockConflict(error)) {
-        throw new ConflictError(
-          `Update conflict (${this.config.conflictLabel} version)`,
-        );
-      }
-      throw error;
-    }
+            ],
+          }),
+        ),
+      `Update conflict (${this.config.conflictLabel} version)`,
+    );
   }
 
   private async writeDraftAndDeletePublished(
     expectedVersion: number,
     next: T,
   ): Promise<void> {
-    try {
-      await this.doc.send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: this.config.toItem(next),
-                ConditionExpression:
-                  'attribute_not_exists(version) OR version = :v',
-                ExpressionAttributeValues: { ':v': expectedVersion },
-              },
-            },
-            {
-              Delete: {
-                TableName: this.tableName,
-                Key: {
-                  pk: this.config.pk(),
-                  sk: this.config.publishedSk(),
+    await runDynamoWrite(
+      () =>
+        this.doc.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: this.config.toItem(next),
+                  ConditionExpression:
+                    'attribute_not_exists(version) OR version = :v',
+                  ExpressionAttributeValues: { ':v': expectedVersion },
                 },
               },
-            },
-          ],
-        }),
-      );
-    } catch (error) {
-      if (isOptimisticLockConflict(error)) {
-        throw new ConflictError(
-          `Update conflict (${this.config.conflictLabel} version)`,
-        );
-      }
-      throw error;
-    }
+              {
+                Delete: {
+                  TableName: this.tableName,
+                  Key: {
+                    pk: this.config.pk(),
+                    sk: this.config.publishedSk(),
+                  },
+                },
+              },
+            ],
+          }),
+        ),
+      `Update conflict (${this.config.conflictLabel} version)`,
+    );
   }
 }

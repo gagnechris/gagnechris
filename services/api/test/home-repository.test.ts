@@ -206,6 +206,75 @@ describe('HomeRepository', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
+  it('maps TransactionConflict cancellation to a 409 conflict (CHR-120)', async () => {
+    const draft: Home = {
+      ...stored,
+      about: 'Edited about',
+      version: 4,
+    };
+    const { doc } = mockDoc(
+      mockPair(
+        buildHomeMetaItem(draft),
+        buildHomePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'TransactWriteCommand') {
+            throw new TransactionCanceledException({
+              message: 'Transaction cancelled',
+              $metadata: {},
+              CancellationReasons: [
+                { Code: 'TransactionConflict', Message: 'concurrent' },
+                { Code: 'None' },
+              ],
+            });
+          }
+          return {};
+        },
+      ),
+    );
+    await expect(
+      new HomeRepository(doc, 'gagnechris-test').publish(),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('retries BatchGet UnprocessedKeys before treating PUBLISHED as missing (CHR-120)', async () => {
+    let batchCalls = 0;
+    const { doc, send } = mockDoc(async (command) => {
+      if (command.constructor.name === 'BatchGetCommand') {
+        batchCalls += 1;
+        const requestItems = command.input.RequestItems as Record<
+          string,
+          { Keys: Array<{ sk?: string }> }
+        >;
+        const table = Object.keys(requestItems)[0]!;
+        if (batchCalls === 1) {
+          return {
+            Responses: {
+              [table]: [buildHomeMetaItem(stored)],
+            },
+            UnprocessedKeys: {
+              [table]: {
+                Keys: [{ pk: 'HOME#current', sk: 'PUBLISHED' }],
+              },
+            },
+          };
+        }
+        return {
+          Responses: {
+            [table]: [buildHomePublishedItem(stored)],
+          },
+        };
+      }
+      return {};
+    });
+
+    const home = await new HomeRepository(doc, 'gagnechris-test').get();
+    expect(home?.hasUnpublishedChanges).toBe(false);
+    expect(batchCalls).toBe(2);
+    expect(
+      send.mock.calls.filter((c) => c[0]!.constructor.name === 'BatchGetCommand'),
+    ).toHaveLength(2);
+  });
+
   it('publish copies draft to PUBLISHED when content changed', async () => {
     const draft: Home = {
       ...stored,

@@ -3,7 +3,11 @@ import type {
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
 import { ZodError } from 'zod';
-import { ConflictError, NotFoundError } from './data/errors.js';
+import {
+  ConflictError,
+  NotFoundError,
+  ServiceUnavailableError,
+} from './data/errors.js';
 
 export function json(
   statusCode: number,
@@ -69,6 +73,9 @@ export function mapRouteError(
   }
   if (error instanceof ConflictError) {
     return json(409, { error: 'conflict', message: error.message });
+  }
+  if (error instanceof ServiceUnavailableError) {
+    return json(503, { error: 'service_unavailable', message: error.message });
   }
   if (isZodError(error)) {
     return zodBadRequest(error, zodMessage);

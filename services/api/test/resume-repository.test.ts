@@ -187,6 +187,36 @@ describe('ResumeRepository', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
+  it('maps TransactionConflict cancellation to a 409 conflict (CHR-120)', async () => {
+    const draft: Resume = {
+      ...stored,
+      name: 'Edited Name',
+      version: 4,
+    };
+    const { doc } = mockDoc(
+      mockPair(
+        buildResumeMetaItem(draft),
+        buildResumePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'TransactWriteCommand') {
+            throw new TransactionCanceledException({
+              message: 'Transaction cancelled',
+              $metadata: {},
+              CancellationReasons: [
+                { Code: 'TransactionConflict', Message: 'concurrent' },
+                { Code: 'None' },
+              ],
+            });
+          }
+          return {};
+        },
+      ),
+    );
+    await expect(
+      new ResumeRepository(doc, 'gagnechris-test').publish(),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
   it('publish copies draft to PUBLISHED when content changed', async () => {
     const draft: Resume = {
       ...stored,
