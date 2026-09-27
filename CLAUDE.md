@@ -37,7 +37,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - Merge only after CI is green on the PR.
 - **Definition of done:** ticket is Done only after merge, deploy finished, and acceptance criteria verified live (paste evidence in Linear). See `.cursor/rules/definition-of-done.mdc`.
 - **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `.cursor/rules/aws-changes.mdc`.
-- **Docs:** if a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, `.github/README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
+- **Docs:** if a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, root `README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
 
 ## Hosting & Integrations
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`
