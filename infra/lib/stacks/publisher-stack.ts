@@ -78,10 +78,17 @@ export class PublisherStack extends Stack {
         minify: true,
         sourceMap: true,
         target: 'node24',
-        // Runtime ships most @aws-sdk clients; KVS data-plane needs SigV4a
-        // which is not in the Lambda runtime (CHR-115 hotfix).
-        externalModules: ['@aws-sdk/*'],
-        nodeModules: ['@aws-sdk/signature-v4a'],
+        // Externalize only clients that work from the Lambda runtime. The
+        // CloudFront KeyValueStore data-plane requires SigV4a, which is not
+        // shipped under /var/runtime — so bundle that client + signature-v4a
+        // into the artifact (CHR-115).
+        externalModules: [
+          '@aws-sdk/client-cloudfront',
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/client-s3',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/util-dynamodb',
+        ],
         commandHooks: {
           beforeBundling(): string[] {
             return [];
