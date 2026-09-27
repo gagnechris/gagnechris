@@ -40,17 +40,22 @@ type CfResponse = {
 type ViewerRequestApi = {
   handler: (
     event: { request: CfRequest },
-  ) => CfRequest | { statusCode: number };
+  ) => Promise<CfRequest | { statusCode: number }>;
   setPublishedBlogSlugsForTests: (
     slugs: Record<string, number> | null,
   ) => void;
 };
 
 async function loadViewerRequestApi(): Promise<ViewerRequestApi> {
-  const source = await readFile(viewerRequestPath, 'utf8');
+  const source = (await readFile(viewerRequestPath, 'utf8')).replace(
+    /import cf from 'cloudfront';\s*/g,
+    '',
+  );
   // eslint-disable-next-line no-new-func -- intentional: load CF Function source
   return new Function(
-    `${source}\nreturn { handler, setPublishedBlogSlugsForTests };`,
+    `var cf = { kvs: function () { throw new Error('kvs unavailable locally'); } };
+     ${source}
+     return { handler, setPublishedBlogSlugsForTests };`,
   )() as ViewerRequestApi;
 }
 
@@ -120,7 +125,7 @@ const server = createServer(async (req, res) => {
       querystring[k] = { value: v };
     }
 
-    const rewritten = viewerRequestApi.handler({
+    const rewritten = await viewerRequestApi.handler({
       request: {
         uri: url.pathname,
         querystring,

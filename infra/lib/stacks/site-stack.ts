@@ -24,6 +24,7 @@ import {
   HeadersFrameOption,
   HeadersReferrerPolicy,
   HttpVersion,
+  KeyValueStore,
   OriginRequestPolicy,
   PriceClass,
   ResponseHeadersPolicy,
@@ -67,8 +68,10 @@ export interface SiteStackProps extends StackProps {
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
-  /** Viewer-request function name (publisher syncs blog slug allowlist). */
+  /** Viewer-request function name (CDK-managed; not rewritten at publish time). */
   readonly viewerRequestFunctionName: string;
+  /** KVS ARN for published blog slugs (publisher UpdateKeys; CHR-115). */
+  readonly blogSlugsKeyValueStoreArn: string;
 
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
@@ -183,11 +186,18 @@ export class SiteStack extends Stack {
     });
 
     this.viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
+    const blogSlugsKvs = new KeyValueStore(this, 'BlogSlugsKvs', {
+      keyValueStoreName: `gagnechris-${config.name}-blog-slugs`,
+      comment: 'Published /blog/<slug> allowlist for viewer-request (CHR-115)',
+    });
+    this.blogSlugsKeyValueStoreArn = blogSlugsKvs.keyValueStoreArn;
+
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
       functionName: this.viewerRequestFunctionName,
       comment:
-        'www→apex + Option B + published blog slugs + spa/404 shells (CHR-102)',
+        'www→apex + Option B + KVS blog slugs + spa/404 shells (CHR-115)',
       runtime: FunctionRuntime.JS_2_0,
+      keyValueStore: blogSlugsKvs,
       code: FunctionCode.fromFile({
         filePath: path.join(__dirname, '../cloudfront/viewer-request-function.js'),
       }),
@@ -362,8 +372,13 @@ export class SiteStack extends Stack {
     new StringParameter(this, 'ViewerRequestFunctionNameParam', {
       parameterName: `/gagnechris/${config.name}/viewer-request-function-name`,
       stringValue: this.viewerRequestFunctionName,
+      description: 'CloudFront viewer-request function (CDK-managed)',
+    });
+    new StringParameter(this, 'BlogSlugsKvsArnParam', {
+      parameterName: `/gagnechris/${config.name}/blog-slugs-kvs-arn`,
+      stringValue: this.blogSlugsKeyValueStoreArn,
       description:
-        'CloudFront viewer-request function (publisher syncs blog slugs)',
+        'CloudFront KeyValueStore ARN for published blog slugs (CHR-115)',
     });
 
     new CfnOutput(this, 'SiteBucketName', {
