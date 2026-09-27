@@ -1,0 +1,311 @@
+/* Don't Feed the Bears — Vermont camp playfield */
+
+.bear-game {
+  --bear-pine: #1f4d3a;
+  --bear-pine-deep: #143528;
+  --bear-moss: #5a8f6d;
+  --bear-sky-top: #c8e0ef;
+  --bear-sky-mid: #e8f2e9;
+  --bear-earth: #d4c4a8;
+  --bear-earth-deep: #b9a484;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bear-game__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.bear-game__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+}
+
+.bear-game__stats strong {
+  color: var(--neutral-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.bear-game__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.bear-game__lede {
+  margin: 0;
+  color: var(--neutral-600);
+  font-size: var(--text-base);
+  max-width: 42rem;
+}
+
+.bear-game__field {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 280px;
+  max-height: 560px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--primary-300);
+  box-shadow: var(--shadow-md);
+  background:
+    linear-gradient(
+      180deg,
+      var(--bear-sky-top) 0%,
+      var(--bear-sky-mid) 42%,
+      var(--bear-earth) 42%,
+      var(--bear-earth-deep) 100%
+    );
+}
+
+.bear-game__sky {
+  position: absolute;
+  inset: 0 0 58% 0;
+  background:
+    radial-gradient(circle at 78% 28%, rgba(255, 255, 255, 0.55) 0 8%, transparent 9%),
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.4) 0 6%, transparent 7%);
+  pointer-events: none;
+}
+
+.bear-game__trees {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 58%;
+  height: 18%;
+  background:
+    linear-gradient(120deg, transparent 0 8%, var(--bear-pine-deep) 8% 14%, transparent 14% 22%, var(--bear-pine) 22% 30%, transparent 30% 40%, var(--bear-pine-deep) 40% 48%, transparent 48% 58%, var(--bear-moss) 58% 66%, transparent 66% 78%, var(--bear-pine) 78% 88%, transparent 88%),
+    linear-gradient(to top, var(--bear-pine-deep), transparent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.bear-game__attractant {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-1);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  color: var(--neutral-800);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.bear-game__attractant:hover:not(:disabled),
+.bear-game__attractant:focus-visible {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--primary-500);
+  outline: none;
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.bear-game__attractant--secured {
+  background: rgba(61, 150, 144, 0.25);
+  border-color: var(--primary-500);
+  cursor: default;
+  opacity: 0.85;
+}
+
+.bear-game__attractant--hit {
+  border-color: var(--accent-coral);
+  background: rgba(255, 122, 92, 0.35);
+}
+
+.bear-game__attractant-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.bear-game__glyph,
+.bear-game__bear-glyph {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.bear-game__bear {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+  transition: left 50ms linear, top 50ms linear;
+  z-index: 2;
+}
+
+.bear-game--reduced .bear-game__bear {
+  transition: none;
+}
+
+.bear-game--reduced .bear-game__attractant:hover:not(:disabled),
+.bear-game--reduced .bear-game__attractant:focus-visible {
+  transform: translate(-50%, -50%);
+}
+
+.bear-game__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bear-game__btn--primary {
+  background: var(--primary-600);
+  color: white;
+  border-color: var(--primary-700);
+}
+
+.bear-game__btn--primary:hover {
+  background: var(--primary-500);
+  text-decoration: none;
+  color: white;
+}
+
+.bear-game__btn--ghost {
+  background: white;
+  color: var(--primary-700);
+  border-color: var(--primary-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.bear-game__btn--ghost:hover {
+  border-color: var(--primary-400);
+  color: var(--primary-600);
+  text-decoration: none;
+}
+
+.bear-game__end {
+  position: absolute;
+  inset: 8% 6% auto;
+  z-index: 5;
+  margin: 0 auto;
+  max-width: 28rem;
+  padding: var(--space-6);
+  background: rgba(249, 250, 251, 0.96);
+  border: 2px solid var(--primary-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: bear-game-fade-in 280ms ease-out;
+}
+
+.bear-game--reduced .bear-game__end {
+  animation: none;
+}
+
+.bear-game__end h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+  color: var(--neutral-900);
+}
+
+.bear-game__end-tip {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  text-align: left;
+  background: var(--primary-50);
+  border-left: 4px solid var(--primary-500);
+  border-radius: var(--radius-sm);
+}
+
+.bear-game__end-tip p {
+  margin: var(--space-2) 0;
+  color: var(--neutral-700);
+}
+
+.bear-game__end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.bear-game--tips .bear-game__tips-heading {
+  margin: 0;
+  font-size: var(--text-2xl);
+  color: var(--neutral-900);
+}
+
+.bear-game__tip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.bear-game__tip-card {
+  padding: var(--space-4);
+  background: var(--primary-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--primary-200);
+}
+
+.bear-game__tip-card h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--neutral-900);
+}
+
+.bear-game__tip-card p {
+  margin: 0 0 var(--space-3);
+  color: var(--neutral-700);
+}
+
+@keyframes bear-game-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .bear-game__field {
+    aspect-ratio: 4 / 5;
+    max-height: none;
+  }
+
+  .bear-game__end {
+    inset: 4% 4% auto;
+    padding: var(--space-4);
+  }
+
+  .bear-game__attractant-label {
+    font-size: 0.65rem;
+  }
+}

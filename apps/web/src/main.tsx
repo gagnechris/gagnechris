@@ -36,6 +36,15 @@ const router = createBrowserRouter([
         element: <Contact />,
       },
       {
+        path: 'dont-feed-the-bears',
+        lazy: async () => {
+          const { default: DontFeedTheBears } = await import(
+            './pages/DontFeedTheBears.tsx'
+          )
+          return { Component: DontFeedTheBears }
+        },
+      },
+      {
         path: 'auth/callback',
         lazy: async () => {
           const { default: AuthCallback } = await import('./auth/AuthCallback.tsx')
