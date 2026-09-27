@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RESUME, type Post, type Resume } from '@gagnechris/shared';
+import {
+  DEFAULT_HOME,
+  DEFAULT_RESUME,
+  type Home,
+  type Post,
+  type Resume,
+} from '@gagnechris/shared';
 import {
   buildArticleHtml,
   buildRssXml,
   buildSitemapXml,
+  normalizeShellHtml,
+  renderBlogIndexPage,
+  renderHomePage,
   renderPostPage,
   renderResumePage,
   resolveOgImage,
@@ -38,6 +47,7 @@ const shell = `<!doctype html>
     <meta name="twitter:title" content="Chris Gagne" />
     <meta name="twitter:description" content="Default description" />
     <meta name="twitter:image" content="https://gagnechris.com/og-image.jpg" />
+    <link rel="canonical" href="https://gagnechris.com" />
   </head>
   <body>
     <div id="root"></div>
@@ -69,6 +79,20 @@ describe('publisher render', () => {
     expect(html).toContain('/assets/index.js');
   });
 
+  it('replaces the shell canonical instead of appending a second one', () => {
+    const post = renderPostPage(shell, samplePost());
+    expect(post.match(/rel="canonical"/g)).toHaveLength(1);
+    expect(post).toContain(
+      '<link rel="canonical" href="https://gagnechris.com/blog/hello-world" />',
+    );
+
+    const index = renderBlogIndexPage(shell, [samplePost()]);
+    expect(index.match(/rel="canonical"/g)).toHaveLength(1);
+    expect(index).toContain(
+      '<link rel="canonical" href="https://gagnechris.com/blog" />',
+    );
+  });
+
   it('prefers seo.ogImage when set', () => {
     expect(
       resolveOgImage(
@@ -91,16 +115,8 @@ describe('publisher render', () => {
     expect(html).toContain(
       '<link rel="canonical" href="https://gagnechris.com/resume" />',
     );
-    expect(
-      renderResumePage(
-        shell.replace(
-          '</head>',
-          '<link rel="canonical" href="https://gagnechris.com" /></head>',
-        ),
-        resume,
-      ).match(/rel="canonical"/g),
-    ).toHaveLength(1);
-    expect(html).toContain('<div id="root"><article class="resume-page-prerender"');
+    expect(html.match(/rel="canonical"/g)).toHaveLength(1);
+    expect(html).toContain('<article class="resume-page-prerender"');
     expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('/assets/index.js');
   });
@@ -112,6 +128,58 @@ describe('publisher render', () => {
     });
     expect(html).toContain('<title>CV</title>');
     expect(html).toContain('name="description" content="Short bio"');
+  });
+
+  it('injects home meta and the prerendered article into index.html', () => {
+    const home: Home = {
+      ...DEFAULT_HOME,
+      status: 'published',
+      publishedAt: '2026-09-27T12:00:00.000Z',
+    };
+    const html = renderHomePage(shell, home);
+    expect(html).toContain('<title>Chris Gagne - Engineering Leader</title>');
+    expect(html).toContain('property="og:url" content="https://gagnechris.com"');
+    expect(html).toContain('name="description" content="I\'m an Engineering');
+    expect(html.match(/rel="canonical"/g)).toHaveLength(1);
+    expect(html).toContain('<article class="home-page-prerender"');
+    expect(html).toContain('<h1>Chris Gagne</h1>');
+    expect(html).toContain('/assets/index.js');
+  });
+
+  it('prefers home seo overrides for title and description', () => {
+    const html = renderHomePage(shell, {
+      ...DEFAULT_HOME,
+      seo: { title: 'CG', description: 'Short bio' },
+    });
+    expect(html).toContain('<title>CG</title>');
+    expect(html).toContain('name="description" content="Short bio"');
+  });
+
+  it('rebuilds index.html from a previously prerendered index.html', () => {
+    const first = renderHomePage(shell, DEFAULT_HOME);
+    const second = renderHomePage(normalizeShellHtml(first), {
+      ...DEFAULT_HOME,
+      name: 'Christopher Gagne',
+      about: 'New copy.',
+    });
+    expect(second.match(/home-page-prerender/g)).toHaveLength(1);
+    expect(second).toContain('<h1>Christopher Gagne</h1>');
+    expect(second).toContain('<p>New copy.</p>');
+    expect(second).not.toContain('Engineering Leader at Ro');
+  });
+
+  it('never leaks the home prerender into other pages', () => {
+    const published = renderHomePage(shell, DEFAULT_HOME);
+    const reusedShell = normalizeShellHtml(published);
+    expect(reusedShell).toContain('<div id="root"></div>');
+
+    const resume = renderResumePage(reusedShell, DEFAULT_RESUME);
+    expect(resume).not.toContain('home-page-prerender');
+    expect(resume).toContain('<article class="resume-page-prerender"');
+
+    const post = renderPostPage(reusedShell, samplePost());
+    expect(post).not.toContain('home-page-prerender');
+    expect(post).toContain('data-slug="hello-world"');
   });
 
   it('builds sitemap and RSS for published posts', () => {

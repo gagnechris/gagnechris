@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_HOME } from './home-default.js';
+import {
+  homeAboutExcerpt,
+  renderHomeAboutHtml,
+  renderHomeAboutSectionHtml,
+  renderHomePrerenderHtml,
+} from './home-html.js';
+import type { Home } from './schemas.js';
+
+const home = (overrides: Partial<Home> = {}): Home => ({
+  ...DEFAULT_HOME,
+  ...overrides,
+});
+
+describe('renderHomeAboutHtml', () => {
+  it('wraps a single block in one paragraph', () => {
+    expect(renderHomeAboutHtml('Just one line.')).toBe('<p>Just one line.</p>');
+  });
+
+  it('splits blank-line separated blocks into paragraphs', () => {
+    expect(renderHomeAboutHtml('One.\n\nTwo.\n  \nThree.')).toBe(
+      '<p>One.</p><p>Two.</p><p>Three.</p>',
+    );
+  });
+
+  it('keeps single newlines inside a paragraph as breaks', () => {
+    expect(renderHomeAboutHtml('One.\nStill one.')).toBe(
+      '<p>One.<br />Still one.</p>',
+    );
+  });
+
+  it('escapes HTML in the body text', () => {
+    const html = renderHomeAboutHtml('<script>alert("x")</script> & 5 > 3');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('&amp;');
+    expect(html).toContain('5 &gt; 3');
+  });
+
+  it('renders nothing for empty copy', () => {
+    expect(renderHomeAboutHtml('   \n\n  ')).toBe('');
+  });
+});
+
+describe('renderHomeAboutSectionHtml', () => {
+  it('uses the App.css section id and body wrapper the SPA reads back', () => {
+    const html = renderHomeAboutSectionHtml('Hello.');
+    expect(html).toContain('<section id="about"><h2>About Me</h2>');
+    expect(html).toContain('<div class="about-body"><p>Hello.</p></div>');
+  });
+});
+
+describe('renderHomePrerenderHtml', () => {
+  it('exposes name and title as data attributes the SPA reads back', () => {
+    const html = renderHomePrerenderHtml(home());
+    expect(html).toContain('class="home-page-prerender"');
+    expect(html).toContain('data-name="Chris Gagne"');
+    expect(html).toContain('data-title="Engineering Leader"');
+    expect(html).toContain('<h1>Chris Gagne</h1>');
+    expect(html).toContain('<p>Engineering Leader</p>');
+    expect(html).toContain('<section id="about">');
+  });
+
+  it('leaves Quick Links and the profile photo to React', () => {
+    const html = renderHomePrerenderHtml(home());
+    expect(html).not.toContain('quick-links');
+    expect(html).not.toContain('<img');
+  });
+
+  it('escapes quotes in data attributes', () => {
+    const html = renderHomePrerenderHtml(
+      home({ name: 'A "B"', title: 'C "D"' }),
+    );
+    expect(html).toContain('data-name="A &quot;B&quot;"');
+    expect(html).toContain('data-title="C &quot;D&quot;"');
+  });
+});
+
+describe('homeAboutExcerpt', () => {
+  it('collapses whitespace and truncates on a word boundary', () => {
+    expect(homeAboutExcerpt('  one   two  ')).toBe('one two');
+    const long = homeAboutExcerpt('word '.repeat(80));
+    expect(long.length).toBeLessThanOrEqual(201);
+    expect(long.endsWith('…')).toBe(true);
+  });
+});

@@ -1,9 +1,11 @@
 import {
+  homeAboutExcerpt,
+  renderHomePrerenderHtml,
   renderMarkdownToHtml,
   renderResumePrerenderHtml,
   resumeSummaryExcerpt,
 } from '@gagnechris/shared';
-import type { Post, Resume } from '@gagnechris/shared';
+import type { Home, Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
@@ -23,6 +25,29 @@ const absoluteUrl = (pathOrUrl: string): string => {
 };
 
 const defaultOgImage = (): string => absoluteUrl('/og-image.jpg');
+
+const PRERENDER_OPEN = '<!--prerender:start-->';
+const PRERENDER_CLOSE = '<!--prerender:end-->';
+
+const ROOT_EMPTY_RE = /<div id="root"><\/div>/i;
+const ROOT_PRERENDERED_RE =
+  /<div id="root"><!--prerender:start-->[\s\S]*?<!--prerender:end--><\/div>/i;
+
+/** Put prerendered markup in `#root`, replacing a previous prerender if any. */
+const injectPrerender = (shellHtml: string, body: string): string => {
+  const root = `<div id="root">${PRERENDER_OPEN}${body}${PRERENDER_CLOSE}</div>`;
+  return ROOT_PRERENDERED_RE.test(shellHtml)
+    ? shellHtml.replace(ROOT_PRERENDERED_RE, root)
+    : shellHtml.replace(ROOT_EMPTY_RE, root);
+};
+
+/**
+ * `index.html` is both the Vite shell and the prerendered home page, so the
+ * shell read back from the bucket has to be emptied before it is reused for
+ * other pages — otherwise home content leaks into /blog and /resume.
+ */
+export const normalizeShellHtml = (shellHtml: string): string =>
+  shellHtml.replace(ROOT_PRERENDERED_RE, '<div id="root"></div>');
 
 export const postCanonicalUrl = (slug: string): string =>
   `https://${APEX}/blog/${slug}`;
@@ -97,16 +122,12 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   html = replaceMeta(html, 'name', 'twitter:description', description);
   html = replaceMeta(html, 'name', 'twitter:image', image);
 
-  const headExtras = `
-    <link rel="canonical" href="${url}" />
-    <script type="application/ld+json">${jsonLd}</script>
-  `;
-  html = html.replace(/<\/head>/i, `${headExtras}</head>`);
-
+  html = upsertCanonical(html, url);
   html = html.replace(
-    /<div id="root"><\/div>/i,
-    `<div id="root">${article}</div>`,
+    /<\/head>/i,
+    `<script type="application/ld+json">${jsonLd}</script></head>`,
   );
+  html = injectPrerender(html, article);
 
   return html;
 };
@@ -139,14 +160,8 @@ export const renderBlogIndexPage = (
   html = replaceMeta(html, 'property', 'og:url', url);
   html = replaceMeta(html, 'name', 'twitter:title', title);
   html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = html.replace(
-    /<\/head>/i,
-    `<link rel="canonical" href="${url}" /></head>`,
-  );
-  html = html.replace(
-    /<div id="root"><\/div>/i,
-    `<div id="root">${body}</div>`,
-  );
+  html = upsertCanonical(html, url);
+  html = injectPrerender(html, body);
   return html;
 };
 
@@ -180,7 +195,37 @@ export const renderResumePage = (
   html = replaceMeta(html, 'name', 'twitter:description', description);
   html = replaceMeta(html, 'name', 'twitter:image', image);
   html = upsertCanonical(html, url);
-  html = html.replace(/<div id="root"><\/div>/i, `<div id="root">${body}</div>`);
+  html = injectPrerender(html, body);
+  return html;
+};
+
+/**
+ * Home is the SPA shell itself: the publisher rewrites `index.html` in place
+ * after every web deploy re-uploads the empty Vite shell.
+ */
+export const renderHomePage = (shellHtml: string, home: Home): string => {
+  const title = escapeHtml(home.seo?.title || `${home.name} - ${home.title}`);
+  const description = escapeHtml(
+    home.seo?.description || homeAboutExcerpt(home.about),
+  );
+  const url = `https://${APEX}`;
+  const image = home.seo?.ogImage
+    ? absoluteUrl(home.seo.ogImage)
+    : defaultOgImage();
+
+  let html = shellHtml;
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = replaceMeta(html, 'name', 'description', description);
+  html = replaceMeta(html, 'property', 'og:title', title);
+  html = replaceMeta(html, 'property', 'og:description', description);
+  html = replaceMeta(html, 'property', 'og:type', 'website');
+  html = replaceMeta(html, 'property', 'og:url', url);
+  html = replaceMeta(html, 'property', 'og:image', image);
+  html = replaceMeta(html, 'name', 'twitter:title', title);
+  html = replaceMeta(html, 'name', 'twitter:description', description);
+  html = replaceMeta(html, 'name', 'twitter:image', image);
+  html = upsertCanonical(html, url);
+  html = injectPrerender(html, renderHomePrerenderHtml(home));
   return html;
 };
 

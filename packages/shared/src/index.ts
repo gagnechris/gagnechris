@@ -5,6 +5,7 @@ export {
   CreatePostRequestSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
+  HomeSchema,
   MEDIA_CONTENT_TYPES,
   MEDIA_MAX_BYTES,
   MediaContentTypeSchema,
@@ -20,6 +21,7 @@ export {
   ResumeEducationSchema,
   ResumeExperienceSchema,
   ResumeSchema,
+  UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
   type AdminMeResponse,
@@ -28,6 +30,7 @@ export {
   type CreatePostRequest,
   type ErrorResponse,
   type HealthResponse,
+  type Home,
   type MediaContentType,
   type MediaUploadUrlRequest,
   type MediaUploadUrlResponse,
@@ -41,11 +44,19 @@ export {
   type ResumeDownloadNotifyResponse,
   type ResumeEducation,
   type ResumeExperience,
+  type UpdateHomeRequest,
   type UpdatePostRequest,
   type UpdateResumeRequest,
 } from './schemas.js';
 export { buildOpenApiDocument } from './openapi.js';
 export { renderMarkdownToHtml } from './markdown.js';
+export { DEFAULT_HOME } from './home-default.js';
+export {
+  homeAboutExcerpt,
+  renderHomeAboutHtml,
+  renderHomeAboutSectionHtml,
+  renderHomePrerenderHtml,
+} from './home-html.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export {
   renderResumePrerenderHtml,

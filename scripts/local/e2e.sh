@@ -126,6 +126,22 @@ echo "${HTML}" | grep -q 'property="og:title"'
 echo "${HTML}" | grep -q 'class="blog-post-prerender"'
 echo "${HTML}" | grep -q 'Local body'
 
+echo "==> Seed + assert home prerender (CHR-92)"
+HOME_JSON="$(curl -sS "${API}/api/admin/home")"
+node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'){console.error(h);process.exit(1)}" "${HOME_JSON}"
+HOME_HTML="$(curl -sS "${SITE}/")"
+echo "${HOME_HTML}" | grep -q 'class="home-page-prerender"'
+echo "${HOME_HTML}" | grep -q 'About Me'
+echo "${HOME_HTML}" | grep -q '<script type="module"'
+
+echo "==> Home prerender must not leak into other pages"
+POST_HTML="$(curl -sS "${SITE}/blog/${SLUG}")"
+if echo "${POST_HTML}" | grep -q 'home-page-prerender'; then
+  echo "Home prerender leaked into /blog/${SLUG}" >&2
+  exit 1
+fi
+echo "${POST_HTML}" | grep -q 'class="blog-post-prerender"'
+
 echo "==> Edit published title (no re-publish)"
 VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PUBLISH}")"
 UPDATED="$(curl -sS -X PUT "${API}/api/admin/posts/${POST_ID}" \

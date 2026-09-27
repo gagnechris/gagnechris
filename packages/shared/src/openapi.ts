@@ -10,6 +10,7 @@ import {
   CreatePostRequestSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
+  HomeSchema,
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
   PostListResponseSchema,
@@ -18,6 +19,7 @@ import {
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
   ResumeSchema,
+  UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
 } from './schemas.js';
@@ -46,6 +48,8 @@ export function buildOpenApiDocument() {
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
   registry.register('ContactRequest', ContactRequestSchema);
   registry.register('ContactResponse', ContactResponseSchema);
+  registry.register('Home', HomeSchema);
+  registry.register('UpdateHomeRequest', UpdateHomeRequestSchema);
   registry.register('Resume', ResumeSchema);
   registry.register('UpdateResumeRequest', UpdateResumeRequestSchema);
   registry.register(
@@ -243,6 +247,89 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/admin/home',
+    summary: 'Get the singleton home page content (seeded on first read)',
+    tags: ['Home'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Home',
+        content: { 'application/json': { schema: HomeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/admin/home',
+    summary: 'Update home content (optimistic concurrency via version)',
+    tags: ['Home'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: UpdateHomeRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated',
+        content: { 'application/json': { schema: HomeSchema } },
+      },
+      400: {
+        description: 'Invalid request body',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/home/publish',
+    summary: 'Publish home (stream event for publisher)',
+    tags: ['Home'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Published',
+        content: { 'application/json': { schema: HomeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/home/unpublish',
+    summary: 'Unpublish home (live index.html is left in place)',
+    tags: ['Home'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Unpublished (draft)',
+        content: { 'application/json': { schema: HomeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },

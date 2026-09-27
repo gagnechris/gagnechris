@@ -9,6 +9,10 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
+    "./home": {
+      "types": "./src/home.ts",
+      "import": "./src/home.ts"
+    },
     "./resume": {
       "types": "./src/resume.ts",
       "import": "./src/resume.ts"

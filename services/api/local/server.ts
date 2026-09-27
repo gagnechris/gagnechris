@@ -97,14 +97,19 @@ function isMutatingAdminContent(method: string, path: string): boolean {
     normalized === '/api/admin/posts' ||
     normalized.startsWith('/api/admin/posts/') ||
     normalized === '/api/admin/resume' ||
-    normalized.startsWith('/api/admin/resume/')
+    normalized.startsWith('/api/admin/resume/') ||
+    normalized === '/api/admin/home' ||
+    normalized.startsWith('/api/admin/home/')
   );
 }
 
-/** GET /api/admin/resume seeds the singleton on first read (CHR-89). */
-function isSeedingResumeRead(method: string, path: string): boolean {
+/** GET on a singleton seeds it on first read (resume CHR-89, home CHR-92). */
+function isSeedingSingletonRead(method: string, path: string): boolean {
   const normalized = path.replace(/\/$/, '') || '/';
-  return method === 'GET' && normalized === '/api/admin/resume';
+  return (
+    method === 'GET' &&
+    (normalized === '/api/admin/resume' || normalized === '/api/admin/home')
+  );
 }
 
 const fakeContext = {
@@ -126,7 +131,7 @@ async function maybeRebuild(method: string, path: string, status: number) {
   if (status < 200 || status >= 300) return;
   if (
     !isMutatingAdminContent(method, path) &&
-    !isSeedingResumeRead(method, path)
+    !isSeedingSingletonRead(method, path)
   ) {
     return;
   }

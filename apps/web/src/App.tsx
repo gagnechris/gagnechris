@@ -1,26 +1,54 @@
 import profile from './assets/profile.jpg'
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { trackEvent } from './utils/analytics'
+import {
+  documentHomeView,
+  fallbackHomeView,
+  loadPublishedHome,
+  type HomeView,
+} from './home/publishedHome'
 import './App.css'
 
-const PAGE_TITLE = 'Chris Gagne - Engineering Leader'
-const ABOUT_COPY =
-  "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives."
-
 function App() {
+  const [home, setHome] = useState<HomeView>(
+    () => documentHomeView() ?? fallbackHomeView(),
+  )
+
+  useEffect(() => {
+    // A cold load on `/` already parsed the prerender out of the document.
+    if (documentHomeView()) return
+    let cancelled = false
+    void loadPublishedHome()
+      .then((published) => {
+        if (published && !cancelled) {
+          setHome(published)
+        }
+      })
+      .catch(() => {
+        /* fall back to the bundled default content */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <>
-      <title>{PAGE_TITLE}</title>
+      <title>{`${home.name} - ${home.title}`}</title>
       <link rel="canonical" href="https://gagnechris.com" />
       <header>
-        <img src={profile} className="profile" alt="Photo of Chris Gagne" />
-        <h1>Chris Gagne</h1>
-        <p>Engineering Leader</p>
+        <img src={profile} className="profile" alt={`Photo of ${home.name}`} />
+        <h1>{home.name}</h1>
+        <p>{home.title}</p>
       </header>
       <main>
         <section id="about">
           <h2>About Me</h2>
-          <p>{ABOUT_COPY}</p>
+          <div
+            className="about-body"
+            dangerouslySetInnerHTML={{ __html: home.aboutHtml }}
+          />
         </section>
         <section id="quick-links">
           <h2>Quick Links</h2>

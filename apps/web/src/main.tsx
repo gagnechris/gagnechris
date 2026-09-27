@@ -77,6 +77,15 @@ const router = createBrowserRouter([
             },
           },
           {
+            path: 'home',
+            lazy: async () => {
+              const { default: AdminHomePage } = await import(
+                './admin/AdminHomePage.tsx'
+              )
+              return { Component: AdminHomePage }
+            },
+          },
+          {
             path: 'resume',
             lazy: async () => {
               const { default: AdminResumePage } = await import(

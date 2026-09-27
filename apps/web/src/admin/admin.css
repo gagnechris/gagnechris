@@ -378,3 +378,39 @@
   animation: none;
   opacity: 1;
 }
+
+/* App.css styles bare header/main selectors, so scope the home preview here. */
+.admin-home-preview {
+  padding: var(--space-6);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.admin-home-preview header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.admin-home-preview h1 {
+  margin: 0;
+  font-size: var(--text-3xl);
+}
+
+.admin-home-preview header p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  color: var(--neutral-600);
+}
+
+.admin-home-preview h2 {
+  font-size: var(--text-xl);
+  color: var(--primary-700);
+}
+
+.admin-home-preview .about-body p {
+  line-height: var(--line-relaxed);
+  color: var(--neutral-700);
+  max-width: 65ch;
+}
