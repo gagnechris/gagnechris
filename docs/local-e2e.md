@@ -26,25 +26,22 @@ This script:
 
 ## Day-to-day local admin
 
+One terminal:
+
 ```bash
-# Terminal 1 — data plane
-docker compose -f docker-compose.local.yml up -d
-source scripts/local/env.sh
-node scripts/local/bootstrap-table.mjs
-
-# Terminal 2 — API (injects Cognito JWT claims; rebuilds site after mutating posts)
-npm run local:api
-
-# Terminal 3 — static origin (real viewer-request rewrite)
-npm run build   # once, for shell + assets
-npm run local:seed-shell
-npm run local:site
-
-# Terminal 4 — Vite (proxies /api → local; VITE_AUTH_MODE=local)
-npm run dev:local
+npm run local:dev
 ```
 
-Open `http://localhost:5173/admin`. You are signed in as `local@gagnechris.com` without Cognito.
+This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, runs the API wrapper on `:8787`, and starts Vite with `VITE_AUTH_MODE=local`. Open `http://localhost:5173/admin` — signed in as `local@gagnechris.com` without Cognito. Ctrl+C stops Vite and any API this script started (Docker stays up).
+
+Optional pieces (only when exercising Option B static HTML outside Vite):
+
+```bash
+npm run build && npm run local:seed-shell
+npm run local:site   # :4177 — real viewer-request rewrite
+```
+
+Lower-level scripts (`local:up`, `local:api`, …) remain available if you want to run pieces separately.
 
 ### Safety
 
@@ -64,6 +61,7 @@ Prod admin still: `npm run dev:prod-api` (explicit + banner).
 | Path | Role |
 | --- | --- |
 | `docker-compose.local.yml` | Official DynamoDB Local image |
+| `scripts/local/dev.sh` | One-command admin (`npm run local:dev`) |
 | `scripts/local/env.sh` | Safe env (source before local tools) |
 | `scripts/local/bootstrap-table.mjs` | Create `gagnechris-local` + GSIs |
 | `scripts/local/seed-shell.sh` | Copy `apps/web/dist` → `.local-site` |

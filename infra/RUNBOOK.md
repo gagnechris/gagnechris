@@ -230,7 +230,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 
 ## Local E2E (CHR-75)
 
-For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/local-e2e.md](../docs/local-e2e.md)**. Quick smoke: `npm run e2e:local` (DynamoDB Local + filesystem site root). Day-to-day admin: `npm run local:api`, `npm run local:site`, `npm run dev:local`.
+For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/local-e2e.md](../docs/local-e2e.md)**. Day-to-day admin: `npm run local:dev`. Smoke: `npm run e2e:local`.
 
 ## Existing resources (CDK decisions)
 

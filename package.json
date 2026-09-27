@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "npm run dev -w @gagnechris/web",
     "dev:prod-api": "npm run dev:prod-api -w @gagnechris/web",
-    "dev:local": "bash -c 'source scripts/local/env.sh && npm run dev -w @gagnechris/web'",
+    "dev:local": "npm run local:dev",
+    "local:dev": "bash scripts/local/dev.sh",
     "build": "npm run build -w @gagnechris/web",
     "typecheck": "npm run typecheck -w @gagnechris/web",
     "lint": "npm run lint -w @gagnechris/web",
