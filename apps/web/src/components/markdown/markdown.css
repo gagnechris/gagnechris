@@ -1,4 +1,8 @@
 .markdown-editor {
+  /* Flex so the @uiw/react-codemirror theme wrapper fills the pane;
+     otherwise .cm-scroller grows to content height and overflow:hidden clips it. */
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 18rem;
   border: 1px solid var(--neutral-200);
@@ -7,8 +11,17 @@
   background: white;
 }
 
+.markdown-editor > div {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .markdown-editor .cm-editor {
   height: 100%;
+  flex: 1;
+  min-height: 0;
   font-size: var(--text-sm);
 }
 
@@ -130,6 +143,28 @@
 
   .markdown-split {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Single-column / tabs: let the pane grow so the page scrolls (nicer on phones). */
+  .markdown-split > .markdown-editor,
+  .markdown-split > .markdown-preview {
+    height: auto;
+    min-height: min(50vh, 24rem);
+  }
+
+  .markdown-editor {
+    overflow: visible;
+  }
+
+  .markdown-editor > div {
+    flex: none;
+    min-height: unset;
+  }
+
+  .markdown-editor .cm-editor {
+    height: auto;
+    flex: none;
+    min-height: unset;
   }
 
   .markdown-split[data-pane='edit'] > .markdown-preview,
