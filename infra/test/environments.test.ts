@@ -335,6 +335,15 @@ describe('DnsStack and CertificateStack', () => {
       ValidationMethod: 'DNS',
     });
     certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 3);
+    // exportValue keeps the legacy SiteCertificate ARN export during cutover.
+    const outputs = Object.values(certTemplate.findOutputs('*'));
+    const legacyExport = outputs.find(
+      (o) =>
+        typeof o.Export?.Name === 'string' &&
+        String(o.Export.Name).includes('SiteCertificate') &&
+        !String(o.Export.Name).includes('SiteCertificateV2'),
+    );
+    expect(legacyExport).toBeDefined();
   });
 
   it('drops the legacy staging site cert when dropLegacySiteCertificate is set', () => {

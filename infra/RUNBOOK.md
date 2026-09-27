@@ -94,7 +94,7 @@ Prod only — there is no staging environment.
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
 - Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod` (MX/DMARC deferred — CHR-63).
 - ACM site cert (`SiteCertificateV2`: apex + www) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing one when the other changes (cross-stack export).
-- **CHR-73 cert rotation:** phase 1 keeps the legacy `SiteCertificate` (staging SAN) unused in the stack while Site cuts over to V2; phase 2 removes the legacy cert + staging validation CNAME in a follow-up PR after phase 1 has deployed.
+- **CHR-73 cert rotation:** phase 1 adds V2, points Site at it, and keeps the legacy `SiteCertificate` plus `exportValue` so Certificate-prod does not delete an export Site-prod still imports. Phase 2 (after phase 1 deploys) removes the legacy cert, `exportValue`, and staging validation CNAME.
 - DNSSEC deferred (cost).
 
 ```bash
