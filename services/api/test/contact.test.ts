@@ -129,7 +129,7 @@ describe('contact routes', () => {
         email: 'fast@example.com',
         message: 'hi',
         hp_field: '',
-        formStartedAt: Date.now() - 100,
+        elapsedMs: 100,
       }),
       'POST',
       '/api/contact',
@@ -142,6 +142,70 @@ describe('contact routes', () => {
     expect(send).not.toHaveBeenCalled();
     expect(docSend).not.toHaveBeenCalled();
     expect(MIN_CONTACT_SUBMIT_MS).toBeGreaterThan(100);
+  });
+
+  it('accepts submissions when device clock is skewed if elapsedMs is slow enough', async () => {
+    const send = vi.fn(async () => ({}));
+    setSesClient({ send } as never);
+    process.env.CONTACT_TO_EMAIL = 'you@example.com';
+    process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
+    const doc = mockDoc(async () => ({}));
+    // formStartedAt looks "too fast" vs server clock (±60s skew), but elapsedMs is honest.
+    const res = await handleContactRoute(
+      eventWithBody({
+        name: 'Skewed',
+        email: 'skew@example.com',
+        message: 'hello from the past',
+        hp_field: '',
+        formStartedAt: Date.now() - 500,
+        elapsedMs: MIN_CONTACT_SUBMIT_MS + 5_000,
+      }),
+      'POST',
+      '/api/contact',
+      {
+        contacts: new ContactRepository(doc, 't'),
+        rates: new RateLimiter(doc, 't'),
+      },
+    );
+    expect(res?.statusCode).toBe(200);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns success when SES succeeds even if status update fails', async () => {
+    const send = vi.fn(async () => ({}));
+    setSesClient({ send } as never);
+    process.env.CONTACT_TO_EMAIL = 'you@example.com';
+    process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
+
+    let updates = 0;
+    const doc = mockDoc(async (command) => {
+      if (command.constructor.name === 'UpdateCommand') {
+        updates += 1;
+        // First UpdateCommand is rate-limit; later ones are email status.
+        if (updates >= 3) {
+          throw new Error('Dynamo throttled');
+        }
+      }
+      return {};
+    });
+
+    const res = await handleContactRoute(
+      eventWithBody({
+        name: 'Chris',
+        email: 'visitor@example.com',
+        message: 'Hello',
+        hp_field: '',
+        elapsedMs: 10_000,
+      }),
+      'POST',
+      '/api/contact',
+      {
+        contacts: new ContactRepository(doc, 't'),
+        rates: new RateLimiter(doc, 't'),
+      },
+    );
+    expect(res?.statusCode).toBe(200);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 
   it('persists then sends contact mail for valid submissions', async () => {
@@ -168,6 +232,7 @@ describe('contact routes', () => {
         message: 'Hello',
         hp_field: '',
         formStartedAt: Date.now() - MIN_CONTACT_SUBMIT_MS - 50,
+        elapsedMs: MIN_CONTACT_SUBMIT_MS + 50,
       }),
       'POST',
       '/api/contact',

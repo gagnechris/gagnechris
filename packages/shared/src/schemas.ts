@@ -193,7 +193,12 @@ export const ContactRequestSchema = z
      */
     hp_field: z.string().max(200).optional().default(''),
     website: z.string().max(200).optional().default(''),
-    /** Client form-open time (ms since epoch). Used for min time-to-submit. */
+    /**
+     * Client-measured time from form open to submit (performance.now delta).
+     * Preferred over formStartedAt — avoids server/browser clock skew (CHR-114).
+     */
+    elapsedMs: z.number().int().nonnegative().optional(),
+    /** @deprecated Prefer elapsedMs. Client form-open time (ms since epoch). */
     formStartedAt: z.number().int().nonnegative().optional(),
   })
   .openapi('ContactRequest');

@@ -36,9 +36,17 @@ function honeypotTriggered(body: {
   return body.hp_field.trim().length > 0 || body.website.trim().length > 0;
 }
 
-function tooFastSubmit(formStartedAt: number | undefined): boolean {
-  if (formStartedAt === undefined) return false;
-  const elapsed = Date.now() - formStartedAt;
+function tooFastSubmit(body: {
+  elapsedMs?: number;
+  formStartedAt?: number;
+}): boolean {
+  // Prefer client-measured duration (no clock skew across machines).
+  if (body.elapsedMs !== undefined) {
+    return body.elapsedMs < MIN_CONTACT_SUBMIT_MS;
+  }
+  // Legacy clients: best-effort using formStartedAt vs server clock.
+  if (body.formStartedAt === undefined) return false;
+  const elapsed = Date.now() - body.formStartedAt;
   return elapsed >= 0 && elapsed < MIN_CONTACT_SUBMIT_MS;
 }
 
@@ -62,7 +70,7 @@ export async function handleContactRoute(
   if (method === 'POST' && normalized === '/contact') {
     try {
       const body = ContactRequestSchema.parse(parseBody(event));
-      if (honeypotTriggered(body) || tooFastSubmit(body.formStartedAt)) {
+      if (honeypotTriggered(body) || tooFastSubmit(body)) {
         // Spam / autofill trap — pretend success without persisting or sending.
         return json(200, ContactResponseSchema.parse({ ok: true }));
       }
@@ -109,16 +117,26 @@ export async function handleContactRoute(
             body.message,
           ].join('\n'),
         });
-        await contacts.updateEmailStatus(saved.contactId, 'sent');
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Email send failed';
-        await contacts.updateEmailStatus(saved.contactId, 'failed', message);
+        try {
+          await contacts.updateEmailStatus(saved.contactId, 'failed', message);
+        } catch {
+          // Status update is best-effort; delivery failure already known.
+        }
         return json(502, {
           error: 'email_failed',
           message:
             'Your message was saved but email delivery failed. Please try again later.',
         });
+      }
+
+      // SES succeeded — never fail the visitor if Dynamo status update fails.
+      try {
+        await contacts.updateEmailStatus(saved.contactId, 'sent');
+      } catch {
+        // Logged by repository / Lambda; message is already delivered.
       }
 
       return json(200, ContactResponseSchema.parse({ ok: true }));

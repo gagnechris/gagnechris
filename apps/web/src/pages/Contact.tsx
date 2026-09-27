@@ -5,8 +5,8 @@ import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 
 function Contact() {
-  // Lazy initializer runs once; Date.now is impure so cannot sit in render/useRef init.
-  const [formStartedAt] = useState(() => Date.now());
+  // Client-only elapsed clock — avoids comparing browser Date.now to server time.
+  const [formOpenedAt] = useState(() => performance.now());
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,6 +48,7 @@ function Contact() {
     setSubmitting(true);
 
     try {
+      const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt));
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
@@ -58,7 +59,7 @@ function Contact() {
           email: formData.email,
           message: formData.message,
           hp_field: formData.hp_field,
-          formStartedAt,
+          elapsedMs,
         }),
       });
 
