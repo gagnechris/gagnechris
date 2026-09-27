@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
+  BatchGetCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -94,7 +95,7 @@ async function putPublishedSnapshot(
 
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   const posts: Post[] = [];
-  const legacyMetaIds: string[] = [];
+  const metaPostIds: string[] = [];
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
   do {
@@ -110,14 +111,10 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
     );
     for (const item of page.Items ?? []) {
       if (item.entityType !== 'post') continue;
-      // Prefer PUBLISHED snapshots from the index (CHR-96).
-      if (item.sk === 'PUBLISHED') {
-        posts.push(metaToPost(item as PostMetaRecord));
-        continue;
-      }
-      // Legacy: published META still on gsi1 — migrate below.
+      // PUBLISHED rows are not on gsi1 (no gsi1pk). The index returns published
+      // META drafts; load PUBLISHED snapshots via BatchGet (CHR-117).
       if (item.sk === 'META' && typeof item.postId === 'string') {
-        legacyMetaIds.push(item.postId);
+        metaPostIds.push(item.postId);
       }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
@@ -125,19 +122,38 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       | undefined;
   } while (exclusiveStartKey);
 
-  for (const postId of legacyMetaIds) {
-    const published = await ddb.send(
-      new GetCommand({
-        TableName: tableName,
-        Key: { pk: `POST#${postId}`, sk: 'PUBLISHED' },
+  const uniqueIds = [...new Set(metaPostIds)];
+  const publishedById = new Map<string, PostMetaRecord>();
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const chunk = uniqueIds.slice(i, i + 100);
+    const result = await ddb.send(
+      new BatchGetCommand({
+        RequestItems: {
+          [tableName]: {
+            Keys: chunk.map((postId) => ({
+              pk: `POST#${postId}`,
+              sk: 'PUBLISHED',
+            })),
+          },
+        },
       }),
     );
-    if (published.Item) {
-      posts.push(metaToPost(published.Item as PostMetaRecord));
+    for (const item of result.Responses?.[tableName] ?? []) {
+      const record = item as PostMetaRecord;
+      if (typeof record.postId === 'string') {
+        publishedById.set(record.postId, record);
+      }
+    }
+  }
+
+  for (const postId of uniqueIds) {
+    const publishedItem = publishedById.get(postId);
+    if (publishedItem) {
+      posts.push(metaToPost(publishedItem));
       continue;
     }
 
-    // Rollout safety: copy legacy published META → PUBLISHED.
+    // Rollout safety: copy published META → PUBLISHED when snapshot is missing.
     const legacy = await ddb.send(
       new GetCommand({
         TableName: tableName,

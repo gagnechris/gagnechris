@@ -19,6 +19,18 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
       this.input = input;
     }
   },
+  PutCommand: class PutCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  BatchGetCommand: class BatchGetCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
   QueryCommand: class QueryCommand {
     input: unknown;
     constructor(input: unknown) {
@@ -53,7 +65,7 @@ function makePost(slug: string, n: number): Post {
   };
 }
 
-function postMeta(post: Post) {
+function postPublished(post: Post) {
   return {
     pk: `POST#${post.id}`,
     sk: 'PUBLISHED',
@@ -70,6 +82,14 @@ function postMeta(post: Post) {
     coverImage: post.coverImage,
     seo: post.seo,
     version: post.version,
+  };
+}
+
+/** Published META row as returned by gsi1 STATUS#published. */
+function postMeta(post: Post) {
+  return {
+    ...postPublished(post),
+    sk: 'META',
     gsi1pk: 'STATUS#published',
   };
 }
@@ -190,12 +210,32 @@ describe('rebuildPublishedSite selective scope', () => {
       makePost(`post-${i}`, i),
     );
 
-    ddbSend.mockImplementation(async (cmd: { input?: { IndexName?: string } }) => {
-      if (cmd.input?.IndexName === 'gsi1') {
-        return { Items: posts.map(postMeta) };
-      }
-      return {};
-    });
+    ddbSend.mockImplementation(
+      async (cmd: {
+        constructor?: { name?: string };
+        input?: {
+          IndexName?: string;
+          RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
+        };
+      }) => {
+        if (cmd.input?.IndexName === 'gsi1') {
+          return { Items: posts.map(postMeta) };
+        }
+        if (cmd.input?.RequestItems) {
+          const table = Object.keys(cmd.input.RequestItems)[0]!;
+          const keys = cmd.input.RequestItems[table]!.Keys;
+          const wanted = new Set(keys.map((k) => k.pk));
+          return {
+            Responses: {
+              [table]: posts
+                .filter((p) => wanted.has(`POST#${p.id}`))
+                .map(postPublished),
+            },
+          };
+        }
+        return {};
+      },
+    );
 
     const { rebuildPublishedSite } = await import('../src/s3-site.js');
     const { publishResumePdf } = await import('../src/resume-pdf-publish.js');
