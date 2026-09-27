@@ -17,7 +17,9 @@ import {
   PostStatusSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
+  ResumeSchema,
   UpdatePostRequestSchema,
+  UpdateResumeRequestSchema,
 } from './schemas.js';
 
 const PostIdParamsSchema = z.object({
@@ -44,6 +46,8 @@ export function buildOpenApiDocument() {
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
   registry.register('ContactRequest', ContactRequestSchema);
   registry.register('ContactResponse', ContactResponseSchema);
+  registry.register('Resume', ResumeSchema);
+  registry.register('UpdateResumeRequest', UpdateResumeRequestSchema);
   registry.register(
     'ResumeDownloadNotifyRequest',
     ResumeDownloadNotifyRequestSchema,
@@ -239,6 +243,89 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/admin/resume',
+    summary: 'Get the singleton resume (seeded on first read)',
+    tags: ['Resume'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Resume',
+        content: { 'application/json': { schema: ResumeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/admin/resume',
+    summary: 'Update resume (optimistic concurrency via version)',
+    tags: ['Resume'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: UpdateResumeRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated',
+        content: { 'application/json': { schema: ResumeSchema } },
+      },
+      400: {
+        description: 'Invalid request body',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/resume/publish',
+    summary: 'Publish resume (stream event for publisher)',
+    tags: ['Resume'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Published',
+        content: { 'application/json': { schema: ResumeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/resume/unpublish',
+    summary: 'Unpublish resume (live HTML is left in place)',
+    tags: ['Resume'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Unpublished (draft)',
+        content: { 'application/json': { schema: ResumeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },

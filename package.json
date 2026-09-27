@@ -26,7 +26,7 @@
     "local:up": "docker compose -f docker-compose.local.yml up -d",
     "local:down": "docker compose -f docker-compose.local.yml down",
     "local:bootstrap": "bash -c 'source scripts/local/env.sh && node scripts/local/bootstrap-table.mjs'",
-    "local:api": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/server.ts'",
+    "local:api": "bash -c 'source scripts/local/env.sh && npx tsx watch --clear-screen=false services/api/local/server.ts'",
     "local:site": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/static-server.ts'",
     "local:seed-shell": "bash scripts/local/seed-shell.sh",
     "e2e:local": "bash scripts/local/e2e.sh",

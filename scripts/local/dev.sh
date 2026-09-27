@@ -109,8 +109,10 @@ echo "==> Site root ${SITE_BUCKET_NAME}"
 if curl -sf "http://127.0.0.1:${LOCAL_API_PORT}/api/health" >/dev/null 2>&1; then
   echo "==> Local API already running on :${LOCAL_API_PORT}"
 else
-  echo "==> Start local API on :${LOCAL_API_PORT}"
-  npx tsx services/api/local/server.ts &
+  echo "==> Start local API on :${LOCAL_API_PORT} (tsx watch)"
+  # watch so handler/route changes (e.g. new admin APIs) reload without a full
+  # local:dev restart — otherwise Vite shows 404 against a stale process.
+  npx tsx watch --clear-screen=false services/api/local/server.ts &
   API_PID=$!
   STARTED_API=1
   wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API"

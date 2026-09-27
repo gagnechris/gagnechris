@@ -18,6 +18,7 @@ import type {
 } from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { ConflictError, NotFoundError } from '../data/errors.js';
 import {
   buildMetaItem,
   metaToPost,
@@ -35,19 +36,7 @@ import {
   type PostMetaItem,
 } from './keys.js';
 
-export class ConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ConflictError';
-  }
-}
-
-export class NotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NotFoundError';
-  }
-}
+export { ConflictError, NotFoundError } from '../data/errors.js';
 
 export class PostsRepository {
   constructor(
@@ -94,9 +83,9 @@ export class PostsRepository {
             ScanIndexForward: false,
           }),
         );
-        return (result.Items ?? []).map((item) =>
-          metaToPost(item as PostMetaItem),
-        );
+        return (result.Items ?? [])
+          .filter((item) => item.entityType === 'post')
+          .map((item) => metaToPost(item as PostMetaItem));
       }),
     );
     return batches

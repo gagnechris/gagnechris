@@ -14,9 +14,14 @@ export {
   PostSchema,
   PostSeoSchema,
   PostStatusSchema,
+  ResumeContentSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
+  ResumeEducationSchema,
+  ResumeExperienceSchema,
+  ResumeSchema,
   UpdatePostRequestSchema,
+  UpdateResumeRequestSchema,
   type AdminMeResponse,
   type ContactRequest,
   type ContactResponse,
@@ -30,10 +35,21 @@ export {
   type PostListResponse,
   type PostSeo,
   type PostStatus,
+  type Resume,
+  type ResumeContent,
   type ResumeDownloadNotifyRequest,
   type ResumeDownloadNotifyResponse,
+  type ResumeEducation,
+  type ResumeExperience,
   type UpdatePostRequest,
+  type UpdateResumeRequest,
 } from './schemas.js';
 export { buildOpenApiDocument } from './openapi.js';
 export { renderMarkdownToHtml } from './markdown.js';
+export { DEFAULT_RESUME } from './resume-default.js';
+export {
+  renderResumePrerenderHtml,
+  renderResumeSectionsHtml,
+  resumeSummaryExcerpt,
+} from './resume-html.js';
 export { slugify } from './slugify.js';

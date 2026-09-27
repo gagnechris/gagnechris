@@ -1,5 +1,9 @@
-import { renderMarkdownToHtml } from '@gagnechris/shared';
-import type { Post } from '@gagnechris/shared';
+import {
+  renderMarkdownToHtml,
+  renderResumePrerenderHtml,
+  resumeSummaryExcerpt,
+} from '@gagnechris/shared';
+import type { Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
 
 const escapeHtml = (value: string): string =>
@@ -145,6 +149,36 @@ export const renderBlogIndexPage = (
   return html;
 };
 
+export const renderResumePage = (
+  shellHtml: string,
+  resume: Resume,
+): string => {
+  const title = escapeHtml(resume.seo?.title || 'Resume - Chris Gagne');
+  const description = escapeHtml(
+    resume.seo?.description || resumeSummaryExcerpt(resume.content.summary),
+  );
+  const url = `https://${APEX}/resume`;
+  const image = resume.seo?.ogImage
+    ? absoluteUrl(resume.seo.ogImage)
+    : defaultOgImage();
+  const body = renderResumePrerenderHtml(resume);
+
+  let html = shellHtml;
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = replaceMeta(html, 'name', 'description', description);
+  html = replaceMeta(html, 'property', 'og:title', title);
+  html = replaceMeta(html, 'property', 'og:description', description);
+  html = replaceMeta(html, 'property', 'og:type', 'website');
+  html = replaceMeta(html, 'property', 'og:url', url);
+  html = replaceMeta(html, 'property', 'og:image', image);
+  html = replaceMeta(html, 'name', 'twitter:title', title);
+  html = replaceMeta(html, 'name', 'twitter:description', description);
+  html = replaceMeta(html, 'name', 'twitter:image', image);
+  html = upsertCanonical(html, url);
+  html = html.replace(/<div id="root"><\/div>/i, `<div id="root">${body}</div>`);
+  return html;
+};
+
 export const buildSitemapXml = (posts: Post[]): string => {
   const staticPaths = ['/', '/blog', '/resume', '/contact'];
   const urls = [
@@ -195,6 +229,16 @@ function replaceMeta(
     return html.replace(re, tag);
   }
   return upsertMeta(html, attr, key, content);
+}
+
+/** The Vite shell already carries the home canonical — replace, never append. */
+function upsertCanonical(html: string, url: string): string {
+  const tag = `<link rel="canonical" href="${url}" />`;
+  const re = /<link\s[^>]*?rel=["']canonical["'][^>]*>/i;
+  if (re.test(html)) {
+    return html.replace(re, tag);
+  }
+  return html.replace(/<\/head>/i, `${tag}</head>`);
 }
 
 function upsertMeta(
