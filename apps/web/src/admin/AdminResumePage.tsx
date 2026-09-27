@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderResumePrerenderHtml } from '@gagnechris/shared/resume'
 import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import { useQueuedAutosave } from './useQueuedAutosave'
 import '../pages/Resume.css'
 
 type Resume = components['schemas']['Resume']
@@ -31,8 +32,6 @@ type DraftFields = {
   education: EducationDraft[]
 }
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-
 const emptyExperience = (): ExperienceDraft => ({
   title: '',
   company: '',
@@ -47,6 +46,7 @@ const emptyEducation = (): EducationDraft => ({
   year: '',
 })
 
+/** Normalize list fields for the API / preview — not applied back onto the live draft. */
 const parseLines = (text: string): string[] =>
   text
     .split('\n')
@@ -97,24 +97,61 @@ export default function AdminResumePage() {
   const [resume, setResume] = useState<Resume | null>(null)
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const versionRef = useRef(0)
-  const draftRef = useRef<DraftFields | null>(null)
 
-  useEffect(() => {
-    draftRef.current = draft
-  }, [draft])
+  const performSave = useCallback(
+    async (current: DraftFields, version: number) => {
+      const client = createApiClient()
+      const { data, error, response } = await client.PUT('/api/admin/resume', {
+        body: {
+          version,
+          name: current.name.trim() || 'Chris Gagne',
+          pdfPath: '/resume.pdf',
+          content: toContent(current),
+        },
+      })
+      if (error || !data) {
+        return { ok: false as const, status: response.status }
+      }
+      return { ok: true as const, entity: data }
+    },
+    [],
+  )
+
+  const onSaved = useCallback((entity: Resume) => {
+    setResume(entity)
+  }, [])
+
+  const getVersion = useCallback((entity: Resume) => entity.version, [])
+
+  const {
+    save,
+    saveState,
+    saveError,
+    setSaveError,
+    setSaveState,
+    bumpEdit,
+  } = useQueuedAutosave({
+    draft,
+    dirty,
+    setDirty,
+    versionRef,
+    getVersion,
+    performSave,
+    onSaved,
+    conflictMessage:
+      'Conflict — another save updated the resume. Reload and try again.',
+  })
 
   const setField = <K extends keyof DraftFields>(
     key: K,
     value: DraftFields[K],
   ) => {
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
+    bumpEdit()
     setDirty(true)
-    setSaveState('idle')
   }
 
   useEffect(() => {
@@ -136,45 +173,6 @@ export default function AdminResumePage() {
       cancelled = true
     }
   }, [])
-
-  const save = useCallback(async (): Promise<boolean> => {
-    const current = draftRef.current
-    if (!current) return false
-    setSaveState('saving')
-    setSaveError(null)
-    const client = createApiClient()
-    const { data, error, response } = await client.PUT('/api/admin/resume', {
-      body: {
-        version: versionRef.current,
-        name: current.name.trim() || 'Chris Gagne',
-        pdfPath: '/resume.pdf',
-        content: toContent(current),
-      },
-    })
-    if (error || !data) {
-      setSaveState('error')
-      setSaveError(
-        response.status === 409
-          ? 'Conflict — another save updated the resume. Reload and try again.'
-          : `Save failed (${response.status}).`,
-      )
-      return false
-    }
-    setResume(data)
-    versionRef.current = data.version
-    setDraft(fromResume(data))
-    setDirty(false)
-    setSaveState('saved')
-    return true
-  }, [])
-
-  useEffect(() => {
-    if (!dirty) return
-    const handle = window.setTimeout(() => {
-      void save()
-    }, 900)
-    return () => window.clearTimeout(handle)
-  }, [dirty, draft, save])
 
   const runStatusChange = async (action: 'publish' | 'unpublish') => {
     if (busy) return
@@ -203,7 +201,6 @@ export default function AdminResumePage() {
       }
       setResume(data)
       versionRef.current = data.version
-      setDraft(fromResume(data))
       setDirty(false)
       setSaveState('saved')
     } finally {

@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
 import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import {
+  mergeEditorSeo,
+  useQueuedAutosave,
+} from './useQueuedAutosave'
 
 type Home = components['schemas']['Home']
 
@@ -13,8 +17,6 @@ type DraftFields = {
   seoDescription: string
 }
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-
 const fromHome = (home: Home): DraftFields => ({
   name: home.name,
   title: home.title,
@@ -23,44 +25,81 @@ const fromHome = (home: Home): DraftFields => ({
   seoDescription: home.seo?.description ?? '',
 })
 
-/** `null` clears the stored overrides so the publisher falls back to defaults. */
-const toSeo = (draft: DraftFields): Home['seo'] => {
-  const title = draft.seoTitle.trim()
-  const description = draft.seoDescription.trim()
-  if (!title && !description) return null
-  return {
-    ...(title ? { title } : {}),
-    ...(description ? { description } : {}),
-  }
-}
-
-const toHome = (home: Home, draft: DraftFields): Home => ({
-  ...home,
+/** Outbound payload only — live draft keeps untrimmed / in-progress text. */
+const toHomePayload = (
+  draft: DraftFields,
+  existingSeo: Home['seo'],
+): Pick<Home, 'name' | 'title' | 'about' | 'seo'> => ({
   name: draft.name.trim() || 'Chris Gagne',
   title: draft.title.trim(),
   about: draft.about,
-  seo: toSeo(draft),
+  seo: mergeEditorSeo(existingSeo, draft),
+})
+
+const toHome = (home: Home, draft: DraftFields): Home => ({
+  ...home,
+  ...toHomePayload(draft, home.seo),
 })
 
 export default function AdminHomePage() {
   const [home, setHome] = useState<Home | null>(null)
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const versionRef = useRef(0)
-  const draftRef = useRef<DraftFields | null>(null)
+  const homeRef = useRef<Home | null>(null)
 
   useEffect(() => {
-    draftRef.current = draft
-  }, [draft])
+    homeRef.current = home
+  }, [home])
+
+  const performSave = useCallback(
+    async (current: DraftFields, version: number) => {
+      const client = createApiClient()
+      const { data, error, response } = await client.PUT('/api/admin/home', {
+        body: {
+          version,
+          ...toHomePayload(current, homeRef.current?.seo ?? null),
+        },
+      })
+      if (error || !data) {
+        return { ok: false as const, status: response.status }
+      }
+      return { ok: true as const, entity: data }
+    },
+    [],
+  )
+
+  const onSaved = useCallback((entity: Home) => {
+    setHome(entity)
+  }, [])
+
+  const getVersion = useCallback((entity: Home) => entity.version, [])
+
+  const {
+    save,
+    saveState,
+    saveError,
+    setSaveError,
+    setSaveState,
+    bumpEdit,
+  } = useQueuedAutosave({
+    draft,
+    dirty,
+    setDirty,
+    versionRef,
+    getVersion,
+    performSave,
+    onSaved,
+    conflictMessage:
+      'Conflict — another save updated the home page. Reload and try again.',
+  })
 
   const setField = (key: keyof DraftFields, value: string) => {
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
+    bumpEdit()
     setDirty(true)
-    setSaveState('idle')
   }
 
   useEffect(() => {
@@ -82,46 +121,6 @@ export default function AdminHomePage() {
       cancelled = true
     }
   }, [])
-
-  const save = useCallback(async (): Promise<boolean> => {
-    const current = draftRef.current
-    if (!current) return false
-    setSaveState('saving')
-    setSaveError(null)
-    const client = createApiClient()
-    const { data, error, response } = await client.PUT('/api/admin/home', {
-      body: {
-        version: versionRef.current,
-        name: current.name.trim() || 'Chris Gagne',
-        title: current.title.trim(),
-        about: current.about,
-        seo: toSeo(current),
-      },
-    })
-    if (error || !data) {
-      setSaveState('error')
-      setSaveError(
-        response.status === 409
-          ? 'Conflict — another save updated the home page. Reload and try again.'
-          : `Save failed (${response.status}).`,
-      )
-      return false
-    }
-    setHome(data)
-    versionRef.current = data.version
-    setDraft(fromHome(data))
-    setDirty(false)
-    setSaveState('saved')
-    return true
-  }, [])
-
-  useEffect(() => {
-    if (!dirty) return
-    const handle = window.setTimeout(() => {
-      void save()
-    }, 900)
-    return () => window.clearTimeout(handle)
-  }, [dirty, draft, save])
 
   const runStatusChange = async (action: 'publish' | 'unpublish') => {
     if (busy) return
@@ -148,9 +147,9 @@ export default function AdminHomePage() {
         )
         return
       }
+      // Status/version only — keep the live draft intact.
       setHome(data)
       versionRef.current = data.version
-      setDraft(fromHome(data))
       setDirty(false)
       setSaveState('saved')
     } finally {
