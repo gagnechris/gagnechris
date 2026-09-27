@@ -68,6 +68,15 @@ const router = createBrowserRouter([
             },
           },
           {
+            path: 'posts/:postId',
+            lazy: async () => {
+              const { default: PostEditorPage } = await import(
+                './admin/PostEditorPage.tsx'
+              )
+              return { Component: PostEditorPage }
+            },
+          },
+          {
             path: 'notebook',
             lazy: async () => {
               const { default: AdminNotebookPage } = await import(

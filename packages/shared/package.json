@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "marked": "^18.0.14",
     "zod": "^4.6.5"
   },
   "devDependencies": {

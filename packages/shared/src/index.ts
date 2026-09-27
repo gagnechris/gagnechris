@@ -19,3 +19,5 @@ export {
   type UpdatePostRequest,
 } from './schemas.js';
 export { buildOpenApiDocument } from './openapi.js';
+export { renderMarkdownToHtml } from './markdown.js';
+export { slugify } from './slugify.js';
