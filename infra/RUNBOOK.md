@@ -138,6 +138,8 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
+Legacy post import (CHR-36): `docs/migrate-posts.md` (`npm run migrate:posts`).
+
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never

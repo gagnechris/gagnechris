@@ -66,6 +66,19 @@ export class PostsRepository {
     return metaToPost(result.Item as PostMetaItem);
   }
 
+  async getBySlug(slug: string): Promise<Post | undefined> {
+    const normalized = slugify(slug);
+    const result = await this.doc.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { pk: slugPk(normalized), sk: slugPostSk() },
+      }),
+    );
+    const postId = result.Item?.postId;
+    if (typeof postId !== 'string' || !postId) return undefined;
+    return this.getById(postId);
+  }
+
   async list(status?: PostStatus): Promise<Post[]> {
     const statuses: PostStatus[] = status
       ? [status]
@@ -184,7 +197,10 @@ export class PostsRepository {
     return next;
   }
 
-  async publish(postId: string): Promise<Post> {
+  async publish(
+    postId: string,
+    options?: { publishedAt?: string },
+  ): Promise<Post> {
     const existing = await this.getById(postId);
     if (!existing || existing.status === 'deleted') {
       throw new NotFoundError(`Post ${postId} not found`);
@@ -193,7 +209,8 @@ export class PostsRepository {
       return existing;
     }
     const updatedAt = nowIso();
-    const publishedAt = existing.publishedAt ?? updatedAt;
+    const publishedAt =
+      existing.publishedAt ?? options?.publishedAt ?? updatedAt;
     const next: Post = {
       ...existing,
       status: 'published',
