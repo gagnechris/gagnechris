@@ -1,8 +1,4 @@
 import {
-  ConditionalCheckFailedException,
-  TransactionCanceledException,
-} from '@aws-sdk/client-dynamodb';
-import {
   BatchGetCommand,
   DeleteCommand,
   GetCommand,
@@ -17,8 +13,10 @@ import type {
   PostStatus,
   UpdatePostRequest,
 } from '@gagnechris/shared';
+import { batchGetAll, isOptimisticLockConflict } from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { runDynamoWrite } from '../data/dynamo-write.js';
 import { ConflictError, NotFoundError } from '../data/errors.js';
 import {
   buildMetaItem,
@@ -134,7 +132,7 @@ export class PostsRepository {
     return out;
   }
 
-  /** BatchGet PUBLISHED snapshots (chunks of 100). */
+  /** BatchGet PUBLISHED snapshots (chunks of 100); retries UnprocessedKeys (CHR-120). */
   private async batchGetPublished(
     postIds: string[],
   ): Promise<Map<string, Post>> {
@@ -143,19 +141,30 @@ export class PostsRepository {
     for (let i = 0; i < unique.length; i += 100) {
       const chunk = unique.slice(i, i + 100);
       if (chunk.length === 0) continue;
-      const result = await this.doc.send(
-        new BatchGetCommand({
-          RequestItems: {
-            [this.tableName]: {
-              Keys: chunk.map((id) => ({
-                pk: postPk(id),
-                sk: postPublishedSk(),
-              })),
-            },
+      const responses = await batchGetAll(
+        async (RequestItems) => {
+          const result = await this.doc.send(
+            new BatchGetCommand({ RequestItems }),
+          );
+          return {
+            Responses: result.Responses as
+              | Record<string, Array<Record<string, unknown>>>
+              | undefined,
+            UnprocessedKeys: result.UnprocessedKeys as
+              | Record<string, { Keys: Array<Record<string, unknown>> }>
+              | undefined,
+          };
+        },
+        {
+          [this.tableName]: {
+            Keys: chunk.map((id) => ({
+              pk: postPk(id),
+              sk: postPublishedSk(),
+            })),
           },
-        }),
+        },
       );
-      for (const item of result.Responses?.[this.tableName] ?? []) {
+      for (const item of responses[this.tableName] ?? []) {
         const post = metaToPost(item as PostMetaItem, false);
         map.set(post.id, post);
       }
@@ -186,41 +195,35 @@ export class PostsRepository {
     };
     const meta = buildMetaItem(post);
 
-    try {
-      await this.doc.send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: {
-                  pk: slugPk(slug),
-                  sk: slugPostSk(),
-                  entityType: 'slug',
-                  postId: id,
+    await runDynamoWrite(
+      () =>
+        this.doc.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: {
+                    pk: slugPk(slug),
+                    sk: slugPostSk(),
+                    entityType: 'slug',
+                    postId: id,
+                  },
+                  ConditionExpression: 'attribute_not_exists(pk)',
                 },
-                ConditionExpression: 'attribute_not_exists(pk)',
               },
-            },
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: meta,
-                ConditionExpression: 'attribute_not_exists(pk)',
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: meta,
+                  ConditionExpression: 'attribute_not_exists(pk)',
+                },
               },
-            },
-          ],
-        }),
-      );
-    } catch (error) {
-      if (
-        error instanceof TransactionCanceledException ||
-        error instanceof ConditionalCheckFailedException
-      ) {
-        throw new ConflictError(`Slug "${slug}" is already taken`);
-      }
-      throw error;
-    }
+            ],
+          }),
+        ),
+      `Slug "${slug}" is already taken`,
+    );
 
     return post;
   }
@@ -387,7 +390,7 @@ export class PostsRepository {
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) return;
+      if (isOptimisticLockConflict(error)) return;
       throw error;
     }
   }
@@ -551,17 +554,11 @@ export class PostsRepository {
       });
     }
 
-    try {
-      await this.doc.send(new TransactWriteCommand({ TransactItems: transactItems }));
-    } catch (error) {
-      if (
-        error instanceof TransactionCanceledException ||
-        error instanceof ConditionalCheckFailedException
-      ) {
-        throw new ConflictError('Update conflict (version or slug)');
-      }
-      throw error;
-    }
+    await runDynamoWrite(
+      () =>
+        this.doc.send(new TransactWriteCommand({ TransactItems: transactItems })),
+      'Update conflict (version or slug)',
+    );
   }
 }
 

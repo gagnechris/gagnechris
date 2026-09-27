@@ -6,6 +6,8 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { batchGetAll } from '@gagnechris/shared';
+import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { mapWithConcurrency } from './concurrency.js';
 import {
@@ -35,7 +37,6 @@ import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
 import { syncViewerRequestBlogSlugs } from './viewer-request-slugs.js';
-import type { Home, Post, Resume } from '@gagnechris/shared';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
@@ -126,19 +127,28 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   const publishedById = new Map<string, PostMetaRecord>();
   for (let i = 0; i < uniqueIds.length; i += 100) {
     const chunk = uniqueIds.slice(i, i + 100);
-    const result = await ddb.send(
-      new BatchGetCommand({
-        RequestItems: {
-          [tableName]: {
-            Keys: chunk.map((postId) => ({
-              pk: `POST#${postId}`,
-              sk: 'PUBLISHED',
-            })),
-          },
+    const responses = await batchGetAll(
+      async (RequestItems) => {
+        const result = await ddb.send(new BatchGetCommand({ RequestItems }));
+        return {
+          Responses: result.Responses as
+            | Record<string, Array<Record<string, unknown>>>
+            | undefined,
+          UnprocessedKeys: result.UnprocessedKeys as
+            | Record<string, { Keys: Array<Record<string, unknown>> }>
+            | undefined,
+        };
+      },
+      {
+        [tableName]: {
+          Keys: chunk.map((postId) => ({
+            pk: `POST#${postId}`,
+            sk: 'PUBLISHED',
+          })),
         },
-      }),
+      },
     );
-    for (const item of result.Responses?.[tableName] ?? []) {
+    for (const item of responses[tableName] ?? []) {
       const record = item as PostMetaRecord;
       if (typeof record.postId === 'string') {
         publishedById.set(record.postId, record);

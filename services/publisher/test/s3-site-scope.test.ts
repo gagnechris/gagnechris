@@ -277,4 +277,83 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(publishResumePdf).not.toHaveBeenCalled();
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
   });
+
+  it('retries BatchGet UnprocessedKeys so draft META is never published (CHR-120)', async () => {
+    const published = makePost('welcome', 1);
+    const draftTitle = 'DRAFT TITLE MUST NOT GO LIVE';
+    let batchCalls = 0;
+
+    ddbSend.mockImplementation(
+      async (cmd: {
+        constructor?: { name?: string };
+        input?: {
+          IndexName?: string;
+          RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
+          Key?: { pk: string; sk: string };
+        };
+      }) => {
+        if (cmd.input?.IndexName === 'gsi1') {
+          return {
+            Items: [
+              {
+                ...postMeta(published),
+                title: draftTitle,
+                bodyMarkdown: '# draft body',
+              },
+            ],
+          };
+        }
+        if (cmd.input?.RequestItems) {
+          batchCalls += 1;
+          const table = Object.keys(cmd.input.RequestItems)[0]!;
+          if (batchCalls === 1) {
+            return {
+              Responses: { [table]: [] },
+              UnprocessedKeys: {
+                [table]: {
+                  Keys: [{ pk: `POST#${published.id}`, sk: 'PUBLISHED' }],
+                },
+              },
+            };
+          }
+          return {
+            Responses: { [table]: [postPublished(published)] },
+          };
+        }
+        // Legacy Get META must not be used when snapshot arrives on retry.
+        if (cmd.input?.Key?.sk === 'META') {
+          return {
+            Item: {
+              ...postMeta(published),
+              title: draftTitle,
+            },
+          };
+        }
+        return {};
+      },
+    );
+
+    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const storage = memoryStorage();
+    await rebuildPublishedSite({
+      scope: {
+        allPosts: false,
+        postSlugs: new Set(['welcome']),
+        slugsToRemove: new Set(),
+        feeds: true,
+        home: false,
+        resume: false,
+      },
+      storage,
+    });
+
+    expect(batchCalls).toBe(2);
+    const html = await storage.read('blog/welcome/index.html');
+    expect(html).toContain(published.title);
+    expect(html).not.toContain(draftTitle);
+    const postsJson = JSON.parse(
+      (await storage.read('blog/posts.json')) ?? '{}',
+    ) as { items: Array<{ title: string }> };
+    expect(postsJson.items[0]?.title).toBe(published.title);
+  });
 });
