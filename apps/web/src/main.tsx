@@ -17,32 +17,75 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <App />
+        element: <App />,
       },
       {
         path: 'resume',
-        element: <Resume />
+        element: <Resume />,
       },
       {
         path: 'blog',
-        element: <BlogIndex />
+        element: <BlogIndex />,
       },
       {
         path: 'blog/:slug',
-        element: <BlogPost />
+        element: <BlogPost />,
       },
       {
         path: 'contact',
-        element: <Contact />
+        element: <Contact />,
+      },
+      {
+        path: 'auth/callback',
+        lazy: async () => {
+          const { default: AuthCallback } = await import('./auth/AuthCallback.tsx')
+          return { Component: AuthCallback }
+        },
+      },
+      {
+        path: 'admin',
+        lazy: async () => {
+          const { default: AdminLayout } = await import('./admin/AdminLayout.tsx')
+          return { Component: AdminLayout }
+        },
+        children: [
+          {
+            index: true,
+            lazy: async () => {
+              const { default: AdminPostsPage } = await import(
+                './admin/AdminPostsPage.tsx'
+              )
+              return { Component: AdminPostsPage }
+            },
+          },
+          {
+            path: 'posts',
+            lazy: async () => {
+              const { default: AdminPostsPage } = await import(
+                './admin/AdminPostsPage.tsx'
+              )
+              return { Component: AdminPostsPage }
+            },
+          },
+          {
+            path: 'notebook',
+            lazy: async () => {
+              const { default: AdminNotebookPage } = await import(
+                './admin/AdminNotebookPage.tsx'
+              )
+              return { Component: AdminNotebookPage }
+            },
+          },
+        ],
       },
       {
         path: '*',
-        element: <NotFound />
-      }
-    ]
-  }
+        element: <NotFound />,
+      },
+    ],
+  },
 ], {
-  basename: import.meta.env.BASE_URL || '/'
+  basename: import.meta.env.BASE_URL || '/',
 })
 
 createRoot(document.getElementById('root')!).render(

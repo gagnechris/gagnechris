@@ -1,6 +1,9 @@
 # Allow all search engines to crawl the site
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /auth/
 
 # Sitemap location
 Sitemap: https://gagnechris.com/sitemap.xml
