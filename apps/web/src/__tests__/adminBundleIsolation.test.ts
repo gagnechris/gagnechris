@@ -15,4 +15,15 @@ describe('public entry bundle isolation', () => {
     expect(mainSource).not.toMatch(/from ['"].*DontFeedTheBears/)
     expect(mainSource).toMatch(/import\(\s*'\.\/pages\/DontFeedTheBears/)
   })
+
+  // RR skips HydrateFallback returned from lazy() during initial hydration, so
+  // it must be a static sibling of `lazy` (and on the root) or /admin warns.
+  test('lazy routes declare HydrateFallback statically, not only inside lazy()', () => {
+    expect(mainSource).toMatch(/HydrateFallback:\s*LazyFallback/)
+    expect(mainSource).not.toMatch(
+      /return\s*\{\s*Component:[^}]*HydrateFallback/,
+    )
+    const lazyBlocks = mainSource.match(/HydrateFallback:\s*LazyFallback,\s*\n\s*lazy:/g)
+    expect(lazyBlocks?.length).toBeGreaterThanOrEqual(8)
+  })
 })
