@@ -45,6 +45,6 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('link', { name: 'Notebook' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Posts' })).toBeInTheDocument()
-    expect(await screen.findByText(/No posts yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/No posts match/i)).toBeInTheDocument()
   })
 })
