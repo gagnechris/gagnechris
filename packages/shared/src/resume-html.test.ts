@@ -77,7 +77,7 @@ describe('renderResumePrerenderHtml', () => {
     const html = renderResumePrerenderHtml(resume());
     expect(html).toContain('class="resume-page-prerender"');
     expect(html).toContain('data-name="Chris Gagne"');
-    expect(html).toContain('data-pdf="/Christopher M Gagne Resume 2026.pdf"');
+    expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('<h1>Chris Gagne</h1>');
     expect(html).toContain('<main>');
   });

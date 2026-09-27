@@ -6,7 +6,7 @@ import type { Resume } from './schemas.js';
  */
 export const DEFAULT_RESUME: Resume = {
   name: 'Chris Gagne',
-  pdfPath: '/Christopher M Gagne Resume 2026.pdf',
+  pdfPath: '/resume.pdf',
   status: 'draft',
   publishedAt: null,
   updatedAt: '2026-09-27T00:00:00.000Z',

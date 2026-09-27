@@ -70,7 +70,7 @@ describe('Resume Page', () => {
     fireEvent.click(screen.getByRole('button', { name: /resume/i }))
 
     await waitFor(() => expect(mockAnchor.click).toHaveBeenCalled())
-    expect(mockAnchor.href).toBe('/Christopher M Gagne Resume 2026.pdf')
-    expect(mockAnchor.download).toBe('Christopher M Gagne Resume 2026.pdf')
+    expect(mockAnchor.href).toBe('/resume.pdf')
+    expect(mockAnchor.download).toBe('resume.pdf')
   })
 })

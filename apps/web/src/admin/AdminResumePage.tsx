@@ -147,7 +147,7 @@ export default function AdminResumePage() {
       body: {
         version: versionRef.current,
         name: current.name.trim() || 'Chris Gagne',
-        pdfPath: current.pdfPath.trim() || '/resume.pdf',
+        pdfPath: '/resume.pdf',
         content: toContent(current),
       },
     })
@@ -232,7 +232,7 @@ export default function AdminResumePage() {
   const previewHtml = renderResumePrerenderHtml({
     ...resume,
     name: draft.name,
-    pdfPath: draft.pdfPath,
+    pdfPath: '/resume.pdf',
     content: toContent(draft),
   })
 
@@ -309,12 +309,16 @@ export default function AdminResumePage() {
           />
         </label>
         <label className="admin-field">
-          <span>PDF path</span>
+          <span>PDF download</span>
           <input
             className="admin-input"
-            value={draft.pdfPath}
-            onChange={(e) => setField('pdfPath', e.target.value)}
+            value="/resume.pdf"
+            readOnly
+            aria-readonly="true"
           />
+          <span className="admin-hint">
+            Regenerated from this content on every Publish
+          </span>
         </label>
         <label className="admin-field">
           <span>Summary</span>

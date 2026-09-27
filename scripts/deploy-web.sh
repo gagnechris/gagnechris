@@ -60,6 +60,7 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --exclude "assets/*" \
   --exclude "blog/*" \
   --exclude "resume/*" \
+  --exclude "resume.pdf" \
   --exclude "media/*" \
   --exclude "sitemap.xml" \
   --exclude "rss.xml" \

@@ -816,7 +816,7 @@ export interface components {
         };
         Resume: {
             name: string;
-            /** @description Site-relative path to the downloadable PDF */
+            /** @description Site-relative path to the downloadable PDF (publisher always serves /resume.pdf) */
             pdfPath: string;
             content: components["schemas"]["ResumeContent"];
             status: components["schemas"]["PostStatus"];

@@ -18,6 +18,7 @@ import {
   renderPostPage,
   renderResumePage,
 } from './render.js';
+import { renderResumePdf, RESUME_PDF_KEY } from './resume-pdf.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
@@ -152,13 +153,20 @@ export async function rebuildPublishedSite(options?: {
     CACHE_HTML,
   );
 
-  // Draft / missing resume leaves any live resume/index.html untouched.
+  // Draft / missing resume leaves any live resume HTML/PDF untouched.
   const resume = await getPublishedResume(tableName);
   if (resume) {
     await storage.put(
       'resume/index.html',
       renderResumePage(shell, resume),
       'text/html; charset=utf-8',
+      CACHE_HTML,
+    );
+    const pdfBytes = await renderResumePdf(resume);
+    await storage.put(
+      RESUME_PDF_KEY,
+      pdfBytes,
+      'application/pdf',
       CACHE_HTML,
     );
   }
@@ -189,7 +197,9 @@ export async function rebuildPublishedSite(options?: {
     ...removedSlugs.map((s) => `/blog/${s}`),
     ...removedSlugs.map((s) => `/blog/${s}/`),
     ...removedSlugs.map((s) => `/blog/${s}/index.html`),
-    ...(resume ? ['/resume', '/resume/', '/resume/index.html'] : []),
+    ...(resume
+      ? ['/resume', '/resume/', '/resume/index.html', `/${RESUME_PDF_KEY}`]
+      : []),
   ];
 
   await storage.invalidate(invalidated);

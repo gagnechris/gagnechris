@@ -118,7 +118,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 
 On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
 
-Publisher-owned paths are never deleted by the sync: `blog/*`, `media/*`, `sitemap.xml`, `rss.xml`. After sync + `/*` invalidation, deploy invokes the publisher with `{"action":"republishAll"}` (SSM `/gagnechris/prod/publisher-function-name`) so pages pick up the new HTML shell.
+Publisher-owned paths are never deleted by the sync: `blog/*`, `resume/*`, `resume.pdf`, `media/*`, `sitemap.xml`, `rss.xml`. After sync + `/*` invalidation, deploy invokes the publisher with `{"action":"republishAll"}` (SSM `/gagnechris/prod/publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
 
 Manual / local:
 

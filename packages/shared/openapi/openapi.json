@@ -386,7 +386,7 @@
           "pdfPath": {
             "type": "string",
             "minLength": 1,
-            "description": "Site-relative path to the downloadable PDF"
+            "description": "Site-relative path to the downloadable PDF (publisher always serves /resume.pdf)"
           },
           "content": {
             "$ref": "#/components/schemas/ResumeContent"

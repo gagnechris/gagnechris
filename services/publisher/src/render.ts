@@ -5,6 +5,7 @@ import {
 } from '@gagnechris/shared';
 import type { Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
+import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
 const escapeHtml = (value: string): string =>
   value
@@ -161,7 +162,11 @@ export const renderResumePage = (
   const image = resume.seo?.ogImage
     ? absoluteUrl(resume.seo.ogImage)
     : defaultOgImage();
-  const body = renderResumePrerenderHtml(resume);
+  // Always point the SPA download at the publisher-generated PDF.
+  const body = renderResumePrerenderHtml({
+    ...resume,
+    pdfPath: RESUME_PDF_PUBLIC_PATH,
+  });
 
   let html = shellHtml;
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);

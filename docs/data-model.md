@@ -113,22 +113,17 @@ One item holds the structured resume edited in `/admin/resume` and rendered to
 | `entityType` | `resume` |
 | `resumeId` | `current` |
 | `name` | Display name in the page header |
-| `pdfPath` | Site-relative path to the downloadable PDF |
-| `content` | Map: `summary`, `competencies[]`, `experience[]`, `skills[]`, `education[]` |
-| `status` | `draft` \| `published` (`deleted` unused) |
-| `publishedAt` | ISO-8601 when first published; kept on unpublish |
-| `updatedAt` | ISO-8601 |
-| `seo` | Optional map: `title`, `description`, `ogImage` overrides |
-| `version` | Number for optimistic concurrency |
+| `pdfPath` | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
 
 No GSI keys: the singleton is always read with `GetItem`. Admin post listing
 filters `entityType = 'post'` so `STATUS#*` queries never surface the resume.
 
 `GET /api/admin/resume` seeds the item from `DEFAULT_RESUME` with
 `status=published` the first time it is read, so the next publisher run emits
-live HTML that matches the pre-CMS page. Publish/unpublish flow through the same
-`META` stream the blog uses; a draft or missing resume leaves the existing
-`resume/index.html` in place rather than deleting it.
+live HTML (and `/resume.pdf`) that matches the pre-CMS page. Publish/unpublish
+flow through the same `META` stream the blog uses; a draft or missing resume
+leaves the existing `resume/index.html` and `resume.pdf` in place rather than
+deleting them.
 
 ## Notebook (reserved key space)
 

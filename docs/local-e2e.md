@@ -42,10 +42,11 @@ Optional: `npm run build && npm run local:seed-shell` once if you want full SPA 
 
 `http://localhost:5173/admin/resume` edits the singleton resume. The first `GET`
 seeds it (published, from `DEFAULT_RESUME`) and the local API rebuilds the site,
-so `.local-site/resume/index.html` exists right away. Autosave and
-publish/unpublish trigger the same rebuild. The public page at
+so `.local-site/resume/index.html` and `.local-site/resume.pdf` exist right away.
+Autosave and publish/unpublish trigger the same rebuild. The public page at
 `http://localhost:5173/resume` fetches `/__site/resume/` and falls back to
-`DEFAULT_RESUME` when no published HTML exists.
+`DEFAULT_RESUME` when no published HTML exists. Download uses `/resume.pdf`
+(Vite proxies that path to the local site origin).
 
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
 
