@@ -32,22 +32,30 @@ export default defineConfig(({ mode, command }) => {
     )
     if (localSiteOrigin) {
       console.info(
-        `[vite] /blog proxies to ${localSiteOrigin} (publisher static output).`,
+        `[vite] /blog and /assets proxy to ${localSiteOrigin} (publisher static output).`,
       )
     }
   }
 
-  const proxy: Record<string, { target: string; changeOrigin: boolean; secure: boolean }> =
-    {
-      '/api': {
-        target: proxyTarget,
-        changeOrigin: true,
-        secure: proxyTarget.startsWith('https'),
-      },
-    }
+  const proxy: Record<
+    string,
+    { target: string; changeOrigin: boolean; secure: boolean }
+  > = {
+    '/api': {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: proxyTarget.startsWith('https'),
+    },
+  }
 
   if (localSiteOrigin && !useProdApi) {
+    // Option B HTML + production asset hashes from `.local-site` (seeded from dist).
     proxy['/blog'] = {
+      target: localSiteOrigin,
+      changeOrigin: true,
+      secure: false,
+    }
+    proxy['/assets'] = {
       target: localSiteOrigin,
       changeOrigin: true,
       secure: false,
