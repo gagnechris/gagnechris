@@ -14,6 +14,7 @@ import {
   type HealthResponse,
 } from '@gagnechris/shared';
 import { handlePostsRoute } from './posts/handlers.js';
+import { handleMediaRoute } from './media/handlers.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-api' });
 const tracer = new Tracer({ serviceName: 'gagnechris-api' });
@@ -121,6 +122,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     if (postsResponse) {
       metrics.addMetric('PostsRoute', MetricUnit.Count, 1);
       return postsResponse;
+    }
+
+    const mediaResponse = await handleMediaRoute(event, method, path);
+    if (mediaResponse) {
+      metrics.addMetric('MediaRoute', MetricUnit.Count, 1);
+      return mediaResponse;
     }
 
     metrics.addMetric('NotFound', MetricUnit.Count, 1);

@@ -30,6 +30,7 @@ import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { NagSuppressions } from 'cdk-nag';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,9 +70,22 @@ export class ApiStack extends Stack {
       retention: RetentionDays.TWO_WEEKS,
     });
 
+    // SSM late-binding avoids Site ↔ Api cycle (Api adds /api/* on Site's
+    // distribution; Site would otherwise export the bucket into Api).
+    const siteBucketName = StringParameter.valueForStringParameter(
+      this,
+      `/gagnechris/${config.name}/site-bucket-name`,
+    );
+    const siteBucket = Bucket.fromBucketName(
+      this,
+      'SiteBucketForMedia',
+      siteBucketName,
+    );
+
     this.apiFunction = new NodejsFunction(this, 'ApiFunction', {
       functionName: `gagnechris-${config.name}-api`,
-      description: 'gagnechris HTTP API (health + admin posts; shared data table)',
+      description:
+        'gagnechris HTTP API (health + admin posts/media; shared data table)',
       entry: join(repoRoot, 'services/api/src/handler.ts'),
       handler: 'handler',
       runtime: Runtime.NODEJS_24_X,
@@ -93,10 +107,13 @@ export class ApiStack extends Stack {
         POWERTOOLS_METRICS_NAMESPACE: 'gagnechris',
         NODE_OPTIONS: '--enable-source-maps',
         DATA_TABLE_NAME: dataTable.tableName,
+        SITE_BUCKET_NAME: siteBucketName,
       },
     });
 
     dataTable.grantReadWriteData(this.apiFunction);
+    // Presigned PUT only — objects are read via CloudFront OAC.
+    siteBucket.grantPut(this.apiFunction, 'media/*');
 
     NagSuppressions.addResourceSuppressions(
       this.apiFunction,
@@ -112,7 +129,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'X-Ray tracing on the function role uses wildcard resources required by the managed tracing policy pattern.',
+            'X-Ray tracing wildcards and scoped s3:PutObject on media/* for presigned uploads (CHR-31).',
         },
       ],
       true,

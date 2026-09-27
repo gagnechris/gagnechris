@@ -260,6 +260,77 @@
         "required": [
           "version"
         ]
+      },
+      "MediaUploadUrlRequest": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "$ref": "#/components/schemas/MediaContentType"
+          },
+          "contentLength": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 10485760,
+            "description": "Exact byte length of the PUT body (max 10 MiB)"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Original filename (extension used when present)"
+          }
+        },
+        "required": [
+          "contentType",
+          "contentLength"
+        ]
+      },
+      "MediaContentType": {
+        "type": "string",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ]
+      },
+      "MediaUploadUrlResponse": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Presigned PUT URL (or local API PUT URL in filesystem mode)"
+          },
+          "publicPath": {
+            "type": "string",
+            "pattern": "^\\/media\\/",
+            "description": "Same-origin path to insert in markdown"
+          },
+          "headers": {
+            "type": "object",
+            "properties": {
+              "Content-Type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Content-Type"
+            ],
+            "description": "Headers the client must send on the PUT (Content-Length is set by the browser to match contentLength)"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "publicPath",
+          "headers",
+          "expiresAt"
+        ]
       }
     },
     "parameters": {}
@@ -659,6 +730,50 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/media/upload-url": {
+      "post": {
+        "summary": "Presigned PUT URL for an image under /media",
+        "tags": [
+          "Media"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadUrlRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload URL and public path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid content type, size, or body",
             "content": {
               "application/json": {
                 "schema": {

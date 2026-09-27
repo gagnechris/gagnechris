@@ -113,3 +113,65 @@ export const UpdatePostRequestSchema = z
   .openapi('UpdatePostRequest');
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
+
+/** Allowed Content-Type values for admin media uploads (CHR-31). */
+export const MEDIA_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
+
+export const MediaContentTypeSchema = z
+  .enum(MEDIA_CONTENT_TYPES)
+  .openapi('MediaContentType');
+
+export type MediaContentType = z.infer<typeof MediaContentTypeSchema>;
+
+/** Max upload size enforced via signed Content-Length (10 MiB). */
+export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
+
+export const MediaUploadUrlRequestSchema = z
+  .object({
+    contentType: MediaContentTypeSchema,
+    contentLength: z
+      .number()
+      .int()
+      .positive()
+      .max(MEDIA_MAX_BYTES)
+      .openapi({ description: 'Exact byte length of the PUT body (max 10 MiB)' }),
+    filename: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .openapi({ description: 'Original filename (extension used when present)' }),
+  })
+  .openapi('MediaUploadUrlRequest');
+
+export type MediaUploadUrlRequest = z.infer<typeof MediaUploadUrlRequestSchema>;
+
+export const MediaUploadUrlResponseSchema = z
+  .object({
+    uploadUrl: z.string().url().openapi({
+      description: 'Presigned PUT URL (or local API PUT URL in filesystem mode)',
+    }),
+    publicPath: z
+      .string()
+      .regex(/^\/media\//)
+      .openapi({ description: 'Same-origin path to insert in markdown' }),
+    headers: z
+      .object({
+        'Content-Type': z.string(),
+      })
+      .openapi({
+        description:
+          'Headers the client must send on the PUT (Content-Length is set by the browser to match contentLength)',
+      }),
+    expiresAt: z.string().datetime({ offset: true }),
+  })
+  .openapi('MediaUploadUrlResponse');
+
+export type MediaUploadUrlResponse = z.infer<
+  typeof MediaUploadUrlResponseSchema
+>;

@@ -87,6 +87,64 @@ export default function PostEditorPage() {
     setSaveState('idle')
   }
 
+  const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
+    const client = createApiClient()
+    const paths: string[] = []
+    const allowed = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ])
+    for (const file of files) {
+      if (!allowed.has(file.type)) {
+        throw new Error(`Unsupported image type: ${file.type || file.name}`)
+      }
+      const { data, error, response } = await client.POST(
+        '/api/admin/media/upload-url',
+        {
+          body: {
+            contentType: file.type as
+              | 'image/jpeg'
+              | 'image/png'
+              | 'image/webp'
+              | 'image/gif',
+            contentLength: file.size,
+            filename: file.name,
+          },
+        },
+      )
+      if (error || !data) {
+        throw new Error(
+          `Image upload rejected (${response.status}): ${file.name || file.type}`,
+        )
+      }
+      const put = await fetch(data.uploadUrl, {
+        method: 'PUT',
+        headers: data.headers,
+        body: file,
+      })
+      if (!put.ok) {
+        throw new Error(`Upload failed (${put.status}) for ${file.name}`)
+      }
+      paths.push(data.publicPath)
+    }
+    return paths
+  }, [])
+
+  const handleUploadImages = useCallback(
+    async (files: File[]) => {
+      try {
+        setSaveError(null)
+        return await uploadImages(files)
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Image upload failed')
+        return []
+      }
+    },
+    [uploadImages],
+  )
+
   useEffect(() => {
     if (!postId) {
       return
@@ -451,7 +509,7 @@ export default function PostEditorPage() {
             className="admin-input"
             value={draft.coverImage}
             onChange={(e) => setField('coverImage', e.target.value)}
-            placeholder="https://… (paste/upload arrives with media ticket)"
+            placeholder="/media/… or https://…"
           />
         </label>
       </form>
@@ -460,12 +518,13 @@ export default function PostEditorPage() {
         <MarkdownEditor
           value={draft.bodyMarkdown}
           onChange={(value) => setField('bodyMarkdown', value)}
+          onUploadImages={handleUploadImages}
         />
         <MarkdownPreview markdown={draft.bodyMarkdown} />
       </div>
       <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · Image paste lands in
-        CHR-31
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images into
+        the editor
       </p>
     </section>
   )
