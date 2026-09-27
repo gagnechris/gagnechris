@@ -85,7 +85,7 @@ describe('Resume Page', () => {
 
     await waitFor(() => expect(mockAnchor.click).toHaveBeenCalled())
     expect(mockAnchor.href).toBe('/resume.pdf')
-    expect(mockAnchor.download).toBe('resume.pdf')
+    expect(mockAnchor.download).toBe('Chris-Gagne-Resume.pdf')
 
     expect(
       screen.getByRole('link', { name: /don't feed the bears/i }),

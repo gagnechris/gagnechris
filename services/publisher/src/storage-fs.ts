@@ -43,6 +43,7 @@ export function createFilesystemSiteStorage(
       body: string | Uint8Array,
       _contentType: string,
       _cacheControl: string,
+      _contentDisposition?: string,
     ): Promise<void> {
       const path = join(root, key);
       await mkdir(dirname(path), { recursive: true });

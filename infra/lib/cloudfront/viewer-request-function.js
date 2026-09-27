@@ -1,6 +1,7 @@
 /**
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
+ * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
  * - Skip rewrite for /api/* and /media/*
  * - /blog, /resume, /contact, /dont-feed-the-bears -> Option B {path}/index.html
  * - /blog/<slug> -> Option B only when slug is published (see PUBLISHED_BLOG_SLUGS);
@@ -15,6 +16,9 @@
  * Publisher replaces the map after each rebuild (CHR-102).
  */
 var PUBLISHED_BLOG_SLUGS = null; /*__PUBLISHED_BLOG_SLUGS__*/
+
+/** Pre-CMS resume PDF object name (spaces may arrive encoded or decoded). */
+var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
 
 function handler(event) {
   var request = event.request;
@@ -32,6 +36,18 @@ function handler(event) {
   }
 
   var uri = request.uri;
+  if (isLegacyResumePdfUri(uri)) {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        location: {
+          value: '/resume.pdf' + serializeQueryString(request.querystring),
+        },
+      },
+    };
+  }
+
   if (uri === '/api' || uri.indexOf('/api/') === 0 || uri === '/media' || uri.indexOf('/media/') === 0) {
     return request;
   }
@@ -144,6 +160,29 @@ function rewriteOptionB(uri) {
     return uri + '/index.html';
   }
   return uri;
+}
+
+/**
+ * Match the old resume PDF path whether CloudFront passed it percent-encoded
+ * or already decoded (and tolerate one extra decode pass).
+ */
+function isLegacyResumePdfUri(uri) {
+  var candidate = uri;
+  for (var i = 0; i < 2; i++) {
+    if (candidate === LEGACY_RESUME_PDF) {
+      return true;
+    }
+    try {
+      var decoded = decodeURIComponent(candidate);
+      if (decoded === candidate) {
+        break;
+      }
+      candidate = decoded;
+    } catch (e) {
+      break;
+    }
+  }
+  return candidate === LEGACY_RESUME_PDF;
 }
 
 function serializeQueryString(qs) {

@@ -288,4 +288,43 @@ describe('viewer-request CloudFront Function', () => {
     }) as CfRequest;
     expect(req.uri).toBe('/assets/app.js');
   });
+
+  it('301s the legacy encoded resume PDF path to /resume.pdf', () => {
+    const res = runHandler({
+      uri: '/Christopher%20M%20Gagne%20Resume%202026.pdf',
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    expect(res).toMatchObject({
+      statusCode: 301,
+      headers: { location: { value: '/resume.pdf' } },
+    });
+  });
+
+  it('301s the legacy decoded resume PDF path to /resume.pdf', () => {
+    const res = runHandler({
+      uri: '/Christopher M Gagne Resume 2026.pdf',
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    expect(res).toMatchObject({
+      statusCode: 301,
+      headers: { location: { value: '/resume.pdf' } },
+    });
+  });
+
+  it('preserves query string on legacy resume PDF redirect', () => {
+    const res = runHandler({
+      uri: '/Christopher%20M%20Gagne%20Resume%202026.pdf',
+      querystring: { utm_source: { value: 'linkedin' } },
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    expect(locationOf(res)).toBe('/resume.pdf?utm_source=linkedin');
+  });
+
+  it('does not redirect other PDFs', () => {
+    const req = runHandler({
+      uri: '/resume.pdf',
+      headers: { host: { value: 'gagnechris.com' } },
+    }) as CfRequest;
+    expect(req.uri).toBe('/resume.pdf');
+  });
 });

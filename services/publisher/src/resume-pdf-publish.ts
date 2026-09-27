@@ -1,6 +1,10 @@
 import { Logger } from '@aws-lambda-powertools/logger';
 import type { Resume } from '@gagnechris/shared';
-import { renderResumePdf, RESUME_PDF_KEY } from './resume-pdf.js';
+import {
+  renderResumePdf,
+  RESUME_PDF_CONTENT_DISPOSITION,
+  RESUME_PDF_KEY,
+} from './resume-pdf.js';
 import type { SiteStorage } from './storage.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-publisher' });
@@ -22,7 +26,13 @@ export async function publishResumePdf(
 ): Promise<ResumePdfPublishResult> {
   try {
     const pdfBytes = await render(resume);
-    await storage.put(RESUME_PDF_KEY, pdfBytes, 'application/pdf', CACHE_HTML);
+    await storage.put(
+      RESUME_PDF_KEY,
+      pdfBytes,
+      'application/pdf',
+      CACHE_HTML,
+      RESUME_PDF_CONTENT_DISPOSITION,
+    );
     return { status: 'written' };
   } catch (error) {
     logger.error('Resume PDF generation failed; keeping previous resume.pdf', {

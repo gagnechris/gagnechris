@@ -45,7 +45,7 @@ function Resume() {
     })
     const link = document.createElement('a')
     link.href = resume.pdfPath
-    link.download = resume.pdfPath.split('/').pop() || 'resume.pdf'
+    link.download = 'Chris-Gagne-Resume.pdf'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

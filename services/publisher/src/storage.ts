@@ -8,6 +8,7 @@ export type SiteStorage = {
     body: string | Uint8Array,
     contentType: string,
     cacheControl: string,
+    contentDisposition?: string,
   ): Promise<void>;
   delete(key: string): Promise<void>;
   /** Object keys under prefix (no leading slash). */
