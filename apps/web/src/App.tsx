@@ -1,4 +1,3 @@
-import profile from './assets/profile.jpg'
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { trackEvent } from './utils/analytics'
@@ -9,6 +8,8 @@ import {
   type HomeView,
 } from './home/publishedHome'
 import './App.css'
+
+const PROFILE_SRC = '/profile.jpg'
 
 function App() {
   const [home, setHome] = useState<HomeView>(
@@ -40,7 +41,13 @@ function App() {
       <title>{`${home.name} - ${home.title}`}</title>
       <link rel="canonical" href="https://gagnechris.com" />
       <header className="home-header">
-        <img src={profile} className="profile" alt={`Photo of ${home.name}`} />
+        <img
+          src={PROFILE_SRC}
+          className="profile"
+          alt={`Photo of ${home.name}`}
+          width={96}
+          height={96}
+        />
         <h1>{home.name}</h1>
         <p>{home.title}</p>
       </header>

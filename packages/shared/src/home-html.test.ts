@@ -52,9 +52,21 @@ describe('renderHomeAboutSectionHtml', () => {
 });
 
 describe('renderHomePrerenderHtml', () => {
+  it('includes profile photo and Quick Links matching the React home', () => {
+    const html = renderHomePrerenderHtml(home());
+    expect(html).toContain('class="home-page home-page-prerender"');
+    expect(html).toContain('class="home-header"');
+    expect(html).toContain('src="/profile.jpg"');
+    expect(html).toContain('class="profile"');
+    expect(html).toContain('id="quick-links"');
+    expect(html).toContain('href="/resume"');
+    expect(html).toContain('href="/blog"');
+    expect(html).toContain('href="/contact"');
+  });
+
   it('exposes name and title as data attributes the SPA reads back', () => {
     const html = renderHomePrerenderHtml(home());
-    expect(html).toContain('class="home-page-prerender"');
+    expect(html).toContain('class="home-page home-page-prerender"');
     expect(html).toContain('data-name="Chris Gagne"');
     expect(html).toContain('data-title="Engineering Leader"');
     expect(html).toContain('<h1>Chris Gagne</h1>');
@@ -73,12 +85,6 @@ describe('renderHomePrerenderHtml', () => {
     expect(html).toContain(`<h1>${escaped}</h1>`);
     expect(html).toContain('<p>echo $$</p>');
     expect(html).toContain('<p>and $&amp;</p>');
-  });
-
-  it('leaves Quick Links and the profile photo to React', () => {
-    const html = renderHomePrerenderHtml(home());
-    expect(html).not.toContain('quick-links');
-    expect(html).not.toContain('<img');
   });
 
   it('escapes quotes in data attributes', () => {
