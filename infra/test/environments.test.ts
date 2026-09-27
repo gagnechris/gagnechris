@@ -22,6 +22,7 @@ import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
+import { EmailStack } from '../lib/stacks/email-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
@@ -567,6 +568,15 @@ describe('ApiStack', () => {
       env: { account: config.account, region: config.region },
       config,
     });
+    const zone = HostedZone.fromHostedZoneAttributes(deps, 'EmailZone', {
+      hostedZoneId: 'ZXXXXXXXXXXXX',
+      zoneName: 'gagnechris.com',
+    });
+    const email = new EmailStack(app, 'EmailForApi', {
+      env: { account: config.account, region: config.region },
+      config,
+      hostedZone: zone,
+    });
     const api = new ApiStack(app, 'Api-prod', {
       env: { account: config.account, region: config.region },
       config,
@@ -576,6 +586,8 @@ describe('ApiStack', () => {
       distribution: site.distribution,
       alertsTopic,
       dataTable: data.table,
+      emailIdentity: email.emailIdentity,
+      fromEmail: email.fromEmail,
     });
     applyStandardTags(api, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));

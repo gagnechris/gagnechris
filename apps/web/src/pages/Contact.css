@@ -78,6 +78,17 @@
   padding: var(--space-8);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+/* Honeypot — visually hidden but present for bots (CHR-38). */
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .form-group {

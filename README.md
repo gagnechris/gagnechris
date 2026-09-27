@@ -112,7 +112,7 @@ Every pull request to `main` runs lint, tests, build, and CDK synth. Dependabot 
 - **React Router v7** - Client-side routing with analytics tracking
 - **Vite 8** - Fast build tool and development server
 - **Google Analytics 4** - Event tracking and user analytics
-- **Formspree** - Contact form submissions
+- **Amazon SES** - Contact form and resume-download notifications
 
 ### Styling
 - **Modern CSS** - Custom properties, flexbox, grid
@@ -163,7 +163,7 @@ The site uses Google Analytics 4 for tracking:
 - **Event categories**: `external_link`, `resume` for organized reporting
 
 ### Contact Form
-The contact page submits through Formspree.
+The contact page posts to `POST /api/contact` (SES email to the site owner). Resume downloads also send an anonymous notify ping to `POST /api/resume/download`.
 
 ### Custom Domain
 The site is served at `gagnechris.com` via Route 53 + CloudFront (see `infra/`).

@@ -145,6 +145,50 @@ presigned PUT for `media/*` on the site bucket; CloudFront serves `/media/*`
 with a long cache. Paste/drop images in the post editor inserts
 `![alt](/media/...)`.
 
+## Transactional email / SES (CHR-38)
+
+`Email-prod`: SES domain identity for `gagnechris.com` (DKIM + MAIL FROM
+`bounce.gagnechris.com`), plus an email identity for `ALERTS_EMAIL` so sandbox
+can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
+(`p=none`) is published; full receiving MX remains CHR-63.
+
+`Api-prod` public routes:
+
+* `POST /api/contact` — contact form (honeypot field `website`)
+* `POST /api/resume/download` — anonymous resume-download notify (no PII)
+
+Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`.
+
+### Leave the SES sandbox (one-time)
+
+Until production access is granted, SES only delivers to verified addresses
+(the `ALERTS_EMAIL` identity). Request production access:
+
+```bash
+# See AWS docs for put-account-details fields; use the inbox from your private note.
+aws sesv2 put-account-details --profile gagnechris-admin --region us-east-1 \
+  --production-access-enabled \
+  --mail-type TRANSACTIONAL \
+  --website-url https://gagnechris.com \
+  --use-case-description 'Contact form and resume download notifications for personal site'
+```
+
+Verify DKIM / identity status:
+
+```bash
+AWS_PROFILE=gagnechris-readonly aws sesv2 get-email-identity \
+  --email-identity gagnechris.com --region us-east-1 \
+  --query '{Verified:VerifiedForSendingStatus,Dkim:DkimAttributes.Status}'
+```
+
+Smoke contact (after deploy + DNS):
+
+```bash
+curl -sS -X POST https://gagnechris.com/api/contact \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Smoke","email":"you@example.com","message":"CHR-38 smoke","website":""}'
+```
+
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never

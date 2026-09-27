@@ -143,7 +143,7 @@ export class SiteStack extends Stack {
 
     const securityHeaders = new ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: `gagnechris-${config.name}-security-headers`,
-      comment: 'HSTS, CSP (GA4 + Formspree + Cognito), and browser hardening',
+      comment: 'HSTS, CSP (GA4 + Cognito + S3 uploads), and browser hardening',
       securityHeadersBehavior: {
         strictTransportSecurity: {
           accessControlMaxAge: Duration.days(365),
@@ -169,10 +169,10 @@ export class SiteStack extends Stack {
             "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
             "font-src 'self'",
             // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
-            `connect-src 'self' https://formspree.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${APEX_DOMAIN} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
+            `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${APEX_DOMAIN} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
             "frame-ancestors 'none'",
             "base-uri 'self'",
-            "form-action 'self' https://formspree.io",
+            "form-action 'self'",
             'upgrade-insecure-requests',
           ].join('; '),
           override: true,

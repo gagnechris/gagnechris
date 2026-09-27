@@ -83,13 +83,16 @@ export class DnsStack extends Stack {
       comment: 'www → CloudFront IPv6',
     });
 
-    // iCloud custom email domain
+    // iCloud custom email domain + SES outbound (CHR-38).
     new TxtRecord(this, 'ApexTxt', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
       ttl: Duration.minutes(5),
-      values: ['apple-domain=XTdbhpUGfqfareBq', 'v=spf1 include:icloud.com ~all'],
-      comment: 'Apple domain verification + SPF',
+      values: [
+        'apple-domain=XTdbhpUGfqfareBq',
+        'v=spf1 include:icloud.com include:amazonses.com ~all',
+      ],
+      comment: 'Apple domain verification + SPF (iCloud + SES)',
     });
 
     new CnameRecord(this, 'IcloudDkim', {
@@ -100,7 +103,16 @@ export class DnsStack extends Stack {
       comment: 'iCloud DKIM',
     });
 
-    // MX / DMARC deferred (CHR-63): waiting on confirmation that iCloud Mail
+    // Soft DMARC until CHR-63 finalizes receiving / reporting.
+    new TxtRecord(this, 'DmarcTxt', {
+      zone: this.hostedZone,
+      recordName: `_dmarc.${APEX_DOMAIN}`,
+      ttl: Duration.minutes(5),
+      values: ['v=DMARC1; p=none;'],
+      comment: 'DMARC monitor mode (CHR-38 / CHR-63)',
+    });
+
+    // MX deferred (CHR-63): waiting on confirmation that iCloud Mail
     // for @gagnechris.com should be enabled.
 
     new CfnOutput(this, 'HostedZoneId', {

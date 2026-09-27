@@ -1,5 +1,7 @@
 export {
   AdminMeResponseSchema,
+  ContactRequestSchema,
+  ContactResponseSchema,
   CreatePostRequestSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
@@ -12,8 +14,12 @@ export {
   PostSchema,
   PostSeoSchema,
   PostStatusSchema,
+  ResumeDownloadNotifyRequestSchema,
+  ResumeDownloadNotifyResponseSchema,
   UpdatePostRequestSchema,
   type AdminMeResponse,
+  type ContactRequest,
+  type ContactResponse,
   type CreatePostRequest,
   type ErrorResponse,
   type HealthResponse,
@@ -24,6 +30,8 @@ export {
   type PostListResponse,
   type PostSeo,
   type PostStatus,
+  type ResumeDownloadNotifyRequest,
+  type ResumeDownloadNotifyResponse,
   type UpdatePostRequest,
 } from './schemas.js';
 export { buildOpenApiDocument } from './openapi.js';

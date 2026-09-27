@@ -8,6 +8,7 @@ import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
+import { EmailStack } from '../lib/stacks/email-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
@@ -63,12 +64,19 @@ const site = new SiteStack(app, `Site-${config.name}`, {
 });
 
 // DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
-new DnsStack(app, `Dns-${config.name}`, {
+const dns = new DnsStack(app, `Dns-${config.name}`, {
   env: stackEnv,
   description: `DNS records for gagnechris.com (${config.name}).`,
   crossRegionReferences: true,
   config,
   distribution: site.distribution,
+});
+
+const email = new EmailStack(app, `Email-${config.name}`, {
+  env: stackEnv,
+  description: `SES domain identity for transactional email (${config.name}).`,
+  config,
+  hostedZone: dns.hostedZone,
 });
 
 const auth = new AuthStack(app, `Auth-${config.name}`, {
@@ -89,6 +97,8 @@ new ApiStack(app, `Api-${config.name}`, {
   distribution: site.distribution,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
+  emailIdentity: email.emailIdentity,
+  fromEmail: email.fromEmail,
 });
 
 new PublisherStack(app, `Publisher-${config.name}`, {
