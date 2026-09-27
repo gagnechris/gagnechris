@@ -11,16 +11,22 @@ import { APEX_DOMAIN } from './dns-stack.js';
 
 export interface CertificateStackProps extends StackProps {
   readonly config: EnvironmentConfig;
+  /**
+   * When true, omit the legacy site cert that still includes the staging SAN
+   * (CHR-73 phase 2). Default false keeps it until Site has cut over to the
+   * apex+www-only cert and a second deploy can delete the old one safely.
+   */
+  readonly dropLegacySiteCertificate?: boolean;
 }
 
 /**
  * ACM certificates in us-east-1 (CloudFront + Cognito custom domains).
- * Site and auth use separate certs so adding the auth hostname never replaces
- * the site certificate (which would break the Site-prod cross-stack export).
+ * Site and auth use separate certs so changing one hostname never replaces
+ * the other (which would break cross-stack exports).
  * Zone lookup stays in this stack so DNS validation records create correctly.
  */
 export class CertificateStack extends Stack {
-  /** Apex / www (staging SAN retained until a two-phase cert rotation). */
+  /** Apex + www for CloudFront (no staging SAN). */
   readonly certificate: ICertificate;
   /** `auth.gagnechris.com` for Cognito managed login. */
   readonly authCertificate: ICertificate;
@@ -32,16 +38,26 @@ export class CertificateStack extends Stack {
       domainName: APEX_DOMAIN,
     });
 
-    // staging SAN is unused (no CF alias / DNS) but kept for now: removing it
-    // replaces this certificate and breaks the Site-prod cross-stack export.
-    this.certificate = new Certificate(this, 'SiteCertificate', {
+    // CHR-73 phase 1: new cert without staging. Keep the old construct (unless
+    // dropLegacySiteCertificate) so CloudFormation does not delete an export
+    // that Site-prod still imported in the previous deploy.
+    this.certificate = new Certificate(this, 'SiteCertificateV2', {
       domainName: APEX_DOMAIN,
-      subjectAlternativeNames: [
-        `www.${APEX_DOMAIN}`,
-        `staging.${APEX_DOMAIN}`,
-      ],
+      subjectAlternativeNames: [`www.${APEX_DOMAIN}`],
       validation: CertificateValidation.fromDns(hostedZone),
     });
+
+    if (!props.dropLegacySiteCertificate) {
+      // Legacy: apex + www + staging. Unused after Site cuts over to V2.
+      new Certificate(this, 'SiteCertificate', {
+        domainName: APEX_DOMAIN,
+        subjectAlternativeNames: [
+          `www.${APEX_DOMAIN}`,
+          `staging.${APEX_DOMAIN}`,
+        ],
+        validation: CertificateValidation.fromDns(hostedZone),
+      });
+    }
 
     this.authCertificate = new Certificate(this, 'AuthCertificate', {
       domainName: `auth.${APEX_DOMAIN}`,
@@ -51,7 +67,7 @@ export class CertificateStack extends Stack {
     new CfnOutput(this, 'CertificateArn', {
       value: this.certificate.certificateArn,
       description:
-        'ACM certificate ARN (us-east-1) for CloudFront - apex, www (unused staging SAN retained).',
+        'ACM certificate ARN (us-east-1) for CloudFront - apex and www.',
     });
 
     new CfnOutput(this, 'AuthCertificateArn', {

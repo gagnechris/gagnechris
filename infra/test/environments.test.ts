@@ -318,6 +318,12 @@ describe('DnsStack and CertificateStack', () => {
     const certTemplate = Template.fromStack(certificate);
     certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
       DomainName: 'gagnechris.com',
+      SubjectAlternativeNames: ['www.gagnechris.com'],
+      ValidationMethod: 'DNS',
+    });
+    // Phase 1 keeps the legacy staging SAN cert until a second deploy drops it.
+    certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName: 'gagnechris.com',
       SubjectAlternativeNames: Match.arrayWith([
         'www.gagnechris.com',
         'staging.gagnechris.com',
@@ -328,7 +334,29 @@ describe('DnsStack and CertificateStack', () => {
       DomainName: 'auth.gagnechris.com',
       ValidationMethod: 'DNS',
     });
+    certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 3);
+  });
+
+  it('drops the legacy staging site cert when dropLegacySiteCertificate is set', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const certificate = new CertificateStack(app, 'Certificate-prod', {
+      env: { account: config.account, region: 'us-east-1' },
+      config,
+      dropLegacySiteCertificate: true,
+    });
+    applyStandardTags(certificate, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const certTemplate = Template.fromStack(certificate);
     certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 2);
+    const siteCerts = Object.values(
+      certTemplate.findResources('AWS::CertificateManager::Certificate'),
+    ).filter((r) => r.Properties?.DomainName === 'gagnechris.com');
+    expect(siteCerts).toHaveLength(1);
+    expect(siteCerts[0]?.Properties?.SubjectAlternativeNames).toEqual([
+      'www.gagnechris.com',
+    ]);
   });
 });
 
