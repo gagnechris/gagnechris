@@ -78,10 +78,11 @@ export class PublisherStack extends Stack {
         minify: true,
         sourceMap: true,
         target: 'node24',
-        // Runtime ships most @aws-sdk clients; KVS data-plane needs SigV4a
-        // which is not in the Lambda runtime (CHR-115 hotfix).
-        externalModules: ['@aws-sdk/*'],
-        nodeModules: ['@aws-sdk/signature-v4a'],
+        // Do not externalize @aws-sdk/*: CloudFront KeyValueStore needs SigV4a
+        // registered on the same @smithy/signature-v4 singleton the KVS client
+        // uses. Runtime clients + a bundled signature-v4a leave that container
+        // empty and republish-all crashes (CHR-115).
+        externalModules: [],
         commandHooks: {
           beforeBundling(): string[] {
             return [];
