@@ -46,7 +46,7 @@ const guardrails = new GuardrailsStack(app, `Guardrails-${config.name}`, {
   config,
 });
 
-new DataStack(app, `Data-${config.name}`, {
+const data = new DataStack(app, `Data-${config.name}`, {
   env: stackEnv,
   description: `DynamoDB single-table for posts and notebook (${config.name}).`,
   config,
@@ -87,6 +87,7 @@ new ApiStack(app, `Api-${config.name}`, {
   iosClient: auth.iosClient,
   distribution: site.distribution,
   alertsTopic: guardrails.alertsTopic,
+  dataTable: data.table,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {

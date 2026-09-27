@@ -21,9 +21,9 @@ import { ApiStack } from '../lib/stacks/api-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
+import { DataStack } from '../lib/stacks/data-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
-import { DataStack } from '../lib/stacks/data-stack.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -562,6 +562,10 @@ describe('ApiStack', () => {
         zoneName: 'gagnechris.com',
       }),
     });
+    const data = new DataStack(app, 'DataForApi', {
+      env: { account: config.account, region: config.region },
+      config,
+    });
     const api = new ApiStack(app, 'Api-prod', {
       env: { account: config.account, region: config.region },
       config,
@@ -570,6 +574,7 @@ describe('ApiStack', () => {
       iosClient: auth.iosClient,
       distribution: site.distribution,
       alertsTopic,
+      dataTable: data.table,
     });
     applyStandardTags(api, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
