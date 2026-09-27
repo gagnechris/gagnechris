@@ -20,6 +20,7 @@ export default defineConfig(({ mode, command }) => {
   const proxyTarget = useProdApi
     ? 'https://gagnechris.com'
     : env.VITE_LOCAL_API_ORIGIN?.trim() || DEFAULT_LOCAL_API
+  const localSiteOrigin = env.VITE_LOCAL_SITE_ORIGIN?.trim()
 
   if (useProdApi) {
     console.warn(
@@ -29,19 +30,46 @@ export default defineConfig(({ mode, command }) => {
     console.info(
       `[vite] /api proxies to ${proxyTarget} (local). Use VITE_API_TARGET=prod only when you intend to hit production.`,
     )
+    if (localSiteOrigin) {
+      console.info(
+        `[vite] /__site proxies to ${localSiteOrigin} (publisher HTML for BlogPost fallback).`,
+      )
+    }
+  }
+
+  const proxy: Record<
+    string,
+    {
+      target: string
+      changeOrigin: boolean
+      secure: boolean
+      rewrite?: (path: string) => string
+    }
+  > = {
+    '/api': {
+      target: proxyTarget,
+      changeOrigin: true,
+      secure: proxyTarget.startsWith('https'),
+    },
+  }
+
+  if (localSiteOrigin && !useProdApi) {
+    // Do NOT proxy /blog or /assets — that would serve the seeded production
+    // shell/JS and bypass Vite HMR (old BlogPost → NotFound for CMS slugs).
+    // BlogPost fetches publisher HTML via this prefix instead.
+    proxy['/__site'] = {
+      target: localSiteOrigin,
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/__site/, '') || '/',
+    }
   }
 
   return {
     base: '/',
     plugins: [react(), sitemapPlugin()],
     server: {
-      proxy: {
-        '/api': {
-          target: proxyTarget,
-          changeOrigin: true,
-          secure: proxyTarget.startsWith('https'),
-        },
-      },
+      proxy,
     },
     test: {
       environment: 'jsdom',

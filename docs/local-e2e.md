@@ -26,25 +26,20 @@ This script:
 
 ## Day-to-day local admin
 
+One terminal:
+
 ```bash
-# Terminal 1 — data plane
-docker compose -f docker-compose.local.yml up -d
-source scripts/local/env.sh
-node scripts/local/bootstrap-table.mjs
-
-# Terminal 2 — API (injects Cognito JWT claims; rebuilds site after mutating posts)
-npm run local:api
-
-# Terminal 3 — static origin (real viewer-request rewrite)
-npm run build   # once, for shell + assets
-npm run local:seed-shell
-npm run local:site
-
-# Terminal 4 — Vite (proxies /api → local; VITE_AUTH_MODE=local)
-npm run dev:local
+npm run local:dev
 ```
 
-Open `http://localhost:5173/admin`. You are signed in as `local@gagnechris.com` without Cognito.
+This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API and `/blog` → static origin (same as prod CloudFront Option B).
+
+Open `http://localhost:5173/admin`. After publish, **View live** / `/blog/<slug>` uses the Vite SPA (with HMR). `BlogPost` loads publisher HTML via `/__site/blog/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
+
+Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
+
+Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
+
 
 ### Safety
 
@@ -64,6 +59,7 @@ Prod admin still: `npm run dev:prod-api` (explicit + banner).
 | Path | Role |
 | --- | --- |
 | `docker-compose.local.yml` | Official DynamoDB Local image |
+| `scripts/local/dev.sh` | One-command admin (`npm run local:dev`) |
 | `scripts/local/env.sh` | Safe env (source before local tools) |
 | `scripts/local/bootstrap-table.mjs` | Create `gagnechris-local` + GSIs |
 | `scripts/local/seed-shell.sh` | Copy `apps/web/dist` → `.local-site` |
