@@ -4,8 +4,8 @@
  * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
  * - Skip rewrite for /api/* and /media/*
  * - /blog, /resume, /contact, /dont-feed-the-bears -> Option B {path}/index.html
- * - /blog/<slug> -> Option B only when slug is published (see PUBLISHED_BLOG_SLUGS);
- *   unknown slugs -> /404.html (avoids raw S3 XML)
+ * - /blog/<slug> -> Option B only when slug is in the associated KeyValueStore
+ *   (CHR-115); unknown slugs -> /404.html (avoids raw S3 XML)
  * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
  * - Other extensionless paths -> /404.html (NotFound, not Home)
  * - Direct /_shell.html is blocked (publisher template only; CHR-104)
@@ -13,15 +13,20 @@
  *
  * No distribution-wide custom error pages (so /api and /assets keep real 403/404).
  *
- * PUBLISHED_BLOG_SLUGS: null = fail-open (Option B for any slug, CDK default).
- * Publisher replaces the map after each rebuild (CHR-102).
+ * Published slugs live in a CloudFront KeyValueStore (publisher UpdateKeys).
+ * Until the first sync writes the __synced__ sentinel, blog slugs fail-open
+ * (Option B for any slug), matching the prior CDK default of a null map.
+ * Local/tests can override via setPublishedBlogSlugsForTests().
  */
-var PUBLISHED_BLOG_SLUGS = null; /*__PUBLISHED_BLOG_SLUGS__*/
+import cf from 'cloudfront';
+
+/** Non-null = test/local override; null = use KVS (or fail-open if unavailable). */
+var PUBLISHED_BLOG_SLUGS_OVERRIDE = null;
 
 /** Pre-CMS resume PDF object name (spaces may arrive encoded or decoded). */
 var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
 
-function handler(event) {
+async function handler(event) {
   var request = event.request;
   var host = request.headers.host.value.toLowerCase();
 
@@ -82,7 +87,7 @@ function handler(event) {
 
   var blogSlug = blogPostSlug(uri);
   if (blogSlug !== null) {
-    if (isPublishedBlogSlug(blogSlug)) {
+    if (await isPublishedBlogSlug(blogSlug)) {
       request.uri = rewriteOptionB(uri);
     } else {
       request.uri = '/404.html';
@@ -152,15 +157,35 @@ function blogPostSlug(uri) {
   return segment;
 }
 
-function isPublishedBlogSlug(slug) {
-  if (PUBLISHED_BLOG_SLUGS === null) {
+async function isPublishedBlogSlug(slug) {
+  if (PUBLISHED_BLOG_SLUGS_OVERRIDE !== null) {
+    return Object.prototype.hasOwnProperty.call(
+      PUBLISHED_BLOG_SLUGS_OVERRIDE,
+      slug,
+    );
+  }
+  try {
+    var kvsHandle = cf.kvs();
+    try {
+      await kvsHandle.get('__synced__');
+    } catch (e) {
+      // No sentinel yet — fail-open until the first publisher sync.
+      return true;
+    }
+    try {
+      await kvsHandle.get(slug);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  } catch (e) {
+    // KVS not associated or unavailable — fail-open.
     return true;
   }
-  return Object.prototype.hasOwnProperty.call(PUBLISHED_BLOG_SLUGS, slug);
 }
 
 function setPublishedBlogSlugsForTests(slugs) {
-  PUBLISHED_BLOG_SLUGS = slugs;
+  PUBLISHED_BLOG_SLUGS_OVERRIDE = slugs;
 }
 
 function rewriteOptionB(uri) {

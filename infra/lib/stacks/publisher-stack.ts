@@ -34,8 +34,8 @@ export interface PublisherStackProps extends StackProps {
   readonly siteBucket: IBucket;
   readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
-  /** CloudFront viewer-request function name (blog slug allowlist sync). */
-  readonly viewerRequestFunctionName: string;
+  /** CloudFront KeyValueStore ARN for published blog slug allowlist (CHR-115). */
+  readonly blogSlugsKeyValueStoreArn: string;
 }
 
 /**
@@ -47,8 +47,14 @@ export class PublisherStack extends Stack {
   constructor(scope: Construct, id: string, props: PublisherStackProps) {
     super(scope, id, props);
 
-    const { config, dataTable, siteBucket, distribution, alertsTopic, viewerRequestFunctionName } =
-      props;
+    const {
+      config,
+      dataTable,
+      siteBucket,
+      distribution,
+      alertsTopic,
+      blogSlugsKeyValueStoreArn,
+    } = props;
 
     const logGroup = new LogGroup(this, 'PublisherLogGroup', {
       retention: RetentionDays.TWO_WEEKS,
@@ -85,14 +91,9 @@ export class PublisherStack extends Stack {
               inputDir,
               'services/publisher/assets/fonts',
             );
-            const viewerSrc = join(
-              inputDir,
-              'infra/lib/cloudfront/viewer-request-function.js',
-            );
             return [
               `mkdir -p "${outputDir}/assets/fonts"`,
               `cp "${fontsSrc}/Inter-Regular.ttf" "${fontsSrc}/Inter-Bold.ttf" "${outputDir}/assets/fonts/"`,
-              `cp "${viewerSrc}" "${outputDir}/viewer-request-function.js"`,
             ];
           },
         },
@@ -104,7 +105,7 @@ export class PublisherStack extends Stack {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucket.bucketName,
         CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
-        VIEWER_REQUEST_FUNCTION_NAME: viewerRequestFunctionName,
+        BLOG_SLUGS_KVS_ARN: blogSlugsKeyValueStoreArn,
         SITE_APEX_DOMAIN: APEX_DOMAIN,
       },
     });
@@ -126,16 +127,14 @@ export class PublisherStack extends Stack {
 
     this.publisherFunction.addToRolePolicy(
       new PolicyStatement({
-        sid: 'CloudFrontViewerRequestSync',
+        sid: 'CloudFrontBlogSlugsKvs',
         actions: [
-          'cloudfront:DescribeFunction',
-          'cloudfront:UpdateFunction',
-          'cloudfront:PublishFunction',
-          'cloudfront:GetFunction',
+          'cloudfront-keyvaluestore:DescribeKeyValueStore',
+          'cloudfront-keyvaluestore:ListKeys',
+          'cloudfront-keyvaluestore:UpdateKeys',
+          'cloudfront-keyvaluestore:GetKey',
         ],
-        resources: [
-          `arn:aws:cloudfront::${this.account}:function/${viewerRequestFunctionName}`,
-        ],
+        resources: [blogSlugsKeyValueStoreArn],
       }),
     );
 
