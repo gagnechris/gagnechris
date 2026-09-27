@@ -126,6 +126,17 @@ Manual / local:
 AWS_PROFILE=gagnechris-admin npm run deploy:web
 ```
 
+## DynamoDB data plane (CHR-29)
+
+`Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). GSIs `gsi1` (status lists) and `gsi2` (tags). Key design: `docs/data-model.md`.
+
+SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
+```
+
 ## Cognito auth (CHR-27)
 
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).

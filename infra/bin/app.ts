@@ -6,6 +6,7 @@ import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
+import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
@@ -42,6 +43,12 @@ const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
 const guardrails = new GuardrailsStack(app, `Guardrails-${config.name}`, {
   env: stackEnv,
   description: `Cost and security guardrails (${config.name}).`,
+  config,
+});
+
+new DataStack(app, `Data-${config.name}`, {
+  env: stackEnv,
+  description: `DynamoDB single-table for posts and notebook (${config.name}).`,
   config,
 });
 
