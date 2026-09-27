@@ -18,6 +18,7 @@ import { handleHomeRoute } from './home/handlers.js';
 import { handleResumeRoute } from './resume/handlers.js';
 import { handleMediaRoute } from './media/handlers.js';
 import { handleContactRoute } from './contact/handlers.js';
+import { json } from './http.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-api' });
 const tracer = new Tracer({ serviceName: 'gagnechris-api' });
@@ -25,19 +26,6 @@ const metrics = new Metrics({
   namespace: 'gagnechris',
   serviceName: 'gagnechris-api',
 });
-
-function json(
-  statusCode: number,
-  body: unknown,
-): APIGatewayProxyStructuredResultV2 {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  };
-}
 
 function normalizePath(rawPath: string): string {
   return rawPath.replace(/\/$/, '') || '/';

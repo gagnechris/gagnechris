@@ -45,13 +45,26 @@ describe('contact routes', () => {
     delete process.env.DATA_TABLE_NAME;
   });
 
-  it('rejects invalid contact bodies', async () => {
+  it('rejects invalid contact bodies with friendly field codes', async () => {
     const res = await handleContactRoute(
       eventWithBody({ name: '', email: 'nope', message: '' }),
       'POST',
       '/api/contact',
     );
     expect(res?.statusCode).toBe(400);
+    const body = JSON.parse(res?.body ?? '{}') as {
+      error: string;
+      message: string;
+      fields: Record<string, string>;
+    };
+    expect(body.error).toBe('bad_request');
+    expect(body.message).toBe('Invalid request body');
+    expect(body.message).not.toMatch(/\[\{/);
+    expect(body.fields).toMatchObject({
+      name: expect.any(String),
+      email: expect.any(String),
+      message: expect.any(String),
+    });
   });
 
   it('silently accepts honeypot fills without sending or persisting', async () => {

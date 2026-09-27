@@ -50,6 +50,13 @@ export {
 } from './schemas.js';
 export { buildOpenApiDocument } from './openapi.js';
 export { renderMarkdownToHtml } from './markdown.js';
+export {
+  escapeHtml,
+  escapeRegExp,
+  replaceMeta,
+  upsertCanonical,
+  upsertMeta,
+} from './html.js';
 export { DEFAULT_HOME } from './home-default.js';
 export {
   homeAboutExcerpt,

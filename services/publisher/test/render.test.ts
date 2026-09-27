@@ -149,7 +149,9 @@ describe('publisher render', () => {
     const html = renderHomePage(shell, home);
     expect(html).toContain('<title>Chris Gagne - Engineering Leader</title>');
     expect(html).toContain('property="og:url" content="https://gagnechris.com"');
-    expect(html).toContain('name="description" content="I\'m an Engineering');
+    expect(html).toContain(
+      'name="description" content="I&#39;m an Engineering',
+    );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
     expect(html).toContain('<article class="home-page-prerender"');
     expect(html).toContain('<h1>Chris Gagne</h1>');
@@ -234,9 +236,9 @@ describe('publisher render', () => {
     });
     const html = renderPostPage(shell, post);
 
-    // & is HTML-escaped; $ special patterns must survive replace intact.
-    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $\'';
-    const escapedBody = 'echo $$ and $&amp; and $` and $\'';
+    // & and ' are HTML-escaped; $ special patterns must survive replace intact.
+    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
+    const escapedBody = 'echo $$ and $&amp; and $` and $&#39;';
     expect(html).toContain(`<title>${escapedTitle} - Chris Gagne</title>`);
     expect(html).toContain(`content="${escapedTitle} - Chris Gagne"`);
     expect(html).toContain(`content="${escapedBody}"`);
@@ -278,5 +280,9 @@ describe('publisher render', () => {
     const rss = buildRssXml(posts);
     expect(rss).toContain('<item>');
     expect(rss).toContain('Hello World');
+    expect(rss).toContain('xmlns:atom="http://www.w3.org/2005/Atom"');
+    expect(rss).toContain(
+      '<atom:link href="https://gagnechris.com/rss.xml" rel="self" type="application/rss+xml"/>',
+    );
   });
 });

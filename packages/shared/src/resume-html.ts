@@ -1,13 +1,6 @@
 import { textExcerpt } from './excerpt.js';
+import { escapeHtml } from './html.js';
 import type { Resume, ResumeContent } from './schemas.js';
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 
 const listItems = (items: string[]): string =>
   items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');

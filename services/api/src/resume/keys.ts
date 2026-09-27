@@ -1,5 +1,7 @@
 import type { Resume } from '@gagnechris/shared';
 
+export { nowIso } from '../data/singleton-repository.js';
+
 /** Singleton resume — draft META + optional PUBLISHED snapshot (see docs/data-model.md). */
 export const RESUME_ID = 'current';
 
@@ -13,10 +15,6 @@ export function resumeMetaSk(): string {
 
 export function resumePublishedSk(): string {
   return 'PUBLISHED';
-}
-
-export function nowIso(): string {
-  return new Date().toISOString();
 }
 
 export type ResumeMetaItem = {

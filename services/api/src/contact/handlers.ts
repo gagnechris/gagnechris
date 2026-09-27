@@ -8,39 +8,22 @@ import {
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
 } from '@gagnechris/shared';
-import { ZodError } from 'zod';
 import { sendOwnerEmail } from './mail.js';
 import { ContactRepository } from './repository.js';
 import {
   RateLimitExceededError,
   RateLimiter,
 } from './rateLimit.js';
+import {
+  isZodError,
+  json,
+  mapRouteError,
+  parseBody,
+  zodBadRequest,
+} from '../http.js';
 
 /** Minimum ms between form open and submit (bots often submit instantly). */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
-
-function json(
-  statusCode: number,
-  body: unknown,
-): APIGatewayProxyStructuredResultV2 {
-  return {
-    statusCode,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
-function parseBody(event: APIGatewayProxyEventV2): unknown {
-  if (!event.body) return {};
-  const raw = event.isBase64Encoded
-    ? Buffer.from(event.body, 'base64').toString('utf8')
-    : event.body;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    throw new SyntaxError('Invalid JSON body');
-  }
-}
 
 function sourceIp(event: APIGatewayProxyEventV2): string {
   return event.requestContext?.http?.sourceIp?.trim() || 'unknown';
@@ -146,12 +129,11 @@ export async function handleContactRoute(
           message: error.message,
         });
       }
-      if (error instanceof ZodError || error instanceof SyntaxError) {
-        return json(400, {
-          error: 'bad_request',
-          message: error instanceof Error ? error.message : 'Invalid request',
-        });
+      if (isZodError(error)) {
+        return zodBadRequest(error, 'Invalid request body');
       }
+      const mapped = mapRouteError(error);
+      if (mapped) return mapped;
       throw error;
     }
   }
@@ -196,12 +178,11 @@ export async function handleContactRoute(
       }
       return json(200, ResumeDownloadNotifyResponseSchema.parse({ ok: true }));
     } catch (error) {
-      if (error instanceof ZodError || error instanceof SyntaxError) {
-        return json(400, {
-          error: 'bad_request',
-          message: error instanceof Error ? error.message : 'Invalid request',
-        });
+      if (isZodError(error)) {
+        return zodBadRequest(error, 'Invalid request');
       }
+      const mapped = mapRouteError(error);
+      if (mapped) return mapped;
       throw error;
     }
   }

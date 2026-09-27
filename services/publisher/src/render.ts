@@ -1,22 +1,19 @@
 import {
+  escapeHtml,
   formatPostDate,
   homeAboutExcerpt,
   postDateAttribute,
   renderHomePrerenderHtml,
   renderMarkdownToHtml,
   renderResumePrerenderHtml,
+  replaceMeta,
   resumeSummaryExcerpt,
+  upsertCanonical,
+  upsertMeta,
 } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
-
-const escapeHtml = (value: string): string =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
 
 const absoluteUrl = (pathOrUrl: string): string => {
   if (/^https?:\/\//i.test(pathOrUrl)) {
@@ -277,47 +274,6 @@ export const buildRssXml = (posts: Post[]): string => {
       return `<item><title>${escapeHtml(p.title)}</title><link>${link}</link><guid>${link}</guid><description>${escapeHtml(p.excerpt || p.title)}</description>${pub}</item>`;
     })
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>Chris Gagne</title><link>https://${APEX}/blog</link><description>Posts by Chris Gagne</description>${items}</channel></rss>\n`;
+  const self = `https://${APEX}/rss.xml`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://${APEX}/blog</link><atom:link href="${self}" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description>${items}</channel></rss>\n`;
 };
-
-function replaceMeta(
-  html: string,
-  attr: 'name' | 'property',
-  key: string,
-  content: string,
-): string {
-  // Match multi-line <meta> tags from the Vite shell.
-  const re = new RegExp(
-    `<meta\\s[^>]*?${attr}=["']${escapeRegExp(key)}["'][^>]*>`,
-    'i',
-  );
-  const tag = `<meta ${attr}="${key}" content="${content}" />`;
-  if (re.test(html)) {
-    return html.replace(re, () => tag);
-  }
-  return upsertMeta(html, attr, key, content);
-}
-
-/** The Vite shell already carries the home canonical — replace, never append. */
-function upsertCanonical(html: string, url: string): string {
-  const tag = `<link rel="canonical" href="${url}" />`;
-  const re = /<link\s[^>]*?rel=["']canonical["'][^>]*>/i;
-  if (re.test(html)) {
-    return html.replace(re, () => tag);
-  }
-  return html.replace(/<\/head>/i, () => `${tag}</head>`);
-}
-
-function upsertMeta(
-  html: string,
-  attr: 'name' | 'property',
-  key: string,
-  content: string,
-): string {
-  const tag = `<meta ${attr}="${key}" content="${content}" />`;
-  return html.replace(/<\/head>/i, () => `${tag}\n</head>`);
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
-}

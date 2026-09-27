@@ -9,6 +9,7 @@ import BlogPost from './pages/BlogPost.tsx'
 import Contact from './pages/Contact.tsx'
 import NotFound from './pages/NotFound.tsx'
 import AppWithTracking from './components/AppWithTracking.tsx'
+import { LazyFallback } from './components/LazyFallback.tsx'
 
 const router = createBrowserRouter([
   {
@@ -41,21 +42,21 @@ const router = createBrowserRouter([
           const { default: DontFeedTheBears } = await import(
             './pages/DontFeedTheBears.tsx'
           )
-          return { Component: DontFeedTheBears }
+          return { Component: DontFeedTheBears, HydrateFallback: LazyFallback }
         },
       },
       {
         path: 'auth/callback',
         lazy: async () => {
           const { default: AuthCallback } = await import('./auth/AuthCallback.tsx')
-          return { Component: AuthCallback }
+          return { Component: AuthCallback, HydrateFallback: LazyFallback }
         },
       },
       {
         path: 'admin',
         lazy: async () => {
           const { default: AdminLayout } = await import('./admin/AdminLayout.tsx')
-          return { Component: AdminLayout }
+          return { Component: AdminLayout, HydrateFallback: LazyFallback }
         },
         children: [
           {
@@ -64,7 +65,7 @@ const router = createBrowserRouter([
               const { default: AdminPostsPage } = await import(
                 './admin/AdminPostsPage.tsx'
               )
-              return { Component: AdminPostsPage }
+              return { Component: AdminPostsPage, HydrateFallback: LazyFallback }
             },
           },
           {
@@ -73,7 +74,7 @@ const router = createBrowserRouter([
               const { default: AdminPostsPage } = await import(
                 './admin/AdminPostsPage.tsx'
               )
-              return { Component: AdminPostsPage }
+              return { Component: AdminPostsPage, HydrateFallback: LazyFallback }
             },
           },
           {
@@ -82,7 +83,7 @@ const router = createBrowserRouter([
               const { default: PostEditorPage } = await import(
                 './admin/PostEditorPage.tsx'
               )
-              return { Component: PostEditorPage }
+              return { Component: PostEditorPage, HydrateFallback: LazyFallback }
             },
           },
           {
@@ -91,7 +92,7 @@ const router = createBrowserRouter([
               const { default: AdminHomePage } = await import(
                 './admin/AdminHomePage.tsx'
               )
-              return { Component: AdminHomePage }
+              return { Component: AdminHomePage, HydrateFallback: LazyFallback }
             },
           },
           {
@@ -100,7 +101,7 @@ const router = createBrowserRouter([
               const { default: AdminResumePage } = await import(
                 './admin/AdminResumePage.tsx'
               )
-              return { Component: AdminResumePage }
+              return { Component: AdminResumePage, HydrateFallback: LazyFallback }
             },
           },
           {
@@ -109,7 +110,10 @@ const router = createBrowserRouter([
               const { default: AdminNotebookPage } = await import(
                 './admin/AdminNotebookPage.tsx'
               )
-              return { Component: AdminNotebookPage }
+              return {
+                Component: AdminNotebookPage,
+                HydrateFallback: LazyFallback,
+              }
             },
           },
         ],

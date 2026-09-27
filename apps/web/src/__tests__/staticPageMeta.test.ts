@@ -59,8 +59,8 @@ describe('staticPageMeta', () => {
   it('preserves $$, $&, $`, $\' in titles and meta content', () => {
     const title = "Making $$$ with $$ and $& and $` and $'"
     const description = "echo $$ and $& and $` and $'"
-    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $\''
-    const escapedDescription = 'echo $$ and $&amp; and $` and $\''
+    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $&#39;'
+    const escapedDescription = 'echo $$ and $&amp; and $` and $&#39;'
     const html = applyStaticPageMeta(shell, {
       routePath: 'contact',
       title,
@@ -85,7 +85,9 @@ describe('staticPageMeta', () => {
       (p) => p.routePath === 'dont-feed-the-bears',
     )!
     const html = applyStaticPageMeta(shell, bears)
-    expect(html).toContain("<title>Don't Feed the Bears - Chris Gagne</title>")
+    expect(html).toContain(
+      "<title>Don&#39;t Feed the Bears - Chris Gagne</title>",
+    )
     expect(html).toContain(
       `<meta property="og:url" content="${canonicalUrlFor('dont-feed-the-bears')}" />`,
     )
