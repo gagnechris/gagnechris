@@ -180,6 +180,12 @@ aws cognito-idp admin-set-user-password \
 
 Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://gagnechris.com/auth/callback`).
 
+## Admin shell (CHR-32)
+
+SPA routes `/admin/*` (lazy-loaded) and `/auth/callback`. Cognito managed login via Amplify (`signInWithRedirect`, auth code + PKCE). Web build reads Cognito IDs from SSM in `scripts/deploy-web.sh` (`VITE_COGNITO_*`). Local: copy `apps/web/.env.example` to `.env.local`.
+
+Reach admin by opening `https://gagnechris.com/admin` (no public login link). API calls send the Cognito **ID token** (HTTP API JWT `aud` = web client id).
+
 ## HTTP API (CHR-28)
 
 `Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizer on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.

@@ -21,6 +21,20 @@ DISTRIBUTION_ID="$(aws ssm get-parameter \
 
 echo "Deploying web → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 
+# Bake Cognito public config into the SPA (SSM from Auth stack).
+export VITE_COGNITO_USER_POOL_ID="$(aws ssm get-parameter \
+  --name "/gagnechris/${ENV_NAME}/cognito-user-pool-id" \
+  --region "${AWS_REGION}" \
+  --query 'Parameter.Value' --output text)"
+export VITE_COGNITO_WEB_CLIENT_ID="$(aws ssm get-parameter \
+  --name "/gagnechris/${ENV_NAME}/cognito-web-client-id" \
+  --region "${AWS_REGION}" \
+  --query 'Parameter.Value' --output text)"
+export VITE_COGNITO_AUTH_DOMAIN="$(aws ssm get-parameter \
+  --name "/gagnechris/${ENV_NAME}/cognito-auth-domain" \
+  --region "${AWS_REGION}" \
+  --query 'Parameter.Value' --output text)"
+
 npm run build -w @gagnechris/web
 
 if [ ! -d "${DIST}" ]; then

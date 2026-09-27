@@ -44,4 +44,9 @@ jobs:
         run: npm run cdk -- synth --quiet
 
       - name: Build
+        env:
+          # Placeholder Cognito config so Vite can bake env (not deployed from CI).
+          VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
+          VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
+          VITE_COGNITO_AUTH_DOMAIN: auth.example.com
         run: npm run build
