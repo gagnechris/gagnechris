@@ -49,6 +49,7 @@ function makePost(slug: string, n: number): Post {
     coverImage: null,
     seo: null,
     version: 1,
+    hasUnpublishedChanges: false,
   };
 }
 

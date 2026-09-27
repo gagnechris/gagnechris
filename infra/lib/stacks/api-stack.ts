@@ -15,10 +15,10 @@ import {
   TreatMissingData,
 } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import {
   AllowedMethods,
   CachePolicy,
+  type Distribution,
   OriginRequestPolicy,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
@@ -48,7 +48,7 @@ export interface ApiStackProps extends StackProps {
   readonly webClient: IUserPoolClient;
   /** Optional second audience (iOS client). */
   readonly iosClient?: IUserPoolClient;
-  readonly distribution: IDistribution;
+  readonly distribution: Distribution;
   readonly alertsTopic: ITopic;
   /** Shared single-table (posts + future Notebook). */
   readonly dataTable: ITable;
