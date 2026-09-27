@@ -2,8 +2,8 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Skip rewrite for /api/* and /media/* (proxied origins)
- * - /blog and /blog/* (extensionless) -> Option B {path}/index.html objects
- * - Other extensionless paths -> /index.html (SPA shell)
+ * - /blog, /resume, /contact (extensionless) -> Option B {path}/index.html
+ * - Other extensionless paths -> /index.html (SPA shell: /admin, /auth, …)
  * - Paths with a file extension pass through unchanged
  *
  * Missing objects return real 404/403 from the origin (no distribution-wide
@@ -29,21 +29,23 @@ function handler(event) {
     return request;
   }
 
-  // Option B: publisher writes blog/index.html and blog/<slug>/index.html.
-  if (uri === '/blog' || uri === '/blog/' || uri.indexOf('/blog/') === 0) {
-    if (uri.endsWith('/')) {
-      request.uri = uri + 'index.html';
-    } else {
-      var blogLastSlash = uri.lastIndexOf('/');
-      var blogSegment = blogLastSlash === -1 ? uri : uri.substring(blogLastSlash + 1);
-      if (blogSegment.indexOf('.') === -1) {
-        request.uri = uri + '/index.html';
-      }
-    }
+  // Option B: static HTML folders written at build (resume/contact) or by publisher (blog).
+  if (
+    uri === '/blog' ||
+    uri === '/blog/' ||
+    uri.indexOf('/blog/') === 0 ||
+    uri === '/resume' ||
+    uri === '/resume/' ||
+    uri.indexOf('/resume/') === 0 ||
+    uri === '/contact' ||
+    uri === '/contact/' ||
+    uri.indexOf('/contact/') === 0
+  ) {
+    request.uri = rewriteOptionB(uri);
     return request;
   }
 
-  // SPA shell for non-blog client routes (/resume, /contact, /admin, …).
+  // SPA shell for remaining client routes (/admin, /auth/callback, …).
   if (uri.endsWith('/')) {
     request.uri = '/index.html';
   } else {
@@ -55,6 +57,18 @@ function handler(event) {
   }
 
   return request;
+}
+
+function rewriteOptionB(uri) {
+  if (uri.endsWith('/')) {
+    return uri + 'index.html';
+  }
+  var lastSlash = uri.lastIndexOf('/');
+  var lastSegment = lastSlash === -1 ? uri : uri.substring(lastSlash + 1);
+  if (lastSegment.indexOf('.') === -1) {
+    return uri + '/index.html';
+  }
+  return uri;
 }
 
 /**
