@@ -1,5 +1,7 @@
 import type { Home } from '@gagnechris/shared';
 
+export { nowIso } from '../data/singleton-repository.js';
+
 /** Singleton home page — draft META + optional PUBLISHED snapshot (see docs/data-model.md). */
 export const HOME_ID = 'current';
 
@@ -13,10 +15,6 @@ export function homeMetaSk(): string {
 
 export function homePublishedSk(): string {
   return 'PUBLISHED';
-}
-
-export function nowIso(): string {
-  return new Date().toISOString();
 }
 
 export type HomeMetaItem = {

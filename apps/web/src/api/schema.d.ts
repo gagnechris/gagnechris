@@ -1041,6 +1041,9 @@ export interface components {
         ErrorResponse: {
             error: string;
             message?: string;
+            fields?: {
+                [key: string]: string;
+            };
         };
         Post: {
             /** @description Immutable post id (ULID) */

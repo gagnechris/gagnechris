@@ -6,34 +6,11 @@ import {
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
 } from '@gagnechris/shared';
-import { ZodError } from 'zod';
+import { json, mapRouteError, parseBody } from '../http.js';
 import {
   createMediaUploadUrl,
   writeLocalMediaObject,
 } from './storage.js';
-
-function json(
-  statusCode: number,
-  body: unknown,
-): APIGatewayProxyStructuredResultV2 {
-  return {
-    statusCode,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
-function parseBody(event: APIGatewayProxyEventV2): unknown {
-  if (!event.body) return {};
-  const raw = event.isBase64Encoded
-    ? Buffer.from(event.body, 'base64').toString('utf8')
-    : event.body;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    throw new SyntaxError('Invalid JSON body');
-  }
-}
 
 function readBinaryBody(event: APIGatewayProxyEventV2): Buffer {
   if (!event.body) return Buffer.alloc(0);
@@ -90,12 +67,8 @@ export async function handleMediaRoute(
       message: `No media route for ${method} ${path}`,
     });
   } catch (error) {
-    if (error instanceof ZodError || error instanceof SyntaxError) {
-      return json(400, {
-        error: 'bad_request',
-        message: error instanceof Error ? error.message : 'Invalid request',
-      });
-    }
+    const mapped = mapRouteError(error);
+    if (mapped) return mapped;
     throw error;
   }
 }

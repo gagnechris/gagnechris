@@ -93,7 +93,7 @@ const toContent = (draft: DraftFields): ResumeContent => ({
   })),
 })
 
-export default function AdminResumePage() {
+const AdminResumePage = () => {
   const [resume, setResume] = useState<Resume | null>(null)
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -535,3 +535,5 @@ export default function AdminResumePage() {
     </section>
   )
 }
+
+export default AdminResumePage

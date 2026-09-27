@@ -41,7 +41,7 @@ const toHome = (home: Home, draft: DraftFields): Home => ({
   ...toHomePayload(draft, home.seo),
 })
 
-export default function AdminHomePage() {
+const AdminHomePage = () => {
   const [home, setHome] = useState<Home | null>(null)
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -349,3 +349,5 @@ export default function AdminHomePage() {
     </section>
   )
 }
+
+export default AdminHomePage

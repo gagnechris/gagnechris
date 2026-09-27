@@ -33,6 +33,8 @@ export const ErrorResponseSchema = z
   .object({
     error: z.string(),
     message: z.string().optional(),
+    /** Per-field Zod issue codes (e.g. `{ email: "invalid_format" }`). */
+    fields: z.record(z.string(), z.string()).optional(),
   })
   .openapi('ErrorResponse');
 

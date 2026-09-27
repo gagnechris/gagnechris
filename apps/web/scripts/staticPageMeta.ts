@@ -1,7 +1,14 @@
 /**
  * Build-time HTML meta for static marketing routes (CHR-37 / CHR-95).
- * Mirrors the publisher's shell replaceMeta approach without a Runtime React render.
+ * Uses shared HTML helpers so `$`-safe replace stays in one place (CHR-107).
  */
+
+import {
+  escapeHtml,
+  escapeRegExp,
+  replaceMeta,
+  upsertCanonical,
+} from '@gagnechris/shared/html'
 
 export type StaticPageMeta = {
   /** URL path without trailing slash; empty string = home. */
@@ -42,42 +49,6 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
 
 const APEX = 'https://gagnechris.com'
 const DEFAULT_OG_IMAGE = `${APEX}/og-image.jpg`
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-
-const escapeRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`)
-
-function replaceMeta(
-  html: string,
-  attr: 'name' | 'property',
-  key: string,
-  content: string,
-): string {
-  const re = new RegExp(
-    `<meta\\s[^>]*?${attr}=["']${escapeRegExp(key)}["'][^>]*>`,
-    'i',
-  )
-  const tag = `<meta ${attr}="${key}" content="${content}" />`
-  if (re.test(html)) {
-    return html.replace(re, () => tag)
-  }
-  return html.replace(/<\/head>/i, () => `${tag}\n</head>`)
-}
-
-function upsertCanonical(html: string, url: string): string {
-  const tag = `<link rel="canonical" href="${url}" />`
-  const re = /<link\s[^>]*?rel=["']canonical["'][^>]*>/i
-  if (re.test(html)) {
-    return html.replace(re, () => tag)
-  }
-  return html.replace(/<\/head>/i, () => `    ${tag}\n</head>`)
-}
 
 function removeCanonical(html: string): string {
   return html.replace(/<link\s[^>]*?rel=["']canonical["'][^>]*>\s*/i, () => '')
