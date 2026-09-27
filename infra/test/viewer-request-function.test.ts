@@ -147,8 +147,43 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/blog/posts.json');
   });
 
+  it('rewrites /resume and /contact to Option B index.html objects', () => {
+    expect(
+      (
+        runHandler({
+          uri: '/resume',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/resume/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/resume/',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/resume/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/contact',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/contact/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/contact/',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/contact/index.html');
+  });
+
   it('rewrites other extensionless deep links to the SPA shell', () => {
-    for (const uri of ['/resume', '/contact', '/auth/callback', '/admin']) {
+    for (const uri of ['/auth/callback', '/admin', '/admin/posts']) {
       const req = runHandler({
         uri,
         headers: { host: { value: 'gagnechris.com' } },
@@ -157,9 +192,9 @@ describe('viewer-request CloudFront Function', () => {
     }
   });
 
-  it('rewrites trailing-slash paths to the SPA shell', () => {
+  it('rewrites trailing-slash SPA paths to the SPA shell', () => {
     const req = runHandler({
-      uri: '/resume/',
+      uri: '/admin/',
       headers: { host: { value: 'gagnechris.com' } },
     }) as CfRequest;
     expect(req.uri).toBe('/index.html');

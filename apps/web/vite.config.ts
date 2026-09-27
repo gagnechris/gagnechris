@@ -2,6 +2,7 @@ import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts'
+import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts'
 
 const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787'
 
@@ -67,7 +68,7 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     base: '/',
-    plugins: [react(), sitemapPlugin()],
+    plugins: [react(), sitemapPlugin(), staticPagesPlugin()],
     server: {
       proxy,
     },
