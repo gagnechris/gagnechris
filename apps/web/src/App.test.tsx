@@ -73,22 +73,34 @@ describe('App', () => {
     expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
   })
 
-  test('tracks LinkedIn link clicks', () => {
+  test('tracks LinkedIn footer link clicks', () => {
     renderWithProviders(<App />)
 
-    const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')
+    const linkedInLink = document.querySelector(
+      '.site-footer a[href*="linkedin"]',
+    )
     fireEvent.click(linkedInLink!)
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin')
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      'click',
+      'external_link',
+      'linkedin_footer',
+    )
   })
 
-  test('tracks GitHub link clicks', () => {
+  test('tracks GitHub footer link clicks', () => {
     renderWithProviders(<App />)
 
-    const githubLink = document.querySelector('#quick-links a[href*="github.com"]')
+    const githubLink = document.querySelector(
+      '.site-footer a[href*="github.com"]',
+    )
     fireEvent.click(githubLink!)
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github')
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      'click',
+      'external_link',
+      'github_footer',
+    )
   })
 
   test('LinkedIn link has correct attributes', () => {

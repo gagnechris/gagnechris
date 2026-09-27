@@ -63,6 +63,7 @@ export {
   HOME_PROFILE_IMAGE_SRC,
   renderHomeAboutHtml,
   renderHomeAboutSectionHtml,
+  renderHomeFooterHtml,
   renderHomePrerenderHtml,
   renderHomeQuickLinksHtml,
 } from './home-html.js';

@@ -52,7 +52,7 @@ describe('renderHomeAboutSectionHtml', () => {
 });
 
 describe('renderHomePrerenderHtml', () => {
-  it('includes profile photo and Quick Links matching the React home', () => {
+  it('includes profile photo, Quick Links, and footer matching the React home', () => {
     const html = renderHomePrerenderHtml(home());
     expect(html).toContain('class="home-page home-page-prerender"');
     expect(html).toContain('class="home-header"');
@@ -62,6 +62,9 @@ describe('renderHomePrerenderHtml', () => {
     expect(html).toContain('href="/resume"');
     expect(html).toContain('href="/blog"');
     expect(html).toContain('href="/contact"');
+    expect(html).toContain('class="site-footer"');
+    expect(html).toContain('href="/rss.xml"');
+    expect(html).toContain('dont-feed-the-bears?from=footer');
   });
 
   it('exposes name and title as data attributes the SPA reads back', () => {

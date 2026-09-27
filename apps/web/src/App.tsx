@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import {
+  HOME_PROFILE_IMAGE_SRC,
+  renderHomeQuickLinksHtml,
+} from '@gagnechris/shared/home'
 import { trackEvent } from './utils/analytics'
 import {
   documentHomeView,
@@ -8,8 +12,6 @@ import {
   type HomeView,
 } from './home/publishedHome'
 import './App.css'
-
-const PROFILE_SRC = '/profile.jpg'
 
 function App() {
   const [home, setHome] = useState<HomeView>(
@@ -42,7 +44,7 @@ function App() {
       <link rel="canonical" href="https://gagnechris.com" />
       <header className="home-header">
         <img
-          src={PROFILE_SRC}
+          src={HOME_PROFILE_IMAGE_SRC}
           className="profile"
           alt={`Photo of ${home.name}`}
           width={96}
@@ -59,40 +61,10 @@ function App() {
             dangerouslySetInnerHTML={{ __html: home.aboutHtml }}
           />
         </section>
-        <section id="quick-links">
-          <h2>Quick Links</h2>
-          <ul>
-            <li>
-              <Link to="/resume">Resume</Link>
-            </li>
-            <li>
-              <Link to="/blog">Blog</Link>
-            </li>
-            <li>
-              <Link to="/contact">Contact</Link>
-            </li>
-            <li>
-              <a
-                href="https://www.linkedin.com/in/christophergagne/"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent('click', 'external_link', 'linkedin')}
-              >
-                LinkedIn
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://github.com/gagnechris"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent('click', 'external_link', 'github')}
-              >
-                GitHub
-              </a>
-            </li>
-          </ul>
-        </section>
+        {/* Shared markup with the publisher prerender (CHR-116 / CHR-122). */}
+        <div
+          dangerouslySetInnerHTML={{ __html: renderHomeQuickLinksHtml() }}
+        />
       </main>
       <footer className="site-footer">
         <p className="site-footer__copy">© {year} Chris Gagne</p>

@@ -68,8 +68,6 @@ export interface SiteStackProps extends StackProps {
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
-  /** Viewer-request function name (CDK-managed; not rewritten at publish time). */
-  readonly viewerRequestFunctionName: string;
   /** KVS ARN for published blog slugs (publisher UpdateKeys; CHR-115). */
   readonly blogSlugsKeyValueStoreArn: string;
 
@@ -185,7 +183,7 @@ export class SiteStack extends Stack {
       },
     });
 
-    this.viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
+    const viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const blogSlugsKvs = new KeyValueStore(this, 'BlogSlugsKvs', {
       keyValueStoreName: `gagnechris-${config.name}-blog-slugs`,
       comment: 'Published /blog/<slug> allowlist for viewer-request (CHR-115)',
@@ -193,7 +191,7 @@ export class SiteStack extends Stack {
     this.blogSlugsKeyValueStoreArn = blogSlugsKvs.keyValueStoreArn;
 
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
-      functionName: this.viewerRequestFunctionName,
+      functionName: viewerRequestFunctionName,
       comment:
         'www→apex + Option B + KVS blog slugs + spa/404 shells (CHR-115)',
       runtime: FunctionRuntime.JS_2_0,
@@ -371,7 +369,7 @@ export class SiteStack extends Stack {
     });
     new StringParameter(this, 'ViewerRequestFunctionNameParam', {
       parameterName: `/gagnechris/${config.name}/viewer-request-function-name`,
-      stringValue: this.viewerRequestFunctionName,
+      stringValue: viewerRequestFunctionName,
       description: 'CloudFront viewer-request function (CDK-managed)',
     });
     new StringParameter(this, 'BlogSlugsKvsArnParam', {
