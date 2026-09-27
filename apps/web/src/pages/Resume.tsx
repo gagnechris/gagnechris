@@ -10,6 +10,14 @@ function Resume() {
 
   const handleDownload = () => {
     trackResumeDownload()
+    void fetch('/api/resume/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ referrer: document.referrer || undefined }),
+      keepalive: true,
+    }).catch(() => {
+      /* notify is best-effort; download still proceeds */
+    })
     const link = document.createElement('a')
     link.href = "/Christopher M Gagne Resume 2026.pdf"
     link.download = "Christopher M Gagne Resume 2026.pdf"

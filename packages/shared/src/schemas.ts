@@ -175,3 +175,44 @@ export const MediaUploadUrlResponseSchema = z
 export type MediaUploadUrlResponse = z.infer<
   typeof MediaUploadUrlResponseSchema
 >;
+
+export const ContactRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    email: z.string().trim().email().max(320),
+    message: z.string().trim().min(1).max(10_000),
+    /** Honeypot — must be empty. Bots that fill it get a silent success. */
+    website: z.string().max(200).optional().default(''),
+  })
+  .openapi('ContactRequest');
+
+export type ContactRequest = z.infer<typeof ContactRequestSchema>;
+
+export const ContactResponseSchema = z
+  .object({
+    ok: z.literal(true),
+  })
+  .openapi('ContactResponse');
+
+export type ContactResponse = z.infer<typeof ContactResponseSchema>;
+
+export const ResumeDownloadNotifyRequestSchema = z
+  .object({
+    /** Optional client context (no PII required). */
+    referrer: z.string().max(500).optional(),
+  })
+  .openapi('ResumeDownloadNotifyRequest');
+
+export type ResumeDownloadNotifyRequest = z.infer<
+  typeof ResumeDownloadNotifyRequestSchema
+>;
+
+export const ResumeDownloadNotifyResponseSchema = z
+  .object({
+    ok: z.literal(true),
+  })
+  .openapi('ResumeDownloadNotifyResponse');
+
+export type ResumeDownloadNotifyResponse = z.infer<
+  typeof ResumeDownloadNotifyResponseSchema
+>;

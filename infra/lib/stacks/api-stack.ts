@@ -31,6 +31,7 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { NagSuppressions } from 'cdk-nag';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,6 +52,10 @@ export interface ApiStackProps extends StackProps {
   readonly alertsTopic: ITopic;
   /** Shared single-table (posts + future Notebook). */
   readonly dataTable: ITable;
+  /** SES domain identity for contact / resume notifications (CHR-38). */
+  readonly emailIdentity: IEmailIdentity;
+  /** Verified From address (e.g. noreply@apex). */
+  readonly fromEmail: string;
 }
 
 /**
@@ -63,8 +68,16 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    const { config, userPool, webClient, distribution, alertsTopic, dataTable } =
-      props;
+    const {
+      config,
+      userPool,
+      webClient,
+      distribution,
+      alertsTopic,
+      dataTable,
+      emailIdentity,
+      fromEmail,
+    } = props;
 
     const logGroup = new LogGroup(this, 'ApiLogGroup', {
       retention: RetentionDays.TWO_WEEKS,
@@ -85,7 +98,7 @@ export class ApiStack extends Stack {
     this.apiFunction = new NodejsFunction(this, 'ApiFunction', {
       functionName: `gagnechris-${config.name}-api`,
       description:
-        'gagnechris HTTP API (health + admin posts/media; shared data table)',
+        'gagnechris HTTP API (health, contact, admin posts/media; shared data table)',
       entry: join(repoRoot, 'services/api/src/handler.ts'),
       handler: 'handler',
       runtime: Runtime.NODEJS_24_X,
@@ -108,12 +121,16 @@ export class ApiStack extends Stack {
         NODE_OPTIONS: '--enable-source-maps',
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucketName,
+        CONTACT_TO_EMAIL: config.alertsEmail,
+        CONTACT_FROM_EMAIL: fromEmail,
+        SITE_APEX_DOMAIN: APEX_DOMAIN,
       },
     });
 
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only — objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
+    emailIdentity.grantSendEmail(this.apiFunction);
 
     NagSuppressions.addResourceSuppressions(
       this.apiFunction,
@@ -129,7 +146,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'X-Ray tracing wildcards and scoped s3:PutObject on media/* for presigned uploads (CHR-31).',
+            'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
         },
       ],
       true,
@@ -204,6 +221,40 @@ export class ApiStack extends Stack {
           id: 'AwsSolutions-APIG4',
           reason:
             'GET /api/health is intentionally public for uptime checks; admin and notebook routes require Cognito JWT.',
+        },
+      ],
+      true,
+    );
+
+    const contactRoutes = this.httpApi.addRoutes({
+      path: '/api/contact',
+      methods: [HttpMethod.POST],
+      integration,
+    });
+    NagSuppressions.addResourceSuppressions(
+      contactRoutes,
+      [
+        {
+          id: 'AwsSolutions-APIG4',
+          reason:
+            'POST /api/contact is public (contact form); spam mitigated by honeypot + API stage throttle (CHR-38).',
+        },
+      ],
+      true,
+    );
+
+    const resumeNotifyRoutes = this.httpApi.addRoutes({
+      path: '/api/resume/download',
+      methods: [HttpMethod.POST],
+      integration,
+    });
+    NagSuppressions.addResourceSuppressions(
+      resumeNotifyRoutes,
+      [
+        {
+          id: 'AwsSolutions-APIG4',
+          reason:
+            'POST /api/resume/download is a public anonymous notify ping; no PII; stage throttle applies (CHR-38).',
         },
       ],
       true,

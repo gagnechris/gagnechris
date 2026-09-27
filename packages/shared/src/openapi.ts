@@ -5,6 +5,8 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import {
   AdminMeResponseSchema,
+  ContactRequestSchema,
+  ContactResponseSchema,
   CreatePostRequestSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
@@ -13,6 +15,8 @@ import {
   PostListResponseSchema,
   PostSchema,
   PostStatusSchema,
+  ResumeDownloadNotifyRequestSchema,
+  ResumeDownloadNotifyResponseSchema,
   UpdatePostRequestSchema,
 } from './schemas.js';
 
@@ -38,6 +42,16 @@ export function buildOpenApiDocument() {
   registry.register('UpdatePostRequest', UpdatePostRequestSchema);
   registry.register('MediaUploadUrlRequest', MediaUploadUrlRequestSchema);
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
+  registry.register('ContactRequest', ContactRequestSchema);
+  registry.register('ContactResponse', ContactResponseSchema);
+  registry.register(
+    'ResumeDownloadNotifyRequest',
+    ResumeDownloadNotifyRequestSchema,
+  );
+  registry.register(
+    'ResumeDownloadNotifyResponse',
+    ResumeDownloadNotifyResponseSchema,
+  );
 
   registry.registerPath({
     method: 'get',
@@ -254,6 +268,56 @@ export function buildOpenApiDocument() {
         description: 'Invalid content type, size, or body',
         content: {
           'application/json': { schema: ErrorResponseSchema },
+        },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/contact',
+    summary: 'Public contact form (SES email to site owner)',
+    tags: ['Public'],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: ContactRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Accepted',
+        content: {
+          'application/json': { schema: ContactResponseSchema },
+        },
+      },
+      400: {
+        description: 'Validation error',
+        content: {
+          'application/json': { schema: ErrorResponseSchema },
+        },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/resume/download',
+    summary: 'Anonymous resume-download notify (no PII)',
+    tags: ['Public'],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: ResumeDownloadNotifyRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Accepted',
+        content: {
+          'application/json': { schema: ResumeDownloadNotifyResponseSchema },
         },
       },
     },

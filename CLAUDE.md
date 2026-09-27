@@ -33,7 +33,7 @@ npm workspaces. Root `dev`, `build`, `test`, and `lint` delegate to the web app.
 
 ## Hosting & Integrations
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`
-- **Contact form**: Formspree
+- **Contact form**: `POST /api/contact` → SES (CHR-38)
 - **Analytics**: Google Analytics 4
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)
 

@@ -8,12 +8,11 @@ function Contact() {
     name: '',
     email: '',
     message: '',
+    website: '',
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  const FORMSPREE_ENDPOINT = 'xaqdoojb';
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -46,8 +45,7 @@ function Contact() {
     setSubmitting(true);
 
     try {
-      // Submit to Formspree
-      const response = await fetch(`https://formspree.io/f/${FORMSPREE_ENDPOINT}`, {
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,11 +54,9 @@ function Contact() {
       });
 
       if (response.ok) {
-        // Track successful form submission
         trackEvent('submit', 'contact_form', 'contact_page');
         setSubmitted(true);
       } else {
-        // Handle error
         setErrors({ submit: 'Failed to send message. Please try again.' });
       }
     } catch (error) {
@@ -78,7 +74,6 @@ function Contact() {
       [name]: value,
     }));
 
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -125,6 +120,19 @@ function Contact() {
           onSubmit={handleSubmit}
           className="contact-form"
         >
+          {/* Honeypot — leave empty (CHR-38). */}
+          <div className="hp-field" aria-hidden="true">
+            <label htmlFor="website">Website</label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              value={formData.website}
+              onChange={handleChange}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
 
           <div className="form-group">
             <label htmlFor="name">
