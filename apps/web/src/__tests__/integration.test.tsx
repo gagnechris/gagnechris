@@ -18,18 +18,30 @@ describe('Integration Tests', () => {
   })
 
   describe('External Link Tracking', () => {
-    test('tracks social media link clicks from home page', () => {
+    test('tracks social media link clicks from home page footer', () => {
       renderWithProviders(<App />)
 
-      const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')!
+      const linkedInLink = document.querySelector(
+        '.site-footer a[href*="linkedin"]',
+      )!
       fireEvent.click(linkedInLink)
 
-      expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'linkedin')
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'click',
+        'external_link',
+        'linkedin_footer',
+      )
 
-      const githubLink = document.querySelector('#quick-links a[href*="github.com"]')!
+      const githubLink = document.querySelector(
+        '.site-footer a[href*="github.com"]',
+      )!
       fireEvent.click(githubLink)
 
-      expect(mockTrackEvent).toHaveBeenCalledWith('click', 'external_link', 'github')
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'click',
+        'external_link',
+        'github_footer',
+      )
       expect(mockTrackEvent).toHaveBeenCalledTimes(2)
     })
   })
