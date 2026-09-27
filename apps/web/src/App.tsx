@@ -85,6 +85,18 @@ function App() {
           </ul>
         </section>
       </main>
+      <footer>
+        <p>
+          <Link
+            to="/dont-feed-the-bears?from=footer"
+            className="site-footer__bear"
+            aria-label="Don't Feed the Bears — Vermont camp mini-game"
+            title="Don't Feed the Bears"
+          >
+            🐻
+          </Link>
+        </p>
+      </footer>
     </>
   )
 }

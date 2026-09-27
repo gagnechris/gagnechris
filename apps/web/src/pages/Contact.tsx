@@ -94,6 +94,13 @@ function Contact() {
           <div className="success-message">
             <h2>Thank You!</h2>
             <p>Your message has been sent successfully. I'll get back to you as soon as possible.</p>
+            <p className="contact-bear-nudge">
+              While you wait —{' '}
+              <Link to="/dont-feed-the-bears?from=contact">
+                Don't Feed the Bears
+              </Link>
+              ?
+            </p>
             <Link to="/" className="btn-home">Return to Home</Link>
           </div>
         </main>

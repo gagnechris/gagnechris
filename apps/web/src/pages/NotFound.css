@@ -37,6 +37,21 @@
   margin-bottom: var(--space-6);
 }
 
+.not-found-bear {
+  margin-bottom: var(--space-6);
+}
+
+.not-found-bear a {
+  color: var(--primary-700);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.not-found-bear a:hover {
+  color: var(--primary-500);
+  text-decoration: underline;
+}
+
 .not-found-links {
   list-style: none;
   padding: 0;

@@ -149,6 +149,20 @@ footer p {
   font-size: var(--text-sm);
 }
 
+.site-footer__bear {
+  display: inline-block;
+  text-decoration: none;
+  opacity: 0.55;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+  line-height: 1;
+}
+
+.site-footer__bear:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  text-decoration: none;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   #root {

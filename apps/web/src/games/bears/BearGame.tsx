@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 import { Link } from 'react-router-dom'
+import {
+  trackBearsGameComplete,
+  trackBearsGameStart,
+  trackBearsTipLinkClick,
+} from '../../utils/analytics'
 import {
   createInitialState,
   secureAttractant,
@@ -110,7 +121,12 @@ function BearGlyph() {
 
 type ViewMode = 'play' | 'tips'
 
-export function BearGame() {
+type BearGameProps = {
+  /** Soft entry source from `?from=` (CHR-94). */
+  from?: string
+}
+
+export function BearGame({ from = 'direct' }: BearGameProps) {
   const [view, setView] = useState<ViewMode>('play')
   const [soundOn, setSoundOn] = useState(false)
   const [highScore, setHighScore] = useState(() => readHighScore())
@@ -119,18 +135,30 @@ export function BearGame() {
   const [state, setState] = useState<GameState>(() =>
     createInitialState({ tipIndex: 0 }),
   )
+  const prevPhase = useRef(state.phase)
+  const didTrackInitialStart = useRef(false)
 
-  const startRound = useCallback((nextRound: number) => {
-    setReducedMotion(prefersReducedMotion())
-    setHighScore(readHighScore())
-    setState(
-      createInitialState({
-        tipIndex: nextRound % BEAR_TIPS.length,
-      }),
-    )
-    setRound(nextRound)
-    setView('play')
-  }, [])
+  const startRound = useCallback(
+    (nextRound: number) => {
+      setReducedMotion(prefersReducedMotion())
+      setHighScore(readHighScore())
+      setState(
+        createInitialState({
+          tipIndex: nextRound % BEAR_TIPS.length,
+        }),
+      )
+      setRound(nextRound)
+      setView('play')
+      trackBearsGameStart(from)
+    },
+    [from],
+  )
+
+  useEffect(() => {
+    if (didTrackInitialStart.current) return
+    didTrackInitialStart.current = true
+    trackBearsGameStart(from)
+  }, [from])
 
   useEffect(() => {
     if (view !== 'play' || state.phase !== 'playing') return
@@ -153,6 +181,17 @@ export function BearGame() {
       writeHighScore(state.score)
     }
   }, [state.phase, state.score, highScore])
+
+  useEffect(() => {
+    if (prevPhase.current === 'playing' && state.phase !== 'playing') {
+      trackBearsGameComplete(from, state.score)
+    }
+    prevPhase.current = state.phase
+  }, [state.phase, state.score, from])
+
+  const onTipLinkClick = () => {
+    trackBearsTipLinkClick(from)
+  }
 
   const onSecure = (attractant: Attractant) => {
     if (state.phase !== 'playing' || attractant.status === 'secured') return
@@ -192,7 +231,12 @@ export function BearGame() {
         <h2 className="bear-game__tips-heading">Vermont bear tips</h2>
         <p className="bear-game__lede">
           Guidance paraphrased from{' '}
-          <a href={BEAR_GUIDANCE_URL} target="_blank" rel="noopener noreferrer">
+          <a
+            href={BEAR_GUIDANCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onTipLinkClick}
+          >
             Vermont Fish &amp; Wildlife
           </a>
           .
@@ -202,7 +246,12 @@ export function BearGame() {
             <li key={t.id} className="bear-game__tip-card">
               <h3>{t.title}</h3>
               <p>{t.body}</p>
-              <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                href={t.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onTipLinkClick}
+              >
                 Source
               </a>
             </li>
@@ -315,7 +364,12 @@ export function BearGame() {
             <blockquote className="bear-game__end-tip">
               <strong>{tip.title}</strong>
               <p>{tip.body}</p>
-              <a href={tip.sourceUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                href={tip.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onTipLinkClick}
+              >
                 Vermont Fish &amp; Wildlife source
               </a>
             </blockquote>

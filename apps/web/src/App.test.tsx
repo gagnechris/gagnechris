@@ -107,4 +107,13 @@ describe('App', () => {
     expect(githubLink).toHaveAttribute('target', '_blank')
     expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
+
+  test('footer links to the bears game with from=footer', () => {
+    renderWithProviders(<App />)
+
+    const bear = screen.getByRole('link', {
+      name: /don't feed the bears/i,
+    })
+    expect(bear).toHaveAttribute('href', '/dont-feed-the-bears?from=footer')
+  })
 })

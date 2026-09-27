@@ -10,6 +10,7 @@ import './Resume.css'
 
 function Resume() {
   const [resume, setResume] = useState<ResumeView>(fallbackResumeView)
+  const [showBearNote, setShowBearNote] = useState(false)
 
   useEffect(() => {
     trackResumeView()
@@ -47,6 +48,7 @@ function Resume() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    setShowBearNote(true)
   }
 
   return (
@@ -69,6 +71,26 @@ function Resume() {
           <Link to="/" className="back-link">Back to Home</Link>
         </div>
       </header>
+
+      {showBearNote && (
+        <aside className="resume-bear-note" role="status">
+          <p>
+            Download started. While you wait —{' '}
+            <Link to="/dont-feed-the-bears?from=resume">
+              Don't Feed the Bears
+            </Link>
+            ?
+          </p>
+          <button
+            type="button"
+            className="resume-bear-note__dismiss"
+            onClick={() => setShowBearNote(false)}
+            aria-label="Dismiss bear game note"
+          >
+            ×
+          </button>
+        </aside>
+      )}
 
       <main dangerouslySetInnerHTML={{ __html: resume.bodyHtml }} />
     </div>

@@ -123,6 +123,45 @@
   transform: translateY(-2px);
 }
 
+.resume-bear-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-md);
+  color: var(--neutral-700);
+  font-size: var(--text-sm);
+}
+
+.resume-bear-note p {
+  margin: 0;
+  line-height: var(--line-relaxed);
+}
+
+.resume-bear-note a {
+  color: var(--primary-700);
+  font-weight: 500;
+}
+
+.resume-bear-note__dismiss {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--neutral-500);
+  cursor: pointer;
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: 0 var(--space-1);
+}
+
+.resume-bear-note__dismiss:hover {
+  color: var(--neutral-800);
+}
+
 /* Section Headings */
 .resume-page h2 {
   color: var(--primary-700);
