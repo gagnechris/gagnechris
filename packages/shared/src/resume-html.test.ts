@@ -82,6 +82,24 @@ describe('renderResumePrerenderHtml', () => {
     expect(html).toContain('<main>');
   });
 
+
+  it('preserves $$, $&, $`, $\' in name and summary', () => {
+    const tricky = "Making $$$ with $$ and $& and $` and $'";
+    const escaped = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
+    const html = renderResumePrerenderHtml(
+      resume({
+        name: tricky,
+        content: {
+          ...DEFAULT_RESUME.content,
+          summary: "echo $$ and $& and $` and $'",
+        },
+      }),
+    );
+    expect(html).toContain(`data-name="${escaped}"`);
+    expect(html).toContain(`<h1>${escaped}</h1>`);
+    expect(html).toContain('echo $$ and $&amp; and $` and $&#39;');
+  });
+
   it('escapes quotes in data attributes', () => {
     const html = renderResumePrerenderHtml(
       resume({ name: 'A "B"', pdfPath: '/a"b.pdf' }),

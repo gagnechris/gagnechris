@@ -37,8 +37,8 @@ const ROOT_PRERENDERED_RE =
 const injectPrerender = (shellHtml: string, body: string): string => {
   const root = `<div id="root">${PRERENDER_OPEN}${body}${PRERENDER_CLOSE}</div>`;
   return ROOT_PRERENDERED_RE.test(shellHtml)
-    ? shellHtml.replace(ROOT_PRERENDERED_RE, root)
-    : shellHtml.replace(ROOT_EMPTY_RE, root);
+    ? shellHtml.replace(ROOT_PRERENDERED_RE, () => root)
+    : shellHtml.replace(ROOT_EMPTY_RE, () => root);
 };
 
 /**
@@ -47,7 +47,7 @@ const injectPrerender = (shellHtml: string, body: string): string => {
  * other pages — otherwise home content leaks into /blog and /resume.
  */
 export const normalizeShellHtml = (shellHtml: string): string =>
-  shellHtml.replace(ROOT_PRERENDERED_RE, '<div id="root"></div>');
+  shellHtml.replace(ROOT_PRERENDERED_RE, () => '<div id="root"></div>');
 
 export const postCanonicalUrl = (slug: string): string =>
   `https://${APEX}/blog/${slug}`;
@@ -73,7 +73,7 @@ export const buildJsonLd = (post: Post): string => {
       url: `https://${APEX}/`,
     },
   };
-  return JSON.stringify(payload);
+  return JSON.stringify(payload).replace(/</g, '\\u003c');
 };
 
 export const buildArticleHtml = (post: Post): string => {
@@ -103,7 +103,7 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   const jsonLd = buildJsonLd(post);
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -123,8 +123,7 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   html = replaceMeta(html, 'name', 'twitter:image', image);
 
   html = upsertCanonical(html, url);
-  html = html.replace(
-    /<\/head>/i,
+  html = html.replace(/<\/head>/i, () =>
     `<script type="application/ld+json">${jsonLd}</script></head>`,
   );
   html = injectPrerender(html, article);
@@ -152,7 +151,7 @@ export const renderBlogIndexPage = (
 </section>`.trim();
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -184,7 +183,7 @@ export const renderResumePage = (
   });
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -214,7 +213,7 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
     : defaultOgImage();
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -276,7 +275,7 @@ function replaceMeta(
   );
   const tag = `<meta ${attr}="${key}" content="${content}" />`;
   if (re.test(html)) {
-    return html.replace(re, tag);
+    return html.replace(re, () => tag);
   }
   return upsertMeta(html, attr, key, content);
 }
@@ -286,9 +285,9 @@ function upsertCanonical(html: string, url: string): string {
   const tag = `<link rel="canonical" href="${url}" />`;
   const re = /<link\s[^>]*?rel=["']canonical["'][^>]*>/i;
   if (re.test(html)) {
-    return html.replace(re, tag);
+    return html.replace(re, () => tag);
   }
-  return html.replace(/<\/head>/i, `${tag}</head>`);
+  return html.replace(/<\/head>/i, () => `${tag}</head>`);
 }
 
 function upsertMeta(
@@ -298,9 +297,9 @@ function upsertMeta(
   content: string,
 ): string {
   const tag = `<meta ${attr}="${key}" content="${content}" />`;
-  return html.replace(/<\/head>/i, `${tag}\n</head>`);
+  return html.replace(/<\/head>/i, () => `${tag}\n</head>`);
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
 }

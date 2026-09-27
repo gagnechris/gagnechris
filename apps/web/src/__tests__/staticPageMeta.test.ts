@@ -53,6 +53,22 @@ describe('staticPageMeta', () => {
     expect(html.match(/rel="canonical"/g)).toHaveLength(1)
   })
 
+
+  it('preserves $$, $&, $`, $\' in titles and meta content', () => {
+    const title = "Making $$$ with $$ and $& and $` and $'"
+    const description = "echo $$ and $& and $` and $'"
+    const escapedTitle = 'Making $$$ with $$ and $&amp; and $` and $\''
+    const escapedDescription = 'echo $$ and $&amp; and $` and $\''
+    const html = applyStaticPageMeta(shell, {
+      routePath: 'contact',
+      title,
+      description,
+    })
+    expect(html).toContain(`<title>${escapedTitle}</title>`)
+    expect(html).toContain(`content="${escapedTitle}"`)
+    expect(html).toContain(`content="${escapedDescription}"`)
+  })
+
   it('covers home, resume, contact, and dont-feed-the-bears', () => {
     expect(STATIC_PAGE_META.map((p) => p.routePath).sort()).toEqual([
       '',

@@ -51,7 +51,7 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, '&quot;')
 
 const escapeRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`)
 
 function replaceMeta(
   html: string,
@@ -65,18 +65,18 @@ function replaceMeta(
   )
   const tag = `<meta ${attr}="${key}" content="${content}" />`
   if (re.test(html)) {
-    return html.replace(re, tag)
+    return html.replace(re, () => tag)
   }
-  return html.replace(/<\/head>/i, `${tag}\n</head>`)
+  return html.replace(/<\/head>/i, () => `${tag}\n</head>`)
 }
 
 function upsertCanonical(html: string, url: string): string {
   const tag = `<link rel="canonical" href="${url}" />`
   const re = /<link\s[^>]*?rel=["']canonical["'][^>]*>/i
   if (re.test(html)) {
-    return html.replace(re, tag)
+    return html.replace(re, () => tag)
   }
-  return html.replace(/<\/head>/i, `    ${tag}\n</head>`)
+  return html.replace(/<\/head>/i, () => `    ${tag}\n</head>`)
 }
 
 export function canonicalUrlFor(routePath: StaticPageMeta['routePath']): string {
@@ -100,7 +100,7 @@ export function applyStaticPageMeta(
   const image = absoluteOgImage(meta)
 
   let html = shellHtml
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`)
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`)
   html = replaceMeta(html, 'name', 'description', description)
   html = replaceMeta(html, 'property', 'og:title', title)
   html = replaceMeta(html, 'property', 'og:description', description)

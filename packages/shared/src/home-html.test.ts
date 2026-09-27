@@ -62,6 +62,19 @@ describe('renderHomePrerenderHtml', () => {
     expect(html).toContain('<section id="about">');
   });
 
+
+  it('preserves $$, $&, $`, $\' in prerendered name/title/about', () => {
+    const tricky = "Making $$$ with $$ and $& and $` and $'";
+    const escaped = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
+    const html = renderHomePrerenderHtml(
+      home({ name: tricky, title: tricky, about: 'echo $$\n\nand $&' }),
+    );
+    expect(html).toContain(`data-name="${escaped}"`);
+    expect(html).toContain(`<h1>${escaped}</h1>`);
+    expect(html).toContain('<p>echo $$</p>');
+    expect(html).toContain('<p>and $&amp;</p>');
+  });
+
   it('leaves Quick Links and the profile photo to React', () => {
     const html = renderHomePrerenderHtml(home());
     expect(html).not.toContain('quick-links');

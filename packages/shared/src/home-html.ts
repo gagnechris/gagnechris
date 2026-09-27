@@ -15,7 +15,7 @@ export const renderHomeAboutHtml = (about: string): string =>
     .split(/\n\s*\n/)
     .map((block) => block.trim())
     .filter(Boolean)
-    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br />')}</p>`)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, () => '<br />')}</p>`)
     .join('');
 
 /** Section markup only — classes match `apps/web/src/App.css`. */
