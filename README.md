@@ -2,7 +2,7 @@
 
 Hands-on Engineering Leader at [Ro](https://ro.co).
 
-I'm a hands-on engineering leader at Ro. I build healthy teams that own their work and can operate independently. I also spend a lot of time helping teams figure out where AI can genuinely make their work better, without losing sight of quality.
+I build healthy teams that own their work and can operate independently. I also spend a lot of time helping teams figure out where AI can genuinely make their work better, without losing sight of quality.
 
 ### What I'm focused on
 

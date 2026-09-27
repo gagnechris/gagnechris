@@ -6,11 +6,14 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
-   - `/api/*` → API Gateway origin
-   - `/blog/<slug>/` → rewrite to S3 object; unknown published slugs (KeyValueStore miss) → soft-404 HTML without hitting S3 XML errors
-   - SPA routes (`/`, `/resume`, `/admin`, …) → `index.html` (or prerendered home/resume HTML when present)
-3. **Viewer response** sets security headers / cache behavior as configured in CDK
-4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
+   - `/api/*` and `/media/*` → pass through (API Gateway / media origin)
+   - `/` → `/index.html` (prerendered home)
+   - `/resume`, `/blog`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`
+   - `/blog/<slug>` → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
+   - `/admin/*` and `/auth/*` → `/spa.html` (neutral SPA shell, not the home prerender)
+   - Other extensionless paths → `/404.html`
+3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404
+4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, `spa.html`)
 5. **API Gateway → Lambda API** for CRUD, publish, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths
@@ -31,7 +34,7 @@ Details: [data-model.md](./data-model.md).
 
 On relevant stream events the publisher updates, among others:
 
-- `/`, `/resume`, `/blog/<slug>/index.html` (prerendered pages)
+- `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html` (prerendered pages)
 - `/blog/posts.json`, `/rss.xml`, `/sitemap.xml`
 - `/resume.pdf` (pdf-lib + Inter fonts)
 - CloudFront KeyValueStore keys for known published slugs
@@ -41,9 +44,10 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 
 ## 404 handling
 
-- Unknown **blog slugs**: viewer-request checks KVS; miss → site 404 HTML (not S3 `NoSuchKey` XML).
-- Soft-deleted / unpublished posts: publisher removes objects; KVS entry cleared so subsequent requests 404 cleanly.
-- SPA unknown paths: client `NotFound` route after `index.html` fallback.
+- Unknown / unpublished **blog slugs**: viewer-request checks KVS; miss → `/404.html` (not S3 `NoSuchKey` XML), once `__synced__` exists.
+- Soft-deleted / unpublished posts: publisher removes objects and clears the KVS entry so subsequent requests 404 cleanly.
+- Other unknown public paths: viewer-request rewrites to `/404.html` (not the home page).
+- Admin client routes under `/spa.html`: React Router `NotFound` for unmatched paths.
 
 ## Auth
 
