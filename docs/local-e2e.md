@@ -32,16 +32,14 @@ One terminal:
 npm run local:dev
 ```
 
-This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, runs the API wrapper on `:8787`, and starts Vite with `VITE_AUTH_MODE=local`. Open `http://localhost:5173/admin` — signed in as `local@gagnechris.com` without Cognito. Ctrl+C stops Vite and any API this script started (Docker stays up).
+This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API and `/blog` → static origin (same as prod CloudFront Option B).
 
-Optional pieces (only when exercising Option B static HTML outside Vite):
+Open `http://localhost:5173/admin`. After publish, **View live** / `/blog/<slug>` on the Vite origin serves prerendered HTML (not the SPA markdown loader). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
-```bash
-npm run build && npm run local:seed-shell
-npm run local:site   # :4177 — real viewer-request rewrite
-```
+Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
 
-Lower-level scripts (`local:up`, `local:api`, …) remain available if you want to run pieces separately.
+Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
+
 
 ### Safety
 

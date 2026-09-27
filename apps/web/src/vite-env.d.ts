@@ -14,6 +14,11 @@ interface ImportMetaEnv {
   /** Dev only: local API origin when VITE_API_TARGET is not prod. */
   readonly VITE_LOCAL_API_ORIGIN?: string
   /**
+   * Dev only: proxy `/blog` to the local static origin (publisher filesystem).
+   * Set by `scripts/local/env.sh` / `npm run local:dev`.
+   */
+  readonly VITE_LOCAL_SITE_ORIGIN?: string
+  /**
    * Dev only: fake signed-in session (no Cognito). Production builds fail if set.
    */
   readonly VITE_AUTH_MODE?: string
