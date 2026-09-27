@@ -43,6 +43,8 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'publisher-unpublish-'));
+    // Publisher reads pristine _shell.html (CHR-104); index.html is home output.
+    await writeFile(join(root, '_shell.html'), SHELL);
     await writeFile(join(root, 'index.html'), SHELL);
     process.env.DATA_TABLE_NAME = 'gagnechris-test';
   });
