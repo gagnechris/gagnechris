@@ -1,0 +1,27 @@
+{
+  "name": "@gagnechris/publisher",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "DynamoDB Streams publisher: static blog HTML, posts.json, sitemap, RSS.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "^2.25.1",
+    "@aws-lambda-powertools/metrics": "^2.25.1",
+    "@aws-sdk/client-cloudfront": "^3.1141.0",
+    "@aws-sdk/client-dynamodb": "^3.1141.0",
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/lib-dynamodb": "^3.1141.0",
+    "@aws-sdk/util-dynamodb": "^3.996.9",
+    "@gagnechris/shared": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.152",
+    "@types/node": "^22.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

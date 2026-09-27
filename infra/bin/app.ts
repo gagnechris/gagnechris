@@ -9,6 +9,7 @@ import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
+import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 
 const app = new App();
@@ -88,6 +89,16 @@ new ApiStack(app, `Api-${config.name}`, {
   distribution: site.distribution,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
+});
+
+new PublisherStack(app, `Publisher-${config.name}`, {
+  env: stackEnv,
+  description: `DynamoDB Streams publisher for static blog pages (${config.name}).`,
+  config,
+  dataTable: data.table,
+  siteBucket: site.siteBucket,
+  distribution: site.distribution,
+  alertsTopic: guardrails.alertsTopic,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {

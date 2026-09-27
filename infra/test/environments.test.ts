@@ -24,6 +24,7 @@ import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
+import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -604,6 +605,74 @@ describe('ApiStack', () => {
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
+    });
+  });
+});
+
+describe('PublisherStack', () => {
+  it('wires stream source, S3/CF env, error alarm, and SSM name', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'PublisherDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
+    const certificate = Certificate.fromCertificateArn(
+      deps,
+      'Cert',
+      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
+    );
+    const site = new SiteStack(app, 'SiteForPublisher', {
+      env: { account: config.account, region: config.region },
+      config,
+      certificate,
+      alertsTopic,
+    });
+    const data = new DataStack(app, 'DataForPublisher', {
+      env: { account: config.account, region: config.region },
+      config,
+    });
+    const publisher = new PublisherStack(app, 'Publisher-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      dataTable: data.table,
+      siteBucket: site.siteBucket,
+      distribution: site.distribution,
+      alertsTopic,
+    });
+    applyStandardTags(publisher, config);
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+
+    const template = Template.fromStack(publisher);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-publisher',
+      Runtime: 'nodejs24.x',
+      Architectures: ['arm64'],
+      Timeout: 60,
+      MemorySize: 512,
+      Environment: {
+        Variables: Match.objectLike({
+          DATA_TABLE_NAME: Match.anyValue(),
+          SITE_BUCKET_NAME: Match.anyValue(),
+          CLOUDFRONT_DISTRIBUTION_ID: Match.anyValue(),
+          SITE_APEX_DOMAIN: 'gagnechris.com',
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      StartingPosition: 'LATEST',
+      BatchSize: 10,
+      BisectBatchOnFunctionError: true,
+      FunctionResponseTypes: ['ReportBatchItemFailures'],
+      FilterCriteria: {
+        Filters: Match.anyValue(),
+      },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-lambda-errors',
+    });
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/publisher-function-name',
     });
   });
 });

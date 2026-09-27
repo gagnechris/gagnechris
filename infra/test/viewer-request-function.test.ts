@@ -104,14 +104,51 @@ describe('viewer-request CloudFront Function', () => {
     expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
   });
 
-  it('rewrites extensionless deep links to the SPA shell', () => {
-    for (const uri of [
-      '/resume',
-      '/blog',
-      '/blog/welcome',
-      '/contact',
-      '/auth/callback',
-    ]) {
+  it('rewrites /blog paths to Option B index.html objects', () => {
+    expect(
+      (
+        runHandler({
+          uri: '/blog',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/blog/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/blog/',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/blog/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/blog/welcome',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/blog/welcome/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/blog/welcome/',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/blog/welcome/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/blog/posts.json',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/blog/posts.json');
+  });
+
+  it('rewrites other extensionless deep links to the SPA shell', () => {
+    for (const uri of ['/resume', '/contact', '/auth/callback', '/admin']) {
       const req = runHandler({
         uri,
         headers: { host: { value: 'gagnechris.com' } },

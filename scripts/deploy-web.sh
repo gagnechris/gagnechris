@@ -63,26 +63,30 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
 
-# 3) Until the publisher owns these, publish the build copies without --delete.
-if [ -f "${DIST}/sitemap.xml" ]; then
-  aws s3 cp "${DIST}/sitemap.xml" "s3://${BUCKET}/sitemap.xml" \
-    --region "${AWS_REGION}" \
-    --cache-control "public,max-age=300" \
-    --content-type "application/xml" \
-    --metadata-directive REPLACE
-fi
-if [ -f "${DIST}/rss.xml" ]; then
-  aws s3 cp "${DIST}/rss.xml" "s3://${BUCKET}/rss.xml" \
-    --region "${AWS_REGION}" \
-    --cache-control "public,max-age=300" \
-    --content-type "application/rss+xml" \
-    --metadata-directive REPLACE
-fi
-
 aws cloudfront create-invalidation \
   --distribution-id "${DISTRIBUTION_ID}" \
   --paths "/*" \
   --region "${AWS_REGION}" \
   --query 'Invalidation.Id' --output text
+
+# 3) Re-render publisher-owned pages against the new HTML shell (CHR-34).
+PUBLISHER_FN="$(aws ssm get-parameter \
+  --name "/gagnechris/${ENV_NAME}/publisher-function-name" \
+  --region "${AWS_REGION}" \
+  --query 'Parameter.Value' --output text 2>/dev/null || true)"
+if [ -n "${PUBLISHER_FN}" ]; then
+  echo "Invoking publisher republish-all (${PUBLISHER_FN})"
+  OUT="$(mktemp)"
+  aws lambda invoke \
+    --function-name "${PUBLISHER_FN}" \
+    --cli-binary-format raw-in-base64-out \
+    --payload '{"action":"republishAll"}' \
+    --region "${AWS_REGION}" \
+    "${OUT}" >/dev/null
+  cat "${OUT}"
+  rm -f "${OUT}"
+else
+  echo "Publisher function SSM param missing; skipped republish-all" >&2
+fi
 
 echo "Web deploy complete."

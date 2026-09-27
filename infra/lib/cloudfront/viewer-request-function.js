@@ -2,8 +2,8 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Skip rewrite for /api/* and /media/* (proxied origins)
- * - Extensionless paths -> /index.html (SPA shell) until CHR-34 Option B
- *   writes per-path index.html objects
+ * - /blog and /blog/* (extensionless) -> Option B {path}/index.html objects
+ * - Other extensionless paths -> /index.html (SPA shell)
  * - Paths with a file extension pass through unchanged
  *
  * Missing objects return real 404/403 from the origin (no distribution-wide
@@ -29,9 +29,21 @@ function handler(event) {
     return request;
   }
 
-  // SPA shell until the publisher emits Option B {path}/index.html objects.
-  // Trailing slash and extensionless routes all map to the root index.html so
-  // client-side routes (/resume, /blog, /auth/callback, ...) keep working.
+  // Option B: publisher writes blog/index.html and blog/<slug>/index.html.
+  if (uri === '/blog' || uri === '/blog/' || uri.indexOf('/blog/') === 0) {
+    if (uri.endsWith('/')) {
+      request.uri = uri + 'index.html';
+    } else {
+      var blogLastSlash = uri.lastIndexOf('/');
+      var blogSegment = blogLastSlash === -1 ? uri : uri.substring(blogLastSlash + 1);
+      if (blogSegment.indexOf('.') === -1) {
+        request.uri = uri + '/index.html';
+      }
+    }
+    return request;
+  }
+
+  // SPA shell for non-blog client routes (/resume, /contact, /admin, …).
   if (uri.endsWith('/')) {
     request.uri = '/index.html';
   } else {
