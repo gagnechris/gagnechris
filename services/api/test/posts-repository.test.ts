@@ -36,10 +36,15 @@ describe('PostsRepository', () => {
   });
 
   it('creates a draft with slug claim + META in one transaction', async () => {
-    const send = vi.fn(async () => ({}));
+    const send = vi.fn(async (_command: unknown) => ({}));
     const doc = { send } as unknown as DynamoDBDocumentClient;
     const repo = new PostsRepository(doc, 'gagnechris-test');
-    const post = await repo.create({ title: 'Hello World' });
+    const post = await repo.create({
+      title: 'Hello World',
+      excerpt: '',
+      bodyMarkdown: '',
+      tags: [],
+    });
     expect(post.status).toBe('draft');
     expect(post.slug).toBe('hello-world');
     expect(post.version).toBe(1);

@@ -1,5 +1,6 @@
 import type {
   APIGatewayProxyEventV2,
+  APIGatewayProxyEventV2WithJWTAuthorizer,
   APIGatewayProxyHandlerV2,
   APIGatewayProxyStructuredResultV2,
   Context,
@@ -32,9 +33,12 @@ function normalizePath(rawPath: string): string {
 }
 
 function claimsFromEvent(
-  event: APIGatewayProxyEventV2,
+  event: APIGatewayProxyEventV2 | APIGatewayProxyEventV2WithJWTAuthorizer,
 ): Record<string, string> | undefined {
-  const jwt = event.requestContext.authorizer?.jwt;
+  const jwt =
+    'authorizer' in event.requestContext
+      ? event.requestContext.authorizer?.jwt
+      : undefined;
   if (!jwt?.claims) {
     return undefined;
   }

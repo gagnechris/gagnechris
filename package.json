@@ -15,7 +15,7 @@
     "dev:local": "npm run local:dev",
     "local:dev": "bash scripts/local/dev.sh",
     "build": "npm run build -w @gagnechris/web",
-    "typecheck": "npm run typecheck -w @gagnechris/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint -w @gagnechris/web",
     "preview": "npm run preview -w @gagnechris/web",
     "test": "npm run test -w @gagnechris/web && npm run test -w @gagnechris/shared && npm run test -w @gagnechris/infra && npm run test -w @gagnechris/api && npm run test -w @gagnechris/publisher",

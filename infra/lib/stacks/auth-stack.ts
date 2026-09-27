@@ -138,7 +138,7 @@ export class AuthStack extends Stack {
       idTokenValidity: Duration.hours(1),
       refreshTokenValidity: Duration.days(30),
       refreshTokenRotationGracePeriod: Duration.seconds(30),
-    } as const;
+    };
 
     this.webClient = this.userPool.addClient('WebClient', {
       ...clientCommon,
