@@ -49,8 +49,8 @@ function runHandler(request: CfRequest): CfResponse {
 }
 
 function locationOf(res: CfResponse): string {
-  return (res as { headers: { location: { value: string } } }).headers.location
-    .value;
+  return (res as unknown as { headers: { location: { value: string } } })
+    .headers.location.value;
 }
 
 afterEach(() => {

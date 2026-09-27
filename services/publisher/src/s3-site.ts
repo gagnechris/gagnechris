@@ -263,6 +263,7 @@ export function snapshotToHome(snapshot: HomePublishSnapshot): Home {
     ...snapshot,
     status: 'published',
     version: 0,
+    hasUnpublishedChanges: false,
   };
 }
 
