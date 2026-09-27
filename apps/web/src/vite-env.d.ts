@@ -13,6 +13,10 @@ interface ImportMetaEnv {
   readonly VITE_API_TARGET?: string
   /** Dev only: local API origin when VITE_API_TARGET is not prod. */
   readonly VITE_LOCAL_API_ORIGIN?: string
+  /**
+   * Dev only: fake signed-in session (no Cognito). Production builds fail if set.
+   */
+  readonly VITE_AUTH_MODE?: string
 }
 
 interface ImportMeta {

@@ -1,19 +1,9 @@
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
-import {
-  CloudFrontClient,
-  CreateInvalidationCommand,
-} from '@aws-sdk/client-cloudfront';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { requireEnv } from './config.js';
+import { requireEnv, siteStorageMode } from './config.js';
 import {
   metaToPost,
   type PostMetaRecord,
@@ -25,26 +15,30 @@ import {
   renderBlogIndexPage,
   renderPostPage,
 } from './render.js';
+import { createFilesystemSiteStorage } from './storage-fs.js';
+import { createS3SiteStorage } from './storage-s3.js';
+import { postSlugsFromKeys, type SiteStorage } from './storage.js';
 import type { Post } from '@gagnechris/shared';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
 });
-const s3 = new S3Client({});
-const cloudfront = new CloudFrontClient({});
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 const CACHE_FEED = 'public,max-age=300';
 
-async function readShellHtml(bucket: string): Promise<string> {
-  const out = await s3.send(
-    new GetObjectCommand({ Bucket: bucket, Key: 'index.html' }),
-  );
-  const body = await out.Body?.transformToString('utf-8');
-  if (!body) {
-    throw new Error('Site shell index.html is empty or missing');
-  }
-  return body;
+let storageOverride: SiteStorage | undefined;
+
+/** Test / local harness hook. */
+export function setSiteStorage(storage: SiteStorage | undefined): void {
+  storageOverride = storage;
+}
+
+export function getSiteStorage(): SiteStorage {
+  if (storageOverride) return storageOverride;
+  return siteStorageMode() === 'filesystem'
+    ? createFilesystemSiteStorage()
+    : createS3SiteStorage();
 }
 
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
@@ -74,50 +68,6 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   return posts;
 }
 
-async function putText(
-  bucket: string,
-  key: string,
-  body: string,
-  contentType: string,
-  cacheControl: string,
-): Promise<void> {
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-      CacheControl: cacheControl,
-    }),
-  );
-}
-
-async function deleteKey(bucket: string, key: string): Promise<void> {
-  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-}
-
-export async function invalidatePaths(
-  distributionId: string,
-  paths: string[],
-): Promise<void> {
-  const unique = [...new Set(paths)].filter(Boolean);
-  if (unique.length === 0) return;
-
-  // CloudFront allows 3000 paths per invalidation; we stay well under that.
-  await cloudfront.send(
-    new CreateInvalidationCommand({
-      DistributionId: distributionId,
-      InvalidationBatch: {
-        CallerReference: `publisher-${Date.now()}`,
-        Paths: {
-          Quantity: unique.length,
-          Items: unique,
-        },
-      },
-    }),
-  );
-}
-
 export type RebuildResult = {
   publishedCount: number;
   removedSlugs: string[];
@@ -125,31 +75,42 @@ export type RebuildResult = {
 };
 
 /**
- * Rebuild all published static artifacts from DynamoDB + the S3 site shell.
- * `slugsToRemove` are candidate post paths to delete (unpublish / rename).
+ * Rebuild all published static artifacts from DynamoDB + the site shell.
+ *
+ * - When `slugsToRemove` is provided (stream path), only those candidates are
+ *   considered for deletion.
+ * - When omitted (republish-all / local), discover existing `blog/<slug>/index.html`
+ *   keys and delete orphans not in the published set.
  */
 export async function rebuildPublishedSite(options?: {
   slugsToRemove?: Iterable<string>;
+  storage?: SiteStorage;
 }): Promise<RebuildResult> {
   const tableName = requireEnv('DATA_TABLE_NAME');
-  const bucket = requireEnv('SITE_BUCKET_NAME');
-  const distributionId = requireEnv('CLOUDFRONT_DISTRIBUTION_ID');
+  const storage = options?.storage ?? getSiteStorage();
 
-  const shell = await readShellHtml(bucket);
+  const shell = await storage.readShell();
   const published = await listPublishedPosts(tableName);
   const publishedSlugs = new Set(published.map((p) => p.slug));
 
+  let candidates: Iterable<string>;
+  if (options?.slugsToRemove !== undefined) {
+    candidates = options.slugsToRemove;
+  } else {
+    const keys = await storage.list('blog/');
+    candidates = postSlugsFromKeys(keys);
+  }
+
   const removedSlugs: string[] = [];
-  for (const slug of options?.slugsToRemove ?? []) {
+  for (const slug of candidates) {
     if (!slug || publishedSlugs.has(slug)) continue;
-    await deleteKey(bucket, `blog/${slug}/index.html`);
+    await storage.delete(`blog/${slug}/index.html`);
     removedSlugs.push(slug);
   }
 
   for (const post of published) {
     const html = renderPostPage(shell, post);
-    await putText(
-      bucket,
+    await storage.put(
       `blog/${post.slug}/index.html`,
       html,
       'text/html; charset=utf-8',
@@ -157,37 +118,27 @@ export async function rebuildPublishedSite(options?: {
     );
   }
 
-  const blogIndex = renderBlogIndexPage(shell, published);
-  await putText(
-    bucket,
+  await storage.put(
     'blog/index.html',
-    blogIndex,
+    renderBlogIndexPage(shell, published),
     'text/html; charset=utf-8',
     CACHE_HTML,
   );
 
-  const listJson = JSON.stringify(
-    { items: published.map(toListItem) },
-    null,
-    0,
-  );
-  await putText(
-    bucket,
+  await storage.put(
     'blog/posts.json',
-    listJson,
+    JSON.stringify({ items: published.map(toListItem) }, null, 0),
     'application/json; charset=utf-8',
     CACHE_HTML,
   );
 
-  await putText(
-    bucket,
+  await storage.put(
     'sitemap.xml',
     buildSitemapXml(published),
     'application/xml; charset=utf-8',
     CACHE_FEED,
   );
-  await putText(
-    bucket,
+  await storage.put(
     'rss.xml',
     buildRssXml(published),
     'application/rss+xml; charset=utf-8',
@@ -209,7 +160,7 @@ export async function rebuildPublishedSite(options?: {
     ...removedSlugs.map((s) => `/blog/${s}/index.html`),
   ];
 
-  await invalidatePaths(distributionId, invalidated);
+  await storage.invalidate(invalidated);
 
   return {
     publishedCount: published.length,
