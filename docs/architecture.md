@@ -59,4 +59,4 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 
 - CDK / ops: [../infra/RUNBOOK.md](../infra/RUNBOOK.md)
 - Local stack: [local-e2e.md](./local-e2e.md)
-- Project README: [../.github/README.md](../.github/README.md)
+- Project overview: [README.md](./README.md)

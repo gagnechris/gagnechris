@@ -16,6 +16,8 @@ I build healthy teams that own their work and can operate independently. I also 
 
 ---
 
-This repo is the source for [gagnechris.com](https://gagnechris.com) → see the [project docs](https://github.com/gagnechris/gagnechris/blob/main/.github/README.md).
+**→ [Project documentation](https://github.com/gagnechris/gagnechris/blob/main/docs/README.md)** (architecture, local quickstart, CMS)
+
+This repo is the source for [gagnechris.com](https://gagnechris.com).
 
 Code is [MIT](https://github.com/gagnechris/gagnechris/blob/main/LICENSE); blog posts, resume, bio, photos, and artwork are [© Chris Gagne, all rights reserved](https://github.com/gagnechris/gagnechris/blob/main/CONTENT-LICENSE).

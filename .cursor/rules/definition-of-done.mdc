@@ -14,4 +14,4 @@ A ticket is **Done** only when all of the following are true:
 
 Do not mark Done while a deploy is still in progress or based only on local synth/unit tests.
 
-If a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, `.github/README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
+If a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, root `README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
