@@ -16,6 +16,8 @@
  * Published slugs live in a CloudFront KeyValueStore (publisher UpdateKeys).
  * Until the first sync writes the __synced__ sentinel, blog slugs fail-open
  * (Option B for any slug), matching the prior CDK default of a null map.
+ * Lookup uses exists(slug) first (one read on hit); miss checks the sentinel.
+ * Unexpected KVS read errors fail-open so live posts don't 404 (CHR-119).
  * Local/tests can override via setPublishedBlogSlugsForTests().
  */
 import cf from 'cloudfront';
@@ -166,17 +168,25 @@ async function isPublishedBlogSlug(slug) {
   }
   try {
     var kvsHandle = cf.kvs();
+    // exists(slug) first: one KVS read for published posts (CHR-119).
+    var slugExists;
     try {
-      await kvsHandle.get('__synced__');
+      slugExists = await kvsHandle.exists(slug);
     } catch (e) {
-      // No sentinel yet — fail-open until the first publisher sync.
+      // Transient / unexpected KVS error — fail-open so live posts don't 404.
       return true;
     }
+    if (slugExists) {
+      return true;
+    }
+    // Miss: enforce allowlist only once the __synced__ sentinel is present.
     try {
-      await kvsHandle.get(slug);
+      if (await kvsHandle.exists('__synced__')) {
+        return false;
+      }
       return true;
     } catch (e) {
-      return false;
+      return true;
     }
   } catch (e) {
     // KVS not associated or unavailable — fail-open.

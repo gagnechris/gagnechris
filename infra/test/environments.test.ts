@@ -696,6 +696,11 @@ describe('PublisherStack', () => {
       Namespace: 'gagnechris',
       MetricName: 'ResumePdfError',
     });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-kvs-sync-failed',
+      Namespace: 'gagnechris',
+      MetricName: 'KvsSyncFailed',
+    });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',
     });

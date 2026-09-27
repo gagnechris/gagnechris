@@ -475,12 +475,6 @@ export async function rebuildPublishedSite(options?: {
         ),
     ];
     await mapWithConcurrency(feedPuts, PUT_CONCURRENCY, (fn) => fn());
-    // KVS slug sync must not abort HTML/feeds (same isolation as resume PDF).
-    try {
-      await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
-    } catch (err) {
-      console.error('CloudFront KVS blog slug sync failed; site rebuild continues', err);
-    }
   }
 
   // Published resume → live HTML + PDF. Unpublished → placeholder HTML, delete PDF.
@@ -544,6 +538,13 @@ export async function rebuildPublishedSite(options?: {
         );
       }
     }
+  }
+
+  // KVS sync after S3 writes so a retry only needs to re-sync / invalidate.
+  // Failures throw (after internal retries) so the stream retries — silent
+  // success left new posts 404'ing with no alarm (CHR-119).
+  if (scope.feeds) {
+    await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
   }
 
   const invalidated = buildInvalidationPaths({

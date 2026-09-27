@@ -213,6 +213,25 @@ export class PublisherStack extends Stack {
       treatMissingData: TreatMissingData.NOT_BREACHING,
     }).addAlarmAction(new SnsAction(alertsTopic));
 
+    // KVS slug sync failures also fail the invocation (stream retries), but
+    // surface a dedicated metric so alerts name the root cause (CHR-119).
+    new Alarm(this, 'PublisherKvsSyncFailed', {
+      alarmName: `gagnechris-${config.name}-publisher-kvs-sync-failed`,
+      alarmDescription:
+        'CloudFront KVS blog slug sync failed after retries (new posts may 404)',
+      metric: new Metric({
+        namespace: 'gagnechris',
+        metricName: 'KvsSyncFailed',
+        dimensionsMap: { service: 'gagnechris-publisher' },
+        statistic: 'Sum',
+        period: Duration.minutes(5),
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    }).addAlarmAction(new SnsAction(alertsTopic));
+
     const paramPrefix = `/gagnechris/${config.name}`;
     new StringParameter(this, 'PublisherFunctionNameParam', {
       parameterName: `${paramPrefix}/publisher-function-name`,
