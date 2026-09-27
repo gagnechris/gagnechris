@@ -109,7 +109,8 @@ export class PublisherStack extends Stack {
       },
     });
 
-    dataTable.grantReadData(this.publisherFunction);
+    // Read published snapshots + write lazy META→PUBLISHED rollout copies (CHR-96).
+    dataTable.grantReadWriteData(this.publisherFunction);
     dataTable.grantStreamRead(this.publisherFunction);
     siteBucket.grantReadWrite(this.publisherFunction);
 
@@ -171,7 +172,7 @@ export class PublisherStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'Publisher reads/writes site objects under the bucket and uses X-Ray tracing wildcards required by the managed tracing pattern.',
+            'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
         },
       ],
       true,

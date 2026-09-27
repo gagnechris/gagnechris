@@ -50,6 +50,28 @@ export function getSiteStorage(): SiteStorage {
     : createS3SiteStorage();
 }
 
+
+/** Best-effort write of a PUBLISHED snapshot; never fail the rebuild on Put. */
+async function putPublishedSnapshot(
+  tableName: string,
+  item: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await ddb.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: item,
+        ConditionExpression: 'attribute_not_exists(pk)',
+      }),
+    );
+  } catch (err) {
+    const name = (err as { name?: string }).name;
+    // ConditionalCheckFailedException: already migrated. AccessDenied: IAM lag.
+    if (name === 'ConditionalCheckFailedException') return;
+    console.warn('PUBLISHED snapshot write skipped', { name, pk: item.pk });
+  }
+}
+
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   const metaIds: string[] = [];
   let exclusiveStartKey: Record<string, unknown> | undefined;
@@ -106,13 +128,7 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       gsi1pk?: string;
       gsi1sk?: string;
     };
-    await ddb.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: { ...rest, sk: 'PUBLISHED', status: 'published' },
-        ConditionExpression: 'attribute_not_exists(pk)',
-      }),
-    );
+    await putPublishedSnapshot(tableName, { ...rest, sk: 'PUBLISHED', status: 'published' });
     posts.push(metaToPost(legacyItem));
   }
 
@@ -153,13 +169,7 @@ export async function getPublishedResume(
     return undefined;
   }
   const resume = metaToResume(legacyItem);
-  await ddb.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: { ...legacyItem, sk: 'PUBLISHED', status: 'published' },
-      ConditionExpression: 'attribute_not_exists(pk)',
-    }),
-  );
+  await putPublishedSnapshot(tableName, { ...legacyItem, sk: 'PUBLISHED', status: 'published' });
   return resume;
 }
 
@@ -193,13 +203,7 @@ export async function getPublishedHome(
     return undefined;
   }
   const home = metaToHome(legacyItem);
-  await ddb.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: { ...legacyItem, sk: 'PUBLISHED', status: 'published' },
-      ConditionExpression: 'attribute_not_exists(pk)',
-    }),
-  );
+  await putPublishedSnapshot(tableName, { ...legacyItem, sk: 'PUBLISHED', status: 'published' });
   return home;
 }
 
