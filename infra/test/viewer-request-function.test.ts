@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fnSource = readFileSync(
   join(__dirname, '../lib/cloudfront/viewer-request-function.js'),
   'utf8',
-);
+).replace(/import cf from 'cloudfront';\s*/g, '');
 
 type CfRequest = {
   uri: string;
@@ -28,7 +28,7 @@ type CfResponse =
     };
 
 type HandlerApi = {
-  handler: (event: { request: CfRequest }) => CfResponse;
+  handler: (event: { request: CfRequest }) => Promise<CfResponse>;
   setPublishedBlogSlugsForTests: (
     slugs: Record<string, number> | null,
   ) => void;
@@ -36,15 +36,18 @@ type HandlerApi = {
 
 function loadApi(): HandlerApi {
   // CloudFront Functions expose handler(event); eval in a sandbox.
+  // Strip CF `import` and stub `cf.kvs()` so override/fail-open paths work.
   // eslint-disable-next-line no-new-func -- intentional: load CF Function source
   return new Function(
-    `${fnSource}\nreturn { handler, setPublishedBlogSlugsForTests };`,
+    `var cf = { kvs: function () { throw new Error('kvs unavailable in unit tests'); } };
+     ${fnSource}
+     return { handler, setPublishedBlogSlugsForTests };`,
   )() as HandlerApi;
 }
 
 const api = loadApi();
 
-function runHandler(request: CfRequest): CfResponse {
+async function runHandler(request: CfRequest): Promise<CfResponse> {
   return api.handler({ request });
 }
 
@@ -58,8 +61,8 @@ afterEach(() => {
 });
 
 describe('viewer-request CloudFront Function', () => {
-  it('redirects www to apex without a query string', () => {
-    const res = runHandler({
+  it('redirects www to apex without a query string', async () => {
+    const res = await runHandler({
       uri: '/blog',
       headers: { host: { value: 'www.gagnechris.com' } },
     });
@@ -69,8 +72,8 @@ describe('viewer-request CloudFront Function', () => {
     });
   });
 
-  it('preserves a single query parameter on www redirect', () => {
-    const res = runHandler({
+  it('preserves a single query parameter on www redirect', async () => {
+    const res = await runHandler({
       uri: '/blog',
       querystring: { utm_source: { value: 'linkedin' } },
       headers: { host: { value: 'www.gagnechris.com' } },
@@ -80,8 +83,8 @@ describe('viewer-request CloudFront Function', () => {
     );
   });
 
-  it('preserves multiple query parameters on www redirect', () => {
-    const res = runHandler({
+  it('preserves multiple query parameters on www redirect', async () => {
+    const res = await runHandler({
       uri: '/blog',
       querystring: {
         utm_source: { value: 'x' },
@@ -94,8 +97,8 @@ describe('viewer-request CloudFront Function', () => {
     );
   });
 
-  it('passes through already-encoded query values (no double-encoding)', () => {
-    const res = runHandler({
+  it('passes through already-encoded query values (no double-encoding)', async () => {
+    const res = await runHandler({
       uri: '/blog',
       querystring: {
         q: { value: 'a%20b' },
@@ -108,8 +111,8 @@ describe('viewer-request CloudFront Function', () => {
     );
   });
 
-  it('preserves multi-value query keys as received', () => {
-    const res = runHandler({
+  it('preserves multi-value query keys as received', async () => {
+    const res = await runHandler({
       uri: '/',
       querystring: {
         tag: {
@@ -121,151 +124,151 @@ describe('viewer-request CloudFront Function', () => {
     expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
   });
 
-  it('rewrites /blog index to Option B index.html', () => {
+  it('rewrites /blog index to Option B index.html', async () => {
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/index.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/index.html');
   });
 
-  it('rewrites known blog slugs to Option B and unknown slugs to /404.html', () => {
+  it('rewrites known blog slugs to Option B and unknown slugs to /404.html', async () => {
     api.setPublishedBlogSlugsForTests({ welcome: 1 });
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/welcome',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/welcome/index.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/welcome/',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/welcome/index.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/typo',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/404.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/posts.json',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/posts.json');
   });
 
-  it('fail-opens blog slugs when the published map is null', () => {
+  it('fail-opens blog slugs when the published map is null', async () => {
     api.setPublishedBlogSlugsForTests(null);
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/blog/anything',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/blog/anything/index.html');
   });
 
-  it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B', () => {
+  it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B', async () => {
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/resume',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/resume/index.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/contact',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/contact/index.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/dont-feed-the-bears',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/dont-feed-the-bears/index.html');
   });
 
-  it('rewrites /admin and /auth to the neutral SPA shell', () => {
+  it('rewrites /admin and /auth to the neutral SPA shell', async () => {
     for (const uri of ['/auth/callback', '/admin', '/admin/posts']) {
-      const req = runHandler({
+      const req = (await runHandler({
         uri,
         headers: { host: { value: 'gagnechris.com' } },
-      }) as CfRequest;
+      })) as CfRequest;
       expect(req.uri).toBe('/spa.html');
     }
   });
 
-  it('rewrites trailing-slash SPA paths to the SPA shell', () => {
-    const req = runHandler({
+  it('rewrites trailing-slash SPA paths to the SPA shell', async () => {
+    const req = (await runHandler({
       uri: '/admin/',
       headers: { host: { value: 'gagnechris.com' } },
-    }) as CfRequest;
+    })) as CfRequest;
     expect(req.uri).toBe('/spa.html');
   });
 
-  it('rewrites unknown extensionless paths to /404.html', () => {
+  it('rewrites unknown extensionless paths to /404.html', async () => {
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/does-not-exist',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/404.html');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/old/path/',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/404.html');
   });
 
-  it('keeps / as the home index.html shell', () => {
+  it('keeps / as the home index.html shell', async () => {
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/index.html');
   });
 
 
-  it('blocks direct public access to _shell.html', () => {
-    const res = runHandler({
+  it('blocks direct public access to _shell.html', async () => {
+    const res = await runHandler({
       uri: '/_shell.html',
       headers: { host: { value: 'gagnechris.com' } },
     });
@@ -275,35 +278,35 @@ describe('viewer-request CloudFront Function', () => {
     });
   });
 
-  it('does not rewrite /api or /media paths', () => {
+  it('does not rewrite /api or /media paths', async () => {
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/api/nope',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/api/nope');
     expect(
       (
-        runHandler({
+        (await runHandler({
           uri: '/media/photo.png',
           headers: { host: { value: 'gagnechris.com' } },
-        }) as CfRequest
+        })) as CfRequest
       ).uri,
     ).toBe('/media/photo.png');
   });
 
-  it('passes through paths with a file extension', () => {
-    const req = runHandler({
+  it('passes through paths with a file extension', async () => {
+    const req = (await runHandler({
       uri: '/assets/app.js',
       headers: { host: { value: 'gagnechris.com' } },
-    }) as CfRequest;
+    })) as CfRequest;
     expect(req.uri).toBe('/assets/app.js');
   });
 
-  it('301s the legacy encoded resume PDF path to /resume.pdf', () => {
-    const res = runHandler({
+  it('301s the legacy encoded resume PDF path to /resume.pdf', async () => {
+    const res = await runHandler({
       uri: '/Christopher%20M%20Gagne%20Resume%202026.pdf',
       headers: { host: { value: 'gagnechris.com' } },
     });
@@ -313,8 +316,8 @@ describe('viewer-request CloudFront Function', () => {
     });
   });
 
-  it('301s the legacy decoded resume PDF path to /resume.pdf', () => {
-    const res = runHandler({
+  it('301s the legacy decoded resume PDF path to /resume.pdf', async () => {
+    const res = await runHandler({
       uri: '/Christopher M Gagne Resume 2026.pdf',
       headers: { host: { value: 'gagnechris.com' } },
     });
@@ -324,8 +327,8 @@ describe('viewer-request CloudFront Function', () => {
     });
   });
 
-  it('preserves query string on legacy resume PDF redirect', () => {
-    const res = runHandler({
+  it('preserves query string on legacy resume PDF redirect', async () => {
+    const res = await runHandler({
       uri: '/Christopher%20M%20Gagne%20Resume%202026.pdf',
       querystring: { utm_source: { value: 'linkedin' } },
       headers: { host: { value: 'gagnechris.com' } },
@@ -333,11 +336,11 @@ describe('viewer-request CloudFront Function', () => {
     expect(locationOf(res)).toBe('/resume.pdf?utm_source=linkedin');
   });
 
-  it('does not redirect other PDFs', () => {
-    const req = runHandler({
+  it('does not redirect other PDFs', async () => {
+    const req = (await runHandler({
       uri: '/resume.pdf',
       headers: { host: { value: 'gagnechris.com' } },
-    }) as CfRequest;
+    })) as CfRequest;
     expect(req.uri).toBe('/resume.pdf');
   });
 });

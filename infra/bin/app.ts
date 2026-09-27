@@ -109,7 +109,7 @@ new PublisherStack(app, `Publisher-${config.name}`, {
   dataTable: data.table,
   siteBucket: site.siteBucket,
   distribution: site.distribution,
-  viewerRequestFunctionName: site.viewerRequestFunctionName,
+  blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
   alertsTopic: guardrails.alertsTopic,
 });
 

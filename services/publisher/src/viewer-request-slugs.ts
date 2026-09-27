@@ -1,117 +1,176 @@
 /**
- * Sync published blog slugs into the CloudFront viewer-request function so
- * unknown /blog/<slug> requests rewrite to /404.html instead of S3 XML (CHR-102).
+ * Sync published blog slugs into a CloudFront KeyValueStore so the
+ * viewer-request function can allowlist /blog/<slug> without rewriting
+ * function code (CHR-115).
  */
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
-  CloudFrontClient,
-  DescribeFunctionCommand,
-  PublishFunctionCommand,
-  UpdateFunctionCommand,
-} from '@aws-sdk/client-cloudfront';
+  CloudFrontKeyValueStoreClient,
+  DescribeKeyValueStoreCommand,
+  ListKeysCommand,
+  UpdateKeysCommand,
+  type DeleteKeyRequestListItem,
+  type PutKeyRequestListItem,
+} from '@aws-sdk/client-cloudfront-keyvaluestore';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { isLocalCloudFront } from './config.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 
-const SLUGS_MARKER = '/*__PUBLISHED_BLOG_SLUGS__*/';
-const SLUGS_DECL_RE =
-  /var PUBLISHED_BLOG_SLUGS = [\s\S]*?; \/\*__PUBLISHED_BLOG_SLUGS__\*\//;
+/** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
+export const BLOG_SLUG_SYNCED_KEY = '__synced__';
 
-/** Bundled next to the Lambda handler in prod; repo path for local/tests. */
-export function viewerRequestTemplatePath(): string {
-  const candidates = [
-    process.env.LAMBDA_TASK_ROOT
-      ? join(process.env.LAMBDA_TASK_ROOT, 'viewer-request-function.js')
-      : '',
-    join(process.cwd(), 'viewer-request-function.js'),
-    join(process.cwd(), 'infra/lib/cloudfront/viewer-request-function.js'),
-    join(
-      process.cwd(),
-      '../../infra/lib/cloudfront/viewer-request-function.js',
-    ),
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(
-    `viewer-request-function.js not found (cwd=${process.cwd()})`,
-  );
-}
+/** Combined puts+deletes per UpdateKeys call (API page size / safety bound). */
+export const KVS_UPDATE_BATCH_SIZE = 50;
 
-export function buildViewerRequestSource(
-  template: string,
-  slugs: string[],
-): string {
-  const map: Record<string, number> = {};
-  for (const slug of slugs) {
-    if (slug) map[slug] = 1;
-  }
-  const decl = `var PUBLISHED_BLOG_SLUGS = ${JSON.stringify(map)}; ${SLUGS_MARKER}`;
-  if (!SLUGS_DECL_RE.test(template)) {
-    throw new Error(
-      'viewer-request template missing PUBLISHED_BLOG_SLUGS marker',
-    );
-  }
-  return template.replace(SLUGS_DECL_RE, () => decl);
-}
+const kvs = new CloudFrontKeyValueStoreClient({});
 
-const cloudfront = new CloudFrontClient({});
+export type SlugKeyDiff = {
+  puts: PutKeyRequestListItem[];
+  deletes: DeleteKeyRequestListItem[];
+};
 
 /**
- * Replace the LIVE viewer-request allowlist with the current published slugs.
- * No-ops locally and when VIEWER_REQUEST_FUNCTION_NAME is unset.
+ * Diff desired published slugs against keys already in the KVS.
+ * Always ensures the __synced__ sentinel is present after sync.
+ */
+export function diffBlogSlugKeys(
+  existingKeys: Iterable<string>,
+  slugs: string[],
+): SlugKeyDiff {
+  const existing = new Set(existingKeys);
+  const desired = new Set<string>();
+  for (const slug of slugs) {
+    if (slug && slug !== BLOG_SLUG_SYNCED_KEY) {
+      desired.add(slug);
+    }
+  }
+  desired.add(BLOG_SLUG_SYNCED_KEY);
+
+  const puts: PutKeyRequestListItem[] = [];
+  const deletes: DeleteKeyRequestListItem[] = [];
+
+  for (const key of desired) {
+    if (!existing.has(key)) {
+      puts.push({ Key: key, Value: '1' });
+    }
+  }
+  for (const key of existing) {
+    if (!desired.has(key)) {
+      deletes.push({ Key: key });
+    }
+  }
+
+  return { puts, deletes };
+}
+
+/** Split puts/deletes into batches that fit one UpdateKeys call. */
+export function batchSlugKeyDiff(
+  diff: SlugKeyDiff,
+  batchSize = KVS_UPDATE_BATCH_SIZE,
+): SlugKeyDiff[] {
+  const batches: SlugKeyDiff[] = [];
+  let putOffset = 0;
+  let deleteOffset = 0;
+
+  while (putOffset < diff.puts.length || deleteOffset < diff.deletes.length) {
+    const puts: PutKeyRequestListItem[] = [];
+    const deletes: DeleteKeyRequestListItem[] = [];
+    let remaining = batchSize;
+
+    while (remaining > 0 && putOffset < diff.puts.length) {
+      puts.push(diff.puts[putOffset]!);
+      putOffset += 1;
+      remaining -= 1;
+    }
+    while (remaining > 0 && deleteOffset < diff.deletes.length) {
+      deletes.push(diff.deletes[deleteOffset]!);
+      deleteOffset += 1;
+      remaining -= 1;
+    }
+
+    batches.push({ puts, deletes });
+  }
+
+  return batches;
+}
+
+async function listAllKeys(kvsArn: string): Promise<string[]> {
+  const keys: string[] = [];
+  let nextToken: string | undefined;
+  do {
+    const page = await kvs.send(
+      new ListKeysCommand({
+        KvsARN: kvsArn,
+        MaxResults: 50,
+        NextToken: nextToken,
+      }),
+    );
+    for (const item of page.Items ?? []) {
+      if (item.Key) keys.push(item.Key);
+    }
+    nextToken = page.NextToken;
+  } while (nextToken);
+  return keys;
+}
+
+/**
+ * Replace the KVS allowlist with the current published slugs.
+ * No-ops locally and when BLOG_SLUGS_KVS_ARN is unset.
+ * Does not modify CloudFront Function code.
  */
 export async function syncViewerRequestBlogSlugs(
   slugs: string[],
 ): Promise<void> {
   if (isLocalCloudFront()) return;
-  const functionName = process.env.VIEWER_REQUEST_FUNCTION_NAME;
-  if (!functionName) {
-    logger.warn('VIEWER_REQUEST_FUNCTION_NAME unset; skipped CF Function sync');
+  const kvsArn = process.env.BLOG_SLUGS_KVS_ARN?.trim();
+  if (!kvsArn) {
+    logger.warn('BLOG_SLUGS_KVS_ARN unset; skipped blog slug KVS sync');
     return;
   }
 
-  const template = readFileSync(viewerRequestTemplatePath(), 'utf8');
-  const source = buildViewerRequestSource(template, slugs);
-
-  const described = await cloudfront.send(
-    new DescribeFunctionCommand({
-      Name: functionName,
-      Stage: 'DEVELOPMENT',
-    }),
-  );
-  if (!described.ETag) {
-    throw new Error(`DescribeFunction missing ETag for ${functionName}`);
+  const existing = await listAllKeys(kvsArn);
+  const diff = diffBlogSlugKeys(existing, slugs);
+  if (diff.puts.length === 0 && diff.deletes.length === 0) {
+    logger.info('Blog slug KVS already in sync', {
+      kvsArn,
+      slugCount: slugs.length,
+    });
+    return;
   }
 
-  const updated = await cloudfront.send(
-    new UpdateFunctionCommand({
-      Name: functionName,
-      IfMatch: described.ETag,
-      FunctionConfig: {
-        Comment:
-          described.FunctionSummary?.FunctionConfig?.Comment ??
-          'www→apex + Option B + 404/SPA rewrite',
-        Runtime: 'cloudfront-js-2.0',
-      },
-      FunctionCode: Buffer.from(source, 'utf8'),
-    }),
-  );
-  if (!updated.ETag) {
-    throw new Error(`UpdateFunction missing ETag for ${functionName}`);
+  const batches = batchSlugKeyDiff(diff);
+  let etag: string | undefined;
+
+  for (const batch of batches) {
+    if (!etag) {
+      const described = await kvs.send(
+        new DescribeKeyValueStoreCommand({ KvsARN: kvsArn }),
+      );
+      etag = described.ETag;
+    }
+    if (!etag) {
+      throw new Error(`DescribeKeyValueStore missing ETag for ${kvsArn}`);
+    }
+
+    const updated = await kvs.send(
+      new UpdateKeysCommand({
+        KvsARN: kvsArn,
+        IfMatch: etag,
+        Puts: batch.puts.length ? batch.puts : undefined,
+        Deletes: batch.deletes.length ? batch.deletes : undefined,
+      }),
+    );
+    if (!updated.ETag) {
+      throw new Error(`UpdateKeys missing ETag for ${kvsArn}`);
+    }
+    etag = updated.ETag;
   }
 
-  await cloudfront.send(
-    new PublishFunctionCommand({
-      Name: functionName,
-      IfMatch: updated.ETag,
-    }),
-  );
-
-  logger.info('Synced viewer-request blog slug allowlist', {
-    functionName,
+  logger.info('Synced blog slug KeyValueStore', {
+    kvsArn,
     slugCount: slugs.length,
+    puts: diff.puts.length,
+    deletes: diff.deletes.length,
+    batches: batches.length,
   });
 }
