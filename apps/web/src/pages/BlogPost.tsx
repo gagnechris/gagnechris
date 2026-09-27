@@ -17,7 +17,11 @@ interface PostData {
 
 /** Load a CMS-published post from Option B static HTML (`blog/<slug>/index.html`). */
 async function loadPublishedPost(slug: string): Promise<PostData | null> {
-  const response = await fetch(`/blog/${slug}/`, {
+  // Local Vite: fetch via /__site → static origin (keeps /blog on the SPA + HMR).
+  // Prod / preview: same-origin publisher HTML at /blog/<slug>/.
+  const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim()
+  const url = localSite ? `/__site/blog/${slug}/` : `/blog/${slug}/`
+  const response = await fetch(url, {
     headers: { Accept: 'text/html' },
   });
   if (!response.ok) return null;

@@ -32,14 +32,19 @@ export default defineConfig(({ mode, command }) => {
     )
     if (localSiteOrigin) {
       console.info(
-        `[vite] /blog and /assets proxy to ${localSiteOrigin} (publisher static output).`,
+        `[vite] /__site proxies to ${localSiteOrigin} (publisher HTML for BlogPost fallback).`,
       )
     }
   }
 
   const proxy: Record<
     string,
-    { target: string; changeOrigin: boolean; secure: boolean }
+    {
+      target: string
+      changeOrigin: boolean
+      secure: boolean
+      rewrite?: (path: string) => string
+    }
   > = {
     '/api': {
       target: proxyTarget,
@@ -49,16 +54,14 @@ export default defineConfig(({ mode, command }) => {
   }
 
   if (localSiteOrigin && !useProdApi) {
-    // Option B HTML + production asset hashes from `.local-site` (seeded from dist).
-    proxy['/blog'] = {
+    // Do NOT proxy /blog or /assets — that would serve the seeded production
+    // shell/JS and bypass Vite HMR (old BlogPost → NotFound for CMS slugs).
+    // BlogPost fetches publisher HTML via this prefix instead.
+    proxy['/__site'] = {
       target: localSiteOrigin,
       changeOrigin: true,
       secure: false,
-    }
-    proxy['/assets'] = {
-      target: localSiteOrigin,
-      changeOrigin: true,
-      secure: false,
+      rewrite: (path) => path.replace(/^\/__site/, '') || '/',
     }
   }
 

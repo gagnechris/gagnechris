@@ -25,6 +25,7 @@ describe('BlogPost', () => {
   })
 
   test('loads CMS posts from publisher prerender HTML when not in markdown', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', 'http://127.0.0.1:4177')
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -53,7 +54,7 @@ describe('BlogPost', () => {
     expect(screen.getByText('Hello from CMS.')).toBeInTheDocument()
     expect(document.title).toBe('CMS Title - Chris Gagne')
     expect(fetch).toHaveBeenCalledWith(
-      '/blog/cms-post/',
+      '/__site/blog/cms-post/',
       expect.objectContaining({ headers: { Accept: 'text/html' } }),
     )
   })
