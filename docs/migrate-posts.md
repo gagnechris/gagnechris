@@ -25,8 +25,12 @@ With `SITE_STORAGE=filesystem` the script also rebuilds `.local-site/`. Or use `
 
 Writes rows in `gagnechris-prod`. The publisher Lambda runs from DynamoDB Streams — no separate invoke.
 
+Unset any local DynamoDB overrides first (`AWS_ENDPOINT_URL_DYNAMODB`, fake `AWS_ACCESS_KEY_ID`, `SITE_STORAGE`):
+
 ```bash
 aws sso login --sso-session gagnechris
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN \
+  AWS_ENDPOINT_URL_DYNAMODB AWS_ENDPOINT_URL SITE_STORAGE
 AWS_PROFILE=gagnechris-admin \
   AWS_REGION=us-east-1 \
   DATA_TABLE_NAME=gagnechris-prod \
