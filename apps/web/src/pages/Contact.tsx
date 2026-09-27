@@ -5,11 +5,13 @@ import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 
 function Contact() {
+  // Lazy initializer runs once; Date.now is impure so cannot sit in render/useRef init.
+  const [formStartedAt] = useState(() => Date.now());
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     message: '',
-    website: '',
+    hp_field: '',
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -51,15 +53,36 @@ function Contact() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          hp_field: formData.hp_field,
+          formStartedAt,
+        }),
       });
 
       if (response.ok) {
         trackEvent('submit', 'contact_form', 'contact_page');
         setSubmitted(true);
-      } else {
-        setErrors({ submit: 'Failed to send message. Please try again.' });
+        return;
       }
+
+      let message = 'Failed to send message. Please try again.';
+      try {
+        const payload = (await response.json()) as { message?: string };
+        if (payload.message) {
+          message = payload.message;
+        }
+      } catch {
+        // keep default
+      }
+      if (response.status === 429) {
+        message =
+          message ||
+          'Too many submissions. Please wait a bit and try again.';
+      }
+      setErrors({ submit: message });
     } catch (error) {
       console.error('Form submission error:', error);
       setErrors({ submit: 'Failed to send message. Please try again.' });
@@ -127,15 +150,16 @@ function Contact() {
         <form
           onSubmit={handleSubmit}
           className="contact-form"
+          autoComplete="on"
         >
-          {/* Honeypot — leave empty (CHR-38). */}
+          {/* Honeypot — nonsemantic name resists autofill (CHR-98). */}
           <div className="hp-field" aria-hidden="true">
-            <label htmlFor="website">Website</label>
+            <label htmlFor="hp_field">Leave blank</label>
             <input
               type="text"
-              id="website"
-              name="website"
-              value={formData.website}
+              id="hp_field"
+              name="hp_field"
+              value={formData.hp_field}
               onChange={handleChange}
               tabIndex={-1}
               autoComplete="off"

@@ -38,6 +38,8 @@ export class DataStack extends Stack {
       deletionProtection: true,
       removalPolicy: config.statefulRemovalPolicy,
       stream: StreamViewType.NEW_AND_OLD_IMAGES,
+      // Rate-limit counters (CHR-98); contact messages do not set ttl.
+      timeToLiveAttribute: 'ttl',
     });
 
     // GSI1: list by status (admin + published-by-date). See docs/data-model.md.

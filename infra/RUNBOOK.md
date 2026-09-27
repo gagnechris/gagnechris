@@ -154,10 +154,10 @@ can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
 
 `Api-prod` public routes:
 
-* `POST /api/contact` — contact form (honeypot field `website`)
-* `POST /api/resume/download` — anonymous resume-download notify (no PII)
+* `POST /api/contact` — contact form (persists `CONTACT#<ulid>` first; honeypot `hp_field`; 3/IP/hour + global SES daily cap)
+* `POST /api/resume/download` — anonymous resume-download notify (IP/day dedupe; shared SES daily cap)
 
-Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`.
+Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`. SES sandbox is ~200/day; app cap is 100/day (CHR-98).
 
 ### Leave the SES sandbox (one-time)
 
@@ -186,7 +186,7 @@ Smoke contact (after deploy + DNS):
 ```bash
 curl -sS -X POST https://gagnechris.com/api/contact \
   -H 'Content-Type: application/json' \
-  -d '{"name":"Smoke","email":"you@example.com","message":"CHR-38 smoke","website":""}'
+  -d '{"name":"Smoke","email":"you@example.com","message":"CHR-98 smoke","hp_field":"","formStartedAt":0}'
 ```
 
 ```bash
