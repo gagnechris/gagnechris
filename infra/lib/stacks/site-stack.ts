@@ -67,6 +67,8 @@ export interface SiteStackProps extends StackProps {
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
+  /** Viewer-request function name (publisher syncs blog slug allowlist). */
+  readonly viewerRequestFunctionName: string;
 
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
@@ -180,12 +182,27 @@ export class SiteStack extends Stack {
       },
     });
 
+    this.viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
-      functionName: `gagnechris-${config.name}-viewer-request`,
-      comment: 'www→apex redirect + Option B path rewrite',
+      functionName: this.viewerRequestFunctionName,
+      comment:
+        'www→apex + Option B + published blog slugs + spa/404 shells (CHR-102)',
       runtime: FunctionRuntime.JS_2_0,
       code: FunctionCode.fromFile({
         filePath: path.join(__dirname, '../cloudfront/viewer-request-function.js'),
+      }),
+    });
+
+    const viewerResponseFn = new CloudFrontFunction(this, 'ViewerResponseFn', {
+      functionName: `gagnechris-${config.name}-viewer-response`,
+      comment:
+        'Force 404 status for /404.html; replace S3 XML errors with HTML 404 (CHR-102)',
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromFile({
+        filePath: path.join(
+          __dirname,
+          '../cloudfront/viewer-response-function.js',
+        ),
       }),
     });
 
@@ -247,6 +264,10 @@ export class SiteStack extends Stack {
             function: viewerRequestFn,
             eventType: FunctionEventType.VIEWER_REQUEST,
           },
+          {
+            function: viewerResponseFn,
+            eventType: FunctionEventType.VIEWER_RESPONSE,
+          },
         ],
       },
       additionalBehaviors: {
@@ -271,8 +292,9 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into 200 HTML. /blog/* rewrites to Option B
-      // {path}/index.html; other extensionless routes use the SPA shell.
+      // /assets 403/404 into HTML. Default-behavior viewer-request routes
+      // unknowns to /404.html (and /admin|/auth to /spa.html); viewer-response
+      // forces HTTP 404 for /404.html and replaces S3 XML errors with HTML.
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
@@ -336,6 +358,12 @@ export class SiteStack extends Stack {
       parameterName: `/gagnechris/${config.name}/cloudfront-distribution-id`,
       stringValue: this.distribution.distributionId,
       description: 'CloudFront distribution ID (web deploy pipeline)',
+    });
+    new StringParameter(this, 'ViewerRequestFunctionNameParam', {
+      parameterName: `/gagnechris/${config.name}/viewer-request-function-name`,
+      stringValue: this.viewerRequestFunctionName,
+      description:
+        'CloudFront viewer-request function (publisher syncs blog slugs)',
     });
 
     new CfnOutput(this, 'SiteBucketName', {

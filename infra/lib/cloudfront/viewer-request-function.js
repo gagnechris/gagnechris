@@ -1,14 +1,21 @@
 /**
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
- * - Skip rewrite for /api/* and /media/* (proxied origins)
- * - /blog, /resume, /contact (extensionless) -> Option B {path}/index.html
- * - Other extensionless paths -> /index.html (SPA shell: /admin, /auth, …)
+ * - Skip rewrite for /api/* and /media/*
+ * - /blog, /resume, /contact, /dont-feed-the-bears -> Option B {path}/index.html
+ * - /blog/<slug> -> Option B only when slug is published (see PUBLISHED_BLOG_SLUGS);
+ *   unknown slugs -> /404.html (avoids raw S3 XML)
+ * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
+ * - Other extensionless paths -> /404.html (NotFound, not Home)
  * - Paths with a file extension pass through unchanged
  *
- * Missing objects return real 404/403 from the origin (no distribution-wide
- * custom error pages), so /api and /assets keep correct status codes.
+ * No distribution-wide custom error pages (so /api and /assets keep real 403/404).
+ *
+ * PUBLISHED_BLOG_SLUGS: null = fail-open (Option B for any slug, CDK default).
+ * Publisher replaces the map after each rebuild (CHR-102).
  */
+var PUBLISHED_BLOG_SLUGS = null; /*__PUBLISHED_BLOG_SLUGS__*/
+
 function handler(event) {
   var request = event.request;
   var host = request.headers.host.value.toLowerCase();
@@ -29,34 +36,102 @@ function handler(event) {
     return request;
   }
 
-  // Option B: static HTML folders written at build (resume/contact) or by publisher (blog).
-  if (
+  if (uri === '/' || uri === '/index.html') {
+    request.uri = '/index.html';
+    return request;
+  }
+
+  if (isSpaShellPath(uri)) {
+    request.uri = '/spa.html';
+    return request;
+  }
+
+  if (isOptionBIndexPath(uri)) {
+    request.uri = rewriteOptionB(uri);
+    return request;
+  }
+
+  var blogSlug = blogPostSlug(uri);
+  if (blogSlug !== null) {
+    if (isPublishedBlogSlug(blogSlug)) {
+      request.uri = rewriteOptionB(uri);
+    } else {
+      request.uri = '/404.html';
+    }
+    return request;
+  }
+
+  if (uri.endsWith('/')) {
+    request.uri = '/404.html';
+  } else {
+    var lastSlash = uri.lastIndexOf('/');
+    var lastSegment = lastSlash === -1 ? uri : uri.substring(lastSlash + 1);
+    if (lastSegment.indexOf('.') === -1) {
+      request.uri = '/404.html';
+    }
+  }
+
+  return request;
+}
+
+function isSpaShellPath(uri) {
+  return (
+    uri === '/admin' ||
+    uri === '/admin/' ||
+    uri.indexOf('/admin/') === 0 ||
+    uri === '/auth' ||
+    uri === '/auth/' ||
+    uri.indexOf('/auth/') === 0
+  );
+}
+
+function isOptionBIndexPath(uri) {
+  return (
     uri === '/blog' ||
     uri === '/blog/' ||
-    uri.indexOf('/blog/') === 0 ||
     uri === '/resume' ||
     uri === '/resume/' ||
     uri.indexOf('/resume/') === 0 ||
     uri === '/contact' ||
     uri === '/contact/' ||
-    uri.indexOf('/contact/') === 0
-  ) {
-    request.uri = rewriteOptionB(uri);
-    return request;
-  }
+    uri.indexOf('/contact/') === 0 ||
+    uri === '/dont-feed-the-bears' ||
+    uri === '/dont-feed-the-bears/' ||
+    uri.indexOf('/dont-feed-the-bears/') === 0
+  );
+}
 
-  // SPA shell for remaining client routes (/admin, /auth/callback, …).
-  if (uri.endsWith('/')) {
-    request.uri = '/index.html';
-  } else {
-    var lastSlash = uri.lastIndexOf('/');
-    var lastSegment = lastSlash === -1 ? uri : uri.substring(lastSlash + 1);
-    if (lastSegment.indexOf('.') === -1) {
-      request.uri = '/index.html';
+function blogPostSlug(uri) {
+  if (uri.indexOf('/blog/') !== 0) {
+    return null;
+  }
+  var rest = uri.substring('/blog/'.length);
+  if (!rest || rest === 'index.html') {
+    return null;
+  }
+  var slash = rest.indexOf('/');
+  var segment = slash === -1 ? rest : rest.substring(0, slash);
+  if (!segment || segment.indexOf('.') !== -1) {
+    return null;
+  }
+  if (slash !== -1) {
+    var after = rest.substring(slash + 1);
+    if (after && after !== 'index.html') {
+      return null;
     }
   }
+  return segment;
+}
 
-  return request;
+function isPublishedBlogSlug(slug) {
+  if (PUBLISHED_BLOG_SLUGS === null) {
+    return true;
+  }
+  return Object.prototype.hasOwnProperty.call(PUBLISHED_BLOG_SLUGS, slug);
+}
+
+function setPublishedBlogSlugsForTests(slugs) {
+  PUBLISHED_BLOG_SLUGS = slugs;
 }
 
 function rewriteOptionB(uri) {
@@ -71,11 +146,6 @@ function rewriteOptionB(uri) {
   return uri;
 }
 
-/**
- * Rebuild ?a=1&b=2 from CloudFront's querystring object.
- * Runtime values (and keys) arrive already percent-encoded — do not
- * encodeURIComponent again (live #35 deploy produced a%2520b).
- */
 function serializeQueryString(qs) {
   if (!qs) {
     return '';

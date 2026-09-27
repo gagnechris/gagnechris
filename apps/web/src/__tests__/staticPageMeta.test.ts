@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   STATIC_PAGE_META,
+  applyNotFoundPageMeta,
+  applySpaShellMeta,
   applyStaticPageMeta,
   canonicalUrlFor,
   outputRelativePath,
@@ -93,5 +95,23 @@ describe('staticPageMeta', () => {
     expect(html).toContain(
       `<link rel="canonical" href="${canonicalUrlFor('dont-feed-the-bears')}" />`,
     )
+  })
+
+  it('builds spa.html without home canonical and with noindex', () => {
+    const html = applySpaShellMeta(shell)
+    expect(html).toContain('<title>Chris Gagne</title>')
+    expect(html).toContain('<meta name="robots" content="noindex" />')
+    expect(html).not.toMatch(/rel=["']canonical["']/)
+    expect(html).toContain('<div id="root"></div>')
+  })
+
+  it('builds 404.html with NotFound markup, noindex, and no home canonical', () => {
+    const html = applyNotFoundPageMeta(shell)
+    expect(html).toContain('<title>Page Not Found - Chris Gagne</title>')
+    expect(html).toContain('<meta name="robots" content="noindex" />')
+    expect(html).toContain('Page not found')
+    expect(html).toContain('href="/dont-feed-the-bears?from=404"')
+    expect(html).not.toMatch(/rel=["']canonical["']/)
+    expect(html).not.toMatch(/property=["']og:url["']/)
   })
 })

@@ -34,6 +34,8 @@ export interface PublisherStackProps extends StackProps {
   readonly siteBucket: IBucket;
   readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
+  /** CloudFront viewer-request function name (blog slug allowlist sync). */
+  readonly viewerRequestFunctionName: string;
 }
 
 /**
@@ -45,7 +47,8 @@ export class PublisherStack extends Stack {
   constructor(scope: Construct, id: string, props: PublisherStackProps) {
     super(scope, id, props);
 
-    const { config, dataTable, siteBucket, distribution, alertsTopic } = props;
+    const { config, dataTable, siteBucket, distribution, alertsTopic, viewerRequestFunctionName } =
+      props;
 
     const logGroup = new LogGroup(this, 'PublisherLogGroup', {
       retention: RetentionDays.TWO_WEEKS,
@@ -82,9 +85,14 @@ export class PublisherStack extends Stack {
               inputDir,
               'services/publisher/assets/fonts',
             );
+            const viewerSrc = join(
+              inputDir,
+              'infra/lib/cloudfront/viewer-request-function.js',
+            );
             return [
               `mkdir -p "${outputDir}/assets/fonts"`,
               `cp "${fontsSrc}/Inter-Regular.ttf" "${fontsSrc}/Inter-Bold.ttf" "${outputDir}/assets/fonts/"`,
+              `cp "${viewerSrc}" "${outputDir}/viewer-request-function.js"`,
             ];
           },
         },
@@ -96,6 +104,7 @@ export class PublisherStack extends Stack {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucket.bucketName,
         CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
+        VIEWER_REQUEST_FUNCTION_NAME: viewerRequestFunctionName,
         SITE_APEX_DOMAIN: APEX_DOMAIN,
       },
     });
@@ -110,6 +119,21 @@ export class PublisherStack extends Stack {
         actions: ['cloudfront:CreateInvalidation'],
         resources: [
           `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+        ],
+      }),
+    );
+
+    this.publisherFunction.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'CloudFrontViewerRequestSync',
+        actions: [
+          'cloudfront:DescribeFunction',
+          'cloudfront:UpdateFunction',
+          'cloudfront:PublishFunction',
+          'cloudfront:GetFunction',
+        ],
+        resources: [
+          `arn:aws:cloudfront::${this.account}:function/${viewerRequestFunctionName}`,
         ],
       }),
     );
