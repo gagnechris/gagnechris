@@ -11,12 +11,6 @@ import { APEX_DOMAIN } from './dns-stack.js';
 
 export interface CertificateStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /**
-   * When true, omit the legacy site cert (staging SAN) and its forced export
-   * (CHR-73 phase 2). Default false keeps both until Site has cut over to
-   * SiteCertificateV2 in a prior deploy.
-   */
-  readonly dropLegacySiteCertificate?: boolean;
 }
 
 /**
@@ -26,7 +20,7 @@ export interface CertificateStackProps extends StackProps {
  * Zone lookup stays in this stack so DNS validation records create correctly.
  */
 export class CertificateStack extends Stack {
-  /** Apex + www for CloudFront (no staging SAN). */
+  /** Apex + www for CloudFront. */
   readonly certificate: ICertificate;
   /** `auth.gagnechris.com` for Cognito managed login. */
   readonly authCertificate: ICertificate;
@@ -38,27 +32,13 @@ export class CertificateStack extends Stack {
       domainName: APEX_DOMAIN,
     });
 
-    // CHR-73: cut Site over to a new cert without staging. Certificate-prod
-    // deploys before Site-prod, so the legacy export must stay alive via
-    // exportValue until Site no longer imports it (next PR removes both).
+    // Construct id SiteCertificateV2 kept after CHR-73 rotation (legacy
+    // SiteCertificate with staging SAN was removed once Site cut over).
     this.certificate = new Certificate(this, 'SiteCertificateV2', {
       domainName: APEX_DOMAIN,
       subjectAlternativeNames: [`www.${APEX_DOMAIN}`],
       validation: CertificateValidation.fromDns(hostedZone),
     });
-
-    if (!props.dropLegacySiteCertificate) {
-      const legacySiteCertificate = new Certificate(this, 'SiteCertificate', {
-        domainName: APEX_DOMAIN,
-        subjectAlternativeNames: [
-          `www.${APEX_DOMAIN}`,
-          `staging.${APEX_DOMAIN}`,
-        ],
-        validation: CertificateValidation.fromDns(hostedZone),
-      });
-      // Preserve ExportsOutputRefSiteCertificate* while Site still imports it.
-      this.exportValue(legacySiteCertificate.certificateArn);
-    }
 
     this.authCertificate = new Certificate(this, 'AuthCertificate', {
       domainName: `auth.${APEX_DOMAIN}`,

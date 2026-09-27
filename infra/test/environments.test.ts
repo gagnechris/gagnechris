@@ -321,43 +321,10 @@ describe('DnsStack and CertificateStack', () => {
       SubjectAlternativeNames: ['www.gagnechris.com'],
       ValidationMethod: 'DNS',
     });
-    // Phase 1 keeps the legacy staging SAN cert until a second deploy drops it.
-    certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
-      DomainName: 'gagnechris.com',
-      SubjectAlternativeNames: Match.arrayWith([
-        'www.gagnechris.com',
-        'staging.gagnechris.com',
-      ]),
-      ValidationMethod: 'DNS',
-    });
     certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
       DomainName: 'auth.gagnechris.com',
       ValidationMethod: 'DNS',
     });
-    certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 3);
-    // exportValue keeps the legacy SiteCertificate ARN export during cutover.
-    const outputs = Object.values(certTemplate.findOutputs('*'));
-    const legacyExport = outputs.find(
-      (o) =>
-        typeof o.Export?.Name === 'string' &&
-        String(o.Export.Name).includes('SiteCertificate') &&
-        !String(o.Export.Name).includes('SiteCertificateV2'),
-    );
-    expect(legacyExport).toBeDefined();
-  });
-
-  it('drops the legacy staging site cert when dropLegacySiteCertificate is set', () => {
-    const app = new App();
-    const config = getEnvironment('prod', testEnv);
-    const certificate = new CertificateStack(app, 'Certificate-prod', {
-      env: { account: config.account, region: 'us-east-1' },
-      config,
-      dropLegacySiteCertificate: true,
-    });
-    applyStandardTags(certificate, config);
-    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-
-    const certTemplate = Template.fromStack(certificate);
     certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 2);
     const siteCerts = Object.values(
       certTemplate.findResources('AWS::CertificateManager::Certificate'),
