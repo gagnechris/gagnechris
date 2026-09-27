@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
-import { parseFrontmatter } from '../src/utils/frontmatter.ts'
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -20,25 +19,6 @@ const formatDate = (value?: string) => {
     return value.slice(0, 10)
   }
   return new Date().toISOString().slice(0, 10)
-}
-
-const loadPublishedPosts = (postsDir: string) => {
-  if (!fs.existsSync(postsDir)) {
-    return []
-  }
-
-  return fs
-    .readdirSync(postsDir)
-    .filter((filename) => filename.endsWith('.md'))
-    .flatMap((filename) => {
-      const raw = fs.readFileSync(path.join(postsDir, filename), 'utf8')
-      const { data } = parseFrontmatter(raw)
-      const slug = data.slug?.trim()
-      if (!slug) {
-        return []
-      }
-      return [{ slug, date: data.date?.trim() || undefined }]
-    })
 }
 
 const buildSitemapXml = (entries: SitemapEntry[]) => {
@@ -60,12 +40,16 @@ ${urls}
 `
 }
 
+/**
+ * Build-time sitemap for static SPA routes only.
+ * Blog post URLs are owned by the publisher (`rebuildPublishedSite` → sitemap.xml).
+ * deploy-web excludes dist sitemap from deleting publisher's copy and re-invokes republish-all.
+ */
 export function sitemapPlugin(): Plugin {
   return {
     name: 'generate-sitemap',
     apply: 'build',
     closeBundle() {
-      const postsDir = path.join(appRoot, 'src/posts')
       const today = formatDate()
 
       const staticEntries: SitemapEntry[] = [
@@ -75,14 +59,7 @@ export function sitemapPlugin(): Plugin {
         { loc: `${SITE_URL}/contact`, lastmod: today, changefreq: 'monthly', priority: '0.6' },
       ]
 
-      const postEntries: SitemapEntry[] = loadPublishedPosts(postsDir).map((post) => ({
-        loc: `${SITE_URL}/blog/${post.slug}`,
-        lastmod: formatDate(post.date),
-        changefreq: 'monthly',
-        priority: '0.7',
-      }))
-
-      const xml = buildSitemapXml([...staticEntries, ...postEntries])
+      const xml = buildSitemapXml(staticEntries)
       const outPath = path.join(appRoot, 'dist/sitemap.xml')
       fs.writeFileSync(outPath, xml)
     },
