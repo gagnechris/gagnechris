@@ -196,6 +196,41 @@ export const ContactResponseSchema = z
 
 export type ContactResponse = z.infer<typeof ContactResponseSchema>;
 
+export const HomeSchema = z
+  .object({
+    name: z.string().min(1).openapi({ description: 'Header name' }),
+    title: z.string().openapi({
+      description: 'Header subtitle, e.g. "Engineering Leader"',
+    }),
+    about: z.string().openapi({
+      description: 'About Me body text; blank lines separate paragraphs',
+    }),
+    status: PostStatusSchema,
+    publishedAt: z.string().datetime({ offset: true }).nullable(),
+    updatedAt: z.string().datetime({ offset: true }),
+    seo: PostSeoSchema.nullable(),
+    version: z.number().int().nonnegative(),
+  })
+  .openapi('Home');
+
+export type Home = z.infer<typeof HomeSchema>;
+
+export const UpdateHomeRequestSchema = z
+  .object({
+    version: z
+      .number()
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Expected version for optimistic concurrency' }),
+    name: z.string().min(1).optional(),
+    title: z.string().optional(),
+    about: z.string().optional(),
+    seo: PostSeoSchema.nullable().optional(),
+  })
+  .openapi('UpdateHomeRequest');
+
+export type UpdateHomeRequest = z.infer<typeof UpdateHomeRequestSchema>;
+
 export const ResumeExperienceSchema = z
   .object({
     title: z.string(),

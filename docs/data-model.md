@@ -14,7 +14,7 @@ separators so entity types never collide.
 | `sk` | Sort key |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date) |
 | `gsi2pk` / `gsi2sk` | GSI2 — list published posts by tag |
-| `entityType` | Discriminator (`post`, `slug`, `note`, `task`, …) |
+| `entityType` | Discriminator (`post`, `slug`, `resume`, `home`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -124,6 +124,32 @@ live HTML (and `/resume.pdf`) that matches the pre-CMS page. Publish/unpublish
 flow through the same `META` stream the blog uses; a draft or missing resume
 leaves the existing `resume/index.html` and `resume.pdf` in place rather than
 deleting them.
+
+## Home (singleton)
+
+One item holds the home page header + About Me copy edited in `/admin/home`
+and prerendered into `index.html` by the publisher (CHR-92).
+
+#### `HOME#current` / `META`
+
+| Attr | Notes |
+| --- | --- |
+| `entityType` | `home` |
+| `homeId` | `current` |
+| `name` | Header name (`<h1>`) |
+| `title` | Header subtitle, e.g. `Engineering Leader` |
+| `about` | About Me body text; blank lines separate paragraphs |
+
+Same singleton conventions as the resume: no GSI keys, `GET /api/admin/home`
+seeds from `DEFAULT_HOME` with `status=published` on first read, and a draft or
+missing item leaves the live `index.html` alone.
+
+`index.html` is both the Vite SPA shell and the home page. Web deploy uploads
+the empty shell and then invokes `republishAll`, which re-injects the home
+prerender. The publisher wraps every `#root` prerender in
+`<!--prerender:start--> … <!--prerender:end-->` markers so `index.html` can be
+read back as a clean shell for `/blog` and `/resume`. Quick Links and the
+profile photo stay hard-coded in React for now.
 
 ## Notebook (reserved key space)
 

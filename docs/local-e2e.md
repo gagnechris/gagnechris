@@ -48,6 +48,20 @@ Autosave and publish/unpublish trigger the same rebuild. The public page at
 `DEFAULT_RESUME` when no published HTML exists. Download uses `/resume.pdf`
 (Vite proxies that path to the local site origin).
 
+### Home CMS
+
+`http://localhost:5173/admin/home` edits the header (name + title) and the
+About Me copy. Like the resume, the first `GET` seeds it published and rebuilds
+the site, so `.local-site/index.html` carries the `home-page-prerender` article
+right away. The public page at `http://localhost:5173/` fetches `/__site/` and
+falls back to `DEFAULT_HOME`. Quick Links and the profile photo are still
+hard-coded React.
+
+`index.html` is the SPA shell *and* the home page, so the publisher strips the
+previous prerender out of `#root` before reusing it as the shell for other
+pages. `npm run e2e:local` asserts both halves: `/` has the home prerender and
+`/blog/<slug>` does not.
+
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
 
 

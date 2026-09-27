@@ -1,3 +1,4 @@
+import { textExcerpt } from './excerpt.js';
 import type { Resume, ResumeContent } from './schemas.js';
 
 const escapeHtml = (value: string): string =>
@@ -68,10 +69,5 @@ export const renderResumePrerenderHtml = (resume: Resume): string =>
   `<article class="resume-page-prerender" data-name="${escapeHtml(resume.name)}" data-pdf="${escapeHtml(resume.pdfPath)}"><header><div class="name-section"><h1>${escapeHtml(resume.name)}</h1></div></header><main>${renderResumeSectionsHtml(resume.content)}</main></article>`;
 
 /** Meta-description fallback when `seo.description` is unset. */
-export const resumeSummaryExcerpt = (summary: string, max = 200): string => {
-  const flat = summary.replace(/\s+/g, ' ').trim();
-  if (flat.length <= max) return flat;
-  const cut = flat.slice(0, max);
-  const lastSpace = cut.lastIndexOf(' ');
-  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
-};
+export const resumeSummaryExcerpt = (summary: string, max = 200): string =>
+  textExcerpt(summary, max);

@@ -10,11 +10,14 @@ import {
   type PostMetaRecord,
   toListItem,
 } from './posts.js';
+import { metaToHome, type HomeMetaRecord } from './home.js';
 import { metaToResume, type ResumeMetaRecord } from './resume.js';
 import {
   buildRssXml,
   buildSitemapXml,
+  normalizeShellHtml,
   renderBlogIndexPage,
+  renderHomePage,
   renderPostPage,
   renderResumePage,
 } from './render.js';
@@ -22,7 +25,7 @@ import { renderResumePdf, RESUME_PDF_KEY } from './resume-pdf.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
-import type { Post, Resume } from '@gagnechris/shared';
+import type { Home, Post, Resume } from '@gagnechris/shared';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
@@ -88,10 +91,27 @@ export async function getPublishedResume(
   return metaToResume(item);
 }
 
+export async function getPublishedHome(
+  tableName: string,
+): Promise<Home | undefined> {
+  const result = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { pk: 'HOME#current', sk: 'META' },
+    }),
+  );
+  const item = result.Item as HomeMetaRecord | undefined;
+  if (!item || item.entityType !== 'home' || item.status !== 'published') {
+    return undefined;
+  }
+  return metaToHome(item);
+}
+
 export type RebuildResult = {
   publishedCount: number;
   removedSlugs: string[];
   resumePublished: boolean;
+  homePublished: boolean;
   invalidated: string[];
 };
 
@@ -110,7 +130,9 @@ export async function rebuildPublishedSite(options?: {
   const tableName = requireEnv('DATA_TABLE_NAME');
   const storage = options?.storage ?? getSiteStorage();
 
-  const shell = await storage.readShell();
+  // index.html doubles as the home page, so drop any prior home prerender
+  // before reusing it as the shell for /blog and /resume.
+  const shell = normalizeShellHtml(await storage.readShell());
   const published = await listPublishedPosts(tableName);
   const publishedSlugs = new Set(published.map((p) => p.slug));
 
@@ -171,6 +193,18 @@ export async function rebuildPublishedSite(options?: {
     );
   }
 
+  // Draft / missing home leaves the deployed Vite shell (or the last published
+  // prerender) in place; the SPA still renders DEFAULT_HOME on the client.
+  const home = await getPublishedHome(tableName);
+  if (home) {
+    await storage.put(
+      'index.html',
+      renderHomePage(shell, home),
+      'text/html; charset=utf-8',
+      CACHE_HTML,
+    );
+  }
+
   await storage.put(
     'sitemap.xml',
     buildSitemapXml(published),
@@ -200,6 +234,7 @@ export async function rebuildPublishedSite(options?: {
     ...(resume
       ? ['/resume', '/resume/', '/resume/index.html', `/${RESUME_PDF_KEY}`]
       : []),
+    ...(home ? ['/', '/index.html'] : []),
   ];
 
   await storage.invalidate(invalidated);
@@ -208,6 +243,7 @@ export async function rebuildPublishedSite(options?: {
     publishedCount: published.length,
     removedSlugs,
     resumePublished: Boolean(resume),
+    homePublished: Boolean(home),
     invalidated: [...new Set(invalidated)],
   };
 }

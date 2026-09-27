@@ -38,7 +38,7 @@ describe('AdminLayout', () => {
     isDevProdApiTargetMock.mockReturnValue(false)
   })
 
-  test('shows Posts / Notebook nav and posts hub when authenticated', async () => {
+  test('shows Posts / Home / Resume / Notebook nav and posts hub when authenticated', async () => {
     render(
       <MemoryRouter initialEntries={['/admin']}>
         <Routes>
@@ -51,6 +51,11 @@ describe('AdminLayout', () => {
 
     expect(await screen.findByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Posts' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
+      'href',
+      '/admin/home',
+    )
+    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Notebook' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Posts' })).toBeInTheDocument()

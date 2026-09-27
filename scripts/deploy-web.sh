@@ -54,6 +54,9 @@ fi
 #    Option B publisher paths (exclude applies to deletes too).
 #    resume/index.html is publisher-owned once the resume is published; the
 #    previously deployed meta shell stays until then (SPA renders DEFAULT_RESUME).
+#    index.html is deliberately NOT excluded: it is the SPA shell the publisher
+#    reads, so the fresh Vite build must land here. Step 3 re-injects the home
+#    prerender (CHR-92) — until it runs, the SPA renders DEFAULT_HOME.
 aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
