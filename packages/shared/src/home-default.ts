@@ -14,4 +14,5 @@ export const DEFAULT_HOME: Home = {
   updatedAt: '2026-09-27T00:00:00.000Z',
   seo: null,
   version: 0,
+  hasUnpublishedChanges: false,
 };

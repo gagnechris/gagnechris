@@ -271,6 +271,7 @@ export default function PostEditorPage() {
         return
       }
       setPost(data)
+      setDraft(fromPost(data))
       versionRef.current = data.version
       setDirty(false)
       setSaveState('saved')
@@ -324,6 +325,39 @@ export default function PostEditorPage() {
         return
       }
       setPost(data)
+      versionRef.current = data.version
+      setDirty(false)
+      setSaveState('saved')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runDiscard = async () => {
+    if (!postId || busy) {
+      return
+    }
+    if (
+      !window.confirm(
+        'Discard unpublished edits and restore the last published post?',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setSaveError(null)
+    try {
+      const client = createApiClient()
+      const { data, error, response } = await client.POST(
+        '/api/admin/posts/{id}/discard',
+        { params: { path: { id: postId } } },
+      )
+      if (error || !data) {
+        setSaveError(`Discard failed (${response.status}).`)
+        return
+      }
+      setPost(data)
+      setDraft(fromPost(data))
       versionRef.current = data.version
       setDirty(false)
       setSaveState('saved')
@@ -403,6 +437,11 @@ export default function PostEditorPage() {
             <span className={`admin-badge admin-badge--${post.status}`}>
               {post.status}
             </span>
+            {post.hasUnpublishedChanges ? (
+              <span className="admin-badge admin-badge--unpublished">
+                Unpublished changes
+              </span>
+            ) : null}
             <span className="admin-save-indicator" data-state={saveState}>
               {saveLabel}
             </span>
@@ -419,6 +458,26 @@ export default function PostEditorPage() {
               View live
             </a>
           ) : null}
+          {post.status === 'draft' || post.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn admin-btn--primary"
+              disabled={busy}
+              onClick={() => void runPublish()}
+            >
+              {post.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
+            </button>
+          ) : null}
+          {post.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn"
+              disabled={busy}
+              onClick={() => void runDiscard()}
+            >
+              Discard changes
+            </button>
+          ) : null}
           {post.status === 'published' ? (
             <button
               type="button"
@@ -428,16 +487,7 @@ export default function PostEditorPage() {
             >
               Unpublish
             </button>
-          ) : (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runPublish()}
-            >
-              Publish
-            </button>
-          )}
+          ) : null}
           <button
             type="button"
             className="admin-btn"

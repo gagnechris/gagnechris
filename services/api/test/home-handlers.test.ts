@@ -45,6 +45,7 @@ const sampleHome: Home = {
   publishedAt: '2026-09-27T01:00:00.000Z',
   updatedAt: '2026-09-27T01:00:00.000Z',
   version: 1,
+  hasUnpublishedChanges: false,
 };
 
 describe('home HTTP handlers', () => {
@@ -89,6 +90,7 @@ describe('home HTTP handlers', () => {
     const result = await handleHomeRoute(
       event('PUT', '/api/admin/home', {
         version: 1,
+  hasUnpublishedChanges: false,
         name: 'Chris Gagne',
         about: 'New about copy.',
       }),
@@ -130,6 +132,7 @@ describe('home HTTP handlers', () => {
       ...sampleHome,
       status: 'draft',
       version: 2,
+  hasUnpublishedChanges: false,
     });
 
     const published = await handleHomeRoute(

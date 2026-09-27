@@ -47,7 +47,7 @@ function imageToMeta(
   const item = unmarshall(
     image as Parameters<typeof unmarshall>[0],
   ) as PostMetaRecord;
-  if (item.sk !== 'META') return undefined;
+  if (item.sk !== 'PUBLISHED') return undefined;
   return item;
 }
 
@@ -69,7 +69,7 @@ export function collectSlugsToRemove(records: DynamoDBRecord[]): Set<string> {
   return slugs;
 }
 
-function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {
+export function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {
   for (const record of records) {
     const oldMeta = imageToMeta(record.dynamodb?.OldImage);
     const newMeta = imageToMeta(record.dynamodb?.NewImage);
@@ -114,7 +114,7 @@ export const handler = async (
 
     if (isDynamoStreamEvent(event)) {
       if (!streamNeedsRebuild(event.Records)) {
-        logger.info('Stream batch has no published META changes; skipping');
+        logger.info('Stream batch has no PUBLISHED item changes; skipping');
         metrics.addMetric('Skipped', MetricUnit.Count, 1);
         metrics.publishStoredMetrics();
         return { ok: true, publishedCount: 0, removedSlugs: [] };

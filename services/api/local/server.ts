@@ -90,26 +90,22 @@ function buildEvent(
   };
 }
 
-function isMutatingAdminContent(method: string, path: string): boolean {
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return false;
+/** Rebuild only when a PUBLISHED snapshot changes (CHR-96). */
+function shouldRebuildPublishedSite(method: string, path: string): boolean {
   const normalized = path.replace(/\/$/, '') || '/';
-  return (
-    normalized === '/api/admin/posts' ||
-    normalized.startsWith('/api/admin/posts/') ||
-    normalized === '/api/admin/resume' ||
-    normalized.startsWith('/api/admin/resume/') ||
-    normalized === '/api/admin/home' ||
-    normalized.startsWith('/api/admin/home/')
-  );
-}
-
-/** GET on a singleton seeds it on first read (resume CHR-89, home CHR-92). */
-function isSeedingSingletonRead(method: string, path: string): boolean {
-  const normalized = path.replace(/\/$/, '') || '/';
-  return (
-    method === 'GET' &&
-    (normalized === '/api/admin/resume' || normalized === '/api/admin/home')
-  );
+  if (method === 'POST') {
+    return (
+      (normalized.endsWith('/publish') || normalized.endsWith('/unpublish')) &&
+      (normalized.startsWith('/api/admin/posts/') ||
+        normalized.startsWith('/api/admin/home') ||
+        normalized.startsWith('/api/admin/resume'))
+    );
+  }
+  // Soft-delete removes the PUBLISHED snapshot for live posts.
+  if (method === 'DELETE' && /^\/api\/admin\/posts\/[^/]+$/.test(normalized)) {
+    return true;
+  }
+  return false;
 }
 
 const fakeContext = {
@@ -129,10 +125,7 @@ const fakeContext = {
 
 async function maybeRebuild(method: string, path: string, status: number) {
   if (status < 200 || status >= 300) return;
-  if (
-    !isMutatingAdminContent(method, path) &&
-    !isSeedingSingletonRead(method, path)
-  ) {
+  if (!shouldRebuildPublishedSite(method, path)) {
     return;
   }
   try {

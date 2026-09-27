@@ -32,6 +32,7 @@ export function metaToPost(item: PostMetaRecord): Post {
     coverImage: item.coverImage ?? null,
     seo: item.seo ?? null,
     version: item.version ?? 0,
+    hasUnpublishedChanges: false,
   };
 }
 

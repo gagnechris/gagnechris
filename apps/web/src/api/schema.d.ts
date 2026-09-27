@@ -300,7 +300,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish post (stream event for publisher) */
+        /** Publish post (copies draft to PUBLISHED snapshot; stream rebuild) */
         post: {
             parameters: {
                 query?: never;
@@ -387,6 +387,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/posts/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discard draft edits and restore from the published snapshot */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Post id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft restored from published snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Post"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/home": {
         parameters: {
             query?: never;
@@ -394,7 +442,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the singleton home page content (seeded on first read) */
+        /** Get home draft (seeded as draft on first read; includes hasUnpublishedChanges) */
         get: {
             parameters: {
                 query?: never;
@@ -483,7 +531,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish home (stream event for publisher) */
+        /** Publish home (copies draft to PUBLISHED snapshot; stream rebuild) */
         post: {
             parameters: {
                 query?: never;
@@ -564,6 +612,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/home/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discard draft edits and restore from the published snapshot */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft restored from published snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Home"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/resume": {
         parameters: {
             query?: never;
@@ -571,7 +664,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get the singleton resume (seeded on first read) */
+        /** Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges) */
         get: {
             parameters: {
                 query?: never;
@@ -660,7 +753,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish resume (stream event for publisher) */
+        /** Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF) */
         post: {
             parameters: {
                 query?: never;
@@ -716,6 +809,51 @@ export interface paths {
             requestBody?: never;
             responses: {
                 /** @description Unpublished (draft) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Resume"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/resume/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discard draft edits and restore from the published snapshot */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft restored from published snapshot */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -920,6 +1058,8 @@ export interface components {
             coverImage: string | null;
             seo: components["schemas"]["PostSeo"];
             version: number;
+            /** @description True when a published snapshot exists and the editable draft differs from it */
+            hasUnpublishedChanges: boolean;
         };
         /** @enum {string} */
         PostStatus: "draft" | "published" | "deleted";
@@ -1008,6 +1148,8 @@ export interface components {
             updatedAt: string;
             seo: components["schemas"]["PostSeo"];
             version: number;
+            /** @description True when a published snapshot exists and the editable draft differs from it */
+            hasUnpublishedChanges: boolean;
         };
         UpdateHomeRequest: {
             /** @description Expected version for optimistic concurrency */
@@ -1029,6 +1171,8 @@ export interface components {
             updatedAt: string;
             seo: components["schemas"]["PostSeo"];
             version: number;
+            /** @description True when a published snapshot exists and the editable draft differs from it */
+            hasUnpublishedChanges: boolean;
         };
         ResumeContent: {
             summary: string;

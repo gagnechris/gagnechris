@@ -168,6 +168,11 @@
   color: var(--primary-800);
 }
 
+.admin-badge--unpublished {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .admin-panel__header {
   display: flex;
   flex-wrap: wrap;

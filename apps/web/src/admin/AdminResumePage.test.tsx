@@ -36,6 +36,7 @@ const baseResume = {
   updatedAt: '2026-09-27T00:00:00.000Z',
   seo: { ogImage: '/media/og-resume.png' },
   version: 1,
+  hasUnpublishedChanges: false,
 }
 
 describe('AdminResumePage autosave', () => {
@@ -90,6 +91,7 @@ describe('AdminResumePage autosave', () => {
           ],
         },
         version: 2,
+  hasUnpublishedChanges: false,
       },
       error: undefined,
       response: { status: 200 },

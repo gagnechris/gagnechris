@@ -61,6 +61,10 @@ export async function handleHomeRoute(
       return json(200, HomeSchema.parse(await home.unpublish()));
     }
 
+    if (method === 'POST' && adminHome === '/admin/home/discard') {
+      return json(200, HomeSchema.parse(await home.discard()));
+    }
+
     return undefined;
   } catch (error) {
     if (error instanceof SyntaxError) {

@@ -12,6 +12,7 @@ export const DEFAULT_RESUME: Resume = {
   updatedAt: '2026-09-27T00:00:00.000Z',
   seo: null,
   version: 0,
+  hasUnpublishedChanges: false,
   content: {
     summary:
       'Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.',

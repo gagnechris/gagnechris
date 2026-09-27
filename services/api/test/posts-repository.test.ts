@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { PostsRepository } from '../src/posts/repository.js';
-import { buildMetaItem } from '../src/posts/keys.js';
+import { buildMetaItem, buildPublishedItem, postPublishedSk } from '../src/posts/keys.js';
 import type { Post } from '@gagnechris/shared';
 
 const draft: Post = {
@@ -17,6 +17,7 @@ const draft: Post = {
   coverImage: null,
   seo: null,
   version: 1,
+  hasUnpublishedChanges: false,
 };
 
 function mockDoc(
@@ -69,7 +70,8 @@ describe('PostsRepository', () => {
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const got = await repo.getBySlug('hello');
     expect(got?.id).toBe(draft.id);
-    expect(calls).toBe(2);
+    // slug claim + META + PUBLISHED (for hasUnpublishedChanges)
+    expect(calls).toBeGreaterThanOrEqual(2);
   });
 
   it('lists via gsi1 status partition', async () => {
@@ -108,5 +110,86 @@ describe('PostsRepository', () => {
       publishedAt: '2026-02-01T00:00:00.000Z',
     });
     expect(published.publishedAt).toBe('2026-02-01T00:00:00.000Z');
+  });
+
+  it('update of a published post does not write PUBLISHED (draft isolation)', async () => {
+    const published: Post = {
+      ...draft,
+      status: 'published',
+      publishedAt: '2026-02-01T00:00:00.000Z',
+      version: 2,
+    };
+    const live = { ...published, title: 'Live title' };
+    const send = vi.fn(async (command: { constructor: { name: string }; input: Record<string, unknown> }) => {
+      if (command.constructor.name === 'GetCommand') {
+        const key = command.input.Key as { sk?: string };
+        if (key.sk === postPublishedSk()) {
+          return { Item: buildPublishedItem(live) };
+        }
+        return { Item: buildMetaItem(published) };
+      }
+      if (command.constructor.name === 'BatchGetCommand') {
+        return {
+          Responses: {
+            'gagnechris-test': [buildPublishedItem(live)],
+          },
+        };
+      }
+      return {};
+    });
+    const doc = { send } as unknown as DynamoDBDocumentClient;
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const next = await repo.update(published.id, {
+      version: 2,
+      title: 'Draft title',
+    });
+    expect(next.title).toBe('Draft title');
+    expect(next.hasUnpublishedChanges).toBe(true);
+    const tx = send.mock.calls.find(
+      (c) => (c[0] as { constructor: { name: string } }).constructor.name === 'TransactWriteCommand',
+    )![0] as { input: { TransactItems: Array<Record<string, unknown>> } };
+    const sks = tx.input.TransactItems.flatMap((item) => {
+      const put = item.Put as { Item?: { sk?: string } } | undefined;
+      return put?.Item?.sk ? [put.Item.sk] : [];
+    });
+    expect(sks).toEqual(['META']);
+  });
+
+  it('publish writes PUBLISHED snapshot and clears unpublished flag', async () => {
+    const published: Post = {
+      ...draft,
+      status: 'published',
+      publishedAt: '2026-02-01T00:00:00.000Z',
+      title: 'Draft title',
+      version: 3,
+    };
+    const live: Post = {
+      ...published,
+      title: 'Live title',
+      version: 2,
+    };
+    const send = vi.fn(async (command: { constructor: { name: string }; input: Record<string, unknown> }) => {
+      if (command.constructor.name === 'GetCommand') {
+        const key = command.input.Key as { sk?: string };
+        if (key.sk === postPublishedSk()) {
+          return { Item: buildPublishedItem(live) };
+        }
+        return { Item: buildMetaItem(published) };
+      }
+      return {};
+    });
+    const doc = { send } as unknown as DynamoDBDocumentClient;
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const next = await repo.publish(published.id);
+    expect(next.title).toBe('Draft title');
+    expect(next.hasUnpublishedChanges).toBe(false);
+    const tx = send.mock.calls.find(
+      (c) => (c[0] as { constructor: { name: string } }).constructor.name === 'TransactWriteCommand',
+    )![0] as { input: { TransactItems: Array<Record<string, unknown>> } };
+    const sks = tx.input.TransactItems.flatMap((item) => {
+      const put = item.Put as { Item?: { sk?: string } } | undefined;
+      return put?.Item?.sk ? [put.Item.sk] : [];
+    });
+    expect(sks.sort()).toEqual(['META', 'PUBLISHED']);
   });
 });

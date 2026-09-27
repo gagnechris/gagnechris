@@ -57,6 +57,7 @@ const samplePost: Post = {
   coverImage: null,
   seo: null,
   version: 1,
+  hasUnpublishedChanges: false,
 };
 
 describe('posts HTTP handlers', () => {
@@ -114,6 +115,7 @@ describe('posts HTTP handlers', () => {
       status: 'published',
       publishedAt: samplePost.updatedAt,
       version: 2,
+  hasUnpublishedChanges: false,
     });
     vi.mocked(repo.softDelete).mockRejectedValue(
       new NotFoundError('Post missing'),

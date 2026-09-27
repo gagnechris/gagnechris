@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AttributeValue, DynamoDBRecord } from 'aws-lambda';
-import { collectSlugsToRemove } from '../src/handler.js';
+import { collectSlugsToRemove, streamNeedsRebuild } from '../src/handler.js';
 
 function metaImage(fields: {
   slug: string;
@@ -8,7 +8,7 @@ function metaImage(fields: {
 }): Record<string, AttributeValue> {
   return {
     pk: { S: 'POST#1' },
-    sk: { S: 'META' },
+    sk: { S: 'PUBLISHED' },
     entityType: { S: 'post' },
     postId: { S: '1' },
     slug: { S: fields.slug },
@@ -56,5 +56,40 @@ describe('collectSlugsToRemove', () => {
       'before',
       'old-slug',
     ]);
+  });
+});
+
+describe('streamNeedsRebuild', () => {
+  it('rebuilds on PUBLISHED changes only', () => {
+    const publishedChange: DynamoDBRecord = {
+      eventID: '1',
+      eventName: 'MODIFY',
+      eventSource: 'aws:dynamodb',
+      dynamodb: {
+        OldImage: metaImage({ slug: 'a', status: 'published' }),
+        NewImage: metaImage({ slug: 'a', status: 'published' }),
+      },
+    };
+    expect(streamNeedsRebuild([publishedChange])).toBe(true);
+  });
+
+  it('ignores META draft edits', () => {
+    const metaImageLocal = (fields: {
+      slug: string;
+      status: string;
+    }): Record<string, AttributeValue> => ({
+      ...metaImage(fields),
+      sk: { S: 'META' },
+    });
+    const draftEdit: DynamoDBRecord = {
+      eventID: '1',
+      eventName: 'MODIFY',
+      eventSource: 'aws:dynamodb',
+      dynamodb: {
+        OldImage: metaImageLocal({ slug: 'a', status: 'published' }),
+        NewImage: metaImageLocal({ slug: 'a', status: 'published' }),
+      },
+    };
+    expect(streamNeedsRebuild([draftEdit])).toBe(false);
   });
 });

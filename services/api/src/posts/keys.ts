@@ -9,6 +9,10 @@ export function postMetaSk(): string {
   return 'META';
 }
 
+export function postPublishedSk(): string {
+  return 'PUBLISHED';
+}
+
 export function slugPk(slug: string): string {
   return `SLUG#${slug}`;
 }
@@ -86,7 +90,31 @@ export type PostMetaItem = {
   gsi1sk: string;
 };
 
-export function metaToPost(item: PostMetaItem): Post {
+export function postContentEqual(
+  a: Pick<
+    Post,
+    'slug' | 'title' | 'excerpt' | 'bodyMarkdown' | 'tags' | 'coverImage' | 'seo'
+  >,
+  b: Pick<
+    Post,
+    'slug' | 'title' | 'excerpt' | 'bodyMarkdown' | 'tags' | 'coverImage' | 'seo'
+  >,
+): boolean {
+  return (
+    a.slug === b.slug &&
+    a.title === b.title &&
+    a.excerpt === b.excerpt &&
+    a.bodyMarkdown === b.bodyMarkdown &&
+    JSON.stringify(a.tags) === JSON.stringify(b.tags) &&
+    a.coverImage === b.coverImage &&
+    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+  );
+}
+
+export function metaToPost(
+  item: PostMetaItem,
+  hasUnpublishedChanges = false,
+): Post {
   return {
     id: item.postId,
     slug: item.slug,
@@ -100,6 +128,7 @@ export function metaToPost(item: PostMetaItem): Post {
     coverImage: item.coverImage,
     seo: item.seo,
     version: item.version,
+    hasUnpublishedChanges,
   };
 }
 
@@ -126,5 +155,23 @@ export function buildMetaItem(post: Post): PostMetaItem {
     version: post.version,
     gsi1pk: statusGsi1Pk(post.status),
     gsi1sk: statusGsi1Sk(sortTs, post.id),
+  };
+}
+
+/**
+ * Live snapshot read by the publisher. Omits GSI1 keys so admin
+ * `STATUS#published` queries only return draft META rows.
+ */
+export function buildPublishedItem(
+  post: Post,
+): Omit<PostMetaItem, 'gsi1pk' | 'gsi1sk'> {
+  const publishedAt = post.publishedAt ?? post.updatedAt;
+  const meta = buildMetaItem({ ...post, status: 'published', publishedAt });
+  const { gsi1pk: _gsi1pk, gsi1sk: _gsi1sk, ...rest } = meta;
+  return {
+    ...rest,
+    sk: postPublishedSk(),
+    status: 'published',
+    publishedAt,
   };
 }

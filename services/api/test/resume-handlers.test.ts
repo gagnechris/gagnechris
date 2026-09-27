@@ -45,6 +45,7 @@ const sampleResume: Resume = {
   publishedAt: '2026-09-27T01:00:00.000Z',
   updatedAt: '2026-09-27T01:00:00.000Z',
   version: 1,
+  hasUnpublishedChanges: false,
 };
 
 describe('resume HTTP handlers', () => {
@@ -87,6 +88,7 @@ describe('resume HTTP handlers', () => {
     const result = await handleResumeRoute(
       event('PUT', '/api/admin/resume', {
         version: 1,
+  hasUnpublishedChanges: false,
         name: 'Chris Gagne',
         content: sampleResume.content,
       }),
@@ -126,6 +128,7 @@ describe('resume HTTP handlers', () => {
       ...sampleResume,
       status: 'draft',
       version: 2,
+  hasUnpublishedChanges: false,
     });
 
     const published = await handleResumeRoute(

@@ -196,7 +196,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 ## Publisher (CHR-34)
 
-`Publisher-prod`: DynamoDB Streams (META filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Errors alarm to the Guardrails alerts topic.
+`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Errors alarm to the Guardrails alerts topic.
 
 Manual republish-all (after shell deploy, or recovery):
 

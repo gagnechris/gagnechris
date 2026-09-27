@@ -198,7 +198,7 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/posts/{id}/publish',
-    summary: 'Publish post (stream event for publisher)',
+    summary: 'Publish post (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema },
@@ -234,6 +234,25 @@ export function buildOpenApiDocument() {
   });
 
   registry.registerPath({
+    method: 'post',
+    path: '/api/admin/posts/{id}/discard',
+    summary: 'Discard draft edits and restore from the published snapshot',
+    tags: ['Posts'],
+    security: [{ bearerAuth: [] }],
+    request: { params: PostIdParamsSchema },
+    responses: {
+      200: {
+        description: 'Draft restored from published snapshot',
+        content: { 'application/json': { schema: PostSchema } },
+      },
+      404: {
+        description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
     method: 'delete',
     path: '/api/admin/posts/{id}',
     summary: 'Soft-delete post',
@@ -255,7 +274,7 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'get',
     path: '/api/admin/home',
-    summary: 'Get the singleton home page content (seeded on first read)',
+    summary: 'Get home draft (seeded as draft on first read; includes hasUnpublishedChanges)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -302,7 +321,7 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/home/publish',
-    summary: 'Publish home (stream event for publisher)',
+    summary: 'Publish home (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -336,9 +355,27 @@ export function buildOpenApiDocument() {
   });
 
   registry.registerPath({
+    method: 'post',
+    path: '/api/admin/home/discard',
+    summary: 'Discard draft edits and restore from the published snapshot',
+    tags: ['Home'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Draft restored from published snapshot',
+        content: { 'application/json': { schema: HomeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
     method: 'get',
     path: '/api/admin/resume',
-    summary: 'Get the singleton resume (seeded on first read)',
+    summary: 'Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -385,7 +422,7 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/resume/publish',
-    summary: 'Publish resume (stream event for publisher)',
+    summary: 'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     responses: {
@@ -409,6 +446,24 @@ export function buildOpenApiDocument() {
     responses: {
       200: {
         description: 'Unpublished (draft)',
+        content: { 'application/json': { schema: ResumeSchema } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/resume/discard',
+    summary: 'Discard draft edits and restore from the published snapshot',
+    tags: ['Resume'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Draft restored from published snapshot',
         content: { 'application/json': { schema: ResumeSchema } },
       },
       401: {

@@ -200,6 +200,37 @@ export default function AdminResumePage() {
         return
       }
       setResume(data)
+      setDraft(fromResume(data))
+      versionRef.current = data.version
+      setDirty(false)
+      setSaveState('saved')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runDiscard = async () => {
+    if (busy) return
+    if (
+      !window.confirm(
+        'Discard unpublished edits and restore the last published resume?',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setSaveError(null)
+    try {
+      const client = createApiClient()
+      const { data, error, response } = await client.POST(
+        '/api/admin/resume/discard',
+      )
+      if (error || !data) {
+        setSaveError(`Discard failed (${response.status}).`)
+        return
+      }
+      setResume(data)
+      setDraft(fromResume(data))
       versionRef.current = data.version
       setDirty(false)
       setSaveState('saved')
@@ -245,6 +276,11 @@ export default function AdminResumePage() {
             <span className={`admin-badge admin-badge--${resume.status}`}>
               {resume.status}
             </span>
+            {resume.hasUnpublishedChanges ? (
+              <span className="admin-badge admin-badge--unpublished">
+                Unpublished changes
+              </span>
+            ) : null}
             <span className="admin-save-indicator" data-state={saveState}>
               {saveLabel}
             </span>
@@ -254,6 +290,26 @@ export default function AdminResumePage() {
           <a className="admin-btn" href="/resume" target="_blank" rel="noreferrer">
             View live
           </a>
+          {resume.status === 'draft' || resume.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn admin-btn--primary"
+              disabled={busy}
+              onClick={() => void runStatusChange('publish')}
+            >
+              {resume.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
+            </button>
+          ) : null}
+          {resume.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn"
+              disabled={busy}
+              onClick={() => void runDiscard()}
+            >
+              Discard changes
+            </button>
+          ) : null}
           {resume.status === 'published' ? (
             <button
               type="button"
@@ -263,16 +319,7 @@ export default function AdminResumePage() {
             >
               Unpublish
             </button>
-          ) : (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runStatusChange('publish')}
-            >
-              Publish
-            </button>
-          )}
+          ) : null}
           <button
             type="button"
             className="admin-btn"

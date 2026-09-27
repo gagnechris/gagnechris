@@ -76,6 +76,12 @@ export async function handlePostsRoute(
       return json(200, PostSchema.parse(post));
     }
 
+    const discardMatch = /^\/admin\/posts\/([^/]+)\/discard$/.exec(adminPosts);
+    if (method === 'POST' && discardMatch) {
+      const post = await posts.discard(discardMatch[1]!);
+      return json(200, PostSchema.parse(post));
+    }
+
     const byId = /^\/admin\/posts\/([^/]+)$/.exec(adminPosts);
     if (byId) {
       const id = byId[1]!;
