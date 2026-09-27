@@ -1,6 +1,6 @@
 import type { Home } from '@gagnechris/shared';
 
-/** Singleton home page — one item, fetched by key (no GSI1 row, see docs/data-model.md). */
+/** Singleton home page — draft META + optional PUBLISHED snapshot (see docs/data-model.md). */
 export const HOME_ID = 'current';
 
 export function homePk(): string {
@@ -9,6 +9,10 @@ export function homePk(): string {
 
 export function homeMetaSk(): string {
   return 'META';
+}
+
+export function homePublishedSk(): string {
+  return 'PUBLISHED';
 }
 
 export function nowIso(): string {
@@ -30,7 +34,23 @@ export type HomeMetaItem = {
   version: number;
 };
 
-export function metaToHome(item: HomeMetaItem): Home {
+/** Content fields only — used to detect draft vs published snapshot drift. */
+export function homeContentEqual(
+  a: Pick<Home, 'name' | 'title' | 'about' | 'seo'>,
+  b: Pick<Home, 'name' | 'title' | 'about' | 'seo'>,
+): boolean {
+  return (
+    a.name === b.name &&
+    a.title === b.title &&
+    a.about === b.about &&
+    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+  );
+}
+
+export function metaToHome(
+  item: HomeMetaItem,
+  hasUnpublishedChanges = false,
+): Home {
   return {
     name: item.name,
     title: item.title,
@@ -40,6 +60,7 @@ export function metaToHome(item: HomeMetaItem): Home {
     updatedAt: item.updatedAt,
     seo: item.seo ?? null,
     version: item.version,
+    hasUnpublishedChanges,
   };
 }
 
@@ -57,5 +78,13 @@ export function buildHomeMetaItem(home: Home): HomeMetaItem {
     updatedAt: home.updatedAt,
     seo: home.seo,
     version: home.version,
+  };
+}
+
+export function buildHomePublishedItem(home: Home): HomeMetaItem {
+  return {
+    ...buildHomeMetaItem(home),
+    sk: homePublishedSk(),
+    status: 'published',
   };
 }

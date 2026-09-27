@@ -32,6 +32,7 @@ const samplePost = (overrides: Partial<Post> = {}): Post => ({
   coverImage: '/media/cover.jpg',
   seo: null,
   version: 1,
+  hasUnpublishedChanges: false,
   ...overrides,
 });
 

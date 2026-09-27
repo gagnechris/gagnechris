@@ -14,6 +14,7 @@ const publishedResume = {
   status: 'published' as const,
   publishedAt: '2026-09-27T00:00:00.000Z',
   version: 1,
+  hasUnpublishedChanges: false,
 };
 
 describe('sanitizeResumePdfText', () => {

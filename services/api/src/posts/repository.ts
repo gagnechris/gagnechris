@@ -21,11 +21,14 @@ import { getDocClient, requireTableName } from '../data/client.js';
 import { ConflictError, NotFoundError } from '../data/errors.js';
 import {
   buildMetaItem,
+  buildPublishedItem,
   metaToPost,
   normalizeTags,
   nowIso,
+  postContentEqual,
   postMetaSk,
   postPk,
+  postPublishedSk,
   slugify,
   slugPk,
   slugPostSk,
@@ -44,6 +47,17 @@ export class PostsRepository {
     private readonly tableName: string = requireTableName(),
   ) {}
 
+  async getPublished(postId: string): Promise<Post | undefined> {
+    const result = await this.doc.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { pk: postPk(postId), sk: postPublishedSk() },
+      }),
+    );
+    if (!result.Item) return undefined;
+    return metaToPost(result.Item as PostMetaItem, false);
+  }
+
   async getById(postId: string): Promise<Post | undefined> {
     const result = await this.doc.send(
       new GetCommand({
@@ -52,7 +66,11 @@ export class PostsRepository {
       }),
     );
     if (!result.Item) return undefined;
-    return metaToPost(result.Item as PostMetaItem);
+    const draft = metaToPost(result.Item as PostMetaItem);
+    if (draft.status === 'deleted') return draft;
+    await this.migratePublishedSnapshot(draft);
+    const published = await this.getPublished(postId);
+    return this.withUnpublishedFlag(draft, published);
   }
 
   async getBySlug(slug: string): Promise<Post | undefined> {
@@ -84,13 +102,26 @@ export class PostsRepository {
           }),
         );
         return (result.Items ?? [])
-          .filter((item) => item.entityType === 'post')
+          .filter(
+            (item) => item.entityType === 'post' && item.sk === postMetaSk(),
+          )
           .map((item) => metaToPost(item as PostMetaItem));
       }),
     );
-    return batches
+    const drafts = batches
       .flat()
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    return Promise.all(
+      drafts.map(async (draft) => {
+        if (draft.status !== 'published') {
+          return this.withUnpublishedFlag(draft, undefined);
+        }
+        await this.migratePublishedSnapshot(draft);
+        const published = await this.getPublished(draft.id);
+        return this.withUnpublishedFlag(draft, published);
+      }),
+    );
   }
 
   async create(input: CreatePostRequest): Promise<Post> {
@@ -112,6 +143,7 @@ export class PostsRepository {
       coverImage: input.coverImage ?? null,
       seo: input.seo ?? null,
       version: 1,
+      hasUnpublishedChanges: false,
     };
     const meta = buildMetaItem(post);
 
@@ -180,12 +212,19 @@ export class PostsRepository {
       seo: input.seo !== undefined ? input.seo : existing.seo,
       updatedAt,
       version: existing.version + 1,
+      hasUnpublishedChanges: false,
     };
 
-    await this.writePostMutation(existing, next);
-    return next;
+    // Draft edits never rewrite the public tag index — that stays tied to PUBLISHED.
+    await this.writeDraftMutation(existing, next, { syncTags: false });
+    const published = await this.getPublished(postId);
+    return this.withUnpublishedFlag(next, published);
   }
 
+  /**
+   * Copies draft META → PUBLISHED (and syncs tag index). Re-publish after
+   * edits is intentional — no longer a no-op when already published.
+   */
   async publish(
     postId: string,
     options?: { publishedAt?: string },
@@ -194,8 +233,13 @@ export class PostsRepository {
     if (!existing || existing.status === 'deleted') {
       throw new NotFoundError(`Post ${postId} not found`);
     }
-    if (existing.status === 'published') {
-      return existing;
+    const published = await this.getPublished(postId);
+    if (
+      existing.status === 'published' &&
+      published &&
+      postContentEqual(existing, published)
+    ) {
+      return this.withUnpublishedFlag(existing, published);
     }
     const updatedAt = nowIso();
     const publishedAt =
@@ -206,9 +250,14 @@ export class PostsRepository {
       publishedAt,
       updatedAt,
       version: existing.version + 1,
+      hasUnpublishedChanges: false,
     };
-    await this.writePostMutation(existing, next);
-    return next;
+    await this.writeDraftMutation(existing, next, {
+      syncTags: true,
+      writePublished: true,
+      previousPublished: published,
+    });
+    return this.withUnpublishedFlag(next, next);
   }
 
   async unpublish(postId: string): Promise<Post> {
@@ -217,17 +266,47 @@ export class PostsRepository {
       throw new NotFoundError(`Post ${postId} not found`);
     }
     if (existing.status === 'draft') {
-      return existing;
+      return this.withUnpublishedFlag(existing, undefined);
     }
+    const published = await this.getPublished(postId);
     const updatedAt = nowIso();
     const next: Post = {
       ...existing,
       status: 'draft',
       updatedAt,
       version: existing.version + 1,
+      hasUnpublishedChanges: false,
     };
-    await this.writePostMutation(existing, next);
+    await this.writeDraftMutation(existing, next, {
+      syncTags: true,
+      deletePublished: true,
+      previousPublished: published,
+    });
     return next;
+  }
+
+  async discard(postId: string): Promise<Post> {
+    const existing = await this.getById(postId);
+    if (!existing || existing.status === 'deleted') {
+      throw new NotFoundError(`Post ${postId} not found`);
+    }
+    const published = await this.getPublished(postId);
+    if (!published) {
+      return this.withUnpublishedFlag(existing, undefined);
+    }
+    if (postContentEqual(existing, published)) {
+      return this.withUnpublishedFlag(existing, published);
+    }
+    const next: Post = {
+      ...published,
+      status: 'published',
+      publishedAt: existing.publishedAt ?? published.publishedAt,
+      updatedAt: nowIso(),
+      version: existing.version + 1,
+      hasUnpublishedChanges: false,
+    };
+    await this.writeDraftMutation(existing, next, { syncTags: false });
+    return this.withUnpublishedFlag(next, published);
   }
 
   async softDelete(postId: string): Promise<Post> {
@@ -235,22 +314,72 @@ export class PostsRepository {
     if (!existing || existing.status === 'deleted') {
       throw new NotFoundError(`Post ${postId} not found`);
     }
+    const published = await this.getPublished(postId);
     const updatedAt = nowIso();
     const next: Post = {
       ...existing,
       status: 'deleted',
       updatedAt,
       version: existing.version + 1,
+      hasUnpublishedChanges: false,
     };
-    await this.writePostMutation(existing, next);
+    await this.writeDraftMutation(existing, next, {
+      syncTags: true,
+      deletePublished: true,
+      previousPublished: published,
+    });
     return next;
   }
 
   /**
-   * Persist META (+ slug/tag bookkeeping). Publisher is notified via
-   * DynamoDB Streams on META changes (CHR-34) — no separate EventBridge bus.
+   * One-time cutover: if META is already published and PUBLISHED is missing,
+   * copy META → PUBLISHED so the live site stays unchanged.
    */
-  private async writePostMutation(before: Post, after: Post): Promise<void> {
+  private async migratePublishedSnapshot(draft: Post): Promise<void> {
+    if (draft.status !== 'published') return;
+    const published = await this.getPublished(draft.id);
+    if (published) return;
+    try {
+      await this.doc.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: buildPublishedItem(draft),
+          ConditionExpression: 'attribute_not_exists(pk)',
+        }),
+      );
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) return;
+      throw error;
+    }
+  }
+
+  private withUnpublishedFlag(
+    draft: Post,
+    published: Post | undefined,
+  ): Post {
+    return {
+      ...draft,
+      hasUnpublishedChanges:
+        draft.status === 'published' &&
+        published !== undefined &&
+        !postContentEqual(draft, published),
+    };
+  }
+
+  /**
+   * Persist META (+ slug bookkeeping). Optionally sync the PUBLISHED snapshot
+   * and public tag index. Publisher rebuilds only on PUBLISHED stream events.
+   */
+  private async writeDraftMutation(
+    before: Post,
+    after: Post,
+    options: {
+      syncTags?: boolean;
+      writePublished?: boolean;
+      deletePublished?: boolean;
+      previousPublished?: Post;
+    } = {},
+  ): Promise<void> {
     const meta = buildMetaItem(after);
     const transactItems: NonNullable<
       ConstructorParameters<typeof TransactWriteCommand>[0]
@@ -302,52 +431,75 @@ export class PostsRepository {
       );
     }
 
-    // Tag index rows only for published posts (public browse).
-    const beforeTags =
-      before.status === 'published' ? before.tags : ([] as string[]);
-    const afterTags =
-      after.status === 'published' ? after.tags : ([] as string[]);
-    const beforePublishedAt = before.publishedAt;
-    const afterPublishedAt = after.publishedAt;
-
-    for (const tag of beforeTags) {
-      if (!beforePublishedAt) continue;
-      const still =
-        afterTags.includes(tag) &&
-        afterPublishedAt === beforePublishedAt &&
-        after.status === 'published';
-      if (still) continue;
-      transactItems.push({
-        Delete: {
-          TableName: this.tableName,
-          Key: {
-            pk: tagPk(tag),
-            sk: tagSk(beforePublishedAt, before.id),
-          },
-        },
-      });
-    }
-    for (const tag of afterTags) {
-      if (!afterPublishedAt) continue;
-      const already =
-        beforeTags.includes(tag) &&
-        beforePublishedAt === afterPublishedAt &&
-        before.status === 'published';
-      if (already) continue;
+    if (options.writePublished) {
       transactItems.push({
         Put: {
           TableName: this.tableName,
-          Item: {
-            pk: tagPk(tag),
-            sk: tagSk(afterPublishedAt, after.id),
-            gsi2pk: tagPk(tag),
-            gsi2sk: tagSk(afterPublishedAt, after.id),
-            entityType: 'tagIndex',
-            postId: after.id,
-            slug: after.slug,
-          },
+          Item: buildPublishedItem(after),
         },
       });
+    }
+
+    if (options.deletePublished) {
+      transactItems.push({
+        Delete: {
+          TableName: this.tableName,
+          Key: { pk: postPk(after.id), sk: postPublishedSk() },
+        },
+      });
+    }
+
+    if (options.syncTags) {
+      const previous = options.previousPublished;
+      const beforeTags = previous?.tags ?? [];
+      const beforePublishedAt = previous?.publishedAt ?? null;
+      const afterTags =
+        options.writePublished && after.status === 'published'
+          ? after.tags
+          : ([] as string[]);
+      const afterPublishedAt =
+        options.writePublished && after.status === 'published'
+          ? after.publishedAt
+          : null;
+
+      for (const tag of beforeTags) {
+        if (!beforePublishedAt) continue;
+        const still =
+          afterTags.includes(tag) &&
+          afterPublishedAt === beforePublishedAt &&
+          Boolean(options.writePublished);
+        if (still) continue;
+        transactItems.push({
+          Delete: {
+            TableName: this.tableName,
+            Key: {
+              pk: tagPk(tag),
+              sk: tagSk(beforePublishedAt, before.id),
+            },
+          },
+        });
+      }
+      for (const tag of afterTags) {
+        if (!afterPublishedAt) continue;
+        const already =
+          beforeTags.includes(tag) &&
+          beforePublishedAt === afterPublishedAt;
+        if (already) continue;
+        transactItems.push({
+          Put: {
+            TableName: this.tableName,
+            Item: {
+              pk: tagPk(tag),
+              sk: tagSk(afterPublishedAt, after.id),
+              gsi2pk: tagPk(tag),
+              gsi2sk: tagSk(afterPublishedAt, after.id),
+              entityType: 'tagIndex',
+              postId: after.id,
+              slug: after.slug,
+            },
+          },
+        });
+      }
     }
 
     // Soft-delete: drop active slug claim so the slug can be reused later.

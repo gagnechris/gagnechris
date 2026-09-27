@@ -2,6 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   GetCommand,
+  PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { requireEnv, siteStorageMode } from './config.js';
@@ -51,7 +52,7 @@ export function getSiteStorage(): SiteStorage {
 }
 
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
-  const posts: Post[] = [];
+  const metaIds: string[] = [];
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
   do {
@@ -66,15 +67,61 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       }),
     );
     for (const item of page.Items ?? []) {
-      if (item.sk !== 'META' || item.entityType !== 'post') continue;
-      posts.push(metaToPost(item as PostMetaRecord));
+      if (item.entityType !== 'post' || item.sk !== 'META') continue;
+      if (typeof item.postId === 'string') metaIds.push(item.postId);
     }
     exclusiveStartKey = page.LastEvaluatedKey as
       | Record<string, unknown>
       | undefined;
   } while (exclusiveStartKey);
 
-  return posts;
+  const posts: Post[] = [];
+  for (const postId of metaIds) {
+    const published = await ddb.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { pk: `POST#${postId}`, sk: 'PUBLISHED' },
+      }),
+    );
+    if (published.Item) {
+      posts.push(metaToPost(published.Item as PostMetaRecord));
+      continue;
+    }
+
+    // Rollout safety: copy legacy published META → PUBLISHED.
+    const legacy = await ddb.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { pk: `POST#${postId}`, sk: 'META' },
+      }),
+    );
+    const legacyItem = legacy.Item as PostMetaRecord | undefined;
+    if (
+      !legacyItem ||
+      legacyItem.entityType !== 'post' ||
+      legacyItem.status !== 'published'
+    ) {
+      continue;
+    }
+    const { gsi1pk: _g1, gsi1sk: _g2, ...rest } = legacyItem as PostMetaRecord & {
+      gsi1pk?: string;
+      gsi1sk?: string;
+    };
+    await ddb.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: { ...rest, sk: 'PUBLISHED', status: 'published' },
+        ConditionExpression: 'attribute_not_exists(pk)',
+      }),
+    );
+    posts.push(metaToPost(legacyItem));
+  }
+
+  return posts.sort((a, b) => {
+    const aTs = a.publishedAt ?? a.updatedAt;
+    const bTs = b.publishedAt ?? b.updatedAt;
+    return bTs.localeCompare(aTs);
+  });
 }
 
 export async function getPublishedResume(
@@ -83,14 +130,38 @@ export async function getPublishedResume(
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'RESUME#current', sk: 'META' },
+      Key: { pk: 'RESUME#current', sk: 'PUBLISHED' },
     }),
   );
   const item = result.Item as ResumeMetaRecord | undefined;
-  if (!item || item.entityType !== 'resume' || item.status !== 'published') {
+  if (item && item.entityType === 'resume' && item.status === 'published') {
+    return metaToResume(item);
+  }
+
+  // Rollout safety: copy legacy META → PUBLISHED without changing live content.
+  const legacy = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { pk: 'RESUME#current', sk: 'META' },
+    }),
+  );
+  const legacyItem = legacy.Item as ResumeMetaRecord | undefined;
+  if (
+    !legacyItem ||
+    legacyItem.entityType !== 'resume' ||
+    legacyItem.status !== 'published'
+  ) {
     return undefined;
   }
-  return metaToResume(item);
+  const resume = metaToResume(legacyItem);
+  await ddb.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: { ...legacyItem, sk: 'PUBLISHED', status: 'published' },
+      ConditionExpression: 'attribute_not_exists(pk)',
+    }),
+  );
+  return resume;
 }
 
 export async function getPublishedHome(
@@ -99,14 +170,38 @@ export async function getPublishedHome(
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'HOME#current', sk: 'META' },
+      Key: { pk: 'HOME#current', sk: 'PUBLISHED' },
     }),
   );
   const item = result.Item as HomeMetaRecord | undefined;
-  if (!item || item.entityType !== 'home' || item.status !== 'published') {
+  if (item && item.entityType === 'home' && item.status === 'published') {
+    return metaToHome(item);
+  }
+
+  // Rollout safety: copy legacy META → PUBLISHED without changing live content.
+  const legacy = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { pk: 'HOME#current', sk: 'META' },
+    }),
+  );
+  const legacyItem = legacy.Item as HomeMetaRecord | undefined;
+  if (
+    !legacyItem ||
+    legacyItem.entityType !== 'home' ||
+    legacyItem.status !== 'published'
+  ) {
     return undefined;
   }
-  return metaToHome(item);
+  const home = metaToHome(legacyItem);
+  await ddb.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: { ...legacyItem, sk: 'PUBLISHED', status: 'published' },
+      ConditionExpression: 'attribute_not_exists(pk)',
+    }),
+  );
+  return home;
 }
 
 export type RebuildResult = {

@@ -147,8 +147,38 @@ export default function AdminHomePage() {
         )
         return
       }
-      // Status/version only — keep the live draft intact.
       setHome(data)
+      setDraft(fromHome(data))
+      versionRef.current = data.version
+      setDirty(false)
+      setSaveState('saved')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runDiscard = async () => {
+    if (busy) return
+    if (
+      !window.confirm(
+        'Discard unpublished edits and restore the last published home content?',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setSaveError(null)
+    try {
+      const client = createApiClient()
+      const { data, error, response } = await client.POST(
+        '/api/admin/home/discard',
+      )
+      if (error || !data) {
+        setSaveError(`Discard failed (${response.status}).`)
+        return
+      }
+      setHome(data)
+      setDraft(fromHome(data))
       versionRef.current = data.version
       setDirty(false)
       setSaveState('saved')
@@ -189,6 +219,11 @@ export default function AdminHomePage() {
             <span className={`admin-badge admin-badge--${home.status}`}>
               {home.status}
             </span>
+            {home.hasUnpublishedChanges ? (
+              <span className="admin-badge admin-badge--unpublished">
+                Unpublished changes
+              </span>
+            ) : null}
             <span className="admin-save-indicator" data-state={saveState}>
               {saveLabel}
             </span>
@@ -198,6 +233,26 @@ export default function AdminHomePage() {
           <a className="admin-btn" href="/" target="_blank" rel="noreferrer">
             View live
           </a>
+          {home.status === 'draft' || home.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn admin-btn--primary"
+              disabled={busy}
+              onClick={() => void runStatusChange('publish')}
+            >
+              {home.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
+            </button>
+          ) : null}
+          {home.hasUnpublishedChanges ? (
+            <button
+              type="button"
+              className="admin-btn"
+              disabled={busy}
+              onClick={() => void runDiscard()}
+            >
+              Discard changes
+            </button>
+          ) : null}
           {home.status === 'published' ? (
             <button
               type="button"
@@ -207,16 +262,7 @@ export default function AdminHomePage() {
             >
               Unpublish
             </button>
-          ) : (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runStatusChange('publish')}
-            >
-              Publish
-            </button>
-          )}
+          ) : null}
           <button
             type="button"
             className="admin-btn"

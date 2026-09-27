@@ -28,6 +28,7 @@ const baseHome = {
     ogImage: '/media/og-home.png',
   },
   version: 1,
+  hasUnpublishedChanges: false,
 }
 
 describe('AdminHomePage autosave', () => {
@@ -72,6 +73,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'Engineering',
         version: 2,
+  hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:01:00.000Z',
       },
       error: undefined,
@@ -116,6 +118,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'EngineeringA',
         version: 2,
+  hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:01:00.000Z',
       },
       error: undefined,
@@ -130,6 +133,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'EngineeringAB',
         version: 3,
+  hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:02:00.000Z',
       },
       error: undefined,

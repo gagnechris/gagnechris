@@ -33,6 +33,7 @@ describe('AdminPostsPage', () => {
             coverImage: null,
             seo: null,
             version: 1,
+  hasUnpublishedChanges: false,
           },
         ],
       },

@@ -68,6 +68,10 @@ export const PostSchema = z
     coverImage: z.string().nullable(),
     seo: PostSeoSchema.nullable(),
     version: z.number().int().nonnegative(),
+    hasUnpublishedChanges: z.boolean().openapi({
+      description:
+        'True when a published snapshot exists and the editable draft differs from it',
+    }),
   })
   .openapi('Post');
 
@@ -216,6 +220,10 @@ export const HomeSchema = z
     updatedAt: z.string().datetime({ offset: true }),
     seo: PostSeoSchema.nullable(),
     version: z.number().int().nonnegative(),
+    hasUnpublishedChanges: z.boolean().openapi({
+      description:
+        'True when a published snapshot exists and the editable draft differs from it',
+    }),
   })
   .openapi('Home');
 
@@ -286,6 +294,10 @@ export const ResumeSchema = z
     updatedAt: z.string().datetime({ offset: true }),
     seo: PostSeoSchema.nullable(),
     version: z.number().int().nonnegative(),
+    hasUnpublishedChanges: z.boolean().openapi({
+      description:
+        'True when a published snapshot exists and the editable draft differs from it',
+    }),
   })
   .openapi('Resume');
 

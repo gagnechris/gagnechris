@@ -63,7 +63,7 @@ if [[ ! -f apps/web/dist/index.html ]]; then
   VITE_COGNITO_USER_POOL_ID="${VITE_COGNITO_USER_POOL_ID:-us-east-1_ciPlaceholder}" \
   VITE_COGNITO_WEB_CLIENT_ID="${VITE_COGNITO_WEB_CLIENT_ID:-ciplaceholderclientid00000000}" \
   VITE_COGNITO_AUTH_DOMAIN="${VITE_COGNITO_AUTH_DOMAIN:-auth.example.com}" \
-  npm run build
+  env -u VITE_AUTH_MODE npm run build
 fi
 
 echo "==> Seed site shell"
@@ -126,9 +126,11 @@ echo "${HTML}" | grep -q 'property="og:title"'
 echo "${HTML}" | grep -q 'class="blog-post-prerender"'
 echo "${HTML}" | grep -q 'Local body'
 
-echo "==> Seed + assert home prerender (CHR-92)"
+echo "==> Seed home as draft, publish, assert prerender (CHR-96)"
 HOME_JSON="$(curl -sS "${API}/api/admin/home")"
-node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'){console.error(h);process.exit(1)}" "${HOME_JSON}"
+node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='draft'){console.error('expected draft seed',h);process.exit(1)}" "${HOME_JSON}"
+HOME_PUB="$(curl -sS -X POST "${API}/api/admin/home/publish")"
+node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'||h.hasUnpublishedChanges){console.error(h);process.exit(1)}" "${HOME_PUB}"
 HOME_HTML="$(curl -sS "${SITE}/")"
 echo "${HOME_HTML}" | grep -q 'class="home-page-prerender"'
 echo "${HOME_HTML}" | grep -q 'About Me'
@@ -142,15 +144,25 @@ if echo "${POST_HTML}" | grep -q 'home-page-prerender'; then
 fi
 echo "${POST_HTML}" | grep -q 'class="blog-post-prerender"'
 
-echo "==> Edit published title (no re-publish)"
+echo "==> Edit published title without re-publish (live must stay unchanged)"
 VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PUBLISH}")"
 UPDATED="$(curl -sS -X PUT "${API}/api/admin/posts/${POST_ID}" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${VERSION},\"title\":\"Local E2E Updated\"}")"
-node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'){console.error(p);process.exit(1)}" "${UPDATED}"
+node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||!p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${UPDATED}"
 
 HTML2="$(curl -sS "${SITE}/blog/${SLUG}")"
-echo "${HTML2}" | grep -q 'Local E2E Updated'
+echo "${HTML2}" | grep -q 'Local E2E Post'
+if echo "${HTML2}" | grep -q 'Local E2E Updated'; then
+  echo "Draft edit unexpectedly went live before publish" >&2
+  exit 1
+fi
+
+echo "==> Publish changes makes the edit live"
+REPUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish")"
+node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${REPUBLISH}"
+HTML3="$(curl -sS "${SITE}/blog/${SLUG}")"
+echo "${HTML3}" | grep -q 'Local E2E Updated'
 
 echo "==> Orphan cleanup"
 ORPHAN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/blog/orphan-e2e")"

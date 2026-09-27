@@ -26,21 +26,30 @@ redirects use dedicated items.
 
 ### Items
 
-#### `POST#<postId>` / `META` — canonical post
+#### `POST#<postId>` / `META` — editable draft
 
 | Attr | Notes |
 | --- | --- |
-| `slug` | Current public slug |
-| `title`, `excerpt`, `bodyMarkdown` | Content |
+| `slug` | Current draft slug |
+| `title`, `excerpt`, `bodyMarkdown` | Draft content |
 | `tags` | `string[]` |
-| `status` | `draft` \| `published` \| `deleted` (soft delete) |
-| `publishedAt` | ISO-8601 when first published; cleared/kept on unpublish per API |
+| `status` | `draft` \| `published` \| `deleted` (soft delete). `published` means a live snapshot exists |
+| `publishedAt` | ISO-8601 when first published; kept on unpublish |
 | `updatedAt` | ISO-8601 |
 | `coverImage` | Optional `/media/...` path |
 | `seo` | Optional map: `title`, `description`, `ogImage` overrides |
 | `version` | Number for optimistic concurrency (CHR-30) |
 | `gsi1pk` | `STATUS#<status>` |
 | `gsi1sk` | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt` |
+
+Admin autosave writes **only** this item. Edits never change the live site.
+
+#### `POST#<postId>` / `PUBLISHED` — live snapshot (CHR-96)
+
+Written only on `POST .../publish`. Same content attrs as META (no GSI1 keys —
+admin `STATUS#published` queries stay unique to META). The publisher stream
+filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
+`unpublish` / soft-delete removes this item.
 
 #### `SLUG#<slug>` / `POST` — uniqueness + lookup
 
@@ -73,13 +82,14 @@ Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
 
 | Need | How |
 | --- | --- |
-| Get by `postId` | `GetItem` `POST#id` / `META` |
+| Get by `postId` | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
 | Get by slug | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`) |
-| List all (admin) | Query GSI1 `STATUS#draft` and `STATUS#published` (and `deleted` if needed), merge/sort client-side or two queries |
-| List published by date | Query GSI1 `STATUS#published`, `ScanIndexForward=false` |
+| List all (admin) | Query GSI1 `STATUS#draft` and `STATUS#published` (META only), merge/sort |
+| List published by date | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED` |
 | List by tag (published) | See tag items below |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST` |
-| Soft delete | Set `status=deleted`, move GSI1 keys to `STATUS#deleted` |
+| Soft delete | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim |
+| Publish / discard | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META |
 
 ### Tag index items
 
@@ -96,17 +106,16 @@ pk/sk (or project from GSI2 only). Simpler pattern used here:
 | `gsi2sk` | same as `sk` |
 | `postId`, `slug` | denormalized for list cards |
 
-On publish/unpublish/tag edit, rewrite these sparse items in a transaction with
-`META`.
+On publish/unpublish, rewrite these sparse items from the **PUBLISHED**
+snapshot (draft tag edits do not change the public tag index until publish).
 
 List by tag: `Query` `pk = TAG#x` (or GSI2), newest first.
 
 ## Resume (singleton)
 
-One item holds the structured resume edited in `/admin/resume` and rendered to
-`resume/index.html` by the publisher (CHR-84 / CHR-89).
+Editable draft plus an optional live snapshot.
 
-#### `RESUME#current` / `META`
+#### `RESUME#current` / `META` — editable draft — draft
 
 | Attr | Notes |
 | --- | --- |
@@ -115,22 +124,23 @@ One item holds the structured resume edited in `/admin/resume` and rendered to
 | `name` | Display name in the page header |
 | `pdfPath` | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
 
-No GSI keys: the singleton is always read with `GetItem`. Admin post listing
-filters `entityType = 'post'` so `STATUS#*` queries never surface the resume.
+No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
+`DEFAULT_RESUME` on first read (CHR-96). Publish copies META → `PUBLISHED`
+(and triggers PDF regeneration). Unpublish deletes `PUBLISHED`. A missing
+published snapshot leaves the existing `resume/index.html` and `resume.pdf`
+in place rather than deleting them.
 
-`GET /api/admin/resume` seeds the item from `DEFAULT_RESUME` with
-`status=published` the first time it is read, so the next publisher run emits
-live HTML (and `/resume.pdf`) that matches the pre-CMS page. Publish/unpublish
-flow through the same `META` stream the blog uses; a draft or missing resume
-leaves the existing `resume/index.html` and `resume.pdf` in place rather than
-deleting them.
+#### `RESUME#current` / `PUBLISHED` — live snapshot
+
+Same content attrs as META. Publisher reads only this item. Existing
+`status=published` META rows are copied to `PUBLISHED` on first admin read or
+publisher rebuild so the live site does not change during rollout.
 
 ## Home (singleton)
 
-One item holds the home page header + About Me copy edited in `/admin/home`
-and prerendered into `index.html` by the publisher (CHR-92).
+Same draft / published split as the resume.
 
-#### `HOME#current` / `META`
+#### `HOME#current` / `META` — editable draft — draft
 
 | Attr | Notes |
 | --- | --- |
@@ -140,9 +150,14 @@ and prerendered into `index.html` by the publisher (CHR-92).
 | `title` | Header subtitle, e.g. `Engineering Leader` |
 | `about` | About Me body text; blank lines separate paragraphs |
 
-Same singleton conventions as the resume: no GSI keys, `GET /api/admin/home`
-seeds from `DEFAULT_HOME` with `status=published` on first read, and a draft or
-missing item leaves the live `index.html` alone.
+`GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
+writes `HOME#current` / `PUBLISHED`; unpublish deletes it. A draft or missing
+published item leaves the live `index.html` alone.
+
+#### `HOME#current` / `PUBLISHED` — live snapshot
+
+Publisher reads only this item (with the same META→PUBLISHED migration as
+resume).
 
 `index.html` is both the Vite SPA shell and the home page. Web deploy uploads
 the empty shell and then invokes `republishAll`, which re-injects the home
@@ -200,5 +215,5 @@ post partitions.
 - Tag normalization: trim, lowercase, collapse internal whitespace to `-`.
 - Transactions: slug claim + `META` (+ tag rows) in one `TransactWriteItems`
   where uniqueness matters.
-- Streams: publisher consumes `META` modifications when `status` becomes
-  `published` or content changes while published (CHR-34).
+- Streams: publisher consumes `sk=PUBLISHED` modifications only (CHR-96). Draft
+  META autosaves never rebuild the live site.

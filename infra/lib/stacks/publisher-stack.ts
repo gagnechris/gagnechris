@@ -149,7 +149,7 @@ export class PublisherStack extends Stack {
           FilterCriteria.filter({
             dynamodb: {
               Keys: {
-                sk: { S: FilterRule.isEqual('META') },
+                sk: { S: FilterRule.isEqual('PUBLISHED') },
               },
             },
           }),

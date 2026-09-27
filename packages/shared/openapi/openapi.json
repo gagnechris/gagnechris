@@ -131,6 +131,10 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean",
+            "description": "True when a published snapshot exists and the editable draft differs from it"
           }
         },
         "required": [
@@ -145,7 +149,8 @@
           "updatedAt",
           "coverImage",
           "seo",
-          "version"
+          "version",
+          "hasUnpublishedChanges"
         ]
       },
       "PostStatus": {
@@ -419,6 +424,10 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean",
+            "description": "True when a published snapshot exists and the editable draft differs from it"
           }
         },
         "required": [
@@ -429,7 +438,8 @@
           "publishedAt",
           "updatedAt",
           "seo",
-          "version"
+          "version",
+          "hasUnpublishedChanges"
         ]
       },
       "UpdateHomeRequest": {
@@ -491,6 +501,10 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean",
+            "description": "True when a published snapshot exists and the editable draft differs from it"
           }
         },
         "required": [
@@ -501,7 +515,8 @@
           "publishedAt",
           "updatedAt",
           "seo",
-          "version"
+          "version",
+          "hasUnpublishedChanges"
         ]
       },
       "ResumeContent": {
@@ -957,7 +972,7 @@
     },
     "/api/admin/posts/{id}/publish": {
       "post": {
-        "summary": "Publish post (stream event for publisher)",
+        "summary": "Publish post (copies draft to PUBLISHED snapshot; stream rebuild)",
         "tags": [
           "Posts"
         ],
@@ -1051,9 +1066,57 @@
         }
       }
     },
+    "/api/admin/posts/{id}/discard": {
+      "post": {
+        "summary": "Discard draft edits and restore from the published snapshot",
+        "tags": [
+          "Posts"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Post id (ULID)"
+            },
+            "required": true,
+            "description": "Post id (ULID)",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Draft restored from published snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/home": {
       "get": {
-        "summary": "Get the singleton home page content (seeded on first read)",
+        "summary": "Get home draft (seeded as draft on first read; includes hasUnpublishedChanges)",
         "tags": [
           "Home"
         ],
@@ -1140,7 +1203,7 @@
     },
     "/api/admin/home/publish": {
       "post": {
-        "summary": "Publish home (stream event for publisher)",
+        "summary": "Publish home (copies draft to PUBLISHED snapshot; stream rebuild)",
         "tags": [
           "Home"
         ],
@@ -1208,9 +1271,44 @@
         }
       }
     },
+    "/api/admin/home/discard": {
+      "post": {
+        "summary": "Discard draft edits and restore from the published snapshot",
+        "tags": [
+          "Home"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Draft restored from published snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Home"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/resume": {
       "get": {
-        "summary": "Get the singleton resume (seeded on first read)",
+        "summary": "Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges)",
         "tags": [
           "Resume"
         ],
@@ -1297,7 +1395,7 @@
     },
     "/api/admin/resume/publish": {
       "post": {
-        "summary": "Publish resume (stream event for publisher)",
+        "summary": "Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)",
         "tags": [
           "Resume"
         ],
@@ -1344,6 +1442,41 @@
         "responses": {
           "200": {
             "description": "Unpublished (draft)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resume"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/resume/discard": {
+      "post": {
+        "summary": "Discard draft edits and restore from the published snapshot",
+        "tags": [
+          "Resume"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Draft restored from published snapshot",
             "content": {
               "application/json": {
                 "schema": {

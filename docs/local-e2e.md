@@ -21,7 +21,7 @@ This script:
 3. Builds the web app if `apps/web/dist` is missing (Cognito placeholders)
 4. Seeds `.local-site/` from that build (publisher shell)
 5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
-6. Creates → publishes → edits → unpublishes a post
+6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
 7. Asserts `/blog/<slug>` returns prerendered HTML + OG tags, and that orphans / unpublished pages 404
 
 ## Day-to-day local admin
@@ -40,22 +40,23 @@ Optional: `npm run build && npm run local:seed-shell` once if you want full SPA 
 
 ### Resume CMS
 
-`http://localhost:5173/admin/resume` edits the singleton resume. The first `GET`
-seeds it (published, from `DEFAULT_RESUME`) and the local API rebuilds the site,
-so `.local-site/resume/index.html` and `.local-site/resume.pdf` exist right away.
-Autosave and publish/unpublish trigger the same rebuild. The public page at
-`http://localhost:5173/resume` fetches `/__site/resume/` and falls back to
-`DEFAULT_RESUME` when no published HTML exists. Download uses `/resume.pdf`
-(Vite proxies that path to the local site origin).
+`http://localhost:5173/admin/resume` edits the singleton resume draft. The first
+`GET` seeds a **draft** from `DEFAULT_RESUME` (no live rebuild). Publish copies
+the draft to the `PUBLISHED` snapshot and rebuilds
+`.local-site/resume/index.html` + `.local-site/resume.pdf`. Autosave updates the
+draft only. The public page at `http://localhost:5173/resume` fetches
+`/__site/resume/` and falls back to `DEFAULT_RESUME` when no published HTML
+exists. Download uses `/resume.pdf` (Vite proxies that path to the local site
+origin).
 
 ### Home CMS
 
 `http://localhost:5173/admin/home` edits the header (name + title) and the
-About Me copy. Like the resume, the first `GET` seeds it published and rebuilds
-the site, so `.local-site/index.html` carries the `home-page-prerender` article
-right away. The public page at `http://localhost:5173/` fetches `/__site/` and
-falls back to `DEFAULT_HOME`. Quick Links and the profile photo are still
-hard-coded React.
+About Me copy. Like the resume, the first `GET` seeds a **draft** and does not
+rebuild. Publish writes the `PUBLISHED` snapshot so `.local-site/index.html`
+gets the `home-page-prerender` article. The public page at
+`http://localhost:5173/` fetches `/__site/` and falls back to `DEFAULT_HOME`.
+Quick Links and the profile photo are still hard-coded React.
 
 `index.html` is the SPA shell *and* the home page, so the publisher strips the
 previous prerender out of `#root` before reusing it as the shell for other

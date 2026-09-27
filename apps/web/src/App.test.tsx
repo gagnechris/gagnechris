@@ -58,6 +58,7 @@ describe('App', () => {
           updatedAt: '2026-09-27T00:00:00.000Z',
           seo: null,
           version: 2,
+  hasUnpublishedChanges: false,
         })}</body></html>`,
     }))
 

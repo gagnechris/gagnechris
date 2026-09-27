@@ -1,6 +1,6 @@
 import type { Resume } from '@gagnechris/shared';
 
-/** Singleton resume — one item, fetched by key (no GSI1 row, see docs/data-model.md). */
+/** Singleton resume — draft META + optional PUBLISHED snapshot (see docs/data-model.md). */
 export const RESUME_ID = 'current';
 
 export function resumePk(): string {
@@ -9,6 +9,10 @@ export function resumePk(): string {
 
 export function resumeMetaSk(): string {
   return 'META';
+}
+
+export function resumePublishedSk(): string {
+  return 'PUBLISHED';
 }
 
 export function nowIso(): string {
@@ -30,7 +34,22 @@ export type ResumeMetaItem = {
   version: number;
 };
 
-export function metaToResume(item: ResumeMetaItem): Resume {
+export function resumeContentEqual(
+  a: Pick<Resume, 'name' | 'pdfPath' | 'content' | 'seo'>,
+  b: Pick<Resume, 'name' | 'pdfPath' | 'content' | 'seo'>,
+): boolean {
+  return (
+    a.name === b.name &&
+    a.pdfPath === b.pdfPath &&
+    JSON.stringify(a.content) === JSON.stringify(b.content) &&
+    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+  );
+}
+
+export function metaToResume(
+  item: ResumeMetaItem,
+  hasUnpublishedChanges = false,
+): Resume {
   return {
     name: item.name,
     pdfPath: item.pdfPath,
@@ -40,6 +59,7 @@ export function metaToResume(item: ResumeMetaItem): Resume {
     updatedAt: item.updatedAt,
     seo: item.seo ?? null,
     version: item.version,
+    hasUnpublishedChanges,
   };
 }
 
@@ -57,5 +77,13 @@ export function buildResumeMetaItem(resume: Resume): ResumeMetaItem {
     updatedAt: resume.updatedAt,
     seo: resume.seo,
     version: resume.version,
+  };
+}
+
+export function buildResumePublishedItem(resume: Resume): ResumeMetaItem {
+  return {
+    ...buildResumeMetaItem(resume),
+    sk: resumePublishedSk(),
+    status: 'published',
   };
 }

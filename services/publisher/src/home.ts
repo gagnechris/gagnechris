@@ -24,5 +24,6 @@ export function metaToHome(item: HomeMetaRecord): Home {
     updatedAt: item.updatedAt,
     seo: item.seo ?? null,
     version: item.version ?? 0,
+    hasUnpublishedChanges: false,
   };
 }

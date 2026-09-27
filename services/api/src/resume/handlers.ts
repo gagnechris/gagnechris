@@ -61,6 +61,10 @@ export async function handleResumeRoute(
       return json(200, ResumeSchema.parse(await resume.unpublish()));
     }
 
+    if (method === 'POST' && adminResume === '/admin/resume/discard') {
+      return json(200, ResumeSchema.parse(await resume.discard()));
+    }
+
     return undefined;
   } catch (error) {
     if (error instanceof SyntaxError) {
