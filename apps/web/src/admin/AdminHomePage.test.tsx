@@ -1,0 +1,179 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import AdminHomePage from './AdminHomePage'
+
+const get = vi.fn()
+const put = vi.fn()
+const post = vi.fn()
+
+vi.mock('../api/client', () => ({
+  createApiClient: () => ({
+    GET: (...args: unknown[]) => get(...args),
+    PUT: (...args: unknown[]) => put(...args),
+    POST: (...args: unknown[]) => post(...args),
+  }),
+}))
+
+const baseHome = {
+  name: 'Chris Gagne',
+  title: 'Engineering',
+  about: 'About me',
+  status: 'published' as const,
+  publishedAt: '2026-09-27T00:00:00.000Z',
+  updatedAt: '2026-09-27T00:00:00.000Z',
+  seo: {
+    title: 'SEO',
+    description: 'Desc',
+    ogImage: '/media/og-home.png',
+  },
+  version: 1,
+}
+
+describe('AdminHomePage autosave', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    get.mockResolvedValue({
+      data: { ...baseHome },
+      error: undefined,
+      response: { status: 200 },
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  test('keeps in-progress typing and trailing spaces across a save boundary', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    let resolvePut!: (value: unknown) => void
+    put.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePut = resolve
+        }),
+    )
+
+    render(<AdminHomePage />)
+    const title = await screen.findByDisplayValue('Engineering')
+
+    await user.type(title, ' ')
+    expect(title).toHaveValue('Engineering ')
+
+    await vi.advanceTimersByTimeAsync(950)
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
+
+    await user.type(title, 'Leader')
+    expect(title).toHaveValue('Engineering Leader')
+
+    resolvePut({
+      data: {
+        ...baseHome,
+        title: 'Engineering',
+        version: 2,
+        updatedAt: '2026-09-27T00:01:00.000Z',
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    // Follow-up save for keystrokes typed during the first PUT.
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
+    expect(title).toHaveValue('Engineering Leader')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  test('queues a slow save without spurious 409s', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const puts: Array<{
+      version: number
+      resolve: (value: unknown) => void
+    }> = []
+
+    put.mockImplementation((...args: unknown[]) => {
+      const body = (args[1] as { body: { version: number; title: string } }).body
+      return new Promise((resolve) => {
+        puts.push({ version: body.version, resolve })
+      })
+    })
+
+    render(<AdminHomePage />)
+    const title = await screen.findByDisplayValue('Engineering')
+
+    await user.type(title, 'A')
+    await vi.advanceTimersByTimeAsync(950)
+    await waitFor(() => expect(puts).toHaveLength(1))
+
+    // Keep typing while the first PUT is still outstanding (3s network).
+    await user.type(title, 'B')
+    await vi.advanceTimersByTimeAsync(950)
+    // Second save must wait — still only one in flight.
+    expect(puts).toHaveLength(1)
+
+    puts[0]!.resolve({
+      data: {
+        ...baseHome,
+        title: 'EngineeringA',
+        version: 2,
+        updatedAt: '2026-09-27T00:01:00.000Z',
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => expect(puts).toHaveLength(2))
+    expect(puts[1]!.version).toBe(2)
+
+    puts[1]!.resolve({
+      data: {
+        ...baseHome,
+        title: 'EngineeringAB',
+        version: 3,
+        updatedAt: '2026-09-27T00:02:00.000Z',
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Saved')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Conflict/i)).not.toBeInTheDocument()
+    expect(title).toHaveValue('EngineeringAB')
+  })
+
+  test('preserves seo.ogImage on save', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    put.mockImplementation((_path: unknown, init: { body: unknown }) => {
+      const body = init.body as {
+        version: number
+        title: string
+        seo: { ogImage?: string; title?: string }
+      }
+      return Promise.resolve({
+        data: {
+          ...baseHome,
+          title: body.title,
+          seo: body.seo,
+          version: body.version + 1,
+          updatedAt: '2026-09-27T00:01:00.000Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+    })
+
+    render(<AdminHomePage />)
+    const title = await screen.findByDisplayValue('Engineering')
+    await user.clear(title)
+    await user.type(title, 'New Title')
+    await vi.advanceTimersByTimeAsync(950)
+
+    await waitFor(() => expect(put).toHaveBeenCalled())
+    const body = put.mock.calls[0]?.[1]?.body as {
+      seo: { ogImage?: string }
+    }
+    expect(body.seo.ogImage).toBe('/media/og-home.png')
+  })
+})

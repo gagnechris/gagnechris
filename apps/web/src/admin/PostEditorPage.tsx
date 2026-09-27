@@ -16,6 +16,7 @@ import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
 import MarkdownEditor from '../components/markdown/MarkdownEditor'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
+import { useQueuedAutosave } from './useQueuedAutosave'
 import '../components/markdown/markdown.css'
 
 type Post = components['schemas']['Post']
@@ -28,8 +29,6 @@ type DraftFields = {
   tagsText: string
   coverImage: string
 }
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 const emptyDraft = (): DraftFields => ({
   title: 'Untitled',
@@ -62,18 +61,63 @@ export default function PostEditorPage() {
   const [draft, setDraft] = useState<DraftFields>(emptyDraft)
   const [slugManual, setSlugManual] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const versionRef = useRef(0)
-  const draftRef = useRef(draft)
   const saveRef = useRef<() => Promise<boolean>>(async () => false)
   const publishRef = useRef<() => Promise<void>>(async () => {})
 
-  useEffect(() => {
-    draftRef.current = draft
-  }, [draft])
+  const performSave = useCallback(
+    async (current: DraftFields, version: number) => {
+      if (!postId) {
+        return { ok: false as const, status: 0 }
+      }
+      const client = createApiClient()
+      const { data, error, response } = await client.PUT('/api/admin/posts/{id}', {
+        params: { path: { id: postId } },
+        body: {
+          version,
+          title: current.title.trim() || 'Untitled',
+          slug: current.slug.trim() || 'untitled',
+          excerpt: current.excerpt,
+          bodyMarkdown: current.bodyMarkdown,
+          tags: parseTags(current.tagsText),
+          coverImage: current.coverImage.trim() || null,
+        },
+      })
+      if (error || !data) {
+        return { ok: false as const, status: response.status }
+      }
+      return { ok: true as const, entity: data }
+    },
+    [postId],
+  )
+
+  const onSaved = useCallback((entity: Post) => {
+    setPost(entity)
+  }, [])
+
+  const getVersion = useCallback((entity: Post) => entity.version, [])
+
+  const {
+    save,
+    saveState,
+    saveError,
+    setSaveError,
+    setSaveState,
+    bumpEdit,
+  } = useQueuedAutosave({
+    draft,
+    dirty,
+    setDirty,
+    enabled: Boolean(postId),
+    versionRef,
+    getVersion,
+    performSave,
+    onSaved,
+    conflictMessage:
+      'Conflict — another save updated this post. Reload and try again.',
+  })
 
   const setField = <K extends keyof DraftFields>(key: K, value: DraftFields[K]) => {
     setDraft((prev) => {
@@ -83,8 +127,8 @@ export default function PostEditorPage() {
       }
       return next
     })
+    bumpEdit()
     setDirty(true)
-    setSaveState('idle')
   }
 
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
@@ -142,7 +186,7 @@ export default function PostEditorPage() {
         return []
       }
     },
-    [uploadImages],
+    [setSaveError, uploadImages],
   )
 
   useEffect(() => {
@@ -172,54 +216,6 @@ export default function PostEditorPage() {
       cancelled = true
     }
   }, [postId])
-
-  const save = useCallback(async (): Promise<boolean> => {
-    if (!postId) {
-      return false
-    }
-    const current = draftRef.current
-    setSaveState('saving')
-    setSaveError(null)
-    const client = createApiClient()
-    const { data, error, response } = await client.PUT('/api/admin/posts/{id}', {
-      params: { path: { id: postId } },
-      body: {
-        version: versionRef.current,
-        title: current.title.trim() || 'Untitled',
-        slug: current.slug.trim() || 'untitled',
-        excerpt: current.excerpt,
-        bodyMarkdown: current.bodyMarkdown,
-        tags: parseTags(current.tagsText),
-        coverImage: current.coverImage.trim() || null,
-      },
-    })
-    if (error || !data) {
-      const message =
-        response.status === 409
-          ? 'Conflict — another save updated this post. Reload and try again.'
-          : `Save failed (${response.status}).`
-      setSaveState('error')
-      setSaveError(message)
-      return false
-    }
-    setPost(data)
-    versionRef.current = data.version
-    setDraft(fromPost(data))
-    setDirty(false)
-    setSaveState('saved')
-    return true
-  }, [postId])
-
-  // Debounced autosave while dirty.
-  useEffect(() => {
-    if (!dirty || !postId) {
-      return
-    }
-    const handle = window.setTimeout(() => {
-      void save()
-    }, 900)
-    return () => window.clearTimeout(handle)
-  }, [dirty, draft, postId, save])
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -276,7 +272,6 @@ export default function PostEditorPage() {
       }
       setPost(data)
       versionRef.current = data.version
-      setDraft(fromPost(data))
       setDirty(false)
       setSaveState('saved')
     } finally {
@@ -330,8 +325,8 @@ export default function PostEditorPage() {
       }
       setPost(data)
       versionRef.current = data.version
-      setDraft(fromPost(data))
       setDirty(false)
+      setSaveState('saved')
     } finally {
       setBusy(false)
     }
