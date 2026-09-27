@@ -109,6 +109,7 @@ export default function PostEditorPage() {
     setSaveState,
     bumpEdit,
     getEditGen,
+    setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
     dirty,
@@ -263,6 +264,9 @@ export default function PostEditorPage() {
     if (!postId || busy) {
       return
     }
+    // Hold debounced autosave immediately (before React re-renders) so typing
+    // during Publish cannot 409 on the pre-publish version (CHR-121).
+    setAutosaveHeld(true)
     setBusy(true)
     setSaveError(null)
     try {
@@ -294,6 +298,7 @@ export default function PostEditorPage() {
         setSaveState('idle')
       }
     } finally {
+      setAutosaveHeld(false)
       setBusy(false)
     }
   }
@@ -325,6 +330,7 @@ export default function PostEditorPage() {
     if (!window.confirm('Unpublish this post? It will leave the public blog.')) {
       return
     }
+    setAutosaveHeld(true)
     setBusy(true)
     try {
       if (dirty) {
@@ -353,6 +359,7 @@ export default function PostEditorPage() {
         setSaveState('idle')
       }
     } finally {
+      setAutosaveHeld(false)
       setBusy(false)
     }
   }
@@ -368,6 +375,7 @@ export default function PostEditorPage() {
     ) {
       return
     }
+    setAutosaveHeld(true)
     setBusy(true)
     setSaveError(null)
     try {
@@ -386,6 +394,7 @@ export default function PostEditorPage() {
       setDirty(false)
       setSaveState('saved')
     } finally {
+      setAutosaveHeld(false)
       setBusy(false)
     }
   }
