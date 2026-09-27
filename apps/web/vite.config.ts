@@ -1,24 +1,45 @@
+import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts'
 
+const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787'
+
 // https://vite.dev/config/
-export default defineConfig({
-  base: '/',
-  plugins: [react(), sitemapPlugin()],
-  server: {
-    // Local admin → same-origin /api → prod API Gateway via CloudFront.
-    proxy: {
-      '/api': {
-        target: 'https://gagnechris.com',
-        changeOrigin: true,
-        secure: true,
+export default defineConfig(({ mode }) => {
+  // Empty prefix so we can read VITE_* (and optional VITE_LOCAL_API_ORIGIN).
+  const env = loadEnv(mode, process.cwd(), '')
+  const useProdApi = env.VITE_API_TARGET === 'prod'
+  const proxyTarget = useProdApi
+    ? 'https://gagnechris.com'
+    : env.VITE_LOCAL_API_ORIGIN?.trim() || DEFAULT_LOCAL_API
+
+  if (useProdApi) {
+    console.warn(
+      '[vite] VITE_API_TARGET=prod — /api proxies to https://gagnechris.com (live DynamoDB).',
+    )
+  } else {
+    console.info(
+      `[vite] /api proxies to ${proxyTarget} (local). Use VITE_API_TARGET=prod only when you intend to hit production.`,
+    )
+  }
+
+  return {
+    base: '/',
+    plugins: [react(), sitemapPlugin()],
+    server: {
+      proxy: {
+        '/api': {
+          target: proxyTarget,
+          changeOrigin: true,
+          secure: proxyTarget.startsWith('https'),
+        },
       },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/setupTests.ts'],
-  },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/setupTests.ts'],
+    },
+  }
 })

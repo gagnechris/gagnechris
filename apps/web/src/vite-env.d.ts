@@ -6,6 +6,13 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_AUTH_DOMAIN: string
   /** Optional override; default is same-origin (empty string). */
   readonly VITE_API_BASE_URL?: string
+  /**
+   * Dev only: set to `prod` to proxy `/api` to https://gagnechris.com.
+   * Default (unset) proxies to the local API (see vite.config.ts).
+   */
+  readonly VITE_API_TARGET?: string
+  /** Dev only: local API origin when VITE_API_TARGET is not prod. */
+  readonly VITE_LOCAL_API_ORIGIN?: string
 }
 
 interface ImportMeta {

@@ -1,13 +1,25 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { isDevProdApiTarget } from '../api/apiTarget'
 import RequireAuth from '../auth/RequireAuth'
 import { signOutUser, type AuthUser } from '../auth/session'
 import './admin.css'
 
 function AdminChrome({ user }: { user: AuthUser }) {
+  const prodApi = isDevProdApiTarget()
+
   return (
     <div className="admin-shell">
       <title>Admin - Chris Gagne</title>
       <meta name="robots" content="noindex, nofollow" />
+      {prodApi ? (
+        <div
+          className="admin-prod-banner"
+          role="status"
+          aria-live="polite"
+        >
+          PRODUCTION API — edits, autosave, and publish hit the live site
+        </div>
+      ) : null}
       <header className="admin-header">
         <div className="admin-brand">
           <span className="admin-brand__title">Admin</span>
