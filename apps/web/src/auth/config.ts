@@ -1,6 +1,9 @@
 import { Amplify } from 'aws-amplify'
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito'
 import { CookieStorage } from 'aws-amplify/utils'
+// Required on the /auth/callback page load: exchanges ?code= for tokens.
+// signInWithRedirect also imports this, but that module is not on the callback chunk.
+import 'aws-amplify/auth/enable-oauth-listener'
 
 let configured = false
 
@@ -25,12 +28,14 @@ export const ensureAmplifyConfigured = (): void => {
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1'
 
+  // Lax (not Strict): tokens must survive the top-level return from
+  // auth.gagnechris.com → gagnechris.com/auth/callback.
   cognitoUserPoolsTokenProvider.setKeyValueStorage(
     new CookieStorage({
       domain: isLocal ? window.location.hostname : 'gagnechris.com',
       path: '/',
       expires: 30,
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: !isLocal,
     }),
   )
