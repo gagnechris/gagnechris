@@ -3,6 +3,7 @@ import {
   TransactionCanceledException,
 } from '@aws-sdk/client-dynamodb';
 import {
+  BatchGetCommand,
   DeleteCommand,
   GetCommand,
   PutCommand,
@@ -112,16 +113,54 @@ export class PostsRepository {
       .flat()
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-    return Promise.all(
-      drafts.map(async (draft) => {
-        if (draft.status !== 'published') {
-          return this.withUnpublishedFlag(draft, undefined);
-        }
-        await this.migratePublishedSnapshot(draft);
-        const published = await this.getPublished(draft.id);
-        return this.withUnpublishedFlag(draft, published);
-      }),
+    const publishedDrafts = drafts.filter((d) => d.status === 'published');
+    const publishedById = await this.batchGetPublished(
+      publishedDrafts.map((d) => d.id),
     );
+
+    const out: Post[] = [];
+    for (const draft of drafts) {
+      if (draft.status !== 'published') {
+        out.push(this.withUnpublishedFlag(draft, undefined));
+        continue;
+      }
+      let published = publishedById.get(draft.id);
+      if (!published) {
+        await this.migratePublishedSnapshot(draft);
+        published = await this.getPublished(draft.id);
+      }
+      out.push(this.withUnpublishedFlag(draft, published));
+    }
+    return out;
+  }
+
+  /** BatchGet PUBLISHED snapshots (chunks of 100). */
+  private async batchGetPublished(
+    postIds: string[],
+  ): Promise<Map<string, Post>> {
+    const map = new Map<string, Post>();
+    const unique = [...new Set(postIds.filter(Boolean))];
+    for (let i = 0; i < unique.length; i += 100) {
+      const chunk = unique.slice(i, i + 100);
+      if (chunk.length === 0) continue;
+      const result = await this.doc.send(
+        new BatchGetCommand({
+          RequestItems: {
+            [this.tableName]: {
+              Keys: chunk.map((id) => ({
+                pk: postPk(id),
+                sk: postPublishedSk(),
+              })),
+            },
+          },
+        }),
+      );
+      for (const item of result.Responses?.[this.tableName] ?? []) {
+        const post = metaToPost(item as PostMetaItem, false);
+        map.set(post.id, post);
+      }
+    }
+    return map;
   }
 
   async create(input: CreatePostRequest): Promise<Post> {

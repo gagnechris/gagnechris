@@ -10,6 +10,8 @@ export AWS_SESSION_TOKEN=
 export AWS_DEFAULT_REGION=us-east-1
 export AWS_REGION=us-east-1
 export AWS_ENDPOINT_URL_DYNAMODB="${AWS_ENDPOINT_URL_DYNAMODB:-http://127.0.0.1:8000}"
+# Stable Compose project so worktrees reuse one DynamoDB Local (CHR-117).
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-gagnechris}"
 
 export DATA_TABLE_NAME="${DATA_TABLE_NAME:-gagnechris-local}"
 if [[ "${DATA_TABLE_NAME}" == "gagnechris-prod" ]]; then

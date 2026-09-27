@@ -21,7 +21,55 @@ const stored: Home = {
   hasUnpublishedChanges: false,
 };
 
-type FakeCommand = { constructor: { name: string }; input: Record<string, unknown> };
+type FakeCommand = {
+  constructor: { name: string };
+  input: Record<string, unknown>;
+};
+
+function itemsForKeys(
+  keys: Array<{ sk?: string }>,
+  meta: unknown,
+  published: unknown | undefined,
+): unknown[] {
+  const out: unknown[] = [];
+  for (const key of keys) {
+    if (key.sk === 'META' && meta) out.push(meta);
+    if (key.sk === 'PUBLISHED' && published) out.push(published);
+  }
+  return out;
+}
+
+/** Respond to BatchGet (META+PUBLISHED) and optional writes (CHR-117). */
+function mockPair(
+  meta: unknown,
+  published?: unknown,
+  onWrite?: (command: FakeCommand) => Promise<unknown> | unknown,
+): (command: FakeCommand) => Promise<unknown> {
+  return async (command) => {
+    if (command.constructor.name === 'BatchGetCommand') {
+      const requestItems = command.input.RequestItems as Record<
+        string,
+        { Keys: Array<{ sk?: string }> }
+      >;
+      const table = Object.keys(requestItems)[0]!;
+      const keys = requestItems[table]!.Keys;
+      return {
+        Responses: { [table]: itemsForKeys(keys, meta, published) },
+      };
+    }
+    if (command.constructor.name === 'GetCommand') {
+      const key = command.input.Key as { sk?: string };
+      if (key.sk === 'PUBLISHED') {
+        return published ? { Item: published } : {};
+      }
+      return meta ? { Item: meta } : {};
+    }
+    if (onWrite) {
+      return (await onWrite(command)) ?? {};
+    }
+    return {};
+  };
+}
 
 function mockDoc(impl: (command: FakeCommand) => Promise<unknown>) {
   const send = vi.fn(async (command: FakeCommand) => impl(command));
@@ -37,24 +85,27 @@ describe('HomeRepository', () => {
   });
 
   it('reads the singleton by key', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildHomePublishedItem(stored) };
-      }
-      return { Item: buildHomeMetaItem(stored) };
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').get();
     expect(home?.version).toBe(3);
     expect(home?.hasUnpublishedChanges).toBe(false);
-    expect(send.mock.calls[0]![0]!.input.Key).toEqual({
-      pk: 'HOME#current',
-      sk: 'META',
-    });
+    expect(send.mock.calls[0]![0]!.constructor.name).toBe('BatchGetCommand');
+    const keys = (
+      send.mock.calls[0]![0]!.input.RequestItems as Record<
+        string,
+        { Keys: unknown[] }
+      >
+    )['gagnechris-test']!.Keys;
+    expect(keys).toEqual([
+      { pk: 'HOME#current', sk: 'META' },
+      { pk: 'HOME#current', sk: 'PUBLISHED' },
+    ]);
   });
 
   it('seeds a draft home on first read (not published)', async () => {
-    const { doc, send } = mockDoc(async () => ({}));
+    const { doc, send } = mockDoc(mockPair(undefined, undefined));
     const home = await new HomeRepository(doc, 'gagnechris-test').getOrCreate();
     expect(home.status).toBe('draft');
     expect(home.publishedAt).toBeNull();
@@ -62,25 +113,21 @@ describe('HomeRepository', () => {
     expect(home.version).toBe(1);
     expect(home.about).toContain('Engineering Leader at Ro');
 
-    const put = send.mock.calls[1]![0]!;
-    expect(put.constructor.name).toBe('PutCommand');
+    const put = send.mock.calls.find(
+      (c) => c[0]!.constructor.name === 'PutCommand',
+    )![0]!;
     expect(put.input.ConditionExpression).toBe('attribute_not_exists(pk)');
-    expect((put.input.Item as { entityType: string; status: string }).entityType).toBe('home');
+    expect(
+      (put.input.Item as { entityType: string; status: string }).entityType,
+    ).toBe('home');
     expect((put.input.Item as { status: string }).status).toBe('draft');
     expect(put.input.Item).not.toHaveProperty('gsi1pk');
   });
 
   it('updates draft only and marks unpublished changes when live', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(stored) };
-      }
-      return {};
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
     const next = await new HomeRepository(doc, 'gagnechris-test').update({
       version: 3,
       about: 'New about copy.',
@@ -100,32 +147,30 @@ describe('HomeRepository', () => {
   });
 
   it('rejects a stale version', async () => {
-    const { doc } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildHomePublishedItem(stored) };
-      }
-      return { Item: buildHomeMetaItem(stored) };
-    });
+    const { doc } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
     await expect(
       new HomeRepository(doc, 'gagnechris-test').update({ version: 1 }),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('maps a failed conditional write to a conflict', async () => {
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(stored) };
-      }
-      throw new ConditionalCheckFailedException({
-        message: 'conditional request failed',
-        $metadata: {},
-      });
-    });
+    const { doc } = mockDoc(
+      mockPair(
+        buildHomeMetaItem(stored),
+        buildHomePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'PutCommand') {
+            throw new ConditionalCheckFailedException({
+              message: 'conditional request failed',
+              $metadata: {},
+            });
+          }
+          return {};
+        },
+      ),
+    );
     await expect(
       new HomeRepository(doc, 'gagnechris-test').update({ version: 3 }),
     ).rejects.toBeInstanceOf(ConflictError);
@@ -137,23 +182,25 @@ describe('HomeRepository', () => {
       about: 'Edited about',
       version: 4,
     };
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(draft) };
-      }
-      throw new TransactionCanceledException({
-        message: 'Transaction cancelled',
-        $metadata: {},
-        CancellationReasons: [
-          { Code: 'ConditionalCheckFailed', Message: 'version' },
-          { Code: 'None' },
-        ],
-      });
-    });
+    const { doc } = mockDoc(
+      mockPair(
+        buildHomeMetaItem(draft),
+        buildHomePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'TransactWriteCommand') {
+            throw new TransactionCanceledException({
+              message: 'Transaction cancelled',
+              $metadata: {},
+              CancellationReasons: [
+                { Code: 'ConditionalCheckFailed', Message: 'version' },
+                { Code: 'None' },
+              ],
+            });
+          }
+          return {};
+        },
+      ),
+    );
     await expect(
       new HomeRepository(doc, 'gagnechris-test').publish(),
     ).rejects.toBeInstanceOf(ConflictError);
@@ -165,16 +212,9 @@ describe('HomeRepository', () => {
       about: 'Edited about',
       version: 4,
     };
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(draft) };
-      }
-      return {};
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(draft), buildHomePublishedItem(stored)),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').publish();
     expect(home.status).toBe('published');
     expect(home.about).toBe('Edited about');
@@ -183,37 +223,33 @@ describe('HomeRepository', () => {
     const tx = send.mock.calls.find(
       (c) => c[0]!.constructor.name === 'TransactWriteCommand',
     )![0]!;
-    const items = tx.input.TransactItems as Array<{ Put?: { Item: { sk: string } } }>;
-    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual(['META', 'PUBLISHED']);
+    const items = tx.input.TransactItems as Array<{
+      Put?: { Item: { sk: string } };
+    }>;
+    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual([
+      'META',
+      'PUBLISHED',
+    ]);
   });
 
   it('publish is a no-op when draft matches published snapshot', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildHomePublishedItem(stored) };
-      }
-      return { Item: buildHomeMetaItem(stored) };
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').publish();
     expect(home.version).toBe(3);
     expect(home.hasUnpublishedChanges).toBe(false);
     expect(
-      send.mock.calls.some((c) => c[0]!.constructor.name === 'TransactWriteCommand'),
+      send.mock.calls.some(
+        (c) => c[0]!.constructor.name === 'TransactWriteCommand',
+      ),
     ).toBe(false);
   });
 
   it('unpublish deletes PUBLISHED and keeps publishedAt', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(stored) };
-      }
-      return {};
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').unpublish();
     expect(home.status).toBe('draft');
     expect(home.publishedAt).toBe(stored.publishedAt);
@@ -227,16 +263,9 @@ describe('HomeRepository', () => {
 
   it('discard restores META from PUBLISHED', async () => {
     const draft: Home = { ...stored, about: 'Dirty draft', version: 5 };
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildHomePublishedItem(stored) };
-        }
-        return { Item: buildHomeMetaItem(draft) };
-      }
-      return {};
-    });
+    const { doc } = mockDoc(
+      mockPair(buildHomeMetaItem(draft), buildHomePublishedItem(stored)),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').discard();
     expect(home.about).toBe(stored.about);
     expect(home.hasUnpublishedChanges).toBe(false);
@@ -245,20 +274,32 @@ describe('HomeRepository', () => {
 
   it('migrates legacy published META to PUBLISHED without changing content', async () => {
     const puts: unknown[] = [];
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') return {};
-        return { Item: buildHomeMetaItem(stored) };
-      }
-      if (command.constructor.name === 'PutCommand') {
-        puts.push(command.input.Item);
-      }
-      return {};
-    });
+    const { doc } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), undefined, async (command) => {
+        if (command.constructor.name === 'PutCommand') {
+          puts.push(command.input.Item);
+        }
+        return {};
+      }),
+    );
     const home = await new HomeRepository(doc, 'gagnechris-test').get();
     expect(home?.hasUnpublishedChanges).toBe(false);
     expect(puts).toHaveLength(1);
     expect((puts[0] as { sk: string }).sk).toBe('PUBLISHED');
+  });
+
+  it('loads META and PUBLISHED in one BatchGet (no redundant GetItem)', async () => {
+    const { doc, send } = mockDoc(
+      mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
+    );
+    await new HomeRepository(doc, 'gagnechris-test').get();
+    const gets = send.mock.calls.filter(
+      (c) => c[0]!.constructor.name === 'GetCommand',
+    );
+    const batches = send.mock.calls.filter(
+      (c) => c[0]!.constructor.name === 'BatchGetCommand',
+    );
+    expect(gets).toHaveLength(0);
+    expect(batches).toHaveLength(1);
   });
 });

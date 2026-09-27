@@ -3,6 +3,7 @@ import {
   TransactionCanceledException,
 } from '@aws-sdk/client-dynamodb';
 import {
+  BatchGetCommand,
   GetCommand,
   PutCommand,
   TransactWriteCommand,
@@ -78,18 +79,52 @@ export class SingletonRepository<
     return this.config.toEntity(result.Item as TItem, false);
   }
 
-  async get(): Promise<T | undefined> {
+  /**
+   * One BatchGet for META + PUBLISHED (CHR-117). Migrates legacy published META
+   * → PUBLISHED when the snapshot is missing.
+   */
+  private async loadDraftAndPublished(): Promise<
+    { draft: T; published: T | undefined } | undefined
+  > {
     const result = await this.doc.send(
-      new GetCommand({
-        TableName: this.tableName,
-        Key: { pk: this.config.pk(), sk: this.config.metaSk() },
+      new BatchGetCommand({
+        RequestItems: {
+          [this.tableName]: {
+            Keys: [
+              { pk: this.config.pk(), sk: this.config.metaSk() },
+              { pk: this.config.pk(), sk: this.config.publishedSk() },
+            ],
+          },
+        },
       }),
     );
-    if (!result.Item) return undefined;
-    const draft = this.config.toEntity(result.Item as TItem);
-    await this.migratePublishedSnapshot(draft);
-    const published = await this.getPublished();
-    return this.withUnpublishedFlag(draft, published);
+    const items = result.Responses?.[this.tableName] ?? [];
+    let draftItem: TItem | undefined;
+    let publishedItem: TItem | undefined;
+    for (const item of items) {
+      const sk = (item as { sk?: string }).sk;
+      if (sk === this.config.metaSk()) draftItem = item as TItem;
+      if (sk === this.config.publishedSk()) publishedItem = item as TItem;
+    }
+    if (!draftItem) return undefined;
+
+    const draft = this.config.toEntity(draftItem);
+    let published = publishedItem
+      ? this.config.toEntity(publishedItem, false)
+      : undefined;
+
+    if (draft.status === 'published' && !published) {
+      await this.putPublishedIfAbsent(draft);
+      published = { ...draft, hasUnpublishedChanges: false };
+    }
+
+    return { draft, published };
+  }
+
+  async get(): Promise<T | undefined> {
+    const loaded = await this.loadDraftAndPublished();
+    if (!loaded) return undefined;
+    return this.withUnpublishedFlag(loaded.draft, loaded.published);
   }
 
   /**
@@ -97,8 +132,10 @@ export class SingletonRepository<
    * until an explicit Publish writes the PUBLISHED snapshot.
    */
   async getOrCreate(): Promise<T> {
-    const existing = await this.get();
-    if (existing) return existing;
+    const loaded = await this.loadDraftAndPublished();
+    if (loaded) {
+      return this.withUnpublishedFlag(loaded.draft, loaded.published);
+    }
 
     const now = nowIso();
     const seeded: T = {
@@ -128,7 +165,10 @@ export class SingletonRepository<
   }
 
   async update(input: TUpdate): Promise<T> {
-    const existing = await this.getOrCreate();
+    const loaded = await this.loadDraftAndPublished();
+    const existing = loaded
+      ? this.withUnpublishedFlag(loaded.draft, loaded.published)
+      : await this.getOrCreate();
     if (existing.version !== input.version) {
       throw new ConflictError(
         `Version conflict: expected ${input.version}, current ${existing.version}`,
@@ -141,7 +181,7 @@ export class SingletonRepository<
       hasUnpublishedChanges: false,
     };
     await this.writeDraft(existing.version, next);
-    const published = await this.getPublished();
+    const published = loaded?.published;
     return this.withUnpublishedFlag(next, published);
   }
 
@@ -150,8 +190,11 @@ export class SingletonRepository<
    * (no longer a no-op when already published).
    */
   async publish(): Promise<T> {
-    const existing = await this.getOrCreate();
-    const published = await this.getPublished();
+    const loaded = await this.loadDraftAndPublished();
+    const existing = loaded
+      ? this.withUnpublishedFlag(loaded.draft, loaded.published)
+      : await this.getOrCreate();
+    const published = loaded?.published;
     if (
       existing.status === 'published' &&
       published &&
@@ -174,7 +217,10 @@ export class SingletonRepository<
 
   /** Keeps `publishedAt` so republishing does not reset the first-published date. */
   async unpublish(): Promise<T> {
-    const existing = await this.getOrCreate();
+    const loaded = await this.loadDraftAndPublished();
+    const existing = loaded
+      ? this.withUnpublishedFlag(loaded.draft, loaded.published)
+      : await this.getOrCreate();
     if (existing.status !== 'published') {
       return this.withUnpublishedFlag(existing, undefined);
     }
@@ -191,8 +237,11 @@ export class SingletonRepository<
 
   /** Restore draft META from the PUBLISHED snapshot (admin Discard). */
   async discard(): Promise<T> {
-    const existing = await this.getOrCreate();
-    const published = await this.getPublished();
+    const loaded = await this.loadDraftAndPublished();
+    const existing = loaded
+      ? this.withUnpublishedFlag(loaded.draft, loaded.published)
+      : await this.getOrCreate();
+    const published = loaded?.published;
     if (!published) {
       return this.withUnpublishedFlag(existing, undefined);
     }
@@ -211,14 +260,7 @@ export class SingletonRepository<
     return this.withUnpublishedFlag(next, published);
   }
 
-  /**
-   * One-time cutover: if META is already published and PUBLISHED is missing,
-   * copy META → PUBLISHED so the live site stays unchanged.
-   */
-  private async migratePublishedSnapshot(draft: T): Promise<void> {
-    if (draft.status !== 'published') return;
-    const published = await this.getPublished();
-    if (published) return;
+  private async putPublishedIfAbsent(draft: T): Promise<void> {
     try {
       await this.doc.send(
         new PutCommand({

@@ -47,14 +47,36 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.body).toBe('<html>not found page</html>');
   });
 
-  it('forces HTTP 404 for cached /404.html (304)', () => {
+  it('serves inline HTML NotFound for cached /404.html (304) instead of a blank body', () => {
     const res = runHandler('/404.html', {
       statusCode: 304,
       statusDescription: 'Not Modified',
-      headers: {},
+      headers: {
+        etag: { value: '"abc"' },
+      },
     });
     expect(res.statusCode).toBe(404);
     expect(res.statusDescription).toBe('Not Found');
+    expect(res.body).toContain('Page not found');
+    expect(res.headers['cache-control'].value).toBe('no-cache');
+  });
+
+  it('strips validators and sets no-cache when forcing 404 from /404.html 200', () => {
+    const res = runHandler('/404.html', {
+      statusCode: 200,
+      statusDescription: 'OK',
+      headers: {
+        'content-type': { value: 'text/html; charset=utf-8' },
+        etag: { value: '"abc"' },
+        'last-modified': { value: 'Wed, 01 Jan 2020 00:00:00 GMT' },
+      },
+      body: '<html>not found page</html>',
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toBe('<html>not found page</html>');
+    expect(res.headers['cache-control'].value).toBe('no-cache');
+    expect(res.headers.etag).toBeUndefined();
+    expect(res.headers['last-modified']).toBeUndefined();
   });
 
   it('replaces S3 XML 404 with HTML NotFound', () => {

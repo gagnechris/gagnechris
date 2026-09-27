@@ -21,7 +21,54 @@ const stored: Resume = {
   hasUnpublishedChanges: false,
 };
 
-type FakeCommand = { constructor: { name: string }; input: Record<string, unknown> };
+type FakeCommand = {
+  constructor: { name: string };
+  input: Record<string, unknown>;
+};
+
+function itemsForKeys(
+  keys: Array<{ sk?: string }>,
+  meta: unknown,
+  published: unknown | undefined,
+): unknown[] {
+  const out: unknown[] = [];
+  for (const key of keys) {
+    if (key.sk === 'META' && meta) out.push(meta);
+    if (key.sk === 'PUBLISHED' && published) out.push(published);
+  }
+  return out;
+}
+
+function mockPair(
+  meta: unknown,
+  published?: unknown,
+  onWrite?: (command: FakeCommand) => Promise<unknown> | unknown,
+): (command: FakeCommand) => Promise<unknown> {
+  return async (command) => {
+    if (command.constructor.name === 'BatchGetCommand') {
+      const requestItems = command.input.RequestItems as Record<
+        string,
+        { Keys: Array<{ sk?: string }> }
+      >;
+      const table = Object.keys(requestItems)[0]!;
+      const keys = requestItems[table]!.Keys;
+      return {
+        Responses: { [table]: itemsForKeys(keys, meta, published) },
+      };
+    }
+    if (command.constructor.name === 'GetCommand') {
+      const key = command.input.Key as { sk?: string };
+      if (key.sk === 'PUBLISHED') {
+        return published ? { Item: published } : {};
+      }
+      return meta ? { Item: meta } : {};
+    }
+    if (onWrite) {
+      return (await onWrite(command)) ?? {};
+    }
+    return {};
+  };
+}
 
 function mockDoc(impl: (command: FakeCommand) => Promise<unknown>) {
   const send = vi.fn(async (command: FakeCommand) => impl(command));
@@ -37,47 +84,35 @@ describe('ResumeRepository', () => {
   });
 
   it('reads the singleton by key', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildResumePublishedItem(stored) };
-      }
-      return { Item: buildResumeMetaItem(stored) };
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
     const resume = await new ResumeRepository(doc, 'gagnechris-test').get();
     expect(resume?.version).toBe(3);
     expect(resume?.hasUnpublishedChanges).toBe(false);
-    expect(send.mock.calls[0]![0]!.input.Key).toEqual({
-      pk: 'RESUME#current',
-      sk: 'META',
-    });
+    expect(send.mock.calls[0]![0]!.constructor.name).toBe('BatchGetCommand');
   });
 
   it('seeds a draft resume on first read (not published)', async () => {
-    const { doc, send } = mockDoc(async () => ({}));
+    const { doc, send } = mockDoc(mockPair(undefined, undefined));
     const resume = await new ResumeRepository(doc, 'gagnechris-test').getOrCreate();
     expect(resume.status).toBe('draft');
     expect(resume.publishedAt).toBeNull();
     expect(resume.hasUnpublishedChanges).toBe(false);
     expect(resume.version).toBe(1);
-    expect(resume.publishedAt).toBeNull();
 
-    const put = send.mock.calls[1]![0]!;
-    expect(put.constructor.name).toBe('PutCommand');
+    const put = send.mock.calls.find(
+      (c) => c[0]!.constructor.name === 'PutCommand',
+    )![0]!;
+    expect(put.input.ConditionExpression).toBe('attribute_not_exists(pk)');
+    expect((put.input.Item as { entityType: string }).entityType).toBe('resume');
     expect((put.input.Item as { status: string }).status).toBe('draft');
   });
 
   it('updates draft only and marks unpublished changes when live', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildResumePublishedItem(stored) };
-        }
-        return { Item: buildResumeMetaItem(stored) };
-      }
-      return {};
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
     const next = await new ResumeRepository(doc, 'gagnechris-test').update({
       version: 3,
       name: 'Updated Name',
@@ -93,110 +128,108 @@ describe('ResumeRepository', () => {
   });
 
   it('rejects a stale version', async () => {
-    const { doc } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildResumePublishedItem(stored) };
-      }
-      return { Item: buildResumeMetaItem(stored) };
-    });
+    const { doc } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
     await expect(
       new ResumeRepository(doc, 'gagnechris-test').update({ version: 1 }),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('maps a failed conditional write to a conflict', async () => {
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildResumePublishedItem(stored) };
-        }
-        return { Item: buildResumeMetaItem(stored) };
-      }
-      throw new ConditionalCheckFailedException({
-        message: 'conditional request failed',
-        $metadata: {},
-      });
-    });
+    const { doc } = mockDoc(
+      mockPair(
+        buildResumeMetaItem(stored),
+        buildResumePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'PutCommand') {
+            throw new ConditionalCheckFailedException({
+              message: 'conditional request failed',
+              $metadata: {},
+            });
+          }
+          return {};
+        },
+      ),
+    );
     await expect(
       new ResumeRepository(doc, 'gagnechris-test').update({ version: 3 }),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('maps TransactionCanceledException on publish to a 409 conflict', async () => {
-    const draft: Resume = { ...stored, name: 'Edited', version: 4 };
-    const { doc } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildResumePublishedItem(stored) };
-        }
-        return { Item: buildResumeMetaItem(draft) };
-      }
-      throw new TransactionCanceledException({
-        message: 'Transaction cancelled',
-        $metadata: {},
-        CancellationReasons: [
-          { Code: 'ConditionalCheckFailed', Message: 'version' },
-          { Code: 'None' },
-        ],
-      });
-    });
+    const draft: Resume = {
+      ...stored,
+      name: 'Edited Name',
+      version: 4,
+    };
+    const { doc } = mockDoc(
+      mockPair(
+        buildResumeMetaItem(draft),
+        buildResumePublishedItem(stored),
+        async (command) => {
+          if (command.constructor.name === 'TransactWriteCommand') {
+            throw new TransactionCanceledException({
+              message: 'Transaction cancelled',
+              $metadata: {},
+              CancellationReasons: [
+                { Code: 'ConditionalCheckFailed', Message: 'version' },
+                { Code: 'None' },
+              ],
+            });
+          }
+          return {};
+        },
+      ),
+    );
     await expect(
       new ResumeRepository(doc, 'gagnechris-test').publish(),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('publish copies draft to PUBLISHED when content changed', async () => {
-    const draft: Resume = { ...stored, name: 'Edited', version: 4 };
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildResumePublishedItem(stored) };
-        }
-        return { Item: buildResumeMetaItem(draft) };
-      }
-      return {};
-    });
+    const draft: Resume = {
+      ...stored,
+      name: 'Edited Name',
+      version: 4,
+    };
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(draft), buildResumePublishedItem(stored)),
+    );
     const resume = await new ResumeRepository(doc, 'gagnechris-test').publish();
-    expect(resume.name).toBe('Edited');
+    expect(resume.status).toBe('published');
+    expect(resume.name).toBe('Edited Name');
     expect(resume.hasUnpublishedChanges).toBe(false);
     expect(resume.version).toBe(5);
     const tx = send.mock.calls.find(
       (c) => c[0]!.constructor.name === 'TransactWriteCommand',
     )![0]!;
-    const items = tx.input.TransactItems as Array<{ Put?: { Item: { sk: string } } }>;
-    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual(['META', 'PUBLISHED']);
+    const items = tx.input.TransactItems as Array<{
+      Put?: { Item: { sk: string } };
+    }>;
+    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual([
+      'META',
+      'PUBLISHED',
+    ]);
   });
 
   it('publish is a no-op when draft matches published snapshot', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      const key = command.input.Key as { sk?: string } | undefined;
-      if (key?.sk === 'PUBLISHED') {
-        return { Item: buildResumePublishedItem(stored) };
-      }
-      return { Item: buildResumeMetaItem(stored) };
-    });
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
     const resume = await new ResumeRepository(doc, 'gagnechris-test').publish();
     expect(resume.version).toBe(3);
     expect(
-      send.mock.calls.some((c) => c[0]!.constructor.name === 'TransactWriteCommand'),
+      send.mock.calls.some(
+        (c) => c[0]!.constructor.name === 'TransactWriteCommand',
+      ),
     ).toBe(false);
   });
 
-  it('unpublish keeps publishedAt and deletes PUBLISHED', async () => {
-    const { doc, send } = mockDoc(async (command) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === 'PUBLISHED') {
-          return { Item: buildResumePublishedItem(stored) };
-        }
-        return { Item: buildResumeMetaItem(stored) };
-      }
-      return {};
-    });
+  it('unpublish deletes PUBLISHED and keeps publishedAt', async () => {
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
     const resume = await new ResumeRepository(doc, 'gagnechris-test').unpublish();
     expect(resume.status).toBe('draft');
     expect(resume.publishedAt).toBe(stored.publishedAt);
@@ -204,10 +237,22 @@ describe('ResumeRepository', () => {
     const tx = send.mock.calls.find(
       (c) => c[0]!.constructor.name === 'TransactWriteCommand',
     )![0]!;
+    const items = tx.input.TransactItems as Array<Record<string, unknown>>;
+    expect(items.some((i) => 'Delete' in i)).toBe(true);
+  });
+
+  it('loads META and PUBLISHED in one BatchGet (no redundant GetItem)', async () => {
+    const { doc, send } = mockDoc(
+      mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
+    );
+    await new ResumeRepository(doc, 'gagnechris-test').get();
     expect(
-      (tx.input.TransactItems as Array<Record<string, unknown>>).some(
-        (i) => 'Delete' in i,
+      send.mock.calls.filter((c) => c[0]!.constructor.name === 'GetCommand'),
+    ).toHaveLength(0);
+    expect(
+      send.mock.calls.filter(
+        (c) => c[0]!.constructor.name === 'BatchGetCommand',
       ),
-    ).toBe(true);
+    ).toHaveLength(1);
   });
 });
