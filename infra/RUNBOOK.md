@@ -198,3 +198,9 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 
 - Prefer SSO profiles once configured. Do not recreate an account-level Identity Center instance.
 - Do not put account IDs, org IDs, portal URLs, emails, or access-key IDs in this public repo.
+
+## Break-glass / one-off AWS (record each use)
+
+| When | What | Why |
+| --- | --- | --- |
+| 2026-09-27 (CHR-74) | Deleted Route 53 CNAME `_b7efe66f920c8b653645d52c9ad5ba00.staging.gagnechris.com` (ACM validation leftover) via `gagnechris-admin` | CloudFormation does not remove ACM DNS validation records when a certificate is deleted; orphan after CHR-73 cert rotation. |
