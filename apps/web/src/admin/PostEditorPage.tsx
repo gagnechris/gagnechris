@@ -108,6 +108,7 @@ export default function PostEditorPage() {
     setSaveError,
     setSaveState,
     bumpEdit,
+    getEditGen,
   } = useQueuedAutosave({
     draft,
     dirty,
@@ -271,6 +272,7 @@ export default function PostEditorPage() {
           return
         }
       }
+      const genAtStart = getEditGen()
       const client = createApiClient()
       const { data, error, response } = await client.POST(
         '/api/admin/posts/{id}/publish',
@@ -280,11 +282,17 @@ export default function PostEditorPage() {
         setSaveError(`Publish failed (${response.status}).`)
         return
       }
+      // Never clobber the live draft with the published snapshot — typing during
+      // the request must survive (CHR-113 / CHR-99).
       setPost(data)
-      setDraft(fromPost(data))
       versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
+      if (getEditGen() === genAtStart) {
+        setDirty(false)
+        setSaveState('saved')
+      } else {
+        setDirty(true)
+        setSaveState('idle')
+      }
     } finally {
       setBusy(false)
     }
@@ -325,6 +333,7 @@ export default function PostEditorPage() {
           return
         }
       }
+      const genAtStart = getEditGen()
       const client = createApiClient()
       const { data, error, response } = await client.POST(
         '/api/admin/posts/{id}/unpublish',
@@ -336,8 +345,13 @@ export default function PostEditorPage() {
       }
       setPost(data)
       versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
+      if (getEditGen() === genAtStart) {
+        setDirty(false)
+        setSaveState('saved')
+      } else {
+        setDirty(true)
+        setSaveState('idle')
+      }
     } finally {
       setBusy(false)
     }
