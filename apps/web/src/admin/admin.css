@@ -1,5 +1,6 @@
 .admin-shell {
   min-height: 100vh;
+  width: 100%;
   background: linear-gradient(
     165deg,
     var(--neutral-50) 0%,
@@ -92,9 +93,10 @@
 }
 
 .admin-main {
-  max-width: 52rem;
+  width: min(100% - 2rem, 1600px);
+  max-width: none;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-6) 0 var(--space-8);
 }
 
 .admin-panel h1 {
@@ -180,6 +182,41 @@
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
+}
+
+/* Sticky status + actions bar for editors (CHR-108). */
+.admin-action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) 0;
+  background: color-mix(in srgb, var(--neutral-50) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.admin-action-bar__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.admin-action-bar__status h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+}
+
+.admin-action-bar .admin-back {
+  margin-bottom: 0;
 }
 
 .admin-toolbar {
@@ -275,6 +312,7 @@
 }
 
 .admin-title-input {
+  display: block;
   width: 100%;
   border: none;
   background: transparent;
@@ -282,12 +320,21 @@
   font-size: var(--text-3xl);
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: var(--line-snug);
   padding: 0;
   color: inherit;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+  min-height: 1.3em;
 }
 
 .admin-title-input:focus {
   outline: none;
+}
+
+.admin-editor-title {
+  margin: 0 0 var(--space-4);
 }
 
 .admin-panel__meta-row {
@@ -317,6 +364,56 @@
   margin: var(--space-6) 0;
 }
 
+/* Compact metadata: two columns on comfortable widths. */
+.admin-editor-fields--meta {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.admin-editor-fields--meta .admin-field--full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .admin-editor-fields--meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-details {
+  margin: 0 0 var(--space-4);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, white 70%, transparent);
+  padding: var(--space-3) var(--space-4);
+}
+
+.admin-details > summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--neutral-600);
+  list-style: none;
+}
+
+.admin-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-details > summary::before {
+  content: '▸ ';
+  color: var(--neutral-400);
+}
+
+.admin-details[open] > summary::before {
+  content: '▾ ';
+}
+
+.admin-details[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
 .admin-field {
   display: grid;
   gap: var(--space-2);
@@ -338,6 +435,34 @@
 
 .admin-panel--editor .admin-panel__header {
   margin-bottom: var(--space-2);
+}
+
+/* Home / Resume: form + live preview side by side on wide screens. */
+.admin-editor-split {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .admin-editor-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .admin-editor-split__preview {
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100vh - 5.5rem);
+    overflow: auto;
+  }
+
+  .admin-editor-split .admin-editor-fields {
+    margin-top: 0;
+  }
+
+  .admin-editor-split .admin-preview-title {
+    margin-top: 0;
+  }
 }
 
 .admin-repeat {

@@ -63,7 +63,9 @@ export default function PostEditorPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit')
   const versionRef = useRef(0)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const saveRef = useRef<() => Promise<boolean>>(async () => false)
   const publishRef = useRef<() => Promise<void>>(async () => {})
 
@@ -118,6 +120,14 @@ export default function PostEditorPage() {
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
   })
+
+  // Auto-grow the wrapping title field as the user types.
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [draft.title, post])
 
   const setField = <K extends keyof DraftFields>(key: K, value: DraftFields[K]) => {
     setDraft((prev) => {
@@ -420,32 +430,22 @@ export default function PostEditorPage() {
 
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-panel__header">
-        <div>
+      <div className="admin-action-bar">
+        <div className="admin-action-bar__status">
           <Link to="/admin" className="admin-back">
             ← Posts
           </Link>
-          <h1 className="admin-editor-title">
-            <input
-              className="admin-title-input"
-              value={draft.title}
-              onChange={(e) => setField('title', e.target.value)}
-              aria-label="Title"
-            />
-          </h1>
-          <p className="admin-panel__meta-row">
-            <span className={`admin-badge admin-badge--${post.status}`}>
-              {post.status}
+          <span className={`admin-badge admin-badge--${post.status}`}>
+            {post.status}
+          </span>
+          {post.hasUnpublishedChanges ? (
+            <span className="admin-badge admin-badge--unpublished">
+              Unpublished changes
             </span>
-            {post.hasUnpublishedChanges ? (
-              <span className="admin-badge admin-badge--unpublished">
-                Unpublished changes
-              </span>
-            ) : null}
-            <span className="admin-save-indicator" data-state={saveState}>
-              {saveLabel}
-            </span>
-          </p>
+          ) : null}
+          <span className="admin-save-indicator" data-state={saveState}>
+            {saveLabel}
+          </span>
         </div>
         <div className="admin-actions">
           {post.status === 'published' ? (
@@ -507,65 +507,105 @@ export default function PostEditorPage() {
         </div>
       </div>
 
+      <h1 className="admin-editor-title">
+        <textarea
+          ref={titleRef}
+          className="admin-title-input"
+          rows={1}
+          value={draft.title}
+          onChange={(e) => setField('title', e.target.value)}
+          aria-label="Title"
+        />
+      </h1>
+
       {saveError ? (
         <p className="admin-panel__error" role="alert">
           {saveError}
         </p>
       ) : null}
 
-      <form
-        className="admin-editor-fields"
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault()
-          void save()
-        }}
-      >
-        <label className="admin-field">
-          <span>Slug</span>
-          <input
-            className="admin-input"
-            value={draft.slug}
-            onChange={(e) => {
-              setSlugManual(true)
-              setField('slug', e.target.value)
-            }}
-          />
-        </label>
-        <label className="admin-field">
-          <span>Excerpt</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={2}
-            value={draft.excerpt}
-            onChange={(e) => setField('excerpt', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>Tags (comma-separated)</span>
-          <input
-            className="admin-input"
-            value={draft.tagsText}
-            onChange={(e) => setField('tagsText', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>Cover image URL</span>
-          <input
-            className="admin-input"
-            value={draft.coverImage}
-            onChange={(e) => setField('coverImage', e.target.value)}
-            placeholder="/media/… or https://…"
-          />
-        </label>
-      </form>
+      <details className="admin-details">
+        <summary>Details</summary>
+        <form
+          className="admin-editor-fields admin-editor-fields--meta"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault()
+            void save()
+          }}
+        >
+          <label className="admin-field">
+            <span>Slug</span>
+            <input
+              className="admin-input"
+              value={draft.slug}
+              onChange={(e) => {
+                setSlugManual(true)
+                setField('slug', e.target.value)
+              }}
+            />
+          </label>
+          <label className="admin-field">
+            <span>Tags (comma-separated)</span>
+            <input
+              className="admin-input"
+              value={draft.tagsText}
+              onChange={(e) => setField('tagsText', e.target.value)}
+            />
+          </label>
+          <label className="admin-field admin-field--full">
+            <span>Excerpt</span>
+            <textarea
+              className="admin-input admin-textarea"
+              rows={2}
+              value={draft.excerpt}
+              onChange={(e) => setField('excerpt', e.target.value)}
+            />
+          </label>
+          <label className="admin-field admin-field--full">
+            <span>Cover image URL</span>
+            <input
+              className="admin-input"
+              value={draft.coverImage}
+              onChange={(e) => setField('coverImage', e.target.value)}
+              placeholder="/media/… or https://…"
+            />
+          </label>
+        </form>
+      </details>
 
-      <div className="markdown-split">
-        <MarkdownEditor
-          value={draft.bodyMarkdown}
-          onChange={(value) => setField('bodyMarkdown', value)}
-          onUploadImages={handleUploadImages}
-        />
-        <MarkdownPreview markdown={draft.bodyMarkdown} />
+      <div className="markdown-workspace">
+        <div
+          className="markdown-tabs"
+          role="tablist"
+          aria-label="Editor view"
+        >
+          <button
+            type="button"
+            role="tab"
+            className="markdown-tabs__btn"
+            aria-selected={mobilePane === 'edit'}
+            onClick={() => setMobilePane('edit')}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className="markdown-tabs__btn"
+            aria-selected={mobilePane === 'preview'}
+            onClick={() => setMobilePane('preview')}
+          >
+            Preview
+          </button>
+        </div>
+        <div className="markdown-split" data-pane={mobilePane}>
+          <MarkdownEditor
+            value={draft.bodyMarkdown}
+            onChange={(value) => setField('bodyMarkdown', value)}
+            onUploadImages={handleUploadImages}
+          />
+          <MarkdownPreview markdown={draft.bodyMarkdown} />
+        </div>
       </div>
       <p className="admin-hint">
         ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images into

@@ -1,14 +1,26 @@
 /* App Layout and Styles — home page only (CHR-109).
    Bare `header`/`main`/`footer` selectors used to leak the home
-   profile-photo layout onto every public page. */
+   profile-photo layout onto every public page.
+   Admin routes render .admin-shell and opt out of the 1000px reading
+   card so the CMS can use wide screens (CHR-108). */
 
-#root {
+#root:not(:has(.admin-shell)) {
   max-width: 1000px;
   margin: 0 auto;
   padding: var(--space-8);
   background-color: var(--neutral-50);
   box-shadow: var(--shadow-lg);
   border-radius: var(--radius-lg);
+}
+
+#root:has(.admin-shell) {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 /* Header styles — profile photo layout */
@@ -193,7 +205,7 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  #root {
+  #root:not(:has(.admin-shell)) {
     padding: var(--space-4);
   }
 
