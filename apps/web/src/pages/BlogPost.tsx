@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { formatPostDate, postDateAttribute } from '@gagnechris/shared'
 import { publishedPostPageUrl } from '../blog/publishedPosts'
 import NotFound from './NotFound'
 import './BlogPost.css'
@@ -42,17 +43,6 @@ async function loadPublishedPost(slug: string): Promise<PostData | null> {
     date,
     contentHtml: body.innerHTML,
   }
-}
-
-function formatPostDate(date: string): string {
-  if (!date) return ''
-  const parsed = new Date(date)
-  if (Number.isNaN(parsed.getTime())) return date
-  return parsed.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 function BlogPost() {
@@ -116,6 +106,7 @@ function BlogPost() {
   }
 
   const dateLabel = formatPostDate(post.date)
+  const dateAttr = postDateAttribute(post.date)
 
   return (
     <div className="blog-post">
@@ -137,7 +128,11 @@ function BlogPost() {
       </header>
       <article>
         <h1>{post.title}</h1>
-        {dateLabel ? <time className="post-date">{dateLabel}</time> : null}
+        {dateLabel ? (
+          <time className="post-date" dateTime={dateAttr || undefined}>
+            {dateLabel}
+          </time>
+        ) : null}
         <div
           className="post-content"
           dangerouslySetInnerHTML={{ __html: post.contentHtml }}
