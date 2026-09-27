@@ -6,26 +6,11 @@ import BlogPost from './BlogPost'
 describe('BlogPost', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
-  test('sets document title from the post title', async () => {
-    render(
-      <MemoryRouter initialEntries={['/blog/welcome']}>
-        <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument()
-    })
-
-    expect(document.title).toBe('Welcome - Chris Gagne')
-  })
-
-  test('loads CMS posts from publisher prerender HTML when not in markdown', async () => {
-    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', 'http://127.0.0.1:4177')
+  test('loads CMS posts from publisher prerender HTML', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -54,8 +39,32 @@ describe('BlogPost', () => {
     expect(screen.getByText('Hello from CMS.')).toBeInTheDocument()
     expect(document.title).toBe('CMS Title - Chris Gagne')
     expect(fetch).toHaveBeenCalledWith(
-      '/__site/blog/cms-post/',
+      '/blog/cms-post/',
       expect.objectContaining({ headers: { Accept: 'text/html' } }),
     )
+  })
+
+  test('shows NotFound when publisher page is missing', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => '',
+      }),
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/blog/missing']}>
+        <Routes>
+          <Route path="/blog/:slug" element={<BlogPost />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
+    })
   })
 })

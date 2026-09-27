@@ -1,6 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import App from '../App'
 import BlogPost from '../pages/BlogPost'
 import Contact from '../pages/Contact'
@@ -33,6 +33,11 @@ describe('meta tags (no duplicates with static defaults)', () => {
     seedStaticMeta()
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
   test('home page keeps a single meta set', () => {
     render(
       <MemoryRouter>
@@ -61,6 +66,20 @@ describe('meta tags (no duplicates with static defaults)', () => {
   })
 
   test('blog post page keeps a single meta set', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => `<!DOCTYPE html><html><body>
+          <article class="blog-post-prerender">
+            <header><h1>Welcome</h1><time datetime="2026-02-01">2026-02-01</time></header>
+            <div class="blog-post-body"><p>Hi</p></div>
+          </article>
+        </body></html>`,
+      }),
+    )
+
     render(
       <MemoryRouter initialEntries={['/blog/welcome']}>
         <Routes>

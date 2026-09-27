@@ -32,7 +32,7 @@ export default defineConfig(({ mode, command }) => {
     )
     if (localSiteOrigin) {
       console.info(
-        `[vite] /__site proxies to ${localSiteOrigin} (publisher HTML for BlogPost fallback).`,
+        `[vite] /__site proxies to ${localSiteOrigin} (publisher HTML + posts.json).`,
       )
     }
   }
