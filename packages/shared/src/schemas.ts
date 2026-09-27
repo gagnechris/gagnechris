@@ -181,8 +181,14 @@ export const ContactRequestSchema = z
     name: z.string().trim().min(1).max(200),
     email: z.string().trim().email().max(320),
     message: z.string().trim().min(1).max(10_000),
-    /** Honeypot — must be empty. Bots that fill it get a silent success. */
+    /**
+     * Honeypot — must be empty. Non-semantic name resists autofill (CHR-98).
+     * Legacy `website` still accepted so old bots keep triggering the trap.
+     */
+    hp_field: z.string().max(200).optional().default(''),
     website: z.string().max(200).optional().default(''),
+    /** Client form-open time (ms since epoch). Used for min time-to-submit. */
+    formStartedAt: z.number().int().nonnegative().optional(),
   })
   .openapi('ContactRequest');
 

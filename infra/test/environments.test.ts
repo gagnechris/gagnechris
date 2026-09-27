@@ -514,6 +514,10 @@ describe('DataStack', () => {
       PointInTimeRecoverySpecification: {
         PointInTimeRecoveryEnabled: true,
       },
+      TimeToLiveSpecification: {
+        AttributeName: 'ttl',
+        Enabled: true,
+      },
       KeySchema: [
         { AttributeName: 'pk', KeyType: 'HASH' },
         { AttributeName: 'sk', KeyType: 'RANGE' },

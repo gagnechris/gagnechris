@@ -14,7 +14,7 @@ separators so entity types never collide.
 | `sk` | Sort key |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date) |
 | `gsi2pk` / `gsi2sk` | GSI2 — list published posts by tag |
-| `entityType` | Discriminator (`post`, `slug`, `resume`, `home`, `note`, `task`, …) |
+| `entityType` | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -150,6 +150,35 @@ prerender. The publisher wraps every `#root` prerender in
 `<!--prerender:start--> … <!--prerender:end-->` markers so `index.html` can be
 read back as a clean shell for `/blog` and `/resume`. Quick Links and the
 profile photo stay hard-coded in React for now.
+
+## Contact messages (CHR-98)
+
+Public contact form submissions are persisted before SES notification so a
+failed send never loses the message. Sort key is `MSG` (not `META`) so the
+publisher stream filter ignores these writes.
+
+#### `CONTACT#<ulid>` / `MSG`
+
+| Attr | Notes |
+| --- | --- |
+| `entityType` | `contact` |
+| `contactId` | Same ULID as in `pk` |
+| `name`, `email`, `message` | Visitor-submitted fields |
+| `sourceIp` | `requestContext.http.sourceIp` when present |
+| `createdAt` | ISO-8601 |
+| `emailStatus` | `pending` \| `sent` \| `failed` |
+| `emailError` | Optional short error string when send fails |
+
+### Rate-limit counters (TTL)
+
+Attribute `ttl` (epoch seconds) is enabled on the table for auto-expiry.
+Counters use non-`META` sort keys so streams ignore them.
+
+| Purpose | `pk` | `sk` | Limit |
+| --- | --- | --- | --- |
+| Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3 |
+| SES emails / UTC day | `RATE#ses#global` | `DAY#<yyyy-mm-dd>` | 100 |
+| Resume notify IP/day | `RATE#resume#ip#<ip>` | `DAY#<yyyy-mm-dd>` | 1 (dedupe) |
 
 ## Notebook (reserved key space)
 

@@ -245,7 +245,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-APIG4',
           reason:
-            'POST /api/contact is public (contact form); spam mitigated by honeypot + API stage throttle (CHR-38).',
+            'POST /api/contact is public (contact form); spam mitigated by honeypot, per-IP DynamoDB rate limits, and API stage throttle (CHR-98).',
         },
       ],
       true,
@@ -262,7 +262,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-APIG4',
           reason:
-            'POST /api/resume/download is a public anonymous notify ping; no PII; stage throttle applies (CHR-38).',
+            'POST /api/resume/download is a public anonymous notify ping; no PII; IP/day dedupe + SES daily cap + stage throttle (CHR-98).',
         },
       ],
       true,
