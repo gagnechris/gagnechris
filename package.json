@@ -16,7 +16,7 @@
     "typecheck": "npm run typecheck -w @gagnechris/web",
     "lint": "npm run lint -w @gagnechris/web",
     "preview": "npm run preview -w @gagnechris/web",
-    "test": "npm run test -w @gagnechris/web && npm run test -w @gagnechris/shared && npm run test -w @gagnechris/infra && npm run test -w @gagnechris/api",
+    "test": "npm run test -w @gagnechris/web && npm run test -w @gagnechris/shared && npm run test -w @gagnechris/infra && npm run test -w @gagnechris/api && npm run test -w @gagnechris/publisher",
     "test:watch": "npm run test:watch -w @gagnechris/web",
     "test:coverage": "npm run test:coverage -w @gagnechris/web",
     "cdk": "npm run cdk -w @gagnechris/infra --",

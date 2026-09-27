@@ -245,8 +245,8 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into 200 HTML. Extensionless routes rewrite to the
-      // SPA shell (/index.html) in the viewer-request function until CHR-34.
+      // /assets 403/404 into 200 HTML. /blog/* rewrites to Option B
+      // {path}/index.html; other extensionless routes use the SPA shell.
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.

@@ -104,7 +104,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site (CHR-22)
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; extensionless routes → SPA `/index.html` until CHR-34 Option B), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; `/blog/*` → Option B `{path}/index.html`; other extensionless routes → SPA `/index.html`), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s.
 - 5xx alarm publishes to the Guardrails alerts topic.
@@ -118,7 +118,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 
 On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
 
-Publisher-owned paths are never deleted by the sync: `blog/*`, `media/*`, `sitemap.xml`, `rss.xml`.
+Publisher-owned paths are never deleted by the sync: `blog/*`, `media/*`, `sitemap.xml`, `rss.xml`. After sync + `/*` invalidation, deploy invokes the publisher with `{"action":"republishAll"}` (SSM `/gagnechris/prod/publisher-function-name`) so pages pick up the new HTML shell.
 
 Manual / local:
 
@@ -141,6 +141,27 @@ SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-ar
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
+```
+
+## Publisher (CHR-34)
+
+`Publisher-prod`: DynamoDB Streams (META filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Errors alarm to the Guardrails alerts topic.
+
+Manual republish-all (after shell deploy, or recovery):
+
+```bash
+AWS_PROFILE=gagnechris-readonly aws lambda invoke \
+  --function-name "$(aws ssm get-parameter --name /gagnechris/prod/publisher-function-name --query Parameter.Value --output text)" \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"action":"republishAll"}' \
+  /tmp/publisher-out.json && cat /tmp/publisher-out.json
+```
+
+SSM: `/gagnechris/prod/publisher-function-name`, `publisher-function-arn`.
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-approval never
 ```
 
 ## Cognito auth (CHR-27)
