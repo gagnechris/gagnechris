@@ -96,9 +96,13 @@ export const handler = async (
         publishedCount: result.publishedCount,
         removedSlugs: result.removedSlugs,
         invalidationCount: result.invalidated.length,
+        resumePdfFailed: result.resumePdfFailed,
       });
       metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
       metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+      if (result.resumePdfFailed) {
+        metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
+      }
       metrics.addMetric('Success', MetricUnit.Count, 1);
       metrics.publishStoredMetrics();
       return {
@@ -125,9 +129,13 @@ export const handler = async (
         publishedCount: result.publishedCount,
         removedSlugs: result.removedSlugs,
         invalidationCount: result.invalidated.length,
+        resumePdfFailed: result.resumePdfFailed,
       });
       metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
       metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+      if (result.resumePdfFailed) {
+        metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
+      }
       metrics.addMetric('Success', MetricUnit.Count, 1);
       metrics.publishStoredMetrics();
       return {
