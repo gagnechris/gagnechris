@@ -84,6 +84,7 @@ describe('publishResumePdf', () => {
       pdf,
       'application/pdf',
       'public,max-age=0,must-revalidate',
+      'attachment; filename="Chris-Gagne-Resume.pdf"',
     );
   });
 

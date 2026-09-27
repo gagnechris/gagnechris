@@ -35,6 +35,7 @@ export function createS3SiteStorage(): SiteStorage {
       body: string | Uint8Array,
       contentType: string,
       cacheControl: string,
+      contentDisposition?: string,
     ): Promise<void> {
       await s3.send(
         new PutObjectCommand({
@@ -43,6 +44,9 @@ export function createS3SiteStorage(): SiteStorage {
           Body: body,
           ContentType: contentType,
           CacheControl: cacheControl,
+          ...(contentDisposition
+            ? { ContentDisposition: contentDisposition }
+            : {}),
         }),
       );
     },

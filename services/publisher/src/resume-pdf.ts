@@ -203,6 +203,9 @@ function drawBullet(ctx: DrawCtx, text: string): void {
 /** Stable public path for the publisher-generated resume PDF. */
 export const RESUME_PDF_KEY = 'resume.pdf';
 export const RESUME_PDF_PUBLIC_PATH = '/resume.pdf';
+/** Suggested download filename (S3 Content-Disposition + client download attr). */
+export const RESUME_PDF_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';
+export const RESUME_PDF_CONTENT_DISPOSITION = `attachment; filename="${RESUME_PDF_DOWNLOAD_FILENAME}"`;
 
 /**
  * Build a multi-page US Letter PDF from structured resume content (pdf-lib).
