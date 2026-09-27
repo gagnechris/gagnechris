@@ -1,4 +1,7 @@
-import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
+import {
+  ConditionalCheckFailedException,
+  TransactionCanceledException,
+} from '@aws-sdk/client-dynamodb';
 import {
   GetCommand,
   PutCommand,
@@ -7,6 +10,17 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { getDocClient, requireTableName } from './client.js';
 import { ConflictError } from './errors.js';
+
+/** Put/TransactWrite version conditions surface as ConditionalCheckFailed or a canceled transaction. */
+export function isOptimisticLockConflict(error: unknown): boolean {
+  if (error instanceof ConditionalCheckFailedException) return true;
+  if (error instanceof TransactionCanceledException) {
+    return (error.CancellationReasons ?? []).some(
+      (reason) => reason.Code === 'ConditionalCheckFailed',
+    );
+  }
+  return false;
+}
 
 export type VersionedSingleton = {
   status: string;
@@ -241,7 +255,7 @@ export class SingletonRepository<
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) {
+      if (isOptimisticLockConflict(error)) {
         throw new ConflictError(
           `Update conflict (${this.config.conflictLabel} version)`,
         );
@@ -277,7 +291,7 @@ export class SingletonRepository<
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) {
+      if (isOptimisticLockConflict(error)) {
         throw new ConflictError(
           `Update conflict (${this.config.conflictLabel} version)`,
         );
@@ -316,7 +330,7 @@ export class SingletonRepository<
         }),
       );
     } catch (error) {
-      if (error instanceof ConditionalCheckFailedException) {
+      if (isOptimisticLockConflict(error)) {
         throw new ConflictError(
           `Update conflict (${this.config.conflictLabel} version)`,
         );

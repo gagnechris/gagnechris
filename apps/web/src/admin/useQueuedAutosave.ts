@@ -170,6 +170,8 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setSaveError,
     setSaveState,
     bumpEdit,
+    /** Current edit generation — use to detect typing during publish/unpublish. */
+    getEditGen: () => editGenRef.current,
   }
 }
 

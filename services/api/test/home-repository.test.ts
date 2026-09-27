@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
+import {
+  ConditionalCheckFailedException,
+  TransactionCanceledException,
+} from '@aws-sdk/client-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
 import { ConflictError } from '../src/data/errors.js';
@@ -125,6 +128,34 @@ describe('HomeRepository', () => {
     });
     await expect(
       new HomeRepository(doc, 'gagnechris-test').update({ version: 3 }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('maps TransactionCanceledException on publish to a 409 conflict', async () => {
+    const draft: Home = {
+      ...stored,
+      about: 'Edited about',
+      version: 4,
+    };
+    const { doc } = mockDoc(async (command) => {
+      if (command.constructor.name === 'GetCommand') {
+        const key = command.input.Key as { sk?: string };
+        if (key.sk === 'PUBLISHED') {
+          return { Item: buildHomePublishedItem(stored) };
+        }
+        return { Item: buildHomeMetaItem(draft) };
+      }
+      throw new TransactionCanceledException({
+        message: 'Transaction cancelled',
+        $metadata: {},
+        CancellationReasons: [
+          { Code: 'ConditionalCheckFailed', Message: 'version' },
+          { Code: 'None' },
+        ],
+      });
+    });
+    await expect(
+      new HomeRepository(doc, 'gagnechris-test').publish(),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
