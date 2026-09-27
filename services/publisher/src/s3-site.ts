@@ -6,6 +6,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { requireEnv, siteStorageMode } from './config.js';
+import { mapWithConcurrency } from './concurrency.js';
 import {
   metaToPost,
   type PostMetaRecord,
@@ -13,6 +14,11 @@ import {
 } from './posts.js';
 import { metaToHome, type HomeMetaRecord } from './home.js';
 import { metaToResume, type ResumeMetaRecord } from './resume.js';
+import {
+  buildInvalidationPaths,
+  fullRebuildScope,
+  type RebuildScope,
+} from './rebuild-scope.js';
 import {
   buildRssXml,
   buildSitemapXml,
@@ -36,6 +42,8 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 const CACHE_FEED = 'public,max-age=300';
+/** Cap parallel S3/filesystem puts so Lambda stays polite under load. */
+const PUT_CONCURRENCY = 8;
 
 /**
  * Publisher-owned snapshot of the last successfully published Home.
@@ -63,7 +71,6 @@ export function getSiteStorage(): SiteStorage {
     : createS3SiteStorage();
 }
 
-
 /** Best-effort write of a PUBLISHED snapshot; never fail the rebuild on Put. */
 async function putPublishedSnapshot(
   tableName: string,
@@ -86,7 +93,8 @@ async function putPublishedSnapshot(
 }
 
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
-  const metaIds: string[] = [];
+  const posts: Post[] = [];
+  const legacyMetaIds: string[] = [];
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
   do {
@@ -101,16 +109,23 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       }),
     );
     for (const item of page.Items ?? []) {
-      if (item.entityType !== 'post' || item.sk !== 'META') continue;
-      if (typeof item.postId === 'string') metaIds.push(item.postId);
+      if (item.entityType !== 'post') continue;
+      // Prefer PUBLISHED snapshots from the index (CHR-96).
+      if (item.sk === 'PUBLISHED') {
+        posts.push(metaToPost(item as PostMetaRecord));
+        continue;
+      }
+      // Legacy: published META still on gsi1 — migrate below.
+      if (item.sk === 'META' && typeof item.postId === 'string') {
+        legacyMetaIds.push(item.postId);
+      }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
       | Record<string, unknown>
       | undefined;
   } while (exclusiveStartKey);
 
-  const posts: Post[] = [];
-  for (const postId of metaIds) {
+  for (const postId of legacyMetaIds) {
     const published = await ddb.send(
       new GetCommand({
         TableName: tableName,
@@ -141,7 +156,11 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       gsi1pk?: string;
       gsi1sk?: string;
     };
-    await putPublishedSnapshot(tableName, { ...rest, sk: 'PUBLISHED', status: 'published' });
+    await putPublishedSnapshot(tableName, {
+      ...rest,
+      sk: 'PUBLISHED',
+      status: 'published',
+    });
     posts.push(metaToPost(legacyItem));
   }
 
@@ -182,7 +201,11 @@ export async function getPublishedResume(
     return undefined;
   }
   const resume = metaToResume(legacyItem);
-  await putPublishedSnapshot(tableName, { ...legacyItem, sk: 'PUBLISHED', status: 'published' });
+  await putPublishedSnapshot(tableName, {
+    ...legacyItem,
+    sk: 'PUBLISHED',
+    status: 'published',
+  });
   return resume;
 }
 
@@ -216,7 +239,11 @@ export async function getPublishedHome(
     return undefined;
   }
   const home = metaToHome(legacyItem);
-  await putPublishedSnapshot(tableName, { ...legacyItem, sk: 'PUBLISHED', status: 'published' });
+  await putPublishedSnapshot(tableName, {
+    ...legacyItem,
+    sk: 'PUBLISHED',
+    status: 'published',
+  });
   return home;
 }
 
@@ -289,42 +316,86 @@ export type RebuildSiteSources = {
   getPublishedHome: () => Promise<Home | undefined>;
 };
 
+function trackingStorage(inner: SiteStorage): {
+  storage: SiteStorage;
+  changedKeys: string[];
+} {
+  const changedKeys: string[] = [];
+  return {
+    changedKeys,
+    storage: {
+      readShell: () => inner.readShell(),
+      read: (key) => inner.read(key),
+      list: (prefix) => inner.list(prefix),
+      invalidate: (paths) => inner.invalidate(paths),
+      async put(key, body, contentType, cacheControl, contentDisposition) {
+        const wrote = await inner.put(
+          key,
+          body,
+          contentType,
+          cacheControl,
+          contentDisposition,
+        );
+        if (wrote) changedKeys.push(key);
+        return wrote;
+      },
+      async delete(key) {
+        await inner.delete(key);
+        changedKeys.push(key);
+      },
+    },
+  };
+}
+
 /**
- * Rebuild all published static artifacts from DynamoDB + the site shell.
+ * Rebuild published static artifacts from DynamoDB + the site shell.
  *
- * - When `slugsToRemove` is provided (stream path), only those candidates are
- *   considered for deletion.
- * - When omitted (republish-all / local), discover existing `blog/<slug>/index.html`
- *   keys and delete orphans not in the published set.
+ * Pass `scope` to limit work (stream path). Omit scope (or pass
+ * `fullRebuildScope()`) for republish-all / local full rebuilds.
+ *
  * - Unpublished Resume: replace `resume/index.html` with a placeholder and
  *   delete `resume.pdf` (CHR-103).
  * - Unpublished Home: re-render `index.html` from `home/last-published.json` so
  *   the last published copy survives web deploys (CHR-103).
+ * - Shell is always the pristine `_shell.html` template (CHR-104).
  */
 export async function rebuildPublishedSite(options?: {
-  slugsToRemove?: Iterable<string>;
+  scope?: RebuildScope;
   storage?: SiteStorage;
   sources?: RebuildSiteSources;
 }): Promise<RebuildResult> {
+  const scope = options?.scope ?? fullRebuildScope();
   const tableName = requireEnv('DATA_TABLE_NAME');
-  const storage = options?.storage ?? getSiteStorage();
+  const { storage, changedKeys } = trackingStorage(
+    options?.storage ?? getSiteStorage(),
+  );
   const sources: RebuildSiteSources = options?.sources ?? {
     listPublishedPosts: () => listPublishedPosts(tableName),
     getPublishedResume: () => getPublishedResume(tableName),
     getPublishedHome: () => getPublishedHome(tableName),
   };
 
+  const needsCatalog =
+    scope.allPosts ||
+    scope.feeds ||
+    scope.postSlugs.size > 0 ||
+    scope.slugsToRemove.size > 0;
+
+  const needsShell =
+    needsCatalog || scope.home || scope.resume || scope.allPosts;
+
   // Pristine Vite shell (_shell.html) — never the home prerender in index.html.
-  const shell = await storage.readShell();
-  const published = await sources.listPublishedPosts();
+  const shell = needsShell ? await storage.readShell() : '';
+
+  const published = needsCatalog ? await sources.listPublishedPosts() : [];
   const publishedSlugs = new Set(published.map((p) => p.slug));
 
   let candidates: Iterable<string>;
-  if (options?.slugsToRemove !== undefined) {
-    candidates = options.slugsToRemove;
-  } else {
+  if (scope.allPosts && scope.slugsToRemove.size === 0) {
     const keys = await storage.list('blog/');
     candidates = postSlugsFromKeys(keys);
+  } else {
+    candidates = scope.slugsToRemove;
   }
 
   const removedSlugs: string[] = [];
@@ -334,7 +405,11 @@ export async function rebuildPublishedSite(options?: {
     removedSlugs.push(slug);
   }
 
-  for (const post of published) {
+  const postsToRender = scope.allPosts
+    ? published
+    : published.filter((p) => scope.postSlugs.has(p.slug));
+
+  await mapWithConcurrency(postsToRender, PUT_CONCURRENCY, async (post) => {
     const html = renderPostPage(shell, post);
     await storage.put(
       `blog/${post.slug}/index.html`,
@@ -342,131 +417,128 @@ export async function rebuildPublishedSite(options?: {
       'text/html; charset=utf-8',
       CACHE_HTML,
     );
+  });
+
+  if (scope.feeds) {
+    const feedPuts: Array<() => Promise<boolean>> = [
+      () =>
+        storage.put(
+          'blog/index.html',
+          renderBlogIndexPage(shell, published),
+          'text/html; charset=utf-8',
+          CACHE_HTML,
+        ),
+      () =>
+        storage.put(
+          'blog/posts.json',
+          JSON.stringify({ items: published.map(toListItem) }, null, 0),
+          'application/json; charset=utf-8',
+          CACHE_HTML,
+        ),
+      () =>
+        storage.put(
+          'blog/slugs.json',
+          JSON.stringify({ slugs: published.map((p) => p.slug) }, null, 0),
+          'application/json; charset=utf-8',
+          CACHE_HTML,
+        ),
+      () =>
+        storage.put(
+          'sitemap.xml',
+          buildSitemapXml(published),
+          'application/xml; charset=utf-8',
+          CACHE_FEED,
+        ),
+      () =>
+        storage.put(
+          'rss.xml',
+          buildRssXml(published),
+          'application/rss+xml; charset=utf-8',
+          CACHE_FEED,
+        ),
+    ];
+    await mapWithConcurrency(feedPuts, PUT_CONCURRENCY, (fn) => fn());
+    await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
   }
-
-  await storage.put(
-    'blog/index.html',
-    renderBlogIndexPage(shell, published),
-    'text/html; charset=utf-8',
-    CACHE_HTML,
-  );
-
-  await storage.put(
-    'blog/posts.json',
-    JSON.stringify({ items: published.map(toListItem) }, null, 0),
-    'application/json; charset=utf-8',
-    CACHE_HTML,
-  );
-
-  // Allowlist for the CloudFront viewer-request function (CHR-102).
-  const publishedSlugList = published.map((p) => p.slug);
-  await storage.put(
-    'blog/slugs.json',
-    JSON.stringify({ slugs: publishedSlugList }, null, 0),
-    'application/json; charset=utf-8',
-    CACHE_HTML,
-  );
-  await syncViewerRequestBlogSlugs(publishedSlugList);
 
   // Published resume → live HTML + PDF. Unpublished → placeholder HTML, delete PDF.
   // PDF failures must not abort HTML / sitemap / RSS (CHR-97).
-  const resume = await sources.getPublishedResume();
   let resumePdfFailed = false;
+  let resumePublished = false;
   let resumeUnpublished = false;
-  if (resume) {
-    await storage.put(
-      'resume/index.html',
-      renderResumePage(shell, resume),
-      'text/html; charset=utf-8',
-      CACHE_HTML,
-    );
-    const pdfResult = await publishResumePdf(storage, resume);
-    resumePdfFailed = pdfResult.status === 'kept-previous';
-  } else {
-    resumeUnpublished = true;
-    await storage.put(
-      'resume/index.html',
-      renderResumeUnavailablePage(shell),
-      'text/html; charset=utf-8',
-      CACHE_HTML,
-    );
-    await storage.delete(RESUME_PDF_KEY);
+  if (scope.resume) {
+    const resume = await sources.getPublishedResume();
+    if (resume) {
+      resumePublished = true;
+      await storage.put(
+        'resume/index.html',
+        renderResumePage(shell, resume),
+        'text/html; charset=utf-8',
+        CACHE_HTML,
+      );
+      const pdfResult = await publishResumePdf(storage, resume);
+      resumePdfFailed = pdfResult.status === 'kept-previous';
+    } else {
+      resumeUnpublished = true;
+      await storage.put(
+        'resume/index.html',
+        renderResumeUnavailablePage(shell),
+        'text/html; charset=utf-8',
+        CACHE_HTML,
+      );
+      await storage.delete(RESUME_PDF_KEY);
+    }
   }
 
   // Published home → write index.html + durable snapshot.
   // Draft / missing → restore from snapshot so deploys never fall back to DEFAULT_HOME.
-  const home = await sources.getPublishedHome();
+  let homePublished = false;
   let homeRestoredFromSnapshot = false;
-  if (home) {
-    await storage.put(
-      'index.html',
-      renderHomePage(shell, home),
-      'text/html; charset=utf-8',
-      CACHE_HTML,
-    );
-    await storage.put(
-      HOME_LAST_PUBLISHED_KEY,
-      JSON.stringify(homeToSnapshot(home)),
-      'application/json; charset=utf-8',
-      CACHE_HTML,
-    );
-  } else {
-    const snapshot = await readHomePublishSnapshot(storage);
-    if (snapshot) {
-      homeRestoredFromSnapshot = true;
+  if (scope.home) {
+    const home = await sources.getPublishedHome();
+    if (home) {
+      homePublished = true;
       await storage.put(
         'index.html',
-        renderHomePage(shell, snapshotToHome(snapshot)),
+        renderHomePage(shell, home),
         'text/html; charset=utf-8',
         CACHE_HTML,
       );
+      await storage.put(
+        HOME_LAST_PUBLISHED_KEY,
+        JSON.stringify(homeToSnapshot(home)),
+        'application/json; charset=utf-8',
+        CACHE_HTML,
+      );
+    } else {
+      const snapshot = await readHomePublishSnapshot(storage);
+      if (snapshot) {
+        homeRestoredFromSnapshot = true;
+        await storage.put(
+          'index.html',
+          renderHomePage(shell, snapshotToHome(snapshot)),
+          'text/html; charset=utf-8',
+          CACHE_HTML,
+        );
+      }
     }
   }
 
-  await storage.put(
-    'sitemap.xml',
-    buildSitemapXml(published),
-    'application/xml; charset=utf-8',
-    CACHE_FEED,
-  );
-  await storage.put(
-    'rss.xml',
-    buildRssXml(published),
-    'application/rss+xml; charset=utf-8',
-    CACHE_FEED,
-  );
-
-  const invalidated = [
-    '/blog',
-    '/blog/',
-    '/blog/index.html',
-    '/blog/posts.json',
-    '/blog/slugs.json',
-    '/sitemap.xml',
-    '/rss.xml',
-    '/404.html',
-    ...published.map((p) => `/blog/${p.slug}`),
-    ...published.map((p) => `/blog/${p.slug}/`),
-    ...published.map((p) => `/blog/${p.slug}/index.html`),
-    ...removedSlugs.map((s) => `/blog/${s}`),
-    ...removedSlugs.map((s) => `/blog/${s}/`),
-    ...removedSlugs.map((s) => `/blog/${s}/index.html`),
-    '/resume',
-    '/resume/',
-    '/resume/index.html',
-    `/${RESUME_PDF_KEY}`,
-    ...(home || homeRestoredFromSnapshot ? ['/', '/index.html'] : []),
-  ];
+  const invalidated = buildInvalidationPaths({
+    scope,
+    changedKeys,
+    removedSlugs,
+  });
 
   await storage.invalidate(invalidated);
 
   return {
     publishedCount: published.length,
     removedSlugs,
-    resumePublished: Boolean(resume),
+    resumePublished,
     resumeUnpublished,
     resumePdfFailed,
-    homePublished: Boolean(home),
+    homePublished,
     homeRestoredFromSnapshot,
     invalidated: [...new Set(invalidated)],
   };

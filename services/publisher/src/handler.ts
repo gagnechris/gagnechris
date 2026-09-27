@@ -1,14 +1,12 @@
-import type {
-  AttributeValue,
-  Context,
-  DynamoDBRecord,
-  DynamoDBStreamEvent,
-} from 'aws-lambda';
+import type { Context, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
-import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { rebuildPublishedSite } from './s3-site.js';
-import type { PostMetaRecord } from './posts.js';
+import {
+  collectRebuildScope,
+  fullRebuildScope,
+  streamNeedsRebuild,
+} from './rebuild-scope.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 const metrics = new Metrics({
@@ -39,45 +37,28 @@ function isRepublishAll(event: unknown): event is RepublishAllEvent {
   );
 }
 
-function imageToMeta(
-  image: Record<string, AttributeValue> | undefined,
-): PostMetaRecord | undefined {
-  if (!image) return undefined;
-  // aws-lambda AttributeValue vs SDK v3 util-dynamodb AttributeValue shapes differ.
-  const item = unmarshall(
-    image as Parameters<typeof unmarshall>[0],
-  ) as PostMetaRecord;
-  if (item.sk !== 'PUBLISHED') return undefined;
-  return item;
-}
-
 /** Collect slugs that may need S3 cleanup after unpublish / delete / rename. */
 export function collectSlugsToRemove(records: DynamoDBRecord[]): Set<string> {
-  const slugs = new Set<string>();
-  for (const record of records) {
-    const oldMeta = imageToMeta(record.dynamodb?.OldImage);
-    const newMeta = imageToMeta(record.dynamodb?.NewImage);
-    if (!oldMeta || oldMeta.status !== 'published' || !oldMeta.slug) {
-      continue;
-    }
-    const stillSameSlug =
-      newMeta?.status === 'published' && newMeta.slug === oldMeta.slug;
-    if (!stillSameSlug) {
-      slugs.add(oldMeta.slug);
-    }
-  }
-  return slugs;
+  return collectRebuildScope(records).slugsToRemove;
 }
 
-export function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {
-  for (const record of records) {
-    const oldMeta = imageToMeta(record.dynamodb?.OldImage);
-    const newMeta = imageToMeta(record.dynamodb?.NewImage);
-    if (newMeta?.status === 'published' || oldMeta?.status === 'published') {
-      return true;
-    }
+function recordPublishMetrics(result: {
+  publishedCount: number;
+  removedSlugs: string[];
+  invalidated: string[];
+  resumePdfFailed: boolean;
+}): void {
+  metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
+  metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+  metrics.addMetric(
+    'InvalidationPaths',
+    MetricUnit.Count,
+    result.invalidated.length,
+  );
+  if (result.resumePdfFailed) {
+    metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
   }
-  return false;
+  metrics.addMetric('Success', MetricUnit.Count, 1);
 }
 
 export const handler = async (
@@ -90,20 +71,17 @@ export const handler = async (
   try {
     if (isRepublishAll(event)) {
       logger.info('Republish-all requested');
-      // Omit slugsToRemove so rebuild discovers orphans via list().
-      const result = await rebuildPublishedSite();
+      const result = await rebuildPublishedSite({
+        scope: fullRebuildScope(),
+      });
       logger.info('Publish complete', {
         publishedCount: result.publishedCount,
         removedSlugs: result.removedSlugs,
         invalidationCount: result.invalidated.length,
+        invalidated: result.invalidated,
         resumePdfFailed: result.resumePdfFailed,
       });
-      metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
-      metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
-      if (result.resumePdfFailed) {
-        metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
-      }
-      metrics.addMetric('Success', MetricUnit.Count, 1);
+      recordPublishMetrics(result);
       metrics.publishStoredMetrics();
       return {
         ok: true,
@@ -119,24 +97,25 @@ export const handler = async (
         metrics.publishStoredMetrics();
         return { ok: true, publishedCount: 0, removedSlugs: [] };
       }
-      const slugsToRemove = collectSlugsToRemove(event.Records);
+      const scope = collectRebuildScope(event.Records);
       logger.info('Rebuilding from stream', {
         recordCount: event.Records.length,
-        slugsToRemove: [...slugsToRemove],
+        allPosts: scope.allPosts,
+        postSlugs: [...scope.postSlugs],
+        slugsToRemove: [...scope.slugsToRemove],
+        feeds: scope.feeds,
+        home: scope.home,
+        resume: scope.resume,
       });
-      const result = await rebuildPublishedSite({ slugsToRemove });
+      const result = await rebuildPublishedSite({ scope });
       logger.info('Publish complete', {
         publishedCount: result.publishedCount,
         removedSlugs: result.removedSlugs,
         invalidationCount: result.invalidated.length,
+        invalidated: result.invalidated,
         resumePdfFailed: result.resumePdfFailed,
       });
-      metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
-      metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
-      if (result.resumePdfFailed) {
-        metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
-      }
-      metrics.addMetric('Success', MetricUnit.Count, 1);
+      recordPublishMetrics(result);
       metrics.publishStoredMetrics();
       return {
         ok: true,
@@ -153,4 +132,3 @@ export const handler = async (
     throw err;
   }
 };
-

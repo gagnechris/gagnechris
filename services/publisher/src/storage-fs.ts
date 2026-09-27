@@ -24,6 +24,15 @@ async function walkFiles(root: string, prefix: string): Promise<string[]> {
   return out;
 }
 
+function bodyBytes(body: string | Uint8Array): Uint8Array {
+  return typeof body === 'string' ? Buffer.from(body, 'utf-8') : body;
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  return Buffer.compare(a, b) === 0;
+}
+
 export function createFilesystemSiteStorage(
   rootDir?: string,
 ): SiteStorage {
@@ -53,14 +62,20 @@ export function createFilesystemSiteStorage(
       _contentType: string,
       _cacheControl: string,
       _contentDisposition?: string,
-    ): Promise<void> {
+    ): Promise<boolean> {
       const path = join(root, key);
-      await mkdir(dirname(path), { recursive: true });
-      if (typeof body === 'string') {
-        await writeFile(path, body, 'utf-8');
-      } else {
-        await writeFile(path, body);
+      const next = bodyBytes(body);
+      try {
+        const existing = await readFile(path);
+        if (sameBytes(existing, next)) {
+          return false;
+        }
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, next);
+      return true;
     },
 
     async delete(key: string): Promise<void> {
