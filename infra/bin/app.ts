@@ -12,6 +12,9 @@ import { SiteStack } from '../lib/stacks/site-stack.js';
 
 const app = new App();
 
+// CHR-65 throwaway: intentional synth failure to prove CDK diff fails the job.
+throw new Error('CHR-65 throwaway: intentional synth failure — do not merge');
+
 // Prod only (staging was removed — CHR-66 / CHR-68).
 const envName = parseEnvironmentName(app.node.tryGetContext('env'));
 const config = getEnvironment(
