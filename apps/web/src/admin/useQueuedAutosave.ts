@@ -29,6 +29,10 @@ type Options<TDraft, TEntity> = {
  * After a successful save, callers must not clobber the live draft with a
  * normalized server response — only update version / metadata via `onSaved`.
  * Dirty clears only when nothing was typed since the request that just finished.
+ *
+ * Call `setAutosaveHeld(true)` while Publish/Unpublish/Discard is in flight so
+ * debounced autosaves do not race the version bump (CHR-121). Explicit `save()`
+ * still runs (flush-before-publish).
  */
 export function useQueuedAutosave<TDraft, TEntity>({
   draft,
@@ -44,12 +48,15 @@ export function useQueuedAutosave<TDraft, TEntity>({
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
+  /** Re-render token so debounce effect cancels when hold flips. */
+  const [held, setHeld] = useState(false)
 
   const draftRef = useRef(draft)
   const editGenRef = useRef(0)
   const inFlightRef = useRef(false)
   const pendingRef = useRef(false)
   const chainRef = useRef<Promise<boolean> | null>(null)
+  const heldRef = useRef(false)
   const setDirtyRef = useRef(setDirty)
   const performSaveRef = useRef(performSave)
   const onSavedRef = useRef(onSaved)
@@ -74,6 +81,11 @@ export function useQueuedAutosave<TDraft, TEntity>({
   useEffect(() => {
     getVersionRef.current = getVersion
   }, [getVersion])
+
+  const setAutosaveHeld = useCallback((next: boolean) => {
+    heldRef.current = next
+    setHeld(next)
+  }, [])
 
   const bumpEdit = useCallback(() => {
     editGenRef.current += 1
@@ -138,6 +150,14 @@ export function useQueuedAutosave<TDraft, TEntity>({
           }
 
           // Edits (or a queued save) landed while the request was in flight.
+          // If Publish holds autosave, stop looping — flush after hold lifts.
+          if (heldRef.current) {
+            setDirtyRef.current(true)
+            setSaveState('idle')
+            allOk = true
+            break
+          }
+
           setDirtyRef.current(true)
           setSaveState('idle')
         }
@@ -156,12 +176,13 @@ export function useQueuedAutosave<TDraft, TEntity>({
   }, [conflictMessage, enabled, versionRef])
 
   useEffect(() => {
-    if (!enabled || !dirty) return
+    if (!enabled || !dirty || held) return
     const handle = window.setTimeout(() => {
+      if (heldRef.current) return
       void save()
     }, debounceMs)
     return () => window.clearTimeout(handle)
-  }, [dirty, draft, debounceMs, enabled, save])
+  }, [dirty, draft, debounceMs, enabled, save, held])
 
   return {
     save,
@@ -170,6 +191,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setSaveError,
     setSaveState,
     bumpEdit,
+    setAutosaveHeld,
     /** Current edit generation — use to detect typing during publish/unpublish. */
     getEditGen: () => editGenRef.current,
   }

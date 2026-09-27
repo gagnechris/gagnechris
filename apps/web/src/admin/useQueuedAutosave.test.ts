@@ -160,4 +160,73 @@ describe('useQueuedAutosave', () => {
     expect(performSave.mock.calls.map((c) => c[1])).toEqual([1, 2])
     expect(versionRef.current).toBe(3)
   })
+
+  test('hold suppresses debounced autosave until released (CHR-121)', async () => {
+    vi.useFakeTimers()
+    const performSave = vi.fn(async (_draft: string, version: number) => ({
+      ok: true as const,
+      entity: { version: version + 1 },
+    }))
+    const versionRef = { current: 1 }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState('published-at-click')
+      const [dirty, setDirty] = useState(true)
+      const autosave = useQueuedAutosave({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 900,
+        versionRef,
+        getVersion: (e) => e.version,
+        performSave,
+        onSaved: () => {},
+        conflictMessage: 'Conflict',
+      })
+      return { ...autosave, setDraft, setDirty, dirty }
+    })
+
+    act(() => {
+      result.current.setAutosaveHeld(true)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(performSave).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.bumpEdit()
+      result.current.setDraft('typed-during-publish')
+      result.current.setDirty(true)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(performSave).not.toHaveBeenCalled()
+
+    // Explicit flush still works while held (publish path).
+    await act(async () => {
+      await result.current.save()
+    })
+    expect(performSave).toHaveBeenCalledTimes(1)
+    expect(performSave.mock.calls[0]?.[0]).toBe('typed-during-publish')
+
+    act(() => {
+      result.current.bumpEdit()
+      result.current.setDraft('after-publish')
+      result.current.setDirty(true)
+      result.current.setAutosaveHeld(false)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+    expect(performSave).toHaveBeenCalledTimes(2)
+    expect(performSave.mock.calls[1]?.[0]).toBe('after-publish')
+    expect(performSave.mock.calls[1]?.[1]).toBe(2)
+
+    vi.useRealTimers()
+  })
 })
