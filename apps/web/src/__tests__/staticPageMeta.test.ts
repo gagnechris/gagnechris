@@ -30,6 +30,9 @@ describe('staticPageMeta', () => {
     expect(outputRelativePath('')).toBe('index.html')
     expect(outputRelativePath('resume')).toBe('resume/index.html')
     expect(outputRelativePath('contact')).toBe('contact/index.html')
+    expect(outputRelativePath('dont-feed-the-bears')).toBe(
+      'dont-feed-the-bears/index.html',
+    )
   })
 
   it('applies resume meta without duplicating tags', () => {
@@ -50,11 +53,29 @@ describe('staticPageMeta', () => {
     expect(html.match(/rel="canonical"/g)).toHaveLength(1)
   })
 
-  it('covers home, resume, and contact', () => {
+  it('covers home, resume, contact, and dont-feed-the-bears', () => {
     expect(STATIC_PAGE_META.map((p) => p.routePath).sort()).toEqual([
       '',
       'contact',
+      'dont-feed-the-bears',
       'resume',
     ])
+  })
+
+  it('applies bears game meta with dedicated OG image', () => {
+    const bears = STATIC_PAGE_META.find(
+      (p) => p.routePath === 'dont-feed-the-bears',
+    )!
+    const html = applyStaticPageMeta(shell, bears)
+    expect(html).toContain("<title>Don't Feed the Bears - Chris Gagne</title>")
+    expect(html).toContain(
+      `<meta property="og:url" content="${canonicalUrlFor('dont-feed-the-bears')}" />`,
+    )
+    expect(html).toContain(
+      'content="https://gagnechris.com/og-dont-feed-the-bears.jpg"',
+    )
+    expect(html).toContain(
+      `<link rel="canonical" href="${canonicalUrlFor('dont-feed-the-bears')}" />`,
+    )
   })
 })
