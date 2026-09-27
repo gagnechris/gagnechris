@@ -371,6 +371,10 @@
             "maxLength": 200,
             "default": ""
           },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0
+          },
           "formStartedAt": {
             "type": "integer",
             "minimum": 0

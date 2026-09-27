@@ -1131,6 +1131,7 @@ export interface components {
             hp_field: string;
             /** @default  */
             website: string;
+            elapsedMs?: number;
             formStartedAt?: number;
         };
         ContactResponse: {
