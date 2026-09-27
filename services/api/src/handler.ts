@@ -14,6 +14,7 @@ import {
   type HealthResponse,
 } from '@gagnechris/shared';
 import { handlePostsRoute } from './posts/handlers.js';
+import { handleResumeRoute } from './resume/handlers.js';
 import { handleMediaRoute } from './media/handlers.js';
 import { handleContactRoute } from './contact/handlers.js';
 
@@ -129,6 +130,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     if (postsResponse) {
       metrics.addMetric('PostsRoute', MetricUnit.Count, 1);
       return postsResponse;
+    }
+
+    const resumeResponse = await handleResumeRoute(event, method, path);
+    if (resumeResponse) {
+      metrics.addMetric('ResumeRoute', MetricUnit.Count, 1);
+      return resumeResponse;
     }
 
     const mediaResponse = await handleMediaRoute(event, method, path);

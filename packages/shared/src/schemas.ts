@@ -196,6 +196,75 @@ export const ContactResponseSchema = z
 
 export type ContactResponse = z.infer<typeof ContactResponseSchema>;
 
+export const ResumeExperienceSchema = z
+  .object({
+    title: z.string(),
+    company: z.string(),
+    bullets: z.array(z.string()),
+  })
+  .openapi('ResumeExperience');
+
+export type ResumeExperience = z.infer<typeof ResumeExperienceSchema>;
+
+export const ResumeEducationSchema = z
+  .object({
+    title: z.string(),
+    institution: z.string(),
+    location: z.string(),
+    year: z.string(),
+    degreeDetail: z.string().optional(),
+  })
+  .openapi('ResumeEducation');
+
+export type ResumeEducation = z.infer<typeof ResumeEducationSchema>;
+
+export const ResumeContentSchema = z
+  .object({
+    summary: z.string(),
+    competencies: z.array(z.string()).openapi({
+      description: 'Flat list; the renderer splits it into two columns',
+    }),
+    experience: z.array(ResumeExperienceSchema),
+    skills: z.array(z.string()),
+    education: z.array(ResumeEducationSchema),
+  })
+  .openapi('ResumeContent');
+
+export type ResumeContent = z.infer<typeof ResumeContentSchema>;
+
+export const ResumeSchema = z
+  .object({
+    name: z.string().min(1),
+    pdfPath: z.string().min(1).openapi({
+      description: 'Site-relative path to the downloadable PDF',
+    }),
+    content: ResumeContentSchema,
+    status: PostStatusSchema,
+    publishedAt: z.string().datetime({ offset: true }).nullable(),
+    updatedAt: z.string().datetime({ offset: true }),
+    seo: PostSeoSchema.nullable(),
+    version: z.number().int().nonnegative(),
+  })
+  .openapi('Resume');
+
+export type Resume = z.infer<typeof ResumeSchema>;
+
+export const UpdateResumeRequestSchema = z
+  .object({
+    version: z
+      .number()
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Expected version for optimistic concurrency' }),
+    name: z.string().min(1).optional(),
+    pdfPath: z.string().min(1).optional(),
+    content: ResumeContentSchema.optional(),
+    seo: PostSeoSchema.nullable().optional(),
+  })
+  .openapi('UpdateResumeRequest');
+
+export type UpdateResumeRequest = z.infer<typeof UpdateResumeRequestSchema>;
+
 export const ResumeDownloadNotifyRequestSchema = z
   .object({
     /** Optional client context (no PII required). */

@@ -36,6 +36,14 @@ function AdminChrome({ user }: { user: AuthUser }) {
             Posts
           </NavLink>
           <NavLink
+            to="/admin/resume"
+            className={({ isActive }) =>
+              isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'
+            }
+          >
+            Resume
+          </NavLink>
+          <NavLink
             to="/admin/notebook"
             className={({ isActive }) =>
               isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'

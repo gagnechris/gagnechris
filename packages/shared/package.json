@@ -8,6 +8,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./resume": {
+      "types": "./src/resume.ts",
+      "import": "./src/resume.ts"
     }
   },
   "scripts": {

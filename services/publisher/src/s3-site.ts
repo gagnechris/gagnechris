@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { requireEnv, siteStorageMode } from './config.js';
@@ -9,16 +10,18 @@ import {
   type PostMetaRecord,
   toListItem,
 } from './posts.js';
+import { metaToResume, type ResumeMetaRecord } from './resume.js';
 import {
   buildRssXml,
   buildSitemapXml,
   renderBlogIndexPage,
   renderPostPage,
+  renderResumePage,
 } from './render.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
-import type { Post } from '@gagnechris/shared';
+import type { Post, Resume } from '@gagnechris/shared';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
@@ -68,9 +71,26 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   return posts;
 }
 
+export async function getPublishedResume(
+  tableName: string,
+): Promise<Resume | undefined> {
+  const result = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { pk: 'RESUME#current', sk: 'META' },
+    }),
+  );
+  const item = result.Item as ResumeMetaRecord | undefined;
+  if (!item || item.entityType !== 'resume' || item.status !== 'published') {
+    return undefined;
+  }
+  return metaToResume(item);
+}
+
 export type RebuildResult = {
   publishedCount: number;
   removedSlugs: string[];
+  resumePublished: boolean;
   invalidated: string[];
 };
 
@@ -132,6 +152,17 @@ export async function rebuildPublishedSite(options?: {
     CACHE_HTML,
   );
 
+  // Draft / missing resume leaves any live resume/index.html untouched.
+  const resume = await getPublishedResume(tableName);
+  if (resume) {
+    await storage.put(
+      'resume/index.html',
+      renderResumePage(shell, resume),
+      'text/html; charset=utf-8',
+      CACHE_HTML,
+    );
+  }
+
   await storage.put(
     'sitemap.xml',
     buildSitemapXml(published),
@@ -158,6 +189,7 @@ export async function rebuildPublishedSite(options?: {
     ...removedSlugs.map((s) => `/blog/${s}`),
     ...removedSlugs.map((s) => `/blog/${s}/`),
     ...removedSlugs.map((s) => `/blog/${s}/index.html`),
+    ...(resume ? ['/resume', '/resume/', '/resume/index.html'] : []),
   ];
 
   await storage.invalidate(invalidated);
@@ -165,6 +197,7 @@ export async function rebuildPublishedSite(options?: {
   return {
     publishedCount: published.length,
     removedSlugs,
+    resumePublished: Boolean(resume),
     invalidated: [...new Set(invalidated)],
   };
 }

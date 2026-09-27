@@ -90,13 +90,21 @@ function buildEvent(
   };
 }
 
-function isMutatingAdminPosts(method: string, path: string): boolean {
+function isMutatingAdminContent(method: string, path: string): boolean {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return false;
   const normalized = path.replace(/\/$/, '') || '/';
   return (
     normalized === '/api/admin/posts' ||
-    normalized.startsWith('/api/admin/posts/')
+    normalized.startsWith('/api/admin/posts/') ||
+    normalized === '/api/admin/resume' ||
+    normalized.startsWith('/api/admin/resume/')
   );
+}
+
+/** GET /api/admin/resume seeds the singleton on first read (CHR-89). */
+function isSeedingResumeRead(method: string, path: string): boolean {
+  const normalized = path.replace(/\/$/, '') || '/';
+  return method === 'GET' && normalized === '/api/admin/resume';
 }
 
 const fakeContext = {
@@ -116,7 +124,12 @@ const fakeContext = {
 
 async function maybeRebuild(method: string, path: string, status: number) {
   if (status < 200 || status >= 300) return;
-  if (!isMutatingAdminPosts(method, path)) return;
+  if (
+    !isMutatingAdminContent(method, path) &&
+    !isSeedingResumeRead(method, path)
+  ) {
+    return;
+  }
   try {
     const result = await rebuildPublishedSite();
     console.info('[local-api] publisher rebuild', result);

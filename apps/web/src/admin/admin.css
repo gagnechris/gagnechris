@@ -334,3 +334,47 @@
 .admin-panel--editor .admin-panel__header {
   margin-bottom: var(--space-2);
 }
+
+.admin-repeat {
+  display: grid;
+  gap: var(--space-4);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.admin-repeat legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--neutral-600);
+}
+
+.admin-repeat__item {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, white 70%, transparent);
+}
+
+.admin-repeat__item .admin-btn {
+  justify-self: start;
+}
+
+.admin-preview-title {
+  margin: var(--space-8) 0 var(--space-3);
+  font-size: var(--text-xl);
+}
+
+.admin-resume-preview {
+  animation: none;
+  opacity: 1;
+}
+
+.admin-resume-preview .resume-summary,
+.admin-resume-preview .resume-section {
+  animation: none;
+  opacity: 1;
+}

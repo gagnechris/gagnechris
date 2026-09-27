@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Post } from '@gagnechris/shared';
+import { DEFAULT_RESUME, type Post, type Resume } from '@gagnechris/shared';
 import {
   buildArticleHtml,
   buildRssXml,
   buildSitemapXml,
   renderPostPage,
+  renderResumePage,
   resolveOgImage,
 } from '../src/render.js';
 
@@ -74,6 +75,43 @@ describe('publisher render', () => {
         samplePost({ seo: { ogImage: 'https://cdn.example/x.png' } }),
       ),
     ).toBe('https://cdn.example/x.png');
+  });
+
+  it('injects resume meta and the prerendered article into the shell', () => {
+    const resume: Resume = {
+      ...DEFAULT_RESUME,
+      status: 'published',
+      publishedAt: '2026-09-27T12:00:00.000Z',
+    };
+    const html = renderResumePage(shell, resume);
+    expect(html).toContain('<title>Resume - Chris Gagne</title>');
+    expect(html).toContain(
+      'property="og:url" content="https://gagnechris.com/resume"',
+    );
+    expect(html).toContain(
+      '<link rel="canonical" href="https://gagnechris.com/resume" />',
+    );
+    expect(
+      renderResumePage(
+        shell.replace(
+          '</head>',
+          '<link rel="canonical" href="https://gagnechris.com" /></head>',
+        ),
+        resume,
+      ).match(/rel="canonical"/g),
+    ).toHaveLength(1);
+    expect(html).toContain('<div id="root"><article class="resume-page-prerender"');
+    expect(html).toContain('data-pdf="/Christopher M Gagne Resume 2026.pdf"');
+    expect(html).toContain('/assets/index.js');
+  });
+
+  it('prefers resume seo overrides for title and description', () => {
+    const html = renderResumePage(shell, {
+      ...DEFAULT_RESUME,
+      seo: { title: 'CV', description: 'Short bio' },
+    });
+    expect(html).toContain('<title>CV</title>');
+    expect(html).toContain('name="description" content="Short bio"');
   });
 
   it('builds sitemap and RSS for published posts', () => {
