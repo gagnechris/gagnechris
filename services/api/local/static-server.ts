@@ -25,14 +25,38 @@ type CfRequest = {
   headers: { host: { value: string } };
 };
 
-async function loadViewerHandler(): Promise<
-  (event: { request: CfRequest }) => CfRequest | { statusCode: number }
-> {
-  const source = await readFile(viewerPath, 'utf8');
-  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
-  return new Function(`${source}\nreturn handler;`)() as (
+type HandlerApi = {
+  handler: (
     event: { request: CfRequest },
   ) => CfRequest | { statusCode: number };
+  setPublishedBlogSlugsForTests: (
+    slugs: Record<string, number> | null,
+  ) => void;
+};
+
+async function loadViewerApi(): Promise<HandlerApi> {
+  const source = await readFile(viewerPath, 'utf8');
+  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
+  return new Function(
+    `${source}\nreturn { handler, setPublishedBlogSlugsForTests };`,
+  )() as HandlerApi;
+}
+
+async function loadPublishedSlugs(
+  api: HandlerApi,
+): Promise<void> {
+  try {
+    const raw = await readFile(join(root!, 'blog/slugs.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { slugs?: string[] };
+    const map: Record<string, number> = {};
+    for (const slug of parsed.slugs ?? []) {
+      if (slug) map[slug] = 1;
+    }
+    api.setPublishedBlogSlugsForTests(map);
+  } catch {
+    // Missing slugs.json → fail-open (null), matching CDK default.
+    api.setPublishedBlogSlugsForTests(null);
+  }
 }
 
 const contentTypes: Record<string, string> = {
@@ -56,11 +80,16 @@ function safeJoin(base: string, uri: string): string | null {
   return full;
 }
 
-const handlerPromise = loadViewerHandler();
+const apiPromise = loadViewerApi().then(async (api) => {
+  await loadPublishedSlugs(api);
+  return api;
+});
 
 const server = createServer(async (req, res) => {
   try {
-    const handler = await handlerPromise;
+    const api = await apiPromise;
+    // Refresh allowlist each request so local publisher rebuilds are visible.
+    await loadPublishedSlugs(api);
     const host = req.headers.host || `127.0.0.1:${port}`;
     const url = new URL(req.url || '/', `http://${host}`);
     const querystring: CfRequest['querystring'] = {};
@@ -68,7 +97,7 @@ const server = createServer(async (req, res) => {
       querystring[k] = { value: v };
     }
 
-    const rewritten = handler({
+    const rewritten = api.handler({
       request: {
         uri: url.pathname,
         querystring,

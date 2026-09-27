@@ -26,6 +26,7 @@ import { publishResumePdf } from './resume-pdf-publish.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
+import { syncViewerRequestBlogSlugs } from './viewer-request-slugs.js';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
@@ -178,6 +179,16 @@ export async function rebuildPublishedSite(options?: {
     CACHE_HTML,
   );
 
+  // Allowlist for the CloudFront viewer-request function (CHR-102).
+  const publishedSlugList = published.map((p) => p.slug);
+  await storage.put(
+    'blog/slugs.json',
+    JSON.stringify({ slugs: publishedSlugList }, null, 0),
+    'application/json; charset=utf-8',
+    CACHE_HTML,
+  );
+  await syncViewerRequestBlogSlugs(publishedSlugList);
+
   // Draft / missing resume leaves any live resume HTML/PDF untouched.
   // PDF failures must not abort HTML / sitemap / RSS (CHR-97).
   const resume = await getPublishedResume(tableName);
@@ -223,8 +234,10 @@ export async function rebuildPublishedSite(options?: {
     '/blog/',
     '/blog/index.html',
     '/blog/posts.json',
+    '/blog/slugs.json',
     '/sitemap.xml',
     '/rss.xml',
+    '/404.html',
     ...published.map((p) => `/blog/${p.slug}`),
     ...published.map((p) => `/blog/${p.slug}/`),
     ...published.map((p) => `/blog/${p.slug}/index.html`),

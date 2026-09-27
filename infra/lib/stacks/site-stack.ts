@@ -67,6 +67,8 @@ export interface SiteStackProps extends StackProps {
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
+  /** Viewer-request function name (publisher syncs blog slug allowlist). */
+  readonly viewerRequestFunctionName: string;
 
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
@@ -180,9 +182,11 @@ export class SiteStack extends Stack {
       },
     });
 
+    this.viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
-      functionName: `gagnechris-${config.name}-viewer-request`,
-      comment: 'www→apex redirect + Option B path rewrite',
+      functionName: this.viewerRequestFunctionName,
+      comment:
+        'www→apex + Option B + published blog slugs + spa/404 shells (CHR-102)',
       runtime: FunctionRuntime.JS_2_0,
       code: FunctionCode.fromFile({
         filePath: path.join(__dirname, '../cloudfront/viewer-request-function.js'),
@@ -271,8 +275,9 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into 200 HTML. /blog/* rewrites to Option B
-      // {path}/index.html; other extensionless routes use the SPA shell.
+      // /assets 403/404 into HTML. Unknown blog slugs and other extensionless
+      // paths are rewritten in viewer-request to /404.html; /admin and /auth
+      // use /spa.html (CHR-102).
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
@@ -336,6 +341,12 @@ export class SiteStack extends Stack {
       parameterName: `/gagnechris/${config.name}/cloudfront-distribution-id`,
       stringValue: this.distribution.distributionId,
       description: 'CloudFront distribution ID (web deploy pipeline)',
+    });
+    new StringParameter(this, 'ViewerRequestFunctionNameParam', {
+      parameterName: `/gagnechris/${config.name}/viewer-request-function-name`,
+      stringValue: this.viewerRequestFunctionName,
+      description:
+        'CloudFront viewer-request function (publisher syncs blog slugs)',
     });
 
     new CfnOutput(this, 'SiteBucketName', {

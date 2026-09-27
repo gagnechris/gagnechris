@@ -104,9 +104,9 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site (CHR-22)
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; `/blog/*`, `/resume`, `/contact` → Option B `{path}/index.html`; other extensionless routes → SPA `/index.html`), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
 - Custom domains: apex and www only (no staging alias).
-- No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s.
+- No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs the viewer-request slug allowlist after each rebuild (CHR-102).
 - 5xx alarm publishes to the Guardrails alerts topic.
 
 ```bash

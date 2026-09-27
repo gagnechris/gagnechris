@@ -655,6 +655,7 @@ describe('PublisherStack', () => {
       dataTable: data.table,
       siteBucket: site.siteBucket,
       distribution: site.distribution,
+      viewerRequestFunctionName: site.viewerRequestFunctionName,
       alertsTopic,
     });
     applyStandardTags(publisher, config);
@@ -672,6 +673,7 @@ describe('PublisherStack', () => {
           DATA_TABLE_NAME: Match.anyValue(),
           SITE_BUCKET_NAME: Match.anyValue(),
           CLOUDFRONT_DISTRIBUTION_ID: Match.anyValue(),
+          VIEWER_REQUEST_FUNCTION_NAME: 'gagnechris-prod-viewer-request',
           SITE_APEX_DOMAIN: 'gagnechris.com',
         }),
       },
