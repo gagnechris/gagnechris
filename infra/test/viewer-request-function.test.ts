@@ -147,7 +147,7 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/blog/posts.json');
   });
 
-  it('rewrites /resume and /contact to Option B index.html objects', () => {
+  it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B index.html', () => {
     expect(
       (
         runHandler({
@@ -180,6 +180,22 @@ describe('viewer-request CloudFront Function', () => {
         }) as CfRequest
       ).uri,
     ).toBe('/contact/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/dont-feed-the-bears',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/dont-feed-the-bears/index.html');
+    expect(
+      (
+        runHandler({
+          uri: '/dont-feed-the-bears/',
+          headers: { host: { value: 'gagnechris.com' } },
+        }) as CfRequest
+      ).uri,
+    ).toBe('/dont-feed-the-bears/index.html');
   });
 
   it('rewrites other extensionless deep links to the SPA shell', () => {

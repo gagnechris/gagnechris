@@ -2,7 +2,7 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Skip rewrite for /api/* and /media/* (proxied origins)
- * - /blog, /resume, /contact (extensionless) -> Option B {path}/index.html
+ * - /blog, /resume, /contact, /dont-feed-the-bears (extensionless) -> Option B {path}/index.html
  * - Other extensionless paths -> /index.html (SPA shell: /admin, /auth, …)
  * - Paths with a file extension pass through unchanged
  *
@@ -29,7 +29,7 @@ function handler(event) {
     return request;
   }
 
-  // Option B: static HTML folders written at build (resume/contact) or by publisher (blog).
+  // Option B: static HTML folders written at build (resume/contact/game) or by publisher (blog).
   if (
     uri === '/blog' ||
     uri === '/blog/' ||
@@ -39,7 +39,10 @@ function handler(event) {
     uri.indexOf('/resume/') === 0 ||
     uri === '/contact' ||
     uri === '/contact/' ||
-    uri.indexOf('/contact/') === 0
+    uri.indexOf('/contact/') === 0 ||
+    uri === '/dont-feed-the-bears' ||
+    uri === '/dont-feed-the-bears/' ||
+    uri.indexOf('/dont-feed-the-bears/') === 0
   ) {
     request.uri = rewriteOptionB(uri);
     return request;
