@@ -1,21 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { formatPostDate, postDateAttribute } from '@gagnechris/shared'
 import {
   fetchPublishedPosts,
   type PublishedPostListItem,
 } from '../blog/publishedPosts'
 import './BlogIndex.css'
-
-function formatPostDate(date: string | null): string {
-  if (!date) return ''
-  const parsed = new Date(date)
-  if (Number.isNaN(parsed.getTime())) return date
-  return parsed.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
 
 function BlogIndex() {
   const [posts, setPosts] = useState<PublishedPostListItem[]>([])
@@ -97,13 +87,16 @@ function BlogIndex() {
           <div className="posts-list">
             {posts.map((post) => {
               const dateLabel = formatPostDate(post.publishedAt)
+              const dateAttr = postDateAttribute(post.publishedAt)
               return (
                 <article key={post.id || post.slug} className="post-preview">
                   <h2>
                     <Link to={`/blog/${post.slug}`}>{post.title}</Link>
                   </h2>
                   {dateLabel ? (
-                    <time className="post-date">{dateLabel}</time>
+                    <time className="post-date" dateTime={dateAttr || undefined}>
+                      {dateLabel}
+                    </time>
                   ) : null}
                   {post.excerpt ? (
                     <p className="post-excerpt">{post.excerpt}</p>

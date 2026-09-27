@@ -22,8 +22,8 @@ describe('BlogIndex', () => {
               slug: 'hello',
               title: 'Hello World',
               excerpt: 'An excerpt',
-              publishedAt: '2026-09-01T00:00:00.000Z',
-              updatedAt: '2026-09-01T00:00:00.000Z',
+              publishedAt: '2026-02-01T00:00:00.000Z',
+              updatedAt: '2026-02-01T00:00:00.000Z',
               tags: [],
               coverImage: null,
             },
@@ -43,6 +43,9 @@ describe('BlogIndex', () => {
       '/blog/hello',
     )
     expect(screen.getByText('An excerpt')).toBeInTheDocument()
+    const time = screen.getByText('February 1, 2026')
+    expect(time.tagName).toBe('TIME')
+    expect(time).toHaveAttribute('datetime', '2026-02-01')
     expect(fetch).toHaveBeenCalledWith(
       '/blog/posts.json',
       expect.objectContaining({ headers: { Accept: 'application/json' } }),

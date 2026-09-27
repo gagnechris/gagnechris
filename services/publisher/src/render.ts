@@ -1,5 +1,7 @@
 import {
+  formatPostDate,
   homeAboutExcerpt,
+  postDateAttribute,
   renderHomePrerenderHtml,
   renderMarkdownToHtml,
   renderResumePrerenderHtml,
@@ -79,7 +81,7 @@ export const buildJsonLd = (post: Post): string => {
 export const buildArticleHtml = (post: Post): string => {
   const body = renderMarkdownToHtml(post.bodyMarkdown);
   const date = post.publishedAt
-    ? `<time datetime="${escapeHtml(post.publishedAt)}">${escapeHtml(post.publishedAt.slice(0, 10))}</time>`
+    ? `<time datetime="${escapeHtml(postDateAttribute(post.publishedAt))}">${escapeHtml(formatPostDate(post.publishedAt))}</time>`
     : '';
   return `
 <article class="blog-post-prerender" data-slug="${escapeHtml(post.slug)}">

@@ -64,3 +64,4 @@ export {
   resumeSummaryExcerpt,
 } from './resume-html.js';
 export { slugify } from './slugify.js';
+export { formatPostDate, postDateAttribute } from './post-date.js';
