@@ -29,7 +29,8 @@
     "local:api": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/server.ts'",
     "local:site": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/static-server.ts'",
     "local:seed-shell": "bash scripts/local/seed-shell.sh",
-    "e2e:local": "bash scripts/local/e2e.sh"
+    "e2e:local": "bash scripts/local/e2e.sh",
+    "migrate:posts": "npx tsx scripts/migrate-posts.ts"
   },
   "engines": {
     "node": "^22.12.0"

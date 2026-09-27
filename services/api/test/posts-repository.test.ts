@@ -56,6 +56,22 @@ describe('PostsRepository', () => {
     expect(got?.slug).toBe('hello');
   });
 
+  it('gets by slug via slug claim then META', async () => {
+    let calls = 0;
+    const doc = mockDoc(async (command) => {
+      calls += 1;
+      if (calls === 1) {
+        expect(command.constructor.name).toBe('GetCommand');
+        return { Item: { postId: draft.id } };
+      }
+      return { Item: buildMetaItem(draft) };
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const got = await repo.getBySlug('hello');
+    expect(got?.id).toBe(draft.id);
+    expect(calls).toBe(2);
+  });
+
   it('lists via gsi1 status partition', async () => {
     const doc = mockDoc(async () => ({ Items: [buildMetaItem(draft)] }));
     const repo = new PostsRepository(doc, 'gagnechris-test');
@@ -78,5 +94,19 @@ describe('PostsRepository', () => {
     expect(published.publishedAt).toBeTruthy();
     expect(published.version).toBe(2);
     expect(calls).toBeGreaterThanOrEqual(2);
+  });
+
+  it('publish accepts an explicit publishedAt for migrations', async () => {
+    const doc = mockDoc(async (command) => {
+      if (command.constructor.name === 'GetCommand') {
+        return { Item: buildMetaItem(draft) };
+      }
+      return {};
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const published = await repo.publish(draft.id, {
+      publishedAt: '2026-02-01T00:00:00.000Z',
+    });
+    expect(published.publishedAt).toBe('2026-02-01T00:00:00.000Z');
   });
 });
