@@ -15,7 +15,13 @@ if [[ ! -f "${DIST}/index.html" ]]; then
 fi
 
 mkdir -p "${SITE}"
-# Preserve existing blog/ artifacts; refresh shell + assets from dist.
+if [[ ! -f "${DIST}/_shell.html" ]]; then
+  echo "Missing ${DIST}/_shell.html — run: npm run build" >&2
+  exit 1
+fi
+
+# Preserve existing blog/ artifacts; refresh shell + assets from dist
+# (includes pristine _shell.html for the publisher; CHR-104).
 rsync -a --delete \
   --exclude 'blog/' \
   --exclude 'sitemap.xml' \

@@ -159,12 +159,11 @@ published item leaves the live `index.html` alone.
 Publisher reads only this item (with the same META→PUBLISHED migration as
 resume).
 
-`index.html` is both the Vite SPA shell and the home page. Web deploy uploads
-the empty shell and then invokes `republishAll`, which re-injects the home
-prerender. The publisher wraps every `#root` prerender in
-`<!--prerender:start--> … <!--prerender:end-->` markers so `index.html` can be
-read back as a clean shell for `/blog` and `/resume`. Quick Links and the
-profile photo stay hard-coded in React for now.
+Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
+(home meta shell), then invokes `republishAll`, which reads `_shell.html` and
+writes the home prerender into `index.html`. Home-only head tags therefore
+cannot leak into `/blog` or `/resume`. Quick Links and the profile photo stay
+hard-coded in React for now.
 
 ## Contact messages (CHR-98)
 

@@ -23,7 +23,8 @@ type CfResponse =
   | {
       statusCode: number;
       statusDescription: string;
-      headers: { location: { value: string } };
+      headers: Record<string, { value: string }>;
+      body?: string;
     };
 
 type HandlerApi = {
@@ -260,6 +261,18 @@ describe('viewer-request CloudFront Function', () => {
         }) as CfRequest
       ).uri,
     ).toBe('/index.html');
+  });
+
+
+  it('blocks direct public access to _shell.html', () => {
+    const res = runHandler({
+      uri: '/_shell.html',
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    expect(res).toMatchObject({
+      statusCode: 404,
+      statusDescription: 'Not Found',
+    });
   });
 
   it('does not rewrite /api or /media paths', () => {

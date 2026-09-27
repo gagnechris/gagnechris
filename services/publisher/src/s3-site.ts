@@ -16,7 +16,6 @@ import { metaToResume, type ResumeMetaRecord } from './resume.js';
 import {
   buildRssXml,
   buildSitemapXml,
-  normalizeShellHtml,
   renderBlogIndexPage,
   renderHomePage,
   renderPostPage,
@@ -229,9 +228,8 @@ export async function rebuildPublishedSite(options?: {
   const tableName = requireEnv('DATA_TABLE_NAME');
   const storage = options?.storage ?? getSiteStorage();
 
-  // index.html doubles as the home page, so drop any prior home prerender
-  // before reusing it as the shell for /blog and /resume.
-  const shell = normalizeShellHtml(await storage.readShell());
+  // Pristine Vite shell (_shell.html) — never the home prerender in index.html.
+  const shell = await storage.readShell();
   const published = await listPublishedPosts(tableName);
   const publishedSlugs = new Set(published.map((p) => p.slug));
 

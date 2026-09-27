@@ -11,7 +11,6 @@ import {
   buildJsonLd,
   buildRssXml,
   buildSitemapXml,
-  normalizeShellHtml,
   renderBlogIndexPage,
   renderHomePage,
   renderPostPage,
@@ -166,31 +165,61 @@ describe('publisher render', () => {
     expect(html).toContain('name="description" content="Short bio"');
   });
 
-  it('rebuilds index.html from a previously prerendered index.html', () => {
+  it('rebuilds home from a pristine shell without leftover markers', () => {
     const first = renderHomePage(shell, DEFAULT_HOME);
-    const second = renderHomePage(normalizeShellHtml(first), {
+    const second = renderHomePage(shell, {
       ...DEFAULT_HOME,
       name: 'Christopher Gagne',
       about: 'New copy.',
     });
+    expect(first.match(/home-page-prerender/g)).toHaveLength(1);
     expect(second.match(/home-page-prerender/g)).toHaveLength(1);
     expect(second).toContain('<h1>Christopher Gagne</h1>');
     expect(second).toContain('<p>New copy.</p>');
     expect(second).not.toContain('Engineering Leader at Ro');
   });
 
-  it('never leaks the home prerender into other pages', () => {
-    const published = renderHomePage(shell, DEFAULT_HOME);
-    const reusedShell = normalizeShellHtml(published);
-    expect(reusedShell).toContain('<div id="root"></div>');
+  it('never leaks home-only head tags into other pages from a pristine shell', () => {
+    const homeWithOg = renderHomePage(shell, {
+      ...DEFAULT_HOME,
+      seo: {
+        title: 'Home SEO',
+        description: 'Home only',
+        ogImage: '/media/home-og.jpg',
+      },
+    });
+    expect(homeWithOg).toContain('/media/home-og.jpg');
 
-    const resume = renderResumePage(reusedShell, DEFAULT_RESUME);
+    // Other pages must start from the pristine shell, not the home output.
+    const blog = renderBlogIndexPage(shell, [samplePost()]);
+    expect(blog).not.toContain('/media/home-og.jpg');
+    expect(blog).not.toContain('home-page-prerender');
+    expect(blog).toContain('og:image" content="https://gagnechris.com/og-image.jpg"');
+
+    const resume = renderResumePage(shell, DEFAULT_RESUME);
+    expect(resume).not.toContain('/media/home-og.jpg');
     expect(resume).not.toContain('home-page-prerender');
-    expect(resume).toContain('<article class="resume-page-prerender"');
 
-    const post = renderPostPage(reusedShell, samplePost());
+    const post = renderPostPage(shell, samplePost());
+    expect(post).not.toContain('/media/home-og.jpg');
     expect(post).not.toContain('home-page-prerender');
-    expect(post).toContain('data-slug="hello-world"');
+  });
+
+  it('renders byte-identical output when given the same pristine shell twice', () => {
+    const homeA = renderHomePage(shell, DEFAULT_HOME);
+    const homeB = renderHomePage(shell, DEFAULT_HOME);
+    expect(homeB).toBe(homeA);
+
+    const blogA = renderBlogIndexPage(shell, [samplePost()]);
+    const blogB = renderBlogIndexPage(shell, [samplePost()]);
+    expect(blogB).toBe(blogA);
+
+    const resumeA = renderResumePage(shell, DEFAULT_RESUME);
+    const resumeB = renderResumePage(shell, DEFAULT_RESUME);
+    expect(resumeB).toBe(resumeA);
+
+    const post = samplePost();
+    expect(renderPostPage(shell, post)).toBe(renderPostPage(shell, post));
   });
 
 
