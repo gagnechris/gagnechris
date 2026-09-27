@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { access, mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
@@ -48,12 +48,13 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(await storage.readShell()).toBe('<html>shell</html>');
-    await storage.put(
+    const wrote = await storage.put(
       'blog/hello/index.html',
       '<html>post</html>',
       'text/html',
       'no-cache',
     );
+    expect(wrote).toBe(true);
     expect(await storage.list('blog/')).toEqual(['blog/hello/index.html']);
     await storage.invalidate(['/blog/hello']);
   });
@@ -64,5 +65,20 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, 'index.html'), '<html>home-prerender</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(await storage.readShell()).toBe('<html>pristine</html>');
+  });
+
+  it('skips put when bytes are unchanged', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
+    const storage = createFilesystemSiteStorage(root);
+    expect(
+      await storage.put('blog/a/index.html', '<html>a</html>', 'text/html', 'x'),
+    ).toBe(true);
+    expect(
+      await storage.put('blog/a/index.html', '<html>a</html>', 'text/html', 'x'),
+    ).toBe(false);
+    expect(await readFile(join(root, 'blog', 'a', 'index.html'), 'utf8')).toBe(
+      '<html>a</html>',
+    );
   });
 });

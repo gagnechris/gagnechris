@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -14,6 +16,15 @@ import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
 
 const s3 = new S3Client({});
 const cloudfront = new CloudFrontClient({});
+
+function bodyBytes(body: string | Uint8Array): Uint8Array {
+  return typeof body === 'string' ? Buffer.from(body, 'utf-8') : body;
+}
+
+function md5Etag(body: string | Uint8Array): string {
+  const hex = createHash('md5').update(bodyBytes(body)).digest('hex');
+  return `"${hex}"`;
+}
 
 export function createS3SiteStorage(): SiteStorage {
   const bucket = requireEnv('SITE_BUCKET_NAME');
@@ -53,7 +64,25 @@ export function createS3SiteStorage(): SiteStorage {
       contentType: string,
       cacheControl: string,
       contentDisposition?: string,
-    ): Promise<void> {
+    ): Promise<boolean> {
+      const etag = md5Etag(body);
+      try {
+        const head = await s3.send(
+          new HeadObjectCommand({ Bucket: bucket, Key: key }),
+        );
+        // Single-part PutObject ETag is the quoted MD5 of the body.
+        if (head.ETag === etag) {
+          return false;
+        }
+      } catch (err) {
+        const name = (err as { name?: string }).name;
+        const status = (err as { $metadata?: { httpStatusCode?: number } })
+          .$metadata?.httpStatusCode;
+        if (name !== 'NotFound' && name !== 'NoSuchKey' && status !== 404) {
+          throw err;
+        }
+      }
+
       await s3.send(
         new PutObjectCommand({
           Bucket: bucket,
@@ -66,6 +95,7 @@ export function createS3SiteStorage(): SiteStorage {
             : {}),
         }),
       );
+      return true;
     },
 
     async delete(key: string): Promise<void> {

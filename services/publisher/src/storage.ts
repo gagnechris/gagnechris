@@ -11,13 +11,17 @@ export type SiteStorage = {
   readShell(): Promise<string>;
   /** Returns undefined when the key is missing. */
   read(key: string): Promise<string | undefined>;
+  /**
+   * Write an object. Returns `true` when the object body changed (or was new),
+   * `false` when skipped because content already matched (hash / byte compare).
+   */
   put(
     key: string,
     body: string | Uint8Array,
     contentType: string,
     cacheControl: string,
     contentDisposition?: string,
-  ): Promise<void>;
+  ): Promise<boolean>;
   delete(key: string): Promise<void>;
   /** Object keys under prefix (no leading slash). */
   list(prefix: string): Promise<string[]>;

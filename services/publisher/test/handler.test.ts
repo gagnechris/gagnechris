@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AttributeValue, DynamoDBRecord } from 'aws-lambda';
-import { collectSlugsToRemove, streamNeedsRebuild } from '../src/handler.js';
+import {
+  collectRebuildScope,
+  streamNeedsRebuild,
+} from '../src/rebuild-scope.js';
 
 function metaImage(fields: {
   slug: string;
@@ -20,7 +23,7 @@ function metaImage(fields: {
   };
 }
 
-describe('collectSlugsToRemove', () => {
+describe('collectRebuildScope (handler stream path)', () => {
   it('marks unpublish and rename for cleanup', () => {
     const records: DynamoDBRecord[] = [
       {
@@ -52,12 +55,11 @@ describe('collectSlugsToRemove', () => {
       },
     ];
 
-    expect([...collectSlugsToRemove(records)].sort()).toEqual([
-      'before',
-      'old-slug',
-    ]);
+    const scope = collectRebuildScope(records);
+    expect([...scope.slugsToRemove].sort()).toEqual(['before', 'old-slug']);
   });
 });
+
 
 describe('streamNeedsRebuild', () => {
   it('rebuilds on PUBLISHED changes only', () => {
@@ -74,7 +76,7 @@ describe('streamNeedsRebuild', () => {
   });
 
   it('ignores META draft edits', () => {
-    const metaImageLocal = (fields: {
+    const metaDraft = (fields: {
       slug: string;
       status: string;
     }): Record<string, AttributeValue> => ({
@@ -86,8 +88,8 @@ describe('streamNeedsRebuild', () => {
       eventName: 'MODIFY',
       eventSource: 'aws:dynamodb',
       dynamodb: {
-        OldImage: metaImageLocal({ slug: 'a', status: 'published' }),
-        NewImage: metaImageLocal({ slug: 'a', status: 'published' }),
+        OldImage: metaDraft({ slug: 'a', status: 'draft' }),
+        NewImage: metaDraft({ slug: 'a', status: 'draft' }),
       },
     };
     expect(streamNeedsRebuild([draftEdit])).toBe(false);
