@@ -6,6 +6,7 @@ import {
   loadPublishedResume,
   type ResumeView,
 } from '../resume/publishedResume'
+import PublicNav from '../components/PublicNav'
 import './Resume.css'
 
 function Resume() {
@@ -52,7 +53,7 @@ function Resume() {
   }
 
   return (
-    <div className="resume-page">
+    <div className="resume-page" id="top">
       <title>Resume - Chris Gagne</title>
       <link rel="canonical" href="https://gagnechris.com/resume" />
       <header>
@@ -68,7 +69,7 @@ function Resume() {
             <span className="download-icon" aria-hidden="true">↓</span>
             <span className="download-text">Resume</span>
           </button>
-          <Link to="/" className="back-link">Back to Home</Link>
+          <PublicNav current="/resume" />
         </div>
       </header>
 
@@ -93,6 +94,23 @@ function Resume() {
       )}
 
       <main dangerouslySetInnerHTML={{ __html: resume.bodyHtml }} />
+
+      <div className="resume-page__footer-actions">
+        <button
+          onClick={handleDownload}
+          className="subtle-download"
+          aria-label="Download resume as PDF"
+        >
+          <span className="download-icon" aria-hidden="true">↓</span>
+          <span className="download-text">Download Resume PDF</span>
+        </button>
+        <a href="#top" className="back-link" onClick={(e) => {
+          e.preventDefault()
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}>
+          Back to top
+        </a>
+      </div>
     </div>
   )
 }

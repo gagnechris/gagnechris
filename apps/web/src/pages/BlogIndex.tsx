@@ -5,6 +5,7 @@ import {
   fetchPublishedPosts,
   type PublishedPostListItem,
 } from '../blog/publishedPosts'
+import PublicNav from '../components/PublicNav'
 import './BlogIndex.css'
 
 function BlogIndex() {
@@ -51,9 +52,7 @@ function BlogIndex() {
         />
         <header>
           <h1>Blog</h1>
-          <Link to="/" className="back-link">
-            Back to Home
-          </Link>
+          <PublicNav current="/blog" />
         </header>
         <main>
           <p>Loading posts...</p>
@@ -74,9 +73,7 @@ function BlogIndex() {
       />
       <header>
         <h1>Blog</h1>
-        <Link to="/" className="back-link">
-          Back to Home
-        </Link>
+        <PublicNav current="/blog" />
       </header>
       <main>
         {error ? <p>{error}</p> : null}
@@ -90,19 +87,17 @@ function BlogIndex() {
               const dateAttr = postDateAttribute(post.publishedAt)
               return (
                 <article key={post.id || post.slug} className="post-preview">
-                  <h2>
-                    <Link to={`/blog/${post.slug}`}>{post.title}</Link>
-                  </h2>
-                  {dateLabel ? (
-                    <time className="post-date" dateTime={dateAttr || undefined}>
-                      {dateLabel}
-                    </time>
-                  ) : null}
-                  {post.excerpt ? (
-                    <p className="post-excerpt">{post.excerpt}</p>
-                  ) : null}
-                  <Link to={`/blog/${post.slug}`} className="read-more">
-                    Read more →
+                  <Link to={`/blog/${post.slug}`} className="post-preview__link">
+                    <h2>{post.title}</h2>
+                    {dateLabel ? (
+                      <time className="post-date" dateTime={dateAttr || undefined}>
+                        {dateLabel}
+                      </time>
+                    ) : null}
+                    {post.excerpt ? (
+                      <p className="post-excerpt">{post.excerpt}</p>
+                    ) : null}
+                    <span className="read-more">Read more →</span>
                   </Link>
                 </article>
               )

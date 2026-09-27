@@ -33,11 +33,13 @@ function App() {
     }
   }, [])
 
+  const year = new Date().getFullYear()
+
   return (
-    <>
+    <div className="home-page">
       <title>{`${home.name} - ${home.title}`}</title>
       <link rel="canonical" href="https://gagnechris.com" />
-      <header>
+      <header className="home-header">
         <img src={profile} className="profile" alt={`Photo of ${home.name}`} />
         <h1>{home.name}</h1>
         <p>{home.title}</p>
@@ -85,19 +87,45 @@ function App() {
           </ul>
         </section>
       </main>
-      <footer>
-        <p>
-          <Link
-            to="/dont-feed-the-bears?from=footer"
-            className="site-footer__bear"
-            aria-label="Don't Feed the Bears — Vermont camp mini-game"
-            title="Don't Feed the Bears"
-          >
-            🐻
-          </Link>
-        </p>
+      <footer className="site-footer">
+        <p className="site-footer__copy">© {year} Chris Gagne</p>
+        <ul className="site-footer__links">
+          <li>
+            <a
+              href="https://www.linkedin.com/in/christophergagne/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('click', 'external_link', 'linkedin_footer')}
+            >
+              LinkedIn
+            </a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/gagnechris"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('click', 'external_link', 'github_footer')}
+            >
+              GitHub
+            </a>
+          </li>
+          <li>
+            <a href="/rss.xml">RSS</a>
+          </li>
+          <li>
+            <Link
+              to="/dont-feed-the-bears?from=footer"
+              className="site-footer__bear"
+              aria-label="Don't Feed the Bears — Vermont camp mini-game"
+              title="Don't Feed the Bears"
+            >
+              🐻 Don't Feed the Bears
+            </Link>
+          </li>
+        </ul>
       </footer>
-    </>
+    </div>
   )
 }
 

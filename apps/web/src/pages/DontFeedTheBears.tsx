@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import PublicNav from '../components/PublicNav'
 import BearGame from '../games/bears/BearGame'
 import './DontFeedTheBears.css'
 
@@ -33,9 +34,7 @@ function DontFeedTheBears() {
           <p className="bears-page__eyebrow">Vermont camp rules</p>
           <h1>Don't Feed the Bears</h1>
         </div>
-        <Link to="/" className="back-link">
-          Back to Home
-        </Link>
+        <PublicNav />
       </header>
       <main>
         <BearGame from={from} />

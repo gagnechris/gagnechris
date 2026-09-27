@@ -27,7 +27,7 @@ describe('Resume Page', () => {
     expect(screen.getByRole('heading', { name: /professional experience/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /education/i })).toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /download resume as pdf/i })).toHaveLength(2)
   })
 
   test('renders published HTML from resume/index.html when present', async () => {
@@ -81,7 +81,7 @@ describe('Resume Page', () => {
       return Node.prototype.removeChild.call(document.body, node) as Node
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /resume/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /download resume as pdf/i })[0])
 
     await waitFor(() => expect(mockAnchor.click).toHaveBeenCalled())
     expect(mockAnchor.href).toBe('/resume.pdf')

@@ -32,8 +32,10 @@
 .resume-page header {
   margin-bottom: var(--space-8);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-4);
   border-bottom: 2px solid var(--primary-200);
   padding-bottom: var(--space-4);
   position: relative;
@@ -57,8 +59,9 @@
 
 .nav-section {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-3) var(--space-4);
 }
 
 .resume-page h1 {
@@ -70,57 +73,25 @@
   letter-spacing: -0.02em;
 }
 
-/* Download Button */
-.subtle-download {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--primary-600);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  transition: all var(--transition-normal);
-  border: none;
-  background: var(--primary-50);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 500;
-  box-shadow: var(--shadow-sm);
-}
-
-.subtle-download:hover {
-  color: var(--primary-500);
-  background-color: var(--primary-100);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
+/* .subtle-download / .back-link: shared in index.css (CHR-109) */
 .download-icon {
-  font-size: var(--text-sm);
+  margin-right: var(--space-2);
 }
 
-.download-text {
-  font-weight: 500;
+.resume-page .subtle-download {
+  background: var(--primary-50);
+  gap: 0;
 }
 
-/* Back Link */
-.back-link {
-  color: var(--neutral-600);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  transition: all var(--transition-normal);
-  background-color: var(--neutral-100);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.back-link:hover {
-  color: var(--neutral-900);
-  background-color: var(--neutral-200);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+.resume-page__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--neutral-200);
 }
 
 .resume-bear-note {

@@ -379,7 +379,7 @@
   opacity: 1;
 }
 
-/* App.css styles bare header/main selectors, so scope the home preview here. */
+/* Home preview chrome — App.css home rules are scoped to .home-page (CHR-109). */
 .admin-home-preview {
   padding: var(--space-6);
   border: 1px solid var(--neutral-200);

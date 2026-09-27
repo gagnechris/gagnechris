@@ -1,4 +1,7 @@
-/* App Layout and Styles */
+/* App Layout and Styles — home page only (CHR-109).
+   Bare `header`/`main`/`footer` selectors used to leak the home
+   profile-photo layout onto every public page. */
+
 #root {
   max-width: 1000px;
   margin: 0 auto;
@@ -8,8 +11,8 @@
   border-radius: var(--radius-lg);
 }
 
-/* Header styles */
-header {
+/* Header styles — profile photo layout */
+.home-header {
   position: relative;
   margin-bottom: var(--space-12);
   padding-bottom: var(--space-6);
@@ -18,7 +21,7 @@ header {
   animation: fadeIn 0.6s ease-out forwards;
 }
 
-header img.profile {
+.home-header img.profile {
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
@@ -30,19 +33,19 @@ header img.profile {
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-header img.profile:hover {
+.home-header img.profile:hover {
   transform: scale(1.05);
   box-shadow: var(--shadow-lg);
 }
 
-header h1 {
+.home-header h1 {
   margin: var(--space-2) 0;
   color: var(--neutral-900);
   font-weight: 700;
   padding-left: 120px; /* Accommodate profile image */
 }
 
-header p {
+.home-header p {
   font-size: var(--text-lg);
   color: var(--neutral-600);
   padding-left: 120px; /* Accommodate profile image */
@@ -50,13 +53,13 @@ header p {
 }
 
 /* Main content styles */
-main {
+.home-page > main {
   text-align: left;
   opacity: 0;
   animation: slideUp 0.8s ease-out 0.2s forwards;
 }
 
-main section {
+.home-page > main section {
   margin-bottom: var(--space-12);
   padding: var(--space-6);
   background-color: white;
@@ -65,12 +68,12 @@ main section {
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-main section:hover {
+.home-page > main section:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
 }
 
-main section h2 {
+.home-page > main section h2 {
   font-size: var(--text-2xl);
   margin-bottom: var(--space-4);
   color: var(--primary-700);
@@ -79,7 +82,7 @@ main section h2 {
   border-bottom: 2px solid var(--primary-200);
 }
 
-main section p {
+.home-page > main section p {
   font-size: var(--text-base);
   line-height: var(--line-relaxed);
   color: var(--neutral-700);
@@ -87,11 +90,11 @@ main section p {
 }
 
 /* Quick Links Section */
-main section#quick-links {
+.home-page > main section#quick-links {
   background-color: var(--primary-50);
 }
 
-main ul {
+.home-page > main ul {
   list-style: none;
   padding: 0;
   display: flex;
@@ -100,13 +103,15 @@ main ul {
   margin-top: var(--space-4);
 }
 
-main ul li {
+.home-page > main ul li {
   position: relative;
 }
 
-main ul li a {
+.home-page > main ul li a {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: 44px;
   padding: var(--space-3) var(--space-4);
   background-color: white;
   border-radius: var(--radius-md);
@@ -118,7 +123,7 @@ main ul li a {
   transition: all var(--transition-normal);
 }
 
-main ul li a:hover {
+.home-page > main ul li a:hover {
   color: var(--primary-500);
   background-color: var(--primary-100);
   box-shadow: var(--shadow-md);
@@ -127,14 +132,14 @@ main ul li a:hover {
 }
 
 /* About Section */
-main section#about {
+.home-page > main section#about {
   border-left: 4px solid var(--primary-400);
 }
 
 /* Footer styles */
-footer {
+.site-footer {
   margin-top: var(--space-8);
-  padding: var(--space-4) 0;
+  padding: var(--space-6) var(--space-4);
   background-color: var(--neutral-800);
   background: linear-gradient(to right, var(--primary-800), var(--neutral-800));
   color: white;
@@ -144,23 +149,46 @@ footer {
   animation: fadeIn 0.6s ease-out 0.8s forwards;
 }
 
-footer p {
-  margin: 0;
+.site-footer__copy {
+  margin: 0 0 var(--space-3);
   font-size: var(--text-sm);
+  color: var(--neutral-200);
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-2) var(--space-3);
+  color: white;
+  font-weight: 500;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.site-footer__links a:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: white;
+  text-decoration: none;
 }
 
 .site-footer__bear {
-  display: inline-block;
-  text-decoration: none;
-  opacity: 0.55;
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
-  line-height: 1;
-}
-
-.site-footer__bear:hover {
-  opacity: 1;
-  transform: scale(1.1);
-  text-decoration: none;
+  gap: var(--space-2);
 }
 
 /* Responsive adjustments */
@@ -168,41 +196,41 @@ footer p {
   #root {
     padding: var(--space-4);
   }
-  
-  header {
+
+  .home-header {
     text-align: center;
     padding-top: 110px; /* Make room for centered profile image */
   }
-  
-  header img.profile {
+
+  .home-header img.profile {
     position: static;
     display: block;
     margin: 0 auto var(--space-4);
   }
-  
-  header h1,
-  header p {
+
+  .home-header h1,
+  .home-header p {
     padding-left: 0;
   }
-  
-  main ul {
+
+  .home-page > main ul {
     justify-content: center;
   }
 }
 
 @media (max-width: 480px) {
-  main section {
+  .home-page > main section {
     padding: var(--space-4);
   }
-  
-  main ul {
+
+  .home-page > main ul {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
   }
-  
-  main ul li a {
-    display: block;
+
+  .home-page > main ul li a {
+    display: flex;
     text-align: center;
   }
 }

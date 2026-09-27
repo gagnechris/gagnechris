@@ -38,7 +38,7 @@ describe('BlogIndex', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByRole('link', { name: 'Hello World' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /Hello World/ })).toHaveAttribute(
       'href',
       '/blog/hello',
     )

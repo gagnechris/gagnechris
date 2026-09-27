@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared'
 import { publishedPostPageUrl } from '../blog/publishedPosts'
+import PublicNav from '../components/PublicNav'
 import NotFound from './NotFound'
 import './BlogPost.css'
 
@@ -90,9 +91,7 @@ function BlogPost() {
           <Link to="/blog" className="back-link">
             ← Back to Blog
           </Link>
-          <Link to="/" className="home-link">
-            Back to Home
-          </Link>
+          <PublicNav current="/blog" />
         </header>
         <main>
           <p>Loading post...</p>
@@ -122,9 +121,7 @@ function BlogPost() {
         <Link to="/blog" className="back-link">
           ← Back to Blog
         </Link>
-        <Link to="/" className="home-link">
-          Back to Home
-        </Link>
+        <PublicNav current="/blog" />
       </header>
       <article>
         <h1>{post.title}</h1>

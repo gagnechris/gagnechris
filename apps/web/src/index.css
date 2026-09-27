@@ -204,3 +204,79 @@ button:focus-visible {
 .animate-slideUp {
   animation: slideUp 0.5s ease forwards;
 }
+
+/* Shared public UI (CHR-109) */
+.back-link,
+.home-link,
+.back-link-footer,
+.subtle-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  color: var(--primary-600);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: var(--text-base);
+  font-family: inherit;
+  line-height: 1.2;
+  padding: var(--space-2) var(--space-4);
+  background-color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.back-link:hover,
+.home-link:hover,
+.back-link-footer:hover,
+.subtle-download:hover {
+  color: var(--primary-500);
+  background-color: var(--primary-50);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+.public-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.public-nav__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--primary-700);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.public-nav__link:hover {
+  background-color: var(--primary-50);
+  color: var(--primary-600);
+  text-decoration: none;
+}
+
+.public-nav__link.is-current {
+  background-color: var(--primary-100);
+  color: var(--primary-800);
+}
+
+.tap-target-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  font-weight: 500;
+}
