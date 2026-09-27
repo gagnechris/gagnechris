@@ -132,7 +132,7 @@ node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='draft'){console.err
 HOME_PUB="$(curl -sS -X POST "${API}/api/admin/home/publish")"
 node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'||h.hasUnpublishedChanges){console.error(h);process.exit(1)}" "${HOME_PUB}"
 HOME_HTML="$(curl -sS "${SITE}/")"
-echo "${HOME_HTML}" | grep -q 'class="home-page-prerender"'
+echo "${HOME_HTML}" | grep -q 'home-page-prerender'
 echo "${HOME_HTML}" | grep -q 'About Me'
 echo "${HOME_HTML}" | grep -q '<script type="module"'
 

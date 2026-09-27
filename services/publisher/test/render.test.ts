@@ -153,7 +153,7 @@ describe('publisher render', () => {
       'name="description" content="I&#39;m an Engineering',
     );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
-    expect(html).toContain('<article class="home-page-prerender"');
+    expect(html).toContain('<article class="home-page home-page-prerender"');
     expect(html).toContain('<h1>Chris Gagne</h1>');
     expect(html).toContain('/assets/index.js');
   });

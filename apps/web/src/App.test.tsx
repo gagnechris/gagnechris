@@ -69,7 +69,7 @@ describe('App', () => {
       screen.getByRole('heading', { level: 1, name: 'Christopher Gagne' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Engineering Director')).toBeInTheDocument()
-    // Quick Links stay client-rendered (CHR-92 v1).
+    // Quick Links are in the prerender and stay after hydrate.
     expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
   })
 
