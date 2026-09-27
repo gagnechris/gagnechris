@@ -5,6 +5,8 @@ export type ResumeView = {
   name: string
   pdfPath: string
   bodyHtml: string
+  /** True when the publisher wrote the unpublish placeholder (CHR-103). */
+  unavailable?: boolean
 }
 
 /** Local Vite uses `/__site` → static origin; prod is same-origin. */
@@ -20,6 +22,13 @@ export const fallbackResumeView = (): ResumeView => ({
   bodyHtml: renderResumeSectionsHtml(DEFAULT_RESUME.content),
 })
 
+export const unavailableResumeView = (): ResumeView => ({
+  name: 'Resume',
+  pdfPath: '',
+  bodyHtml: '<p>Resume available on request.</p>',
+  unavailable: true,
+})
+
 export async function loadPublishedResume(): Promise<ResumeView | null> {
   const response = await fetch(publishedResumeUrl(), {
     headers: { Accept: 'text/html' },
@@ -28,6 +37,12 @@ export async function loadPublishedResume(): Promise<ResumeView | null> {
 
   const html = await response.text()
   const doc = new DOMParser().parseFromString(html, 'text/html')
+
+  const unavailable = doc.querySelector('article.resume-page-unavailable')
+  if (unavailable) {
+    return unavailableResumeView()
+  }
+
   const article = doc.querySelector('article.resume-page-prerender')
   const body = article?.querySelector('main')
   if (!article || !body) return null

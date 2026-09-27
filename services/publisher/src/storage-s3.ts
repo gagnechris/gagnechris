@@ -30,6 +30,23 @@ export function createS3SiteStorage(): SiteStorage {
       return body;
     },
 
+    async read(key: string): Promise<string | undefined> {
+      try {
+        const out = await s3.send(
+          new GetObjectCommand({ Bucket: bucket, Key: key }),
+        );
+        return await out.Body?.transformToString('utf-8');
+      } catch (err) {
+        const name = (err as { name?: string }).name;
+        if (name === 'NoSuchKey' || name === 'NotFound') return undefined;
+        // S3 GetObject often surfaces 404 as a service exception with $metadata.
+        const status = (err as { $metadata?: { httpStatusCode?: number } })
+          .$metadata?.httpStatusCode;
+        if (status === 404) return undefined;
+        throw err;
+      }
+    },
+
     async put(
       key: string,
       body: string | Uint8Array,

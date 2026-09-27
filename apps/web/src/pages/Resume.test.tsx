@@ -49,6 +49,27 @@ describe('Resume Page', () => {
     ).toBeInTheDocument()
   })
 
+  test('hides download controls when resume is unpublished', async () => {
+    stubFetch(async () => ({
+      ok: true,
+      text: async () => `<!DOCTYPE html><html><body>
+        <article class="resume-page-unavailable">
+          <header><div class="name-section"><h1>Resume</h1></div></header>
+          <main><p>Resume available on request.</p></main>
+        </article>
+      </body></html>`,
+    }))
+
+    renderWithProviders(<Resume />)
+
+    expect(
+      await screen.findByText('Resume available on request.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /download resume as pdf/i }),
+    ).not.toBeInTheDocument()
+  })
+
   test('triggers download when the resume button is clicked', async () => {
     renderWithProviders(<Resume />)
 

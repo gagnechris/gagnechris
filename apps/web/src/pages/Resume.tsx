@@ -34,6 +34,7 @@ function Resume() {
   }, [])
 
   const handleDownload = () => {
+    if (resume.unavailable || !resume.pdfPath) return
     trackResumeDownload()
     void fetch('/api/resume/download', {
       method: 'POST',
@@ -61,14 +62,16 @@ function Resume() {
           <h1>{resume.name}</h1>
         </div>
         <div className="nav-section">
-          <button
-            onClick={handleDownload}
-            className="subtle-download"
-            aria-label="Download resume as PDF"
-          >
-            <span className="download-icon" aria-hidden="true">↓</span>
-            <span className="download-text">Resume</span>
-          </button>
+          {!resume.unavailable && (
+            <button
+              onClick={handleDownload}
+              className="subtle-download"
+              aria-label="Download resume as PDF"
+            >
+              <span className="download-icon" aria-hidden="true">↓</span>
+              <span className="download-text">Resume</span>
+            </button>
+          )}
           <PublicNav current="/resume" />
         </div>
       </header>
@@ -96,14 +99,16 @@ function Resume() {
       <main dangerouslySetInnerHTML={{ __html: resume.bodyHtml }} />
 
       <div className="resume-page__footer-actions">
-        <button
-          onClick={handleDownload}
-          className="subtle-download"
-          aria-label="Download resume as PDF"
-        >
-          <span className="download-icon" aria-hidden="true">↓</span>
-          <span className="download-text">Download Resume PDF</span>
-        </button>
+        {!resume.unavailable && (
+          <button
+            onClick={handleDownload}
+            className="subtle-download"
+            aria-label="Download resume as PDF"
+          >
+            <span className="download-icon" aria-hidden="true">↓</span>
+            <span className="download-text">Download Resume PDF</span>
+          </button>
+        )}
         <a href="#top" className="back-link" onClick={(e) => {
           e.preventDefault()
           window.scrollTo({ top: 0, behavior: 'smooth' })

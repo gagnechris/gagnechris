@@ -192,6 +192,30 @@ export const renderResumePage = (
   return html;
 };
 
+/** Placeholder when the resume singleton is draft / missing (CHR-103). */
+export const renderResumeUnavailablePage = (shellHtml: string): string => {
+  const title = 'Resume - Chris Gagne';
+  const description = 'Resume available on request.';
+  const url = `https://${APEX}/resume`;
+  const body =
+    '<article class="resume-page-unavailable"><header><div class="name-section"><h1>Resume</h1></div></header><main><p>Resume available on request.</p></main></article>';
+
+  let html = shellHtml;
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = replaceMeta(html, 'name', 'description', description);
+  html = replaceMeta(html, 'property', 'og:title', title);
+  html = replaceMeta(html, 'property', 'og:description', description);
+  html = replaceMeta(html, 'property', 'og:type', 'website');
+  html = replaceMeta(html, 'property', 'og:url', url);
+  html = replaceMeta(html, 'property', 'og:image', defaultOgImage());
+  html = replaceMeta(html, 'name', 'twitter:title', title);
+  html = replaceMeta(html, 'name', 'twitter:description', description);
+  html = replaceMeta(html, 'name', 'twitter:image', defaultOgImage());
+  html = upsertCanonical(html, url);
+  html = injectPrerender(html, body);
+  return html;
+};
+
 /**
  * Home document: publisher writes prerendered markup to `index.html` from the
  * pristine `_shell.html` template (never reads index.html back as the shell).
