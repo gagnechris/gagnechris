@@ -10,4 +10,9 @@ describe('public entry bundle isolation', () => {
     expect(mainSource).toMatch(/import\('\.\/admin\/AdminLayout/)
     expect(mainSource).toMatch(/import\('\.\/auth\/AuthCallback/)
   })
+
+  test('dont-feed-the-bears is lazy-loaded and not a static import', () => {
+    expect(mainSource).not.toMatch(/from ['"].*DontFeedTheBears/)
+    expect(mainSource).toMatch(/import\(\s*'\.\/pages\/DontFeedTheBears/)
+  })
 })
