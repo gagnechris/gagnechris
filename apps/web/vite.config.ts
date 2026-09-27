@@ -6,9 +6,16 @@ import { sitemapPlugin } from './scripts/sitemapPlugin.ts'
 const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   // Empty prefix so we can read VITE_* (and optional VITE_LOCAL_API_ORIGIN).
   const env = loadEnv(mode, process.cwd(), '')
+
+  if (command === 'build' && env.VITE_AUTH_MODE === 'local') {
+    throw new Error(
+      'VITE_AUTH_MODE=local is not allowed in production Vite builds',
+    )
+  }
+
   const useProdApi = env.VITE_API_TARGET === 'prod'
   const proxyTarget = useProdApi
     ? 'https://gagnechris.com'
@@ -18,7 +25,7 @@ export default defineConfig(({ mode }) => {
     console.warn(
       '[vite] VITE_API_TARGET=prod — /api proxies to https://gagnechris.com (live DynamoDB).',
     )
-  } else {
+  } else if (command === 'serve') {
     console.info(
       `[vite] /api proxies to ${proxyTarget} (local). Use VITE_API_TARGET=prod only when you intend to hit production.`,
     )

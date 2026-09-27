@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local E2E publisher filesystem root (CHR-75)
+.local-site
+
 # CDK
 cdk.out
 # cdk.context.json is committed so CI can synth HostedZone.fromLookup without live AWS.

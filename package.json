@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "npm run dev -w @gagnechris/web",
     "dev:prod-api": "npm run dev:prod-api -w @gagnechris/web",
+    "dev:local": "bash -c 'source scripts/local/env.sh && npm run dev -w @gagnechris/web'",
     "build": "npm run build -w @gagnechris/web",
     "typecheck": "npm run typecheck -w @gagnechris/web",
     "lint": "npm run lint -w @gagnechris/web",
@@ -20,7 +21,14 @@
     "test:watch": "npm run test:watch -w @gagnechris/web",
     "test:coverage": "npm run test:coverage -w @gagnechris/web",
     "cdk": "npm run cdk -w @gagnechris/infra --",
-    "deploy:web": "bash scripts/deploy-web.sh"
+    "deploy:web": "bash scripts/deploy-web.sh",
+    "local:up": "docker compose -f docker-compose.local.yml up -d",
+    "local:down": "docker compose -f docker-compose.local.yml down",
+    "local:bootstrap": "bash -c 'source scripts/local/env.sh && node scripts/local/bootstrap-table.mjs'",
+    "local:api": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/server.ts'",
+    "local:site": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/static-server.ts'",
+    "local:seed-shell": "bash scripts/local/seed-shell.sh",
+    "e2e:local": "bash scripts/local/e2e.sh"
   },
   "engines": {
     "node": "^22.12.0"

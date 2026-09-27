@@ -88,41 +88,56 @@ export const handler = async (
   metrics.clearMetrics();
 
   try {
-    let slugsToRemove: Iterable<string> | undefined;
-
     if (isRepublishAll(event)) {
       logger.info('Republish-all requested');
-    } else if (isDynamoStreamEvent(event)) {
+      // Omit slugsToRemove so rebuild discovers orphans via list().
+      const result = await rebuildPublishedSite();
+      logger.info('Publish complete', {
+        publishedCount: result.publishedCount,
+        removedSlugs: result.removedSlugs,
+        invalidationCount: result.invalidated.length,
+      });
+      metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
+      metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+      metrics.addMetric('Success', MetricUnit.Count, 1);
+      metrics.publishStoredMetrics();
+      return {
+        ok: true,
+        publishedCount: result.publishedCount,
+        removedSlugs: result.removedSlugs,
+      };
+    }
+
+    if (isDynamoStreamEvent(event)) {
       if (!streamNeedsRebuild(event.Records)) {
         logger.info('Stream batch has no published META changes; skipping');
         metrics.addMetric('Skipped', MetricUnit.Count, 1);
         metrics.publishStoredMetrics();
         return { ok: true, publishedCount: 0, removedSlugs: [] };
       }
-      slugsToRemove = collectSlugsToRemove(event.Records);
+      const slugsToRemove = collectSlugsToRemove(event.Records);
       logger.info('Rebuilding from stream', {
         recordCount: event.Records.length,
         slugsToRemove: [...slugsToRemove],
       });
-    } else {
-      throw new Error('Unsupported publisher event');
+      const result = await rebuildPublishedSite({ slugsToRemove });
+      logger.info('Publish complete', {
+        publishedCount: result.publishedCount,
+        removedSlugs: result.removedSlugs,
+        invalidationCount: result.invalidated.length,
+      });
+      metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
+      metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+      metrics.addMetric('Success', MetricUnit.Count, 1);
+      metrics.publishStoredMetrics();
+      return {
+        ok: true,
+        publishedCount: result.publishedCount,
+        removedSlugs: result.removedSlugs,
+      };
     }
 
-    const result = await rebuildPublishedSite({ slugsToRemove });
-    logger.info('Publish complete', {
-      publishedCount: result.publishedCount,
-      removedSlugs: result.removedSlugs,
-      invalidationCount: result.invalidated.length,
-    });
-    metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
-    metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
-    metrics.addMetric('Success', MetricUnit.Count, 1);
-    metrics.publishStoredMetrics();
-    return {
-      ok: true,
-      publishedCount: result.publishedCount,
-      removedSlugs: result.removedSlugs,
-    };
+    throw new Error('Unsupported publisher event');
   } catch (err) {
     logger.error('Publisher failed', { err });
     metrics.addMetric('Error', MetricUnit.Count, 1);
