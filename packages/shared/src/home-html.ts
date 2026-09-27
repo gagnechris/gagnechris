@@ -28,6 +28,17 @@ export const renderHomeQuickLinksHtml = (): string =>
   `<li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li>` +
   `</ul></section>`;
 
+/** Site footer for no-JS / crawlers (CHR-122). Year is fixed at publish time. */
+export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
+  `<footer class="site-footer">` +
+  `<p class="site-footer__copy">© ${year} Chris Gagne</p>` +
+  `<ul class="site-footer__links">` +
+  `<li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>` +
+  `<li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li>` +
+  `<li><a href="/rss.xml">RSS</a></li>` +
+  `<li><a href="/dont-feed-the-bears?from=footer" class="site-footer__bear" aria-label="Don't Feed the Bears — Vermont camp mini-game" title="Don't Feed the Bears">🐻 Don't Feed the Bears</a></li>` +
+  `</ul></footer>`;
+
 /**
  * Full prerendered article the publisher injects into `index.html` and the SPA
  * reads back. Classes match React (`home-page` / `home-header`) so no-JS and
@@ -45,6 +56,7 @@ export const renderHomePrerenderHtml = (home: Home): string => {
     `<h1>${name}</h1><p>${title}</p>` +
     `</header>` +
     `<main>${renderHomeAboutSectionHtml(home.about)}${renderHomeQuickLinksHtml()}</main>` +
+    `${renderHomeFooterHtml()}` +
     `</article>`
   );
 };

@@ -2,6 +2,8 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
+import { Logger } from '@aws-lambda-powertools/logger';
+import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   ContactRequestSchema,
   ContactResponseSchema,
@@ -22,6 +24,12 @@ import {
   zodBadRequest,
 } from '../http.js';
 
+const logger = new Logger({ serviceName: 'gagnechris-api' });
+const metrics = new Metrics({
+  namespace: 'gagnechris',
+  serviceName: 'gagnechris-api',
+});
+
 /** Minimum ms between form open and submit (bots often submit instantly). */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
 
@@ -36,6 +44,13 @@ function honeypotTriggered(body: {
   return body.hp_field.trim().length > 0 || body.website.trim().length > 0;
 }
 
+/**
+ * Best-effort anti-bot timing (CHR-114 / CHR-122).
+ *
+ * `elapsedMs` is client-controlled — a bot can omit it or send a large value
+ * and skip this check. IP + SES rate limits remain the hard caps. A signed
+ * server-issued token would make this authoritative if spam ever warrants it.
+ */
 function tooFastSubmit(body: {
   elapsedMs?: number;
   formStartedAt?: number;
@@ -48,6 +63,25 @@ function tooFastSubmit(body: {
   if (body.formStartedAt === undefined) return false;
   const elapsed = Date.now() - body.formStartedAt;
   return elapsed >= 0 && elapsed < MIN_CONTACT_SUBMIT_MS;
+}
+
+async function tryUpdateEmailStatus(
+  contacts: ContactRepository,
+  contactId: string,
+  status: 'sent' | 'failed',
+  emailError?: string,
+): Promise<void> {
+  try {
+    await contacts.updateEmailStatus(contactId, status, emailError);
+  } catch (error) {
+    logger.warn('Contact emailStatus update failed', {
+      contactId,
+      status,
+      err: error,
+    });
+    metrics.addMetric('ContactEmailStatusUpdateFailed', MetricUnit.Count, 1);
+    metrics.publishStoredMetrics();
+  }
 }
 
 export type ContactHandlerDeps = {
@@ -91,7 +125,8 @@ export async function handleContactRoute(
         await rates.consumeSesSend();
       } catch (error) {
         if (error instanceof RateLimitExceededError) {
-          await contacts.updateEmailStatus(
+          await tryUpdateEmailStatus(
+            contacts,
             saved.contactId,
             'failed',
             error.message,
@@ -120,11 +155,12 @@ export async function handleContactRoute(
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Email send failed';
-        try {
-          await contacts.updateEmailStatus(saved.contactId, 'failed', message);
-        } catch {
-          // Status update is best-effort; delivery failure already known.
-        }
+        await tryUpdateEmailStatus(
+          contacts,
+          saved.contactId,
+          'failed',
+          message,
+        );
         return json(502, {
           error: 'email_failed',
           message:
@@ -133,11 +169,7 @@ export async function handleContactRoute(
       }
 
       // SES succeeded — never fail the visitor if Dynamo status update fails.
-      try {
-        await contacts.updateEmailStatus(saved.contactId, 'sent');
-      } catch {
-        // Logged by repository / Lambda; message is already delivered.
-      }
+      await tryUpdateEmailStatus(contacts, saved.contactId, 'sent');
 
       return json(200, ContactResponseSchema.parse({ ok: true }));
     } catch (error) {

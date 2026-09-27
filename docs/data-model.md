@@ -162,14 +162,20 @@ resume).
 Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
 (home meta shell), then invokes `republishAll`, which reads `_shell.html` and
 writes the home prerender into `index.html`. Home-only head tags therefore
-cannot leak into `/blog` or `/resume`. Quick Links and the profile photo stay
-hard-coded in React for now.
+cannot leak into `/blog` or `/resume`. Profile photo, Quick Links, and footer
+markup are shared between the publisher prerender and the React home (CHR-116 /
+CHR-122).
 
 ## Contact messages (CHR-98)
 
 Public contact form submissions are persisted before SES notification so a
 failed send never loses the message. Sort key is `MSG` (not `META`) so the
 publisher stream filter ignores these writes.
+
+Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
+client-controlled** (CHR-114 / CHR-122): a bot can omit or inflate the value.
+Hard caps remain the per-IP contact rate limit and the global SES daily cap. A
+signed server-issued token would make timing authoritative if spam warrants it.
 
 #### `CONTACT#<ulid>` / `MSG`
 

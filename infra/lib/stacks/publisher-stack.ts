@@ -78,11 +78,16 @@ export class PublisherStack extends Stack {
         minify: true,
         sourceMap: true,
         target: 'node24',
-        // Do not externalize @aws-sdk/*: CloudFront KeyValueStore needs SigV4a
-        // registered on the same @smithy/signature-v4 singleton the KVS client
-        // uses. Runtime clients + a bundled signature-v4a leave that container
-        // empty and republish-all crashes (CHR-115).
-        externalModules: [],
+        // Runtime provides most @aws-sdk/* clients. Bundle only CloudFront
+        // KeyValueStore + SigV4a so they share one @smithy/signature-v4
+        // singleton (CHR-115); externalize the rest to shrink the zip (CHR-122).
+        externalModules: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-s3',
+          '@aws-sdk/client-cloudfront',
+          '@aws-sdk/util-dynamodb',
+        ],
         commandHooks: {
           beforeBundling(): string[] {
             return [];
