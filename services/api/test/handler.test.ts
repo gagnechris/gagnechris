@@ -70,4 +70,10 @@ describe('api handler', () => {
     const result = await handler(event('GET', '/api/nope'), {} as never, () => undefined);
     expect(result).toMatchObject({ statusCode: 404 });
   });
+
+  it('does not set CORS headers (API Gateway corsPreflight owns that)', async () => {
+    const result = await handler(event('GET', '/api/health'), {} as never, () => undefined);
+    const headers = (result as { headers?: Record<string, string> }).headers ?? {};
+    expect(headers['Access-Control-Allow-Origin']).toBeUndefined();
+  });
 });
