@@ -684,6 +684,11 @@ describe('PublisherStack', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-lambda-errors',
     });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-resume-pdf-errors',
+      Namespace: 'gagnechris',
+      MetricName: 'ResumePdfError',
+    });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',
     });

@@ -21,7 +21,8 @@ import {
   renderPostPage,
   renderResumePage,
 } from './render.js';
-import { renderResumePdf, RESUME_PDF_KEY } from './resume-pdf.js';
+import { RESUME_PDF_KEY } from './resume-pdf.js';
+import { publishResumePdf } from './resume-pdf-publish.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
@@ -111,6 +112,8 @@ export type RebuildResult = {
   publishedCount: number;
   removedSlugs: string[];
   resumePublished: boolean;
+  /** True when resume HTML was published but PDF generation failed (last good PDF kept). */
+  resumePdfFailed: boolean;
   homePublished: boolean;
   invalidated: string[];
 };
@@ -176,7 +179,9 @@ export async function rebuildPublishedSite(options?: {
   );
 
   // Draft / missing resume leaves any live resume HTML/PDF untouched.
+  // PDF failures must not abort HTML / sitemap / RSS (CHR-97).
   const resume = await getPublishedResume(tableName);
+  let resumePdfFailed = false;
   if (resume) {
     await storage.put(
       'resume/index.html',
@@ -184,13 +189,8 @@ export async function rebuildPublishedSite(options?: {
       'text/html; charset=utf-8',
       CACHE_HTML,
     );
-    const pdfBytes = await renderResumePdf(resume);
-    await storage.put(
-      RESUME_PDF_KEY,
-      pdfBytes,
-      'application/pdf',
-      CACHE_HTML,
-    );
+    const pdfResult = await publishResumePdf(storage, resume);
+    resumePdfFailed = pdfResult.status === 'kept-previous';
   }
 
   // Draft / missing home leaves the deployed Vite shell (or the last published
@@ -243,6 +243,7 @@ export async function rebuildPublishedSite(options?: {
     publishedCount: published.length,
     removedSlugs,
     resumePublished: Boolean(resume),
+    resumePdfFailed,
     homePublished: Boolean(home),
     invalidated: [...new Set(invalidated)],
   };
