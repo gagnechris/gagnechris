@@ -212,22 +212,20 @@ export default function AdminHomePage() {
 
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-panel__header">
-        <div>
+      <div className="admin-action-bar">
+        <div className="admin-action-bar__status">
           <h1>Home</h1>
-          <p className="admin-panel__meta-row">
-            <span className={`admin-badge admin-badge--${home.status}`}>
-              {home.status}
+          <span className={`admin-badge admin-badge--${home.status}`}>
+            {home.status}
+          </span>
+          {home.hasUnpublishedChanges ? (
+            <span className="admin-badge admin-badge--unpublished">
+              Unpublished changes
             </span>
-            {home.hasUnpublishedChanges ? (
-              <span className="admin-badge admin-badge--unpublished">
-                Unpublished changes
-              </span>
-            ) : null}
-            <span className="admin-save-indicator" data-state={saveState}>
-              {saveLabel}
-            </span>
-          </p>
+          ) : null}
+          <span className="admin-save-indicator" data-state={saveState}>
+            {saveLabel}
+          </span>
         </div>
         <div className="admin-actions">
           <a className="admin-btn" href="/" target="_blank" rel="noreferrer">
@@ -280,70 +278,74 @@ export default function AdminHomePage() {
         </p>
       ) : null}
 
-      <form
-        className="admin-editor-fields"
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault()
-          void save()
-        }}
-      >
-        <label className="admin-field">
-          <span>Name</span>
-          <input
-            className="admin-input"
-            value={draft.name}
-            onChange={(e) => setField('name', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>Title</span>
-          <input
-            className="admin-input"
-            value={draft.title}
-            onChange={(e) => setField('title', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>About Me</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={8}
-            value={draft.about}
-            onChange={(e) => setField('about', e.target.value)}
-          />
-          <span className="admin-hint">
-            Blank lines start a new paragraph. Quick Links and the profile photo
-            are not editable yet.
-          </span>
-        </label>
-        <label className="admin-field">
-          <span>SEO title (optional)</span>
-          <input
-            className="admin-input"
-            value={draft.seoTitle}
-            onChange={(e) => setField('seoTitle', e.target.value)}
-            placeholder={`${draft.name} - ${draft.title}`}
-          />
-        </label>
-        <label className="admin-field">
-          <span>SEO description (optional)</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={3}
-            value={draft.seoDescription}
-            onChange={(e) => setField('seoDescription', e.target.value)}
-          />
-          <span className="admin-hint">
-            Defaults to the first 200 characters of About Me.
-          </span>
-        </label>
-      </form>
+      <div className="admin-editor-split">
+        <form
+          className="admin-editor-fields"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault()
+            void save()
+          }}
+        >
+          <label className="admin-field">
+            <span>Name</span>
+            <input
+              className="admin-input"
+              value={draft.name}
+              onChange={(e) => setField('name', e.target.value)}
+            />
+          </label>
+          <label className="admin-field">
+            <span>Title</span>
+            <input
+              className="admin-input"
+              value={draft.title}
+              onChange={(e) => setField('title', e.target.value)}
+            />
+          </label>
+          <label className="admin-field">
+            <span>About Me</span>
+            <textarea
+              className="admin-input admin-textarea"
+              rows={8}
+              value={draft.about}
+              onChange={(e) => setField('about', e.target.value)}
+            />
+            <span className="admin-hint">
+              Blank lines start a new paragraph. Quick Links and the profile photo
+              are not editable yet.
+            </span>
+          </label>
+          <label className="admin-field">
+            <span>SEO title (optional)</span>
+            <input
+              className="admin-input"
+              value={draft.seoTitle}
+              onChange={(e) => setField('seoTitle', e.target.value)}
+              placeholder={`${draft.name} - ${draft.title}`}
+            />
+          </label>
+          <label className="admin-field">
+            <span>SEO description (optional)</span>
+            <textarea
+              className="admin-input admin-textarea"
+              rows={3}
+              value={draft.seoDescription}
+              onChange={(e) => setField('seoDescription', e.target.value)}
+            />
+            <span className="admin-hint">
+              Defaults to the first 200 characters of About Me.
+            </span>
+          </label>
+        </form>
 
-      <h2 className="admin-preview-title">Preview</h2>
-      <div
-        className="admin-home-preview"
-        dangerouslySetInnerHTML={{ __html: previewHtml }}
-      />
+        <div className="admin-editor-split__preview">
+          <h2 className="admin-preview-title">Preview</h2>
+          <div
+            className="admin-home-preview"
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          />
+        </div>
+      </div>
     </section>
   )
 }

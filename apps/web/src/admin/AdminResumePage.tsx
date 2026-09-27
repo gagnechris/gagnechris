@@ -269,22 +269,20 @@ export default function AdminResumePage() {
 
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-panel__header">
-        <div>
+      <div className="admin-action-bar">
+        <div className="admin-action-bar__status">
           <h1>Resume</h1>
-          <p className="admin-panel__meta-row">
-            <span className={`admin-badge admin-badge--${resume.status}`}>
-              {resume.status}
+          <span className={`admin-badge admin-badge--${resume.status}`}>
+            {resume.status}
+          </span>
+          {resume.hasUnpublishedChanges ? (
+            <span className="admin-badge admin-badge--unpublished">
+              Unpublished changes
             </span>
-            {resume.hasUnpublishedChanges ? (
-              <span className="admin-badge admin-badge--unpublished">
-                Unpublished changes
-              </span>
-            ) : null}
-            <span className="admin-save-indicator" data-state={saveState}>
-              {saveLabel}
-            </span>
-          </p>
+          ) : null}
+          <span className="admin-save-indicator" data-state={saveState}>
+            {saveLabel}
+          </span>
         </div>
         <div className="admin-actions">
           <a className="admin-btn" href="/resume" target="_blank" rel="noreferrer">
@@ -337,13 +335,14 @@ export default function AdminResumePage() {
         </p>
       ) : null}
 
-      <form
-        className="admin-editor-fields"
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault()
-          void save()
-        }}
-      >
+      <div className="admin-editor-split">
+        <form
+          className="admin-editor-fields"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault()
+            void save()
+          }}
+        >
         <label className="admin-field">
           <span>Name</span>
           <input
@@ -523,13 +522,16 @@ export default function AdminResumePage() {
             Add entry
           </button>
         </fieldset>
-      </form>
+        </form>
 
-      <h2 className="admin-preview-title">Preview</h2>
-      <div
-        className="resume-page admin-resume-preview"
-        dangerouslySetInnerHTML={{ __html: previewHtml }}
-      />
+        <div className="admin-editor-split__preview">
+          <h2 className="admin-preview-title">Preview</h2>
+          <div
+            className="resume-page admin-resume-preview"
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          />
+        </div>
+      </div>
     </section>
   )
 }

@@ -76,15 +76,64 @@
   text-align: left;
 }
 
-.markdown-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  min-height: 22rem;
+.markdown-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: min(70vh, 40rem);
 }
 
-@media (max-width: 900px) {
+.markdown-tabs {
+  display: none;
+  gap: var(--space-2);
+}
+
+.markdown-tabs__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.markdown-tabs__btn[aria-selected='true'] {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+  color: var(--primary-900);
+}
+
+.markdown-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  flex: 1;
+  min-height: min(70vh, 40rem);
+}
+
+.markdown-split > .markdown-editor,
+.markdown-split > .markdown-preview {
+  min-height: 0;
+  height: min(70vh, 40rem);
+}
+
+@media (max-width: 1023px) {
+  .markdown-tabs {
+    display: flex;
+  }
+
   .markdown-split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .markdown-split[data-pane='edit'] > .markdown-preview,
+  .markdown-split[data-pane='preview'] > .markdown-editor {
+    display: none;
   }
 }
