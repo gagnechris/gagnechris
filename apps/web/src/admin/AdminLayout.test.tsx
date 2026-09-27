@@ -4,6 +4,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import AdminLayout from './AdminLayout'
 import AdminPostsPage from './AdminPostsPage'
 
+const { isDevProdApiTargetMock } = vi.hoisted(() => ({
+  isDevProdApiTargetMock: vi.fn(() => false),
+}))
+
+vi.mock('../api/apiTarget', () => ({
+  isDevProdApiTarget: () => isDevProdApiTargetMock(),
+}))
+
 vi.mock('../auth/session', () => ({
   getAuthUser: vi.fn(async () => ({
     label: 'admin@example.com',
@@ -27,6 +35,7 @@ vi.mock('../api/client', () => ({
 describe('AdminLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    isDevProdApiTargetMock.mockReturnValue(false)
   })
 
   test('shows Posts / Notebook nav and posts hub when authenticated', async () => {
@@ -46,5 +55,24 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Posts' })).toBeInTheDocument()
     expect(await screen.findByText(/No posts match/i)).toBeInTheDocument()
+    expect(screen.queryByText(/PRODUCTION API/i)).not.toBeInTheDocument()
+  })
+
+  test('shows PRODUCTION banner when Vite proxies to prod API', async () => {
+    isDevProdApiTargetMock.mockReturnValue(true)
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <Routes>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminPostsPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByText(/PRODUCTION API — edits, autosave, and publish hit the live site/i),
+    ).toBeInTheDocument()
   })
 })

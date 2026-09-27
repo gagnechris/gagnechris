@@ -6,6 +6,7 @@
   "homepage": "https://gagnechris.com",
   "scripts": {
     "dev": "vite",
+    "dev:prod-api": "VITE_API_TARGET=prod vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "eslint .",

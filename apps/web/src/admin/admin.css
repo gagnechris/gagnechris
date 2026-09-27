@@ -9,6 +9,16 @@
   color: var(--neutral-800);
 }
 
+.admin-prod-banner {
+  padding: var(--space-2) var(--space-6);
+  background: #9b1c1c;
+  color: #fff7f7;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
 .admin-shell--centered {
   display: grid;
   place-content: center;
