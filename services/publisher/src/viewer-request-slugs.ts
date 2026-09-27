@@ -3,6 +3,7 @@
  * viewer-request function can allowlist /blog/<slug> without rewriting
  * function code (CHR-115).
  */
+import '@aws-sdk/signature-v4a';
 import {
   CloudFrontKeyValueStoreClient,
   DescribeKeyValueStoreCommand,
