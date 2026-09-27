@@ -38,6 +38,7 @@ import {
   BlockPublicAccess,
   Bucket,
   BucketEncryption,
+  HttpMethods,
   ObjectOwnership,
   StorageClass,
 } from 'aws-cdk-lib/aws-s3';
@@ -115,6 +116,20 @@ export class SiteStack extends Stack {
       serverAccessLogsPrefix: 's3-site/',
       removalPolicy: config.statefulRemovalPolicy,
       autoDeleteObjects: config.statefulRemovalPolicy === RemovalPolicy.DESTROY,
+      // Browser PUTs for admin media uploads (CHR-31).
+      cors: [
+        {
+          allowedMethods: [HttpMethods.PUT, HttpMethods.GET, HttpMethods.HEAD],
+          allowedOrigins: [
+            `https://${APEX_DOMAIN}`,
+            'http://localhost:5173',
+            'http://localhost:3000',
+          ],
+          allowedHeaders: ['Content-Type', 'Content-Length'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3600,
+        },
+      ],
     });
 
     const oac = new S3OriginAccessControl(this, 'SiteOac', {
@@ -154,7 +169,7 @@ export class SiteStack extends Stack {
             "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
             "font-src 'self'",
             // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
-            `connect-src 'self' https://formspree.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${APEX_DOMAIN} https://cognito-idp.${Stack.of(this).region}.amazonaws.com`,
+            `connect-src 'self' https://formspree.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${APEX_DOMAIN} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self' https://formspree.io",
@@ -178,6 +193,17 @@ export class SiteStack extends Stack {
     const assetsCachePolicy = new CachePolicy(this, 'AssetsCachePolicy', {
       cachePolicyName: `gagnechris-${config.name}-assets`,
       comment: 'Immutable hashed assets',
+      defaultTtl: Duration.days(365),
+      maxTtl: Duration.days(365),
+      minTtl: Duration.days(365),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
+
+    // Long cache for uploaded media under /media/* (unique keys; CHR-31).
+    const mediaCachePolicy = new CachePolicy(this, 'MediaCachePolicy', {
+      cachePolicyName: `gagnechris-${config.name}-media`,
+      comment: 'Long cache for /media/* uploads',
       defaultTtl: Duration.days(365),
       maxTtl: Duration.days(365),
       minTtl: Duration.days(365),
@@ -240,7 +266,7 @@ export class SiteStack extends Stack {
           allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
           cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
           compress: true,
-          cachePolicy: CachePolicy.CACHING_DISABLED,
+          cachePolicy: mediaCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
       },

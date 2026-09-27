@@ -22,18 +22,18 @@ const LOCAL_CLAIMS = {
   'cognito:username': 'local-admin',
 };
 
-function readBody(req: IncomingMessage): Promise<string> {
+function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on('data', (c) => chunks.push(c));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
 
 function buildEvent(
   req: IncomingMessage,
-  body: string,
+  body: Buffer,
   rawPath: string,
 ): APIGatewayProxyEventV2 {
   const host = req.headers.host || `127.0.0.1:${port}`;
@@ -44,6 +44,11 @@ function buildEvent(
     if (typeof v === 'string') headers[k.toLowerCase()] = v;
     else if (Array.isArray(v) && v[0]) headers[k.toLowerCase()] = v[0];
   }
+
+  const contentType = headers['content-type'] ?? '';
+  const isBinary =
+    contentType.startsWith('image/') ||
+    contentType.startsWith('application/octet-stream');
 
   return {
     version: '2.0',
@@ -76,8 +81,12 @@ function buildEvent(
         },
       },
     },
-    isBase64Encoded: false,
-    body: body || undefined,
+    isBase64Encoded: isBinary,
+    body: body.length
+      ? isBinary
+        ? body.toString('base64')
+        : body.toString('utf8')
+      : undefined,
   };
 }
 

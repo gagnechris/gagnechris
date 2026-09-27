@@ -8,6 +8,8 @@ import {
   CreatePostRequestSchema,
   ErrorResponseSchema,
   HealthResponseSchema,
+  MediaUploadUrlRequestSchema,
+  MediaUploadUrlResponseSchema,
   PostListResponseSchema,
   PostSchema,
   PostStatusSchema,
@@ -34,6 +36,8 @@ export function buildOpenApiDocument() {
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
   registry.register('UpdatePostRequest', UpdatePostRequestSchema);
+  registry.register('MediaUploadUrlRequest', MediaUploadUrlRequestSchema);
+  registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
 
   registry.registerPath({
     method: 'get',
@@ -222,6 +226,35 @@ export function buildOpenApiDocument() {
       404: {
         description: 'Not found',
         content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/media/upload-url',
+    summary: 'Presigned PUT URL for an image under /media',
+    tags: ['Media'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: MediaUploadUrlRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Upload URL and public path',
+        content: {
+          'application/json': { schema: MediaUploadUrlResponseSchema },
+        },
+      },
+      400: {
+        description: 'Invalid content type, size, or body',
+        content: {
+          'application/json': { schema: ErrorResponseSchema },
+        },
       },
     },
   });

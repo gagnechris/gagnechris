@@ -387,6 +387,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/media/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Presigned PUT URL for an image under /media */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MediaUploadUrlRequest"];
+                };
+            };
+            responses: {
+                /** @description Upload URL and public path */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MediaUploadUrlResponse"];
+                    };
+                };
+                /** @description Invalid content type, size, or body */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -462,6 +511,30 @@ export interface components {
             tags?: string[];
             coverImage?: string | null;
             seo?: components["schemas"]["PostSeo"];
+        };
+        MediaUploadUrlRequest: {
+            contentType: components["schemas"]["MediaContentType"];
+            /** @description Exact byte length of the PUT body (max 10 MiB) */
+            contentLength: number;
+            /** @description Original filename (extension used when present) */
+            filename?: string;
+        };
+        /** @enum {string} */
+        MediaContentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+        MediaUploadUrlResponse: {
+            /**
+             * Format: uri
+             * @description Presigned PUT URL (or local API PUT URL in filesystem mode)
+             */
+            uploadUrl: string;
+            /** @description Same-origin path to insert in markdown */
+            publicPath: string;
+            /** @description Headers the client must send on the PUT (Content-Length is set by the browser to match contentLength) */
+            headers: {
+                "Content-Type": string;
+            };
+            /** Format: date-time */
+            expiresAt: string;
         };
     };
     responses: never;

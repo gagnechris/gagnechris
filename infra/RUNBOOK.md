@@ -140,6 +140,11 @@ SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-ar
 
 Legacy post import (CHR-36): `docs/migrate-posts.md` (`npm run migrate:posts`).
 
+Media uploads (CHR-31): admin `POST /api/admin/media/upload-url` returns a
+presigned PUT for `media/*` on the site bucket; CloudFront serves `/media/*`
+with a long cache. Paste/drop images in the post editor inserts
+`![alt](/media/...)`.
+
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
