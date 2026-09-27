@@ -1,7 +1,7 @@
 /**
  * Sync published blog slugs into a CloudFront KeyValueStore so the
  * viewer-request function can allowlist /blog/<slug> without rewriting
- * function code (CHR-115).
+ * function code (CHR-115 / CHR-119).
  */
 import '@aws-sdk/signature-v4a';
 import {
@@ -23,12 +23,36 @@ export const BLOG_SLUG_SYNCED_KEY = '__synced__';
 /** Combined puts+deletes per UpdateKeys call (API page size / safety bound). */
 export const KVS_UPDATE_BATCH_SIZE = 50;
 
+/** Retries for ConflictException / transient API failures (CHR-119). */
+export const KVS_SYNC_MAX_ATTEMPTS = 3;
+
 const kvs = new CloudFrontKeyValueStoreClient({});
 
 export type SlugKeyDiff = {
   puts: PutKeyRequestListItem[];
   deletes: DeleteKeyRequestListItem[];
 };
+
+/** Injectable client for unit tests (concurrent sync / ETag race). */
+export type BlogSlugKvsClient = {
+  describeETag: (kvsArn: string) => Promise<string>;
+  listKeys: (kvsArn: string) => Promise<string[]>;
+  updateKeys: (input: {
+    kvsArn: string;
+    ifMatch: string;
+    puts: PutKeyRequestListItem[];
+    deletes: DeleteKeyRequestListItem[];
+  }) => Promise<string>;
+};
+
+export class KvsSyncError extends Error {
+  readonly kvsSyncFailed = true as const;
+
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'KvsSyncError';
+  }
+}
 
 /**
  * Diff desired published slugs against keys already in the KVS.
@@ -95,7 +119,7 @@ export function batchSlugKeyDiff(
   return batches;
 }
 
-async function listAllKeys(kvsArn: string): Promise<string[]> {
+async function listAllKeysWithSdk(kvsArn: string): Promise<string[]> {
   const keys: string[] = [];
   let nextToken: string | undefined;
   do {
@@ -114,13 +138,134 @@ async function listAllKeys(kvsArn: string): Promise<string[]> {
   return keys;
 }
 
+function defaultSdkClient(): BlogSlugKvsClient {
+  return {
+    async describeETag(kvsArn) {
+      const described = await kvs.send(
+        new DescribeKeyValueStoreCommand({ KvsARN: kvsArn }),
+      );
+      if (!described.ETag) {
+        throw new Error(`DescribeKeyValueStore missing ETag for ${kvsArn}`);
+      }
+      return described.ETag;
+    },
+    listKeys: listAllKeysWithSdk,
+    async updateKeys({ kvsArn, ifMatch, puts, deletes }) {
+      const updated = await kvs.send(
+        new UpdateKeysCommand({
+          KvsARN: kvsArn,
+          IfMatch: ifMatch,
+          Puts: puts.length ? puts : undefined,
+          Deletes: deletes.length ? deletes : undefined,
+        }),
+      );
+      if (!updated.ETag) {
+        throw new Error(`UpdateKeys missing ETag for ${kvsArn}`);
+      }
+      return updated.ETag;
+    },
+  };
+}
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * One describe → list → update cycle.
+ * ETag is taken before ListKeys so IfMatch covers the list→update window (CHR-119).
+ */
+export async function syncBlogSlugsOnce(
+  kvsArn: string,
+  slugs: string[],
+  client: BlogSlugKvsClient,
+): Promise<'synced' | 'noop'> {
+  // Describe first so the ETag covers list → update (avoids concurrent races).
+  let etag = await client.describeETag(kvsArn);
+  const existing = await client.listKeys(kvsArn);
+  const diff = diffBlogSlugKeys(existing, slugs);
+  if (diff.puts.length === 0 && diff.deletes.length === 0) {
+    return 'noop';
+  }
+
+  const batches = batchSlugKeyDiff(diff);
+  for (const batch of batches) {
+    etag = await client.updateKeys({
+      kvsArn,
+      ifMatch: etag,
+      puts: batch.puts,
+      deletes: batch.deletes,
+    });
+  }
+  return 'synced';
+}
+
+export type SyncBlogSlugsOptions = {
+  client?: BlogSlugKvsClient;
+  maxAttempts?: number;
+  sleep?: (ms: number) => Promise<void>;
+};
+
+/**
+ * Replace the KVS allowlist with the current published slugs.
+ * Retries the full describe→list→update cycle on conflict / transient errors.
+ */
+export async function syncBlogSlugsWithClient(
+  kvsArn: string,
+  slugs: string[],
+  options: SyncBlogSlugsOptions = {},
+): Promise<'synced' | 'noop'> {
+  const client = options.client ?? defaultSdkClient();
+  const maxAttempts = options.maxAttempts ?? KVS_SYNC_MAX_ATTEMPTS;
+  const sleep = options.sleep ?? defaultSleep;
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const result = await syncBlogSlugsOnce(kvsArn, slugs, client);
+      if (result === 'noop') {
+        logger.info('Blog slug KVS already in sync', {
+          kvsArn,
+          slugCount: slugs.length,
+          attempt,
+        });
+      } else {
+        logger.info('Synced blog slug KeyValueStore', {
+          kvsArn,
+          slugCount: slugs.length,
+          attempt,
+        });
+      }
+      return result;
+    } catch (err) {
+      lastError = err;
+      logger.warn('Blog slug KVS sync attempt failed', {
+        kvsArn,
+        attempt,
+        maxAttempts,
+        err,
+      });
+      if (attempt < maxAttempts) {
+        await sleep(50 * 2 ** (attempt - 1));
+      }
+    }
+  }
+
+  throw new KvsSyncError(
+    `CloudFront KVS blog slug sync failed after ${maxAttempts} attempts`,
+    { cause: lastError },
+  );
+}
+
 /**
  * Replace the KVS allowlist with the current published slugs.
  * No-ops locally and when BLOG_SLUGS_KVS_ARN is unset.
  * Does not modify CloudFront Function code.
+ * Throws {@link KvsSyncError} after retries so the stream can retry (CHR-119).
  */
 export async function syncViewerRequestBlogSlugs(
   slugs: string[],
+  options?: SyncBlogSlugsOptions,
 ): Promise<void> {
   if (isLocalCloudFront()) return;
   const kvsArn = process.env.BLOG_SLUGS_KVS_ARN?.trim();
@@ -129,49 +274,5 @@ export async function syncViewerRequestBlogSlugs(
     return;
   }
 
-  const existing = await listAllKeys(kvsArn);
-  const diff = diffBlogSlugKeys(existing, slugs);
-  if (diff.puts.length === 0 && diff.deletes.length === 0) {
-    logger.info('Blog slug KVS already in sync', {
-      kvsArn,
-      slugCount: slugs.length,
-    });
-    return;
-  }
-
-  const batches = batchSlugKeyDiff(diff);
-  let etag: string | undefined;
-
-  for (const batch of batches) {
-    if (!etag) {
-      const described = await kvs.send(
-        new DescribeKeyValueStoreCommand({ KvsARN: kvsArn }),
-      );
-      etag = described.ETag;
-    }
-    if (!etag) {
-      throw new Error(`DescribeKeyValueStore missing ETag for ${kvsArn}`);
-    }
-
-    const updated = await kvs.send(
-      new UpdateKeysCommand({
-        KvsARN: kvsArn,
-        IfMatch: etag,
-        Puts: batch.puts.length ? batch.puts : undefined,
-        Deletes: batch.deletes.length ? batch.deletes : undefined,
-      }),
-    );
-    if (!updated.ETag) {
-      throw new Error(`UpdateKeys missing ETag for ${kvsArn}`);
-    }
-    etag = updated.ETag;
-  }
-
-  logger.info('Synced blog slug KeyValueStore', {
-    kvsArn,
-    slugCount: slugs.length,
-    puts: diff.puts.length,
-    deletes: diff.deletes.length,
-    batches: batches.length,
-  });
+  await syncBlogSlugsWithClient(kvsArn, slugs, options);
 }

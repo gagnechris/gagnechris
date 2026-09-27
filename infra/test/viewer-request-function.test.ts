@@ -34,15 +34,31 @@ type HandlerApi = {
   ) => void;
 };
 
-function loadApi(): HandlerApi {
+type FakeKvs = {
+  exists: (key: string) => Promise<boolean>;
+  get?: (key: string) => Promise<string>;
+};
+
+function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
   // CloudFront Functions expose handler(event); eval in a sandbox.
-  // Strip CF `import` and stub `cf.kvs()` so override/fail-open paths work.
+  // Strip CF `import` and stub `cf.kvs()` (override / fail-open / fake store).
+  const kvsFactory =
+    fakeKvs === undefined
+      ? `function () { throw new Error('kvs unavailable in unit tests'); }`
+      : typeof fakeKvs === 'function'
+        ? `function () { return __fakeKvsFactory(); }`
+        : `function () { return __fakeKvs; }`;
   // eslint-disable-next-line no-new-func -- intentional: load CF Function source
   return new Function(
-    `var cf = { kvs: function () { throw new Error('kvs unavailable in unit tests'); } };
+    '__fakeKvs',
+    '__fakeKvsFactory',
+    `var cf = { kvs: ${kvsFactory} };
      ${fnSource}
      return { handler, setPublishedBlogSlugsForTests };`,
-  )() as HandlerApi;
+  )(
+    typeof fakeKvs === 'function' ? undefined : fakeKvs,
+    typeof fakeKvs === 'function' ? fakeKvs : undefined,
+  ) as HandlerApi;
 }
 
 const api = loadApi();
@@ -189,6 +205,104 @@ describe('viewer-request CloudFront Function', () => {
         })) as CfRequest
       ).uri,
     ).toBe('/blog/anything/index.html');
+  });
+
+  describe('KVS allowlist (CHR-119)', () => {
+    function createCountingKvs(store: Record<string, boolean>, opts?: {
+      errorOn?: string | ((key: string) => boolean);
+    }) {
+      const calls: string[] = [];
+      const kvs: FakeKvs = {
+        async exists(key) {
+          calls.push(key);
+          if (
+            opts?.errorOn === key ||
+            (typeof opts?.errorOn === 'function' && opts.errorOn(key))
+          ) {
+            throw new Error(`kvs error for ${key}`);
+          }
+          return Boolean(store[key]);
+        },
+      };
+      return { kvs, calls };
+    }
+
+    it('hits: one exists(slug) read serves Option B', async () => {
+      const { kvs, calls } = createCountingKvs({
+        welcome: true,
+        __synced__: true,
+      });
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: '/blog/welcome',
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/blog/welcome/index.html');
+      expect(calls).toEqual(['welcome']);
+    });
+
+    it('misses: exists(slug) then sentinel → /404.html', async () => {
+      const { kvs, calls } = createCountingKvs({
+        welcome: true,
+        __synced__: true,
+      });
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: '/blog/typo',
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/404.html');
+      expect(calls).toEqual(['typo', '__synced__']);
+    });
+
+    it('fail-opens when exists(slug) throws (live post must not 404)', async () => {
+      const { kvs, calls } = createCountingKvs(
+        { welcome: true, __synced__: true },
+        { errorOn: 'welcome' },
+      );
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: '/blog/welcome',
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/blog/welcome/index.html');
+      expect(calls).toEqual(['welcome']);
+    });
+
+    it('fail-opens when sentinel is absent (pre-first-sync)', async () => {
+      const { kvs, calls } = createCountingKvs({});
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: '/blog/anything',
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/blog/anything/index.html');
+      expect(calls).toEqual(['anything', '__synced__']);
+    });
   });
 
   it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B', async () => {

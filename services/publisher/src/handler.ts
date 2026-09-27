@@ -7,6 +7,7 @@ import {
   fullRebuildScope,
   streamNeedsRebuild,
 } from './rebuild-scope.js';
+import { KvsSyncError } from './viewer-request-slugs.js';
 
 const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 const metrics = new Metrics({
@@ -127,6 +128,15 @@ export const handler = async (
     throw new Error('Unsupported publisher event');
   } catch (err) {
     logger.error('Publisher failed', { err });
+    if (
+      err instanceof KvsSyncError ||
+      (typeof err === 'object' &&
+        err !== null &&
+        'kvsSyncFailed' in err &&
+        (err as { kvsSyncFailed?: boolean }).kvsSyncFailed)
+    ) {
+      metrics.addMetric('KvsSyncFailed', MetricUnit.Count, 1);
+    }
     metrics.addMetric('Error', MetricUnit.Count, 1);
     metrics.publishStoredMetrics();
     throw err;
