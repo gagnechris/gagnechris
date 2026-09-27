@@ -21,12 +21,6 @@ const metrics = new Metrics({
   serviceName: 'gagnechris-api',
 });
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Authorization,Content-Type',
-  'Access-Control-Allow-Methods': 'GET,OPTIONS',
-};
-
 function json(
   statusCode: number,
   body: unknown,
@@ -35,7 +29,6 @@ function json(
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      ...CORS_HEADERS,
     },
     body: JSON.stringify(body),
   };
@@ -105,10 +98,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   }
 
   try {
-    if (event.requestContext.http.method === 'OPTIONS') {
-      return { statusCode: 204, headers: CORS_HEADERS };
-    }
-
     const key = routeKey(event);
     logger.info('request', { path: event.rawPath });
 

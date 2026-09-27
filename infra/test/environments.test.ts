@@ -534,6 +534,16 @@ describe('ApiStack', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
       Name: 'gagnechris-prod',
       ProtocolType: 'HTTP',
+      CorsConfiguration: {
+        AllowOrigins: [
+          'https://gagnechris.com',
+          'http://localhost:5173',
+          'http://localhost:3000',
+        ],
+        AllowHeaders: ['Authorization', 'Content-Type'],
+        AllowMethods: Match.arrayWith(['GET', 'OPTIONS']),
+        MaxAge: 86400,
+      },
     });
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
       AuthorizerType: 'JWT',
