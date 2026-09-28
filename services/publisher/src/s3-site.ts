@@ -22,47 +22,24 @@ import {
 import { batchGetAllWithDocClient } from '@gagnechris/shared/server';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
-import { mapWithConcurrency } from './concurrency.js';
-import { toListItem } from './posts.js';
-import {
-  buildInvalidationPaths,
-  fullRebuildScope,
-  type RebuildScope,
-} from './rebuild-scope.js';
-import {
-  buildRssXml,
-  buildSitemapXml,
-  renderBlogIndexPage,
-  renderHomePage,
-  renderPostPage,
-  renderResumePage,
-  renderResumeUnavailablePage,
-} from './render.js';
-import { RESUME_PDF_KEY } from './resume-pdf.js';
-import { publishResumePdf } from './resume-pdf-publish.js';
+import { runPublishTargets } from './publish-targets/orchestrator.js';
+import type { RebuildSiteSources } from './publish-targets/types.js';
+import { fullRebuildScope, type RebuildScope } from './rebuild-scope.js';
+import type { RebuildResult } from './rebuild-result.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
 import { createS3SiteStorage } from './storage-s3.js';
-import { postSlugsFromKeys, type SiteStorage } from './storage.js';
-import { syncViewerRequestBlogSlugs } from './viewer-request-slugs.js';
+import type { SiteStorage } from './storage.js';
 
 const ddb = getDocClient();
 
-const CACHE_HTML = 'public,max-age=0,must-revalidate';
-const CACHE_FEED = 'public,max-age=300';
-/** Cap parallel S3/filesystem puts so Lambda stays polite under load. */
-const PUT_CONCURRENCY = 8;
-
-/**
- * Publisher-owned snapshot of the last successfully published Home.
- * Survives web deploys (excluded from s3 sync) so unpublished Home can be
- * re-injected into a fresh Vite shell instead of falling back to DEFAULT_HOME.
- */
-export const HOME_LAST_PUBLISHED_KEY = 'home/last-published.json';
-
-export type HomePublishSnapshot = Pick<
-  Home,
-  'name' | 'title' | 'about' | 'seo' | 'publishedAt' | 'updatedAt'
->;
+export type { HomePublishSnapshot } from './home-publish.js';
+export {
+  HOME_LAST_PUBLISHED_KEY,
+  homeToSnapshot,
+  readHomePublishSnapshot,
+  snapshotToHome,
+} from './home-publish.js';
+export type { RebuildResult } from './rebuild-result.js';
 
 let storageOverride: SiteStorage | undefined;
 
@@ -254,75 +231,7 @@ export async function getPublishedHome(
   return home;
 }
 
-export function homeToSnapshot(home: Home): HomePublishSnapshot {
-  return {
-    name: home.name,
-    title: home.title,
-    about: home.about,
-    seo: home.seo,
-    publishedAt: home.publishedAt,
-    updatedAt: home.updatedAt,
-  };
-}
-
-export function snapshotToHome(snapshot: HomePublishSnapshot): Home {
-  return {
-    ...snapshot,
-    status: 'published',
-    version: 0,
-    hasUnpublishedChanges: false,
-  };
-}
-
-export async function readHomePublishSnapshot(
-  storage: SiteStorage,
-): Promise<HomePublishSnapshot | undefined> {
-  const raw = await storage.read(HOME_LAST_PUBLISHED_KEY);
-  if (!raw) return undefined;
-  try {
-    const parsed = JSON.parse(raw) as Partial<HomePublishSnapshot>;
-    if (
-      typeof parsed.name !== 'string' ||
-      typeof parsed.title !== 'string' ||
-      typeof parsed.about !== 'string'
-    ) {
-      return undefined;
-    }
-    return {
-      name: parsed.name,
-      title: parsed.title,
-      about: parsed.about,
-      seo: parsed.seo ?? null,
-      publishedAt: parsed.publishedAt ?? null,
-      updatedAt:
-        typeof parsed.updatedAt === 'string'
-          ? parsed.updatedAt
-          : new Date(0).toISOString(),
-    };
-  } catch {
-    return undefined;
-  }
-}
-
-export type RebuildResult = {
-  publishedCount: number;
-  removedSlugs: string[];
-  resumePublished: boolean;
-  /** True when resume was draft/missing and live artifacts were cleared/replaced. */
-  resumeUnpublished: boolean;
-  /** True when resume HTML was published but PDF generation failed (last good PDF kept). */
-  resumePdfFailed: boolean;
-  homePublished: boolean;
-  /** True when Home is draft/missing but last-published snapshot was restored. */
-  homeRestoredFromSnapshot: boolean;
-  invalidated: string[];
-};
-
-export type RebuildSiteSources = {
-  listPublishedPosts: () => Promise<Post[]>;
-  getPublishedResume: () => Promise<Resume | undefined>;
-  getPublishedHome: () => Promise<Home | undefined>;
-};
+export type { RebuildSiteSources } from './publish-targets/types.js';
 
 function trackingStorage(inner: SiteStorage): {
   storage: SiteStorage;
@@ -383,180 +292,10 @@ export async function rebuildPublishedSite(options?: {
     getPublishedHome: () => getPublishedHome(tableName),
   };
 
-  const needsCatalog =
-    scope.allPosts ||
-    scope.feeds ||
-    scope.postSlugs.size > 0 ||
-    scope.slugsToRemove.size > 0;
-
-  const needsShell =
-    needsCatalog || scope.home || scope.resume || scope.allPosts;
-
-  // Pristine Vite shell (_shell.html) — never the home prerender in index.html.
-  const shell = needsShell ? await storage.readShell() : '';
-
-  const published = needsCatalog ? await sources.listPublishedPosts() : [];
-  const publishedSlugs = new Set(published.map((p) => p.slug));
-
-  let candidates: Iterable<string>;
-  if (scope.allPosts && scope.slugsToRemove.size === 0) {
-    const keys = await storage.list('blog/');
-    candidates = postSlugsFromKeys(keys);
-  } else {
-    candidates = scope.slugsToRemove;
-  }
-
-  const removedSlugs: string[] = [];
-  for (const slug of candidates) {
-    if (!slug || publishedSlugs.has(slug)) continue;
-    await storage.delete(`blog/${slug}/index.html`);
-    removedSlugs.push(slug);
-  }
-
-  const postsToRender = scope.allPosts
-    ? published
-    : published.filter((p) => scope.postSlugs.has(p.slug));
-
-  await mapWithConcurrency(postsToRender, PUT_CONCURRENCY, async (post) => {
-    const html = renderPostPage(shell, post);
-    await storage.put(
-      `blog/${post.slug}/index.html`,
-      html,
-      'text/html; charset=utf-8',
-      CACHE_HTML,
-    );
-  });
-
-  if (scope.feeds) {
-    const feedPuts: Array<() => Promise<boolean>> = [
-      () =>
-        storage.put(
-          'blog/index.html',
-          renderBlogIndexPage(shell, published),
-          'text/html; charset=utf-8',
-          CACHE_HTML,
-        ),
-      () =>
-        storage.put(
-          'blog/posts.json',
-          JSON.stringify({ items: published.map(toListItem) }, null, 0),
-          'application/json; charset=utf-8',
-          CACHE_HTML,
-        ),
-      () =>
-        storage.put(
-          'blog/slugs.json',
-          JSON.stringify({ slugs: published.map((p) => p.slug) }, null, 0),
-          'application/json; charset=utf-8',
-          CACHE_HTML,
-        ),
-      () =>
-        storage.put(
-          'sitemap.xml',
-          buildSitemapXml(published),
-          'application/xml; charset=utf-8',
-          CACHE_FEED,
-        ),
-      () =>
-        storage.put(
-          'rss.xml',
-          buildRssXml(published),
-          'application/rss+xml; charset=utf-8',
-          CACHE_FEED,
-        ),
-    ];
-    await mapWithConcurrency(feedPuts, PUT_CONCURRENCY, (fn) => fn());
-  }
-
-  // Published resume → live HTML + PDF. Unpublished → placeholder HTML, delete PDF.
-  // PDF failures must not abort HTML / sitemap / RSS (CHR-97).
-  let resumePdfFailed = false;
-  let resumePublished = false;
-  let resumeUnpublished = false;
-  if (scope.resume) {
-    const resume = await sources.getPublishedResume();
-    if (resume) {
-      resumePublished = true;
-      await storage.put(
-        'resume/index.html',
-        renderResumePage(shell, resume),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      const pdfResult = await publishResumePdf(storage, resume);
-      resumePdfFailed = pdfResult.status === 'kept-previous';
-    } else {
-      resumeUnpublished = true;
-      await storage.put(
-        'resume/index.html',
-        renderResumeUnavailablePage(shell),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      await storage.delete(RESUME_PDF_KEY);
-    }
-  }
-
-  // Published home → write index.html + durable snapshot.
-  // Draft / missing → restore from snapshot so deploys never fall back to DEFAULT_HOME.
-  let homePublished = false;
-  let homeRestoredFromSnapshot = false;
-  if (scope.home) {
-    const home = await sources.getPublishedHome();
-    if (home) {
-      homePublished = true;
-      await storage.put(
-        'index.html',
-        renderHomePage(shell, home),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      await storage.put(
-        HOME_LAST_PUBLISHED_KEY,
-        JSON.stringify(homeToSnapshot(home)),
-        'application/json; charset=utf-8',
-        CACHE_HTML,
-      );
-    } else {
-      const snapshot = await readHomePublishSnapshot(storage);
-      if (snapshot) {
-        homeRestoredFromSnapshot = true;
-        await storage.put(
-          'index.html',
-          renderHomePage(shell, snapshotToHome(snapshot)),
-          'text/html; charset=utf-8',
-          CACHE_HTML,
-        );
-      }
-    }
-  }
-
-  // Invalidate before KVS sync so a failed sync + stream retry still clears
-  // CloudFront even when S3 writes are no-ops on retry (CHR-123).
-  const invalidated = buildInvalidationPaths({
+  return runPublishTargets({
     scope,
+    storage,
     changedKeys,
-    removedSlugs,
+    sources,
   });
-
-  await storage.invalidate(invalidated);
-
-  // Re-resolve published slugs inside the KVS sync cycle (thunk) so a long
-  // republish-all cannot delete a slug published concurrently (CHR-123).
-  if (scope.feeds) {
-    await syncViewerRequestBlogSlugs(() =>
-      sources.listPublishedPosts().then((posts) => posts.map((p) => p.slug)),
-    );
-  }
-
-  return {
-    publishedCount: published.length,
-    removedSlugs,
-    resumePublished,
-    resumeUnpublished,
-    resumePdfFailed,
-    homePublished,
-    homeRestoredFromSnapshot,
-    invalidated: [...new Set(invalidated)],
-  };
 }

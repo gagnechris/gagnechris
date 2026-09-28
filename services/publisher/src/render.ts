@@ -4,14 +4,12 @@ import {
   renderHomePrerenderHtml,
   renderMarkdownToHtml,
   renderResumePrerenderHtml,
-  replaceMeta,
   resumeSummaryExcerpt,
-  upsertCanonical,
-  upsertMeta,
 } from '@gagnechris/shared/render';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
+import { applyPageMeta } from './page-meta.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
 const absoluteUrl = (pathOrUrl: string): string => {
@@ -92,34 +90,15 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   const article = buildArticleHtml(post);
   const jsonLd = buildJsonLd(post);
 
-  let html = shellHtml;
-  html = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    () => `<title>${title}</title>`,
-  );
-  html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'property', 'og:title', title);
-  html = replaceMeta(html, 'property', 'og:description', description);
-  html = replaceMeta(html, 'property', 'og:type', 'article');
-  html = replaceMeta(html, 'property', 'og:url', url);
-  html = replaceMeta(html, 'property', 'og:image', image);
-  if (post.publishedAt) {
-    html = upsertMeta(
-      html,
-      'property',
-      'article:published_time',
-      post.publishedAt,
-    );
-  }
-  html = replaceMeta(html, 'name', 'twitter:title', title);
-  html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = replaceMeta(html, 'name', 'twitter:image', image);
-
-  html = upsertCanonical(html, url);
-  html = html.replace(
-    /<\/head>/i,
-    () => `<script type="application/ld+json">${jsonLd}</script></head>`,
-  );
+  let html = applyPageMeta(shellHtml, {
+    title,
+    description,
+    url,
+    type: 'article',
+    image,
+    jsonLd,
+    articlePublishedTime: post.publishedAt ?? undefined,
+  });
   html = injectPrerender(html, article);
 
   return html;
@@ -144,19 +123,12 @@ export const renderBlogIndexPage = (
   <ul>${list || '<li>No published posts yet.</li>'}</ul>
 </section>`.trim();
 
-  let html = shellHtml;
-  html = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    () => `<title>${title}</title>`,
-  );
-  html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'property', 'og:title', title);
-  html = replaceMeta(html, 'property', 'og:description', description);
-  html = replaceMeta(html, 'property', 'og:type', 'website');
-  html = replaceMeta(html, 'property', 'og:url', url);
-  html = replaceMeta(html, 'name', 'twitter:title', title);
-  html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = upsertCanonical(html, url);
+  let html = applyPageMeta(shellHtml, {
+    title,
+    description,
+    url,
+    type: 'website',
+  });
   html = injectPrerender(html, body);
   return html;
 };
@@ -170,27 +142,18 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   const image = resume.seo?.ogImage
     ? absoluteUrl(resume.seo.ogImage)
     : defaultOgImage();
-  // Always point the SPA download at the publisher-generated PDF.
   const body = renderResumePrerenderHtml({
     ...resume,
     pdfPath: RESUME_PDF_PUBLIC_PATH,
   });
 
-  let html = shellHtml;
-  html = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    () => `<title>${title}</title>`,
-  );
-  html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'property', 'og:title', title);
-  html = replaceMeta(html, 'property', 'og:description', description);
-  html = replaceMeta(html, 'property', 'og:type', 'website');
-  html = replaceMeta(html, 'property', 'og:url', url);
-  html = replaceMeta(html, 'property', 'og:image', image);
-  html = replaceMeta(html, 'name', 'twitter:title', title);
-  html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = replaceMeta(html, 'name', 'twitter:image', image);
-  html = upsertCanonical(html, url);
+  let html = applyPageMeta(shellHtml, {
+    title,
+    description,
+    url,
+    type: 'website',
+    image,
+  });
   html = injectPrerender(html, body);
   return html;
 };
@@ -203,21 +166,13 @@ export const renderResumeUnavailablePage = (shellHtml: string): string => {
   const body =
     '<article class="resume-page-unavailable"><header><div class="name-section"><h1>Resume</h1></div></header><main><p>Resume available on request.</p></main></article>';
 
-  let html = shellHtml;
-  html = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    () => `<title>${title}</title>`,
-  );
-  html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'property', 'og:title', title);
-  html = replaceMeta(html, 'property', 'og:description', description);
-  html = replaceMeta(html, 'property', 'og:type', 'website');
-  html = replaceMeta(html, 'property', 'og:url', url);
-  html = replaceMeta(html, 'property', 'og:image', defaultOgImage());
-  html = replaceMeta(html, 'name', 'twitter:title', title);
-  html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = replaceMeta(html, 'name', 'twitter:image', defaultOgImage());
-  html = upsertCanonical(html, url);
+  let html = applyPageMeta(shellHtml, {
+    title,
+    description,
+    url,
+    type: 'website',
+    image: defaultOgImage(),
+  });
   html = injectPrerender(html, body);
   return html;
 };
@@ -236,21 +191,13 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
     ? absoluteUrl(home.seo.ogImage)
     : defaultOgImage();
 
-  let html = shellHtml;
-  html = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    () => `<title>${title}</title>`,
-  );
-  html = replaceMeta(html, 'name', 'description', description);
-  html = replaceMeta(html, 'property', 'og:title', title);
-  html = replaceMeta(html, 'property', 'og:description', description);
-  html = replaceMeta(html, 'property', 'og:type', 'website');
-  html = replaceMeta(html, 'property', 'og:url', url);
-  html = replaceMeta(html, 'property', 'og:image', image);
-  html = replaceMeta(html, 'name', 'twitter:title', title);
-  html = replaceMeta(html, 'name', 'twitter:description', description);
-  html = replaceMeta(html, 'name', 'twitter:image', image);
-  html = upsertCanonical(html, url);
+  let html = applyPageMeta(shellHtml, {
+    title,
+    description,
+    url,
+    type: 'website',
+    image,
+  });
   html = injectPrerender(html, renderHomePrerenderHtml(home));
   return html;
 };

@@ -1,6 +1,7 @@
 import type { Context, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
+import { handlerSuccessFromRebuild } from './handler-result.js';
 import { rebuildPublishedSite } from './s3-site.js';
 import {
   collectRebuildScope,
@@ -42,29 +43,6 @@ export function collectSlugsToRemove(records: DynamoDBRecord[]): Set<string> {
   return collectRebuildScope(records).slugsToRemove;
 }
 
-function recordPublishMetrics(result: {
-  publishedCount: number;
-  removedSlugs: string[];
-  invalidated: string[];
-  resumePdfFailed: boolean;
-}): void {
-  metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
-  metrics.addMetric(
-    'RemovedPosts',
-    MetricUnit.Count,
-    result.removedSlugs.length,
-  );
-  metrics.addMetric(
-    'InvalidationPaths',
-    MetricUnit.Count,
-    result.invalidated.length,
-  );
-  if (result.resumePdfFailed) {
-    metrics.addMetric('ResumePdfError', MetricUnit.Count, 1);
-  }
-  metrics.addMetric('Success', MetricUnit.Count, 1);
-}
-
 export const handler = async (
   event: DynamoDBStreamEvent | RepublishAllEvent,
   context: Context,
@@ -78,20 +56,7 @@ export const handler = async (
       const result = await rebuildPublishedSite({
         scope: fullRebuildScope(),
       });
-      logger.info('Publish complete', {
-        publishedCount: result.publishedCount,
-        removedSlugs: result.removedSlugs,
-        invalidationCount: result.invalidated.length,
-        invalidated: result.invalidated,
-        resumePdfFailed: result.resumePdfFailed,
-      });
-      recordPublishMetrics(result);
-      metrics.publishStoredMetrics();
-      return {
-        ok: true,
-        publishedCount: result.publishedCount,
-        removedSlugs: result.removedSlugs,
-      };
+      return handlerSuccessFromRebuild(logger, metrics, result);
     }
 
     if (isDynamoStreamEvent(event)) {
@@ -112,20 +77,7 @@ export const handler = async (
         resume: scope.resume,
       });
       const result = await rebuildPublishedSite({ scope });
-      logger.info('Publish complete', {
-        publishedCount: result.publishedCount,
-        removedSlugs: result.removedSlugs,
-        invalidationCount: result.invalidated.length,
-        invalidated: result.invalidated,
-        resumePdfFailed: result.resumePdfFailed,
-      });
-      recordPublishMetrics(result);
-      metrics.publishStoredMetrics();
-      return {
-        ok: true,
-        publishedCount: result.publishedCount,
-        removedSlugs: result.removedSlugs,
-      };
+      return handlerSuccessFromRebuild(logger, metrics, result);
     }
 
     throw new Error('Unsupported publisher event');
