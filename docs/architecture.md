@@ -54,6 +54,15 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
 - API authorizer validates Cognito JWTs for `/api/admin/*` (and related) routes.
+- Local API (`services/api/local/server.ts`) injects fake JWT claims **only** on `/api/admin/*` paths (mirroring API Gateway), so public routes still exercise the missing-auth path.
+
+## How to add an API route
+
+1. Add a `RouteDef` in the owning module (e.g. `createPostRoutes` in `services/api/src/posts/handlers.ts`) or append to `services/api/src/routes.ts`.
+2. Pattern is **without** the `/api` prefix (`/admin/posts/:id`, `/contact`). Incoming `/api/...` is stripped by the router.
+3. Set `auth: 'admin' | 'public'`, optional zod `params` / `query` / `body`, and a handler `(ctx, input) => result`.
+4. Handlers receive `ctx.userId`, `ctx.claims`, `ctx.logger`, `ctx.metrics`, and `ctx.requestId`. Do **not** add per-module try/catch — validation and `mapRouteError` run in `dispatchRoutes`.
+5. Wrong method on a known path → **405**; unknown path → **404**. Per-route metrics use a `route` dimension.
 
 ## Related
 
