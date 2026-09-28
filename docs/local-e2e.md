@@ -56,7 +56,8 @@ About Me copy. Like the resume, the first `GET` seeds a **draft** and does not
 rebuild. Publish writes the `PUBLISHED` snapshot so `.local-site/index.html`
 gets the `home-page-prerender` article. The public page at
 `http://localhost:5173/` fetches `/__site/` and falls back to `DEFAULT_HOME`.
-Quick Links and the profile photo are still hard-coded React.
+Quick Links and footer links come from shared `HOME_QUICK_LINKS` /
+`HOME_FOOTER_LINKS` (React JSX + publisher HTML).
 
 The publisher reads a pristine `_shell.html` template (never the home
 prerender in `index.html`) when building other pages. `npm run e2e:local`

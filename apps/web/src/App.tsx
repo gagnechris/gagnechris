@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import {
+  HOME_FOOTER_LINKS,
   HOME_PROFILE_IMAGE_SRC,
-  renderHomeQuickLinksHtml,
+  HOME_QUICK_LINKS,
+  type SiteChromeLink,
 } from '@gagnechris/shared/home'
 import { trackEvent } from './utils/analytics'
 import {
@@ -12,6 +14,69 @@ import {
   type HomeView,
 } from './home/publishedHome'
 import './App.css'
+
+const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
+  const onTrack = link.trackId
+    ? () => trackEvent('click', 'external_link', link.trackId!)
+    : undefined
+
+  if (link.kind === 'spa') {
+    return (
+      <Link
+        to={link.href}
+        className={link.className}
+        aria-label={link.ariaLabel}
+        title={link.title}
+      >
+        {link.label}
+      </Link>
+    )
+  }
+
+  if (link.kind === 'external') {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={link.className}
+        aria-label={link.ariaLabel}
+        title={link.title}
+        onClick={onTrack}
+      >
+        {link.label}
+      </a>
+    )
+  }
+
+  return (
+    <a
+      href={link.href}
+      className={link.className}
+      aria-label={link.ariaLabel}
+      title={link.title}
+      onClick={onTrack}
+    >
+      {link.label}
+    </a>
+  )
+}
+
+const ChromeLinkList = ({
+  links,
+  className,
+}: {
+  links: readonly SiteChromeLink[]
+  className?: string
+}) => (
+  <ul className={className}>
+    {links.map((link) => (
+      <li key={`${link.href}:${link.trackId ?? link.label}`}>
+        <ChromeLink link={link} />
+      </li>
+    ))}
+  </ul>
+)
 
 function App() {
   const [home, setHome] = useState<HomeView>(
@@ -61,48 +126,17 @@ function App() {
             dangerouslySetInnerHTML={{ __html: home.aboutHtml }}
           />
         </section>
-        {/* Shared markup with the publisher prerender (CHR-116 / CHR-122). */}
-        <div
-          dangerouslySetInnerHTML={{ __html: renderHomeQuickLinksHtml() }}
-        />
+        <section id="quick-links">
+          <h2>Quick Links</h2>
+          <ChromeLinkList links={HOME_QUICK_LINKS} />
+        </section>
       </main>
       <footer className="site-footer">
         <p className="site-footer__copy">© {year} Chris Gagne</p>
-        <ul className="site-footer__links">
-          <li>
-            <a
-              href="https://www.linkedin.com/in/christophergagne/"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackEvent('click', 'external_link', 'linkedin_footer')}
-            >
-              LinkedIn
-            </a>
-          </li>
-          <li>
-            <a
-              href="https://github.com/gagnechris"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackEvent('click', 'external_link', 'github_footer')}
-            >
-              GitHub
-            </a>
-          </li>
-          <li>
-            <a href="/rss.xml">RSS</a>
-          </li>
-          <li>
-            <Link
-              to="/dont-feed-the-bears?from=footer"
-              className="site-footer__bear"
-              aria-label="Don't Feed the Bears — Vermont camp mini-game"
-              title="Don't Feed the Bears"
-            >
-              🐻 Don't Feed the Bears
-            </Link>
-          </li>
-        </ul>
+        <ChromeLinkList
+          links={HOME_FOOTER_LINKS}
+          className="site-footer__links"
+        />
       </footer>
     </div>
   )
