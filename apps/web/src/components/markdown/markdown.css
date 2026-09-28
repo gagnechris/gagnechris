@@ -9,6 +9,9 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   background: white;
+  /* Keep the caret / last lines above the iOS home indicator when keyboard is open. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 
 .markdown-editor > div {
@@ -94,6 +97,7 @@
   flex-direction: column;
   gap: var(--space-3);
   min-height: min(70vh, 40rem);
+  min-height: min(70dvh, 40rem);
 }
 
 .markdown-tabs {
@@ -128,12 +132,14 @@
   gap: var(--space-4);
   flex: 1;
   min-height: min(70vh, 40rem);
+  min-height: min(70dvh, 40rem);
 }
 
 .markdown-split > .markdown-editor,
 .markdown-split > .markdown-preview {
   min-height: 0;
   height: min(70vh, 40rem);
+  height: min(70dvh, 40rem);
 }
 
 @media (max-width: 1023px) {
@@ -150,6 +156,7 @@
   .markdown-split > .markdown-preview {
     height: auto;
     min-height: min(50vh, 24rem);
+    min-height: min(50dvh, 24rem);
   }
 
   .markdown-editor {

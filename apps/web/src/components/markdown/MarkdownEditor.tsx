@@ -1,7 +1,25 @@
-import CodeMirror from '@uiw/react-codemirror'
+import CodeMirror, {
+  type ReactCodeMirrorRef,
+} from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
-import { EditorView } from '@codemirror/view'
-import { useMemo } from 'react'
+import type { Extension } from '@codemirror/state'
+import {
+  EditorView,
+  keymap as cmKeymap,
+  type KeyBinding,
+} from '@codemirror/view'
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react'
+import { taskListToggle } from './taskListToggle'
+
+export type MarkdownEditorHandle = {
+  focus: () => void
+  insertText: (text: string) => void
+}
 
 type MarkdownEditorProps = {
   value: string
@@ -14,6 +32,15 @@ type MarkdownEditorProps = {
    * When omitted, paste/drop of images is ignored.
    */
   onUploadImages?: (files: File[]) => Promise<string[]>
+  /** Extra CodeMirror extensions (merged after built-ins). */
+  extensions?: Extension[]
+  /** Extra key bindings (higher precedence than defaults). */
+  keymap?: readonly KeyBinding[]
+  /** Show line numbers in the gutter. @default true */
+  lineNumbers?: boolean
+  /** Placeholder when the document is empty. */
+  placeholder?: string
+  onBlur?: () => void
 }
 
 function imageFilesFromList(list: FileList | DataTransferItemList | null): File[] {
@@ -47,64 +74,106 @@ function insertMarkdownAtCursor(view: EditorView, markdownSnippets: string[]) {
 /**
  * Reusable markdown source editor (CodeMirror 6). Notebook can reuse this.
  */
-export default function MarkdownEditor({
-  value,
-  onChange,
-  label = 'Markdown',
-  readOnly = false,
-  onUploadImages,
-}: MarkdownEditorProps) {
-  const extensions = useMemo(() => {
-    const base = [markdown(), EditorView.lineWrapping]
-    if (!onUploadImages || readOnly) {
-      return base
-    }
-    const handlers = EditorView.domEventHandlers({
-      paste(event, view) {
-        const files = imageFilesFromList(event.clipboardData?.items ?? null)
-        if (files.length === 0) return false
-        event.preventDefault()
-        void onUploadImages(files).then((paths) => {
-          insertMarkdownAtCursor(
-            view,
-            paths.map((path) => `![image](${path})`),
-          )
-        })
-        return true
-      },
-      drop(event, view) {
-        const files = imageFilesFromList(event.dataTransfer?.files ?? null)
-        if (files.length === 0) return false
-        event.preventDefault()
-        void onUploadImages(files).then((paths) => {
-          insertMarkdownAtCursor(
-            view,
-            paths.map((path, i) => {
-              const name = files[i]?.name?.replace(/\.[^.]+$/, '') || 'image'
-              return `![${name}](${path})`
-            }),
-          )
-        })
-        return true
-      },
-    })
-    return [...base, handlers]
-  }, [onUploadImages, readOnly])
+const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
+  function MarkdownEditor(
+    {
+      value,
+      onChange,
+      label = 'Markdown',
+      readOnly = false,
+      onUploadImages,
+      extensions: extraExtensions,
+      keymap: extraKeymap,
+      lineNumbers = true,
+      placeholder,
+      onBlur,
+    },
+    ref,
+  ) {
+    const cmRef = useRef<ReactCodeMirrorRef>(null)
 
-  return (
-    <div className="markdown-editor" aria-label={label}>
-      <CodeMirror
-        value={value}
-        height="100%"
-        extensions={extensions}
-        onChange={onChange}
-        readOnly={readOnly}
-        basicSetup={{
-          lineNumbers: true,
-          foldGutter: false,
-          highlightActiveLine: true,
-        }}
-      />
-    </div>
-  )
-}
+    useImperativeHandle(ref, () => ({
+      focus: () => {
+        cmRef.current?.view?.focus()
+      },
+      insertText: (text: string) => {
+        const view = cmRef.current?.view
+        if (!view || view.state.readOnly) return
+        const { from, to } = view.state.selection.main
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        })
+      },
+    }))
+
+    const extensions = useMemo(() => {
+      const base: Extension[] = [
+        markdown(),
+        EditorView.lineWrapping,
+        taskListToggle(),
+      ]
+      if (extraKeymap && extraKeymap.length > 0) {
+        base.push(cmKeymap.of(extraKeymap))
+      }
+      if (extraExtensions && extraExtensions.length > 0) {
+        base.push(...extraExtensions)
+      }
+      if (!onUploadImages || readOnly) {
+        return base
+      }
+      const handlers = EditorView.domEventHandlers({
+        paste(event, view) {
+          const files = imageFilesFromList(event.clipboardData?.items ?? null)
+          if (files.length === 0) return false
+          event.preventDefault()
+          void onUploadImages(files).then((paths) => {
+            insertMarkdownAtCursor(
+              view,
+              paths.map((path) => `![image](${path})`),
+            )
+          })
+          return true
+        },
+        drop(event, view) {
+          const files = imageFilesFromList(event.dataTransfer?.files ?? null)
+          if (files.length === 0) return false
+          event.preventDefault()
+          void onUploadImages(files).then((paths) => {
+            insertMarkdownAtCursor(
+              view,
+              paths.map((path, i) => {
+                const name = files[i]?.name?.replace(/\.[^.]+$/, '') || 'image'
+                return `![${name}](${path})`
+              }),
+            )
+          })
+          return true
+        },
+      })
+      return [...base, handlers]
+    }, [extraExtensions, extraKeymap, onUploadImages, readOnly])
+
+    return (
+      <div className="markdown-editor" aria-label={label}>
+        <CodeMirror
+          ref={cmRef}
+          value={value}
+          height="100%"
+          extensions={extensions}
+          onChange={onChange}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          basicSetup={{
+            lineNumbers,
+            foldGutter: false,
+            highlightActiveLine: true,
+          }}
+        />
+      </div>
+    )
+  },
+)
+
+export default MarkdownEditor

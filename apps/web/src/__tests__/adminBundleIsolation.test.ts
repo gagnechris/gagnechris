@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import mainSource from '../main.tsx?raw'
+import lazyRouteSource from '../routing/lazyRoute.ts?raw'
 
 describe('public entry bundle isolation', () => {
   test('main.tsx does not statically import Amplify or admin modules', () => {
@@ -18,12 +19,16 @@ describe('public entry bundle isolation', () => {
 
   // RR skips HydrateFallback returned from lazy() during initial hydration, so
   // it must be a static sibling of `lazy` (and on the root) or /admin warns.
-  test('lazy routes declare HydrateFallback statically, not only inside lazy()', () => {
+  test('lazy routes declare HydrateFallback statically via lazyRoute()', () => {
     expect(mainSource).toMatch(/HydrateFallback:\s*LazyFallback/)
+    expect(mainSource).toMatch(/lazyRoute\(/)
     expect(mainSource).not.toMatch(
       /return\s*\{\s*Component:[^}]*HydrateFallback/,
     )
-    const lazyBlocks = mainSource.match(/HydrateFallback:\s*LazyFallback,\s*\n\s*lazy:/g)
-    expect(lazyBlocks?.length).toBeGreaterThanOrEqual(8)
+    expect(lazyRouteSource).toMatch(/HydrateFallback:\s*LazyFallback/)
+    expect(lazyRouteSource).toMatch(/\blazy\b/)
+    // Admin tree + public lazy pages should use the helper (not hand-rolled).
+    const lazyRouteCalls = mainSource.match(/lazyRoute\(/g)
+    expect(lazyRouteCalls?.length).toBeGreaterThanOrEqual(8)
   })
 })

@@ -1,6 +1,13 @@
 .admin-shell {
+  /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome. */
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
   background: linear-gradient(
     165deg,
     var(--neutral-50) 0%,
@@ -453,6 +460,7 @@
     position: sticky;
     top: 4.5rem;
     max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
     overflow: auto;
   }
 
