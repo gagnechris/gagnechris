@@ -262,3 +262,75 @@ export const ResumeDownloadNotifyResponseSchema = z.object({
 export type ResumeDownloadNotifyResponse = z.infer<
   typeof ResumeDownloadNotifyResponseSchema
 >;
+
+/** Crockford ULID (26 chars) — client-generated for idempotent creates (CHR-141). */
+export const UlidSchema = z
+  .string()
+  .regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i, 'Must be a ULID');
+
+/**
+ * Sync-pattern fixture entity (CHR-141). Not a Notebook note — proves
+ * changes-since, tombstones, client ULID create, and ETag/If-Match.
+ */
+export const FixtureNoteSchema = z.object({
+  id: UlidSchema,
+  userId: z.string().min(1),
+  title: z.string(),
+  body: z.string(),
+  version: z.number().int().nonnegative(),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  deleted: z.boolean(),
+});
+
+export type FixtureNote = z.infer<typeof FixtureNoteSchema>;
+
+export const CreateFixtureNoteRequestSchema = z.object({
+  /** Client-generated ULID; retries with the same id are idempotent. */
+  id: UlidSchema,
+  title: z.string().default(''),
+  body: z.string().default(''),
+});
+
+export type CreateFixtureNoteRequest = z.infer<
+  typeof CreateFixtureNoteRequestSchema
+>;
+
+export const UpdateFixtureNoteRequestSchema = z.object({
+  /** Optional when `If-Match` header supplies the expected version. */
+  version: z.number().int().nonnegative().optional(),
+  title: z.string().optional(),
+  body: z.string().optional(),
+});
+
+export type UpdateFixtureNoteRequest = z.infer<
+  typeof UpdateFixtureNoteRequestSchema
+>;
+
+export const SyncChangeSchema = z.object({
+  type: z.literal('fixtureNote'),
+  id: UlidSchema,
+  version: z.number().int().nonnegative(),
+  deleted: z.boolean(),
+  updatedAt: z.string().datetime({ offset: true }),
+  /** Present when not deleted (full entity for convenience). */
+  entity: FixtureNoteSchema.optional(),
+});
+
+export type SyncChange = z.infer<typeof SyncChangeSchema>;
+
+export const SyncChangesResponseSchema = z.object({
+  changes: z.array(SyncChangeSchema),
+  nextCursor: z.string().min(1).optional(),
+});
+
+export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
+
+export const SyncChangesQuerySchema = z.object({
+  /** ISO-8601 watermark; omit for the beginning of the user's sync stream. */
+  since: z.string().datetime({ offset: true }).optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;

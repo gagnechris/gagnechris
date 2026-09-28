@@ -1,3 +1,14 @@
+/** Optimistic concurrency failed when the client sent `If-Match` (CHR-141). */
+export class PreconditionFailedError extends Error {
+  readonly currentVersion?: number;
+
+  constructor(message: string, opts?: { currentVersion?: number }) {
+    super(message);
+    this.name = 'PreconditionFailedError';
+    this.currentVersion = opts?.currentVersion;
+  }
+}
+
 export class ConflictError extends Error {
   readonly currentVersion?: number;
   readonly current?: unknown;

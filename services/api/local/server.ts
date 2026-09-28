@@ -36,7 +36,12 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
 
 function isAdminRoute(rawPath: string): boolean {
   const path = canonicalPath(rawPath);
-  return path === '/admin' || path.startsWith('/admin/');
+  return (
+    path === '/admin' ||
+    path.startsWith('/admin/') ||
+    path === '/notebook' ||
+    path.startsWith('/notebook/')
+  );
 }
 
 function buildEvent(

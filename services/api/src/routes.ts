@@ -10,11 +10,13 @@ import {
   type HealthResponse,
 } from '@gagnechris/shared';
 import { createContactRoutes } from './contact/handlers.js';
+import { fixtureNoteRoutes } from './fixture-notes/handlers.js';
 import { homeRoutes } from './home/handlers.js';
 import { json } from './http.js';
 import { mediaRoutes } from './media/handlers.js';
 import { createPostRoutes } from './posts/handlers.js';
 import { resumeRoutes } from './resume/handlers.js';
+import { syncRoutes } from './sync/handlers.js';
 import type { RouteDef } from './router.js';
 
 const health: RouteDef = {
@@ -62,4 +64,6 @@ export const routes: RouteDef[] = [
   ...homeRoutes,
   ...resumeRoutes,
   ...mediaRoutes,
+  ...fixtureNoteRoutes,
+  ...syncRoutes,
 ];
