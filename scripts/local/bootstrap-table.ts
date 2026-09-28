@@ -13,10 +13,7 @@ import {
   UpdateTableCommand,
   waitUntilTableExists,
 } from '@aws-sdk/client-dynamodb';
-import {
-  APP_TABLE,
-  appTableAttributeDefinitions,
-} from '@gagnechris/data';
+import { APP_TABLE, appTableAttributeDefinitions } from '@gagnechris/data';
 
 const tableName = process.env.DATA_TABLE_NAME || 'gagnechris-local';
 const endpoint =
@@ -71,7 +68,10 @@ async function ensureMissingGsis(existingIndexNames: Set<string>) {
             Create: {
               IndexName: gsi.indexName,
               KeySchema: [
-                { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
+                {
+                  AttributeName: gsi.partitionKey.name,
+                  KeyType: 'HASH' as const,
+                },
                 { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
               ],
               Projection: { ProjectionType: gsi.projectionType },

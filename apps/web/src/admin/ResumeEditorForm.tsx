@@ -1,28 +1,28 @@
-import type { FormEvent } from 'react'
-import { Field, TextArea, TextInput } from '../ui/Field'
-import { Repeater } from '../ui/Repeater'
+import type { FormEvent } from 'react';
+import { Field, TextArea, TextInput } from '../ui/Field';
+import { Repeater } from '../ui/Repeater';
 import {
   emptyEducation,
   emptyExperience,
   type ResumeDraftFields,
-} from './resumeDraft'
+} from './resumeDraft';
 
 type Props = {
-  draft: ResumeDraftFields
+  draft: ResumeDraftFields;
   setField: <K extends keyof ResumeDraftFields>(
     key: K,
     value: ResumeDraftFields[K],
-  ) => void
-  onSave: () => void
-}
+  ) => void;
+  onSave: () => void;
+};
 
 export function ResumeEditorForm({ draft, setField, onSave }: Props) {
   return (
     <form
       className="admin-editor-fields"
       onSubmit={(e: FormEvent) => {
-        e.preventDefault()
-        onSave()
+        e.preventDefault();
+        onSave();
       }}
     >
       <Field label="Name">
@@ -121,5 +121,5 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         )}
       />
     </form>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 /**
  * Shared draft field updater: apply a draft transform, bump edit gen, mark dirty.
@@ -11,12 +11,12 @@ export function useDraftUpdater<T>(
 ): (update: (prev: T) => T) => void {
   return useCallback(
     (update: (prev: T) => T) => {
-      setDraft(update)
-      bumpEdit()
-      setDirty(true)
+      setDraft(update);
+      bumpEdit();
+      setDirty(true);
     },
     [bumpEdit, setDirty, setDraft],
-  )
+  );
 }
 
 /** Variant when draft may be null until hydrated. */
@@ -27,10 +27,10 @@ export function useNullableDraftUpdater<T>(
 ): (update: (prev: T) => T) => void {
   return useCallback(
     (update: (prev: T) => T) => {
-      setDraft((prev) => (prev ? update(prev) : prev))
-      bumpEdit()
-      setDirty(true)
+      setDraft((prev) => (prev ? update(prev) : prev));
+      bumpEdit();
+      setDirty(true);
     },
     [bumpEdit, setDirty, setDraft],
-  )
+  );
 }

@@ -45,7 +45,9 @@ describe('environments', () => {
   });
 
   it('resolves account from CDK_ACCOUNT without committing it', () => {
-    expect(resolveAccountId({ CDK_ACCOUNT: '123456789012' })).toBe('123456789012');
+    expect(resolveAccountId({ CDK_ACCOUNT: '123456789012' })).toBe(
+      '123456789012',
+    );
     expect(() => resolveAccountId({})).toThrow(/account unresolved/i);
   });
 
@@ -85,8 +87,14 @@ describe('standard tags and removal policy', () => {
     NagSuppressions.addResourceSuppressions(
       bucket,
       [
-        { id: 'AwsSolutions-S1', reason: 'Test probe bucket only; not deployed.' },
-        { id: 'AwsSolutions-S10', reason: 'Test probe bucket only; not deployed.' },
+        {
+          id: 'AwsSolutions-S1',
+          reason: 'Test probe bucket only; not deployed.',
+        },
+        {
+          id: 'AwsSolutions-S10',
+          reason: 'Test probe bucket only; not deployed.',
+        },
       ],
       true,
     );
@@ -95,8 +103,7 @@ describe('standard tags and removal policy', () => {
     const template = Template.fromStack(stack);
     const buckets = template.findResources('AWS::S3::Bucket');
     const tags = Object.values(buckets)[0]?.Properties?.Tags as
-      | Array<{ Key: string; Value: string }>
-      | undefined;
+      Array<{ Key: string; Value: string }> | undefined;
     expect(tags).toEqual(
       expect.arrayContaining([
         { Key: 'project', Value: 'gagnechris' },
@@ -250,9 +257,7 @@ describe('CiDeployRoleStack', () => {
     expect(JSON.stringify(drift)).toContain('ReadOnlyAccess');
     expect(JSON.stringify(drift)).not.toContain('AdministratorAccess');
 
-    const policies = Object.values(
-      template.findResources('AWS::IAM::Policy'),
-    );
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
     const diffPolicy = policies.find(
       (p) =>
         JSON.stringify(p).includes('CdkLookupAssumeRole') &&
@@ -263,15 +268,15 @@ describe('CiDeployRoleStack', () => {
     expect(policyJson).toContain('cdk-*-lookup-role-*');
     expect(policyJson).toContain('sts:AssumeRole');
     // Must not allow AssumeRole on * (admin escalation via bootstrap deploy role).
-    const statements = (
-      diffPolicy?.Properties?.PolicyDocument?.Statement ?? []
-    ) as Array<{ Action?: string | string[]; Resource?: string | string[] }>;
+    const statements = (diffPolicy?.Properties?.PolicyDocument?.Statement ??
+      []) as Array<{
+      Action?: string | string[];
+      Resource?: string | string[];
+    }>;
     const assumeStar = statements.some((s) => {
       const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
       const resources = Array.isArray(s.Resource) ? s.Resource : [s.Resource];
-      return (
-        actions.includes('sts:AssumeRole') && resources.includes('*')
-      );
+      return actions.includes('sts:AssumeRole') && resources.includes('*');
     });
     expect(assumeStar).toBe(false);
 
@@ -279,7 +284,9 @@ describe('CiDeployRoleStack', () => {
       JSON.stringify(p).includes('CloudFormationDetectDrift'),
     );
     expect(driftPolicy).toBeDefined();
-    expect(JSON.stringify(driftPolicy)).toContain('cloudformation:DetectStackDrift');
+    expect(JSON.stringify(driftPolicy)).toContain(
+      'cloudformation:DetectStackDrift',
+    );
     expect(JSON.stringify(driftPolicy)).toContain('sns:Publish');
   });
 });

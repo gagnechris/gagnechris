@@ -11,10 +11,7 @@ import {
 } from '@gagnechris/shared';
 import { sendOwnerEmail } from './mail.js';
 import { ContactRepository } from './repository.js';
-import {
-  RateLimitExceededError,
-  RateLimiter,
-} from './rateLimit.js';
+import { RateLimitExceededError, RateLimiter } from './rateLimit.js';
 import { json } from '../http.js';
 import { logger, metrics } from '../observability.js';
 import {
@@ -144,12 +141,7 @@ function contactHandlers(deps: ContactHandlerDeps = {}): {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Email send failed';
-      await tryUpdateEmailStatus(
-        contacts,
-        saved.contactId,
-        'failed',
-        message,
-      );
+      await tryUpdateEmailStatus(contacts, saved.contactId, 'failed', message);
       return json(502, {
         error: 'email_failed',
         message:
@@ -180,7 +172,10 @@ function contactHandlers(deps: ContactHandlerDeps = {}): {
     } catch (error) {
       if (error instanceof RateLimitExceededError) {
         // Dedupe already claimed; skip email quietly under global cap.
-        return json(200, ResumeDownloadNotifyResponseSchema.parse({ ok: true }));
+        return json(
+          200,
+          ResumeDownloadNotifyResponseSchema.parse({ ok: true }),
+        );
       }
       throw error;
     }

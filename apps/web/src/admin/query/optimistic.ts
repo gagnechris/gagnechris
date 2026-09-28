@@ -1,8 +1,8 @@
-import type { QueryClient, QueryKey } from '@tanstack/react-query'
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
 export type OptimisticContext<TData> = {
-  previous: TData | undefined
-}
+  previous: TData | undefined;
+};
 
 /**
  * Documented optimistic update + rollback pattern for TanStack Query.
@@ -33,24 +33,24 @@ export const optimisticMutationHandlers = <TData, TVariables>({
   update,
   invalidate = true,
 }: {
-  queryClient: QueryClient
-  queryKey: QueryKey
+  queryClient: QueryClient;
+  queryKey: QueryKey;
   update: (
     current: TData | undefined,
     variables: TVariables,
-  ) => TData | undefined
+  ) => TData | undefined;
   /** When false, skip invalidateQueries (useful in unit tests). */
-  invalidate?: boolean
+  invalidate?: boolean;
 }) => ({
   onMutate: async (
     variables: TVariables,
   ): Promise<OptimisticContext<TData>> => {
-    await queryClient.cancelQueries({ queryKey })
-    const previous = queryClient.getQueryData<TData>(queryKey)
+    await queryClient.cancelQueries({ queryKey });
+    const previous = queryClient.getQueryData<TData>(queryKey);
     queryClient.setQueryData<TData>(queryKey, (current) =>
       update(current, variables),
-    )
-    return { previous }
+    );
+    return { previous };
   },
   onError: (
     _error: unknown,
@@ -58,12 +58,12 @@ export const optimisticMutationHandlers = <TData, TVariables>({
     context: OptimisticContext<TData> | undefined,
   ) => {
     if (context) {
-      queryClient.setQueryData(queryKey, context.previous)
+      queryClient.setQueryData(queryKey, context.previous);
     }
   },
   onSettled: () => {
     if (invalidate) {
-      void queryClient.invalidateQueries({ queryKey })
+      void queryClient.invalidateQueries({ queryKey });
     }
   },
-})
+});

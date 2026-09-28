@@ -90,7 +90,7 @@ describe('home HTTP handlers', () => {
     const result = await handleHomeRoute(
       event('PUT', '/api/admin/home', {
         version: 1,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
         name: 'Chris Gagne',
         about: 'New about copy.',
       }),
@@ -132,7 +132,7 @@ describe('home HTTP handlers', () => {
       ...sampleHome,
       status: 'draft',
       version: 2,
-  hasUnpublishedChanges: false,
+      hasUnpublishedChanges: false,
     });
 
     const published = await handleHomeRoute(

@@ -54,18 +54,15 @@ export class CiDeployRoleStack extends Stack {
       roleName: `gagnechris-${props.config.name}-gha-deploy`,
       description: `CDK deploy from GitHub Actions (${repoPath} main/prod).`,
       maxSessionDuration: Duration.hours(1),
-      assumedBy: new WebIdentityPrincipal(
-        provider.openIdConnectProviderArn,
-        {
-          StringEquals: audienceCondition,
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': [
-              `repo:${repoPath}:ref:refs/heads/main`,
-              `repo:${repoPath}:environment:prod`,
-            ],
-          },
+      assumedBy: new WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+        StringEquals: audienceCondition,
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': [
+            `repo:${repoPath}:ref:refs/heads/main`,
+            `repo:${repoPath}:environment:prod`,
+          ],
         },
-      ),
+      }),
     });
     this.deployRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
@@ -76,15 +73,12 @@ export class CiDeployRoleStack extends Stack {
       roleName: `gagnechris-${props.config.name}-gha-diff`,
       description: `CDK diff from GitHub Actions PRs (${repoPath}).`,
       maxSessionDuration: Duration.hours(1),
-      assumedBy: new WebIdentityPrincipal(
-        provider.openIdConnectProviderArn,
-        {
-          StringEquals: audienceCondition,
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${repoPath}:pull_request`,
-          },
+      assumedBy: new WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+        StringEquals: audienceCondition,
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': `repo:${repoPath}:pull_request`,
         },
-      ),
+      }),
     });
     this.diffRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
@@ -107,15 +101,12 @@ export class CiDeployRoleStack extends Stack {
       roleName: `gagnechris-${props.config.name}-gha-drift`,
       description: `CDK drift from GitHub Actions (${repoPath} prod).`,
       maxSessionDuration: Duration.hours(1),
-      assumedBy: new WebIdentityPrincipal(
-        provider.openIdConnectProviderArn,
-        {
-          StringEquals: audienceCondition,
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${repoPath}:environment:prod`,
-          },
+      assumedBy: new WebIdentityPrincipal(provider.openIdConnectProviderArn, {
+        StringEquals: audienceCondition,
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': `repo:${repoPath}:environment:prod`,
         },
-      ),
+      }),
     });
     this.driftRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
@@ -145,7 +136,12 @@ export class CiDeployRoleStack extends Stack {
     );
     props.alertsTopic.grantPublish(this.driftRole);
 
-    this.suppressRoleNags(this.deployRole, this.diffRole, this.driftRole, props);
+    this.suppressRoleNags(
+      this.deployRole,
+      this.diffRole,
+      this.driftRole,
+      props,
+    );
 
     new CfnOutput(this, 'DeployRoleArn', {
       value: this.deployRole.roleArn,

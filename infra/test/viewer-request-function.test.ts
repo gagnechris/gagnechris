@@ -29,9 +29,7 @@ type CfResponse =
 
 type HandlerApi = {
   handler: (event: { request: CfRequest }) => Promise<CfResponse>;
-  setPublishedBlogSlugsForTests: (
-    slugs: Record<string, number> | null,
-  ) => void;
+  setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
 };
 
 type FakeKvs = {
@@ -48,7 +46,6 @@ function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
       : typeof fakeKvs === 'function'
         ? `function () { return __fakeKvsFactory(); }`
         : `function () { return __fakeKvs; }`;
-  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
   return new Function(
     '__fakeKvs',
     '__fakeKvsFactory',
@@ -208,9 +205,12 @@ describe('viewer-request CloudFront Function', () => {
   });
 
   describe('KVS allowlist (CHR-119)', () => {
-    function createCountingKvs(store: Record<string, boolean>, opts?: {
-      errorOn?: string | ((key: string) => boolean);
-    }) {
+    function createCountingKvs(
+      store: Record<string, boolean>,
+      opts?: {
+        errorOn?: string | ((key: string) => boolean);
+      },
+    ) {
       const calls: string[] = [];
       const kvs: FakeKvs = {
         async exists(key) {
@@ -436,7 +436,6 @@ describe('viewer-request CloudFront Function', () => {
       ).uri,
     ).toBe('/index.html');
   });
-
 
   it('blocks direct public access to _shell.html', async () => {
     const res = await runHandler({

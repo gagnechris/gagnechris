@@ -211,7 +211,8 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/posts/{id}/publish',
-    summary: 'Publish post (copies draft to PUBLISHED snapshot; stream rebuild)',
+    summary:
+      'Publish post (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
@@ -309,7 +310,8 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/home/publish',
-    summary: 'Publish home (copies draft to PUBLISHED snapshot; stream rebuild)',
+    summary:
+      'Publish home (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     request: versionBody,
@@ -388,7 +390,8 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'post',
     path: '/api/admin/resume/publish',
-    summary: 'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
+    summary:
+      'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     request: versionBody,

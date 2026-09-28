@@ -95,7 +95,10 @@ describe('ResumeRepository', () => {
 
   it('seeds a draft resume on first read (not published)', async () => {
     const { doc, send } = mockDoc(mockPair(undefined, undefined));
-    const resume = await new ResumeRepository(doc, 'gagnechris-test').getOrCreate();
+    const resume = await new ResumeRepository(
+      doc,
+      'gagnechris-test',
+    ).getOrCreate();
     expect(resume.status).toBe('draft');
     expect(resume.publishedAt).toBeNull();
     expect(resume.hasUnpublishedChanges).toBe(false);
@@ -105,7 +108,9 @@ describe('ResumeRepository', () => {
       (c) => c[0]!.constructor.name === 'PutCommand',
     )![0]!;
     expect(put.input.ConditionExpression).toBe('attribute_not_exists(pk)');
-    expect((put.input.Item as { entityType: string }).entityType).toBe('resume');
+    expect((put.input.Item as { entityType: string }).entityType).toBe(
+      'resume',
+    );
     expect((put.input.Item as { status: string }).status).toBe('draft');
   });
 
@@ -260,7 +265,10 @@ describe('ResumeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
     );
-    const resume = await new ResumeRepository(doc, 'gagnechris-test').unpublish();
+    const resume = await new ResumeRepository(
+      doc,
+      'gagnechris-test',
+    ).unpublish();
     expect(resume.status).toBe('draft');
     expect(resume.publishedAt).toBe(stored.publishedAt);
     expect(resume.version).toBe(4);

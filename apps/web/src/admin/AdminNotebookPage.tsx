@@ -6,5 +6,5 @@ export default function AdminNotebookPage() {
         Placeholder for the personal notebook shell (Work / Personal switcher).
       </p>
     </section>
-  )
+  );
 }

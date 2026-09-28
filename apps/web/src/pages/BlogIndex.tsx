@@ -1,44 +1,44 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { formatPostDate, postDateAttribute } from '@gagnechris/shared'
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import {
   fetchPublishedPosts,
   type PublishedPostListItem,
-} from '../blog/publishedPosts'
-import PublicNav from '../components/PublicNav'
-import './BlogIndex.css'
+} from '../blog/publishedPosts';
+import PublicNav from '../components/PublicNav';
+import './BlogIndex.css';
 
 function BlogIndex() {
-  const [posts, setPosts] = useState<PublishedPostListItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [posts, setPosts] = useState<PublishedPostListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     void (async () => {
       try {
-        const items = await fetchPublishedPosts()
-        if (cancelled) return
+        const items = await fetchPublishedPosts();
+        if (cancelled) return;
         // Newest first (publisher already sorts; keep stable client-side).
         items.sort((a, b) => {
-          const aTime = new Date(a.publishedAt || a.updatedAt).getTime()
-          const bTime = new Date(b.publishedAt || b.updatedAt).getTime()
-          return bTime - aTime
-        })
-        setPosts(items)
+          const aTime = new Date(a.publishedAt || a.updatedAt).getTime();
+          const bTime = new Date(b.publishedAt || b.updatedAt).getTime();
+          return bTime - aTime;
+        });
+        setPosts(items);
       } catch (err) {
-        console.error('Error loading posts:', err)
+        console.error('Error loading posts:', err);
         if (!cancelled) {
-          setError('Could not load posts.')
+          setError('Could not load posts.');
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -58,7 +58,7 @@ function BlogIndex() {
           <p>Loading posts...</p>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -83,14 +83,20 @@ function BlogIndex() {
         {posts.length > 0 ? (
           <div className="posts-list">
             {posts.map((post) => {
-              const dateLabel = formatPostDate(post.publishedAt)
-              const dateAttr = postDateAttribute(post.publishedAt)
+              const dateLabel = formatPostDate(post.publishedAt);
+              const dateAttr = postDateAttribute(post.publishedAt);
               return (
                 <article key={post.id || post.slug} className="post-preview">
-                  <Link to={`/blog/${post.slug}`} className="post-preview__link">
+                  <Link
+                    to={`/blog/${post.slug}`}
+                    className="post-preview__link"
+                  >
                     <h2>{post.title}</h2>
                     {dateLabel ? (
-                      <time className="post-date" dateTime={dateAttr || undefined}>
+                      <time
+                        className="post-date"
+                        dateTime={dateAttr || undefined}
+                      >
                         {dateLabel}
                       </time>
                     ) : null}
@@ -100,13 +106,13 @@ function BlogIndex() {
                     <span className="read-more">Read more →</span>
                   </Link>
                 </article>
-              )
+              );
             })}
           </div>
         ) : null}
       </main>
     </div>
-  )
+  );
 }
 
-export default BlogIndex
+export default BlogIndex;

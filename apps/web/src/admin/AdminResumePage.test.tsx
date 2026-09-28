@@ -1,16 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import {
-  createMemoryRouter,
-  RouterProvider,
-} from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { QueryClientTestProvider } from '../test-utils'
-import AdminResumePage from './AdminResumePage'
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { QueryClientTestProvider } from '../test-utils';
+import AdminResumePage from './AdminResumePage';
 
-const get = vi.fn()
-const put = vi.fn()
-const post = vi.fn()
+const get = vi.fn();
+const put = vi.fn();
+const post = vi.fn();
 
 vi.mock('../api/client', () => ({
   createApiClient: () => ({
@@ -18,7 +15,7 @@ vi.mock('../api/client', () => ({
     PUT: (...args: unknown[]) => put(...args),
     POST: (...args: unknown[]) => post(...args),
   }),
-}))
+}));
 
 const baseResume = {
   name: 'Chris Gagne',
@@ -42,56 +39,56 @@ const baseResume = {
   seo: { ogImage: '/media/og-resume.png' },
   version: 1,
   hasUnpublishedChanges: false,
-}
+};
 
 function renderResume() {
   const router = createMemoryRouter(
     [{ path: '/admin/resume', element: <AdminResumePage /> }],
     { initialEntries: ['/admin/resume'] },
-  )
+  );
   return render(
     <QueryClientTestProvider>
       <RouterProvider router={router} />
     </QueryClientTestProvider>,
-  )
+  );
 }
 
 describe('AdminResumePage autosave', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     get.mockResolvedValue({
       data: structuredClone(baseResume),
       error: undefined,
       response: { status: 200 },
-    })
-  })
+    });
+  });
 
   afterEach(() => {
-    vi.useRealTimers()
-  })
+    vi.useRealTimers();
+  });
 
   test('keeps blank bullet lines while a save is in flight', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    let resolvePut!: (value: unknown) => void
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    let resolvePut!: (value: unknown) => void;
     put.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolvePut = resolve
+          resolvePut = resolve;
         }),
-    )
+    );
 
-    renderResume()
-    const bullets = await screen.findByDisplayValue('Did things')
+    renderResume();
+    const bullets = await screen.findByDisplayValue('Did things');
 
-    await user.type(bullets, '{Enter}')
-    expect(bullets).toHaveValue('Did things\n')
+    await user.type(bullets, '{Enter}');
+    expect(bullets).toHaveValue('Did things\n');
 
-    await vi.advanceTimersByTimeAsync(950)
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
 
-    await user.type(bullets, 'New bullet')
-    expect(bullets).toHaveValue('Did things\nNew bullet')
+    await user.type(bullets, 'New bullet');
+    expect(bullets).toHaveValue('Did things\nNew bullet');
 
     // Server response drops the blank line — draft must not be replaced.
     resolvePut({
@@ -112,21 +109,21 @@ describe('AdminResumePage autosave', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
-    expect(bullets).toHaveValue('Did things\nNew bullet')
-  })
-})
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(bullets).toHaveValue('Did things\nNew bullet');
+  });
+});
 
 describe('AdminResumePage publish (CHR-124)', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.clearAllMocks();
     get.mockResolvedValue({
       data: { ...structuredClone(baseResume), hasUnpublishedChanges: true },
       error: undefined,
       response: { status: 200 },
-    })
+    });
     put.mockResolvedValue({
       data: {
         ...structuredClone(baseResume),
@@ -135,26 +132,26 @@ describe('AdminResumePage publish (CHR-124)', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
-  })
+    });
+  });
 
   test('typing during a slow publish is not overwritten', async () => {
-    const user = userEvent.setup()
-    let resolvePublish!: (value: unknown) => void
+    const user = userEvent.setup();
+    let resolvePublish!: (value: unknown) => void;
     post.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolvePublish = resolve
+          resolvePublish = resolve;
         }),
-    )
+    );
 
-    renderResume()
-    const summary = await screen.findByDisplayValue('Summary')
+    renderResume();
+    const summary = await screen.findByDisplayValue('Summary');
 
-    await user.click(screen.getByRole('button', { name: 'Publish changes' }))
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }));
 
-    await user.clear(summary)
-    await user.type(summary, 'typed while publishing')
+    await user.clear(summary);
+    await user.type(summary, 'typed while publishing');
 
     resolvePublish({
       data: {
@@ -165,12 +162,14 @@ describe('AdminResumePage publish (CHR-124)', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('typed while publishing')).toBeInTheDocument()
-    })
-    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument()
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
-  })
-})
+      expect(
+        screen.getByDisplayValue('typed while publishing'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  });
+});

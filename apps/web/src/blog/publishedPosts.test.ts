@@ -1,30 +1,30 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   fetchPublishedPosts,
   publishedPostPageUrl,
   publishedPostsUrl,
-} from './publishedPosts'
+} from './publishedPosts';
 
 describe('publishedPosts', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.unstubAllEnvs()
-  })
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   test('publishedPostsUrl uses /__site when local site origin is set', () => {
-    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', 'http://127.0.0.1:4177')
-    expect(publishedPostsUrl()).toBe('/__site/blog/posts.json')
-    expect(publishedPostPageUrl('hello')).toBe('/__site/blog/hello/')
-  })
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', 'http://127.0.0.1:4177');
+    expect(publishedPostsUrl()).toBe('/__site/blog/posts.json');
+    expect(publishedPostPageUrl('hello')).toBe('/__site/blog/hello/');
+  });
 
   test('publishedPostsUrl is same-origin without local site origin', () => {
-    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
-    expect(publishedPostsUrl()).toBe('/blog/posts.json')
-    expect(publishedPostPageUrl('hello')).toBe('/blog/hello/')
-  })
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    expect(publishedPostsUrl()).toBe('/blog/posts.json');
+    expect(publishedPostPageUrl('hello')).toBe('/blog/hello/');
+  });
 
   test('fetchPublishedPosts filters empty slugs and returns items', async () => {
-    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -54,10 +54,10 @@ describe('publishedPosts', () => {
           ],
         }),
       }),
-    )
+    );
 
-    const posts = await fetchPublishedPosts()
-    expect(posts).toHaveLength(1)
-    expect(posts[0]?.slug).toBe('hello')
-  })
-})
+    const posts = await fetchPublishedPosts();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.slug).toBe('hello');
+  });
+});

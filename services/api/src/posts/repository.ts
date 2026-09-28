@@ -133,9 +133,7 @@ export class PostsRepository extends PublishableKeyedRepository<
     status?: PostStatus,
     opts?: { cursor?: string; limit?: number },
   ): Promise<{ items: Post[]; nextCursor?: string }> {
-    const statuses: PostStatus[] = status
-      ? [status]
-      : ['draft', 'published'];
+    const statuses: PostStatus[] = status ? [status] : ['draft', 'published'];
 
     // Single-status queries can page via LastEvaluatedKey. Multi-status
     // (default admin list) still merges pages in memory (small catalogs).

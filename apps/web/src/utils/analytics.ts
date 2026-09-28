@@ -16,7 +16,7 @@ export const trackEvent = (
   action: string,
   category: string,
   label?: string,
-  value?: number
+  value?: number,
 ) => {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', action, {
@@ -37,12 +37,7 @@ export const trackResumeDownload = () => {
 
 /** Soft entry sources for Don't Feed the Bears (CHR-94). */
 export type BearsGameFrom =
-  | 'resume'
-  | 'contact'
-  | '404'
-  | 'footer'
-  | 'direct'
-  | string;
+  'resume' | 'contact' | '404' | 'footer' | 'direct' | string;
 
 const trackNamedEvent = (
   name: string,

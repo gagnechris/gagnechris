@@ -5,11 +5,7 @@ import type {
 import type { ZodType } from 'zod';
 import { ExpectedVersionRequestSchema } from '@gagnechris/shared';
 import { json } from '../http.js';
-import {
-  dispatchRoutes,
-  type RouteDef,
-  type RouteHandler,
-} from '../router.js';
+import { dispatchRoutes, type RouteDef, type RouteHandler } from '../router.js';
 
 export type SingletonRepo<T, TUpdate> = {
   getOrCreate: () => Promise<T>;
@@ -44,9 +40,7 @@ function singletonHandlers<T, TUpdate>(
     put: async (_ctx, { body }) =>
       json(
         200,
-        config.entitySchema.parse(
-          await store().update(body as TUpdate),
-        ),
+        config.entitySchema.parse(await store().update(body as TUpdate)),
       ),
     publish: async (_ctx, { body }) => {
       const { version } = body as { version: number };

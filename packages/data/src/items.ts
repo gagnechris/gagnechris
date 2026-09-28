@@ -127,11 +127,23 @@ export function parseContactMsgItem(raw: unknown): ContactMsgItem {
 export function postContentEqual(
   a: Pick<
     Post,
-    'slug' | 'title' | 'excerpt' | 'bodyMarkdown' | 'tags' | 'coverImage' | 'seo'
+    | 'slug'
+    | 'title'
+    | 'excerpt'
+    | 'bodyMarkdown'
+    | 'tags'
+    | 'coverImage'
+    | 'seo'
   >,
   b: Pick<
     Post,
-    'slug' | 'title' | 'excerpt' | 'bodyMarkdown' | 'tags' | 'coverImage' | 'seo'
+    | 'slug'
+    | 'title'
+    | 'excerpt'
+    | 'bodyMarkdown'
+    | 'tags'
+    | 'coverImage'
+    | 'seo'
   >,
 ): boolean {
   return (

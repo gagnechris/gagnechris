@@ -119,10 +119,7 @@ export class AuthStack extends Stack {
       `https://${APEX_DOMAIN}/auth/callback`,
       `${DEV_ORIGINS[0]}/auth/callback`,
     ];
-    const logoutUrls = [
-      `https://${APEX_DOMAIN}/`,
-      `${DEV_ORIGINS[0]}/`,
-    ];
+    const logoutUrls = [`https://${APEX_DOMAIN}/`, `${DEV_ORIGINS[0]}/`];
 
     const clientCommon = {
       generateSecret: false,

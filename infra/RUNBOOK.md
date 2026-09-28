@@ -44,6 +44,7 @@ npm run cdk -- deploy Guardrails-prod --profile gagnechris-admin
 ```
 
 After deploying Guardrails:
+
 1. Confirm the SNS subscription email (AWS sends a Confirm subscription link).
 2. `aws budgets describe-budgets --account-id "$CDK_DEFAULT_ACCOUNT" --profile gagnechris-readonly`
 3. Optional test: publish to the alerts topic ARN from the stack outputs.
@@ -163,8 +164,8 @@ can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
 
 `Api-prod` public routes:
 
-* `POST /api/contact` — contact form (persists `CONTACT#<ulid>` first; honeypot `hp_field`; 3/IP/hour + global SES daily cap)
-* `POST /api/resume/download` — anonymous resume-download notify (IP/day dedupe; shared SES daily cap)
+- `POST /api/contact` — contact form (persists `CONTACT#<ulid>` first; honeypot `hp_field`; 3/IP/hour + global SES daily cap)
+- `POST /api/resume/download` — anonymous resume-download notify (IP/day dedupe; shared SES daily cap)
 
 Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`. SES sandbox is ~200/day; app cap is 100/day (CHR-98).
 
@@ -298,13 +299,13 @@ For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/lo
 
 ## Existing resources (CDK decisions)
 
-| Resource | Decision |
-| --- | --- |
-| Route 53 hosted zone for the site domain | **Look up** in CDK (`HostedZone.fromLookup`). Do not recreate. |
-| Other Route 53 zones outside this project | **Leave alone.** |
-| Existing ACM certs for the site domain | **Replace via CDK** when the certificate stack lands; keep until cutover. |
-| Legacy IAM users | No access keys after bootstrap; disable/delete when SSO-only is enough. |
-| `CDKToolkit` in us-east-1 | Created by bootstrap. |
+| Resource                                  | Decision                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| Route 53 hosted zone for the site domain  | **Look up** in CDK (`HostedZone.fromLookup`). Do not recreate.            |
+| Other Route 53 zones outside this project | **Leave alone.**                                                          |
+| Existing ACM certs for the site domain    | **Replace via CDK** when the certificate stack lands; keep until cutover. |
+| Legacy IAM users                          | No access keys after bootstrap; disable/delete when SSO-only is enough.   |
+| `CDKToolkit` in us-east-1                 | Created by bootstrap.                                                     |
 
 ## Agent notes
 

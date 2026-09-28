@@ -1,24 +1,20 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { isDevProdApiTarget } from '../api/apiTarget'
-import RequireAuth from '../auth/RequireAuth'
-import { signOutUser, type AuthUser } from '../auth/session'
-import { navLinkClass } from '../ui/navLinkClass'
-import { AdminQueryProvider } from './query/AdminQueryProvider'
-import './admin.css'
+import { NavLink, Outlet } from 'react-router-dom';
+import { isDevProdApiTarget } from '../api/apiTarget';
+import RequireAuth from '../auth/RequireAuth';
+import { signOutUser, type AuthUser } from '../auth/session';
+import { navLinkClass } from '../ui/navLinkClass';
+import { AdminQueryProvider } from './query/AdminQueryProvider';
+import './admin.css';
 
 function AdminChrome({ user }: { user: AuthUser }) {
-  const prodApi = isDevProdApiTarget()
+  const prodApi = isDevProdApiTarget();
 
   return (
     <div className="admin-shell">
       <title>Admin - Chris Gagne</title>
       <meta name="robots" content="noindex, nofollow" />
       {prodApi ? (
-        <div
-          className="admin-prod-banner"
-          role="status"
-          aria-live="polite"
-        >
+        <div className="admin-prod-banner" role="status" aria-live="polite">
           PRODUCTION API — edits, autosave, and publish hit the live site
         </div>
       ) : null}
@@ -53,7 +49,7 @@ function AdminChrome({ user }: { user: AuthUser }) {
         <Outlet />
       </main>
     </div>
-  )
+  );
 }
 
 /** Lazy-loaded admin layout root (RequireAuth + chrome + Query). */
@@ -66,5 +62,5 @@ export default function AdminLayout() {
         </AdminQueryProvider>
       )}
     </RequireAuth>
-  )
+  );
 }

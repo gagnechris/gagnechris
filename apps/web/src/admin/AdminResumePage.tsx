@@ -1,53 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { renderResumePrerenderHtml } from '@gagnechris/shared/resume'
-import type { components } from '../api/schema'
-import { EditorActionBar } from '../ui/EditorActionBar'
-import { ResumeEditorForm } from './ResumeEditorForm'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { renderResumePrerenderHtml } from '@gagnechris/shared/resume';
+import type { components } from '../api/schema';
+import { EditorActionBar } from '../ui/EditorActionBar';
+import { ResumeEditorForm } from './ResumeEditorForm';
 import {
   resumeContentFromDraft,
   resumeDraftFromResume,
   type ResumeDraftFields,
-} from './resumeDraft'
-import { ApiError, updateResume } from './query/api'
+} from './resumeDraft';
+import { ApiError, updateResume } from './query/api';
 import {
   useResumeLifecycleMutators,
   useResumeQuery,
   useSetResumeCache,
-} from './query/resume'
-import { useDraftPublishEditor } from './useDraftPublishEditor'
-import { useNullableDraftUpdater } from './useDraftUpdater'
-import { useQueuedAutosave } from './useQueuedAutosave'
-import '../pages/Resume.css'
+} from './query/resume';
+import { useDraftPublishEditor } from './useDraftPublishEditor';
+import { useNullableDraftUpdater } from './useDraftUpdater';
+import { useQueuedAutosave } from './useQueuedAutosave';
+import '../pages/Resume.css';
 
-type Resume = components['schemas']['Resume']
+type Resume = components['schemas']['Resume'];
 
 const AdminResumePage = () => {
-  const {
-    data: resume,
-    error: queryError,
-    isPending,
-  } = useResumeQuery()
-  const setResumeCache = useSetResumeCache()
+  const { data: resume, error: queryError, isPending } = useResumeQuery();
+  const setResumeCache = useSetResumeCache();
   const {
     publish: publishRequest,
     unpublish: unpublishRequest,
     discard: discardRequest,
-  } = useResumeLifecycleMutators()
+  } = useResumeLifecycleMutators();
 
-  const [draft, setDraft] = useState<ResumeDraftFields | null>(null)
-  const [hydrated, setHydrated] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const versionRef = useRef(0)
+  const [draft, setDraft] = useState<ResumeDraftFields | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const versionRef = useRef(0);
 
   if (resume && !hydrated) {
-    setHydrated(true)
-    setDraft(resumeDraftFromResume(resume))
-    setDirty(false)
+    setHydrated(true);
+    setDraft(resumeDraftFromResume(resume));
+    setDirty(false);
   }
 
   useEffect(() => {
-    if (resume) versionRef.current = resume.version
-  }, [resume])
+    if (resume) versionRef.current = resume.version;
+  }, [resume]);
 
   const performSave = useCallback(
     async (current: ResumeDraftFields, version: number) => {
@@ -57,30 +53,30 @@ const AdminResumePage = () => {
           name: current.name.trim() || 'Chris Gagne',
           pdfPath: '/resume.pdf',
           content: resumeContentFromDraft(current),
-        })
-        return { ok: true as const, entity }
+        });
+        return { ok: true as const, entity };
       } catch (err) {
         return {
           ok: false as const,
           status: err instanceof ApiError ? err.status : 0,
-        }
+        };
       }
     },
     [],
-  )
+  );
 
-  const getVersion = useCallback((entity: Resume) => entity.version, [])
+  const getVersion = useCallback((entity: Resume) => entity.version, []);
   const onSaved = useCallback(
     (entity: Resume) => setResumeCache(entity),
     [setResumeCache],
-  )
+  );
   const onReplaceDraft = useCallback(
     (entity: Resume) => {
-      setResumeCache(entity)
-      setDraft(resumeDraftFromResume(entity))
+      setResumeCache(entity);
+      setDraft(resumeDraftFromResume(entity));
     },
     [setResumeCache],
-  )
+  );
 
   const autosave = useQueuedAutosave({
     draft,
@@ -92,21 +88,21 @@ const AdminResumePage = () => {
     onSaved,
     conflictMessage:
       'Conflict — another save updated the resume. Reload and try again.',
-  })
-  const { save, saveState, saveError, bumpEdit } = autosave
+  });
+  const { save, saveState, saveError, bumpEdit } = autosave;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
-  )
+  );
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
-  )
+  );
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
-  )
+  );
 
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
     autosave,
@@ -123,22 +119,22 @@ const AdminResumePage = () => {
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
-  })
+  });
 
-  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty)
+  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty);
   const setField = <K extends keyof ResumeDraftFields>(
     key: K,
     value: ResumeDraftFields[K],
   ) => {
-    updateDraft((prev) => ({ ...prev, [key]: value }))
-  }
+    updateDraft((prev) => ({ ...prev, [key]: value }));
+  };
 
   const loadError =
     queryError instanceof ApiError
       ? queryError.message
       : queryError
         ? 'Could not load resume.'
-        : null
+        : null;
 
   if (loadError) {
     return (
@@ -147,7 +143,7 @@ const AdminResumePage = () => {
           {loadError}
         </p>
       </section>
-    )
+    );
   }
 
   if (isPending || !resume || !draft) {
@@ -155,7 +151,7 @@ const AdminResumePage = () => {
       <section className="admin-panel">
         <p>Loading resume…</p>
       </section>
-    )
+    );
   }
 
   const previewHtml = renderResumePrerenderHtml({
@@ -163,7 +159,7 @@ const AdminResumePage = () => {
     name: draft.name,
     pdfPath: '/resume.pdf',
     content: resumeContentFromDraft(draft),
-  })
+  });
 
   return (
     <section className="admin-panel admin-panel--editor">
@@ -206,7 +202,7 @@ const AdminResumePage = () => {
         ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
       </p>
     </section>
-  )
-}
+  );
+};
 
-export default AdminResumePage
+export default AdminResumePage;

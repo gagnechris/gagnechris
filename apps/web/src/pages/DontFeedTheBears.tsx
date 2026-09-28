@@ -1,17 +1,17 @@
-import { useSearchParams } from 'react-router-dom'
-import PublicNav from '../components/PublicNav'
-import BearGame from '../games/bears/BearGame'
-import './DontFeedTheBears.css'
+import { useSearchParams } from 'react-router-dom';
+import PublicNav from '../components/PublicNav';
+import BearGame from '../games/bears/BearGame';
+import './DontFeedTheBears.css';
 
-const PAGE_TITLE = "Don't Feed the Bears - Chris Gagne"
+const PAGE_TITLE = "Don't Feed the Bears - Chris Gagne";
 const PAGE_DESCRIPTION =
-  'A short Vermont camp mini-game: secure attractants before black bears reach them, then learn real tips from Vermont Fish & Wildlife.'
-const PAGE_URL = 'https://gagnechris.com/dont-feed-the-bears'
-const OG_IMAGE = 'https://gagnechris.com/og-dont-feed-the-bears.jpg'
+  'A short Vermont camp mini-game: secure attractants before black bears reach them, then learn real tips from Vermont Fish & Wildlife.';
+const PAGE_URL = 'https://gagnechris.com/dont-feed-the-bears';
+const OG_IMAGE = 'https://gagnechris.com/og-dont-feed-the-bears.jpg';
 
 function DontFeedTheBears() {
-  const [searchParams] = useSearchParams()
-  const from = searchParams.get('from')?.trim() || 'direct'
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get('from')?.trim() || 'direct';
 
   return (
     <div className="bears-page">
@@ -40,7 +40,7 @@ function DontFeedTheBears() {
         <BearGame from={from} />
       </main>
     </div>
-  )
+  );
 }
 
-export default DontFeedTheBears
+export default DontFeedTheBears;

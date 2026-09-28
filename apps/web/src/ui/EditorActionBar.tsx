@@ -1,25 +1,25 @@
-import type { ReactNode } from 'react'
-import type { SaveState } from '../admin/useQueuedAutosave'
-import { Button } from './Button'
-import { SaveIndicator } from './SaveIndicator'
-import { StatusBadge } from './StatusBadge'
+import type { ReactNode } from 'react';
+import type { SaveState } from '../admin/useQueuedAutosave';
+import { Button } from './Button';
+import { SaveIndicator } from './SaveIndicator';
+import { StatusBadge } from './StatusBadge';
 
 export type EditorActionBarProps = {
   /** Leading status row content (back link, page title, etc.). */
-  leading?: ReactNode
-  status: 'draft' | 'published' | 'deleted'
-  hasUnpublishedChanges: boolean
-  saveState: SaveState
-  dirty: boolean
-  busy: boolean
-  viewLiveHref?: string | null
-  onPublish: () => void
-  onUnpublish: () => void
-  onDiscard: () => void
-  onSave: () => void
+  leading?: ReactNode;
+  status: 'draft' | 'published' | 'deleted';
+  hasUnpublishedChanges: boolean;
+  saveState: SaveState;
+  dirty: boolean;
+  busy: boolean;
+  viewLiveHref?: string | null;
+  onPublish: () => void;
+  onUnpublish: () => void;
+  onDiscard: () => void;
+  onSave: () => void;
   /** Optional extra actions (e.g. Delete). */
-  extraActions?: ReactNode
-}
+  extraActions?: ReactNode;
+};
 
 /** Shared sticky Publish / Unpublish / Discard / Save bar for draft editors. */
 export function EditorActionBar({
@@ -36,7 +36,7 @@ export function EditorActionBar({
   onSave,
   extraActions,
 }: EditorActionBarProps) {
-  const showPublish = status === 'draft' || hasUnpublishedChanges
+  const showPublish = status === 'draft' || hasUnpublishedChanges;
 
   return (
     <div className="admin-action-bar">
@@ -49,15 +49,9 @@ export function EditorActionBar({
         <SaveIndicator saveState={saveState} dirty={dirty} />
       </div>
       <div className="admin-actions">
-        {viewLiveHref ? (
-          <Button href={viewLiveHref}>View live</Button>
-        ) : null}
+        {viewLiveHref ? <Button href={viewLiveHref}>View live</Button> : null}
         {showPublish ? (
-          <Button
-            variant="primary"
-            disabled={busy}
-            onClick={onPublish}
-          >
+          <Button variant="primary" disabled={busy} onClick={onPublish}>
             {hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
           </Button>
         ) : null}
@@ -77,5 +71,5 @@ export function EditorActionBar({
         {extraActions}
       </div>
     </div>
-  )
+  );
 }

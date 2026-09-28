@@ -25,8 +25,7 @@ function isDynamoStreamEvent(event: unknown): event is DynamoDBStreamEvent {
     event !== null &&
     Array.isArray((event as DynamoDBStreamEvent).Records) &&
     ((event as DynamoDBStreamEvent).Records.length === 0 ||
-      (event as DynamoDBStreamEvent).Records[0]?.eventSource ===
-        'aws:dynamodb')
+      (event as DynamoDBStreamEvent).Records[0]?.eventSource === 'aws:dynamodb')
   );
 }
 
@@ -50,7 +49,11 @@ function recordPublishMetrics(result: {
   resumePdfFailed: boolean;
 }): void {
   metrics.addMetric('PublishedPosts', MetricUnit.Count, result.publishedCount);
-  metrics.addMetric('RemovedPosts', MetricUnit.Count, result.removedSlugs.length);
+  metrics.addMetric(
+    'RemovedPosts',
+    MetricUnit.Count,
+    result.removedSlugs.length,
+  );
   metrics.addMetric(
     'InvalidationPaths',
     MetricUnit.Count,

@@ -2,11 +2,11 @@
 
 One-time import of the old bundled `src/posts` markdown into DynamoDB. Fixtures live under `scripts/migrate-posts/fixtures/` (recovered from git after CHR-35 removed the in-repo copies).
 
-| Fixture | Status | Slug |
-| --- | --- | --- |
-| `welcome-to-my-blog.md` | published | `welcome` |
-| `building-high-performing-teams.bak` | draft | from frontmatter |
-| `embracing-agentic-ai.bak` | draft | from frontmatter |
+| Fixture                              | Status    | Slug             |
+| ------------------------------------ | --------- | ---------------- |
+| `welcome-to-my-blog.md`              | published | `welcome`        |
+| `building-high-performing-teams.bak` | draft     | from frontmatter |
+| `embracing-agentic-ai.bak`           | draft     | from frontmatter |
 
 Idempotent: existing slugs are skipped.
 

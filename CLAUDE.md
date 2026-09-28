@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Layout
+
 npm workspaces. Root scripts delegate across workspaces (see Commands).
 
 - `apps/web` — React/Vite site + admin
@@ -14,14 +15,15 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `docs/` — architecture, development, data model, local E2E
 
 ## Commands
+
 - Build: `npm run build` (`tsc -b` then Vite in `apps/web`)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
-- Lint: `npm run lint` (ESLint for `@gagnechris/web`)
+- Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
 - Dev (Vite only): `npm run dev` (API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + Vite; fake auth)
 - Preview: `npm run preview` (production build locally)
-- Test: `npm test` (Vitest for web + shared + infra + api + publisher)
+- Test: `npm test` (Vitest via `--workspaces --if-present`)
 - Local E2E: `npm run e2e:local`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
@@ -32,6 +34,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xml`, `sitemap.xml`, and `resume.pdf` on publish.
 
 ## Workflow
+
 - One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
 - Prefer the Linear issue `gitBranchName` when creating the branch.
 - Merge only after CI is green on the PR.
@@ -40,24 +43,27 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - **Docs:** if a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, root `README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
 
 ## Hosting & Integrations
+
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`
 - **Contact form**: `POST /api/contact` → SES (CHR-38)
 - **Analytics**: Google Analytics 4
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)
 
 ## Code Style Guidelines
+
 - **TypeScript**: Strict mode enabled with comprehensive type checking
 - **Formatting**: Follow ESLint recommended rules for TypeScript and React
 - **Imports**: Group imports by dependency type, use named imports
 - **Component Structure**: Functional components with React hooks
 - **Naming**: Use camelCase for variables/functions, PascalCase for components
-- **React Best Practices**: 
+- **React Best Practices**:
   - Follow React hooks rules (enforced by eslint-plugin-react-hooks)
   - Use arrow functions for new components
   - Only export components from files (enforced by react-refresh)
 - **Error Handling**: Use TypeScript's strict checking to catch errors at compile time
 
 <!-- BEGIN AWS Agent Toolkit rules -->
+
 # AWS Guidance
 
 - Where these AWS rules conflict with the project's own instructions, the
@@ -86,4 +92,5 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
   NOT hit the Secrets Manager Agent daemon directly. MUST use
   `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with
   `asm-exec` so the secret resolves at runtime without entering context.
+
 <!-- END AWS Agent Toolkit rules -->

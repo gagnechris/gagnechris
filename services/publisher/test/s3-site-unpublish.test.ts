@@ -2,7 +2,12 @@ import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_HOME, DEFAULT_RESUME, type Home, type Resume } from '@gagnechris/shared';
+import {
+  DEFAULT_HOME,
+  DEFAULT_RESUME,
+  type Home,
+  type Resume,
+} from '@gagnechris/shared';
 import {
   HOME_LAST_PUBLISHED_KEY,
   rebuildPublishedSite,
@@ -71,7 +76,10 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
       },
     });
 
-    const liveHtml = await readFile(join(root, 'resume', 'index.html'), 'utf-8');
+    const liveHtml = await readFile(
+      join(root, 'resume', 'index.html'),
+      'utf-8',
+    );
     expect(liveHtml).toContain('Live resume summary that must not linger');
     expect(liveHtml).toContain('resume-page-prerender');
     await access(join(root, RESUME_PDF_KEY));
@@ -95,7 +103,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     );
     expect(placeholder).toContain('resume-page-unavailable');
     expect(placeholder).toContain('Resume available on request');
-    expect(placeholder).not.toContain('Live resume summary that must not linger');
+    expect(placeholder).not.toContain(
+      'Live resume summary that must not linger',
+    );
     await expect(access(join(root, RESUME_PDF_KEY))).rejects.toThrow();
   });
 
@@ -115,7 +125,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     expect(published.homeRestoredFromSnapshot).toBe(false);
 
     const afterPublish = await readFile(join(root, 'index.html'), 'utf-8');
-    expect(afterPublish).toContain('Last published about copy that must survive');
+    expect(afterPublish).toContain(
+      'Last published about copy that must survive',
+    );
     expect(afterPublish).toContain('home-page-prerender');
 
     const snapshotRaw = await readFile(
@@ -148,7 +160,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
 
     const afterRestore = await readFile(join(root, 'index.html'), 'utf-8');
     expect(afterRestore).toContain('home-page-prerender');
-    expect(afterRestore).toContain('Last published about copy that must survive');
+    expect(afterRestore).toContain(
+      'Last published about copy that must survive',
+    );
     expect(afterRestore).toContain('Published Name');
     // Must not be only the empty shell (which would make the SPA use DEFAULT_HOME).
     expect(afterRestore).not.toMatch(/<div id="root"><\/div>/);

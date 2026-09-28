@@ -1,83 +1,81 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ApiError } from './query/api'
-import { useCreatePostMutation, usePostsQuery } from './query/posts'
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ApiError } from './query/api';
+import { useCreatePostMutation, usePostsQuery } from './query/posts';
 
-type StatusFilter = 'all' | 'draft' | 'published'
-type SortKey = 'updated' | 'published' | 'title'
+type StatusFilter = 'all' | 'draft' | 'published';
+type SortKey = 'updated' | 'published' | 'title';
 
 const formatDate = (iso: string | null): string => {
   if (!iso) {
-    return '—'
+    return '—';
   }
   return new Date(iso).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
-  })
-}
+  });
+};
 
 export default function AdminPostsPage() {
-  const navigate = useNavigate()
-  const { data: posts, error: queryError, isPending } = usePostsQuery()
-  const createMutation = useCreatePostMutation()
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<StatusFilter>('all')
-  const [sort, setSort] = useState<SortKey>('updated')
+  const navigate = useNavigate();
+  const { data: posts, error: queryError, isPending } = usePostsQuery();
+  const createMutation = useCreatePostMutation();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [sort, setSort] = useState<SortKey>('updated');
 
   const loadError =
     queryError instanceof ApiError
       ? queryError.message
       : queryError
         ? 'Could not load posts.'
-        : null
-  const error = actionError ?? loadError
+        : null;
+  const error = actionError ?? loadError;
 
   const visible = useMemo(() => {
     if (!posts) {
-      return []
+      return [];
     }
-    const q = query.trim().toLowerCase()
+    const q = query.trim().toLowerCase();
     let list = posts.filter((p) => {
       if (status !== 'all' && p.status !== status) {
-        return false
+        return false;
       }
       if (!q) {
-        return true
+        return true;
       }
       return (
         p.title.toLowerCase().includes(q) ||
         p.slug.toLowerCase().includes(q) ||
         p.tags.some((t) => t.toLowerCase().includes(q))
-      )
-    })
+      );
+    });
     list = [...list].sort((a, b) => {
       if (sort === 'title') {
-        return a.title.localeCompare(b.title)
+        return a.title.localeCompare(b.title);
       }
       if (sort === 'published') {
-        return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '')
+        return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
       }
-      return b.updatedAt.localeCompare(a.updatedAt)
-    })
-    return list
-  }, [posts, query, status, sort])
+      return b.updatedAt.localeCompare(a.updatedAt);
+    });
+    return list;
+  }, [posts, query, status, sort]);
 
   const createDraft = async () => {
-    setActionError(null)
+    setActionError(null);
     try {
-      const data = await createMutation.mutateAsync()
-      void navigate(`/admin/posts/${data.id}`)
+      const data = await createMutation.mutateAsync();
+      void navigate(`/admin/posts/${data.id}`);
     } catch (err) {
       setActionError(
-        err instanceof ApiError
-          ? err.message
-          : 'Could not create draft.',
-      )
+        err instanceof ApiError ? err.message : 'Could not create draft.',
+      );
     }
-  }
+  };
 
-  const creating = createMutation.isPending
+  const creating = createMutation.isPending;
 
   return (
     <section className="admin-panel">
@@ -164,5 +162,5 @@ export default function AdminPostsPage() {
         </ul>
       ) : null}
     </section>
-  )
+  );
 }

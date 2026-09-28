@@ -6,10 +6,7 @@ import {
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
 import { ConflictError } from '../src/data/errors.js';
-import {
-  buildHomeMetaItem,
-  buildHomePublishedItem,
-} from '../src/home/keys.js';
+import { buildHomeMetaItem, buildHomePublishedItem } from '../src/home/keys.js';
 import { HomeRepository } from '../src/home/repository.js';
 
 const stored: Home = {
@@ -271,7 +268,9 @@ describe('HomeRepository', () => {
     expect(home?.hasUnpublishedChanges).toBe(false);
     expect(batchCalls).toBe(2);
     expect(
-      send.mock.calls.filter((c) => c[0]!.constructor.name === 'BatchGetCommand'),
+      send.mock.calls.filter(
+        (c) => c[0]!.constructor.name === 'BatchGetCommand',
+      ),
     ).toHaveLength(2);
   });
 

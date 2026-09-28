@@ -1,29 +1,29 @@
-import { Link, useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { formatPostDate, postDateAttribute } from '@gagnechris/shared'
-import { publishedPostPageUrl } from '../blog/publishedPosts'
-import PublicNav from '../components/PublicNav'
-import NotFound from './NotFound'
-import './BlogPost.css'
+import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
+import { publishedPostPageUrl } from '../blog/publishedPosts';
+import PublicNav from '../components/PublicNav';
+import NotFound from './NotFound';
+import './BlogPost.css';
 
 interface PostData {
-  title: string
-  date: string
+  title: string;
+  date: string;
   /** HTML from publisher prerender (shared markdown → HTML). */
-  contentHtml: string
+  contentHtml: string;
 }
 
 /** Load a CMS-published post from Option B static HTML (`blog/<slug>/index.html`). */
 async function loadPublishedPost(slug: string): Promise<PostData | null> {
   const response = await fetch(publishedPostPageUrl(slug), {
     headers: { Accept: 'text/html' },
-  })
-  if (!response.ok) return null
+  });
+  if (!response.ok) return null;
 
-  const html = await response.text()
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const article = doc.querySelector('article.blog-post-prerender')
-  if (!article) return null
+  const html = await response.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const article = doc.querySelector('article.blog-post-prerender');
+  if (!article) return null;
 
   const title =
     article.querySelector('header h1')?.textContent?.trim() ||
@@ -31,58 +31,58 @@ async function loadPublishedPost(slug: string): Promise<PostData | null> {
       .querySelector('title')
       ?.textContent?.replace(/\s*-\s*Chris Gagne\s*$/, '')
       .trim() ||
-    'Untitled'
+    'Untitled';
   const date =
     article.querySelector('time')?.getAttribute('datetime') ||
     article.querySelector('time')?.textContent?.trim() ||
-    ''
-  const body = article.querySelector('.blog-post-body')
-  if (!body) return null
+    '';
+  const body = article.querySelector('.blog-post-body');
+  if (!body) return null;
 
   return {
     title,
     date,
     contentHtml: body.innerHTML,
-  }
+  };
 }
 
 function BlogPost() {
-  const { slug } = useParams<{ slug: string }>()
-  const [post, setPost] = useState<PostData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { slug } = useParams<{ slug: string }>();
+  const [post, setPost] = useState<PostData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPost = async () => {
       if (!slug?.trim()) {
-        setError('Blog post not found')
-        setLoading(false)
-        return
+        setError('Blog post not found');
+        setLoading(false);
+        return;
       }
 
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        const published = await loadPublishedPost(slug)
+        const published = await loadPublishedPost(slug);
         if (published) {
-          setPost(published)
-          return
+          setPost(published);
+          return;
         }
 
-        setError('Blog post not found')
-        setPost(null)
+        setError('Blog post not found');
+        setPost(null);
       } catch (err) {
-        setError('Error loading blog post')
-        setPost(null)
-        console.error('Error details:', err)
+        setError('Error loading blog post');
+        setPost(null);
+        console.error('Error details:', err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    void loadPost()
-  }, [slug])
+    void loadPost();
+  }, [slug]);
 
   if (loading) {
     return (
@@ -97,15 +97,15 @@ function BlogPost() {
           <p>Loading post...</p>
         </main>
       </div>
-    )
+    );
   }
 
   if (error || !post) {
-    return <NotFound />
+    return <NotFound />;
   }
 
-  const dateLabel = formatPostDate(post.date)
-  const dateAttr = postDateAttribute(post.date)
+  const dateLabel = formatPostDate(post.date);
+  const dateAttr = postDateAttribute(post.date);
 
   return (
     <div className="blog-post">
@@ -141,7 +141,7 @@ function BlogPost() {
         </Link>
       </footer>
     </div>
-  )
+  );
 }
 
-export default BlogPost
+export default BlogPost;

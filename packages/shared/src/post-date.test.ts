@@ -14,11 +14,7 @@ describe('formatPostDate', () => {
     }
   });
 
-  it.each([
-    'America/Los_Angeles',
-    'America/New_York',
-    'UTC',
-  ] as const)(
+  it.each(['America/Los_Angeles', 'America/New_York', 'UTC'] as const)(
     'renders midnight UTC as February 1 when process TZ is %s',
     (tz) => {
       process.env.TZ = tz;

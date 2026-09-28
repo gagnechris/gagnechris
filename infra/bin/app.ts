@@ -1,7 +1,10 @@
 import { Aspects, App } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
-import { getEnvironment, parseEnvironmentName } from '../lib/config/environments.js';
+import {
+  getEnvironment,
+  parseEnvironmentName,
+} from '../lib/config/environments.js';
 import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';

@@ -115,7 +115,7 @@ describe('posts HTTP handlers', () => {
       status: 'published',
       publishedAt: samplePost.updatedAt,
       version: 2,
-  hasUnpublishedChanges: false,
+      hasUnpublishedChanges: false,
     });
     vi.mocked(repo.softDelete).mockRejectedValue(
       new NotFoundError('Post missing'),
@@ -132,11 +132,7 @@ describe('posts HTTP handlers', () => {
     expect(published?.statusCode).toBe(200);
 
     const deleted = await handlePostsRoute(
-      event(
-        'DELETE',
-        `/api/admin/posts/${samplePost.id}`,
-        { version: 1 },
-      ),
+      event('DELETE', `/api/admin/posts/${samplePost.id}`, { version: 1 }),
       'DELETE',
       `/api/admin/posts/${samplePost.id}`,
       repo,

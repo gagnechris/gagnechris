@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import {
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type {
   MediaContentType,
@@ -125,7 +122,9 @@ export async function writeLocalMediaObject(
   expectedLength: number,
 ): Promise<void> {
   if (process.env.SITE_STORAGE !== 'filesystem') {
-    throw new Error('Local media write only allowed when SITE_STORAGE=filesystem');
+    throw new Error(
+      'Local media write only allowed when SITE_STORAGE=filesystem',
+    );
   }
   if (!key.startsWith('media/') || key.includes('..')) {
     throw new Error('Invalid media key');

@@ -1,32 +1,32 @@
-import { Amplify } from 'aws-amplify'
-import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito'
-import { CookieStorage } from 'aws-amplify/utils'
+import { Amplify } from 'aws-amplify';
+import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
+import { CookieStorage } from 'aws-amplify/utils';
 // Required on the /auth/callback page load: exchanges ?code= for tokens.
 // signInWithRedirect also imports this, but that module is not on the callback chunk.
-import 'aws-amplify/auth/enable-oauth-listener'
+import 'aws-amplify/auth/enable-oauth-listener';
 
-let configured = false
+let configured = false;
 
 const requireEnv = (name: keyof ImportMetaEnv): string => {
-  const value = import.meta.env[name]
+  const value = import.meta.env[name];
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new Error(`${name} is not set`)
+    throw new Error(`${name} is not set`);
   }
-  return value
-}
+  return value;
+};
 
 /** Cognito managed-login (auth code + PKCE). Call before any Auth API. */
 export const ensureAmplifyConfigured = (): void => {
   if (configured) {
-    return
+    return;
   }
 
-  const userPoolId = requireEnv('VITE_COGNITO_USER_POOL_ID')
-  const userPoolClientId = requireEnv('VITE_COGNITO_WEB_CLIENT_ID')
-  const domain = requireEnv('VITE_COGNITO_AUTH_DOMAIN')
+  const userPoolId = requireEnv('VITE_COGNITO_USER_POOL_ID');
+  const userPoolClientId = requireEnv('VITE_COGNITO_WEB_CLIENT_ID');
+  const domain = requireEnv('VITE_COGNITO_AUTH_DOMAIN');
   const isLocal =
     window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
+    window.location.hostname === '127.0.0.1';
 
   // Lax (not Strict): tokens must survive the top-level return from
   // auth.gagnechris.com → gagnechris.com/auth/callback.
@@ -38,7 +38,7 @@ export const ensureAmplifyConfigured = (): void => {
       sameSite: 'lax',
       secure: !isLocal,
     }),
-  )
+  );
 
   Amplify.configure({
     Auth: {
@@ -62,7 +62,7 @@ export const ensureAmplifyConfigured = (): void => {
         },
       },
     },
-  })
+  });
 
-  configured = true
-}
+  configured = true;
+};

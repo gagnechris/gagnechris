@@ -10,11 +10,11 @@ updates:
     # Majors that need a deliberate PR (API / engine mismatch), not Dependabot.
     ignore:
       - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
       - dependency-name: cdk-nag
-        update-types: ["version-update:semver-major"]
+        update-types: ['version-update:semver-major']
     groups:
       production-dependencies:
         dependency-type: production

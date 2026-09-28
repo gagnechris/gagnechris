@@ -57,7 +57,10 @@ export const APP_TABLE: AppTableDefinition = {
 /** Attribute definitions required by the table keys + all GSIs (CreateTable). */
 export function appTableAttributeDefinitions(
   def: AppTableDefinition = APP_TABLE,
-): ReadonlyArray<{ AttributeName: string; AttributeType: DynamoAttributeTypeCode }> {
+): ReadonlyArray<{
+  AttributeName: string;
+  AttributeType: DynamoAttributeTypeCode;
+}> {
   const byName = new Map<string, DynamoAttributeTypeCode>();
   const add = (attr: TableKeyAttribute) => {
     byName.set(attr.name, attr.type);

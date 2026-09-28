@@ -38,7 +38,13 @@ async function handler(event) {
       statusCode: 301,
       statusDescription: 'Moved Permanently',
       headers: {
-        location: { value: 'https://' + apex + request.uri + serializeQueryString(request.querystring) },
+        location: {
+          value:
+            'https://' +
+            apex +
+            request.uri +
+            serializeQueryString(request.querystring),
+        },
       },
     };
   }
@@ -56,7 +62,12 @@ async function handler(event) {
     };
   }
 
-  if (uri === '/api' || uri.indexOf('/api/') === 0 || uri === '/media' || uri.indexOf('/media/') === 0) {
+  if (
+    uri === '/api' ||
+    uri.indexOf('/api/') === 0 ||
+    uri === '/media' ||
+    uri.indexOf('/media/') === 0
+  ) {
     return request;
   }
 
@@ -180,10 +191,7 @@ function isValidBlogSlug(slug) {
   }
   for (var i = 0; i < slug.length; i++) {
     var c = slug.charCodeAt(i);
-    var ok =
-      (c >= 48 && c <= 57) ||
-      (c >= 97 && c <= 122) ||
-      c === 45;
+    var ok = (c >= 48 && c <= 57) || (c >= 97 && c <= 122) || c === 45;
     if (!ok) {
       return false;
     }

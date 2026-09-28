@@ -134,9 +134,7 @@ describe('syncBlogSlugsOnce / concurrent sync (CHR-119)', () => {
     };
     await syncBlogSlugsOnce('arn:test', ['welcome'], wrapped);
     expect(order).toEqual(['describe', 'list', 'update']);
-    expect(store.getKeys()).toEqual(
-      new Set(['welcome', BLOG_SLUG_SYNCED_KEY]),
-    );
+    expect(store.getKeys()).toEqual(new Set(['welcome', BLOG_SLUG_SYNCED_KEY]));
   });
 
   it('concurrent syncs converge via ConflictException retry', async () => {
@@ -222,8 +220,6 @@ describe('syncBlogSlugsOnce / concurrent sync (CHR-119)', () => {
     );
 
     expect(order).toEqual(['describe', 'list', 'resolve']);
-    expect(store.getKeys()).toEqual(
-      new Set(['a', 'b', BLOG_SLUG_SYNCED_KEY]),
-    );
+    expect(store.getKeys()).toEqual(new Set(['a', 'b', BLOG_SLUG_SYNCED_KEY]));
   });
 });

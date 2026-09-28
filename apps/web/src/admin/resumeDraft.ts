@@ -1,41 +1,41 @@
-import type { components } from '../api/schema'
-import { newRepeaterId } from '../ui/repeaterId'
+import type { components } from '../api/schema';
+import { newRepeaterId } from '../ui/repeaterId';
 
-type Resume = components['schemas']['Resume']
-type ResumeContent = components['schemas']['ResumeContent']
+type Resume = components['schemas']['Resume'];
+type ResumeContent = components['schemas']['ResumeContent'];
 
 export type ExperienceDraft = {
-  id: string
-  title: string
-  company: string
-  bulletsText: string
-}
+  id: string;
+  title: string;
+  company: string;
+  bulletsText: string;
+};
 
 export type EducationDraft = {
-  id: string
-  title: string
-  degreeDetail: string
-  institution: string
-  location: string
-  year: string
-}
+  id: string;
+  title: string;
+  degreeDetail: string;
+  institution: string;
+  location: string;
+  year: string;
+};
 
 export type ResumeDraftFields = {
-  name: string
-  pdfPath: string
-  summary: string
-  competenciesText: string
-  experience: ExperienceDraft[]
-  skillsText: string
-  education: EducationDraft[]
-}
+  name: string;
+  pdfPath: string;
+  summary: string;
+  competenciesText: string;
+  experience: ExperienceDraft[];
+  skillsText: string;
+  education: EducationDraft[];
+};
 
 export const emptyExperience = (): ExperienceDraft => ({
   id: newRepeaterId(),
   title: '',
   company: '',
   bulletsText: '',
-})
+});
 
 export const emptyEducation = (): EducationDraft => ({
   id: newRepeaterId(),
@@ -44,14 +44,14 @@ export const emptyEducation = (): EducationDraft => ({
   institution: '',
   location: '',
   year: '',
-})
+});
 
 /** Normalize list fields for the API / preview — not applied back onto the live draft. */
 export const parseResumeLines = (text: string): string[] =>
   text
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 
 export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   name: resume.name,
@@ -73,7 +73,7 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
     location: item.location,
     year: item.year,
   })),
-})
+});
 
 export const resumeContentFromDraft = (
   draft: ResumeDraftFields,
@@ -95,4 +95,4 @@ export const resumeContentFromDraft = (
       ? { degreeDetail: item.degreeDetail.trim() }
       : {}),
   })),
-})
+});

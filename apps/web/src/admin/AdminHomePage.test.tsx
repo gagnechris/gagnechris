@@ -1,16 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import {
-  createMemoryRouter,
-  RouterProvider,
-} from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { QueryClientTestProvider } from '../test-utils'
-import AdminHomePage from './AdminHomePage'
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { QueryClientTestProvider } from '../test-utils';
+import AdminHomePage from './AdminHomePage';
 
-const get = vi.fn()
-const put = vi.fn()
-const post = vi.fn()
+const get = vi.fn();
+const put = vi.fn();
+const post = vi.fn();
 
 vi.mock('../api/client', () => ({
   createApiClient: () => ({
@@ -18,7 +15,7 @@ vi.mock('../api/client', () => ({
     PUT: (...args: unknown[]) => put(...args),
     POST: (...args: unknown[]) => post(...args),
   }),
-}))
+}));
 
 const baseHome = {
   name: 'Chris Gagne',
@@ -34,56 +31,56 @@ const baseHome = {
   },
   version: 1,
   hasUnpublishedChanges: false,
-}
+};
 
 function renderHome() {
   const router = createMemoryRouter(
     [{ path: '/admin/home', element: <AdminHomePage /> }],
     { initialEntries: ['/admin/home'] },
-  )
+  );
   return render(
     <QueryClientTestProvider>
       <RouterProvider router={router} />
     </QueryClientTestProvider>,
-  )
+  );
 }
 
 describe('AdminHomePage autosave', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     get.mockResolvedValue({
       data: { ...baseHome },
       error: undefined,
       response: { status: 200 },
-    })
-  })
+    });
+  });
 
   afterEach(() => {
-    vi.useRealTimers()
-  })
+    vi.useRealTimers();
+  });
 
   test('keeps in-progress typing and trailing spaces across a save boundary', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    let resolvePut!: (value: unknown) => void
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    let resolvePut!: (value: unknown) => void;
     put.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolvePut = resolve
+          resolvePut = resolve;
         }),
-    )
+    );
 
-    renderHome()
-    const title = await screen.findByDisplayValue('Engineering')
+    renderHome();
+    const title = await screen.findByDisplayValue('Engineering');
 
-    await user.type(title, ' ')
-    expect(title).toHaveValue('Engineering ')
+    await user.type(title, ' ');
+    expect(title).toHaveValue('Engineering ');
 
-    await vi.advanceTimersByTimeAsync(950)
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
 
-    await user.type(title, 'Leader')
-    expect(title).toHaveValue('Engineering Leader')
+    await user.type(title, 'Leader');
+    expect(title).toHaveValue('Engineering Leader');
 
     resolvePut({
       data: {
@@ -95,40 +92,41 @@ describe('AdminHomePage autosave', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
     // Follow-up save for keystrokes typed during the first PUT.
-    await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
-    expect(title).toHaveValue('Engineering Leader')
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(title).toHaveValue('Engineering Leader');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 
   test('queues a slow save without spurious 409s', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const puts: Array<{
-      version: number
-      resolve: (value: unknown) => void
-    }> = []
+      version: number;
+      resolve: (value: unknown) => void;
+    }> = [];
 
     put.mockImplementation((...args: unknown[]) => {
-      const body = (args[1] as { body: { version: number; title: string } }).body
+      const body = (args[1] as { body: { version: number; title: string } })
+        .body;
       return new Promise((resolve) => {
-        puts.push({ version: body.version, resolve })
-      })
-    })
+        puts.push({ version: body.version, resolve });
+      });
+    });
 
-    renderHome()
-    const title = await screen.findByDisplayValue('Engineering')
+    renderHome();
+    const title = await screen.findByDisplayValue('Engineering');
 
-    await user.type(title, 'A')
-    await vi.advanceTimersByTimeAsync(950)
-    await waitFor(() => expect(puts).toHaveLength(1))
+    await user.type(title, 'A');
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(puts).toHaveLength(1));
 
     // Keep typing while the first PUT is still outstanding (3s network).
-    await user.type(title, 'B')
-    await vi.advanceTimersByTimeAsync(950)
+    await user.type(title, 'B');
+    await vi.advanceTimersByTimeAsync(950);
     // Second save must wait — still only one in flight.
-    expect(puts).toHaveLength(1)
+    expect(puts).toHaveLength(1);
 
     puts[0]!.resolve({
       data: {
@@ -140,10 +138,10 @@ describe('AdminHomePage autosave', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
-    await waitFor(() => expect(puts).toHaveLength(2))
-    expect(puts[1]!.version).toBe(2)
+    await waitFor(() => expect(puts).toHaveLength(2));
+    expect(puts[1]!.version).toBe(2);
 
     puts[1]!.resolve({
       data: {
@@ -155,23 +153,23 @@ describe('AdminHomePage autosave', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
     await waitFor(() => {
-      expect(screen.getByText('Saved')).toBeInTheDocument()
-    })
-    expect(screen.queryByText(/Conflict/i)).not.toBeInTheDocument()
-    expect(title).toHaveValue('EngineeringAB')
-  })
+      expect(screen.getByText('Saved')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Conflict/i)).not.toBeInTheDocument();
+    expect(title).toHaveValue('EngineeringAB');
+  });
 
   test('preserves seo.ogImage on save', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     put.mockImplementation((_path: unknown, init: { body: unknown }) => {
       const body = init.body as {
-        version: number
-        title: string
-        seo: { ogImage?: string; title?: string }
-      }
+        version: number;
+        title: string;
+        seo: { ogImage?: string; title?: string };
+      };
       return Promise.resolve({
         data: {
           ...baseHome,
@@ -182,55 +180,55 @@ describe('AdminHomePage autosave', () => {
         },
         error: undefined,
         response: { status: 200 },
-      })
-    })
+      });
+    });
 
-    renderHome()
-    const title = await screen.findByDisplayValue('Engineering')
-    await user.clear(title)
-    await user.type(title, 'New Title')
-    await vi.advanceTimersByTimeAsync(950)
+    renderHome();
+    const title = await screen.findByDisplayValue('Engineering');
+    await user.clear(title);
+    await user.type(title, 'New Title');
+    await vi.advanceTimersByTimeAsync(950);
 
-    await waitFor(() => expect(put).toHaveBeenCalled())
+    await waitFor(() => expect(put).toHaveBeenCalled());
     const body = put.mock.calls[0]?.[1]?.body as {
-      seo: { ogImage?: string }
-    }
-    expect(body.seo.ogImage).toBe('/media/og-home.png')
-  })
-})
+      seo: { ogImage?: string };
+    };
+    expect(body.seo.ogImage).toBe('/media/og-home.png');
+  });
+});
 
 describe('AdminHomePage publish (CHR-124)', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.clearAllMocks();
     get.mockResolvedValue({
       data: { ...baseHome, hasUnpublishedChanges: true },
       error: undefined,
       response: { status: 200 },
-    })
+    });
     put.mockResolvedValue({
       data: { ...baseHome, version: 2, hasUnpublishedChanges: true },
       error: undefined,
       response: { status: 200 },
-    })
-  })
+    });
+  });
 
   test('typing during a slow publish is not overwritten', async () => {
-    const user = userEvent.setup()
-    let resolvePublish!: (value: unknown) => void
+    const user = userEvent.setup();
+    let resolvePublish!: (value: unknown) => void;
     post.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolvePublish = resolve
+          resolvePublish = resolve;
         }),
-    )
+    );
 
-    renderHome()
-    const title = await screen.findByDisplayValue('Engineering')
+    renderHome();
+    const title = await screen.findByDisplayValue('Engineering');
 
-    await user.click(screen.getByRole('button', { name: 'Publish changes' }))
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }));
 
-    await user.clear(title)
-    await user.type(title, 'typed while publishing')
+    await user.clear(title);
+    await user.type(title, 'typed while publishing');
 
     resolvePublish({
       data: {
@@ -242,12 +240,14 @@ describe('AdminHomePage publish (CHR-124)', () => {
       },
       error: undefined,
       response: { status: 200 },
-    })
+    });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('typed while publishing')).toBeInTheDocument()
-    })
-    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument()
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
-  })
-})
+      expect(
+        screen.getByDisplayValue('typed while publishing'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  });
+});

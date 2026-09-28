@@ -5,7 +5,12 @@ import {
   Stack,
   type StackProps,
 } from 'aws-cdk-lib';
-import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
+import {
+  Alarm,
+  ComparisonOperator,
+  Metric,
+  TreatMissingData,
+} from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -98,10 +103,7 @@ export class PublisherStack extends Stack {
             return [];
           },
           afterBundling(inputDir: string, outputDir: string): string[] {
-            const fontsSrc = join(
-              inputDir,
-              'services/publisher/assets/fonts',
-            );
+            const fontsSrc = join(inputDir, 'services/publisher/assets/fonts');
             return [
               `mkdir -p "${outputDir}/assets/fonts"`,
               `cp "${fontsSrc}/Inter-Regular.ttf" "${fontsSrc}/Inter-Bold.ttf" "${outputDir}/assets/fonts/"`,
@@ -246,7 +248,8 @@ export class PublisherStack extends Stack {
 
     new CfnOutput(this, 'PublisherFunctionName', {
       value: this.publisherFunction.functionName,
-      description: 'Invoke with {"action":"republishAll"} after web shell deploys',
+      description:
+        'Invoke with {"action":"republishAll"} after web shell deploys',
     });
   }
 }

@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
-import PublicNav from '../components/PublicNav'
-import './NotFound.css'
+import { Link } from 'react-router-dom';
+import PublicNav from '../components/PublicNav';
+import './NotFound.css';
 
 function NotFound() {
   return (
@@ -17,8 +17,8 @@ function NotFound() {
           Lost in the woods?{' '}
           <Link to="/dont-feed-the-bears?from=404" className="tap-target-link">
             Don't feed the bears
-          </Link>
-          {' '}while you find your way.
+          </Link>{' '}
+          while you find your way.
         </p>
         <ul className="not-found-links">
           <li>
@@ -36,7 +36,7 @@ function NotFound() {
         </ul>
       </main>
     </div>
-  )
+  );
 }
 
-export default NotFound
+export default NotFound;

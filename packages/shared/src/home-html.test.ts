@@ -77,8 +77,7 @@ describe('renderHomePrerenderHtml', () => {
     expect(html).toContain('<section id="about">');
   });
 
-
-  it('preserves $$, $&, $`, $\' in prerendered name/title/about', () => {
+  it("preserves $$, $&, $`, $' in prerendered name/title/about", () => {
     const tricky = "Making $$$ with $$ and $& and $` and $'";
     const escaped = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
     const html = renderHomePrerenderHtml(

@@ -65,32 +65,31 @@ asserts both halves: `/` has the home prerender and `/blog/<slug>` does not.
 
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
 
-
 ### Safety
 
-| Guard | Behavior |
-| --- | --- |
-| Default Vite `/api` | Proxies to `http://127.0.0.1:8787`, not prod |
-| `VITE_API_TARGET=prod` | Opt-in only; admin shows a **PRODUCTION** banner |
-| `scripts/local/env.sh` | Fake `AWS_*` keys, unsets `AWS_PROFILE`, table `gagnechris-local` |
-| Bootstrap / local API | Refuse `DATA_TABLE_NAME=gagnechris-prod` |
-| `VITE_AUTH_MODE=local` | Fake session in Vite; **production `vite build` fails** if set |
-| Lambda bundle | Entry is only `services/api/src/handler.ts` — no auth bypass there |
+| Guard                  | Behavior                                                           |
+| ---------------------- | ------------------------------------------------------------------ |
+| Default Vite `/api`    | Proxies to `http://127.0.0.1:8787`, not prod                       |
+| `VITE_API_TARGET=prod` | Opt-in only; admin shows a **PRODUCTION** banner                   |
+| `scripts/local/env.sh` | Fake `AWS_*` keys, unsets `AWS_PROFILE`, table `gagnechris-local`  |
+| Bootstrap / local API  | Refuse `DATA_TABLE_NAME=gagnechris-prod`                           |
+| `VITE_AUTH_MODE=local` | Fake session in Vite; **production `vite build` fails** if set     |
+| Lambda bundle          | Entry is only `services/api/src/handler.ts` — no auth bypass there |
 
 Prod admin still: `npm run dev:prod-api` (explicit + banner).
 
 ## Layout
 
-| Path | Role |
-| --- | --- |
-| `docker-compose.local.yml` | Official DynamoDB Local image |
-| `scripts/local/dev.sh` | One-command admin (`npm run local:dev`) |
-| `scripts/local/env.sh` | Safe env (source before local tools) |
-| `scripts/local/bootstrap-table.ts` | Create `gagnechris-local` + GSIs |
-| `scripts/local/seed-shell.sh` | Copy `apps/web/dist` → `.local-site` |
-| `scripts/local/e2e.sh` | Automated smoke (`npm run e2e:local`) |
-| `services/api/local/server.ts` | HTTP → Lambda handler + publisher rebuild |
-| `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request |
-| `.local-site/` | Filesystem stand-in for the S3 site bucket (gitignored) |
+| Path                                  | Role                                                    |
+| ------------------------------------- | ------------------------------------------------------- |
+| `docker-compose.local.yml`            | Official DynamoDB Local image                           |
+| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                 |
+| `scripts/local/env.sh`                | Safe env (source before local tools)                    |
+| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                        |
+| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                    |
+| `scripts/local/e2e.sh`                | Automated smoke (`npm run e2e:local`)                   |
+| `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild               |
+| `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request        |
+| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored) |
 
 Publisher uses `SITE_STORAGE=filesystem` locally; prod Lambda still uses S3 + CloudFront invalidation.

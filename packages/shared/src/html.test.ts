@@ -23,17 +23,25 @@ describe('replaceMeta / upsertMeta / upsertCanonical', () => {
 </head><body></body></html>`;
 
   it('replaces existing meta by name/property without mangling $', () => {
-    const next = replaceMeta(shell, 'name', 'description', 'Making $$$ with $&');
+    const next = replaceMeta(
+      shell,
+      'name',
+      'description',
+      'Making $$$ with $&',
+    );
     expect(next).toContain(
       '<meta name="description" content="Making $$$ with $&" />',
     );
-    expect(next).not.toContain(
-      '<meta name="description" content="old" />',
-    );
+    expect(next).not.toContain('<meta name="description" content="old" />');
   });
 
   it('appends missing meta before </head>', () => {
-    const next = upsertMeta(shell, 'property', 'article:published_time', '2026-01-01');
+    const next = upsertMeta(
+      shell,
+      'property',
+      'article:published_time',
+      '2026-01-01',
+    );
     expect(next).toContain(
       '<meta property="article:published_time" content="2026-01-01" />\n</head>',
     );

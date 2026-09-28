@@ -18,14 +18,8 @@ type CfResponse = {
   body?: string;
 };
 
-function runHandler(
-  uri: string,
-  response: CfResponse,
-): CfResponse {
-  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
-  const run = new Function(
-    `${fnSource}\nreturn handler;`,
-  )() as (event: {
+function runHandler(uri: string, response: CfResponse): CfResponse {
+  const run = new Function(`${fnSource}\nreturn handler;`)() as (event: {
     request: { uri: string };
     response: CfResponse;
   }) => CfResponse;

@@ -3,4 +3,4 @@ export const LazyFallback = () => (
   <p className="admin-loading" role="status">
     Loading…
   </p>
-)
+);
