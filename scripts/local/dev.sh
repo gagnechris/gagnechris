@@ -102,7 +102,7 @@ docker compose -f docker-compose.local.yml up -d
 wait_dynamodb
 
 echo "==> Bootstrap table ${DATA_TABLE_NAME}"
-node scripts/local/bootstrap-table.mjs
+npx tsx scripts/local/bootstrap-table.ts
 
 ensure_shell
 echo "==> Site root ${SITE_BUCKET_NAME}"

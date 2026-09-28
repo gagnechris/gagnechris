@@ -56,7 +56,7 @@ for i in $(seq 1 60); do
 done
 
 echo "==> Bootstrap table ${DATA_TABLE_NAME}"
-node scripts/local/bootstrap-table.mjs
+npx --yes tsx scripts/local/bootstrap-table.ts
 
 echo "==> Build web shell (if needed)"
 if [[ ! -f apps/web/dist/index.html ]]; then

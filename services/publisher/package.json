@@ -5,6 +5,12 @@
   "license": "MIT",
   "type": "module",
   "description": "DynamoDB Streams publisher: static blog HTML, posts.json, sitemap, RSS.",
+  "exports": {
+    "./s3-site": {
+      "types": "./src/s3-site.ts",
+      "import": "./src/s3-site.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

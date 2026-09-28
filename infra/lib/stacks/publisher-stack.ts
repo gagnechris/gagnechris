@@ -28,6 +28,7 @@ import {
   NodeLambda,
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
+import { PUBLISH_STREAM_SK } from '@gagnechris/data';
 
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -186,7 +187,7 @@ export class PublisherStack extends Stack {
           FilterCriteria.filter({
             dynamodb: {
               Keys: {
-                sk: { S: FilterRule.isEqual('PUBLISHED') },
+                sk: { S: FilterRule.isEqual(PUBLISH_STREAM_SK) },
               },
             },
           }),

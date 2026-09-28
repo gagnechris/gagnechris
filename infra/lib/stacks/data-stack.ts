@@ -8,8 +8,24 @@ import {
 } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
+import { APP_TABLE, type DynamoAttributeTypeCode } from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+
+function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
+  switch (code) {
+    case 'S':
+      return AttributeType.STRING;
+    case 'N':
+      return AttributeType.NUMBER;
+    case 'B':
+      return AttributeType.BINARY;
+    default: {
+      const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
+}
 
 export interface DataStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -17,7 +33,7 @@ export interface DataStackProps extends StackProps {
 
 /**
  * Single-table DynamoDB for Blog CMS posts and future Notebook entities.
- * Access patterns: docs/data-model.md
+ * Schema: `@gagnechris/data` {@link APP_TABLE}. Access patterns: docs/data-model.md
  */
 export class DataStack extends Stack {
   readonly table: Table;
@@ -26,11 +42,18 @@ export class DataStack extends Stack {
     super(scope, id, props);
 
     const { config } = props;
+    const def = APP_TABLE;
 
     this.table = new Table(this, 'AppTable', {
       tableName: `gagnechris-${config.name}`,
-      partitionKey: { name: 'pk', type: AttributeType.STRING },
-      sortKey: { name: 'sk', type: AttributeType.STRING },
+      partitionKey: {
+        name: def.partitionKey.name,
+        type: toCdkAttrType(def.partitionKey.type),
+      },
+      sortKey: {
+        name: def.sortKey.name,
+        type: toCdkAttrType(def.sortKey.type),
+      },
       billingMode: BillingMode.PAY_PER_REQUEST,
       encryption: TableEncryption.AWS_MANAGED,
       pointInTimeRecoverySpecification: {
@@ -40,22 +63,22 @@ export class DataStack extends Stack {
       removalPolicy: config.statefulRemovalPolicy,
       stream: StreamViewType.NEW_AND_OLD_IMAGES,
       // Rate-limit counters (CHR-98); contact messages do not set ttl.
-      timeToLiveAttribute: 'ttl',
+      timeToLiveAttribute: def.timeToLiveAttribute,
     });
 
-    // GSI1: list by status (admin + published-by-date). See docs/data-model.md.
-    this.table.addGlobalSecondaryIndex({
-      indexName: 'gsi1',
-      partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
-    });
-
-    // GSI2: list published posts by tag.
-    this.table.addGlobalSecondaryIndex({
-      indexName: 'gsi2',
-      partitionKey: { name: 'gsi2pk', type: AttributeType.STRING },
-      sortKey: { name: 'gsi2sk', type: AttributeType.STRING },
-    });
+    for (const gsi of def.globalSecondaryIndexes) {
+      this.table.addGlobalSecondaryIndex({
+        indexName: gsi.indexName,
+        partitionKey: {
+          name: gsi.partitionKey.name,
+          type: toCdkAttrType(gsi.partitionKey.type),
+        },
+        sortKey: {
+          name: gsi.sortKey.name,
+          type: toCdkAttrType(gsi.sortKey.type),
+        },
+      });
+    }
 
     // Prefer RETAIN even if a future env flips statefulRemovalPolicy.
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
