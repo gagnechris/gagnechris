@@ -38,7 +38,6 @@ const certificateEnv = {
 const certificate = new CertificateStack(app, `Certificate-${config.name}`, {
   env: certificateEnv,
   description: `ACM certificate in us-east-1 for CloudFront and Cognito (${config.name}).`,
-  crossRegionReferences: true,
   config,
 });
 
@@ -57,17 +56,17 @@ const data = new DataStack(app, `Data-${config.name}`, {
 const site = new SiteStack(app, `Site-${config.name}`, {
   env: stackEnv,
   description: `Static site hosting (${config.name}).`,
-  crossRegionReferences: true,
   config,
   certificate: certificate.certificate,
   alertsTopic: guardrails.alertsTopic,
 });
 
 // DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
+// Direct distribution ref is intentional: Route 53 alias targets need the
+// distribution domain/hosted-zone IDs (SSM alone is awkward for AliasTarget).
 const dns = new DnsStack(app, `Dns-${config.name}`, {
   env: stackEnv,
-  description: `DNS records for gagnechris.com (${config.name}).`,
-  crossRegionReferences: true,
+  description: `DNS records for ${config.domainName} (${config.name}).`,
   config,
   distribution: site.distribution,
 });
@@ -82,25 +81,26 @@ const email = new EmailStack(app, `Email-${config.name}`, {
 const auth = new AuthStack(app, `Auth-${config.name}`, {
   env: stackEnv,
   description: `Cognito user pool and managed login (${config.name}).`,
-  crossRegionReferences: true,
   config,
   certificate: certificate.authCertificate,
 });
 
-new ApiStack(app, `Api-${config.name}`, {
+// Api after Site so this deploy updates Site's /api origin to SSM before Api
+// drops the old CloudFormation export (CHR-135; avoids ImportValue breakage).
+const api = new ApiStack(app, `Api-${config.name}`, {
   env: stackEnv,
   description: `HTTP API + Lambda behind CloudFront /api (${config.name}).`,
   config,
   userPool: auth.userPool,
   webClient: auth.webClient,
   iosClient: auth.iosClient,
-  distribution: site.distribution,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
   emailIdentity: email.emailIdentity,
   notifyEmailIdentity: email.notifyEmailIdentity,
   fromEmail: email.fromEmail,
 });
+api.node.addDependency(site);
 
 new PublisherStack(app, `Publisher-${config.name}`, {
   env: stackEnv,
@@ -108,7 +108,6 @@ new PublisherStack(app, `Publisher-${config.name}`, {
   config,
   dataTable: data.table,
   siteBucket: site.siteBucket,
-  distribution: site.distribution,
   blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
   alertsTopic: guardrails.alertsTopic,
 });

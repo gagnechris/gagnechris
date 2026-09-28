@@ -1,0 +1,19 @@
+{
+  "prefixTemplate": "/gagnechris/${ENV_NAME}",
+  "keys": {
+    "siteBucketName": "site-bucket-name",
+    "cloudfrontDistributionId": "cloudfront-distribution-id",
+    "viewerRequestFunctionName": "viewer-request-function-name",
+    "blogSlugsKvsArn": "blog-slugs-kvs-arn",
+    "httpApiId": "http-api-id",
+    "httpApiUrl": "http-api-url",
+    "dataTableName": "data-table-name",
+    "dataTableArn": "data-table-arn",
+    "dataTableStreamArn": "data-table-stream-arn",
+    "cognitoUserPoolId": "cognito-user-pool-id",
+    "cognitoWebClientId": "cognito-web-client-id",
+    "cognitoAuthDomain": "cognito-auth-domain",
+    "publisherFunctionName": "publisher-function-name",
+    "publisherFunctionArn": "publisher-function-arn"
+  }
+}

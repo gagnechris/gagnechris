@@ -8,6 +8,7 @@ import {
 } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
+import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
 export interface DataStackProps extends StackProps {
@@ -59,19 +60,18 @@ export class DataStack extends Stack {
     // Prefer RETAIN even if a future env flips statefulRemovalPolicy.
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-    const paramPrefix = `/gagnechris/${config.name}`;
     new StringParameter(this, 'TableNameParam', {
-      parameterName: `${paramPrefix}/data-table-name`,
+      parameterName: ssmParameterName(config.name, 'dataTableName'),
       stringValue: this.table.tableName,
       description: 'DynamoDB single-table name (posts + notebook)',
     });
     new StringParameter(this, 'TableArnParam', {
-      parameterName: `${paramPrefix}/data-table-arn`,
+      parameterName: ssmParameterName(config.name, 'dataTableArn'),
       stringValue: this.table.tableArn,
       description: 'DynamoDB single-table ARN',
     });
     new StringParameter(this, 'TableStreamArnParam', {
-      parameterName: `${paramPrefix}/data-table-stream-arn`,
+      parameterName: ssmParameterName(config.name, 'dataTableStreamArn'),
       stringValue: this.table.tableStreamArn!,
       description: 'DynamoDB stream ARN for the publisher (CHR-34)',
     });

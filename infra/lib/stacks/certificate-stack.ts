@@ -7,7 +7,7 @@ import {
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { APEX_DOMAIN } from './dns-stack.js';
+import { APEX_DOMAIN } from '../config/constants.js';
 
 export interface CertificateStackProps extends StackProps {
   readonly config: EnvironmentConfig;

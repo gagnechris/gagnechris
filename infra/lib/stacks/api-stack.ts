@@ -16,14 +16,6 @@ import {
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
-  AllowedMethods,
-  CachePolicy,
-  type Distribution,
-  OriginRequestPolicy,
-  ViewerProtocolPolicy,
-} from 'aws-cdk-lib/aws-cloudfront';
-import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import {
   Alarm,
   ComparisonOperator,
   TreatMissingData,
@@ -39,9 +31,9 @@ import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
+import { siteOrigins, ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
-import { APEX_DOMAIN } from './dns-stack.js';
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -49,7 +41,6 @@ export interface ApiStackProps extends StackProps {
   readonly webClient: IUserPoolClient;
   /** Optional second audience (iOS client). */
   readonly iosClient?: IUserPoolClient;
-  readonly distribution: Distribution;
   readonly alertsTopic: ITopic;
   /** Shared single-table (posts + future Notebook). */
   readonly dataTable: ITable;
@@ -78,7 +69,6 @@ export class ApiStack extends Stack {
       config,
       userPool,
       webClient,
-      distribution,
       alertsTopic,
       dataTable,
       emailIdentity,
@@ -86,11 +76,10 @@ export class ApiStack extends Stack {
       fromEmail,
     } = props;
 
-    // SSM late-binding avoids Site ↔ Api cycle (Api adds /api/* on Site's
-    // distribution; Site would otherwise export the bucket into Api).
+    // Site bucket name via SSM (Site writes it; avoids Site↔Api CFN exports).
     const siteBucketName = StringParameter.valueForStringParameter(
       this,
-      `/gagnechris/${config.name}/site-bucket-name`,
+      ssmParameterName(config.name, 'siteBucketName'),
     );
     const siteBucket = Bucket.fromBucketName(
       this,
@@ -118,7 +107,7 @@ export class ApiStack extends Stack {
         SITE_BUCKET_NAME: siteBucketName,
         CONTACT_TO_EMAIL: config.alertsEmail,
         CONTACT_FROM_EMAIL: fromEmail,
-        SITE_APEX_DOMAIN: APEX_DOMAIN,
+        SITE_APEX_DOMAIN: config.domainName,
       },
     });
 
@@ -180,11 +169,7 @@ export class ApiStack extends Stack {
           CorsHttpMethod.DELETE,
           CorsHttpMethod.OPTIONS,
         ],
-        allowOrigins: [
-          `https://${APEX_DOMAIN}`,
-          'http://localhost:5173',
-          'http://localhost:3000',
-        ],
+        allowOrigins: siteOrigins(config.domainName),
         maxAge: Duration.days(1),
       },
       createDefaultStage: false,
@@ -281,28 +266,15 @@ export class ApiStack extends Stack {
       authorizer: jwtAuthorizer,
     });
 
-    const apiDomain = `${this.httpApi.apiId}.execute-api.${Stack.of(this).region}.amazonaws.com`;
-    distribution.addBehavior(
-      '/api/*',
-      new HttpOrigin(apiDomain, {
-        readTimeout: Duration.seconds(30),
-      }),
-      {
-        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        allowedMethods: AllowedMethods.ALLOW_ALL,
-        cachePolicy: CachePolicy.CACHING_DISABLED,
-        originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-      },
-    );
+    // /api/* CloudFront behavior lives in SiteStack (SSM http-api-id).
 
-    const paramPrefix = `/gagnechris/${config.name}`;
     new StringParameter(this, 'HttpApiIdParam', {
-      parameterName: `${paramPrefix}/http-api-id`,
+      parameterName: ssmParameterName(config.name, 'httpApiId'),
       stringValue: this.httpApi.apiId,
       description: 'API Gateway HTTP API ID',
     });
     new StringParameter(this, 'HttpApiUrlParam', {
-      parameterName: `${paramPrefix}/http-api-url`,
+      parameterName: ssmParameterName(config.name, 'httpApiUrl'),
       stringValue: this.httpApi.apiEndpoint,
       description: 'API Gateway HTTP API endpoint (direct)',
     });
@@ -313,7 +285,7 @@ export class ApiStack extends Stack {
         'Direct HTTP API URL (prefer https://gagnechris.com/api/... via CloudFront)',
     });
     new CfnOutput(this, 'HealthUrl', {
-      value: `https://${APEX_DOMAIN}/api/health`,
+      value: `https://${config.domainName}/api/health`,
       description: 'Same-origin health check',
     });
   }

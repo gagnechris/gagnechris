@@ -1,3 +1,6 @@
+import {
+  API_SERVICE_NAME,
+} from '@gagnechris/shared';
 import type {
   APIGatewayProxyHandlerV2,
   APIGatewayProxyStructuredResultV2,
@@ -10,7 +13,7 @@ import { logger, metrics } from './observability.js';
 import { dispatchRoutes, normalizePath } from './router.js';
 import { routes } from './routes.js';
 
-const tracer = new Tracer({ serviceName: 'gagnechris-api' });
+const tracer = new Tracer({ serviceName: API_SERVICE_NAME });
 
 export const handler: APIGatewayProxyHandlerV2 = async (
   event,

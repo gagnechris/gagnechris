@@ -3,7 +3,7 @@ import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { EmailIdentity, Identity } from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { APEX_DOMAIN } from './dns-stack.js';
+import { APEX_DOMAIN } from '../config/constants.js';
 
 export interface EmailStackProps extends StackProps {
   readonly config: EnvironmentConfig;

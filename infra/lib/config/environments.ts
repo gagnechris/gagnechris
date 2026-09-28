@@ -1,4 +1,5 @@
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { APEX_DOMAIN } from './constants.js';
 
 export const ENVIRONMENT_NAMES = ['prod'] as const;
 
@@ -27,7 +28,7 @@ export interface EnvironmentConfig {
 }
 
 const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
-  prod: 'gagnechris.com',
+  prod: APEX_DOMAIN,
 };
 
 /**

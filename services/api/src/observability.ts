@@ -5,9 +5,13 @@
  */
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Metrics } from '@aws-lambda-powertools/metrics';
+import {
+  API_SERVICE_NAME,
+  POWERTOOLS_METRICS_NAMESPACE,
+} from '@gagnechris/shared';
 
-export const logger = new Logger({ serviceName: 'gagnechris-api' });
+export const logger = new Logger({ serviceName: API_SERVICE_NAME });
 export const metrics = new Metrics({
-  namespace: 'gagnechris',
-  serviceName: 'gagnechris-api',
+  namespace: POWERTOOLS_METRICS_NAMESPACE,
+  serviceName: API_SERVICE_NAME,
 });

@@ -9,13 +9,21 @@ ENV_NAME="${ENV_NAME:-prod}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="${ROOT}/apps/web/dist"
+SSM_JSON="${ROOT}/infra/lib/config/ssm-params.json"
+
+ssm_name() {
+  local key="$1"
+  local leaf
+  leaf="$(node -e "const j=require(process.argv[1]); const k=process.argv[2]; if(!j.keys[k]) { console.error('unknown SSM key: '+k); process.exit(1)}; process.stdout.write(j.keys[k])" "${SSM_JSON}" "${key}")"
+  echo "/gagnechris/${ENV_NAME}/${leaf}"
+}
 
 BUCKET="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/site-bucket-name" \
+  --name "$(ssm_name siteBucketName)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text)"
 DISTRIBUTION_ID="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/cloudfront-distribution-id" \
+  --name "$(ssm_name cloudfrontDistributionId)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text)"
 
@@ -23,15 +31,15 @@ echo "Deploying web → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 
 # Bake Cognito public config into the SPA (SSM from Auth stack).
 export VITE_COGNITO_USER_POOL_ID="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/cognito-user-pool-id" \
+  --name "$(ssm_name cognitoUserPoolId)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text)"
 export VITE_COGNITO_WEB_CLIENT_ID="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/cognito-web-client-id" \
+  --name "$(ssm_name cognitoWebClientId)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text)"
 export VITE_COGNITO_AUTH_DOMAIN="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/cognito-auth-domain" \
+  --name "$(ssm_name cognitoAuthDomain)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text)"
 
@@ -93,7 +101,7 @@ aws cloudfront create-invalidation \
 #    aws lambda invoke exits 0 even when the function throws — check FunctionError
 #    so a failed republish-all fails CI instead of leaving an empty home shell.
 PUBLISHER_FN="$(aws ssm get-parameter \
-  --name "/gagnechris/${ENV_NAME}/publisher-function-name" \
+  --name "$(ssm_name publisherFunctionName)" \
   --region "${AWS_REGION}" \
   --query 'Parameter.Value' --output text 2>/dev/null || true)"
 if [ -n "${PUBLISHER_FN}" ]; then

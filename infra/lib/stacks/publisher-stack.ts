@@ -7,7 +7,6 @@ import {
 } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
@@ -21,19 +20,18 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
+import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
   LambdaFailureDestination,
   NodeLambda,
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
-import { APEX_DOMAIN } from './dns-stack.js';
 
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly dataTable: ITable;
   readonly siteBucket: IBucket;
-  readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
   /** CloudFront KeyValueStore ARN for published blog slug allowlist (CHR-115). */
   readonly blogSlugsKeyValueStoreArn: string;
@@ -54,10 +52,15 @@ export class PublisherStack extends Stack {
       config,
       dataTable,
       siteBucket,
-      distribution,
       alertsTopic,
       blogSlugsKeyValueStoreArn,
     } = props;
+
+    // Distribution ID via SSM (Site writes it) — avoids Site→Publisher export.
+    const distributionId = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'cloudfrontDistributionId'),
+    );
 
     this.publisherFunction = new NodeLambda(this, 'PublisherFunction', {
       functionName: `gagnechris-${config.name}-publisher`,
@@ -106,9 +109,9 @@ export class PublisherStack extends Stack {
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucket.bucketName,
-        CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
+        CLOUDFRONT_DISTRIBUTION_ID: distributionId,
         BLOG_SLUGS_KVS_ARN: blogSlugsKeyValueStoreArn,
-        SITE_APEX_DOMAIN: APEX_DOMAIN,
+        SITE_APEX_DOMAIN: config.domainName,
       },
     });
 
@@ -141,7 +144,7 @@ export class PublisherStack extends Stack {
         sid: 'CloudFrontInvalidate',
         actions: ['cloudfront:CreateInvalidation'],
         resources: [
-          `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+          `arn:aws:cloudfront::${this.account}:distribution/${distributionId}`,
         ],
       }),
     );
@@ -227,14 +230,13 @@ export class PublisherStack extends Stack {
       treatMissingData: TreatMissingData.NOT_BREACHING,
     }).addAlarmAction(new SnsAction(alertsTopic));
 
-    const paramPrefix = `/gagnechris/${config.name}`;
     new StringParameter(this, 'PublisherFunctionNameParam', {
-      parameterName: `${paramPrefix}/publisher-function-name`,
+      parameterName: ssmParameterName(config.name, 'publisherFunctionName'),
       stringValue: this.publisherFunction.functionName,
       description: 'Publisher Lambda name (republish-all from web deploy)',
     });
     new StringParameter(this, 'PublisherFunctionArnParam', {
-      parameterName: `${paramPrefix}/publisher-function-arn`,
+      parameterName: ssmParameterName(config.name, 'publisherFunctionArn'),
       stringValue: this.publisherFunction.functionArn,
       description: 'Publisher Lambda ARN',
     });

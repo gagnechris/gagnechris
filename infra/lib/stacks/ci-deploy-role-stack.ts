@@ -9,6 +9,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
+import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
 export interface CiDeployRoleStackProps extends StackProps {
@@ -30,8 +31,8 @@ export class CiDeployRoleStack extends Stack {
   constructor(scope: Construct, id: string, props: CiDeployRoleStackProps) {
     super(scope, id, props);
 
-    const owner = props.githubOwner ?? 'gagnechris';
-    const repo = props.githubRepo ?? 'gagnechris';
+    const owner = props.githubOwner ?? GITHUB_OWNER;
+    const repo = props.githubRepo ?? GITHUB_REPO;
     const repoPath = `${owner}/${repo}`;
 
     const provider = new OpenIdConnectProvider(this, 'GitHubOidc', {

@@ -104,7 +104,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site (CHR-22)
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, reserved `/api/*` and `/media/*`.
+- Security headers (HSTS, CSP for GA4 + Formspree + Cognito auth domain / IdP), viewer-request function (www→apex with query string; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`; CHR-135), `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published slugs into a CloudFront KeyValueStore after each rebuild (CHR-115; function code stays CDK-managed).
 - 5xx alarm publishes to the Guardrails alerts topic.
@@ -128,7 +128,7 @@ AWS_PROFILE=gagnechris-admin npm run deploy:web
 
 ## HTTP API (CHR-28 / CHR-30)
 
-`Api-prod`: HTTP API + Lambda behind CloudFront `/api/*`. Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts CRUD uses the shared `Data-prod` table (`DATA_TABLE_NAME`); Notebook will share the same table with different key prefixes (`docs/data-model.md`).
+`Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`; CHR-135). Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts CRUD uses the shared `Data-prod` table (`DATA_TABLE_NAME`); Notebook will share the same table with different key prefixes (`docs/data-model.md`).
 
 SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
