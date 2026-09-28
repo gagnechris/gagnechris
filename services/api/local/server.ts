@@ -1,6 +1,7 @@
 /**
  * Dev-only HTTP wrapper around the API Lambda handler.
- * Injects Cognito JWT claims the same way API Gateway would — handler.ts unchanged.
+ * Injects Cognito JWT claims the same way API Gateway would — only on admin
+ * routes — so public routes still exercise the missing-auth path.
  *
  * Not bundled into the Lambda (CDK entry is src/handler.ts only).
  */
@@ -13,6 +14,7 @@ import type {
 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
 import { rebuildPublishedSite } from '../../publisher/src/s3-site.js';
+import { canonicalPath } from '../src/router.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
 
@@ -29,6 +31,11 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+}
+
+function isAdminRoute(rawPath: string): boolean {
+  const path = canonicalPath(rawPath);
+  return path === '/admin' || path.startsWith('/admin/');
 }
 
 function buildEvent(
@@ -49,6 +56,8 @@ function buildEvent(
   const isBinary =
     contentType.startsWith('image/') ||
     contentType.startsWith('application/octet-stream');
+
+  const injectClaims = isAdminRoute(url.pathname);
 
   return {
     version: '2.0',
@@ -74,12 +83,16 @@ function buildEvent(
       stage: '$default',
       time: new Date().toISOString(),
       timeEpoch: Date.now(),
-      authorizer: {
-        jwt: {
-          claims: LOCAL_CLAIMS,
-          scopes: [],
-        },
-      },
+      ...(injectClaims
+        ? {
+            authorizer: {
+              jwt: {
+                claims: LOCAL_CLAIMS,
+                scopes: [],
+              },
+            },
+          }
+        : {}),
     },
     isBase64Encoded: isBinary,
     body: body.length

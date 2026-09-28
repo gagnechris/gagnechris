@@ -8,6 +8,7 @@ import {
   NotFoundError,
   ServiceUnavailableError,
 } from './data/errors.js';
+import { RateLimitExceededError } from './contact/rateLimit.js';
 
 export function json(
   statusCode: number,
@@ -76,6 +77,9 @@ export function mapRouteError(
   }
   if (error instanceof ServiceUnavailableError) {
     return json(503, { error: 'service_unavailable', message: error.message });
+  }
+  if (error instanceof RateLimitExceededError) {
+    return json(429, { error: 'rate_limited', message: error.message });
   }
   if (isZodError(error)) {
     return zodBadRequest(error, zodMessage);
