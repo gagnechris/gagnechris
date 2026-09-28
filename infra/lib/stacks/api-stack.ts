@@ -134,8 +134,10 @@ export class ApiStack extends Stack {
       comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING,
     });
+    // Live Api-prod already uses this hashed logical ID (AlarmName collision if
+    // we recreate as ApiLambdaErrors). Keep it so CFN updates in place.
     (apiErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-      'ApiLambdaErrors',
+      'ApiLambdaErrorsC2E62DF4',
     );
     apiErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 

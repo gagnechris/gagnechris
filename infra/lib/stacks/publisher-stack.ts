@@ -124,8 +124,10 @@ export class PublisherStack extends Stack {
       comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING,
     });
+    // Live Publisher-prod already uses this hashed logical ID (same AlarmName
+    // collision as Api). Keep it so CFN updates in place.
     (publisherErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-      'PublisherLambdaErrors',
+      'PublisherLambdaErrors71132C5B',
     );
     publisherErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
