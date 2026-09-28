@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
@@ -9,34 +8,8 @@ import {
 import { setSesClient } from '../src/contact/mail.js';
 import { ContactRepository } from '../src/contact/repository.js';
 import { RateLimiter } from '../src/contact/rateLimit.js';
-
-function eventWithBody(
-  body: unknown,
-  ip = '127.0.0.1',
-): APIGatewayProxyEventV2 {
-  return {
-    body: JSON.stringify(body),
-    isBase64Encoded: false,
-    headers: { 'user-agent': 'vitest' },
-    requestContext: { http: { sourceIp: ip } },
-  } as unknown as APIGatewayProxyEventV2;
-}
-
-function mockDoc(
-  impl: (command: {
-    constructor: { name: string };
-    input: Record<string, unknown>;
-  }) => Promise<unknown>,
-): DynamoDBDocumentClient {
-  return {
-    send: vi.fn(
-      async (command: {
-        constructor: { name: string };
-        input: Record<string, unknown>;
-      }) => impl(command),
-    ),
-  } as unknown as DynamoDBDocumentClient;
-}
+import { makeEventWithBody } from './support/make-event.js';
+import { mockDocClient } from './support/mock-doc.js';
 
 describe('contact routes', () => {
   afterEach(() => {
@@ -49,7 +22,7 @@ describe('contact routes', () => {
 
   it('rejects invalid contact bodies with friendly field codes', async () => {
     const res = await handleContactRoute(
-      eventWithBody({ name: '', email: 'nope', message: '' }),
+      makeEventWithBody({ name: '', email: 'nope', message: '' }),
       'POST',
       '/api/contact',
     );
@@ -78,7 +51,7 @@ describe('contact routes', () => {
     const docSend = vi.fn();
     const doc = { send: docSend } as unknown as DynamoDBDocumentClient;
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Bot',
         email: 'bot@example.com',
         message: 'spam',
@@ -102,7 +75,7 @@ describe('contact routes', () => {
     const docSend = vi.fn();
     const doc = { send: docSend } as unknown as DynamoDBDocumentClient;
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Bot',
         email: 'bot@example.com',
         message: 'spam',
@@ -126,7 +99,7 @@ describe('contact routes', () => {
     const docSend = vi.fn();
     const doc = { send: docSend } as unknown as DynamoDBDocumentClient;
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Speedy',
         email: 'fast@example.com',
         message: 'hi',
@@ -151,10 +124,10 @@ describe('contact routes', () => {
     setSesClient({ send } as never);
     process.env.CONTACT_TO_EMAIL = 'you@example.com';
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
-    const doc = mockDoc(async () => ({}));
+    const doc = mockDocClient(async () => ({}));
     // formStartedAt looks "too fast" vs server clock (±60s skew), but elapsedMs is honest.
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Skewed',
         email: 'skew@example.com',
         message: 'hello from the past',
@@ -180,7 +153,7 @@ describe('contact routes', () => {
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
 
     let updates = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'UpdateCommand') {
         updates += 1;
         // First UpdateCommand is rate-limit; later ones are email status.
@@ -192,7 +165,7 @@ describe('contact routes', () => {
     });
 
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Chris',
         email: 'visitor@example.com',
         message: 'Hello',
@@ -217,7 +190,7 @@ describe('contact routes', () => {
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
     process.env.SITE_APEX_DOMAIN = 'gagnechris.com';
 
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'PutCommand') {
         return {};
       }
@@ -228,7 +201,7 @@ describe('contact routes', () => {
     });
 
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Chris',
         email: 'visitor@example.com',
         message: 'Hello',
@@ -261,9 +234,9 @@ describe('contact routes', () => {
     process.env.CONTACT_TO_EMAIL = 'you@example.com';
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
 
-    const doc = mockDoc(async () => ({}));
+    const doc = mockDocClient(async () => ({}));
     const res = await handleContactRoute(
-      eventWithBody({
+      makeEventWithBody({
         name: 'Chris',
         email: 'visitor@example.com',
         message: 'Hello',
@@ -288,7 +261,7 @@ describe('contact routes', () => {
     process.env.CONTACT_TO_EMAIL = 'you@example.com';
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
     let contactIpCalls = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       const key = command.input.Key as { pk?: string } | undefined;
       if (key?.pk?.startsWith('RATE#contact#ip#')) {
         contactIpCalls += 1;
@@ -314,7 +287,7 @@ describe('contact routes', () => {
     };
     for (let i = 0; i < 3; i += 1) {
       const ok = await handleContactRoute(
-        eventWithBody(body),
+        makeEventWithBody(body),
         'POST',
         '/api/contact',
         deps,
@@ -322,7 +295,7 @@ describe('contact routes', () => {
       expect(ok?.statusCode).toBe(200);
     }
     const limited = await handleContactRoute(
-      eventWithBody(body),
+      makeEventWithBody(body),
       'POST',
       '/api/contact',
       deps,
@@ -338,7 +311,7 @@ describe('contact routes', () => {
     process.env.CONTACT_FROM_EMAIL = 'noreply@gagnechris.com';
 
     let resumeClaims = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       const key = command.input.Key as { pk?: string } | undefined;
       if (key?.pk?.startsWith('RATE#resume#ip#')) {
         resumeClaims += 1;
@@ -357,13 +330,13 @@ describe('contact routes', () => {
     };
 
     const first = await handleContactRoute(
-      eventWithBody({ referrer: 'https://gagnechris.com/resume' }),
+      makeEventWithBody({ referrer: 'https://gagnechris.com/resume' }),
       'POST',
       '/api/resume/download',
       deps,
     );
     const second = await handleContactRoute(
-      eventWithBody({ referrer: 'https://gagnechris.com/resume' }),
+      makeEventWithBody({ referrer: 'https://gagnechris.com/resume' }),
       'POST',
       '/api/resume/download',
       deps,

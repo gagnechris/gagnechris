@@ -10,6 +10,7 @@ import {
 } from '../src/posts/keys.js';
 import type { Post } from '@gagnechris/shared';
 import { encodeCursor } from '../src/data/cursor.js';
+import { mockDocClient } from './support/mock-doc.js';
 
 const draft: Post = {
   id: '01TESTPOSTID00000000000000',
@@ -26,20 +27,6 @@ const draft: Post = {
   version: 1,
   hasUnpublishedChanges: false,
 };
-
-function mockDoc(
-  impl: (command: {
-    constructor: { name: string };
-    input: unknown;
-  }) => Promise<unknown>,
-): DynamoDBDocumentClient {
-  return {
-    send: vi.fn(
-      async (command: { constructor: { name: string }; input: unknown }) =>
-        impl(command),
-    ),
-  } as unknown as DynamoDBDocumentClient;
-}
 
 /** BatchGet responses used by PublishableKeyedRepository.loadDraftAndPublished. */
 function batchGetResponses(...items: Record<string, unknown>[]) {
@@ -76,7 +63,7 @@ describe('PostsRepository', () => {
   });
 
   it('gets by id from META item via BatchGet', async () => {
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'BatchGetCommand') {
         return batchGetResponses(buildMetaItem(draft));
       }
@@ -89,7 +76,7 @@ describe('PostsRepository', () => {
 
   it('gets by slug via slug claim then META', async () => {
     let calls = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       calls += 1;
       if (command.constructor.name === 'GetCommand') {
         return { Item: { postId: draft.id } };
@@ -106,7 +93,7 @@ describe('PostsRepository', () => {
   });
 
   it('lists via gsi1 status partition', async () => {
-    const doc = mockDoc(async () => ({ Items: [buildMetaItem(draft)] }));
+    const doc = mockDocClient(async () => ({ Items: [buildMetaItem(draft)] }));
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const page = await repo.list('draft');
     expect(page.items).toHaveLength(1);
@@ -119,7 +106,7 @@ describe('PostsRepository', () => {
       gsi1pk: 'STATUS#draft',
       gsi1sk: 'x',
     };
-    const doc = mockDoc(async () => ({
+    const doc = mockDocClient(async () => ({
       Items: [buildMetaItem(draft)],
       LastEvaluatedKey: lek,
     }));
@@ -131,7 +118,7 @@ describe('PostsRepository', () => {
 
   it('publish flips status and bumps version', async () => {
     let calls = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       calls += 1;
       if (command.constructor.name === 'BatchGetCommand') {
         return batchGetResponses(buildMetaItem(draft));
@@ -150,7 +137,7 @@ describe('PostsRepository', () => {
   });
 
   it('publish accepts an explicit publishedAt for migrations', async () => {
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'BatchGetCommand') {
         return batchGetResponses(buildMetaItem(draft));
       }

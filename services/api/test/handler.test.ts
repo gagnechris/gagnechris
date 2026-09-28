@@ -1,45 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
-
-function event(
-  method: string,
-  path: string,
-  claims?: Record<string, string>,
-): APIGatewayProxyEventV2 {
-  return {
-    version: '2.0',
-    routeKey: `${method} ${path}`,
-    rawPath: path,
-    rawQueryString: '',
-    headers: {},
-    requestContext: {
-      accountId: '123',
-      apiId: 'api',
-      domainName: 'example.com',
-      domainPrefix: 'example',
-      http: {
-        method,
-        path,
-        protocol: 'HTTP/1.1',
-        sourceIp: '127.0.0.1',
-        userAgent: 'vitest',
-      },
-      requestId: 'req',
-      routeKey: `${method} ${path}`,
-      stage: '$default',
-      time: 'now',
-      timeEpoch: Date.now(),
-      authorizer: claims ? { jwt: { claims, scopes: [] } } : undefined,
-    },
-    isBase64Encoded: false,
-  } as APIGatewayProxyEventV2;
-}
+import { makeEvent } from './support/make-event.js';
 
 describe('api handler', () => {
   it('GET /api/health returns ok', async () => {
     const result = await handler(
-      event('GET', '/api/health'),
+      makeEvent('GET', '/api/health'),
       {} as never,
       () => undefined,
     );
@@ -51,10 +17,12 @@ describe('api handler', () => {
 
   it('GET /api/admin/me returns claims', async () => {
     const result = await handler(
-      event('GET', '/api/admin/me', {
-        sub: 'abc-123',
-        email: 'admin@example.com',
-        'cognito:username': 'admin@example.com',
+      makeEvent('GET', '/api/admin/me', {
+        jwtClaims: {
+          sub: 'abc-123',
+          email: 'admin@example.com',
+          'cognito:username': 'admin@example.com',
+        },
       }),
       {} as never,
       () => undefined,
@@ -70,7 +38,7 @@ describe('api handler', () => {
 
   it('unknown route is 404', async () => {
     const result = await handler(
-      event('GET', '/api/nope'),
+      makeEvent('GET', '/api/nope'),
       {} as never,
       () => undefined,
     );
@@ -79,7 +47,7 @@ describe('api handler', () => {
 
   it('does not set CORS headers (API Gateway corsPreflight owns that)', async () => {
     const result = await handler(
-      event('GET', '/api/health'),
+      makeEvent('GET', '/api/health'),
       {} as never,
       () => undefined,
     );

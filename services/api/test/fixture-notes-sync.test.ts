@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { FixtureNotesRepository } from '../src/fixture-notes/repository.js';
@@ -7,6 +6,7 @@ import { SyncLedger } from '../src/sync/ledger.js';
 import { createFixtureNoteRoutes } from '../src/fixture-notes/handlers.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
 import { dispatchRoutes } from '../src/router.js';
+import { makeEvent } from './support/make-event.js';
 
 const TABLE = 'gagnechris-test';
 const USER = 'user-1';
@@ -128,41 +128,13 @@ function adminEvent(
   body?: unknown,
   headers?: Record<string, string>,
   query?: Record<string, string>,
-): APIGatewayProxyEventV2 {
-  return {
-    version: '2.0',
-    routeKey: `${method} ${path}`,
-    rawPath: path,
-    rawQueryString: query ? new URLSearchParams(query).toString() : '',
-    headers: headers ?? {},
-    queryStringParameters: query,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    isBase64Encoded: false,
-    requestContext: {
-      accountId: '123',
-      apiId: 'api',
-      domainName: 'example.com',
-      domainPrefix: 'example',
-      http: {
-        method,
-        path,
-        protocol: 'HTTP/1.1',
-        sourceIp: '127.0.0.1',
-        userAgent: 'vitest',
-      },
-      requestId: 'req',
-      routeKey: `${method} ${path}`,
-      stage: '$default',
-      time: 'now',
-      timeEpoch: Date.now(),
-      authorizer: {
-        jwt: {
-          claims: { sub: USER },
-          scopes: [],
-        },
-      },
-    },
-  } as APIGatewayProxyEventV2;
+) {
+  return makeEvent(method, path, {
+    body,
+    headers,
+    query,
+    jwtClaims: { sub: USER },
+  });
 }
 
 describe('fixture notes sync (CHR-141)', () => {
