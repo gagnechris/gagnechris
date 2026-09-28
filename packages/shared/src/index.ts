@@ -1,8 +1,18 @@
+/**
+ * Platform-neutral domain entry for `@gagnechris/shared`.
+ * No marked, HTML renderers, OpenAPI, or Node DynamoDB helpers (CHR-139).
+ */
 export {
   API_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
 } from './constants.js';
+export {
+  SITE_AUTHOR_NAME,
+  SITE_GITHUB_URL,
+  SITE_LINKEDIN_URL,
+  SITE_PROFILE_IMAGE_SRC,
+} from './site-config.js';
 export {
   AdminMeResponseSchema,
   ConflictErrorResponseSchema,
@@ -59,46 +69,8 @@ export {
   type UpdatePostRequest,
   type UpdateResumeRequest,
 } from './schemas.js';
-export { buildOpenApiDocument } from './openapi.js';
-export { renderMarkdownToHtml } from './markdown.js';
-export {
-  escapeHtml,
-  escapeRegExp,
-  replaceMeta,
-  upsertCanonical,
-  upsertMeta,
-} from './html.js';
 export { DEFAULT_HOME } from './home-default.js';
-export {
-  homeAboutExcerpt,
-  HOME_FOOTER_LINKS,
-  HOME_PROFILE_IMAGE_SRC,
-  HOME_QUICK_LINKS,
-  renderHomeAboutHtml,
-  renderHomeAboutSectionHtml,
-  renderHomeFooterHtml,
-  renderHomePrerenderHtml,
-  renderHomeQuickLinksHtml,
-} from './home-html.js';
-export type { SiteChromeLink } from './home-html.js';
 export { DEFAULT_RESUME } from './resume-default.js';
-export {
-  renderResumePrerenderHtml,
-  renderResumeSectionsHtml,
-  resumeSummaryExcerpt,
-} from './resume-html.js';
 export { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export { formatPostDate, postDateAttribute } from './post-date.js';
-export {
-  batchGetAll,
-  batchGetAllWithDocClient,
-  classifyDynamoWriteError,
-  isOptimisticLockConflict,
-  BATCH_GET_MAX_ATTEMPTS,
-  type BatchGetOutput,
-  type BatchGetRequestItems,
-  type BatchGetSend,
-  type BatchGetDocClientSend,
-  type BatchGetTableRequest,
-  type DynamoWriteErrorKind,
-} from './dynamodb.js';
+export { textExcerpt } from './excerpt.js';

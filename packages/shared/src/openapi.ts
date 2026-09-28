@@ -1,3 +1,4 @@
+import './openapi-extend.js';
 import { z } from 'zod';
 import {
   OpenAPIRegistry,
@@ -17,9 +18,13 @@ import {
   MediaUploadUrlResponseSchema,
   PostListResponseSchema,
   PostSchema,
+  PostSeoSchema,
   PostStatusSchema,
+  ResumeContentSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
+  ResumeEducationSchema,
+  ResumeExperienceSchema,
   ResumeSchema,
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
@@ -113,6 +118,10 @@ export function buildOpenApiDocument() {
     'ResumeDownloadNotifyResponse',
     ResumeDownloadNotifyResponseSchema,
   );
+  registry.register('ResumeContent', ResumeContentSchema);
+  registry.register('ResumeEducation', ResumeEducationSchema);
+  registry.register('ResumeExperience', ResumeExperienceSchema);
+  registry.register('PostSeo', PostSeoSchema);
 
   registry.registerPath({
     method: 'get',

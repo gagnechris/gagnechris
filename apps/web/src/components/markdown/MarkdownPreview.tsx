@@ -1,4 +1,4 @@
-import { renderMarkdownToHtml } from '@gagnechris/shared';
+import { renderMarkdownToHtml } from '@gagnechris/shared/render';
 
 type MarkdownPreviewProps = {
   markdown: string;

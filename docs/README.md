@@ -52,7 +52,7 @@ npm run e2e:local
 apps/web/              React/Vite site + admin
 services/api/          Lambda HTTP API (posts, home, resume, contact, auth)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
-packages/shared/       Shared types, schemas, HTML helpers
+packages/shared/       Domain schemas/types; `/render`, `/openapi`, `/server` subpaths
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
 scripts/               Local stack, deploy-web, branch protection
 docs/                  Architecture, development, data model, E2E

@@ -27,7 +27,12 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["HealthResponse"];
+                        "application/json": {
+                            /** @enum {string} */
+                            status: "ok";
+                            /** @enum {string} */
+                            service: "gagnechris-api";
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -36,7 +41,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -45,7 +56,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -81,7 +98,12 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AdminMeResponse"];
+                        "application/json": {
+                            sub: string;
+                            /** Format: email */
+                            email?: string;
+                            username?: string;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -90,7 +112,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -99,7 +127,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -108,7 +142,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -133,7 +173,7 @@ export interface paths {
             parameters: {
                 query?: {
                     /** @description Filter by status (omit to list draft + published) */
-                    status?: components["schemas"]["PostStatus"] & unknown;
+                    status?: "draft" | "published" | "deleted";
                     /** @description Opaque pagination cursor from a previous list response */
                     cursor?: string;
                     /** @description Page size (single-status queries only) */
@@ -151,7 +191,31 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PostListResponse"];
+                        "application/json": {
+                            items: {
+                                id: string;
+                                slug: string;
+                                title: string;
+                                excerpt: string;
+                                bodyMarkdown: string;
+                                tags: string[];
+                                coverImage: string | null;
+                                seo: {
+                                    title?: string;
+                                    description?: string;
+                                    ogImage?: string;
+                                } | null;
+                                /** @enum {string} */
+                                status: "draft" | "published" | "deleted";
+                                /** Format: date-time */
+                                publishedAt: string | null;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                version: number;
+                                hasUnpublishedChanges: boolean;
+                            }[];
+                            nextCursor?: string;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -160,7 +224,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -169,7 +239,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -178,7 +254,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -194,7 +276,23 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["CreatePostRequest"];
+                    "application/json": {
+                        /** @default Untitled */
+                        title?: string;
+                        slug?: string;
+                        /** @default  */
+                        excerpt?: string;
+                        /** @default  */
+                        bodyMarkdown?: string;
+                        /** @default [] */
+                        tags?: string[];
+                        coverImage?: string | null;
+                        seo?: {
+                            title?: string;
+                            description?: string;
+                            ogImage?: string;
+                        } | null;
+                    };
                 };
             };
             responses: {
@@ -204,7 +302,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -213,7 +332,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -222,7 +347,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -231,7 +362,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -240,7 +377,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -249,7 +394,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -286,7 +437,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -295,7 +467,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -304,7 +482,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -313,7 +497,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -322,7 +512,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -340,7 +536,20 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["UpdatePostRequest"];
+                    "application/json": {
+                        version: number;
+                        title?: string;
+                        slug?: string;
+                        excerpt?: string;
+                        bodyMarkdown?: string;
+                        tags?: string[];
+                        coverImage?: string | null;
+                        seo?: {
+                            title?: string;
+                            description?: string;
+                            ogImage?: string;
+                        } | null;
+                    };
                 };
             };
             responses: {
@@ -350,7 +559,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -359,7 +589,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -368,7 +604,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -377,7 +619,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -386,7 +634,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -395,7 +649,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -404,7 +666,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -423,7 +691,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -433,7 +703,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -442,7 +733,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -451,7 +748,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -460,7 +763,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -469,7 +778,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -478,7 +793,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -487,7 +810,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -519,7 +848,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -529,7 +860,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -538,7 +890,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -547,7 +905,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -556,7 +920,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -565,7 +935,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -574,7 +950,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -583,7 +967,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -616,7 +1006,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -626,7 +1018,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -635,7 +1048,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -644,7 +1063,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -653,7 +1078,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -662,7 +1093,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -671,7 +1108,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -680,7 +1125,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -713,7 +1164,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -723,7 +1176,28 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Post"];
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            excerpt: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            coverImage: string | null;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -732,7 +1206,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -741,7 +1221,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not found */
@@ -750,7 +1236,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -759,7 +1251,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -768,7 +1266,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -777,7 +1283,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -811,7 +1323,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Home"];
+                        "application/json": {
+                            name: string;
+                            title: string;
+                            about: string;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -820,7 +1349,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -829,7 +1364,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -838,7 +1379,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -853,7 +1400,17 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["UpdateHomeRequest"];
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        title?: string;
+                        about?: string;
+                        seo?: {
+                            title?: string;
+                            description?: string;
+                            ogImage?: string;
+                        } | null;
+                    };
                 };
             };
             responses: {
@@ -863,7 +1420,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Home"];
+                        "application/json": {
+                            name: string;
+                            title: string;
+                            about: string;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -872,7 +1446,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -881,7 +1461,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -890,7 +1476,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -899,7 +1491,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -908,7 +1508,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -939,7 +1545,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -949,7 +1557,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Home"];
+                        "application/json": {
+                            name: string;
+                            title: string;
+                            about: string;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -958,7 +1583,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -967,7 +1598,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -976,7 +1613,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -985,7 +1628,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -994,7 +1645,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1024,7 +1681,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -1034,7 +1693,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Home"];
+                        "application/json": {
+                            name: string;
+                            title: string;
+                            about: string;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1043,7 +1719,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1052,7 +1734,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1061,7 +1749,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1070,7 +1764,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1079,7 +1781,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1109,7 +1817,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -1119,7 +1829,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Home"];
+                        "application/json": {
+                            name: string;
+                            title: string;
+                            about: string;
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1128,7 +1855,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1137,7 +1870,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1146,7 +1885,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1155,7 +1900,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1164,7 +1917,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1198,7 +1957,40 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Resume"];
+                        "application/json": {
+                            name: string;
+                            pdfPath: string;
+                            content: {
+                                summary: string;
+                                competencies: string[];
+                                experience: {
+                                    title: string;
+                                    company: string;
+                                    bullets: string[];
+                                }[];
+                                skills: string[];
+                                education: {
+                                    title: string;
+                                    institution: string;
+                                    location: string;
+                                    year: string;
+                                    degreeDetail?: string;
+                                }[];
+                            };
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1207,7 +1999,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1216,7 +2014,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1225,7 +2029,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1240,7 +2050,33 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["UpdateResumeRequest"];
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        pdfPath?: string;
+                        content?: {
+                            summary: string;
+                            competencies: string[];
+                            experience: {
+                                title: string;
+                                company: string;
+                                bullets: string[];
+                            }[];
+                            skills: string[];
+                            education: {
+                                title: string;
+                                institution: string;
+                                location: string;
+                                year: string;
+                                degreeDetail?: string;
+                            }[];
+                        };
+                        seo?: {
+                            title?: string;
+                            description?: string;
+                            ogImage?: string;
+                        } | null;
+                    };
                 };
             };
             responses: {
@@ -1250,7 +2086,40 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Resume"];
+                        "application/json": {
+                            name: string;
+                            pdfPath: string;
+                            content: {
+                                summary: string;
+                                competencies: string[];
+                                experience: {
+                                    title: string;
+                                    company: string;
+                                    bullets: string[];
+                                }[];
+                                skills: string[];
+                                education: {
+                                    title: string;
+                                    institution: string;
+                                    location: string;
+                                    year: string;
+                                    degreeDetail?: string;
+                                }[];
+                            };
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1259,7 +2128,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1268,7 +2143,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1277,7 +2158,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1286,7 +2173,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1295,7 +2190,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1326,7 +2227,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -1336,7 +2239,40 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Resume"];
+                        "application/json": {
+                            name: string;
+                            pdfPath: string;
+                            content: {
+                                summary: string;
+                                competencies: string[];
+                                experience: {
+                                    title: string;
+                                    company: string;
+                                    bullets: string[];
+                                }[];
+                                skills: string[];
+                                education: {
+                                    title: string;
+                                    institution: string;
+                                    location: string;
+                                    year: string;
+                                    degreeDetail?: string;
+                                }[];
+                            };
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1345,7 +2281,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1354,7 +2296,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1363,7 +2311,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1372,7 +2326,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1381,7 +2343,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1411,7 +2379,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -1421,7 +2391,40 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Resume"];
+                        "application/json": {
+                            name: string;
+                            pdfPath: string;
+                            content: {
+                                summary: string;
+                                competencies: string[];
+                                experience: {
+                                    title: string;
+                                    company: string;
+                                    bullets: string[];
+                                }[];
+                                skills: string[];
+                                education: {
+                                    title: string;
+                                    institution: string;
+                                    location: string;
+                                    year: string;
+                                    degreeDetail?: string;
+                                }[];
+                            };
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1430,7 +2433,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1439,7 +2448,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1448,7 +2463,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1457,7 +2478,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1466,7 +2495,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1496,7 +2531,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                    "application/json": {
+                        version: number;
+                    };
                 };
             };
             responses: {
@@ -1506,7 +2543,40 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Resume"];
+                        "application/json": {
+                            name: string;
+                            pdfPath: string;
+                            content: {
+                                summary: string;
+                                competencies: string[];
+                                experience: {
+                                    title: string;
+                                    company: string;
+                                    bullets: string[];
+                                }[];
+                                skills: string[];
+                                education: {
+                                    title: string;
+                                    institution: string;
+                                    location: string;
+                                    year: string;
+                                    degreeDetail?: string;
+                                }[];
+                            };
+                            seo: {
+                                title?: string;
+                                description?: string;
+                                ogImage?: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1515,7 +2585,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1524,7 +2600,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1533,7 +2615,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Conflict (may include `currentVersion` / `current`) */
@@ -1542,7 +2630,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ConflictErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1551,7 +2647,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1581,7 +2683,12 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["MediaUploadUrlRequest"];
+                    "application/json": {
+                        /** @enum {string} */
+                        contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+                        contentLength: number;
+                        filename?: string;
+                    };
                 };
             };
             responses: {
@@ -1591,7 +2698,16 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["MediaUploadUrlResponse"];
+                        "application/json": {
+                            /** Format: uri */
+                            uploadUrl: string;
+                            publicPath: string;
+                            headers: {
+                                "Content-Type": string;
+                            };
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1600,7 +2716,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1609,7 +2731,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1618,7 +2746,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1627,7 +2761,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1672,7 +2812,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Unauthorized */
@@ -1681,7 +2827,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Not available outside filesystem mode */
@@ -1690,7 +2842,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1699,7 +2857,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1708,7 +2872,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1739,7 +2909,18 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ContactRequest"];
+                    "application/json": {
+                        name: string;
+                        /** Format: email */
+                        email: string;
+                        message: string;
+                        /** @default  */
+                        hp_field?: string;
+                        /** @default  */
+                        website?: string;
+                        elapsedMs?: number;
+                        formStartedAt?: number;
+                    };
                 };
             };
             responses: {
@@ -1749,7 +2930,10 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ContactResponse"];
+                        "application/json": {
+                            /** @enum {boolean} */
+                            ok: true;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1758,7 +2942,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1767,7 +2957,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Rate limited */
@@ -1776,7 +2972,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Upstream failure (e.g. SES) */
@@ -1785,7 +2987,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1794,7 +3002,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1824,7 +3038,9 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["ResumeDownloadNotifyRequest"];
+                    "application/json": {
+                        referrer?: string;
+                    };
                 };
             };
             responses: {
@@ -1834,7 +3050,10 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ResumeDownloadNotifyResponse"];
+                        "application/json": {
+                            /** @enum {boolean} */
+                            ok: true;
+                        };
                     };
                 };
                 /** @description Validation error (may include `fields`) */
@@ -1843,7 +3062,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Method not allowed on this path */
@@ -1852,7 +3077,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
                 /** @description Service unavailable (throttling) */
@@ -1861,7 +3092,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
                     };
                 };
             };
@@ -1883,14 +3120,9 @@ export interface components {
             service: "gagnechris-api";
         };
         AdminMeResponse: {
-            /** @description Cognito user sub */
             sub: string;
-            /**
-             * Format: email
-             * @description Verified email when present
-             */
+            /** Format: email */
             email?: string;
-            /** @description Cognito username claim */
             username?: string;
         };
         ErrorResponse: {
@@ -1900,12 +3132,16 @@ export interface components {
                 [key: string]: string;
             };
         };
-        ConflictErrorResponse: components["schemas"]["ErrorResponse"] & {
+        ConflictErrorResponse: {
+            error: string;
+            message?: string;
+            fields?: {
+                [key: string]: string;
+            };
             currentVersion?: number;
             current?: unknown;
         };
         Post: {
-            /** @description Immutable post id (ULID) */
             id: string;
             slug: string;
             title: string;
@@ -1913,25 +3149,43 @@ export interface components {
             bodyMarkdown: string;
             tags: string[];
             coverImage: string | null;
-            seo: components["schemas"]["PostSeo"];
-            status: components["schemas"]["PostStatus"];
+            seo: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
+            /** @enum {string} */
+            status: "draft" | "published" | "deleted";
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
             version: number;
-            /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;
         };
-        PostSeo: {
-            title?: string;
-            description?: string;
-            ogImage?: string;
-        } | null;
-        /** @enum {string} */
-        PostStatus: "draft" | "published" | "deleted";
         PostListResponse: {
-            items: components["schemas"]["Post"][];
+            items: {
+                id: string;
+                slug: string;
+                title: string;
+                excerpt: string;
+                bodyMarkdown: string;
+                tags: string[];
+                coverImage: string | null;
+                seo: {
+                    title?: string;
+                    description?: string;
+                    ogImage?: string;
+                } | null;
+                /** @enum {string} */
+                status: "draft" | "published" | "deleted";
+                /** Format: date-time */
+                publishedAt: string | null;
+                /** Format: date-time */
+                updatedAt: string;
+                version: number;
+                hasUnpublishedChanges: boolean;
+            }[];
             nextCursor?: string;
         };
         CreatePostRequest: {
@@ -1945,10 +3199,13 @@ export interface components {
             /** @default [] */
             tags: string[];
             coverImage?: string | null;
-            seo?: components["schemas"]["PostSeo"];
+            seo?: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
         };
         UpdatePostRequest: {
-            /** @description Expected version for optimistic concurrency */
             version: number;
             title?: string;
             slug?: string;
@@ -1956,30 +3213,25 @@ export interface components {
             bodyMarkdown?: string;
             tags?: string[];
             coverImage?: string | null;
-            seo?: components["schemas"]["PostSeo"];
+            seo?: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
         };
         ExpectedVersionRequest: {
-            /** @description Expected version for optimistic concurrency */
             version: number;
         };
         MediaUploadUrlRequest: {
-            contentType: components["schemas"]["MediaContentType"];
-            /** @description Exact byte length of the PUT body (max 10 MiB) */
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
             contentLength: number;
-            /** @description Original filename (extension used when present) */
             filename?: string;
         };
-        /** @enum {string} */
-        MediaContentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
         MediaUploadUrlResponse: {
-            /**
-             * Format: uri
-             * @description Presigned PUT URL (or local API PUT URL in filesystem mode)
-             */
+            /** Format: uri */
             uploadUrl: string;
-            /** @description Same-origin path to insert in markdown */
             publicPath: string;
-            /** @description Headers the client must send on the PUT (Content-Length is set by the browser to match contentLength) */
             headers: {
                 "Content-Type": string;
             };
@@ -2003,57 +3255,118 @@ export interface components {
             ok: true;
         };
         Home: {
-            /** @description Header name */
             name: string;
-            /** @description Header subtitle, e.g. "Engineering Leader" */
             title: string;
-            /** @description About Me body text; blank lines separate paragraphs */
             about: string;
-            seo: components["schemas"]["PostSeo"];
-            status: components["schemas"]["PostStatus"];
+            seo: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
+            /** @enum {string} */
+            status: "draft" | "published" | "deleted";
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
             version: number;
-            /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;
         };
         UpdateHomeRequest: {
-            /** @description Expected version for optimistic concurrency */
             version: number;
             name?: string;
             title?: string;
             about?: string;
-            seo?: components["schemas"]["PostSeo"];
+            seo?: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
         };
         Resume: {
             name: string;
-            /** @description Site-relative path to the downloadable PDF (publisher always serves /resume.pdf) */
             pdfPath: string;
-            content: components["schemas"]["ResumeContent"];
-            seo: components["schemas"]["PostSeo"];
-            status: components["schemas"]["PostStatus"];
+            content: {
+                summary: string;
+                competencies: string[];
+                experience: {
+                    title: string;
+                    company: string;
+                    bullets: string[];
+                }[];
+                skills: string[];
+                education: {
+                    title: string;
+                    institution: string;
+                    location: string;
+                    year: string;
+                    degreeDetail?: string;
+                }[];
+            };
+            seo: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
+            /** @enum {string} */
+            status: "draft" | "published" | "deleted";
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
             version: number;
-            /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;
+        };
+        UpdateResumeRequest: {
+            version: number;
+            name?: string;
+            pdfPath?: string;
+            content?: {
+                summary: string;
+                competencies: string[];
+                experience: {
+                    title: string;
+                    company: string;
+                    bullets: string[];
+                }[];
+                skills: string[];
+                education: {
+                    title: string;
+                    institution: string;
+                    location: string;
+                    year: string;
+                    degreeDetail?: string;
+                }[];
+            };
+            seo?: {
+                title?: string;
+                description?: string;
+                ogImage?: string;
+            } | null;
+        };
+        ResumeDownloadNotifyRequest: {
+            referrer?: string;
+        };
+        ResumeDownloadNotifyResponse: {
+            /** @enum {boolean} */
+            ok: true;
         };
         ResumeContent: {
             summary: string;
-            /** @description Flat list; the renderer splits it into two columns */
             competencies: string[];
-            experience: components["schemas"]["ResumeExperience"][];
+            experience: {
+                title: string;
+                company: string;
+                bullets: string[];
+            }[];
             skills: string[];
-            education: components["schemas"]["ResumeEducation"][];
-        };
-        ResumeExperience: {
-            title: string;
-            company: string;
-            bullets: string[];
+            education: {
+                title: string;
+                institution: string;
+                location: string;
+                year: string;
+                degreeDetail?: string;
+            }[];
         };
         ResumeEducation: {
             title: string;
@@ -2062,20 +3375,15 @@ export interface components {
             year: string;
             degreeDetail?: string;
         };
-        UpdateResumeRequest: {
-            /** @description Expected version for optimistic concurrency */
-            version: number;
-            name?: string;
-            pdfPath?: string;
-            content?: components["schemas"]["ResumeContent"];
-            seo?: components["schemas"]["PostSeo"];
+        ResumeExperience: {
+            title: string;
+            company: string;
+            bullets: string[];
         };
-        ResumeDownloadNotifyRequest: {
-            referrer?: string;
-        };
-        ResumeDownloadNotifyResponse: {
-            /** @enum {boolean} */
-            ok: true;
+        PostSeo: {
+            title?: string;
+            description?: string;
+            ogImage?: string;
         };
     };
     responses: never;

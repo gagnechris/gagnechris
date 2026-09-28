@@ -92,6 +92,18 @@ Post, Home, and Resume editors share one publish/discard flow and a small UI kit
 4. Handlers receive `ctx.userId`, `ctx.claims`, `ctx.logger`, `ctx.metrics`, and `ctx.requestId`. Do **not** add per-module try/catch — validation and `mapRouteError` run in `dispatchRoutes`.
 5. Wrong method on a known path → **405**; unknown path → **404**. Per-route metrics use a `route` dimension.
 
+## `@gagnechris/shared` entry points (CHR-139)
+
+| Import                         | Contents                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `@gagnechris/shared`           | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
+| `@gagnechris/shared/render`    | Markdown + HTML prerender helpers (web / publisher)                                            |
+| `@gagnechris/shared/openapi`   | OpenAPI document builder (build-time only)                                                     |
+| `@gagnechris/shared/server`    | DynamoDB helpers (API / publisher)                                                             |
+| `@gagnechris/shared/home` etc. | Zod-free HTML entry points for the public web bundle                                           |
+
+CI runs `npm run check:domain-bundle -w @gagnechris/shared` (esbuild metafile) so the domain entry cannot pull banned modules. Metro import is verified by the Expo spike (CHR-142).
+
 ## Related
 
 - CDK / ops: [../infra/RUNBOOK.md](../infra/RUNBOOK.md)

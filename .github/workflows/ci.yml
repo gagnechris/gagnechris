@@ -39,6 +39,9 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Shared domain bundle guard
+        run: npm run check:domain-bundle -w @gagnechris/shared
+
       - name: Typecheck
         run: npm run typecheck
 

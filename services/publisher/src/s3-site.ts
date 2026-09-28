@@ -19,7 +19,7 @@ import {
   statusGsi1Pk,
   type PostMetaItem,
 } from '@gagnechris/data';
-import { batchGetAllWithDocClient } from '@gagnechris/shared';
+import { batchGetAllWithDocClient } from '@gagnechris/shared/server';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { mapWithConcurrency } from './concurrency.js';

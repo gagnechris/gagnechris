@@ -1,8 +1,5 @@
-import type { components } from '../api/schema';
+import type { Resume, ResumeContent } from '@gagnechris/shared';
 import { newRepeaterId } from '../ui/repeaterId';
-
-type Resume = components['schemas']['Resume'];
-type ResumeContent = components['schemas']['ResumeContent'];
 
 export type ExperienceDraft = {
   id: string;

@@ -1,8 +1,6 @@
 import {
   escapeHtml,
-  formatPostDate,
   homeAboutExcerpt,
-  postDateAttribute,
   renderHomePrerenderHtml,
   renderMarkdownToHtml,
   renderResumePrerenderHtml,
@@ -10,7 +8,8 @@ import {
   resumeSummaryExcerpt,
   upsertCanonical,
   upsertMeta,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/render';
+import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
