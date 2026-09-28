@@ -10,12 +10,6 @@ import {
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import {
-  Alarm,
-  ComparisonOperator,
-  TreatMissingData,
-} from 'aws-cdk-lib/aws-cloudwatch';
-import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import {
   AllowedMethods,
   CachePolicy,
   type Distribution,
@@ -24,23 +18,18 @@ import {
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
-import { Architecture, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 import { APEX_DOMAIN } from './dns-stack.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(__dirname, '../../..');
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -68,7 +57,7 @@ export interface ApiStackProps extends StackProps {
  */
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
-  readonly apiFunction: NodejsFunction;
+  readonly apiFunction: NodeLambda;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -85,10 +74,6 @@ export class ApiStack extends Stack {
       fromEmail,
     } = props;
 
-    const logGroup = new LogGroup(this, 'ApiLogGroup', {
-      retention: RetentionDays.TWO_WEEKS,
-    });
-
     // SSM late-binding avoids Site ↔ Api cycle (Api adds /api/* on Site's
     // distribution; Site would otherwise export the bucket into Api).
     const siteBucketName = StringParameter.valueForStringParameter(
@@ -101,30 +86,20 @@ export class ApiStack extends Stack {
       siteBucketName,
     );
 
-    this.apiFunction = new NodejsFunction(this, 'ApiFunction', {
+    this.apiFunction = new NodeLambda(this, 'ApiFunction', {
       functionName: `gagnechris-${config.name}-api`,
       description:
         'gagnechris HTTP API (health, contact, admin posts/media; shared data table)',
-      entry: join(repoRoot, 'services/api/src/handler.ts'),
+      entry: join(REPO_ROOT, 'services/api/src/handler.ts'),
       handler: 'handler',
-      runtime: Runtime.NODEJS_24_X,
-      architecture: Architecture.ARM_64,
       memorySize: 256,
       timeout: Duration.seconds(10),
-      tracing: Tracing.ACTIVE,
-      logGroup,
-      depsLockFilePath: join(repoRoot, 'package-lock.json'),
-      projectRoot: repoRoot,
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        target: 'node24',
-        externalModules: ['@aws-sdk/*'],
-      },
+      powertoolsServiceName: 'gagnechris-api',
+      alertsTopic,
+      alarmNamePrefix: `gagnechris-${config.name}-api`,
+      iam5NagReason:
+        'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
       environment: {
-        POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
-        POWERTOOLS_METRICS_NAMESPACE: 'gagnechris',
-        NODE_OPTIONS: '--enable-source-maps',
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucketName,
         CONTACT_TO_EMAIL: config.alertsEmail,
@@ -139,26 +114,6 @@ export class ApiStack extends Stack {
     emailIdentity.grantSendEmail(this.apiFunction);
     // Sandbox SendEmail also checks the destination identity ARN.
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
-
-    NagSuppressions.addResourceSuppressions(
-      this.apiFunction,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'NodejsFunction uses AWSLambdaBasicExecutionRole for CloudWatch Logs.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-        {
-          id: 'AwsSolutions-IAM5',
-          reason:
-            'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
-        },
-      ],
-      true,
-    );
 
     const audiences = [webClient.userPoolClientId];
     if (props.iosClient) {
@@ -306,19 +261,6 @@ export class ApiStack extends Stack {
         originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
       },
     );
-
-    new Alarm(this, 'ApiLambdaErrors', {
-      alarmName: `gagnechris-${config.name}-api-lambda-errors`,
-      alarmDescription: 'API Lambda errors > 0 in 5 minutes',
-      metric: this.apiFunction.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    }).addAlarmAction(new SnsAction(alertsTopic));
 
     const paramPrefix = `/gagnechris/${config.name}`;
     new StringParameter(this, 'HttpApiIdParam', {

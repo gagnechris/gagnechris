@@ -5,28 +5,23 @@ import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
-  Architecture,
   FilterCriteria,
   FilterRule,
-  Runtime,
   StartingPosition,
-  Tracing,
 } from 'aws-cdk-lib/aws-lambda';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { NagSuppressions } from 'cdk-nag';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
+import {
+  LambdaFailureDestination,
+  NodeLambda,
+  REPO_ROOT,
+} from '../constructs/node-lambda.js';
 import { APEX_DOMAIN } from './dns-stack.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(__dirname, '../../..');
 
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -42,7 +37,9 @@ export interface PublisherStackProps extends StackProps {
  * DynamoDB Streams → Publisher Lambda → S3 static blog + CloudFront invalidation.
  */
 export class PublisherStack extends Stack {
-  readonly publisherFunction: NodejsFunction;
+  readonly publisherFunction: NodeLambda;
+  /** On-failure SQS destination for discarded stream records (CHR-134). */
+  readonly streamFailureDestination: LambdaFailureDestination;
 
   constructor(scope: Construct, id: string, props: PublisherStackProps) {
     super(scope, id, props);
@@ -56,28 +53,20 @@ export class PublisherStack extends Stack {
       blogSlugsKeyValueStoreArn,
     } = props;
 
-    const logGroup = new LogGroup(this, 'PublisherLogGroup', {
-      retention: RetentionDays.TWO_WEEKS,
-    });
-
-    this.publisherFunction = new NodejsFunction(this, 'PublisherFunction', {
+    this.publisherFunction = new NodeLambda(this, 'PublisherFunction', {
       functionName: `gagnechris-${config.name}-publisher`,
       description:
         'Render published posts to S3 (HTML, posts.json, sitemap, RSS) and invalidate CloudFront',
-      entry: join(repoRoot, 'services/publisher/src/handler.ts'),
+      entry: join(REPO_ROOT, 'services/publisher/src/handler.ts'),
       handler: 'handler',
-      runtime: Runtime.NODEJS_24_X,
-      architecture: Architecture.ARM_64,
       memorySize: 512,
       timeout: Duration.seconds(60),
-      tracing: Tracing.ACTIVE,
-      logGroup,
-      depsLockFilePath: join(repoRoot, 'package-lock.json'),
-      projectRoot: repoRoot,
+      powertoolsServiceName: 'gagnechris-publisher',
+      alertsTopic,
+      alarmNamePrefix: `gagnechris-${config.name}-publisher`,
+      iam5NagReason:
+        'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
       bundling: {
-        minify: true,
-        sourceMap: true,
-        target: 'node24',
         // Runtime provides most @aws-sdk/* clients. Bundle only CloudFront
         // KeyValueStore + SigV4a so they share one @smithy/signature-v4
         // singleton (CHR-115); externalize the rest to shrink the zip (CHR-122).
@@ -108,9 +97,6 @@ export class PublisherStack extends Stack {
         },
       },
       environment: {
-        POWERTOOLS_SERVICE_NAME: 'gagnechris-publisher',
-        POWERTOOLS_METRICS_NAMESPACE: 'gagnechris',
-        NODE_OPTIONS: '--enable-source-maps',
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucket.bucketName,
         CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
@@ -147,6 +133,16 @@ export class PublisherStack extends Stack {
       }),
     );
 
+    this.streamFailureDestination = new LambdaFailureDestination(
+      this,
+      'StreamFailures',
+      {
+        alertsTopic,
+        depthAlarmName: `gagnechris-${config.name}-publisher-stream-dlq-depth`,
+        queueName: `gagnechris-${config.name}-publisher-stream-failures`,
+      },
+    );
+
     this.publisherFunction.addEventSource(
       new DynamoEventSource(dataTable, {
         startingPosition: StartingPosition.LATEST,
@@ -154,6 +150,7 @@ export class PublisherStack extends Stack {
         bisectBatchOnError: true,
         retryAttempts: 3,
         reportBatchItemFailures: true,
+        onFailure: this.streamFailureDestination.destination,
         filters: [
           FilterCriteria.filter({
             dynamodb: {
@@ -165,39 +162,6 @@ export class PublisherStack extends Stack {
         ],
       }),
     );
-
-    NagSuppressions.addResourceSuppressions(
-      this.publisherFunction,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'NodejsFunction uses AWSLambdaBasicExecutionRole for CloudWatch Logs.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-        {
-          id: 'AwsSolutions-IAM5',
-          reason:
-            'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
-        },
-      ],
-      true,
-    );
-
-    new Alarm(this, 'PublisherLambdaErrors', {
-      alarmName: `gagnechris-${config.name}-publisher-lambda-errors`,
-      alarmDescription: 'Publisher Lambda errors > 0 in 5 minutes',
-      metric: this.publisherFunction.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    }).addAlarmAction(new SnsAction(alertsTopic));
 
     // PDF failures are isolated from the rebuild (CHR-97) so Lambda Errors
     // stays quiet; alert on the dedicated EMF metric instead.

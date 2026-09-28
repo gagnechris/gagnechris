@@ -16,8 +16,10 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, `spa.html`)
 5. **API Gateway → Lambda API** for CRUD, publish, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
-7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths
+7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
 8. **Cognito** (passkeys) protects admin routes; **SES** sends contact and download notifications
+
+API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild bundling, log retention, Powertools env, standard alarms).
 
 ## Draft vs published
 
