@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClientTestProvider } from '../test-utils'
 import AdminPostsPage from './AdminPostsPage'
 
 const post = vi.fn()
@@ -33,7 +34,7 @@ describe('AdminPostsPage', () => {
             coverImage: null,
             seo: null,
             version: 1,
-  hasUnpublishedChanges: false,
+            hasUnpublishedChanges: false,
           },
         ],
       },
@@ -45,9 +46,11 @@ describe('AdminPostsPage', () => {
   test('lists posts and filters by search', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter>
-        <AdminPostsPage />
-      </MemoryRouter>,
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <AdminPostsPage />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
     )
 
     expect(await screen.findByText('Hello')).toBeInTheDocument()
@@ -66,12 +69,14 @@ describe('AdminPostsPage', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/admin']}>
-        <Routes>
-          <Route path="/admin" element={<AdminPostsPage />} />
-          <Route path="/admin/posts/:postId" element={<div>editor</div>} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Routes>
+            <Route path="/admin" element={<AdminPostsPage />} />
+            <Route path="/admin/posts/:postId" element={<div>editor</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
     )
 
     await screen.findByText('Hello')

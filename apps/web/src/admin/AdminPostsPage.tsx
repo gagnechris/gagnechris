@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createApiClient } from '../api/client'
-import type { components } from '../api/schema'
+import { ApiError } from './query/api'
+import { useCreatePostMutation, usePostsQuery } from './query/posts'
 
-type Post = components['schemas']['Post']
 type StatusFilter = 'all' | 'draft' | 'published'
 type SortKey = 'updated' | 'published' | 'title'
 
@@ -19,35 +18,20 @@ const formatDate = (iso: string | null): string => {
 
 export default function AdminPostsPage() {
   const navigate = useNavigate()
-  const [posts, setPosts] = useState<Post[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const { data: posts, error: queryError, isPending } = usePostsQuery()
+  const createMutation = useCreatePostMutation()
+  const [actionError, setActionError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [sort, setSort] = useState<SortKey>('updated')
 
-  useEffect(() => {
-    let cancelled = false
-
-    void (async () => {
-      const client = createApiClient()
-      const { data, error: apiError, response } = await client.GET(
-        '/api/admin/posts',
-      )
-      if (cancelled) {
-        return
-      }
-      if (apiError || !data) {
-        setError(`Could not load posts (${response.status}).`)
-        return
-      }
-      setPosts(data.items.filter((p) => p.status !== 'deleted'))
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const loadError =
+    queryError instanceof ApiError
+      ? queryError.message
+      : queryError
+        ? 'Could not load posts.'
+        : null
+  const error = actionError ?? loadError
 
   const visible = useMemo(() => {
     if (!posts) {
@@ -80,30 +64,20 @@ export default function AdminPostsPage() {
   }, [posts, query, status, sort])
 
   const createDraft = async () => {
-    setCreating(true)
-    setError(null)
+    setActionError(null)
     try {
-      const client = createApiClient()
-      const { data, error: apiError, response } = await client.POST(
-        '/api/admin/posts',
-        {
-          body: {
-            title: 'Untitled',
-            excerpt: '',
-            bodyMarkdown: '',
-            tags: [],
-          },
-        },
-      )
-      if (apiError || !data) {
-        setError(`Could not create draft (${response.status}).`)
-        return
-      }
+      const data = await createMutation.mutateAsync()
       void navigate(`/admin/posts/${data.id}`)
-    } finally {
-      setCreating(false)
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError
+          ? err.message
+          : 'Could not create draft.',
+      )
     }
   }
+
+  const creating = createMutation.isPending
 
   return (
     <section className="admin-panel">
@@ -160,7 +134,7 @@ export default function AdminPostsPage() {
           {error}
         </p>
       ) : null}
-      {posts === null && !error ? <p>Loading…</p> : null}
+      {isPending && !error ? <p>Loading…</p> : null}
       {posts && visible.length === 0 ? (
         <p>No posts match. Create a draft to get started.</p>
       ) : null}

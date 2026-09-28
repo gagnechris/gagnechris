@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderResumePrerenderHtml } from '@gagnechris/shared/resume'
-import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import { ApiError, updateResume } from './query/api'
+import {
+  useResumeLifecycleMutators,
+  useResumeQuery,
+  useSetResumeCache,
+} from './query/resume'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
 import { useQueuedAutosave } from './useQueuedAutosave'
 import '../pages/Resume.css'
@@ -95,34 +100,61 @@ const toContent = (draft: DraftFields): ResumeContent => ({
 })
 
 const AdminResumePage = () => {
-  const [resume, setResume] = useState<Resume | null>(null)
+  const {
+    data: resume,
+    error: queryError,
+    isPending,
+  } = useResumeQuery()
+  const setResumeCache = useSetResumeCache()
+  const {
+    publish: publishRequest,
+    unpublish: unpublishRequest,
+    discard: discardRequest,
+  } = useResumeLifecycleMutators()
+
   const [draft, setDraft] = useState<DraftFields | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
   const [dirty, setDirty] = useState(false)
   const versionRef = useRef(0)
 
+  if (resume && !hydrated) {
+    setHydrated(true)
+    setDraft(fromResume(resume))
+    setDirty(false)
+  }
+
+  useEffect(() => {
+    if (resume) {
+      versionRef.current = resume.version
+    }
+  }, [resume])
+
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
-      const client = createApiClient()
-      const { data, error, response } = await client.PUT('/api/admin/resume', {
-        body: {
+      try {
+        const entity = await updateResume({
           version,
           name: current.name.trim() || 'Chris Gagne',
           pdfPath: '/resume.pdf',
           content: toContent(current),
-        },
-      })
-      if (error || !data) {
-        return { ok: false as const, status: response.status }
+        })
+        return { ok: true as const, entity }
+      } catch (err) {
+        return {
+          ok: false as const,
+          status: err instanceof ApiError ? err.status : 0,
+        }
       }
-      return { ok: true as const, entity: data }
     },
     [],
   )
 
-  const onSaved = useCallback((entity: Resume) => {
-    setResume(entity)
-  }, [])
+  const onSaved = useCallback(
+    (entity: Resume) => {
+      setResumeCache(entity)
+    },
+    [setResumeCache],
+  )
 
   const getVersion = useCallback((entity: Resume) => entity.version, [])
 
@@ -149,35 +181,35 @@ const AdminResumePage = () => {
       'Conflict — another save updated the resume. Reload and try again.',
   })
 
-  const publishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/resume/publish', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const publishMutate = useCallback(
+    () => publishRequest({ version: versionRef.current }),
+    [publishRequest],
+  )
 
-  const unpublishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/resume/unpublish', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const unpublishMutate = useCallback(
+    () => unpublishRequest({ version: versionRef.current }),
+    [unpublishRequest],
+  )
 
-  const discardMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/resume/discard', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const discardMutate = useCallback(
+    () => discardRequest({ version: versionRef.current }),
+    [discardRequest],
+  )
 
-  const onEntityMeta = useCallback((entity: Resume) => {
-    setResume(entity)
-  }, [])
+  const onEntityMeta = useCallback(
+    (entity: Resume) => {
+      setResumeCache(entity)
+    },
+    [setResumeCache],
+  )
 
-  const onReplaceDraft = useCallback((entity: Resume) => {
-    setResume(entity)
-    setDraft(fromResume(entity))
-  }, [])
+  const onReplaceDraft = useCallback(
+    (entity: Resume) => {
+      setResumeCache(entity)
+      setDraft(fromResume(entity))
+    },
+    [setResumeCache],
+  )
 
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
     dirty,
@@ -211,25 +243,12 @@ const AdminResumePage = () => {
     setDirty(true)
   }
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const client = createApiClient()
-      const { data, error, response } = await client.GET('/api/admin/resume')
-      if (cancelled) return
-      if (error || !data) {
-        setLoadError(`Could not load resume (${response.status}).`)
-        return
-      }
-      setResume(data)
-      setDraft(fromResume(data))
-      versionRef.current = data.version
-      setDirty(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const loadError =
+    queryError instanceof ApiError
+      ? queryError.message
+      : queryError
+        ? 'Could not load resume.'
+        : null
 
   if (loadError) {
     return (
@@ -241,7 +260,7 @@ const AdminResumePage = () => {
     )
   }
 
-  if (!resume || !draft) {
+  if (isPending || !resume || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading resume…</p>

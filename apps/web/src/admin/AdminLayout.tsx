@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { isDevProdApiTarget } from '../api/apiTarget'
 import RequireAuth from '../auth/RequireAuth'
 import { signOutUser, type AuthUser } from '../auth/session'
+import { AdminQueryProvider } from './query/AdminQueryProvider'
 import './admin.css'
 
 function AdminChrome({ user }: { user: AuthUser }) {
@@ -75,11 +76,15 @@ function AdminChrome({ user }: { user: AuthUser }) {
   )
 }
 
-/** Lazy-loaded admin layout root (RequireAuth + chrome). */
+/** Lazy-loaded admin layout root (RequireAuth + chrome + Query). */
 export default function AdminLayout() {
   return (
     <RequireAuth>
-      {(user) => <AdminChrome user={user} />}
+      {(user) => (
+        <AdminQueryProvider>
+          <AdminChrome user={user} />
+        </AdminQueryProvider>
+      )}
     </RequireAuth>
   )
 }

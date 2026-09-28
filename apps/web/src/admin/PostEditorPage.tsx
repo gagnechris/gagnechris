@@ -11,6 +11,13 @@ import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
 import MarkdownEditor from '../components/markdown/MarkdownEditor'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
+import { ApiError, updatePost } from './query/api'
+import {
+  useDeletePostMutation,
+  usePostLifecycleMutators,
+  usePostQuery,
+  useSetPostCache,
+} from './query/posts'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
 import { useQueuedAutosave } from './useQueuedAutosave'
 import '../components/markdown/markdown.css'
@@ -53,24 +60,47 @@ const parseTags = (text: string): string[] =>
 export default function PostEditorPage() {
   const { postId } = useParams<{ postId: string }>()
   const navigate = useNavigate()
-  const [post, setPost] = useState<Post | null>(null)
+  const {
+    data: post,
+    error: queryError,
+    isPending,
+  } = usePostQuery(postId)
+  const setPostCache = useSetPostCache()
+  const deleteMutation = useDeletePostMutation()
+  const {
+    publish: publishRequest,
+    unpublish: unpublishRequest,
+    discard: discardRequest,
+  } = usePostLifecycleMutators(postId)
+
   const [draft, setDraft] = useState<DraftFields>(emptyDraft)
+  const [hydratedId, setHydratedId] = useState<string | null>(null)
   const [slugManual, setSlugManual] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit')
   const versionRef = useRef(0)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  if (post && post.id !== hydratedId) {
+    setHydratedId(post.id)
+    setDraft(fromPost(post))
+    setSlugManual(true)
+    setDirty(false)
+  }
+
+  useEffect(() => {
+    if (post) {
+      versionRef.current = post.version
+    }
+  }, [post])
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
       if (!postId) {
         return { ok: false as const, status: 0 }
       }
-      const client = createApiClient()
-      const { data, error, response } = await client.PUT('/api/admin/posts/{id}', {
-        params: { path: { id: postId } },
-        body: {
+      try {
+        const entity = await updatePost(postId, {
           version,
           title: current.title.trim() || 'Untitled',
           slug: current.slug.trim() || 'untitled',
@@ -78,19 +108,24 @@ export default function PostEditorPage() {
           bodyMarkdown: current.bodyMarkdown,
           tags: parseTags(current.tagsText),
           coverImage: current.coverImage.trim() || null,
-        },
-      })
-      if (error || !data) {
-        return { ok: false as const, status: response.status }
+        })
+        return { ok: true as const, entity }
+      } catch (err) {
+        return {
+          ok: false as const,
+          status: err instanceof ApiError ? err.status : 0,
+        }
       }
-      return { ok: true as const, entity: data }
     },
     [postId],
   )
 
-  const onSaved = useCallback((entity: Post) => {
-    setPost(entity)
-  }, [])
+  const onSaved = useCallback(
+    (entity: Post) => {
+      setPostCache(entity)
+    },
+    [setPostCache],
+  )
 
   const getVersion = useCallback((entity: Post) => entity.version, [])
 
@@ -118,38 +153,35 @@ export default function PostEditorPage() {
       'Conflict — another save updated this post. Reload and try again.',
   })
 
-  const publishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/posts/{id}/publish', {
-      params: { path: { id: postId! } },
-      body: { version: versionRef.current },
-    })
-  }, [postId])
+  const publishMutate = useCallback(
+    () => publishRequest({ version: versionRef.current }),
+    [publishRequest],
+  )
 
-  const unpublishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/posts/{id}/unpublish', {
-      params: { path: { id: postId! } },
-      body: { version: versionRef.current },
-    })
-  }, [postId])
+  const unpublishMutate = useCallback(
+    () => unpublishRequest({ version: versionRef.current }),
+    [unpublishRequest],
+  )
 
-  const discardMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/posts/{id}/discard', {
-      params: { path: { id: postId! } },
-      body: { version: versionRef.current },
-    })
-  }, [postId])
+  const discardMutate = useCallback(
+    () => discardRequest({ version: versionRef.current }),
+    [discardRequest],
+  )
 
-  const onEntityMeta = useCallback((entity: Post) => {
-    setPost(entity)
-  }, [])
+  const onEntityMeta = useCallback(
+    (entity: Post) => {
+      setPostCache(entity)
+    },
+    [setPostCache],
+  )
 
-  const onReplaceDraft = useCallback((entity: Post) => {
-    setPost(entity)
-    setDraft(fromPost(entity))
-  }, [])
+  const onReplaceDraft = useCallback(
+    (entity: Post) => {
+      setPostCache(entity)
+      setDraft(fromPost(entity))
+    },
+    [setPostCache],
+  )
 
   const { busy, setBusy, runPublish, runUnpublish, runDiscard } =
     useDraftPublishEditor({
@@ -254,34 +286,6 @@ export default function PostEditorPage() {
     [setSaveError, uploadImages],
   )
 
-  useEffect(() => {
-    if (!postId) {
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const client = createApiClient()
-      const { data, error, response } = await client.GET('/api/admin/posts/{id}', {
-        params: { path: { id: postId } },
-      })
-      if (cancelled) {
-        return
-      }
-      if (error || !data) {
-        setLoadError(`Could not load post (${response.status}).`)
-        return
-      }
-      setPost(data)
-      setDraft(fromPost(data))
-      versionRef.current = data.version
-      setSlugManual(true)
-      setDirty(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [postId])
-
   const runDelete = async () => {
     if (!postId || busy) {
       return
@@ -291,20 +295,24 @@ export default function PostEditorPage() {
     }
     setBusy(true)
     try {
-      const client = createApiClient()
-      const { error, response } = await client.DELETE('/api/admin/posts/{id}', {
-        params: { path: { id: postId } },
-      })
-      if (error) {
-        setSaveError(`Delete failed (${response.status}).`)
-        return
-      }
+      await deleteMutation.mutateAsync(postId)
       setDirty(false)
       void navigate('/admin')
+    } catch (err) {
+      setSaveError(
+        err instanceof ApiError ? err.message : 'Delete failed.',
+      )
     } finally {
       setBusy(false)
     }
   }
+
+  const loadError =
+    queryError instanceof ApiError
+      ? queryError.message
+      : queryError
+        ? 'Could not load post.'
+        : null
 
   if (loadError) {
     return (
@@ -317,7 +325,7 @@ export default function PostEditorPage() {
     )
   }
 
-  if (!post) {
+  if (isPending || !post || hydratedId !== post.id) {
     return (
       <section className="admin-panel">
         <p>Loading editor…</p>

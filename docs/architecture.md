@@ -50,6 +50,15 @@ On relevant stream events the publisher updates, among others:
 
 The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not** generate the sitemap/RSS/posts index.
 
+## Admin data layer (TanStack Query)
+
+Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/react-query`). Public pages stay outside Query so the public bundle stays lean.
+
+- Query-key factories and UI-free hooks live under `apps/web/src/admin/query/` (keys, api helpers, posts/home/resume hooks, optimistic helpers) so they can later move to app-core.
+- List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
+- Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
+- Optimistic update + rollback pattern: `optimisticMutationHandlers` in `apps/web/src/admin/query/optimistic.ts` (ready for Notebook tasks).
+
 ## 404 handling
 
 - Unknown / unpublished **blog slugs**: viewer-request checks KVS; miss → `/404.html` (not S3 `NoSuchKey` XML), once `__synced__` exists.

@@ -5,6 +5,7 @@ import {
   RouterProvider,
 } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { QueryClientTestProvider } from '../test-utils'
 import AdminHomePage from './AdminHomePage'
 
 const get = vi.fn()
@@ -40,7 +41,11 @@ function renderHome() {
     [{ path: '/admin/home', element: <AdminHomePage /> }],
     { initialEntries: ['/admin/home'] },
   )
-  return render(<RouterProvider router={router} />)
+  return render(
+    <QueryClientTestProvider>
+      <RouterProvider router={router} />
+    </QueryClientTestProvider>,
+  )
 }
 
 describe('AdminHomePage autosave', () => {
