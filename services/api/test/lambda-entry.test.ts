@@ -12,7 +12,7 @@ describe('Lambda bundle boundary (CHR-78)', () => {
       'utf8',
     );
     expect(stack).toContain(
-      "entry: join(repoRoot, 'services/api/src/handler.ts')",
+      "entry: join(REPO_ROOT, 'services/api/src/handler.ts')",
     );
     expect(stack).not.toMatch(/local\/server/);
   });

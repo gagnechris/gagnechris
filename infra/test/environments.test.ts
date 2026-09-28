@@ -620,6 +620,18 @@ describe('ApiStack', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
+      Environment: {
+        Variables: Match.objectLike({
+          POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
+          POWERTOOLS_METRICS_NAMESPACE: 'gagnechris',
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-lambda-errors',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-lambda-throttles',
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
@@ -687,9 +699,24 @@ describe('PublisherStack', () => {
       FilterCriteria: {
         Filters: Match.anyValue(),
       },
+      DestinationConfig: {
+        OnFailure: {
+          Destination: Match.anyValue(),
+        },
+      },
+    });
+    template.resourceCountIs('AWS::SQS::Queue', 1);
+    template.hasResourceProperties('AWS::SQS::Queue', {
+      QueueName: 'gagnechris-prod-publisher-stream-failures',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-lambda-errors',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-lambda-throttles',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-stream-dlq-depth',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-resume-pdf-errors',
@@ -704,5 +731,15 @@ describe('PublisherStack', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',
     });
+
+    // Prove the ESM OnFailure destination is the stream-failures queue (CHR-134).
+    const esms = template.findResources('AWS::Lambda::EventSourceMapping');
+    const queues = template.findResources('AWS::SQS::Queue');
+    const esm = Object.values(esms)[0];
+    const queueLogicalId = Object.keys(queues)[0];
+    expect(queueLogicalId).toBeDefined();
+    const onFailureDest = esm?.Properties?.DestinationConfig?.OnFailure
+      ?.Destination as { 'Fn::GetAtt'?: string[] } | undefined;
+    expect(onFailureDest?.['Fn::GetAtt']?.[0]).toBe(queueLogicalId);
   });
 });
