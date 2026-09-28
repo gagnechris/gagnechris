@@ -103,10 +103,15 @@ describe('classifyDynamoWriteError', () => {
     ).toBe(true);
   });
 
-  it('maps throttling reasons to throttling (not conflict)', () => {
+  it('maps throttling reasons and RequestLimitExceeded to throttling (not conflict)', () => {
     expect(
       classifyDynamoWriteError({
         name: 'ProvisionedThroughputExceededException',
+      }),
+    ).toBe('throttling');
+    expect(
+      classifyDynamoWriteError({
+        name: 'RequestLimitExceeded',
       }),
     ).toBe('throttling');
     expect(

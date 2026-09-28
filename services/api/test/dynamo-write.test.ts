@@ -3,7 +3,7 @@ import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import { ConflictError, ServiceUnavailableError } from '../src/data/errors.js';
 import { runDynamoWrite } from '../src/data/dynamo-write.js';
 
-describe('runDynamoWrite (CHR-120)', () => {
+describe('runDynamoWrite (CHR-120 / CHR-126)', () => {
   it('maps TransactionConflict to ConflictError', async () => {
     await expect(
       runDynamoWrite(async () => {
@@ -16,8 +16,7 @@ describe('runDynamoWrite (CHR-120)', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('retries throttling then throws ServiceUnavailableError', async () => {
-    const sleep = vi.fn().mockResolvedValue(undefined);
+  it('maps throttling to ServiceUnavailableError without local retries', async () => {
     const write = vi.fn(async () => {
       throw new TransactionCanceledException({
         message: 'cancelled',
@@ -26,26 +25,31 @@ describe('runDynamoWrite (CHR-120)', () => {
       });
     });
 
+    await expect(runDynamoWrite(write, 'conflict')).rejects.toBeInstanceOf(
+      ServiceUnavailableError,
+    );
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps RequestLimitExceeded to ServiceUnavailableError (CHR-126)', async () => {
     await expect(
-      runDynamoWrite(write, 'conflict', { maxAttempts: 3, sleep }),
+      runDynamoWrite(async () => {
+        const err = new Error('Rate exceeded');
+        err.name = 'RequestLimitExceeded';
+        throw err;
+      }, 'conflict'),
     ).rejects.toBeInstanceOf(ServiceUnavailableError);
-    expect(write).toHaveBeenCalledTimes(3);
-    expect(sleep).toHaveBeenCalledTimes(2);
   });
 
   it('does not map throttling to ConflictError', async () => {
     await expect(
-      runDynamoWrite(
-        async () => {
-          throw new TransactionCanceledException({
-            message: 'cancelled',
-            $metadata: {},
-            CancellationReasons: [{ Code: 'ThrottlingError' }],
-          });
-        },
-        'would-be-conflict',
-        { maxAttempts: 1, sleep: async () => undefined },
-      ),
+      runDynamoWrite(async () => {
+        throw new TransactionCanceledException({
+          message: 'cancelled',
+          $metadata: {},
+          CancellationReasons: [{ Code: 'ThrottlingError' }],
+        });
+      }, 'would-be-conflict'),
     ).rejects.toBeInstanceOf(ServiceUnavailableError);
   });
 });

@@ -5,7 +5,7 @@ import {
   TransactWriteCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import { batchGetAll, isOptimisticLockConflict } from '@gagnechris/shared';
+import { batchGetAllWithDocClient, isOptimisticLockConflict } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from './client.js';
 import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError } from './errors.js';
@@ -75,20 +75,9 @@ export class SingletonRepository<
   private async loadDraftAndPublished(): Promise<
     { draft: T; published: T | undefined } | undefined
   > {
-    const responses = await batchGetAll(
-      async (RequestItems) => {
-        const result = await this.doc.send(
-          new BatchGetCommand({ RequestItems }),
-        );
-        return {
-          Responses: result.Responses as
-            | Record<string, Array<Record<string, unknown>>>
-            | undefined,
-          UnprocessedKeys: result.UnprocessedKeys as
-            | Record<string, { Keys: Array<Record<string, unknown>> }>
-            | undefined,
-        };
-      },
+    const responses = await batchGetAllWithDocClient(
+      async (RequestItems) =>
+        this.doc.send(new BatchGetCommand({ RequestItems })),
       {
         [this.tableName]: {
           Keys: [

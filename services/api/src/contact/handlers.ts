@@ -2,8 +2,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
-import { Logger } from '@aws-lambda-powertools/logger';
-import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   ContactRequestSchema,
   ContactResponseSchema,
@@ -23,12 +22,7 @@ import {
   parseBody,
   zodBadRequest,
 } from '../http.js';
-
-const logger = new Logger({ serviceName: 'gagnechris-api' });
-const metrics = new Metrics({
-  namespace: 'gagnechris',
-  serviceName: 'gagnechris-api',
-});
+import { logger, metrics } from '../observability.js';
 
 /** Minimum ms between form open and submit (bots often submit instantly). */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
@@ -80,7 +74,6 @@ async function tryUpdateEmailStatus(
       err: error,
     });
     metrics.addMetric('ContactEmailStatusUpdateFailed', MetricUnit.Count, 1);
-    metrics.publishStoredMetrics();
   }
 }
 

@@ -5,8 +5,7 @@ import type {
   APIGatewayProxyStructuredResultV2,
   Context,
 } from 'aws-lambda';
-import { Logger } from '@aws-lambda-powertools/logger';
-import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { Tracer } from '@aws-lambda-powertools/tracer';
 import {
   AdminMeResponseSchema,
@@ -20,13 +19,9 @@ import { handleResumeRoute } from './resume/handlers.js';
 import { handleMediaRoute } from './media/handlers.js';
 import { handleContactRoute } from './contact/handlers.js';
 import { json } from './http.js';
+import { logger, metrics } from './observability.js';
 
-const logger = new Logger({ serviceName: 'gagnechris-api' });
 const tracer = new Tracer({ serviceName: 'gagnechris-api' });
-const metrics = new Metrics({
-  namespace: 'gagnechris',
-  serviceName: 'gagnechris-api',
-});
 
 function normalizePath(rawPath: string): string {
   return rawPath.replace(/\/$/, '') || '/';

@@ -13,7 +13,7 @@ import type {
   PostStatus,
   UpdatePostRequest,
 } from '@gagnechris/shared';
-import { batchGetAll, isOptimisticLockConflict } from '@gagnechris/shared';
+import { batchGetAllWithDocClient, isOptimisticLockConflict } from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
@@ -141,20 +141,9 @@ export class PostsRepository {
     for (let i = 0; i < unique.length; i += 100) {
       const chunk = unique.slice(i, i + 100);
       if (chunk.length === 0) continue;
-      const responses = await batchGetAll(
-        async (RequestItems) => {
-          const result = await this.doc.send(
-            new BatchGetCommand({ RequestItems }),
-          );
-          return {
-            Responses: result.Responses as
-              | Record<string, Array<Record<string, unknown>>>
-              | undefined,
-            UnprocessedKeys: result.UnprocessedKeys as
-              | Record<string, { Keys: Array<Record<string, unknown>> }>
-              | undefined,
-          };
-        },
+      const responses = await batchGetAllWithDocClient(
+        async (RequestItems) =>
+          this.doc.send(new BatchGetCommand({ RequestItems })),
         {
           [this.tableName]: {
             Keys: chunk.map((id) => ({

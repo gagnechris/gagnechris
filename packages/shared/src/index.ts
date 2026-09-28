@@ -80,13 +80,14 @@ export { slugify } from './slugify.js';
 export { formatPostDate, postDateAttribute } from './post-date.js';
 export {
   batchGetAll,
+  batchGetAllWithDocClient,
   classifyDynamoWriteError,
-  isDynamoThrottlingError,
   isOptimisticLockConflict,
   BATCH_GET_MAX_ATTEMPTS,
   type BatchGetOutput,
   type BatchGetRequestItems,
   type BatchGetSend,
+  type BatchGetDocClientSend,
   type BatchGetTableRequest,
   type DynamoWriteErrorKind,
 } from './dynamodb.js';

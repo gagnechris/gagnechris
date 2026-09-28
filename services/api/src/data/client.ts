@@ -1,18 +1,19 @@
-/**
- * Shared DynamoDB single-table client config.
- * Posts and Notebook both use DATA_TABLE_NAME; entity prefixes keep them apart
- * (see docs/data-model.md).
- */
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 let docClient: DynamoDBDocumentClient | undefined;
 
+/** SDK owns throttle retries; runDynamoWrite only classifies (CHR-126). */
+const DYNAMO_MAX_ATTEMPTS = 3;
+
 export function getDocClient(): DynamoDBDocumentClient {
   if (!docClient) {
-    docClient = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-      marshallOptions: { removeUndefinedValues: true },
-    });
+    docClient = DynamoDBDocumentClient.from(
+      new DynamoDBClient({ maxAttempts: DYNAMO_MAX_ATTEMPTS }),
+      {
+        marshallOptions: { removeUndefinedValues: true },
+      },
+    );
   }
   return docClient;
 }
