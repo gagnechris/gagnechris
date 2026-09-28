@@ -1,0 +1,29 @@
+{
+  "name": "@gagnechris/tokens",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Design tokens as TypeScript; generates web CSS variables.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./variables.css": "./src/variables.css"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate-css.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsx": "^4.20.5",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

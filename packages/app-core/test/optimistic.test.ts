@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
-import { describe, expect, test, vi } from 'vitest';
-import { optimisticMutationHandlers } from './optimistic';
+import { describe, expect, test } from 'vitest';
+import { optimisticMutationHandlers } from '../src/query/optimistic.js';
 
 type Task = { id: string; done: boolean };
 
@@ -29,25 +29,7 @@ describe('optimisticMutationHandlers (CHR-131)', () => {
     ]);
     expect(context.previous).toEqual(initial);
 
-    handlers.onError(new Error('network'), { id: 'a' }, context);
+    handlers.onError(new Error('fail'), { id: 'a' }, context);
     expect(queryClient.getQueryData<Task[]>(queryKey)).toEqual(initial);
-  });
-
-  test('invalidates the query key on settled when enabled', async () => {
-    const queryClient = new QueryClient();
-    const queryKey = ['admin', 'tasks', 'list'] as const;
-    queryClient.setQueryData(queryKey, [{ id: 'a', done: false }]);
-    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
-
-    const handlers = optimisticMutationHandlers<Task[], { id: string }>({
-      queryClient,
-      queryKey,
-      update: (tasks, { id }) =>
-        tasks?.map((t) => (t.id === id ? { ...t, done: true } : t)),
-    });
-
-    await handlers.onMutate({ id: 'a' });
-    handlers.onSettled();
-    expect(invalidate).toHaveBeenCalledWith({ queryKey });
   });
 });

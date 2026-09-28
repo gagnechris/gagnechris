@@ -34,8 +34,9 @@
     "local:seed-shell": "bash scripts/local/seed-shell.sh",
     "e2e:local": "bash scripts/local/e2e.sh",
     "migrate:posts": "npx tsx scripts/migrate-posts.ts",
-    "openapi": "npm run openapi -w @gagnechris/shared && npm run generate:api -w @gagnechris/web",
-    "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json apps/web/src/api/schema.d.ts"
+    "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client",
+    "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
+    "tokens:generate": "npm run generate -w @gagnechris/tokens"
   },
   "engines": {
     "node": "^22.12.0"

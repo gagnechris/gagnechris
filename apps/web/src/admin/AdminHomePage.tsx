@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from 'react';
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
-import type { components } from '../api/schema';
+import type { components } from '@gagnechris/api-client';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { Field, TextArea, TextInput } from '../ui/Field';
 import { ApiError, updateHome } from './query/api';

@@ -1,0 +1,37 @@
+{
+  "name": "@gagnechris/app-core",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "UI-free admin hooks: autosave, draft-publish, TanStack Query data layer.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gagnechris/api-client": "*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.104.0",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-test-renderer": "^19.3.0",
+    "@types/react-test-renderer": "^19.1.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}
