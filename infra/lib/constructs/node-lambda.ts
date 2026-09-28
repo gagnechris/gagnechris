@@ -1,4 +1,4 @@
-import { Aspects, Duration, type IAspect, type CfnResource } from 'aws-cdk-lib';
+import { Aspects, Duration, type CfnResource, type IAspect } from 'aws-cdk-lib';
 import {
   Alarm,
   ComparisonOperator,
@@ -49,8 +49,13 @@ export interface NodeLambdaProps
    */
   readonly alarmNamePrefix: string;
   /**
-   * Preserve an existing CloudWatch alarm logical ID when migrating onto
-   * NodeLambda (same AlarmName; avoids "already exists" on CFN replace).
+   * When false, skip creating the errors alarm (stack owns a legacy
+   * `ApiLambdaErrors` / `PublisherLambdaErrors` sibling). @default true
+   */
+  readonly createErrorsAlarm?: boolean;
+  /**
+   * Construct id (and CloudFormation logical ID) for the errors alarm when
+   * NodeLambda creates it. Prefer stack-owned legacy alarms during migration.
    */
   readonly errorsAlarmLogicalId?: string;
   /**
@@ -139,7 +144,7 @@ export class LambdaFailureDestination extends Construct {
  * `PublisherFunction`) keep stable CloudFormation logical IDs for the function.
  */
 export class NodeLambda extends NodejsFunction {
-  readonly errorsAlarm: Alarm;
+  readonly errorsAlarm?: Alarm;
   readonly throttlesAlarm: Alarm;
   readonly durationAlarm?: Alarm;
 
@@ -149,6 +154,7 @@ export class NodeLambda extends NodejsFunction {
       alertsTopic,
       alarmNamePrefix,
       errorsAlarmLogicalId,
+      createErrorsAlarm = true,
       iam5NagReason,
       logRetention = RetentionDays.TWO_WEEKS,
       enableDurationAlarm = false,
@@ -191,26 +197,30 @@ export class NodeLambda extends NodejsFunction {
       ...rest,
     });
 
-    this.errorsAlarm = new Alarm(this, 'ErrorsAlarm', {
-      alarmName: `${alarmNamePrefix}-lambda-errors`,
-      alarmDescription: `${powertoolsServiceName} Lambda errors > 0 in 5 minutes`,
-      metric: this.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    });
-    if (errorsAlarmLogicalId) {
-      (this.errorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-        errorsAlarmLogicalId,
-      );
+    // Alarms live as siblings of the function (stack scope).
+    if (createErrorsAlarm) {
+      this.errorsAlarm = new Alarm(scope, `${id}ErrorsAlarm`, {
+        alarmName: `${alarmNamePrefix}-lambda-errors`,
+        alarmDescription: `${powertoolsServiceName} Lambda errors > 0 in 5 minutes`,
+        metric: this.metricErrors({
+          period: Duration.minutes(5),
+          statistic: 'Sum',
+        }),
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator:
+          ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        treatMissingData: TreatMissingData.NOT_BREACHING,
+      });
+      if (errorsAlarmLogicalId) {
+        (this.errorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
+          errorsAlarmLogicalId,
+        );
+      }
+      this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
     }
-    this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
-    this.throttlesAlarm = new Alarm(this, 'ThrottlesAlarm', {
+    this.throttlesAlarm = new Alarm(scope, `${id}ThrottlesAlarm`, {
       alarmName: `${alarmNamePrefix}-lambda-throttles`,
       alarmDescription: `${powertoolsServiceName} Lambda throttles > 0 in 5 minutes`,
       metric: this.metricThrottles({
@@ -226,7 +236,7 @@ export class NodeLambda extends NodejsFunction {
 
     if (enableDurationAlarm && timeout) {
       const thresholdMs = Math.floor(timeout.toMilliseconds() * 0.8);
-      this.durationAlarm = new Alarm(this, 'DurationAlarm', {
+      this.durationAlarm = new Alarm(scope, `${id}DurationAlarm`, {
         alarmName: `${alarmNamePrefix}-lambda-duration`,
         alarmDescription: `${powertoolsServiceName} Lambda p99 duration ≥ 80% of timeout`,
         metric: this.metricDuration({
@@ -235,7 +245,8 @@ export class NodeLambda extends NodejsFunction {
         }),
         threshold: thresholdMs,
         evaluationPeriods: 1,
-        comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        comparisonOperator:
+          ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         treatMissingData: TreatMissingData.NOT_BREACHING,
       });
       this.durationAlarm.addAlarmAction(new SnsAction(alertsTopic));
