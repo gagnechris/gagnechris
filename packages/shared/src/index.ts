@@ -76,7 +76,7 @@ export {
   renderResumeSectionsHtml,
   resumeSummaryExcerpt,
 } from './resume-html.js';
-export { slugify } from './slugify.js';
+export { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export { formatPostDate, postDateAttribute } from './post-date.js';
 export {
   batchGetAll,

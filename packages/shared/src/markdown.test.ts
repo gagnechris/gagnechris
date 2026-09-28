@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderMarkdownToHtml } from './markdown.js';
-import { slugify } from './slugify.js';
+import { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 
 describe('renderMarkdownToHtml', () => {
   it('renders GFM headings and emphasis', () => {
@@ -24,5 +24,11 @@ describe('slugify', () => {
 
   it('returns empty for blank input', () => {
     expect(slugify('   ')).toBe('');
+  });
+
+  it('caps length at MAX_SLUG_LENGTH (CHR-145)', () => {
+    const slug = slugify('a'.repeat(200));
+    expect(slug.length).toBe(MAX_SLUG_LENGTH);
+    expect(slug).toBe('a'.repeat(MAX_SLUG_LENGTH));
   });
 });

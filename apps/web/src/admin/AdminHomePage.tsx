@@ -86,6 +86,7 @@ const AdminHomePage = () => {
     bumpEdit,
     getEditGen,
     getLastSavedGen,
+    markClean,
     setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
@@ -131,6 +132,7 @@ const AdminHomePage = () => {
     setSaveError,
     getEditGen,
     getLastSavedGen,
+    markClean,
     setAutosaveHeld,
     versionRef,
     getVersion,

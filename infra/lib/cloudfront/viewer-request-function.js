@@ -165,7 +165,8 @@ function blogPostSlug(uri) {
   return segment;
 }
 
-/** Published post slugs: lowercase alnum + hyphen, max 120; no reserved __*__ keys. */
+/** Published post slugs: lowercase alnum + hyphen; no reserved __*__ keys.
+ * Max length must match MAX_SLUG_LENGTH in @gagnechris/shared (CHR-145). */
 function isValidBlogSlug(slug) {
   if (!slug || slug.length > 120) {
     return false;

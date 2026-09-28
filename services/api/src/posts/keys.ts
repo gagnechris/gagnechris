@@ -1,4 +1,5 @@
 import type { Post, PostStatus } from '@gagnechris/shared';
+import { slugify as sharedSlugify } from '@gagnechris/shared';
 
 /** Post entity keys only — never NOTE# / TASK# (reserved for Notebook). */
 export function postPk(postId: string): string {
@@ -57,13 +58,9 @@ export function normalizeTags(tags: string[]): string[] {
   return out;
 }
 
+/** Shared slugify with API fallback when the title yields an empty slug. */
 export function slugify(input: string): string {
-  const base = input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return base || 'post';
+  return sharedSlugify(input) || 'post';
 }
 
 export function nowIso(): string {

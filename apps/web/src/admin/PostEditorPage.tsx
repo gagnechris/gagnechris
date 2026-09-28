@@ -103,6 +103,7 @@ export default function PostEditorPage() {
     bumpEdit,
     getEditGen,
     getLastSavedGen,
+    markClean,
     setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
@@ -156,6 +157,7 @@ export default function PostEditorPage() {
       setSaveError,
       getEditGen,
       getLastSavedGen,
+      markClean,
       setAutosaveHeld,
       versionRef,
       getVersion,

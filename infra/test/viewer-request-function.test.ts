@@ -337,6 +337,29 @@ describe('viewer-request CloudFront Function', () => {
 
       expect(calls).toEqual([]);
     });
+
+    it('routes a max-length published slug (CHR-145)', async () => {
+      // Keep in sync with MAX_SLUG_LENGTH in packages/shared/src/slugify.ts
+      const maxSlug = 'a'.repeat(120);
+      const { kvs, calls } = createCountingKvs({
+        __synced__: true,
+        [maxSlug]: true,
+      });
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: `/blog/${maxSlug}`,
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe(`/blog/${maxSlug}/index.html`);
+      expect(calls).toEqual([maxSlug]);
+    });
   });
 
   it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B', async () => {
