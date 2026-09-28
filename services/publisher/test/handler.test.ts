@@ -60,7 +60,6 @@ describe('collectRebuildScope (handler stream path)', () => {
   });
 });
 
-
 describe('streamNeedsRebuild', () => {
   it('rebuilds on PUBLISHED changes only', () => {
     const publishedChange: DynamoDBRecord = {

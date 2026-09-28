@@ -26,7 +26,10 @@ describe('filesystem site storage', () => {
       join(root, 'index.html'),
       '<html><body><div id="root"></div></body></html>',
     );
-    await writeFile(join(root, 'blog', 'orphan', 'index.html'), '<html>old</html>');
+    await writeFile(
+      join(root, 'blog', 'orphan', 'index.html'),
+      '<html>old</html>',
+    );
     await writeFile(join(root, 'blog', 'index.html'), '<html>index</html>');
     await writeFile(join(root, 'blog', 'posts.json'), '{}');
 
@@ -39,7 +42,9 @@ describe('filesystem site storage', () => {
     for (const slug of postSlugsFromKeys(keys)) {
       await storage.delete(`blog/${slug}/index.html`);
     }
-    await expect(access(join(root, 'blog', 'orphan', 'index.html'))).rejects.toThrow();
+    await expect(
+      access(join(root, 'blog', 'orphan', 'index.html')),
+    ).rejects.toThrow();
     await access(join(root, 'blog', 'index.html'));
   });
 
@@ -72,10 +77,20 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(
-      await storage.put('blog/a/index.html', '<html>a</html>', 'text/html', 'x'),
+      await storage.put(
+        'blog/a/index.html',
+        '<html>a</html>',
+        'text/html',
+        'x',
+      ),
     ).toBe(true);
     expect(
-      await storage.put('blog/a/index.html', '<html>a</html>', 'text/html', 'x'),
+      await storage.put(
+        'blog/a/index.html',
+        '<html>a</html>',
+        'text/html',
+        'x',
+      ),
     ).toBe(false);
     expect(await readFile(join(root, 'blog', 'a', 'index.html'), 'utf8')).toBe(
       '<html>a</html>',

@@ -124,8 +124,7 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
   } while (exclusiveStartKey);
 
   const uniqueIds = [...new Set(metaPostIds)];

@@ -20,11 +20,11 @@ npm run local:dev
 
 Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-local`, seeds a publisher shell under `.local-site/`, runs:
 
-| Process | Port (default) |
-| --- | --- |
-| Local API (`services/api/local/server.ts`) | `8787` |
-| Static publisher origin | `4177` |
-| Vite (`VITE_AUTH_MODE=local`) | `5173` |
+| Process                                    | Port (default) |
+| ------------------------------------------ | -------------- |
+| Local API (`services/api/local/server.ts`) | `8787`         |
+| Static publisher origin                    | `4177`         |
+| Vite (`VITE_AUTH_MODE=local`)              | `5173`         |
 
 Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/blog` / `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
 
@@ -44,7 +44,9 @@ Prefer `local:dev` unless you intentionally need the production API.
 ```bash
 npm test              # web + shared + infra + api + publisher
 npm run typecheck     # all workspaces with a typecheck script
-npm run lint          # ESLint for @gagnechris/web
+npm run lint          # ESLint for every workspace
+npm run format:check  # Prettier check (CI)
+npm run format        # Prettier write
 npm run build         # tsc -b + Vite → apps/web/dist
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 ```
@@ -53,26 +55,26 @@ npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 
 ### Vite (`apps/web`)
 
-| Variable | Notes |
-| --- | --- |
-| `VITE_COGNITO_USER_POOL_ID` | Required for real Cognito admin auth |
-| `VITE_COGNITO_WEB_CLIENT_ID` | Required for real Cognito admin auth |
-| `VITE_COGNITO_AUTH_DOMAIN` | Cognito domain host |
-| `VITE_API_BASE_URL` | Optional; default same-origin |
-| `VITE_API_TARGET` | Dev only: set `prod` to proxy `/api` to production |
-| `VITE_LOCAL_API_ORIGIN` | Dev only: local API origin (set by `scripts/local/env.sh`) |
-| `VITE_LOCAL_SITE_ORIGIN` | Dev only: publisher static origin for `/__site` + `/blog` |
-| `VITE_AUTH_MODE` | Dev only: `local` fakes sign-in; **forbidden in production builds** |
+| Variable                     | Notes                                                               |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                |
+| `VITE_COGNITO_WEB_CLIENT_ID` | Required for real Cognito admin auth                                |
+| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                 |
+| `VITE_API_BASE_URL`          | Optional; default same-origin                                       |
+| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                  |
+| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)          |
+| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` + `/blog`           |
+| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds** |
 
 ### Local stack (`scripts/local/env.sh`)
 
-| Variable | Default / notes |
-| --- | --- |
-| `AWS_ENDPOINT_URL_DYNAMODB` | `http://127.0.0.1:8000` |
-| `DATA_TABLE_NAME` | `gagnechris-local` (refuses `gagnechris-prod`) |
-| `SITE_BUCKET_NAME` | Repo `.local-site/` filesystem “bucket” |
-| `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177` |
-| `COMPOSE_PROJECT_NAME` | `gagnechris` (shared DynamoDB Local across worktrees) |
+| Variable                             | Default / notes                                       |
+| ------------------------------------ | ----------------------------------------------------- |
+| `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:8000`                               |
+| `DATA_TABLE_NAME`                    | `gagnechris-local` (refuses `gagnechris-prod`)        |
+| `SITE_BUCKET_NAME`                   | Repo `.local-site/` filesystem “bucket”               |
+| `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                       |
+| `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees) |
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
 

@@ -39,7 +39,6 @@
   font-weight: 600;
 }
 
-
 .posts-list {
   display: flex;
   flex-direction: column;
@@ -51,7 +50,9 @@
   background-color: white;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  transition:
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal);
   border-left: 4px solid var(--primary-400);
   overflow: hidden;
 }

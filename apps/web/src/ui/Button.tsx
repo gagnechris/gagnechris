@@ -1,18 +1,18 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'default' | 'primary' | 'danger'
+type Variant = 'default' | 'primary' | 'danger';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant
-  href?: string
-  children: ReactNode
-}
+  variant?: Variant;
+  href?: string;
+  children: ReactNode;
+};
 
 const variantClass: Record<Variant, string> = {
   default: 'admin-btn',
   primary: 'admin-btn admin-btn--primary',
   danger: 'admin-btn admin-btn--danger',
-}
+};
 
 /** Admin button / link built on `admin-btn` tokens. */
 export function Button({
@@ -23,24 +23,19 @@ export function Button({
   type = 'button',
   ...rest
 }: Props) {
-  const classes = [variantClass[variant], className].filter(Boolean).join(' ')
+  const classes = [variantClass[variant], className].filter(Boolean).join(' ');
 
   if (href) {
     return (
-      <a
-        className={classes}
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-      >
+      <a className={classes} href={href} target="_blank" rel="noreferrer">
         {children}
       </a>
-    )
+    );
   }
 
   return (
     <button type={type} className={classes} {...rest}>
       {children}
     </button>
-  )
+  );
 }

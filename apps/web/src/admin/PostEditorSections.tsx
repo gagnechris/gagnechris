@@ -1,27 +1,27 @@
-import type { FormEvent, RefObject } from 'react'
-import MarkdownEditor from '../components/markdown/MarkdownEditor'
-import MarkdownPreview from '../components/markdown/MarkdownPreview'
-import { Field, TextArea, TextInput } from '../ui/Field'
-import '../components/markdown/markdown.css'
+import type { FormEvent, RefObject } from 'react';
+import MarkdownEditor from '../components/markdown/MarkdownEditor';
+import MarkdownPreview from '../components/markdown/MarkdownPreview';
+import { Field, TextArea, TextInput } from '../ui/Field';
+import '../components/markdown/markdown.css';
 
 export type PostDraftFields = {
-  title: string
-  slug: string
-  excerpt: string
-  bodyMarkdown: string
-  tagsText: string
-  coverImage: string
-}
+  title: string;
+  slug: string;
+  excerpt: string;
+  bodyMarkdown: string;
+  tagsText: string;
+  coverImage: string;
+};
 
 type MetaProps = {
-  draft: PostDraftFields
+  draft: PostDraftFields;
   setField: <K extends keyof PostDraftFields>(
     key: K,
     value: PostDraftFields[K],
-  ) => void
-  setSlugManual: (manual: boolean) => void
-  onSave: () => void
-}
+  ) => void;
+  setSlugManual: (manual: boolean) => void;
+  onSave: () => void;
+};
 
 export function PostEditorMeta({
   draft,
@@ -35,16 +35,16 @@ export function PostEditorMeta({
       <form
         className="admin-editor-fields admin-editor-fields--meta"
         onSubmit={(e: FormEvent) => {
-          e.preventDefault()
-          onSave()
+          e.preventDefault();
+          onSave();
         }}
       >
         <Field label="Slug">
           <TextInput
             value={draft.slug}
             onChange={(e) => {
-              setSlugManual(true)
-              setField('slug', e.target.value)
+              setSlugManual(true);
+              setField('slug', e.target.value);
             }}
           />
         </Field>
@@ -70,19 +70,19 @@ export function PostEditorMeta({
         </Field>
       </form>
     </details>
-  )
+  );
 }
 
 type BodyProps = {
-  draft: PostDraftFields
-  mobilePane: 'edit' | 'preview'
-  setMobilePane: (pane: 'edit' | 'preview') => void
+  draft: PostDraftFields;
+  mobilePane: 'edit' | 'preview';
+  setMobilePane: (pane: 'edit' | 'preview') => void;
   setField: <K extends keyof PostDraftFields>(
     key: K,
     value: PostDraftFields[K],
-  ) => void
-  onUploadImages: (files: File[]) => Promise<string[]>
-}
+  ) => void;
+  onUploadImages: (files: File[]) => Promise<string[]>;
+};
 
 export function PostEditorBody({
   draft,
@@ -94,11 +94,7 @@ export function PostEditorBody({
   return (
     <>
       <div className="markdown-workspace">
-        <div
-          className="markdown-tabs"
-          role="tablist"
-          aria-label="Editor view"
-        >
+        <div className="markdown-tabs" role="tablist" aria-label="Editor view">
           <button
             type="button"
             role="tab"
@@ -128,18 +124,18 @@ export function PostEditorBody({
         </div>
       </div>
       <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images into
-        the editor
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images
+        into the editor
       </p>
     </>
-  )
+  );
 }
 
 type TitleProps = {
-  title: string
-  titleRef: RefObject<HTMLTextAreaElement | null>
-  onChange: (value: string) => void
-}
+  title: string;
+  titleRef: RefObject<HTMLTextAreaElement | null>;
+  onChange: (value: string) => void;
+};
 
 export function PostEditorTitle({ title, titleRef, onChange }: TitleProps) {
   return (
@@ -153,5 +149,5 @@ export function PostEditorTitle({ title, titleRef, onChange }: TitleProps) {
         aria-label="Title"
       />
     </h1>
-  )
+  );
 }

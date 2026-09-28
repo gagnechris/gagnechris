@@ -1,50 +1,58 @@
-import { screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
-import App from './App'
-import { renderWithProviders } from './test-utils'
-import * as analytics from './utils/analytics'
+import { screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
+import App from './App';
+import { renderWithProviders } from './test-utils';
+import * as analytics from './utils/analytics';
 
-vi.mock('./utils/analytics')
+vi.mock('./utils/analytics');
 
-const mockTrackEvent = vi.mocked(analytics.trackEvent)
+const mockTrackEvent = vi.mocked(analytics.trackEvent);
 
 const stubFetch = (impl: () => Promise<unknown>) =>
-  vi.stubGlobal('fetch', vi.fn(impl))
+  vi.stubGlobal('fetch', vi.fn(impl));
 
 describe('App', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '')
-    stubFetch(async () => ({ ok: false, status: 404 }))
-  })
+    vi.clearAllMocks();
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    stubFetch(async () => ({ ok: false, status: 404 }));
+  });
 
   afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.unstubAllEnvs()
-  })
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   test('renders all main sections', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    expect(screen.getByText('Chris Gagne')).toBeInTheDocument()
-    expect(screen.getByText('About Me')).toBeInTheDocument()
-    expect(screen.getByText('Quick Links')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByRole('link', { name: 'GitHub' }).length).toBeGreaterThanOrEqual(1)
-  })
+    expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
+    expect(screen.getByText('About Me')).toBeInTheDocument();
+    expect(screen.getByText('Quick Links')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'LinkedIn' }).length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByRole('link', { name: 'GitHub' }).length,
+    ).toBeGreaterThanOrEqual(1);
+  });
 
   test('falls back to DEFAULT_HOME when nothing is published yet', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Chris Gagne' })).toBeInTheDocument()
-    expect(screen.getByText('Engineering Leader')).toBeInTheDocument()
     expect(
-      screen.getByText(/I'm an Engineering Leader at Ro with more than 20 years/),
-    ).toBeInTheDocument()
-  })
+      screen.getByRole('heading', { level: 1, name: 'Chris Gagne' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Engineering Leader')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /I'm an Engineering Leader at Ro with more than 20 years/,
+      ),
+    ).toBeInTheDocument();
+  });
 
   test('hydrates header and about copy from the published prerender', async () => {
     stubFetch(async () => ({
@@ -59,125 +67,141 @@ describe('App', () => {
           updatedAt: '2026-09-27T00:00:00.000Z',
           seo: null,
           version: 2,
-  hasUnpublishedChanges: false,
+          hasUnpublishedChanges: false,
         })}</body></html>`,
-    }))
+    }));
 
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    expect(await screen.findByText('Published about copy.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Published about copy.'),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 1, name: 'Christopher Gagne' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Engineering Director')).toBeInTheDocument()
+    ).toBeInTheDocument();
+    expect(screen.getByText('Engineering Director')).toBeInTheDocument();
     // Quick Links are in the prerender and stay after hydrate.
-    expect(screen.getAllByRole('link', { name: 'LinkedIn' }).length).toBeGreaterThanOrEqual(1)
-  })
+    expect(
+      screen.getAllByRole('link', { name: 'LinkedIn' }).length,
+    ).toBeGreaterThanOrEqual(1);
+  });
 
   test('tracks LinkedIn footer link clicks', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
     const linkedInLink = document.querySelector(
       '.site-footer a[href*="linkedin"]',
-    )
-    fireEvent.click(linkedInLink!)
+    );
+    fireEvent.click(linkedInLink!);
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
       'external_link',
       'linkedin_footer',
-    )
-  })
+    );
+  });
 
   test('tracks GitHub footer link clicks', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
     const githubLink = document.querySelector(
       '.site-footer a[href*="github.com"]',
-    )
-    fireEvent.click(githubLink!)
+    );
+    fireEvent.click(githubLink!);
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
       'external_link',
       'github_footer',
-    )
-  })
+    );
+  });
 
   test('tracks Quick Links LinkedIn and GitHub clicks (CHR-125)', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
     fireEvent.click(
       document.querySelector('#quick-links a[href*="linkedin"]')!,
-    )
+    );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
       'external_link',
       'linkedin',
-    )
+    );
 
     fireEvent.click(
       document.querySelector('#quick-links a[href*="github.com"]')!,
-    )
+    );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
       'external_link',
       'github',
-    )
-  })
+    );
+  });
 
   test('Quick Links internal routes use SPA Links (CHR-125)', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<App />)
+    const user = userEvent.setup();
+    renderWithProviders(<App />);
 
     for (const name of ['Resume', 'Blog', 'Contact'] as const) {
-      const link = screen.getByRole('link', { name })
-      expect(link.tagName).toBe('A')
+      const link = screen.getByRole('link', { name });
+      expect(link.tagName).toBe('A');
       // react-router Link still renders <a>; ensure no target=_blank full reload.
-      expect(link).not.toHaveAttribute('target')
+      expect(link).not.toHaveAttribute('target');
       expect(link.getAttribute('href')).toMatch(
         name === 'Resume' ? '/resume' : name === 'Blog' ? '/blog' : '/contact',
-      )
+      );
     }
 
-    await user.click(screen.getByRole('link', { name: 'Resume' }))
-    expect(window.location.pathname).toBe('/resume')
-  })
+    await user.click(screen.getByRole('link', { name: 'Resume' }));
+    expect(window.location.pathname).toBe('/resume');
+  });
 
   test('LinkedIn link has correct attributes', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    const linkedInLink = document.querySelector('#quick-links a[href*="linkedin"]')
-    expect(linkedInLink).toHaveAttribute('href', 'https://www.linkedin.com/in/christophergagne/')
-    expect(linkedInLink).toHaveAttribute('target', '_blank')
-    expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer')
-  })
+    const linkedInLink = document.querySelector(
+      '#quick-links a[href*="linkedin"]',
+    );
+    expect(linkedInLink).toHaveAttribute(
+      'href',
+      'https://www.linkedin.com/in/christophergagne/',
+    );
+    expect(linkedInLink).toHaveAttribute('target', '_blank');
+    expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 
   test('GitHub link has correct attributes', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    const githubLink = document.querySelector('#quick-links a[href*="github.com"]')
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris')
-    expect(githubLink).toHaveAttribute('target', '_blank')
-    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer')
-  })
+    const githubLink = document.querySelector(
+      '#quick-links a[href*="github.com"]',
+    );
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris');
+    expect(githubLink).toHaveAttribute('target', '_blank');
+    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 
   test('footer has copyright, useful links, and bears entry', () => {
-    renderWithProviders(<App />)
+    renderWithProviders(<App />);
 
-    expect(screen.getByText(/© \d{4} Chris Gagne/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'RSS' })).toHaveAttribute('href', '/rss.xml')
+    expect(screen.getByText(/© \d{4} Chris Gagne/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'RSS' })).toHaveAttribute(
+      'href',
+      '/rss.xml',
+    );
     const bear = screen.getByRole('link', {
       name: /don't feed the bears/i,
-    })
-    expect(bear).toHaveAttribute('href', '/dont-feed-the-bears?from=footer')
-    expect(bear).toHaveTextContent(/Don't Feed the Bears/)
-  })
+    });
+    expect(bear).toHaveAttribute('href', '/dont-feed-the-bears?from=footer');
+    expect(bear).toHaveTextContent(/Don't Feed the Bears/);
+  });
 
   test('scopes the profile header to .home-header', () => {
-    const { container } = renderWithProviders(<App />)
-    expect(container.querySelector('.home-page')).toBeTruthy()
-    expect(container.querySelector('header.home-header')).toBeTruthy()
-    expect(container.querySelector('header.home-header img.profile')).toBeTruthy()
-  })
-})
+    const { container } = renderWithProviders(<App />);
+    expect(container.querySelector('.home-page')).toBeTruthy();
+    expect(container.querySelector('header.home-header')).toBeTruthy();
+    expect(
+      container.querySelector('header.home-header img.profile'),
+    ).toBeTruthy();
+  });
+});

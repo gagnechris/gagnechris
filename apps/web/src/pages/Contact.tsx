@@ -1,114 +1,113 @@
-import { Link } from 'react-router-dom'
-import PublicNav from '../components/PublicNav'
-import { useState, FormEvent } from 'react'
-import { ContactRequestSchema } from '@gagnechris/shared'
-import { createPublicApiClient } from '../api/public-client'
-import { trackEvent } from '../utils/analytics'
-import './Contact.css'
+import { Link } from 'react-router-dom';
+import PublicNav from '../components/PublicNav';
+import { useState, FormEvent } from 'react';
+import { ContactRequestSchema } from '@gagnechris/shared';
+import { createPublicApiClient } from '../api/public-client';
+import { trackEvent } from '../utils/analytics';
+import './Contact.css';
 
 function Contact() {
   // Client-only elapsed clock — avoids comparing browser Date.now to server time.
-  const [formOpenedAt] = useState(() => performance.now())
+  const [formOpenedAt] = useState(() => performance.now());
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     message: '',
     hp_field: '',
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = () => {
-    const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt))
+    const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt));
     const parsed = ContactRequestSchema.safeParse({
       name: formData.name,
       email: formData.email,
       message: formData.message,
       hp_field: formData.hp_field,
       elapsedMs,
-    })
+    });
     if (parsed.success) {
-      setErrors({})
-      return parsed.data
+      setErrors({});
+      return parsed.data;
     }
-    const newErrors: { [key: string]: string } = {}
+    const newErrors: { [key: string]: string } = {};
     for (const issue of parsed.error.issues) {
-      const key =
-        issue.path.length > 0 ? String(issue.path[0]) : 'submit'
+      const key = issue.path.length > 0 ? String(issue.path[0]) : 'submit';
       if (!(key in newErrors)) {
-        newErrors[key] = issue.message
+        newErrors[key] = issue.message;
       }
     }
-    setErrors(newErrors)
-    return null
-  }
+    setErrors(newErrors);
+    return null;
+  };
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const body = validateForm()
+    const body = validateForm();
     if (!body) {
-      return
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
 
     try {
-      const client = createPublicApiClient()
-      const { error, response } = await client.POST('/api/contact', { body })
+      const client = createPublicApiClient();
+      const { error, response } = await client.POST('/api/contact', { body });
 
       if (!error) {
-        trackEvent('submit', 'contact_form', 'contact_page')
-        setSubmitted(true)
-        return
+        trackEvent('submit', 'contact_form', 'contact_page');
+        setSubmitted(true);
+        return;
       }
 
-      const fieldErrors: { [key: string]: string } = {}
+      const fieldErrors: { [key: string]: string } = {};
       if (error.fields) {
         for (const [key, code] of Object.entries(error.fields)) {
-          fieldErrors[key] = typeof code === 'string' ? code : 'invalid'
+          fieldErrors[key] = typeof code === 'string' ? code : 'invalid';
         }
       }
       let message =
-        error.message ?? 'Failed to send message. Please try again.'
+        error.message ?? 'Failed to send message. Please try again.';
       if (response.status === 429) {
         message =
           error.message ||
-          'Too many submissions. Please wait a bit and try again.'
+          'Too many submissions. Please wait a bit and try again.';
       }
       if (Object.keys(fieldErrors).length > 0) {
         setErrors({
           ...fieldErrors,
           ...(error.message ? { submit: message } : {}),
-        })
+        });
       } else {
-        setErrors({ submit: message })
+        setErrors({ submit: message });
       }
     } catch (err) {
-      console.error('Form submission error:', err)
-      setErrors({ submit: 'Failed to send message. Please try again.' })
+      console.error('Form submission error:', err);
+      setErrors({ submit: 'Failed to send message. Please try again.' });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }))
+    }));
 
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: '',
-      }))
+      }));
     }
-  }
+  };
 
   if (submitted) {
     return (
@@ -138,7 +137,7 @@ function Contact() {
           </div>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -254,7 +253,7 @@ function Contact() {
         </form>
       </main>
     </div>
-  )
+  );
 }
 
-export default Contact
+export default Contact;

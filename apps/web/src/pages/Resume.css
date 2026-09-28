@@ -203,7 +203,8 @@
 }
 
 /* Company and Institution Info */
-.company, .institution {
+.company,
+.institution {
   font-style: italic;
   margin: var(--space-1) 0;
   color: var(--neutral-600);
@@ -295,24 +296,24 @@
   .resume-page {
     padding: var(--space-4);
   }
-  
+
   .resume-page header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .name-section {
     margin-bottom: var(--space-3);
     width: 100%;
   }
-  
+
   .nav-section {
     width: 100%;
     justify-content: flex-start;
     gap: var(--space-3);
     margin-top: var(--space-2);
   }
-  
+
   .resume-section,
   .resume-summary {
     padding: var(--space-4);
@@ -323,27 +324,27 @@
   .resume-page h1 {
     font-size: var(--text-2xl);
   }
-  
+
   .resume-page h2 {
     font-size: var(--text-xl);
   }
-  
+
   .nav-section {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2);
   }
-  
+
   .nav-section > * {
     width: 100%;
     text-align: center;
   }
-  
+
   .competencies-container {
     flex-direction: column;
     gap: var(--space-2);
   }
-  
+
   .competencies-list {
     width: 100%;
   }

@@ -99,8 +99,7 @@ function memoryStorage(): SiteStorage & {
   deletes: string[];
   invalidations: string[][];
 } {
-  const shell =
-    '<html><head></head><body><div id="root"></div></body></html>';
+  const shell = '<html><head></head><body><div id="root"></div></body></html>';
   const objects = new Map<string, string>();
   objects.set('_shell.html', shell);
   objects.set('index.html', shell);
@@ -154,31 +153,32 @@ describe('rebuildPublishedSite selective scope', () => {
   });
 
   it('home-only scope does not put post pages, feeds, or resume', async () => {
-    ddbSend.mockImplementation(async (cmd: { input?: { Key?: { pk?: string } } }) => {
-      if (cmd.input?.Key?.pk === 'HOME#current') {
-        return {
-          Item: {
-            pk: 'HOME#current',
-            sk: 'PUBLISHED',
-            entityType: 'home',
-            status: 'published',
-            name: 'Chris',
-            title: 'Engineer',
-            about: 'Hello',
-            publishedAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-            version: 1,
-          },
-        };
-      }
-      return { Items: [] };
-    });
+    ddbSend.mockImplementation(
+      async (cmd: { input?: { Key?: { pk?: string } } }) => {
+        if (cmd.input?.Key?.pk === 'HOME#current') {
+          return {
+            Item: {
+              pk: 'HOME#current',
+              sk: 'PUBLISHED',
+              entityType: 'home',
+              status: 'published',
+              name: 'Chris',
+              title: 'Engineer',
+              about: 'Hello',
+              publishedAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              version: 1,
+            },
+          };
+        }
+        return { Items: [] };
+      },
+    );
 
     const { rebuildPublishedSite } = await import('../src/s3-site.js');
     const { publishResumePdf } = await import('../src/resume-pdf-publish.js');
-    const { syncViewerRequestBlogSlugs } = await import(
-      '../src/viewer-request-slugs.js'
-    );
+    const { syncViewerRequestBlogSlugs } =
+      await import('../src/viewer-request-slugs.js');
 
     const storage = memoryStorage();
     const scope: RebuildScope = {
@@ -247,9 +247,8 @@ describe('rebuildPublishedSite selective scope', () => {
 
     const { rebuildPublishedSite } = await import('../src/s3-site.js');
     const { publishResumePdf } = await import('../src/resume-pdf-publish.js');
-    const { syncViewerRequestBlogSlugs } = await import(
-      '../src/viewer-request-slugs.js'
-    );
+    const { syncViewerRequestBlogSlugs } =
+      await import('../src/viewer-request-slugs.js');
 
     const storage = memoryStorage();
     const scope: RebuildScope = {
@@ -369,9 +368,8 @@ describe('rebuildPublishedSite selective scope', () => {
     const post = makePost('welcome', 1);
     const order: string[] = [];
 
-    const { syncViewerRequestBlogSlugs } = await import(
-      '../src/viewer-request-slugs.js'
-    );
+    const { syncViewerRequestBlogSlugs } =
+      await import('../src/viewer-request-slugs.js');
     vi.mocked(syncViewerRequestBlogSlugs).mockImplementation(async () => {
       order.push('kvs');
       throw new Error('forced KVS failure');

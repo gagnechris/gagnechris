@@ -67,28 +67,21 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   for (const record of records) {
     const oldMeta = imageToStreamMeta(record.dynamodb?.OldImage);
     const newMeta = imageToStreamMeta(record.dynamodb?.NewImage);
-    const entity =
-      newMeta?.entityType ?? oldMeta?.entityType ?? undefined;
+    const entity = newMeta?.entityType ?? oldMeta?.entityType ?? undefined;
 
     if (entity != null && !KNOWN_ENTITY_TYPES.has(entity)) {
       continue;
     }
 
     if (entity === 'home') {
-      if (
-        newMeta?.status === 'published' ||
-        oldMeta?.status === 'published'
-      ) {
+      if (newMeta?.status === 'published' || oldMeta?.status === 'published') {
         home = true;
       }
       continue;
     }
 
     if (entity === 'resume') {
-      if (
-        newMeta?.status === 'published' ||
-        oldMeta?.status === 'published'
-      ) {
+      if (newMeta?.status === 'published' || oldMeta?.status === 'published') {
         resume = true;
       }
       continue;
@@ -110,9 +103,7 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     if (
       oldMeta?.status === 'published' &&
       oldMeta.slug &&
-      !(
-        newMeta?.status === 'published' && newMeta.slug === oldMeta.slug
-      )
+      !(newMeta?.status === 'published' && newMeta.slug === oldMeta.slug)
     ) {
       slugsToRemove.add(oldMeta.slug);
     }
@@ -169,9 +160,7 @@ export function buildInvalidationPaths(input: {
   const blogOrFeedChanged =
     [...changed].some(
       (key) =>
-        key.startsWith('blog/') ||
-        key === 'sitemap.xml' ||
-        key === 'rss.xml',
+        key.startsWith('blog/') || key === 'sitemap.xml' || key === 'rss.xml',
     ) || removed.length > 0;
 
   if (blogOrFeedChanged) {

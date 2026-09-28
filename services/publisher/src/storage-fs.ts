@@ -33,9 +33,7 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   return Buffer.compare(a, b) === 0;
 }
 
-export function createFilesystemSiteStorage(
-  rootDir?: string,
-): SiteStorage {
+export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
   const root = rootDir ?? requireEnv('SITE_BUCKET_NAME');
 
   return {

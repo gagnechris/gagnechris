@@ -12,7 +12,10 @@ import type { Metrics } from '@aws-lambda-powertools/metrics';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type { ZodType } from 'zod';
 import { json, mapRouteError, parseBody } from './http.js';
-import { logger as defaultLogger, metrics as defaultMetrics } from './observability.js';
+import {
+  logger as defaultLogger,
+  metrics as defaultMetrics,
+} from './observability.js';
 
 export type AuthMode = 'public' | 'admin';
 
@@ -28,7 +31,11 @@ export type RouteCtx = {
   metrics: Metrics;
 };
 
-export type RouteInput<TParams = Record<string, string>, TQuery = unknown, TBody = unknown> = {
+export type RouteInput<
+  TParams = Record<string, string>,
+  TQuery = unknown,
+  TBody = unknown,
+> = {
   params: TParams;
   query: TQuery;
   body: TBody;
@@ -216,8 +223,10 @@ export async function dispatchRoutes(
   const onMiss = options.onMiss ?? '404';
   const enforceAuth = options.enforceAuth ?? true;
 
-  const pathMatches: Array<{ route: RouteDef; params: Record<string, string> }> =
-    [];
+  const pathMatches: Array<{
+    route: RouteDef;
+    params: Record<string, string>;
+  }> = [];
   for (const route of routes) {
     const params = matchPattern(route.pattern, path);
     if (params) pathMatches.push({ route, params });

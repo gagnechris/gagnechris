@@ -50,8 +50,7 @@ export async function tryIncrementCounter(input: {
         Key: { pk: input.pk, sk: input.sk },
         UpdateExpression:
           'ADD #count :one SET #ttl = if_not_exists(#ttl, :ttl), entityType = if_not_exists(entityType, :etype)',
-        ConditionExpression:
-          'attribute_not_exists(#count) OR #count < :max',
+        ConditionExpression: 'attribute_not_exists(#count) OR #count < :max',
         ExpressionAttributeNames: {
           '#count': 'count',
           '#ttl': 'ttl',

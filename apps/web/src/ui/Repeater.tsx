@@ -1,23 +1,23 @@
-import type { ReactNode } from 'react'
-import { Button } from './Button'
+import type { ReactNode } from 'react';
+import { Button } from './Button';
 
-export type RepeaterItem = { id: string }
+export type RepeaterItem = { id: string };
 
 type Props<T extends RepeaterItem> = {
-  legend: string
-  items: T[]
-  onChange: (items: T[]) => void
-  createItem: () => T
+  legend: string;
+  items: T[];
+  onChange: (items: T[]) => void;
+  createItem: () => T;
   renderItem: (
     item: T,
     helpers: {
-      update: (patch: Partial<T>) => void
-      remove: () => void
+      update: (patch: Partial<T>) => void;
+      remove: () => void;
     },
-  ) => ReactNode
-  addLabel: string
-  removeLabel?: string
-}
+  ) => ReactNode;
+  addLabel: string;
+  removeLabel?: string;
+};
 
 /**
  * Fieldset repeater with stable `id` keys so reordering / mid-list edits
@@ -44,24 +44,19 @@ export function Repeater<T extends RepeaterItem>({
                   i === index ? { ...row, ...patch } : row,
                 ),
               ),
-            remove: () =>
-              onChange(items.filter((_, i) => i !== index)),
+            remove: () => onChange(items.filter((_, i) => i !== index)),
           })}
           <Button
             variant="danger"
-            onClick={() =>
-              onChange(items.filter((_, i) => i !== index))
-            }
+            onClick={() => onChange(items.filter((_, i) => i !== index))}
           >
             {removeLabel}
           </Button>
         </div>
       ))}
-      <Button
-        onClick={() => onChange([...items, createItem()])}
-      >
+      <Button onClick={() => onChange([...items, createItem()])}>
         {addLabel}
       </Button>
     </fieldset>
-  )
+  );
 }

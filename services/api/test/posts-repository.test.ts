@@ -34,10 +34,10 @@ function mockDoc(
   }) => Promise<unknown>,
 ): DynamoDBDocumentClient {
   return {
-    send: vi.fn(async (command: {
-      constructor: { name: string };
-      input: unknown;
-    }) => impl(command)),
+    send: vi.fn(
+      async (command: { constructor: { name: string }; input: unknown }) =>
+        impl(command),
+    ),
   } as unknown as DynamoDBDocumentClient;
 }
 

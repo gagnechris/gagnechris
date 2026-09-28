@@ -24,9 +24,7 @@ type NoteItem = {
 };
 
 /** ~30 lines of config for a non-publishable versioned entity (CHR-129 AC). */
-function createNotesRepo(doc: {
-  send: ReturnType<typeof vi.fn>;
-}) {
+function createNotesRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   return new VersionedEntityRepository<Note, NoteItem>(
     {
       conflictLabel: 'note',

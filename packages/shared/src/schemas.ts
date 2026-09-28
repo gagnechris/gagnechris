@@ -173,18 +173,12 @@ export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
 export const MediaUploadUrlRequestSchema = z
   .object({
     contentType: MediaContentTypeSchema,
-    contentLength: z
-      .number()
-      .int()
-      .positive()
-      .max(MEDIA_MAX_BYTES)
-      .openapi({ description: 'Exact byte length of the PUT body (max 10 MiB)' }),
-    filename: z
-      .string()
-      .min(1)
-      .max(200)
-      .optional()
-      .openapi({ description: 'Original filename (extension used when present)' }),
+    contentLength: z.number().int().positive().max(MEDIA_MAX_BYTES).openapi({
+      description: 'Exact byte length of the PUT body (max 10 MiB)',
+    }),
+    filename: z.string().min(1).max(200).optional().openapi({
+      description: 'Original filename (extension used when present)',
+    }),
   })
   .openapi('MediaUploadUrlRequest');
 
@@ -193,7 +187,8 @@ export type MediaUploadUrlRequest = z.infer<typeof MediaUploadUrlRequestSchema>;
 export const MediaUploadUrlResponseSchema = z
   .object({
     uploadUrl: z.string().url().openapi({
-      description: 'Presigned PUT URL (or local API PUT URL in filesystem mode)',
+      description:
+        'Presigned PUT URL (or local API PUT URL in filesystem mode)',
     }),
     publicPath: z
       .string()

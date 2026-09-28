@@ -148,7 +148,9 @@ describe('publisher render', () => {
     };
     const html = renderHomePage(shell, home);
     expect(html).toContain('<title>Chris Gagne - Engineering Leader</title>');
-    expect(html).toContain('property="og:url" content="https://gagnechris.com"');
+    expect(html).toContain(
+      'property="og:url" content="https://gagnechris.com"',
+    );
     expect(html).toContain(
       'name="description" content="I&#39;m an Engineering',
     );
@@ -196,7 +198,9 @@ describe('publisher render', () => {
     const blog = renderBlogIndexPage(shell, [samplePost()]);
     expect(blog).not.toContain('/media/home-og.jpg');
     expect(blog).not.toContain('home-page-prerender');
-    expect(blog).toContain('og:image" content="https://gagnechris.com/og-image.jpg"');
+    expect(blog).toContain(
+      'og:image" content="https://gagnechris.com/og-image.jpg"',
+    );
 
     const resume = renderResumePage(shell, DEFAULT_RESUME);
     expect(resume).not.toContain('/media/home-og.jpg');
@@ -224,8 +228,7 @@ describe('publisher render', () => {
     expect(renderPostPage(shell, post)).toBe(renderPostPage(shell, post));
   });
 
-
-  it('preserves $$, $&, $`, $\' in titles, OG tags, and prerendered body', () => {
+  it("preserves $$, $&, $`, $' in titles, OG tags, and prerendered body", () => {
     const trickyTitle = "Making $$$ with $$ and $& and $` and $'";
     const trickyBody = "echo $$ and $& and $` and $'";
     const post = samplePost({

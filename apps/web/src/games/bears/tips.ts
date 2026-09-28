@@ -1,14 +1,14 @@
 /** Vermont Fish & Wildlife bear-safety tips used by the Don't Feed the Bears game. */
 
 export const BEAR_GUIDANCE_URL =
-  'https://vtfishandwildlife.com/learn-more/living-with-wildlife/living-with-black-bears'
+  'https://vtfishandwildlife.com/learn-more/living-with-wildlife/living-with-black-bears';
 
 export type BearTip = {
-  id: string
-  title: string
-  body: string
-  sourceUrl: string
-}
+  id: string;
+  title: string;
+  body: string;
+  sourceUrl: string;
+};
 
 /**
  * Careful paraphrases of Vermont Fish & Wildlife living-with-black-bears guidance.
@@ -51,13 +51,13 @@ export const BEAR_TIPS: readonly BearTip[] = [
     body: 'Do not leave food, coolers, or cooking gear accessible at camp. Store attractants in a vehicle or bear-resistant storage when you are away from the site.',
     sourceUrl: BEAR_GUIDANCE_URL,
   },
-] as const
+] as const;
 
 export function tipById(id: string): BearTip | undefined {
-  return BEAR_TIPS.find((tip) => tip.id === id)
+  return BEAR_TIPS.find((tip) => tip.id === id);
 }
 
 export function tipAtIndex(index: number): BearTip {
-  const i = ((index % BEAR_TIPS.length) + BEAR_TIPS.length) % BEAR_TIPS.length
-  return BEAR_TIPS[i]!
+  const i = ((index % BEAR_TIPS.length) + BEAR_TIPS.length) % BEAR_TIPS.length;
+  return BEAR_TIPS[i]!;
 }

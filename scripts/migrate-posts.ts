@@ -46,7 +46,11 @@ type ParsedPost = {
 };
 
 function fixturesDir(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), 'migrate-posts', 'fixtures');
+  return join(
+    dirname(fileURLToPath(import.meta.url)),
+    'migrate-posts',
+    'fixtures',
+  );
 }
 
 function parseFrontmatter(raw: string): ParsedPost {
@@ -114,7 +118,9 @@ async function main(): Promise<void> {
 
     const existing = await repo.getBySlug(slug);
     if (existing) {
-      console.log(`skip  slug=${slug} id=${existing.id} status=${existing.status}`);
+      console.log(
+        `skip  slug=${slug} id=${existing.id} status=${existing.status}`,
+      );
       skipped += 1;
       continue;
     }
@@ -140,9 +146,8 @@ async function main(): Promise<void> {
   }
 
   if (process.env.SITE_STORAGE === 'filesystem') {
-    const { rebuildPublishedSite } = await import(
-      '../services/publisher/src/s3-site.js'
-    );
+    const { rebuildPublishedSite } =
+      await import('../services/publisher/src/s3-site.js');
     console.log('rebuild local site…');
     await rebuildPublishedSite();
   } else if (published > 0) {

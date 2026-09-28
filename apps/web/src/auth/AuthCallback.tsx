@@ -1,81 +1,81 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { fetchAuthSession } from 'aws-amplify/auth'
-import { Hub } from 'aws-amplify/utils'
-import { ensureAmplifyConfigured } from './config'
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
+import { ensureAmplifyConfigured } from './config';
 
 /**
  * Completes the Cognito managed-login PKCE exchange, then sends the admin home.
  */
 export default function AuthCallback() {
-  const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
-    let settled = false
+    let cancelled = false;
+    let settled = false;
 
     const succeed = () => {
       if (cancelled || settled) {
-        return
+        return;
       }
-      settled = true
-      navigate('/admin', { replace: true })
-    }
+      settled = true;
+      navigate('/admin', { replace: true });
+    };
 
     const fail = (message: string) => {
       if (cancelled || settled) {
-        return
+        return;
       }
-      settled = true
-      setError(message)
-    }
+      settled = true;
+      setError(message);
+    };
 
-    ensureAmplifyConfigured()
+    ensureAmplifyConfigured();
 
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
         case 'signInWithRedirect':
         case 'signedIn':
-          succeed()
-          break
+          succeed();
+          break;
         case 'signInWithRedirect_failure':
           fail(
             payload.data?.error?.message ??
               'Sign-in with Cognito failed. Try again.',
-          )
-          break
+          );
+          break;
         default:
-          break
+          break;
       }
-    })
+    });
 
     // Listener may finish before Hub.subscribe; also covers already-signed-in.
     void (async () => {
       try {
-        const session = await fetchAuthSession()
+        const session = await fetchAuthSession();
         if (session.tokens?.idToken) {
-          succeed()
-          return
+          succeed();
+          return;
         }
         // OAuth exchange is async via enableOAuthListener; give it a moment.
-        await new Promise((r) => setTimeout(r, 2500))
-        const retry = await fetchAuthSession()
+        await new Promise((r) => setTimeout(r, 2500));
+        const retry = await fetchAuthSession();
         if (retry.tokens?.idToken) {
-          succeed()
+          succeed();
         } else if (!settled) {
-          fail('Sign-in did not return tokens. Try again.')
+          fail('Sign-in did not return tokens. Try again.');
         }
       } catch (err) {
-        fail(err instanceof Error ? err.message : 'Sign-in failed')
+        fail(err instanceof Error ? err.message : 'Sign-in failed');
       }
-    })()
+    })();
 
     return () => {
-      cancelled = true
-      unsubscribe()
-    }
-  }, [navigate])
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [navigate]);
 
   return (
     <div className="admin-shell admin-shell--centered">
@@ -91,5 +91,5 @@ export default function AuthCallback() {
         <p>Completing sign-in…</p>
       )}
     </div>
-  )
+  );
 }

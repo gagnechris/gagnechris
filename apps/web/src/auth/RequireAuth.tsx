@@ -1,45 +1,45 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { getAuthUser, redirectToSignIn, type AuthUser } from './session'
+import { useEffect, useState, type ReactNode } from 'react';
+import { getAuthUser, redirectToSignIn, type AuthUser } from './session';
 
 type RequireAuthProps = {
-  children: (user: AuthUser) => ReactNode
-}
+  children: (user: AuthUser) => ReactNode;
+};
 
 /**
  * Gate for /admin. Unauthenticated visitors are sent to Cognito managed login.
  */
 export default function RequireAuth({ children }: RequireAuthProps) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [checking, setChecking] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     void (async () => {
       try {
-        const current = await getAuthUser()
+        const current = await getAuthUser();
         if (cancelled) {
-          return
+          return;
         }
         if (!current) {
-          await redirectToSignIn()
-          return
+          await redirectToSignIn();
+          return;
         }
-        setUser(current)
-        setChecking(false)
+        setUser(current);
+        setChecking(false);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Auth check failed')
-          setChecking(false)
+          setError(err instanceof Error ? err.message : 'Auth check failed');
+          setChecking(false);
         }
       }
-    })()
+    })();
 
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   if (error) {
     return (
@@ -50,7 +50,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
           Sign in
         </button>
       </div>
-    )
+    );
   }
 
   if (checking || !user) {
@@ -58,8 +58,8 @@ export default function RequireAuth({ children }: RequireAuthProps) {
       <div className="admin-shell admin-shell--centered">
         <p>Checking sign-in…</p>
       </div>
-    )
+    );
   }
 
-  return <>{children(user)}</>
+  return <>{children(user)}</>;
 }

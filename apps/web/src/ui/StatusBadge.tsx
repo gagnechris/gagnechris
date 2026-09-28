@@ -1,7 +1,7 @@
 type Props = {
-  status: 'draft' | 'published' | 'deleted'
-  hasUnpublishedChanges?: boolean
-}
+  status: 'draft' | 'published' | 'deleted';
+  hasUnpublishedChanges?: boolean;
+};
 
 /** Status + optional "Unpublished changes" badges. */
 export function StatusBadge({ status, hasUnpublishedChanges }: Props) {
@@ -14,5 +14,5 @@ export function StatusBadge({ status, hasUnpublishedChanges }: Props) {
         </span>
       ) : null}
     </>
-  )
+  );
 }

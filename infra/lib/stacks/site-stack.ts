@@ -50,10 +50,7 @@ import type { Construct } from 'constructs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
-import {
-  siteOrigins,
-  ssmParameterName,
-} from '../config/constants.js';
+import { siteOrigins, ssmParameterName } from '../config/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -196,7 +193,10 @@ export class SiteStack extends Stack {
       runtime: FunctionRuntime.JS_2_0,
       keyValueStore: blogSlugsKvs,
       code: FunctionCode.fromFile({
-        filePath: path.join(__dirname, '../cloudfront/viewer-request-function.js'),
+        filePath: path.join(
+          __dirname,
+          '../cloudfront/viewer-request-function.js',
+        ),
       }),
     });
 
@@ -301,7 +301,8 @@ export class SiteStack extends Stack {
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: AllowedMethods.ALLOW_ALL,
           cachePolicy: CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          originRequestPolicy:
+            OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
         '/media/*': {
           origin,
@@ -337,8 +338,7 @@ export class SiteStack extends Stack {
     NagSuppressions.addResourceSuppressions(this.distribution, [
       {
         id: 'AwsSolutions-CFR1',
-        reason:
-          'Geo restriction is unnecessary for a personal portfolio site.',
+        reason: 'Geo restriction is unnecessary for a personal portfolio site.',
       },
       {
         id: 'AwsSolutions-CFR2',

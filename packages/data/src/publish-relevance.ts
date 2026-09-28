@@ -20,7 +20,9 @@ export interface DynamoStreamKeyImage {
  * True when a stream record's keys match the CDK `FilterRule.isEqual('PUBLISHED')`
  * filter (sk attribute equal to {@link PUBLISH_STREAM_SK}).
  */
-export function isPublishRelevant(keys: DynamoStreamKeyImage | undefined): boolean {
+export function isPublishRelevant(
+  keys: DynamoStreamKeyImage | undefined,
+): boolean {
   return keys?.sk?.S === PUBLISH_STREAM_SK;
 }
 

@@ -117,7 +117,8 @@ export async function batchGetAllWithDocClient(
       const result = await sendRaw(items);
       return {
         Responses: result.Responses as BatchGetOutput['Responses'],
-        UnprocessedKeys: result.UnprocessedKeys as BatchGetOutput['UnprocessedKeys'],
+        UnprocessedKeys:
+          result.UnprocessedKeys as BatchGetOutput['UnprocessedKeys'],
       };
     },
     requestItems,
@@ -135,7 +136,8 @@ function errorName(error: unknown): string | undefined {
 
 function cancellationCodes(error: unknown): string[] {
   if (typeof error !== 'object' || error === null) return [];
-  const reasons = (error as { CancellationReasons?: unknown }).CancellationReasons;
+  const reasons = (error as { CancellationReasons?: unknown })
+    .CancellationReasons;
   if (!Array.isArray(reasons)) return [];
   const codes: string[] = [];
   for (const reason of reasons) {

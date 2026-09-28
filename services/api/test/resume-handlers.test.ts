@@ -88,7 +88,7 @@ describe('resume HTTP handlers', () => {
     const result = await handleResumeRoute(
       event('PUT', '/api/admin/resume', {
         version: 1,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
         name: 'Chris Gagne',
         content: sampleResume.content,
       }),
@@ -128,7 +128,7 @@ describe('resume HTTP handlers', () => {
       ...sampleResume,
       status: 'draft',
       version: 2,
-  hasUnpublishedChanges: false,
+      hasUnpublishedChanges: false,
     });
 
     const published = await handleResumeRoute(

@@ -1,6 +1,4 @@
-import {
-  API_SERVICE_NAME,
-} from '@gagnechris/shared';
+import { API_SERVICE_NAME } from '@gagnechris/shared';
 import type {
   APIGatewayProxyHandlerV2,
   APIGatewayProxyStructuredResultV2,

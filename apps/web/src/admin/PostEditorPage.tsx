@@ -1,78 +1,65 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { slugify } from '@gagnechris/shared'
-import type { components } from '../api/schema'
-import { Button } from '../ui/Button'
-import { EditorActionBar } from '../ui/EditorActionBar'
-import {
-  emptyPostDraft,
-  parsePostTags,
-  postDraftFromPost,
-} from './postDraft'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { slugify } from '@gagnechris/shared';
+import type { components } from '../api/schema';
+import { Button } from '../ui/Button';
+import { EditorActionBar } from '../ui/EditorActionBar';
+import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';
 import {
   PostEditorBody,
   PostEditorMeta,
   PostEditorTitle,
   type PostDraftFields,
-} from './PostEditorSections'
-import { ApiError, updatePost } from './query/api'
+} from './PostEditorSections';
+import { ApiError, updatePost } from './query/api';
 import {
   useDeletePostMutation,
   usePostLifecycleMutators,
   usePostQuery,
   useSetPostCache,
-} from './query/posts'
-import { uploadImages } from './uploadImages'
-import { useDraftPublishEditor } from './useDraftPublishEditor'
-import { useDraftUpdater } from './useDraftUpdater'
-import { useQueuedAutosave } from './useQueuedAutosave'
+} from './query/posts';
+import { uploadImages } from './uploadImages';
+import { useDraftPublishEditor } from './useDraftPublishEditor';
+import { useDraftUpdater } from './useDraftUpdater';
+import { useQueuedAutosave } from './useQueuedAutosave';
 
-type Post = components['schemas']['Post']
-type DraftFields = PostDraftFields
+type Post = components['schemas']['Post'];
+type DraftFields = PostDraftFields;
 
 export default function PostEditorPage() {
-  const { postId } = useParams<{ postId: string }>()
-  const navigate = useNavigate()
-  const {
-    data: post,
-    error: queryError,
-    isPending,
-  } = usePostQuery(postId)
-  const setPostCache = useSetPostCache()
-  const deleteMutation = useDeletePostMutation()
+  const { postId } = useParams<{ postId: string }>();
+  const navigate = useNavigate();
+  const { data: post, error: queryError, isPending } = usePostQuery(postId);
+  const setPostCache = useSetPostCache();
+  const deleteMutation = useDeletePostMutation();
   const {
     publish: publishRequest,
     unpublish: unpublishRequest,
     discard: discardRequest,
-  } = usePostLifecycleMutators(postId)
+  } = usePostLifecycleMutators(postId);
 
-  const [draft, setDraft] = useState<DraftFields>(emptyPostDraft)
-  const [hydratedId, setHydratedId] = useState<string | null>(null)
-  const [slugManual, setSlugManual] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit')
-  const versionRef = useRef(0)
-  const titleRef = useRef<HTMLTextAreaElement>(null)
+  const [draft, setDraft] = useState<DraftFields>(emptyPostDraft);
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
+  const [slugManual, setSlugManual] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
+  const versionRef = useRef(0);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
 
   if (post && post.id !== hydratedId) {
-    setHydratedId(post.id)
-    setDraft(postDraftFromPost(post))
-    setSlugManual(true)
-    setDirty(false)
+    setHydratedId(post.id);
+    setDraft(postDraftFromPost(post));
+    setSlugManual(true);
+    setDirty(false);
   }
 
   useEffect(() => {
-    if (post) versionRef.current = post.version
-  }, [post])
+    if (post) versionRef.current = post.version;
+  }, [post]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
-      if (!postId) return { ok: false as const, status: 0 }
+      if (!postId) return { ok: false as const, status: 0 };
       try {
         const entity = await updatePost(postId, {
           version,
@@ -82,30 +69,30 @@ export default function PostEditorPage() {
           bodyMarkdown: current.bodyMarkdown,
           tags: parsePostTags(current.tagsText),
           coverImage: current.coverImage.trim() || null,
-        })
-        return { ok: true as const, entity }
+        });
+        return { ok: true as const, entity };
       } catch (err) {
         return {
           ok: false as const,
           status: err instanceof ApiError ? err.status : 0,
-        }
+        };
       }
     },
     [postId],
-  )
+  );
 
-  const getVersion = useCallback((entity: Post) => entity.version, [])
+  const getVersion = useCallback((entity: Post) => entity.version, []);
   const onSaved = useCallback(
     (entity: Post) => setPostCache(entity),
     [setPostCache],
-  )
+  );
   const onReplaceDraft = useCallback(
     (entity: Post) => {
-      setPostCache(entity)
-      setDraft(postDraftFromPost(entity))
+      setPostCache(entity);
+      setDraft(postDraftFromPost(entity));
     },
     [setPostCache],
-  )
+  );
 
   const autosave = useQueuedAutosave({
     draft,
@@ -118,21 +105,21 @@ export default function PostEditorPage() {
     onSaved,
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
-  })
-  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave
+  });
+  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
-  )
+  );
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
-  )
+  );
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
-  )
+  );
 
   const { busy, setBusy, runPublish, runUnpublish, runDiscard } =
     useDraftPublishEditor({
@@ -146,74 +133,75 @@ export default function PostEditorPage() {
       publish: publishMutate,
       unpublish: unpublishMutate,
       discard: discardMutate,
-      unpublishConfirm:
-        'Unpublish this post? It will leave the public blog.',
+      unpublishConfirm: 'Unpublish this post? It will leave the public blog.',
       discardConfirm:
         'Discard unpublished edits and restore the last published post?',
       enabled: Boolean(postId),
-    })
+    });
 
   useEffect(() => {
-    const el = titleRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [draft.title, post])
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft.title, post]);
 
-  const updateDraft = useDraftUpdater(setDraft, bumpEdit, setDirty)
+  const updateDraft = useDraftUpdater(setDraft, bumpEdit, setDirty);
   const setField = <K extends keyof DraftFields>(
     key: K,
     value: DraftFields[K],
   ) => {
     updateDraft((prev) => {
-      const next = { ...prev, [key]: value }
+      const next = { ...prev, [key]: value };
       if (key === 'title' && !slugManual) {
-        next.slug = slugify(String(value)) || 'untitled'
+        next.slug = slugify(String(value)) || 'untitled';
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const handleUploadImages = useCallback(
     async (files: File[]) => {
       try {
-        setSaveError(null)
-        return await uploadImages(files)
+        setSaveError(null);
+        return await uploadImages(files);
       } catch (err) {
-        setSaveError(err instanceof Error ? err.message : 'Image upload failed')
-        return []
+        setSaveError(
+          err instanceof Error ? err.message : 'Image upload failed',
+        );
+        return [];
       }
     },
     [setSaveError],
-  )
+  );
 
   const runDelete = async () => {
-    if (!postId || busy) return
+    if (!postId || busy) return;
     if (
       !window.confirm(
         'Soft-delete this post? You can recover it later via the API.',
       )
     ) {
-      return
+      return;
     }
-    setBusy(true)
+    setBusy(true);
     try {
-      await deleteMutation.mutateAsync(postId)
-      setDirty(false)
-      void navigate('/admin')
+      await deleteMutation.mutateAsync(postId);
+      setDirty(false);
+      void navigate('/admin');
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Delete failed.')
+      setSaveError(err instanceof ApiError ? err.message : 'Delete failed.');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const loadError =
     queryError instanceof ApiError
       ? queryError.message
       : queryError
         ? 'Could not load post.'
-        : null
+        : null;
 
   if (loadError) {
     return (
@@ -223,7 +211,7 @@ export default function PostEditorPage() {
         </p>
         <Link to="/admin">← Back to posts</Link>
       </section>
-    )
+    );
   }
 
   if (isPending || !post || hydratedId !== post.id) {
@@ -231,7 +219,7 @@ export default function PostEditorPage() {
       <section className="admin-panel">
         <p>Loading editor…</p>
       </section>
-    )
+    );
   }
 
   return (
@@ -247,9 +235,7 @@ export default function PostEditorPage() {
         saveState={saveState}
         dirty={dirty}
         busy={busy}
-        viewLiveHref={
-          post.status === 'published' ? `/blog/${post.slug}` : null
-        }
+        viewLiveHref={post.status === 'published' ? `/blog/${post.slug}` : null}
         onPublish={() => void runPublish()}
         onUnpublish={() => void runUnpublish()}
         onDiscard={() => void runDiscard()}
@@ -292,5 +278,5 @@ export default function PostEditorPage() {
         onUploadImages={handleUploadImages}
       />
     </section>
-  )
+  );
 }

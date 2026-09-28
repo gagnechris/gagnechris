@@ -7,7 +7,7 @@ slug: welcome
 
 Hi, I'm Chris Gagne and welcome to my personal site. This is where I'll share ideas, lessons, and experiments from my work in software engineering, leadership, and AI.
 
-I've spent the past few years watching teams integrate AI agents into their workflows and I've seen some lose trust in the quality of what gets produced. It turns out that AI makes planning and problem understanding *more* critical, not less. Speed without clarity just creates faster mess.
+I've spent the past few years watching teams integrate AI agents into their workflows and I've seen some lose trust in the quality of what gets produced. It turns out that AI makes planning and problem understanding _more_ critical, not less. Speed without clarity just creates faster mess.
 
 I'll write about integrating AI into dev teams, building engineering cultures that actually ship, and honest takes on what's working (and flopping) in my own work.
 

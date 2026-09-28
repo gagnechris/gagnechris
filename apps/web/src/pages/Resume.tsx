@@ -1,57 +1,57 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { trackResumeView, trackResumeDownload } from '../utils/analytics'
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { trackResumeView, trackResumeDownload } from '../utils/analytics';
 import {
   fallbackResumeView,
   loadPublishedResume,
   type ResumeView,
-} from '../resume/publishedResume'
-import { createPublicApiClient } from '../api/public-client'
-import PublicNav from '../components/PublicNav'
-import './Resume.css'
+} from '../resume/publishedResume';
+import { createPublicApiClient } from '../api/public-client';
+import PublicNav from '../components/PublicNav';
+import './Resume.css';
 
 function Resume() {
-  const [resume, setResume] = useState<ResumeView>(fallbackResumeView)
-  const [showBearNote, setShowBearNote] = useState(false)
+  const [resume, setResume] = useState<ResumeView>(fallbackResumeView);
+  const [showBearNote, setShowBearNote] = useState(false);
 
   useEffect(() => {
-    trackResumeView()
-  }, [])
+    trackResumeView();
+  }, []);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     void loadPublishedResume()
       .then((published) => {
         if (published && !cancelled) {
-          setResume(published)
+          setResume(published);
         }
       })
       .catch(() => {
         /* fall back to the bundled default content */
-      })
+      });
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   const handleDownload = () => {
-    if (resume.unavailable || !resume.pdfPath) return
-    trackResumeDownload()
+    if (resume.unavailable || !resume.pdfPath) return;
+    trackResumeDownload();
     void createPublicApiClient()
       .POST('/api/resume/download', {
         body: { referrer: document.referrer || undefined },
       })
       .catch(() => {
         /* notify is best-effort; download still proceeds */
-      })
-    const link = document.createElement('a')
-    link.href = resume.pdfPath
-    link.download = 'Chris-Gagne-Resume.pdf'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    setShowBearNote(true)
-  }
+      });
+    const link = document.createElement('a');
+    link.href = resume.pdfPath;
+    link.download = 'Chris-Gagne-Resume.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowBearNote(true);
+  };
 
   return (
     <div className="resume-page" id="top">
@@ -68,7 +68,9 @@ function Resume() {
               className="subtle-download"
               aria-label="Download resume as PDF"
             >
-              <span className="download-icon" aria-hidden="true">↓</span>
+              <span className="download-icon" aria-hidden="true">
+                ↓
+              </span>
               <span className="download-text">Resume</span>
             </button>
           )}
@@ -105,19 +107,25 @@ function Resume() {
             className="subtle-download"
             aria-label="Download resume as PDF"
           >
-            <span className="download-icon" aria-hidden="true">↓</span>
+            <span className="download-icon" aria-hidden="true">
+              ↓
+            </span>
             <span className="download-text">Download Resume PDF</span>
           </button>
         )}
-        <a href="#top" className="back-link" onClick={(e) => {
-          e.preventDefault()
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        }}>
+        <a
+          href="#top"
+          className="back-link"
+          onClick={(e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        >
           Back to top
         </a>
       </div>
     </div>
-  )
+  );
 }
 
-export default Resume
+export default Resume;

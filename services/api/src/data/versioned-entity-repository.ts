@@ -107,8 +107,7 @@ export class VersionedEntityRepository<
             new PutCommand({
               TableName: this.tableName,
               Item: this.config.toItem(next),
-              ConditionExpression:
-                'attribute_exists(pk) AND version = :v',
+              ConditionExpression: 'attribute_exists(pk) AND version = :v',
               ExpressionAttributeValues: { ':v': expectedVersion },
             }),
           ),

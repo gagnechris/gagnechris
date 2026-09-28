@@ -58,22 +58,29 @@
   border-radius: var(--radius-lg);
   border: 2px solid var(--primary-300);
   box-shadow: var(--shadow-md);
-  background:
-    linear-gradient(
-      180deg,
-      var(--bear-sky-top) 0%,
-      var(--bear-sky-mid) 42%,
-      var(--bear-earth) 42%,
-      var(--bear-earth-deep) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    var(--bear-sky-top) 0%,
+    var(--bear-sky-mid) 42%,
+    var(--bear-earth) 42%,
+    var(--bear-earth-deep) 100%
+  );
 }
 
 .bear-game__sky {
   position: absolute;
   inset: 0 0 58% 0;
   background:
-    radial-gradient(circle at 78% 28%, rgba(255, 255, 255, 0.55) 0 8%, transparent 9%),
-    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.4) 0 6%, transparent 7%);
+    radial-gradient(
+      circle at 78% 28%,
+      rgba(255, 255, 255, 0.55) 0 8%,
+      transparent 9%
+    ),
+    radial-gradient(
+      circle at 18% 22%,
+      rgba(255, 255, 255, 0.4) 0 6%,
+      transparent 7%
+    );
   pointer-events: none;
 }
 
@@ -84,7 +91,20 @@
   bottom: 58%;
   height: 18%;
   background:
-    linear-gradient(120deg, transparent 0 8%, var(--bear-pine-deep) 8% 14%, transparent 14% 22%, var(--bear-pine) 22% 30%, transparent 30% 40%, var(--bear-pine-deep) 40% 48%, transparent 48% 58%, var(--bear-moss) 58% 66%, transparent 66% 78%, var(--bear-pine) 78% 88%, transparent 88%),
+    linear-gradient(
+      120deg,
+      transparent 0 8%,
+      var(--bear-pine-deep) 8% 14%,
+      transparent 14% 22%,
+      var(--bear-pine) 22% 30%,
+      transparent 30% 40%,
+      var(--bear-pine-deep) 40% 48%,
+      transparent 48% 58%,
+      var(--bear-moss) 58% 66%,
+      transparent 66% 78%,
+      var(--bear-pine) 78% 88%,
+      transparent 88%
+    ),
     linear-gradient(to top, var(--bear-pine-deep), transparent);
   opacity: 0.9;
   pointer-events: none;
@@ -152,7 +172,9 @@
   height: 48px;
   pointer-events: none;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
-  transition: left 50ms linear, top 50ms linear;
+  transition:
+    left 50ms linear,
+    top 50ms linear;
   z-index: 2;
 }
 

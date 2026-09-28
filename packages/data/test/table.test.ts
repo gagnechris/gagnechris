@@ -50,10 +50,12 @@ describe('isPublishRelevantAdminMutation', () => {
     expect(
       isPublishRelevantAdminMutation('POST', '/api/admin/home/unpublish'),
     ).toBe(true);
-    expect(isPublishRelevantAdminMutation('DELETE', '/api/admin/posts/abc')).toBe(
-      true,
+    expect(
+      isPublishRelevantAdminMutation('DELETE', '/api/admin/posts/abc'),
+    ).toBe(true);
+    expect(isPublishRelevantAdminMutation('GET', '/api/admin/posts')).toBe(
+      false,
     );
-    expect(isPublishRelevantAdminMutation('GET', '/api/admin/posts')).toBe(false);
     expect(isPublishRelevantAdminMutation('PUT', '/api/admin/posts/abc')).toBe(
       false,
     );

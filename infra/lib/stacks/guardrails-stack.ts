@@ -47,11 +47,7 @@ export class GuardrailsStack extends Stack {
   constructor(scope: Construct, id: string, props: GuardrailsStackProps) {
     super(scope, id, props);
 
-    const {
-      config,
-      monthlyBudgetUsd = 20,
-      trailRetentionDays = 90,
-    } = props;
+    const { config, monthlyBudgetUsd = 20, trailRetentionDays = 90 } = props;
     const email = config.alertsEmail;
 
     this.alertsTopic = new Topic(this, 'Alerts', {
@@ -181,52 +177,56 @@ export class GuardrailsStack extends Stack {
     });
 
     // No native CFN type for account-level S3 BPA — call S3 Control via SDK.
-    const accountBpa = new AwsCustomResource(this, 'AccountS3BlockPublicAccess', {
-      installLatestAwsSdk: false,
-      onCreate: {
-        service: 'S3Control',
-        action: 'putPublicAccessBlock',
-        parameters: {
-          AccountId: this.account,
-          PublicAccessBlockConfiguration: {
-            BlockPublicAcls: true,
-            IgnorePublicAcls: true,
-            BlockPublicPolicy: true,
-            RestrictPublicBuckets: true,
+    const accountBpa = new AwsCustomResource(
+      this,
+      'AccountS3BlockPublicAccess',
+      {
+        installLatestAwsSdk: false,
+        onCreate: {
+          service: 'S3Control',
+          action: 'putPublicAccessBlock',
+          parameters: {
+            AccountId: this.account,
+            PublicAccessBlockConfiguration: {
+              BlockPublicAcls: true,
+              IgnorePublicAcls: true,
+              BlockPublicPolicy: true,
+              RestrictPublicBuckets: true,
+            },
           },
+          physicalResourceId: PhysicalResourceId.of(
+            `AccountS3BlockPublicAccess-${this.account}`,
+          ),
         },
-        physicalResourceId: PhysicalResourceId.of(
-          `AccountS3BlockPublicAccess-${this.account}`,
-        ),
-      },
-      onUpdate: {
-        service: 'S3Control',
-        action: 'putPublicAccessBlock',
-        parameters: {
-          AccountId: this.account,
-          PublicAccessBlockConfiguration: {
-            BlockPublicAcls: true,
-            IgnorePublicAcls: true,
-            BlockPublicPolicy: true,
-            RestrictPublicBuckets: true,
+        onUpdate: {
+          service: 'S3Control',
+          action: 'putPublicAccessBlock',
+          parameters: {
+            AccountId: this.account,
+            PublicAccessBlockConfiguration: {
+              BlockPublicAcls: true,
+              IgnorePublicAcls: true,
+              BlockPublicPolicy: true,
+              RestrictPublicBuckets: true,
+            },
           },
+          physicalResourceId: PhysicalResourceId.of(
+            `AccountS3BlockPublicAccess-${this.account}`,
+          ),
         },
-        physicalResourceId: PhysicalResourceId.of(
-          `AccountS3BlockPublicAccess-${this.account}`,
-        ),
+        // Leave account BPA in place if the stack is deleted.
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+              's3:PutAccountPublicAccessBlock',
+              's3:GetAccountPublicAccessBlock',
+            ],
+            resources: ['*'],
+          }),
+        ]),
       },
-      // Leave account BPA in place if the stack is deleted.
-      policy: AwsCustomResourcePolicy.fromStatements([
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            's3:PutAccountPublicAccessBlock',
-            's3:GetAccountPublicAccessBlock',
-          ],
-          resources: ['*'],
-        }),
-      ]),
-    });
+    );
 
     NagSuppressions.addResourceSuppressions(
       accountBpa,

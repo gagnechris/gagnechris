@@ -26,6 +26,7 @@
   "scripts": {
     "openapi": "tsx src/generate-openapi.ts",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {

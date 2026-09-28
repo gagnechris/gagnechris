@@ -1,24 +1,24 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import {
   HOME_FOOTER_LINKS,
   HOME_PROFILE_IMAGE_SRC,
   HOME_QUICK_LINKS,
   type SiteChromeLink,
-} from '@gagnechris/shared/home'
-import { trackEvent } from './utils/analytics'
+} from '@gagnechris/shared/home';
+import { trackEvent } from './utils/analytics';
 import {
   documentHomeView,
   fallbackHomeView,
   loadPublishedHome,
   type HomeView,
-} from './home/publishedHome'
-import './App.css'
+} from './home/publishedHome';
+import './App.css';
 
 const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
   const onTrack = link.trackId
     ? () => trackEvent('click', 'external_link', link.trackId!)
-    : undefined
+    : undefined;
 
   if (link.kind === 'spa') {
     return (
@@ -30,7 +30,7 @@ const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
       >
         {link.label}
       </Link>
-    )
+    );
   }
 
   if (link.kind === 'external') {
@@ -46,7 +46,7 @@ const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
       >
         {link.label}
       </a>
-    )
+    );
   }
 
   return (
@@ -59,15 +59,15 @@ const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
     >
       {link.label}
     </a>
-  )
-}
+  );
+};
 
 const ChromeLinkList = ({
   links,
   className,
 }: {
-  links: readonly SiteChromeLink[]
-  className?: string
+  links: readonly SiteChromeLink[];
+  className?: string;
 }) => (
   <ul className={className}>
     {links.map((link) => (
@@ -76,32 +76,32 @@ const ChromeLinkList = ({
       </li>
     ))}
   </ul>
-)
+);
 
 function App() {
   const [home, setHome] = useState<HomeView>(
     () => documentHomeView() ?? fallbackHomeView(),
-  )
+  );
 
   useEffect(() => {
     // A cold load on `/` already parsed the prerender out of the document.
-    if (documentHomeView()) return
-    let cancelled = false
+    if (documentHomeView()) return;
+    let cancelled = false;
     void loadPublishedHome()
       .then((published) => {
         if (published && !cancelled) {
-          setHome(published)
+          setHome(published);
         }
       })
       .catch(() => {
         /* fall back to the bundled default content */
-      })
+      });
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
 
   return (
     <div className="home-page">
@@ -139,7 +139,7 @@ function App() {
         />
       </footer>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

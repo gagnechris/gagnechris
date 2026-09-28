@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+cdk.out
+package-lock.json
+apps/web/src/api/schema.d.ts
+packages/shared/openapi/openapi.json
+*.min.js

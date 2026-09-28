@@ -39,7 +39,6 @@
   font-weight: 600;
 }
 
-
 .contact-intro {
   margin-bottom: var(--space-8);
   padding: var(--space-6);
@@ -99,7 +98,9 @@
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-family: inherit;
-  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
   background-color: var(--neutral-50);
 }
 

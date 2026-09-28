@@ -13,13 +13,13 @@ code.
 
 ## Keys
 
-| Attribute | Role |
-| --- | --- |
-| `pk` | Partition key |
-| `sk` | Sort key |
-| `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date) |
-| `gsi2pk` / `gsi2sk` | GSI2 — list published posts by tag |
-| `entityType` | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
+| Attribute           | Role                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| `pk`                | Partition key                                                                               |
+| `sk`                | Sort key                                                                                    |
+| `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                           |
+| `gsi2pk` / `gsi2sk` | GSI2 — list published posts by tag                                                          |
+| `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -33,19 +33,19 @@ redirects use dedicated items.
 
 #### `POST#<postId>` / `META` — editable draft
 
-| Attr | Notes |
-| --- | --- |
-| `slug` | Current draft slug |
-| `title`, `excerpt`, `bodyMarkdown` | Draft content |
-| `tags` | `string[]` |
-| `status` | `draft` \| `published` \| `deleted` (soft delete). `published` means a live snapshot exists |
-| `publishedAt` | ISO-8601 when first published; kept on unpublish |
-| `updatedAt` | ISO-8601 |
-| `coverImage` | Optional `/media/...` path |
-| `seo` | Optional map: `title`, `description`, `ogImage` overrides |
-| `version` | Number for optimistic concurrency (CHR-30) |
-| `gsi1pk` | `STATUS#<status>` |
-| `gsi1sk` | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt` |
+| Attr                               | Notes                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `slug`                             | Current draft slug                                                                          |
+| `title`, `excerpt`, `bodyMarkdown` | Draft content                                                                               |
+| `tags`                             | `string[]`                                                                                  |
+| `status`                           | `draft` \| `published` \| `deleted` (soft delete). `published` means a live snapshot exists |
+| `publishedAt`                      | ISO-8601 when first published; kept on unpublish                                            |
+| `updatedAt`                        | ISO-8601                                                                                    |
+| `coverImage`                       | Optional `/media/...` path                                                                  |
+| `seo`                              | Optional map: `title`, `description`, `ogImage` overrides                                   |
+| `version`                          | Number for optimistic concurrency (CHR-30)                                                  |
+| `gsi1pk`                           | `STATUS#<status>`                                                                           |
+| `gsi1sk`                           | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt`    |
 
 Admin autosave writes **only** this item. Edits never change the live site.
 
@@ -58,21 +58,21 @@ filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
 
 #### `SLUG#<slug>` / `POST` — uniqueness + lookup
 
-| Attr | Notes |
-| --- | --- |
-| `postId` | Owner of this slug |
-| `entityType` | `slug` |
+| Attr         | Notes              |
+| ------------ | ------------------ |
+| `postId`     | Owner of this slug |
+| `entityType` | `slug`             |
 
 Create/rename: conditional `PutItem` with `attribute_not_exists(pk)` so two
 posts cannot claim the same slug.
 
 #### `SLUG#<oldSlug>` / `REDIRECT` — rename / soft URL keep
 
-| Attr | Notes |
-| --- | --- |
+| Attr         | Notes                       |
+| ------------ | --------------------------- |
 | `targetSlug` | Current slug to redirect to |
-| `postId` | Owning post |
-| `entityType` | `slugRedirect` |
+| `postId`     | Owning post                 |
+| `entityType` | `slugRedirect`              |
 
 On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
 update `META.slug`. Publisher (CHR-34) can emit a meta refresh or CloudFront
@@ -85,16 +85,16 @@ Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
 
 ### Access patterns (posts)
 
-| Need | How |
-| --- | --- |
-| Get by `postId` | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
-| Get by slug | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`) |
-| List all (admin) | Query GSI1 `STATUS#draft` and `STATUS#published` (META only), merge/sort |
-| List published by date | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED` |
-| List by tag (published) | See tag items below |
-| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST` |
-| Soft delete | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim |
-| Publish / discard | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META |
+| Need                    | How                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
+| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                 |
+| List all (admin)        | Query GSI1 `STATUS#draft` and `STATUS#published` (META only), merge/sort            |
+| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`             |
+| List by tag (published) | See tag items below                                                                 |
+| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                 |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                      |
+| Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                |
 
 ### Tag index items
 
@@ -103,13 +103,13 @@ For each tag on a **published** post, maintain:
 `TAG#<tag>` / `TS#<publishedAt>#POST#<postId>` with `gsi2pk`/`gsi2sk` mirroring
 pk/sk (or project from GSI2 only). Simpler pattern used here:
 
-| Keys | |
-| --- | --- |
-| `pk` | `TAG#<normalizedTag>` |
-| `sk` | `TS#<publishedAt>#POST#<postId>` |
-| `gsi2pk` | same as `pk` |
-| `gsi2sk` | same as `sk` |
-| `postId`, `slug` | denormalized for list cards |
+| Keys             |                                  |
+| ---------------- | -------------------------------- |
+| `pk`             | `TAG#<normalizedTag>`            |
+| `sk`             | `TS#<publishedAt>#POST#<postId>` |
+| `gsi2pk`         | same as `pk`                     |
+| `gsi2sk`         | same as `sk`                     |
+| `postId`, `slug` | denormalized for list cards      |
 
 On publish/unpublish, rewrite these sparse items from the **PUBLISHED**
 snapshot (draft tag edits do not change the public tag index until publish).
@@ -122,12 +122,12 @@ Editable draft plus an optional live snapshot.
 
 #### `RESUME#current` / `META` — editable draft — draft
 
-| Attr | Notes |
-| --- | --- |
-| `entityType` | `resume` |
-| `resumeId` | `current` |
-| `name` | Display name in the page header |
-| `pdfPath` | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
+| Attr         | Notes                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| `entityType` | `resume`                                                                                   |
+| `resumeId`   | `current`                                                                                  |
+| `name`       | Display name in the page header                                                            |
+| `pdfPath`    | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
 
 No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
 `DEFAULT_RESUME` on first read (CHR-96). Publish copies META → `PUBLISHED`
@@ -147,13 +147,13 @@ Same draft / published split as the resume.
 
 #### `HOME#current` / `META` — editable draft — draft
 
-| Attr | Notes |
-| --- | --- |
-| `entityType` | `home` |
-| `homeId` | `current` |
-| `name` | Header name (`<h1>`) |
-| `title` | Header subtitle, e.g. `Engineering Leader` |
-| `about` | About Me body text; blank lines separate paragraphs |
+| Attr         | Notes                                               |
+| ------------ | --------------------------------------------------- |
+| `entityType` | `home`                                              |
+| `homeId`     | `current`                                           |
+| `name`       | Header name (`<h1>`)                                |
+| `title`      | Header subtitle, e.g. `Engineering Leader`          |
+| `about`      | About Me body text; blank lines separate paragraphs |
 
 `GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
 writes `HOME#current` / `PUBLISHED`; unpublish deletes it. A draft or missing
@@ -187,36 +187,36 @@ signed server-issued token would make timing authoritative if spam warrants it.
 
 #### `CONTACT#<ulid>` / `MSG`
 
-| Attr | Notes |
-| --- | --- |
-| `entityType` | `contact` |
-| `contactId` | Same ULID as in `pk` |
-| `name`, `email`, `message` | Visitor-submitted fields |
-| `sourceIp` | `requestContext.http.sourceIp` when present |
-| `createdAt` | ISO-8601 |
-| `emailStatus` | `pending` \| `sent` \| `failed` |
-| `emailError` | Optional short error string when send fails |
+| Attr                       | Notes                                       |
+| -------------------------- | ------------------------------------------- |
+| `entityType`               | `contact`                                   |
+| `contactId`                | Same ULID as in `pk`                        |
+| `name`, `email`, `message` | Visitor-submitted fields                    |
+| `sourceIp`                 | `requestContext.http.sourceIp` when present |
+| `createdAt`                | ISO-8601                                    |
+| `emailStatus`              | `pending` \| `sent` \| `failed`             |
+| `emailError`               | Optional short error string when send fails |
 
 ### Rate-limit counters (TTL)
 
 Attribute `ttl` (epoch seconds) is enabled on the table for auto-expiry.
 Counters use non-`META` sort keys so streams ignore them.
 
-| Purpose | `pk` | `sk` | Limit |
-| --- | --- | --- | --- |
-| Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3 |
-| SES emails / UTC day | `RATE#ses#global` | `DAY#<yyyy-mm-dd>` | 100 |
-| Resume notify IP/day | `RATE#resume#ip#<ip>` | `DAY#<yyyy-mm-dd>` | 1 (dedupe) |
+| Purpose               | `pk`                   | `sk`                   | Limit      |
+| --------------------- | ---------------------- | ---------------------- | ---------- |
+| Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3          |
+| SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
+| Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 
 ## Notebook (reserved key space)
 
 No Notebook APIs in this ticket; keys are reserved so posts never collide.
 
-| Entity | `pk` | `sk` | GSI1 |
-| --- | --- | --- | --- |
-| Note | `NOTE#<noteId>` | `META` | `TYPE#NOTE` / `TS#<updatedAt>#NOTE#<id>` |
-| Task | `TASK#<taskId>` | `META` | `TYPE#TASK` / `STATUS#<open\|done>#TS#...` |
-| Note slug (optional) | `NSLUG#<slug>` | `NOTE` | — |
+| Entity               | `pk`            | `sk`   | GSI1                                       |
+| -------------------- | --------------- | ------ | ------------------------------------------ |
+| Note                 | `NOTE#<noteId>` | `META` | `TYPE#NOTE` / `TS#<updatedAt>#NOTE#<id>`   |
+| Task                 | `TASK#<taskId>` | `META` | `TYPE#TASK` / `STATUS#<open\|done>#TS#...` |
+| Note slug (optional) | `NSLUG#<slug>`  | `NOTE` | —                                          |
 
 Access patterns to support later: get note by id, list notes by updated, get/list
 tasks by status. Use `TYPE#*` on GSI1 so Notebook lists never scan `STATUS#*`

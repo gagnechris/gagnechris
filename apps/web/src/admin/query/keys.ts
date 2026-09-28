@@ -14,4 +14,4 @@ export const queryKeys = {
   // notes: { all, list, detail }
   // tasks: { all, list, detail }
   // today: () => ['admin', 'today'] as const
-}
+};

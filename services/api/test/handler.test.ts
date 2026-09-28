@@ -30,9 +30,7 @@ function event(
       stage: '$default',
       time: 'now',
       timeEpoch: Date.now(),
-      authorizer: claims
-        ? { jwt: { claims, scopes: [] } }
-        : undefined,
+      authorizer: claims ? { jwt: { claims, scopes: [] } } : undefined,
     },
     isBase64Encoded: false,
   } as APIGatewayProxyEventV2;
@@ -40,7 +38,11 @@ function event(
 
 describe('api handler', () => {
   it('GET /api/health returns ok', async () => {
-    const result = await handler(event('GET', '/api/health'), {} as never, () => undefined);
+    const result = await handler(
+      event('GET', '/api/health'),
+      {} as never,
+      () => undefined,
+    );
     expect(result).toMatchObject({
       statusCode: 200,
       body: JSON.stringify({ status: 'ok', service: 'gagnechris-api' }),
@@ -67,13 +69,22 @@ describe('api handler', () => {
   });
 
   it('unknown route is 404', async () => {
-    const result = await handler(event('GET', '/api/nope'), {} as never, () => undefined);
+    const result = await handler(
+      event('GET', '/api/nope'),
+      {} as never,
+      () => undefined,
+    );
     expect(result).toMatchObject({ statusCode: 404 });
   });
 
   it('does not set CORS headers (API Gateway corsPreflight owns that)', async () => {
-    const result = await handler(event('GET', '/api/health'), {} as never, () => undefined);
-    const headers = (result as { headers?: Record<string, string> }).headers ?? {};
+    const result = await handler(
+      event('GET', '/api/health'),
+      {} as never,
+      () => undefined,
+    );
+    const headers =
+      (result as { headers?: Record<string, string> }).headers ?? {};
     expect(headers['Access-Control-Allow-Origin']).toBeUndefined();
   });
 });

@@ -12,11 +12,7 @@ import {
   UpdatePostRequestSchema,
 } from '@gagnechris/shared';
 import { json } from '../http.js';
-import {
-  dispatchRoutes,
-  type RouteDef,
-  type RouteHandler,
-} from '../router.js';
+import { dispatchRoutes, type RouteDef, type RouteHandler } from '../router.js';
 import { PostsRepository } from './repository.js';
 
 const IdParams = z.object({ id: z.string().min(1) });

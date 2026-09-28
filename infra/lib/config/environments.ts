@@ -36,9 +36,7 @@ const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
  * Prefer `CDK_ACCOUNT`; otherwise use `CDK_DEFAULT_ACCOUNT` (set by the CDK CLI
  * when credentials are available).
  */
-export function resolveAccountId(
-  env: NodeJS.ProcessEnv = process.env,
-): string {
+export function resolveAccountId(env: NodeJS.ProcessEnv = process.env): string {
   const account = env.CDK_ACCOUNT ?? env.CDK_DEFAULT_ACCOUNT;
   if (!account) {
     throw new Error(

@@ -23,12 +23,12 @@ API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild b
 
 ## Draft vs published
 
-| Concern | Behavior |
-| --- | --- |
-| Admin autosave | Writes **draft** items only (`META` / draft home & resume). Live site unchanged. |
-| Publish | Writes a **live snapshot** (`PUBLISHED` for posts; published home/resume). Stream filter is snapshot-only so draft edits never invoke the publisher. |
-| Unpublish / soft-delete | Removes the live snapshot; publisher removes HTML and updates feeds/KVS. |
-| Optimistic concurrency | `version` on entities; conflicting publishes return 409. |
+| Concern                 | Behavior                                                                                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin autosave          | Writes **draft** items only (`META` / draft home & resume). Live site unchanged.                                                                     |
+| Publish                 | Writes a **live snapshot** (`PUBLISHED` for posts; published home/resume). Stream filter is snapshot-only so draft edits never invoke the publisher. |
+| Unpublish / soft-delete | Removes the live snapshot; publisher removes HTML and updates feeds/KVS.                                                                             |
+| Optimistic concurrency  | `version` on entities; conflicting publishes return 409.                                                                                             |
 
 API repositories share one layering:
 

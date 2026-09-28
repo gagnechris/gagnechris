@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Format check
+        run: npm run format:check
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -44,7 +47,7 @@ jobs:
 
       - name: CDK synth
         env:
-          CDK_DEFAULT_ACCOUNT: "111111111111"
+          CDK_DEFAULT_ACCOUNT: '111111111111'
           CDK_DEFAULT_REGION: us-east-1
           ALERTS_EMAIL: ci-placeholder@example.com
         run: npm run cdk -- synth --quiet

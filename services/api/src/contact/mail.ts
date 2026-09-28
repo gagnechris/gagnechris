@@ -1,7 +1,4 @@
-import {
-  SESv2Client,
-  SendEmailCommand,
-} from '@aws-sdk/client-sesv2';
+import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 
 let client: SESv2Client | undefined;
 

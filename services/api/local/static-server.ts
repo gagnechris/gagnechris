@@ -38,12 +38,10 @@ type CfResponse = {
 };
 
 type ViewerRequestApi = {
-  handler: (
-    event: { request: CfRequest },
-  ) => Promise<CfRequest | { statusCode: number }>;
-  setPublishedBlogSlugsForTests: (
-    slugs: Record<string, number> | null,
-  ) => void;
+  handler: (event: {
+    request: CfRequest;
+  }) => Promise<CfRequest | { statusCode: number }>;
+  setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
 };
 
 async function loadViewerRequestApi(): Promise<ViewerRequestApi> {
@@ -51,7 +49,6 @@ async function loadViewerRequestApi(): Promise<ViewerRequestApi> {
     /import cf from 'cloudfront';\s*/g,
     '',
   );
-  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
   return new Function(
     `var cf = { kvs: function () { throw new Error('kvs unavailable locally'); } };
      ${source}
@@ -63,10 +60,10 @@ async function loadViewerResponseHandler(): Promise<
   (event: { request: { uri: string }; response: CfResponse }) => CfResponse
 > {
   const source = await readFile(viewerResponsePath, 'utf8');
-  // eslint-disable-next-line no-new-func -- intentional: load CF Function source
-  return new Function(`${source}\nreturn handler;`)() as (
-    event: { request: { uri: string }; response: CfResponse },
-  ) => CfResponse;
+  return new Function(`${source}\nreturn handler;`)() as (event: {
+    request: { uri: string };
+    response: CfResponse;
+  }) => CfResponse;
 }
 
 async function loadPublishedSlugs(api: ViewerRequestApi): Promise<void> {

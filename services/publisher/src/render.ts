@@ -94,7 +94,10 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   const jsonLd = buildJsonLd(post);
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    () => `<title>${title}</title>`,
+  );
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -114,8 +117,9 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   html = replaceMeta(html, 'name', 'twitter:image', image);
 
   html = upsertCanonical(html, url);
-  html = html.replace(/<\/head>/i, () =>
-    `<script type="application/ld+json">${jsonLd}</script></head>`,
+  html = html.replace(
+    /<\/head>/i,
+    () => `<script type="application/ld+json">${jsonLd}</script></head>`,
   );
   html = injectPrerender(html, article);
 
@@ -142,7 +146,10 @@ export const renderBlogIndexPage = (
 </section>`.trim();
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    () => `<title>${title}</title>`,
+  );
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -155,10 +162,7 @@ export const renderBlogIndexPage = (
   return html;
 };
 
-export const renderResumePage = (
-  shellHtml: string,
-  resume: Resume,
-): string => {
+export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   const title = escapeHtml(resume.seo?.title || 'Resume - Chris Gagne');
   const description = escapeHtml(
     resume.seo?.description || resumeSummaryExcerpt(resume.content.summary),
@@ -174,7 +178,10 @@ export const renderResumePage = (
   });
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    () => `<title>${title}</title>`,
+  );
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -198,7 +205,10 @@ export const renderResumeUnavailablePage = (shellHtml: string): string => {
     '<article class="resume-page-unavailable"><header><div class="name-section"><h1>Resume</h1></div></header><main><p>Resume available on request.</p></main></article>';
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    () => `<title>${title}</title>`,
+  );
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
@@ -228,7 +238,10 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
     : defaultOgImage();
 
   let html = shellHtml;
-  html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${title}</title>`);
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    () => `<title>${title}</title>`,
+  );
   html = replaceMeta(html, 'name', 'description', description);
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);

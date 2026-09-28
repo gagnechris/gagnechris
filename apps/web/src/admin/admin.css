@@ -79,7 +79,9 @@
   text-decoration: none;
   font-size: var(--text-sm);
   font-weight: 600;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .admin-nav__link:hover {

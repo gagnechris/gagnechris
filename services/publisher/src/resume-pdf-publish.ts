@@ -12,8 +12,7 @@ const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 
 export type ResumePdfPublishResult =
-  | { status: 'written' }
-  | { status: 'kept-previous'; error: unknown };
+  { status: 'written' } | { status: 'kept-previous'; error: unknown };
 
 /**
  * Generate and upload resume.pdf. On failure, log and leave any existing PDF

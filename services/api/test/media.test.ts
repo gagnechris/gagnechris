@@ -53,7 +53,9 @@ describe('media upload', () => {
       contentLength: 42,
       filename: 'pic.webp',
     });
-    expect(result.publicPath).toMatch(/^\/media\/\d{4}\/\d{2}\/[a-f0-9]+\.webp$/);
+    expect(result.publicPath).toMatch(
+      /^\/media\/\d{4}\/\d{2}\/[a-f0-9]+\.webp$/,
+    );
     expect(result.uploadUrl).toContain('/api/admin/media/objects/');
     expect(result.headers['Content-Type']).toBe('image/webp');
     expect(result.publicPath.endsWith('.webp')).toBe(true);

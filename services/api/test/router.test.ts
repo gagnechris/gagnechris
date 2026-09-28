@@ -89,7 +89,10 @@ describe('dispatchRoutes', () => {
       auth: 'admin',
       body: z.object({ name: z.string().min(1) }),
       handler: async (ctx, { body }) =>
-        json(200, { name: (body as { name: string }).name, userId: ctx.userId }),
+        json(200, {
+          name: (body as { name: string }).name,
+          userId: ctx.userId,
+        }),
     },
   ];
 

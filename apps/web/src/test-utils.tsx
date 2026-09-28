@@ -1,8 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, type RenderOptions } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
-import type { ReactElement, ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, type RenderOptions } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import type { ReactElement, ReactNode } from 'react';
 
 export const createTestQueryClient = () =>
   new QueryClient({
@@ -10,42 +10,40 @@ export const createTestQueryClient = () =>
       queries: { retry: false },
       mutations: { retry: false },
     },
-  })
+  });
 
 type ProvidersProps = {
-  children: ReactNode
-  queryClient?: QueryClient
-}
+  children: ReactNode;
+  queryClient?: QueryClient;
+};
 
 const TestProviders = ({ children, queryClient }: ProvidersProps) => {
-  const client = queryClient ?? createTestQueryClient()
+  const client = queryClient ?? createTestQueryClient();
   return (
     <QueryClientProvider client={client}>
       <BrowserRouter>{children}</BrowserRouter>
     </QueryClientProvider>
-  )
-}
+  );
+};
 
 /** Wrap UI that already has its own router with an optional QueryClient. */
 export const QueryClientTestProvider = ({
   children,
   queryClient,
 }: ProvidersProps) => {
-  const client = queryClient ?? createTestQueryClient()
-  return (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
+  const client = queryClient ?? createTestQueryClient();
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+};
 
 export const renderWithProviders = (
   ui: ReactElement,
   options?: Omit<RenderOptions, 'wrapper'> & { queryClient?: QueryClient },
 ) => {
-  const { queryClient, ...rest } = options ?? {}
+  const { queryClient, ...rest } = options ?? {};
   return render(ui, {
     wrapper: ({ children }) => (
       <TestProviders queryClient={queryClient}>{children}</TestProviders>
     ),
     ...rest,
-  })
-}
+  });
+};

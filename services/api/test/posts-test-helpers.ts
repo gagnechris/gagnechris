@@ -5,11 +5,7 @@ import {
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
 import type { Post } from '@gagnechris/shared';
-import {
-  buildMetaItem,
-  postMetaSk,
-  postPk,
-} from '../src/posts/keys.js';
+import { buildMetaItem, postMetaSk, postPk } from '../src/posts/keys.js';
 
 export async function putMetaForTests(
   doc: DynamoDBDocumentClient,

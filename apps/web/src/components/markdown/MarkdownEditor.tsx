@@ -1,74 +1,69 @@
-import CodeMirror, {
-  type ReactCodeMirrorRef,
-} from '@uiw/react-codemirror'
-import { markdown } from '@codemirror/lang-markdown'
-import type { Extension } from '@codemirror/state'
+import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import { markdown } from '@codemirror/lang-markdown';
+import type { Extension } from '@codemirror/state';
 import {
   EditorView,
   keymap as cmKeymap,
   type KeyBinding,
-} from '@codemirror/view'
-import {
-  forwardRef,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from 'react'
-import { taskListToggle } from './taskListToggle'
+} from '@codemirror/view';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { taskListToggle } from './taskListToggle';
 
 export type MarkdownEditorHandle = {
-  focus: () => void
-  insertText: (text: string) => void
-}
+  focus: () => void;
+  insertText: (text: string) => void;
+};
 
 type MarkdownEditorProps = {
-  value: string
-  onChange: (value: string) => void
+  value: string;
+  onChange: (value: string) => void;
   /** Accessible name for the editor surface. */
-  label?: string
-  readOnly?: boolean
+  label?: string;
+  readOnly?: boolean;
   /**
    * Upload image files from paste/drop; return public paths like `/media/...`.
    * When omitted, paste/drop of images is ignored.
    */
-  onUploadImages?: (files: File[]) => Promise<string[]>
+  onUploadImages?: (files: File[]) => Promise<string[]>;
   /** Extra CodeMirror extensions (merged after built-ins). */
-  extensions?: Extension[]
+  extensions?: Extension[];
   /** Extra key bindings (higher precedence than defaults). */
-  keymap?: readonly KeyBinding[]
+  keymap?: readonly KeyBinding[];
   /** Show line numbers in the gutter. @default true */
-  lineNumbers?: boolean
+  lineNumbers?: boolean;
   /** Placeholder when the document is empty. */
-  placeholder?: string
-  onBlur?: () => void
-}
+  placeholder?: string;
+  onBlur?: () => void;
+};
 
-function imageFilesFromList(list: FileList | DataTransferItemList | null): File[] {
-  if (!list) return []
-  const files: File[] = []
+function imageFilesFromList(
+  list: FileList | DataTransferItemList | null,
+): File[] {
+  if (!list) return [];
+  const files: File[] = [];
   if (list instanceof FileList) {
     for (const file of Array.from(list)) {
-      if (file.type.startsWith('image/')) files.push(file)
+      if (file.type.startsWith('image/')) files.push(file);
     }
-    return files
+    return files;
   }
   for (const item of Array.from(list)) {
     if (item.kind === 'file' && item.type.startsWith('image/')) {
-      const file = item.getAsFile()
-      if (file) files.push(file)
+      const file = item.getAsFile();
+      if (file) files.push(file);
     }
   }
-  return files
+  return files;
 }
 
 function insertMarkdownAtCursor(view: EditorView, markdownSnippets: string[]) {
-  if (markdownSnippets.length === 0) return
-  const insert = markdownSnippets.join('\n\n')
-  const { from, to } = view.state.selection.main
+  if (markdownSnippets.length === 0) return;
+  const insert = markdownSnippets.join('\n\n');
+  const { from, to } = view.state.selection.main;
   view.dispatch({
     changes: { from, to, insert: `${insert}\n\n` },
     selection: { anchor: from + insert.length + 2 },
-  })
+  });
 }
 
 /**
@@ -90,69 +85,69 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
     },
     ref,
   ) {
-    const cmRef = useRef<ReactCodeMirrorRef>(null)
+    const cmRef = useRef<ReactCodeMirrorRef>(null);
 
     useImperativeHandle(ref, () => ({
       focus: () => {
-        cmRef.current?.view?.focus()
+        cmRef.current?.view?.focus();
       },
       insertText: (text: string) => {
-        const view = cmRef.current?.view
-        if (!view || view.state.readOnly) return
-        const { from, to } = view.state.selection.main
+        const view = cmRef.current?.view;
+        if (!view || view.state.readOnly) return;
+        const { from, to } = view.state.selection.main;
         view.dispatch({
           changes: { from, to, insert: text },
           selection: { anchor: from + text.length },
-        })
+        });
       },
-    }))
+    }));
 
     const extensions = useMemo(() => {
       const base: Extension[] = [
         markdown(),
         EditorView.lineWrapping,
         taskListToggle(),
-      ]
+      ];
       if (extraKeymap && extraKeymap.length > 0) {
-        base.push(cmKeymap.of(extraKeymap))
+        base.push(cmKeymap.of(extraKeymap));
       }
       if (extraExtensions && extraExtensions.length > 0) {
-        base.push(...extraExtensions)
+        base.push(...extraExtensions);
       }
       if (!onUploadImages || readOnly) {
-        return base
+        return base;
       }
       const handlers = EditorView.domEventHandlers({
         paste(event, view) {
-          const files = imageFilesFromList(event.clipboardData?.items ?? null)
-          if (files.length === 0) return false
-          event.preventDefault()
+          const files = imageFilesFromList(event.clipboardData?.items ?? null);
+          if (files.length === 0) return false;
+          event.preventDefault();
           void onUploadImages(files).then((paths) => {
             insertMarkdownAtCursor(
               view,
               paths.map((path) => `![image](${path})`),
-            )
-          })
-          return true
+            );
+          });
+          return true;
         },
         drop(event, view) {
-          const files = imageFilesFromList(event.dataTransfer?.files ?? null)
-          if (files.length === 0) return false
-          event.preventDefault()
+          const files = imageFilesFromList(event.dataTransfer?.files ?? null);
+          if (files.length === 0) return false;
+          event.preventDefault();
           void onUploadImages(files).then((paths) => {
             insertMarkdownAtCursor(
               view,
               paths.map((path, i) => {
-                const name = files[i]?.name?.replace(/\.[^.]+$/, '') || 'image'
-                return `![${name}](${path})`
+                const name = files[i]?.name?.replace(/\.[^.]+$/, '') || 'image';
+                return `![${name}](${path})`;
               }),
-            )
-          })
-          return true
+            );
+          });
+          return true;
         },
-      })
-      return [...base, handlers]
-    }, [extraExtensions, extraKeymap, onUploadImages, readOnly])
+      });
+      return [...base, handlers];
+    }, [extraExtensions, extraKeymap, onUploadImages, readOnly]);
 
     return (
       <div className="markdown-editor" aria-label={label}>
@@ -172,8 +167,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
           }}
         />
       </div>
-    )
+    );
   },
-)
+);
 
-export default MarkdownEditor
+export default MarkdownEditor;

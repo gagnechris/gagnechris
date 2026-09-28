@@ -84,9 +84,7 @@ function getBoldFontBytes(): Uint8Array {
 
 function getRegularFontkit(): FontkitFont {
   if (!cachedRegularFontkit) {
-    cachedRegularFontkit = fontkit.create(
-      getRegularFontBytes(),
-    ) as FontkitFont;
+    cachedRegularFontkit = fontkit.create(getRegularFontBytes()) as FontkitFont;
   }
   return cachedRegularFontkit;
 }
@@ -109,7 +107,12 @@ export function sanitizeResumePdfText(text: string): string {
   return out;
 }
 
-function wrapLines(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
+function wrapLines(
+  font: PDFFont,
+  text: string,
+  size: number,
+  maxWidth: number,
+): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [''];
   const lines: string[] = [];

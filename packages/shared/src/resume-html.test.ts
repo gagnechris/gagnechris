@@ -82,8 +82,7 @@ describe('renderResumePrerenderHtml', () => {
     expect(html).toContain('<main>');
   });
 
-
-  it('preserves $$, $&, $`, $\' in name and summary', () => {
+  it("preserves $$, $&, $`, $' in name and summary", () => {
     const tricky = "Making $$$ with $$ and $& and $` and $'";
     const escaped = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
     const html = renderResumePrerenderHtml(

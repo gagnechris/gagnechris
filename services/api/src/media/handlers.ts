@@ -14,10 +14,7 @@ import {
   type RouteDef,
   type RouteHandler,
 } from '../router.js';
-import {
-  createMediaUploadUrl,
-  writeLocalMediaObject,
-} from './storage.js';
+import { createMediaUploadUrl, writeLocalMediaObject } from './storage.js';
 
 function readBinaryBody(event: APIGatewayProxyEventV2): Buffer {
   if (!event.body) return Buffer.alloc(0);
@@ -49,8 +46,7 @@ const putObject: RouteHandler = async (ctx: RouteCtx, { params }) => {
     ctx.event.headers['Content-Type'] ??
     '';
   const lengthHeader =
-    ctx.event.headers['content-length'] ??
-    ctx.event.headers['Content-Length'];
+    ctx.event.headers['content-length'] ?? ctx.event.headers['Content-Length'];
   const expectedLength = lengthHeader ? Number(lengthHeader) : NaN;
   if (!Number.isFinite(expectedLength) || expectedLength < 1) {
     return json(400, {

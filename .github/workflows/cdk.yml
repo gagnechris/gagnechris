@@ -9,11 +9,11 @@ on:
     types: [completed]
   schedule:
     # Nightly drift check (08:00 UTC)
-    - cron: "0 8 * * *"
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: "Job to run"
+        description: 'Job to run'
         type: choice
         options:
           - deploy

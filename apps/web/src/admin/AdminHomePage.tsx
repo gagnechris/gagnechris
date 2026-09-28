@@ -1,30 +1,33 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
-import type { components } from '../api/schema'
-import { EditorActionBar } from '../ui/EditorActionBar'
-import { Field, TextArea, TextInput } from '../ui/Field'
-import { ApiError, updateHome } from './query/api'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
+import type { components } from '../api/schema';
+import { EditorActionBar } from '../ui/EditorActionBar';
+import { Field, TextArea, TextInput } from '../ui/Field';
+import { ApiError, updateHome } from './query/api';
 import {
   useHomeLifecycleMutators,
   useHomeQuery,
   useSetHomeCache,
-} from './query/home'
-import { useDraftPublishEditor } from './useDraftPublishEditor'
-import { useNullableDraftUpdater } from './useDraftUpdater'
-import {
-  mergeEditorSeo,
-  useQueuedAutosave,
-} from './useQueuedAutosave'
+} from './query/home';
+import { useDraftPublishEditor } from './useDraftPublishEditor';
+import { useNullableDraftUpdater } from './useDraftUpdater';
+import { mergeEditorSeo, useQueuedAutosave } from './useQueuedAutosave';
 
-type Home = components['schemas']['Home']
+type Home = components['schemas']['Home'];
 
 type DraftFields = {
-  name: string
-  title: string
-  about: string
-  seoTitle: string
-  seoDescription: string
-}
+  name: string;
+  title: string;
+  about: string;
+  seoTitle: string;
+  seoDescription: string;
+};
 
 const fromHome = (home: Home): DraftFields => ({
   name: home.name,
@@ -32,7 +35,7 @@ const fromHome = (home: Home): DraftFields => ({
   about: home.about,
   seoTitle: home.seo?.title ?? '',
   seoDescription: home.seo?.description ?? '',
-})
+});
 
 /** Outbound payload only — live draft keeps untrimmed / in-progress text. */
 const toHomePayload = (
@@ -43,44 +46,40 @@ const toHomePayload = (
   title: draft.title.trim(),
   about: draft.about,
   seo: mergeEditorSeo(existingSeo, draft),
-})
+});
 
 const toHome = (home: Home, draft: DraftFields): Home => ({
   ...home,
   ...toHomePayload(draft, home.seo),
-})
+});
 
 const AdminHomePage = () => {
-  const {
-    data: home,
-    error: queryError,
-    isPending,
-  } = useHomeQuery()
-  const setHomeCache = useSetHomeCache()
+  const { data: home, error: queryError, isPending } = useHomeQuery();
+  const setHomeCache = useSetHomeCache();
   const {
     publish: publishRequest,
     unpublish: unpublishRequest,
     discard: discardRequest,
-  } = useHomeLifecycleMutators()
+  } = useHomeLifecycleMutators();
 
-  const [draft, setDraft] = useState<DraftFields | null>(null)
-  const [hydrated, setHydrated] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const versionRef = useRef(0)
-  const homeRef = useRef<Home | null>(null)
+  const [draft, setDraft] = useState<DraftFields | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const versionRef = useRef(0);
+  const homeRef = useRef<Home | null>(null);
 
   if (home && !hydrated) {
-    setHydrated(true)
-    setDraft(fromHome(home))
-    setDirty(false)
+    setHydrated(true);
+    setDraft(fromHome(home));
+    setDirty(false);
   }
 
   useEffect(() => {
-    homeRef.current = home ?? null
+    homeRef.current = home ?? null;
     if (home) {
-      versionRef.current = home.version
+      versionRef.current = home.version;
     }
-  }, [home])
+  }, [home]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -88,26 +87,26 @@ const AdminHomePage = () => {
         const entity = await updateHome({
           version,
           ...toHomePayload(current, homeRef.current?.seo ?? null),
-        })
-        return { ok: true as const, entity }
+        });
+        return { ok: true as const, entity };
       } catch (err) {
         return {
           ok: false as const,
           status: err instanceof ApiError ? err.status : 0,
-        }
+        };
       }
     },
     [],
-  )
+  );
 
   const onSaved = useCallback(
     (entity: Home) => {
-      setHomeCache(entity)
+      setHomeCache(entity);
     },
     [setHomeCache],
-  )
+  );
 
-  const getVersion = useCallback((entity: Home) => entity.version, [])
+  const getVersion = useCallback((entity: Home) => entity.version, []);
 
   const autosave = useQueuedAutosave({
     draft,
@@ -119,37 +118,37 @@ const AdminHomePage = () => {
     onSaved,
     conflictMessage:
       'Conflict — another save updated the home page. Reload and try again.',
-  })
+  });
 
-  const { save, saveState, saveError, bumpEdit } = autosave
+  const { save, saveState, saveError, bumpEdit } = autosave;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
-  )
+  );
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
-  )
+  );
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
-  )
+  );
 
   const onEntityMeta = useCallback(
     (entity: Home) => {
-      setHomeCache(entity)
+      setHomeCache(entity);
     },
     [setHomeCache],
-  )
+  );
 
   const onReplaceDraft = useCallback(
     (entity: Home) => {
-      setHomeCache(entity)
-      setDraft(fromHome(entity))
+      setHomeCache(entity);
+      setDraft(fromHome(entity));
     },
     [setHomeCache],
-  )
+  );
 
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
     autosave,
@@ -166,19 +165,19 @@ const AdminHomePage = () => {
       'Unpublish the home page? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published home content?',
-  })
+  });
 
-  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty)
+  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty);
   const setField = (key: keyof DraftFields, value: string) => {
-    updateDraft((prev) => ({ ...prev, [key]: value }))
-  }
+    updateDraft((prev) => ({ ...prev, [key]: value }));
+  };
 
   const loadError =
     queryError instanceof ApiError
       ? queryError.message
       : queryError
         ? 'Could not load home content.'
-        : null
+        : null;
 
   if (loadError) {
     return (
@@ -187,7 +186,7 @@ const AdminHomePage = () => {
           {loadError}
         </p>
       </section>
-    )
+    );
   }
 
   if (isPending || !home || !draft) {
@@ -195,10 +194,10 @@ const AdminHomePage = () => {
       <section className="admin-panel">
         <p>Loading home content…</p>
       </section>
-    )
+    );
   }
 
-  const previewHtml = renderHomePrerenderHtml(toHome(home, draft))
+  const previewHtml = renderHomePrerenderHtml(toHome(home, draft));
 
   return (
     <section className="admin-panel admin-panel--editor">
@@ -226,8 +225,8 @@ const AdminHomePage = () => {
         <form
           className="admin-editor-fields"
           onSubmit={(e: FormEvent) => {
-            e.preventDefault()
-            void save()
+            e.preventDefault();
+            void save();
           }}
         >
           <Field label="Name">
@@ -283,7 +282,7 @@ const AdminHomePage = () => {
         ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
       </p>
     </section>
-  )
-}
+  );
+};
 
-export default AdminHomePage
+export default AdminHomePage;

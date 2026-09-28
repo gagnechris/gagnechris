@@ -26,16 +26,15 @@ export const REPO_ROOT = join(__dirname, '../../..');
 /** Default esbuild externals: rely on the Lambda Node.js AWS SDK v3 runtime. */
 export const DEFAULT_EXTERNAL_MODULES = ['@aws-sdk/*'] as const;
 
-export interface NodeLambdaProps
-  extends Omit<
-    NodejsFunctionProps,
-    | 'runtime'
-    | 'architecture'
-    | 'tracing'
-    | 'logGroup'
-    | 'depsLockFilePath'
-    | 'projectRoot'
-  > {
+export interface NodeLambdaProps extends Omit<
+  NodejsFunctionProps,
+  | 'runtime'
+  | 'architecture'
+  | 'tracing'
+  | 'logGroup'
+  | 'depsLockFilePath'
+  | 'projectRoot'
+> {
   /**
    * POWERTOOLS_SERVICE_NAME (and alarm dimension context).
    * Metrics namespace is always {@link POWERTOOLS_METRICS_NAMESPACE}.
@@ -281,11 +280,7 @@ class ApplyNodeLambdaNagSuppressions implements IAspect {
 
   visit(node: IConstruct): void {
     if (node instanceof NodeLambda) {
-      NagSuppressions.addResourceSuppressions(
-        node,
-        this.suppressions,
-        true,
-      );
+      NagSuppressions.addResourceSuppressions(node, this.suppressions, true);
     }
   }
 }
