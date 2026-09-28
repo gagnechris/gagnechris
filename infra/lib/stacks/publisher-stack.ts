@@ -64,6 +64,7 @@ export class PublisherStack extends Stack {
       powertoolsServiceName: 'gagnechris-publisher',
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
+      errorsAlarmLogicalId: 'PublisherLambdaErrors',
       iam5NagReason:
         'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
       bundling: {

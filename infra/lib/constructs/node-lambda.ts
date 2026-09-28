@@ -1,4 +1,4 @@
-import { Aspects, Duration, type IAspect } from 'aws-cdk-lib';
+import { Aspects, Duration, type IAspect, type CfnResource } from 'aws-cdk-lib';
 import {
   Alarm,
   ComparisonOperator,
@@ -48,6 +48,11 @@ export interface NodeLambdaProps
    * → `…-lambda-errors`, `…-lambda-throttles`.
    */
   readonly alarmNamePrefix: string;
+  /**
+   * Preserve an existing CloudWatch alarm logical ID when migrating onto
+   * NodeLambda (same AlarmName; avoids "already exists" on CFN replace).
+   */
+  readonly errorsAlarmLogicalId?: string;
   /**
    * cdk-nag AwsSolutions-IAM5 reason (X-Ray + stack-specific wildcards).
    * IAM4 (AWSLambdaBasicExecutionRole) is suppressed with a fixed reason.
@@ -143,6 +148,7 @@ export class NodeLambda extends NodejsFunction {
       powertoolsServiceName,
       alertsTopic,
       alarmNamePrefix,
+      errorsAlarmLogicalId,
       iam5NagReason,
       logRetention = RetentionDays.TWO_WEEKS,
       enableDurationAlarm = false,
@@ -197,6 +203,11 @@ export class NodeLambda extends NodejsFunction {
       comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       treatMissingData: TreatMissingData.NOT_BREACHING,
     });
+    if (errorsAlarmLogicalId) {
+      (this.errorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
+        errorsAlarmLogicalId,
+      );
+    }
     this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     this.throttlesAlarm = new Alarm(this, 'ThrottlesAlarm', {
