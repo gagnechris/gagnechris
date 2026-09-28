@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Shared Vite placeholders for CI builds (not deployed from this workflow).
+env:
+  VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
+  VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
+  VITE_COGNITO_AUTH_DOMAIN: auth.example.com
+
 jobs:
   build:
     name: Lint, test, and build
@@ -20,14 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: OpenAPI contract drift
         run: npm run openapi:check
@@ -50,20 +50,11 @@ jobs:
         run: npm run cdk -- synth --quiet
 
       - name: Build
-        env:
-          # Placeholder Cognito config so Vite can bake env (not deployed from CI).
-          VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
-          VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
-          VITE_COGNITO_AUTH_DOMAIN: auth.example.com
         run: npm run build
 
       - name: Reject VITE_AUTH_MODE=local in production build
         run: |
-          if VITE_AUTH_MODE=local \
-            VITE_COGNITO_USER_POOL_ID=us-east-1_ciPlaceholder \
-            VITE_COGNITO_WEB_CLIENT_ID=ciplaceholderclientid00000000 \
-            VITE_COGNITO_AUTH_DOMAIN=auth.example.com \
-            npm run build -w @gagnechris/web; then
+          if VITE_AUTH_MODE=local npm run build -w @gagnechris/web; then
             echo "Expected vite build to fail when VITE_AUTH_MODE=local" >&2
             exit 1
           fi
@@ -78,41 +69,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check whether local E2E paths changed
+      - name: Path filter
+        uses: dorny/paths-filter@v3
         id: filter
-        run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          if git diff --name-only "$BASE...$HEAD" | grep -qE '^(services/api/|services/publisher/|packages/shared/|scripts/local/|docker-compose\.local\.yml|infra/lib/cloudfront/viewer-(request|response)-function\.js|\.github/workflows/ci\.yml)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping local E2E (no relevant path changes)"
-          fi
-
-      - name: Setup Node.js
-        if: steps.filter.outputs.run == 'true'
-        uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          filters: |
+            e2e:
+              - 'services/api/**'
+              - 'services/publisher/**'
+              - 'packages/shared/**'
+              - 'packages/data/**'
+              - 'scripts/local/**'
+              - 'docker-compose.local.yml'
+              - 'infra/lib/cloudfront/viewer-request-function.js'
+              - 'infra/lib/cloudfront/viewer-response-function.js'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/setup/**'
 
-      - name: Install dependencies
-        if: steps.filter.outputs.run == 'true'
-        run: npm ci
+      - name: Setup
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        uses: ./.github/actions/setup
 
       - name: Build web shell
-        if: steps.filter.outputs.run == 'true'
-        env:
-          VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
-          VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
-          VITE_COGNITO_AUTH_DOMAIN: auth.example.com
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         run: npm run build
 
       - name: Run e2e:local
-        if: steps.filter.outputs.run == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         run: npm run e2e:local

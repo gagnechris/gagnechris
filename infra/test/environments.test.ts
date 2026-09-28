@@ -193,16 +193,26 @@ describe('GuardrailsStack', () => {
       DeletionPolicy: 'Retain',
       UpdateReplacePolicy: 'Retain',
     });
+
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/alerts-topic-arn',
+      Type: 'String',
+    });
   });
 });
 
 describe('CiDeployRoleStack', () => {
-  it('creates GitHub OIDC provider plus deploy and diff roles', () => {
+  it('creates GitHub OIDC provider plus deploy, diff, and drift roles', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'CiDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
     const stack = new CiDeployRoleStack(app, 'CiDeployRole-prod', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     applyStandardTags(stack, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
@@ -217,6 +227,9 @@ describe('CiDeployRoleStack', () => {
     template.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'gagnechris-prod-gha-diff',
     });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-gha-drift',
+    });
 
     const roles = Object.values(template.findResources('AWS::IAM::Role'));
     const deploy = roles.find(
@@ -225,17 +238,25 @@ describe('CiDeployRoleStack', () => {
     const diff = roles.find(
       (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-diff',
     );
+    const drift = roles.find(
+      (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-drift',
+    );
     expect(JSON.stringify(deploy)).toContain('ref:refs/heads/main');
     expect(JSON.stringify(deploy)).toContain('environment:prod');
     expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
     expect(JSON.stringify(diff)).toContain('pull_request');
     expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
+    expect(JSON.stringify(drift)).toContain('environment:prod');
+    expect(JSON.stringify(drift)).toContain('ReadOnlyAccess');
+    expect(JSON.stringify(drift)).not.toContain('AdministratorAccess');
 
     const policies = Object.values(
       template.findResources('AWS::IAM::Policy'),
     );
-    const diffPolicy = policies.find((p) =>
-      JSON.stringify(p).includes('CdkLookupAssumeRole'),
+    const diffPolicy = policies.find(
+      (p) =>
+        JSON.stringify(p).includes('CdkLookupAssumeRole') &&
+        !JSON.stringify(p).includes('CloudFormationDetectDrift'),
     );
     expect(diffPolicy).toBeDefined();
     const policyJson = JSON.stringify(diffPolicy);
@@ -253,6 +274,13 @@ describe('CiDeployRoleStack', () => {
       );
     });
     expect(assumeStar).toBe(false);
+
+    const driftPolicy = policies.find((p) =>
+      JSON.stringify(p).includes('CloudFormationDetectDrift'),
+    );
+    expect(driftPolicy).toBeDefined();
+    expect(JSON.stringify(driftPolicy)).toContain('cloudformation:DetectStackDrift');
+    expect(JSON.stringify(driftPolicy)).toContain('sns:Publish');
   });
 });
 

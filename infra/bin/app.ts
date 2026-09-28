@@ -115,8 +115,9 @@ new PublisherStack(app, `Publisher-${config.name}`, {
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
   env: stackEnv,
-  description: `GitHub Actions OIDC deploy/diff roles (${config.name}).`,
+  description: `GitHub Actions OIDC deploy/diff/drift roles (${config.name}).`,
   config,
+  alertsTopic: guardrails.alertsTopic,
 });
 
 Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
