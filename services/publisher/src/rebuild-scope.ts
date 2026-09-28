@@ -1,5 +1,6 @@
-import type { DynamoDBRecord, AttributeValue } from 'aws-lambda';
+import type { AttributeValue, DynamoDBRecord } from 'aws-lambda';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
+import { SK_PUBLISHED } from '@gagnechris/data';
 
 /** What a stream batch (or republish-all) needs the publisher to touch. */
 export type RebuildScope = {
@@ -27,6 +28,9 @@ export type StreamMeta = {
   status?: string;
 };
 
+/** Known PUBLISHED entity types the publisher understands (CHR-128). */
+const KNOWN_ENTITY_TYPES = new Set(['post', 'home', 'resume']);
+
 export function imageToStreamMeta(
   image: Record<string, AttributeValue> | undefined,
 ): StreamMeta | undefined {
@@ -34,7 +38,7 @@ export function imageToStreamMeta(
   const item = unmarshall(
     image as Parameters<typeof unmarshall>[0],
   ) as StreamMeta;
-  if (item.sk !== 'PUBLISHED') return undefined;
+  if (item.sk !== SK_PUBLISHED) return undefined;
   return item;
 }
 
@@ -51,6 +55,7 @@ export function fullRebuildScope(): RebuildScope {
 
 /**
  * Derive a minimal rebuild scope from a DynamoDB Streams batch of PUBLISHED items.
+ * Unknown entity types are ignored (Notebook / future entities must opt in).
  */
 export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   const postSlugs = new Set<string>();
@@ -64,6 +69,10 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     const newMeta = imageToStreamMeta(record.dynamodb?.NewImage);
     const entity =
       newMeta?.entityType ?? oldMeta?.entityType ?? undefined;
+
+    if (entity != null && !KNOWN_ENTITY_TYPES.has(entity)) {
+      continue;
+    }
 
     if (entity === 'home') {
       if (
@@ -85,7 +94,9 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       continue;
     }
 
-    // Posts (and unknown PUBLISHED entities): treat like posts when a published side exists.
+    // Posts only (entityType post or legacy missing type on post snapshots).
+    if (entity != null && entity !== 'post') continue;
+
     const touchedPublished =
       newMeta?.status === 'published' || oldMeta?.status === 'published';
     if (!touchedPublished) continue;

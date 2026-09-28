@@ -42,6 +42,28 @@ function metaImage(fields: {
 }
 
 describe('collectRebuildScope', () => {
+  it('ignores unknown PUBLISHED entity types (CHR-128 allowlist)', () => {
+    const records: DynamoDBRecord[] = [
+      {
+        eventID: '1',
+        eventName: 'INSERT',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          NewImage: metaImage({
+            entityType: 'note',
+            slug: 'should-ignore',
+            status: 'published',
+            pk: 'NOTE#1',
+          }),
+        },
+      },
+    ];
+    const scope = collectRebuildScope(records);
+    expect(scope.feeds).toBe(false);
+    expect([...scope.postSlugs]).toEqual([]);
+    expect(streamNeedsRebuild(records)).toBe(false);
+  });
+
   it('scopes a single post publish to that slug + feeds only', () => {
     const records: DynamoDBRecord[] = [
       {

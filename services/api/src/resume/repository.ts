@@ -10,6 +10,7 @@ import {
   buildResumeMetaItem,
   buildResumePublishedItem,
   metaToResume,
+  parseResumeMetaItem,
   resumeContentEqual,
   resumeMetaSk,
   resumePk,
@@ -33,7 +34,8 @@ export class ResumeRepository extends SingletonRepository<
         pk: resumePk,
         metaSk: resumeMetaSk,
         publishedSk: resumePublishedSk,
-        toEntity: metaToResume,
+        toEntity: (item, hasUnpublishedChanges) =>
+          metaToResume(parseResumeMetaItem(item), hasUnpublishedChanges),
         toItem: buildResumeMetaItem,
         toPublishedItem: buildResumePublishedItem,
         contentEqual: resumeContentEqual,

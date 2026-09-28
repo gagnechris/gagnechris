@@ -6,6 +6,11 @@ Shared table for Blog CMS posts and (later) Notebook entities. Table name:
 Attribute names are lowercase. Keys use string partition/sort values with `#`
 separators so entity types never collide.
 
+**Key builders, item zod schemas, and mappers** live in `@gagnechris/data`
+(`packages/data`). API and publisher must import those helpers — do not hard-code
+`POST#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current` in application
+code.
+
 ## Keys
 
 | Attribute | Role |

@@ -14,6 +14,7 @@ import {
   homePk,
   homePublishedSk,
   metaToHome,
+  parseHomeMetaItem,
   type HomeMetaItem,
 } from './keys.js';
 
@@ -33,7 +34,8 @@ export class HomeRepository extends SingletonRepository<
         pk: homePk,
         metaSk: homeMetaSk,
         publishedSk: homePublishedSk,
-        toEntity: metaToHome,
+        toEntity: (item, hasUnpublishedChanges) =>
+          metaToHome(parseHomeMetaItem(item), hasUnpublishedChanges),
         toItem: buildHomeMetaItem,
         toPublishedItem: buildHomePublishedItem,
         contentEqual: homeContentEqual,

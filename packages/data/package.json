@@ -1,0 +1,29 @@
+{
+  "name": "@gagnechris/data",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Shared DynamoDB keys, item schemas, mappers, and DocumentClient for API + publisher.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1141.0",
+    "@aws-sdk/lib-dynamodb": "^3.1141.0",
+    "@gagnechris/shared": "*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}

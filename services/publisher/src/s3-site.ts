@@ -1,22 +1,29 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
-  DynamoDBDocumentClient,
   BatchGetCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
+import {
+  GSI1_NAME,
+  SK_META,
+  SK_PUBLISHED,
+  getDocClient,
+  keys,
+  metaToHome,
+  metaToPost,
+  metaToResume,
+  parseHomeMetaItem,
+  parsePostMetaItem,
+  parseResumeMetaItem,
+  statusGsi1Pk,
+  type PostMetaItem,
+} from '@gagnechris/data';
 import { batchGetAllWithDocClient } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { mapWithConcurrency } from './concurrency.js';
-import {
-  metaToPost,
-  type PostMetaRecord,
-  toListItem,
-} from './posts.js';
-import { metaToHome, type HomeMetaRecord } from './home.js';
-import { metaToResume, type ResumeMetaRecord } from './resume.js';
+import { toListItem } from './posts.js';
 import {
   buildInvalidationPaths,
   fullRebuildScope,
@@ -38,12 +45,7 @@ import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
 import { syncViewerRequestBlogSlugs } from './viewer-request-slugs.js';
 
-const ddb = DynamoDBDocumentClient.from(
-  new DynamoDBClient({ maxAttempts: 3 }),
-  {
-    marshallOptions: { removeUndefinedValues: true },
-  },
-);
+const ddb = getDocClient();
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 const CACHE_FEED = 'public,max-age=300';
@@ -106,9 +108,9 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
     const page = await ddb.send(
       new QueryCommand({
         TableName: tableName,
-        IndexName: 'gsi1',
+        IndexName: GSI1_NAME,
         KeyConditionExpression: 'gsi1pk = :pk',
-        ExpressionAttributeValues: { ':pk': 'STATUS#published' },
+        ExpressionAttributeValues: { ':pk': statusGsi1Pk('published') },
         ScanIndexForward: false,
         ExclusiveStartKey: exclusiveStartKey,
       }),
@@ -117,7 +119,7 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       if (item.entityType !== 'post') continue;
       // PUBLISHED rows are not on gsi1 (no gsi1pk). The index returns published
       // META drafts; load PUBLISHED snapshots via BatchGet (CHR-117).
-      if (item.sk === 'META' && typeof item.postId === 'string') {
+      if (item.sk === SK_META && typeof item.postId === 'string') {
         metaPostIds.push(item.postId);
       }
     }
@@ -127,25 +129,20 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   } while (exclusiveStartKey);
 
   const uniqueIds = [...new Set(metaPostIds)];
-  const publishedById = new Map<string, PostMetaRecord>();
+  const publishedById = new Map<string, PostMetaItem>();
   for (let i = 0; i < uniqueIds.length; i += 100) {
     const chunk = uniqueIds.slice(i, i + 100);
     const responses = await batchGetAllWithDocClient(
       async (RequestItems) => ddb.send(new BatchGetCommand({ RequestItems })),
       {
         [tableName]: {
-          Keys: chunk.map((postId) => ({
-            pk: `POST#${postId}`,
-            sk: 'PUBLISHED',
-          })),
+          Keys: chunk.map((postId) => keys.post.published(postId)),
         },
       },
     );
     for (const item of responses[tableName] ?? []) {
-      const record = item as PostMetaRecord;
-      if (typeof record.postId === 'string') {
-        publishedById.set(record.postId, record);
-      }
+      const record = parsePostMetaItem(item);
+      publishedById.set(record.postId, record);
     }
   }
 
@@ -160,24 +157,18 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
     const legacy = await ddb.send(
       new GetCommand({
         TableName: tableName,
-        Key: { pk: `POST#${postId}`, sk: 'META' },
+        Key: keys.post.meta(postId),
       }),
     );
-    const legacyItem = legacy.Item as PostMetaRecord | undefined;
-    if (
-      !legacyItem ||
-      legacyItem.entityType !== 'post' ||
-      legacyItem.status !== 'published'
-    ) {
+    if (!legacy.Item) continue;
+    const legacyItem = parsePostMetaItem(legacy.Item);
+    if (legacyItem.status !== 'published') {
       continue;
     }
-    const { gsi1pk: _g1, gsi1sk: _g2, ...rest } = legacyItem as PostMetaRecord & {
-      gsi1pk?: string;
-      gsi1sk?: string;
-    };
+    const { gsi1pk: _g1, gsi1sk: _g2, ...rest } = legacyItem;
     await putPublishedSnapshot(tableName, {
       ...rest,
-      sk: 'PUBLISHED',
+      sk: SK_PUBLISHED,
       status: 'published',
     });
     posts.push(metaToPost(legacyItem));
@@ -196,33 +187,32 @@ export async function getPublishedResume(
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'RESUME#current', sk: 'PUBLISHED' },
+      Key: keys.singleton.resume.published(),
     }),
   );
-  const item = result.Item as ResumeMetaRecord | undefined;
-  if (item && item.entityType === 'resume' && item.status === 'published') {
-    return metaToResume(item);
+  if (result.Item) {
+    const item = parseResumeMetaItem(result.Item);
+    if (item.status === 'published') {
+      return metaToResume(item);
+    }
   }
 
   // Rollout safety: copy legacy META → PUBLISHED without changing live content.
   const legacy = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'RESUME#current', sk: 'META' },
+      Key: keys.singleton.resume.meta(),
     }),
   );
-  const legacyItem = legacy.Item as ResumeMetaRecord | undefined;
-  if (
-    !legacyItem ||
-    legacyItem.entityType !== 'resume' ||
-    legacyItem.status !== 'published'
-  ) {
+  if (!legacy.Item) return undefined;
+  const legacyItem = parseResumeMetaItem(legacy.Item);
+  if (legacyItem.status !== 'published') {
     return undefined;
   }
   const resume = metaToResume(legacyItem);
   await putPublishedSnapshot(tableName, {
     ...legacyItem,
-    sk: 'PUBLISHED',
+    sk: SK_PUBLISHED,
     status: 'published',
   });
   return resume;
@@ -234,33 +224,32 @@ export async function getPublishedHome(
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'HOME#current', sk: 'PUBLISHED' },
+      Key: keys.singleton.home.published(),
     }),
   );
-  const item = result.Item as HomeMetaRecord | undefined;
-  if (item && item.entityType === 'home' && item.status === 'published') {
-    return metaToHome(item);
+  if (result.Item) {
+    const item = parseHomeMetaItem(result.Item);
+    if (item.status === 'published') {
+      return metaToHome(item);
+    }
   }
 
   // Rollout safety: copy legacy META → PUBLISHED without changing live content.
   const legacy = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: { pk: 'HOME#current', sk: 'META' },
+      Key: keys.singleton.home.meta(),
     }),
   );
-  const legacyItem = legacy.Item as HomeMetaRecord | undefined;
-  if (
-    !legacyItem ||
-    legacyItem.entityType !== 'home' ||
-    legacyItem.status !== 'published'
-  ) {
+  if (!legacy.Item) return undefined;
+  const legacyItem = parseHomeMetaItem(legacy.Item);
+  if (legacyItem.status !== 'published') {
     return undefined;
   }
   const home = metaToHome(legacyItem);
   await putPublishedSnapshot(tableName, {
     ...legacyItem,
-    sk: 'PUBLISHED',
+    sk: SK_PUBLISHED,
     status: 'published',
   });
   return home;
