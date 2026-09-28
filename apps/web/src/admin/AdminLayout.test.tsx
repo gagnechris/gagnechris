@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClientTestProvider } from '../test-utils'
 import AdminLayout from './AdminLayout'
 import AdminPostsPage from './AdminPostsPage'
 
@@ -40,13 +41,15 @@ describe('AdminLayout', () => {
 
   test('shows Posts / Home / Resume / Notebook nav and posts hub when authenticated', async () => {
     render(
-      <MemoryRouter initialEntries={['/admin']}>
-        <Routes>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminPostsPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Routes>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminPostsPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
     )
 
     expect(await screen.findByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
@@ -67,13 +70,15 @@ describe('AdminLayout', () => {
     isDevProdApiTargetMock.mockReturnValue(true)
 
     render(
-      <MemoryRouter initialEntries={['/admin']}>
-        <Routes>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminPostsPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Routes>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminPostsPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
     )
 
     expect(

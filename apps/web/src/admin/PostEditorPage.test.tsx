@@ -5,6 +5,7 @@ import {
   RouterProvider,
 } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { QueryClientTestProvider } from '../test-utils'
 import PostEditorPage from './PostEditorPage'
 
 const get = vi.fn()
@@ -61,7 +62,11 @@ function renderEditor() {
     [{ path: '/admin/posts/:postId', element: <PostEditorPage /> }],
     { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
   )
-  return render(<RouterProvider router={router} />)
+  return render(
+    <QueryClientTestProvider>
+      <RouterProvider router={router} />
+    </QueryClientTestProvider>,
+  )
 }
 
 describe('PostEditorPage publish (CHR-113)', () => {

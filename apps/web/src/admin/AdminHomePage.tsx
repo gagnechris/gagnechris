@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
-import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import { ApiError, updateHome } from './query/api'
+import {
+  useHomeLifecycleMutators,
+  useHomeQuery,
+  useSetHomeCache,
+} from './query/home'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
 import {
   mergeEditorSeo,
@@ -43,37 +48,61 @@ const toHome = (home: Home, draft: DraftFields): Home => ({
 })
 
 const AdminHomePage = () => {
-  const [home, setHome] = useState<Home | null>(null)
+  const {
+    data: home,
+    error: queryError,
+    isPending,
+  } = useHomeQuery()
+  const setHomeCache = useSetHomeCache()
+  const {
+    publish: publishRequest,
+    unpublish: unpublishRequest,
+    discard: discardRequest,
+  } = useHomeLifecycleMutators()
+
   const [draft, setDraft] = useState<DraftFields | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
   const [dirty, setDirty] = useState(false)
   const versionRef = useRef(0)
   const homeRef = useRef<Home | null>(null)
 
+  if (home && !hydrated) {
+    setHydrated(true)
+    setDraft(fromHome(home))
+    setDirty(false)
+  }
+
   useEffect(() => {
-    homeRef.current = home
+    homeRef.current = home ?? null
+    if (home) {
+      versionRef.current = home.version
+    }
   }, [home])
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
-      const client = createApiClient()
-      const { data, error, response } = await client.PUT('/api/admin/home', {
-        body: {
+      try {
+        const entity = await updateHome({
           version,
           ...toHomePayload(current, homeRef.current?.seo ?? null),
-        },
-      })
-      if (error || !data) {
-        return { ok: false as const, status: response.status }
+        })
+        return { ok: true as const, entity }
+      } catch (err) {
+        return {
+          ok: false as const,
+          status: err instanceof ApiError ? err.status : 0,
+        }
       }
-      return { ok: true as const, entity: data }
     },
     [],
   )
 
-  const onSaved = useCallback((entity: Home) => {
-    setHome(entity)
-  }, [])
+  const onSaved = useCallback(
+    (entity: Home) => {
+      setHomeCache(entity)
+    },
+    [setHomeCache],
+  )
 
   const getVersion = useCallback((entity: Home) => entity.version, [])
 
@@ -100,35 +129,35 @@ const AdminHomePage = () => {
       'Conflict — another save updated the home page. Reload and try again.',
   })
 
-  const publishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/home/publish', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const publishMutate = useCallback(
+    () => publishRequest({ version: versionRef.current }),
+    [publishRequest],
+  )
 
-  const unpublishMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/home/unpublish', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const unpublishMutate = useCallback(
+    () => unpublishRequest({ version: versionRef.current }),
+    [unpublishRequest],
+  )
 
-  const discardMutate = useCallback(async () => {
-    const client = createApiClient()
-    return client.POST('/api/admin/home/discard', {
-      body: { version: versionRef.current },
-    })
-  }, [])
+  const discardMutate = useCallback(
+    () => discardRequest({ version: versionRef.current }),
+    [discardRequest],
+  )
 
-  const onEntityMeta = useCallback((entity: Home) => {
-    setHome(entity)
-  }, [])
+  const onEntityMeta = useCallback(
+    (entity: Home) => {
+      setHomeCache(entity)
+    },
+    [setHomeCache],
+  )
 
-  const onReplaceDraft = useCallback((entity: Home) => {
-    setHome(entity)
-    setDraft(fromHome(entity))
-  }, [])
+  const onReplaceDraft = useCallback(
+    (entity: Home) => {
+      setHomeCache(entity)
+      setDraft(fromHome(entity))
+    },
+    [setHomeCache],
+  )
 
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
     dirty,
@@ -159,25 +188,12 @@ const AdminHomePage = () => {
     setDirty(true)
   }
 
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const client = createApiClient()
-      const { data, error, response } = await client.GET('/api/admin/home')
-      if (cancelled) return
-      if (error || !data) {
-        setLoadError(`Could not load home content (${response.status}).`)
-        return
-      }
-      setHome(data)
-      setDraft(fromHome(data))
-      versionRef.current = data.version
-      setDirty(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const loadError =
+    queryError instanceof ApiError
+      ? queryError.message
+      : queryError
+        ? 'Could not load home content.'
+        : null
 
   if (loadError) {
     return (
@@ -189,7 +205,7 @@ const AdminHomePage = () => {
     )
   }
 
-  if (!home || !draft) {
+  if (isPending || !home || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading home content…</p>

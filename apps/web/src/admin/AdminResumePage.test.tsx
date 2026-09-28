@@ -5,6 +5,7 @@ import {
   RouterProvider,
 } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { QueryClientTestProvider } from '../test-utils'
 import AdminResumePage from './AdminResumePage'
 
 const get = vi.fn()
@@ -48,7 +49,11 @@ function renderResume() {
     [{ path: '/admin/resume', element: <AdminResumePage /> }],
     { initialEntries: ['/admin/resume'] },
   )
-  return render(<RouterProvider router={router} />)
+  return render(
+    <QueryClientTestProvider>
+      <RouterProvider router={router} />
+    </QueryClientTestProvider>,
+  )
 }
 
 describe('AdminResumePage autosave', () => {
