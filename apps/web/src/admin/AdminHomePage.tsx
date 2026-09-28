@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
 import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import { useDraftPublishEditor } from './useDraftPublishEditor'
 import {
   mergeEditorSeo,
   useQueuedAutosave,
@@ -46,7 +47,6 @@ const AdminHomePage = () => {
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
-  const [busy, setBusy] = useState(false)
   const versionRef = useRef(0)
   const homeRef = useRef<Home | null>(null)
 
@@ -84,6 +84,9 @@ const AdminHomePage = () => {
     setSaveError,
     setSaveState,
     bumpEdit,
+    getEditGen,
+    getLastSavedGen,
+    setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
     dirty,
@@ -94,6 +97,52 @@ const AdminHomePage = () => {
     onSaved,
     conflictMessage:
       'Conflict — another save updated the home page. Reload and try again.',
+  })
+
+  const publishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/home/publish')
+  }, [])
+
+  const unpublishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/home/unpublish')
+  }, [])
+
+  const discardMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/home/discard')
+  }, [])
+
+  const onEntityMeta = useCallback((entity: Home) => {
+    setHome(entity)
+  }, [])
+
+  const onReplaceDraft = useCallback((entity: Home) => {
+    setHome(entity)
+    setDraft(fromHome(entity))
+  }, [])
+
+  const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
+    dirty,
+    setDirty,
+    save,
+    setSaveState,
+    setSaveError,
+    getEditGen,
+    getLastSavedGen,
+    setAutosaveHeld,
+    versionRef,
+    getVersion,
+    onEntityMeta,
+    onReplaceDraft,
+    publish: publishMutate,
+    unpublish: unpublishMutate,
+    discard: discardMutate,
+    unpublishConfirm:
+      'Unpublish the home page? The live page keeps the last published HTML.',
+    discardConfirm:
+      'Discard unpublished edits and restore the last published home content?',
   })
 
   const setField = (key: keyof DraftFields, value: string) => {
@@ -121,71 +170,6 @@ const AdminHomePage = () => {
       cancelled = true
     }
   }, [])
-
-  const runStatusChange = async (action: 'publish' | 'unpublish') => {
-    if (busy) return
-    if (
-      action === 'unpublish' &&
-      !window.confirm(
-        'Unpublish the home page? The live page keeps the last published HTML.',
-      )
-    ) {
-      return
-    }
-    setBusy(true)
-    setSaveError(null)
-    try {
-      if (dirty && !(await save())) return
-      const client = createApiClient()
-      const { data, error, response } =
-        action === 'publish'
-          ? await client.POST('/api/admin/home/publish')
-          : await client.POST('/api/admin/home/unpublish')
-      if (error || !data) {
-        setSaveError(
-          `${action === 'publish' ? 'Publish' : 'Unpublish'} failed (${response.status}).`,
-        )
-        return
-      }
-      setHome(data)
-      setDraft(fromHome(data))
-      versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const runDiscard = async () => {
-    if (busy) return
-    if (
-      !window.confirm(
-        'Discard unpublished edits and restore the last published home content?',
-      )
-    ) {
-      return
-    }
-    setBusy(true)
-    setSaveError(null)
-    try {
-      const client = createApiClient()
-      const { data, error, response } = await client.POST(
-        '/api/admin/home/discard',
-      )
-      if (error || !data) {
-        setSaveError(`Discard failed (${response.status}).`)
-        return
-      }
-      setHome(data)
-      setDraft(fromHome(data))
-      versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   if (loadError) {
     return (
@@ -236,7 +220,7 @@ const AdminHomePage = () => {
               type="button"
               className="admin-btn admin-btn--primary"
               disabled={busy}
-              onClick={() => void runStatusChange('publish')}
+              onClick={() => void runPublish()}
             >
               {home.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
             </button>
@@ -256,7 +240,7 @@ const AdminHomePage = () => {
               type="button"
               className="admin-btn"
               disabled={busy}
-              onClick={() => void runStatusChange('unpublish')}
+              onClick={() => void runUnpublish()}
             >
               Unpublish
             </button>
@@ -346,6 +330,9 @@ const AdminHomePage = () => {
           />
         </div>
       </div>
+      <p className="admin-hint">
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
+      </p>
     </section>
   )
 }

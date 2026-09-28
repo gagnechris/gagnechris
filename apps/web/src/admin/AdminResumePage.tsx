@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderResumePrerenderHtml } from '@gagnechris/shared/resume'
 import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
+import { useDraftPublishEditor } from './useDraftPublishEditor'
 import { useQueuedAutosave } from './useQueuedAutosave'
 import '../pages/Resume.css'
 
@@ -98,7 +99,6 @@ const AdminResumePage = () => {
   const [draft, setDraft] = useState<DraftFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
-  const [busy, setBusy] = useState(false)
   const versionRef = useRef(0)
 
   const performSave = useCallback(
@@ -133,6 +133,9 @@ const AdminResumePage = () => {
     setSaveError,
     setSaveState,
     bumpEdit,
+    getEditGen,
+    getLastSavedGen,
+    setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
     dirty,
@@ -143,6 +146,52 @@ const AdminResumePage = () => {
     onSaved,
     conflictMessage:
       'Conflict — another save updated the resume. Reload and try again.',
+  })
+
+  const publishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/resume/publish')
+  }, [])
+
+  const unpublishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/resume/unpublish')
+  }, [])
+
+  const discardMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/resume/discard')
+  }, [])
+
+  const onEntityMeta = useCallback((entity: Resume) => {
+    setResume(entity)
+  }, [])
+
+  const onReplaceDraft = useCallback((entity: Resume) => {
+    setResume(entity)
+    setDraft(fromResume(entity))
+  }, [])
+
+  const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
+    dirty,
+    setDirty,
+    save,
+    setSaveState,
+    setSaveError,
+    getEditGen,
+    getLastSavedGen,
+    setAutosaveHeld,
+    versionRef,
+    getVersion,
+    onEntityMeta,
+    onReplaceDraft,
+    publish: publishMutate,
+    unpublish: unpublishMutate,
+    discard: discardMutate,
+    unpublishConfirm:
+      'Unpublish the resume? The live page keeps the last published HTML.',
+    discardConfirm:
+      'Discard unpublished edits and restore the last published resume?',
   })
 
   const setField = <K extends keyof DraftFields>(
@@ -173,71 +222,6 @@ const AdminResumePage = () => {
       cancelled = true
     }
   }, [])
-
-  const runStatusChange = async (action: 'publish' | 'unpublish') => {
-    if (busy) return
-    if (
-      action === 'unpublish' &&
-      !window.confirm(
-        'Unpublish the resume? The live page keeps the last published HTML.',
-      )
-    ) {
-      return
-    }
-    setBusy(true)
-    setSaveError(null)
-    try {
-      if (dirty && !(await save())) return
-      const client = createApiClient()
-      const { data, error, response } =
-        action === 'publish'
-          ? await client.POST('/api/admin/resume/publish')
-          : await client.POST('/api/admin/resume/unpublish')
-      if (error || !data) {
-        setSaveError(
-          `${action === 'publish' ? 'Publish' : 'Unpublish'} failed (${response.status}).`,
-        )
-        return
-      }
-      setResume(data)
-      setDraft(fromResume(data))
-      versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const runDiscard = async () => {
-    if (busy) return
-    if (
-      !window.confirm(
-        'Discard unpublished edits and restore the last published resume?',
-      )
-    ) {
-      return
-    }
-    setBusy(true)
-    setSaveError(null)
-    try {
-      const client = createApiClient()
-      const { data, error, response } = await client.POST(
-        '/api/admin/resume/discard',
-      )
-      if (error || !data) {
-        setSaveError(`Discard failed (${response.status}).`)
-        return
-      }
-      setResume(data)
-      setDraft(fromResume(data))
-      versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   if (loadError) {
     return (
@@ -293,7 +277,7 @@ const AdminResumePage = () => {
               type="button"
               className="admin-btn admin-btn--primary"
               disabled={busy}
-              onClick={() => void runStatusChange('publish')}
+              onClick={() => void runPublish()}
             >
               {resume.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
             </button>
@@ -313,7 +297,7 @@ const AdminResumePage = () => {
               type="button"
               className="admin-btn"
               disabled={busy}
-              onClick={() => void runStatusChange('unpublish')}
+              onClick={() => void runUnpublish()}
             >
               Unpublish
             </button>
@@ -532,6 +516,9 @@ const AdminResumePage = () => {
           />
         </div>
       </div>
+      <p className="admin-hint">
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
+      </p>
     </section>
   )
 }

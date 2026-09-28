@@ -1,5 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import {
+  createMemoryRouter,
+  RouterProvider,
+} from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import AdminResumePage from './AdminResumePage'
 
@@ -39,6 +43,14 @@ const baseResume = {
   hasUnpublishedChanges: false,
 }
 
+function renderResume() {
+  const router = createMemoryRouter(
+    [{ path: '/admin/resume', element: <AdminResumePage /> }],
+    { initialEntries: ['/admin/resume'] },
+  )
+  return render(<RouterProvider router={router} />)
+}
+
 describe('AdminResumePage autosave', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -64,7 +76,7 @@ describe('AdminResumePage autosave', () => {
         }),
     )
 
-    render(<AdminResumePage />)
+    renderResume()
     const bullets = await screen.findByDisplayValue('Did things')
 
     await user.type(bullets, '{Enter}')
@@ -91,7 +103,7 @@ describe('AdminResumePage autosave', () => {
           ],
         },
         version: 2,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
       },
       error: undefined,
       response: { status: 200 },
@@ -99,5 +111,61 @@ describe('AdminResumePage autosave', () => {
 
     await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
     expect(bullets).toHaveValue('Did things\nNew bullet')
+  })
+})
+
+describe('AdminResumePage publish (CHR-124)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    get.mockResolvedValue({
+      data: { ...structuredClone(baseResume), hasUnpublishedChanges: true },
+      error: undefined,
+      response: { status: 200 },
+    })
+    put.mockResolvedValue({
+      data: {
+        ...structuredClone(baseResume),
+        version: 2,
+        hasUnpublishedChanges: true,
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+  })
+
+  test('typing during a slow publish is not overwritten', async () => {
+    const user = userEvent.setup()
+    let resolvePublish!: (value: unknown) => void
+    post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePublish = resolve
+        }),
+    )
+
+    renderResume()
+    const summary = await screen.findByDisplayValue('Summary')
+
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }))
+
+    await user.clear(summary)
+    await user.type(summary, 'typed while publishing')
+
+    resolvePublish({
+      data: {
+        ...structuredClone(baseResume),
+        version: 3,
+        hasUnpublishedChanges: false,
+        status: 'published',
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('typed while publishing')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
   })
 })

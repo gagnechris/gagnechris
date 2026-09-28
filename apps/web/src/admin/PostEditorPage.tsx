@@ -5,17 +5,13 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import {
-  Link,
-  useBlocker,
-  useNavigate,
-  useParams,
-} from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { slugify } from '@gagnechris/shared'
 import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
 import MarkdownEditor from '../components/markdown/MarkdownEditor'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
+import { useDraftPublishEditor } from './useDraftPublishEditor'
 import { useQueuedAutosave } from './useQueuedAutosave'
 import '../components/markdown/markdown.css'
 
@@ -62,12 +58,9 @@ export default function PostEditorPage() {
   const [slugManual, setSlugManual] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit')
   const versionRef = useRef(0)
   const titleRef = useRef<HTMLTextAreaElement>(null)
-  const saveRef = useRef<() => Promise<boolean>>(async () => false)
-  const publishRef = useRef<() => Promise<void>>(async () => {})
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -109,6 +102,7 @@ export default function PostEditorPage() {
     setSaveState,
     bumpEdit,
     getEditGen,
+    getLastSavedGen,
     setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
@@ -122,6 +116,60 @@ export default function PostEditorPage() {
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
   })
+
+  const publishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/posts/{id}/publish', {
+      params: { path: { id: postId! } },
+    })
+  }, [postId])
+
+  const unpublishMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/posts/{id}/unpublish', {
+      params: { path: { id: postId! } },
+    })
+  }, [postId])
+
+  const discardMutate = useCallback(async () => {
+    const client = createApiClient()
+    return client.POST('/api/admin/posts/{id}/discard', {
+      params: { path: { id: postId! } },
+    })
+  }, [postId])
+
+  const onEntityMeta = useCallback((entity: Post) => {
+    setPost(entity)
+  }, [])
+
+  const onReplaceDraft = useCallback((entity: Post) => {
+    setPost(entity)
+    setDraft(fromPost(entity))
+  }, [])
+
+  const { busy, setBusy, runPublish, runUnpublish, runDiscard } =
+    useDraftPublishEditor({
+      dirty,
+      setDirty,
+      save,
+      setSaveState,
+      setSaveError,
+      getEditGen,
+      getLastSavedGen,
+      setAutosaveHeld,
+      versionRef,
+      getVersion,
+      onEntityMeta,
+      onReplaceDraft,
+      publish: publishMutate,
+      unpublish: unpublishMutate,
+      discard: discardMutate,
+      unpublishConfirm:
+        'Unpublish this post? It will leave the public blog.',
+      discardConfirm:
+        'Discard unpublished edits and restore the last published post?',
+      enabled: Boolean(postId),
+    })
 
   // Auto-grow the wrapping title field as the user types.
   useEffect(() => {
@@ -228,176 +276,6 @@ export default function PostEditorPage() {
       cancelled = true
     }
   }, [postId])
-
-  useEffect(() => {
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!dirty) {
-        return
-      }
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [dirty])
-
-  const blocker = useBlocker(dirty)
-  useEffect(() => {
-    if (blocker.state !== 'blocked') {
-      return
-    }
-    const leave = window.confirm(
-      'You have unsaved changes. Leave without saving?',
-    )
-    if (leave) {
-      blocker.proceed()
-    } else {
-      blocker.reset()
-    }
-  }, [blocker])
-
-  useEffect(() => {
-    saveRef.current = save
-  }, [save])
-
-  const runPublish = async () => {
-    if (!postId || busy) {
-      return
-    }
-    // Hold debounced autosave immediately (before React re-renders) so typing
-    // during Publish cannot 409 on the pre-publish version (CHR-121).
-    setAutosaveHeld(true)
-    setBusy(true)
-    setSaveError(null)
-    try {
-      if (dirty) {
-        const ok = await save()
-        if (!ok) {
-          return
-        }
-      }
-      const genAtStart = getEditGen()
-      const client = createApiClient()
-      const { data, error, response } = await client.POST(
-        '/api/admin/posts/{id}/publish',
-        { params: { path: { id: postId } } },
-      )
-      if (error || !data) {
-        setSaveError(`Publish failed (${response.status}).`)
-        return
-      }
-      // Never clobber the live draft with the published snapshot — typing during
-      // the request must survive (CHR-113 / CHR-99).
-      setPost(data)
-      versionRef.current = data.version
-      if (getEditGen() === genAtStart) {
-        setDirty(false)
-        setSaveState('saved')
-      } else {
-        setDirty(true)
-        setSaveState('idle')
-      }
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
-  }
-
-  useEffect(() => {
-    publishRef.current = runPublish
-  })
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const meta = event.metaKey || event.ctrlKey
-      if (meta && event.key.toLowerCase() === 's') {
-        event.preventDefault()
-        void saveRef.current()
-      }
-      if (meta && event.key === 'Enter') {
-        event.preventDefault()
-        void publishRef.current()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  const runUnpublish = async () => {
-    if (!postId || busy) {
-      return
-    }
-    if (!window.confirm('Unpublish this post? It will leave the public blog.')) {
-      return
-    }
-    setAutosaveHeld(true)
-    setBusy(true)
-    try {
-      if (dirty) {
-        const ok = await save()
-        if (!ok) {
-          return
-        }
-      }
-      const genAtStart = getEditGen()
-      const client = createApiClient()
-      const { data, error, response } = await client.POST(
-        '/api/admin/posts/{id}/unpublish',
-        { params: { path: { id: postId } } },
-      )
-      if (error || !data) {
-        setSaveError(`Unpublish failed (${response.status}).`)
-        return
-      }
-      setPost(data)
-      versionRef.current = data.version
-      if (getEditGen() === genAtStart) {
-        setDirty(false)
-        setSaveState('saved')
-      } else {
-        setDirty(true)
-        setSaveState('idle')
-      }
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
-  }
-
-  const runDiscard = async () => {
-    if (!postId || busy) {
-      return
-    }
-    if (
-      !window.confirm(
-        'Discard unpublished edits and restore the last published post?',
-      )
-    ) {
-      return
-    }
-    setAutosaveHeld(true)
-    setBusy(true)
-    setSaveError(null)
-    try {
-      const client = createApiClient()
-      const { data, error, response } = await client.POST(
-        '/api/admin/posts/{id}/discard',
-        { params: { path: { id: postId } } },
-      )
-      if (error || !data) {
-        setSaveError(`Discard failed (${response.status}).`)
-        return
-      }
-      setPost(data)
-      setDraft(fromPost(data))
-      versionRef.current = data.version
-      setDirty(false)
-      setSaveState('saved')
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
-  }
 
   const runDelete = async () => {
     if (!postId || busy) {

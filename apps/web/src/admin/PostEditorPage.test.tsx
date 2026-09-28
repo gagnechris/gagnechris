@@ -121,4 +121,67 @@ describe('PostEditorPage publish (CHR-113)', () => {
       )
     })
   })
+
+  test('edits typed during an in-flight save are not marked Saved after publish (CHR-124)', async () => {
+    const user = userEvent.setup()
+    let resolvePut!: (value: unknown) => void
+    put.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePut = resolve
+        }),
+    )
+    let resolvePublish!: (value: unknown) => void
+    post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePublish = resolve
+        }),
+    )
+
+    renderEditor()
+    await screen.findByDisplayValue('Hello')
+
+    const markdown = screen.getByLabelText('Markdown')
+    await user.type(markdown, ' first')
+    // Trigger autosave (debounce is 900ms; wait via fake? use real timers + click Save)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
+
+    await user.type(markdown, ' second')
+    await user.click(screen.getByRole('button', { name: 'Publish' }))
+
+    resolvePut({
+      data: {
+        ...basePost,
+        bodyMarkdown: 'line one first',
+        version: 2,
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => expect(post).toHaveBeenCalled())
+
+    resolvePublish({
+      data: {
+        ...basePost,
+        status: 'published',
+        version: 3,
+        bodyMarkdown: 'line one first',
+        publishedAt: '2026-09-27T01:00:00.000Z',
+        hasUnpublishedChanges: false,
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Markdown')).toHaveValue(
+        'line one first second',
+      )
+    })
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument()
+  })
 })
