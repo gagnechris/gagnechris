@@ -550,13 +550,8 @@ export async function rebuildPublishedSite(options?: {
     }
   }
 
-  // KVS sync after S3 writes so a retry only needs to re-sync / invalidate.
-  // Failures throw (after internal retries) so the stream retries — silent
-  // success left new posts 404'ing with no alarm (CHR-119).
-  if (scope.feeds) {
-    await syncViewerRequestBlogSlugs(published.map((p) => p.slug));
-  }
-
+  // Invalidate before KVS sync so a failed sync + stream retry still clears
+  // CloudFront even when S3 writes are no-ops on retry (CHR-123).
   const invalidated = buildInvalidationPaths({
     scope,
     changedKeys,
@@ -564,6 +559,14 @@ export async function rebuildPublishedSite(options?: {
   });
 
   await storage.invalidate(invalidated);
+
+  // Re-resolve published slugs inside the KVS sync cycle (thunk) so a long
+  // republish-all cannot delete a slug published concurrently (CHR-123).
+  if (scope.feeds) {
+    await syncViewerRequestBlogSlugs(() =>
+      sources.listPublishedPosts().then((posts) => posts.map((p) => p.slug)),
+    );
+  }
 
   return {
     publishedCount: published.length,

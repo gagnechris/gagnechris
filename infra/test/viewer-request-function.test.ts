@@ -303,6 +303,40 @@ describe('viewer-request CloudFront Function', () => {
       ).toBe('/blog/anything/index.html');
       expect(calls).toEqual(['anything', '__synced__']);
     });
+
+    it('rejects reserved __synced__ and over-long slugs without querying KVS (CHR-123)', async () => {
+      const { kvs, calls } = createCountingKvs({
+        __synced__: true,
+        welcome: true,
+      });
+      const kvsApi = loadApi(kvs);
+      kvsApi.setPublishedBlogSlugsForTests(null);
+
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: '/blog/__synced__',
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/404.html');
+
+      const longSlug = 'a'.repeat(121);
+      expect(
+        (
+          (await kvsApi.handler({
+            request: {
+              uri: `/blog/${longSlug}`,
+              headers: { host: { value: 'gagnechris.com' } },
+            },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/404.html');
+
+      expect(calls).toEqual([]);
+    });
   });
 
   it('rewrites /resume, /contact, and /dont-feed-the-bears to Option B', async () => {

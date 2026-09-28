@@ -172,18 +172,27 @@ function defaultSleep(ms: number): Promise<void> {
 }
 
 /**
- * One describe → list → update cycle.
+ * One describe → list → resolve-desired → update cycle.
  * ETag is taken before ListKeys so IfMatch covers the list→update window (CHR-119).
+ * Desired slugs are resolved after describe/list so a stale republish-all list
+ * cannot delete a concurrently published slug (CHR-123).
  */
+export type DesiredSlugs = string[] | (() => Promise<string[]>);
+
+async function resolveDesiredSlugs(slugs: DesiredSlugs): Promise<string[]> {
+  return typeof slugs === 'function' ? await slugs() : slugs;
+}
+
 export async function syncBlogSlugsOnce(
   kvsArn: string,
-  slugs: string[],
+  slugs: DesiredSlugs,
   client: BlogSlugKvsClient,
 ): Promise<'synced' | 'noop'> {
   // Describe first so the ETag covers list → update (avoids concurrent races).
   let etag = await client.describeETag(kvsArn);
   const existing = await client.listKeys(kvsArn);
-  const diff = diffBlogSlugKeys(existing, slugs);
+  const desired = await resolveDesiredSlugs(slugs);
+  const diff = diffBlogSlugKeys(existing, desired);
   if (diff.puts.length === 0 && diff.deletes.length === 0) {
     return 'noop';
   }
@@ -212,7 +221,7 @@ export type SyncBlogSlugsOptions = {
  */
 export async function syncBlogSlugsWithClient(
   kvsArn: string,
-  slugs: string[],
+  slugs: DesiredSlugs,
   options: SyncBlogSlugsOptions = {},
 ): Promise<'synced' | 'noop'> {
   const client = options.client ?? defaultSdkClient();
@@ -226,13 +235,11 @@ export async function syncBlogSlugsWithClient(
       if (result === 'noop') {
         logger.info('Blog slug KVS already in sync', {
           kvsArn,
-          slugCount: slugs.length,
           attempt,
         });
       } else {
         logger.info('Synced blog slug KeyValueStore', {
           kvsArn,
-          slugCount: slugs.length,
           attempt,
         });
       }
@@ -262,9 +269,10 @@ export async function syncBlogSlugsWithClient(
  * No-ops locally and when BLOG_SLUGS_KVS_ARN is unset.
  * Does not modify CloudFront Function code.
  * Throws {@link KvsSyncError} after retries so the stream can retry (CHR-119).
+ * Pass a thunk for `slugs` to re-read Dynamo immediately before the KVS diff (CHR-123).
  */
 export async function syncViewerRequestBlogSlugs(
-  slugs: string[],
+  slugs: DesiredSlugs,
   options?: SyncBlogSlugsOptions,
 ): Promise<void> {
   if (isLocalCloudFront()) return;
