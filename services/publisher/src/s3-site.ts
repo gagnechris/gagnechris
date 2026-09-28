@@ -6,7 +6,7 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { batchGetAll } from '@gagnechris/shared';
+import { batchGetAllWithDocClient } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { mapWithConcurrency } from './concurrency.js';
@@ -38,9 +38,12 @@ import { createS3SiteStorage } from './storage-s3.js';
 import { postSlugsFromKeys, type SiteStorage } from './storage.js';
 import { syncViewerRequestBlogSlugs } from './viewer-request-slugs.js';
 
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-  marshallOptions: { removeUndefinedValues: true },
-});
+const ddb = DynamoDBDocumentClient.from(
+  new DynamoDBClient({ maxAttempts: 3 }),
+  {
+    marshallOptions: { removeUndefinedValues: true },
+  },
+);
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 const CACHE_FEED = 'public,max-age=300';
@@ -127,18 +130,8 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   const publishedById = new Map<string, PostMetaRecord>();
   for (let i = 0; i < uniqueIds.length; i += 100) {
     const chunk = uniqueIds.slice(i, i + 100);
-    const responses = await batchGetAll(
-      async (RequestItems) => {
-        const result = await ddb.send(new BatchGetCommand({ RequestItems }));
-        return {
-          Responses: result.Responses as
-            | Record<string, Array<Record<string, unknown>>>
-            | undefined,
-          UnprocessedKeys: result.UnprocessedKeys as
-            | Record<string, { Keys: Array<Record<string, unknown>> }>
-            | undefined,
-        };
-      },
+    const responses = await batchGetAllWithDocClient(
+      async (RequestItems) => ddb.send(new BatchGetCommand({ RequestItems })),
       {
         [tableName]: {
           Keys: chunk.map((postId) => ({

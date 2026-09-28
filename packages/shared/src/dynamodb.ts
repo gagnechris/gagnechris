@@ -1,5 +1,5 @@
 /**
- * Shared DynamoDB helpers (CHR-120).
+ * Shared DynamoDB helpers (CHR-120 / CHR-126).
  * Duck-typed so `@gagnechris/shared` stays free of the AWS SDK (web imports this package).
  */
 
@@ -19,6 +19,17 @@ export type BatchGetOutput = {
 export type BatchGetSend = (
   requestItems: BatchGetRequestItems,
 ) => Promise<BatchGetOutput>;
+
+/**
+ * DocClient-shaped send that returns the raw BatchGet result (Responses /
+ * UnprocessedKeys may be loosely typed from the SDK).
+ */
+export type BatchGetDocClientSend = (
+  requestItems: BatchGetRequestItems,
+) => Promise<{
+  Responses?: unknown;
+  UnprocessedKeys?: unknown;
+}>;
 
 export const BATCH_GET_MAX_ATTEMPTS = 5;
 
@@ -89,6 +100,31 @@ export async function batchGetAll(
   );
 }
 
+/**
+ * BatchGet via a DocClient send that returns loosely typed Responses /
+ * UnprocessedKeys — one cast site for API + publisher (CHR-126).
+ */
+export async function batchGetAllWithDocClient(
+  sendRaw: BatchGetDocClientSend,
+  requestItems: BatchGetRequestItems,
+  options?: {
+    maxAttempts?: number;
+    sleep?: (ms: number) => Promise<void>;
+  },
+): Promise<Record<string, Array<Record<string, unknown>>>> {
+  return batchGetAll(
+    async (items) => {
+      const result = await sendRaw(items);
+      return {
+        Responses: result.Responses as BatchGetOutput['Responses'],
+        UnprocessedKeys: result.UnprocessedKeys as BatchGetOutput['UnprocessedKeys'],
+      };
+    },
+    requestItems,
+    options,
+  );
+}
+
 export type DynamoWriteErrorKind = 'conflict' | 'throttling' | 'other';
 
 function errorName(error: unknown): string | undefined {
@@ -115,17 +151,21 @@ function cancellationCodes(error: unknown): string[] {
 }
 
 /**
- * Classify DynamoDB write failures for HTTP mapping (CHR-120):
+ * Classify DynamoDB write failures for HTTP mapping (CHR-120 / CHR-126):
  * - ConditionalCheckFailed / TransactionConflict → conflict (409)
- * - ThrottlingError / ProvisionedThroughputExceeded → throttling (retry, then 503)
+ * - Throttling / ProvisionedThroughputExceeded / RequestLimitExceeded → throttling (503)
  * - anything else → other (rethrow)
+ *
+ * Retries are owned by the AWS SDK client (`maxAttempts`); callers should not
+ * stack another throttle-retry loop on top.
  */
 export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
   const name = errorName(error);
   if (
     name === 'ThrottlingException' ||
     name === 'ThrottlingError' ||
-    name === 'ProvisionedThroughputExceededException'
+    name === 'ProvisionedThroughputExceededException' ||
+    name === 'RequestLimitExceeded'
   ) {
     return 'throttling';
   }
@@ -140,7 +180,8 @@ export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
       codes.some(
         (code) =>
           code === 'ThrottlingError' ||
-          code === 'ProvisionedThroughputExceeded',
+          code === 'ProvisionedThroughputExceeded' ||
+          code === 'RequestLimitExceeded',
       )
     ) {
       return 'throttling';
@@ -166,8 +207,4 @@ export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
 /** True when a write failed due to optimistic lock or concurrent transaction. */
 export function isOptimisticLockConflict(error: unknown): boolean {
   return classifyDynamoWriteError(error) === 'conflict';
-}
-
-export function isDynamoThrottlingError(error: unknown): boolean {
-  return classifyDynamoWriteError(error) === 'throttling';
 }

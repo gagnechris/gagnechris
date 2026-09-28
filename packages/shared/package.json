@@ -21,10 +21,6 @@
     "./resume": {
       "types": "./src/resume.ts",
       "import": "./src/resume.ts"
-    },
-    "./dynamodb": {
-      "types": "./src/dynamodb.ts",
-      "import": "./src/dynamodb.ts"
     }
   },
   "scripts": {
