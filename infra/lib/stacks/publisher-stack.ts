@@ -7,6 +7,7 @@ import {
 } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
+import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
@@ -32,6 +33,12 @@ export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly dataTable: ITable;
   readonly siteBucket: IBucket;
+  /**
+   * Kept as a direct ref so Site continues to export the distribution ID
+   * (Dns also needs it). Switching this to SSM alone cannot drop the export
+   * while Publisher still imports it in the same deploy (CHR-135).
+   */
+  readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
   /** CloudFront KeyValueStore ARN for published blog slug allowlist (CHR-115). */
   readonly blogSlugsKeyValueStoreArn: string;
@@ -52,15 +59,10 @@ export class PublisherStack extends Stack {
       config,
       dataTable,
       siteBucket,
+      distribution,
       alertsTopic,
       blogSlugsKeyValueStoreArn,
     } = props;
-
-    // Distribution ID via SSM (Site writes it) — avoids Site→Publisher export.
-    const distributionId = StringParameter.valueForStringParameter(
-      this,
-      ssmParameterName(config.name, 'cloudfrontDistributionId'),
-    );
 
     this.publisherFunction = new NodeLambda(this, 'PublisherFunction', {
       functionName: `gagnechris-${config.name}-publisher`,
@@ -109,7 +111,7 @@ export class PublisherStack extends Stack {
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucket.bucketName,
-        CLOUDFRONT_DISTRIBUTION_ID: distributionId,
+        CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
         BLOG_SLUGS_KVS_ARN: blogSlugsKeyValueStoreArn,
         SITE_APEX_DOMAIN: config.domainName,
       },
@@ -144,7 +146,7 @@ export class PublisherStack extends Stack {
         sid: 'CloudFrontInvalidate',
         actions: ['cloudfront:CreateInvalidation'],
         resources: [
-          `arn:aws:cloudfront::${this.account}:distribution/${distributionId}`,
+          `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
         ],
       }),
     );
