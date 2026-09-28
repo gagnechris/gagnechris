@@ -1,5 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import {
+  createMemoryRouter,
+  RouterProvider,
+} from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import AdminHomePage from './AdminHomePage'
 
@@ -31,6 +35,14 @@ const baseHome = {
   hasUnpublishedChanges: false,
 }
 
+function renderHome() {
+  const router = createMemoryRouter(
+    [{ path: '/admin/home', element: <AdminHomePage /> }],
+    { initialEntries: ['/admin/home'] },
+  )
+  return render(<RouterProvider router={router} />)
+}
+
 describe('AdminHomePage autosave', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -56,7 +68,7 @@ describe('AdminHomePage autosave', () => {
         }),
     )
 
-    render(<AdminHomePage />)
+    renderHome()
     const title = await screen.findByDisplayValue('Engineering')
 
     await user.type(title, ' ')
@@ -73,7 +85,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'Engineering',
         version: 2,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:01:00.000Z',
       },
       error: undefined,
@@ -100,7 +112,7 @@ describe('AdminHomePage autosave', () => {
       })
     })
 
-    render(<AdminHomePage />)
+    renderHome()
     const title = await screen.findByDisplayValue('Engineering')
 
     await user.type(title, 'A')
@@ -118,7 +130,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'EngineeringA',
         version: 2,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:01:00.000Z',
       },
       error: undefined,
@@ -133,7 +145,7 @@ describe('AdminHomePage autosave', () => {
         ...baseHome,
         title: 'EngineeringAB',
         version: 3,
-  hasUnpublishedChanges: false,
+        hasUnpublishedChanges: false,
         updatedAt: '2026-09-27T00:02:00.000Z',
       },
       error: undefined,
@@ -168,7 +180,7 @@ describe('AdminHomePage autosave', () => {
       })
     })
 
-    render(<AdminHomePage />)
+    renderHome()
     const title = await screen.findByDisplayValue('Engineering')
     await user.clear(title)
     await user.type(title, 'New Title')
@@ -179,5 +191,58 @@ describe('AdminHomePage autosave', () => {
       seo: { ogImage?: string }
     }
     expect(body.seo.ogImage).toBe('/media/og-home.png')
+  })
+})
+
+describe('AdminHomePage publish (CHR-124)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    get.mockResolvedValue({
+      data: { ...baseHome, hasUnpublishedChanges: true },
+      error: undefined,
+      response: { status: 200 },
+    })
+    put.mockResolvedValue({
+      data: { ...baseHome, version: 2, hasUnpublishedChanges: true },
+      error: undefined,
+      response: { status: 200 },
+    })
+  })
+
+  test('typing during a slow publish is not overwritten', async () => {
+    const user = userEvent.setup()
+    let resolvePublish!: (value: unknown) => void
+    post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePublish = resolve
+        }),
+    )
+
+    renderHome()
+    const title = await screen.findByDisplayValue('Engineering')
+
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }))
+
+    await user.clear(title)
+    await user.type(title, 'typed while publishing')
+
+    resolvePublish({
+      data: {
+        ...baseHome,
+        title: 'Engineering',
+        version: 3,
+        hasUnpublishedChanges: false,
+        status: 'published',
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('typed while publishing')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
   })
 })

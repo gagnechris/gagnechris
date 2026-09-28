@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 import {
   mergeEditorSeo,
   useQueuedAutosave,
+  type FlushResult,
 } from './useQueuedAutosave'
 
 describe('mergeEditorSeo', () => {
@@ -67,7 +68,7 @@ describe('useQueuedAutosave', () => {
       return { ...autosave, setDraft, dirty }
     })
 
-    let savePromise!: Promise<boolean>
+    let savePromise!: Promise<FlushResult>
     act(() => {
       savePromise = result.current.save()
     })
@@ -91,7 +92,7 @@ describe('useQueuedAutosave', () => {
 
     await act(async () => {
       resolvers[1]!({ ok: true, entity: { version: 3 } })
-      await expect(savePromise).resolves.toBe(true)
+      await expect(savePromise).resolves.toBe('clean')
     })
 
     expect(onSaved).toHaveBeenCalledTimes(2)
@@ -127,7 +128,7 @@ describe('useQueuedAutosave', () => {
       return { ...autosave, setDraft }
     })
 
-    let first!: Promise<boolean>
+    let first!: Promise<FlushResult>
     act(() => {
       first = result.current.save()
     })
@@ -137,7 +138,7 @@ describe('useQueuedAutosave', () => {
       result.current.setDraft('ab')
     })
 
-    let second!: Promise<boolean>
+    let second!: Promise<FlushResult>
     act(() => {
       second = result.current.save()
     })
@@ -153,12 +154,64 @@ describe('useQueuedAutosave', () => {
 
     await act(async () => {
       resolvers[1]!({ ok: true, entity: { version: 3 } })
-      await expect(first).resolves.toBe(true)
-      await expect(second).resolves.toBe(true)
+      await expect(first).resolves.toBe('clean')
+      await expect(second).resolves.toBe('clean')
     })
 
     expect(performSave.mock.calls.map((c) => c[1])).toEqual([1, 2])
     expect(versionRef.current).toBe(3)
+  })
+
+  test('held flush with edits mid-save returns pending, not clean (CHR-124)', async () => {
+    const resolvers: Array<
+      (value: { ok: true; entity: { version: number } }) => void
+    > = []
+    const performSave = vi.fn((...args: [string, number]) => {
+      void args
+      return new Promise<{ ok: true; entity: { version: number } }>((resolve) => {
+        resolvers.push(resolve)
+      })
+    })
+    const versionRef = { current: 1 }
+
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState('Hello')
+      const [dirty, setDirty] = useState(true)
+      const autosave = useQueuedAutosave({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        versionRef,
+        getVersion: (e) => e.version,
+        performSave,
+        onSaved: () => {},
+        conflictMessage: 'Conflict',
+      })
+      return { ...autosave, setDraft, dirty }
+    })
+
+    let savePromise!: Promise<FlushResult>
+    act(() => {
+      savePromise = result.current.save()
+    })
+
+    act(() => {
+      result.current.setAutosaveHeld(true)
+      result.current.bumpEdit()
+      result.current.setDraft('Hello world')
+    })
+
+    await act(async () => {
+      resolvers[0]!({ ok: true, entity: { version: 2 } })
+      await expect(savePromise).resolves.toBe('pending')
+    })
+
+    expect(performSave).toHaveBeenCalledTimes(1)
+    expect(result.current.dirty).toBe(true)
+    expect(result.current.saveState).toBe('idle')
+    expect(result.current.getLastSavedGen()).toBe(0)
+    expect(result.current.getEditGen()).toBe(1)
   })
 
   test('hold suppresses debounced autosave until released (CHR-121)', async () => {

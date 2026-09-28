@@ -6,6 +6,9 @@ export type AutosaveResult<TEntity> =
   | { ok: true; entity: TEntity }
   | { ok: false; status: number }
 
+/** Outcome of an explicit `save()` flush (CHR-124). */
+export type FlushResult = 'clean' | 'pending' | 'error'
+
 type Options<TDraft, TEntity> = {
   /** Latest draft; also used as the debounce dependency. */
   draft: TDraft | null | undefined
@@ -32,7 +35,9 @@ type Options<TDraft, TEntity> = {
  *
  * Call `setAutosaveHeld(true)` while Publish/Unpublish/Discard is in flight so
  * debounced autosaves do not race the version bump (CHR-121). Explicit `save()`
- * still runs (flush-before-publish).
+ * still runs (flush-before-publish). When hold stops the loop with unsaved
+ * edits, `save()` returns `'pending'` and `getLastSavedGen()` reflects only
+ * what was actually persisted (CHR-124).
  */
 export function useQueuedAutosave<TDraft, TEntity>({
   draft,
@@ -53,9 +58,10 @@ export function useQueuedAutosave<TDraft, TEntity>({
 
   const draftRef = useRef(draft)
   const editGenRef = useRef(0)
+  const lastSavedGenRef = useRef(0)
   const inFlightRef = useRef(false)
   const pendingRef = useRef(false)
-  const chainRef = useRef<Promise<boolean> | null>(null)
+  const chainRef = useRef<Promise<FlushResult> | null>(null)
   const heldRef = useRef(false)
   const setDirtyRef = useRef(setDirty)
   const performSaveRef = useRef(performSave)
@@ -92,17 +98,17 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setSaveState('idle')
   }, [])
 
-  const save = useCallback((): Promise<boolean> => {
-    if (!enabled) return Promise.resolve(false)
-    if (draftRef.current == null) return Promise.resolve(false)
+  const save = useCallback((): Promise<FlushResult> => {
+    if (!enabled) return Promise.resolve('error')
+    if (draftRef.current == null) return Promise.resolve('error')
 
     if (chainRef.current) {
       pendingRef.current = true
       return chainRef.current
     }
 
-    let resolveChain!: (value: boolean) => void
-    const promise = new Promise<boolean>((resolve) => {
+    let resolveChain!: (value: FlushResult) => void
+    const promise = new Promise<FlushResult>((resolve) => {
       resolveChain = resolve
     })
     // Register before any await so concurrent save() callers join this chain.
@@ -110,7 +116,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
 
     void (async () => {
       inFlightRef.current = true
-      let allOk = false
+      let outcome: FlushResult = 'error'
 
       try {
         for (;;) {
@@ -135,26 +141,29 @@ export function useQueuedAutosave<TDraft, TEntity>({
                 ? conflictMessage
                 : `Save failed (${result.status}).`,
             )
+            outcome = 'error'
             break
           }
 
           versionRef.current = getVersionRef.current(result.entity)
           onSavedRef.current(result.entity)
+          lastSavedGenRef.current = genAtStart
 
           const unchanged = editGenRef.current === genAtStart
           if (unchanged && !pendingRef.current) {
             setDirtyRef.current(false)
             setSaveState('saved')
-            allOk = true
+            outcome = 'clean'
             break
           }
 
           // Edits (or a queued save) landed while the request was in flight.
           // If Publish holds autosave, stop looping — flush after hold lifts.
+          // Do not report clean: pending text is not on the server (CHR-124).
           if (heldRef.current) {
             setDirtyRef.current(true)
             setSaveState('idle')
-            allOk = true
+            outcome = 'pending'
             break
           }
 
@@ -162,13 +171,13 @@ export function useQueuedAutosave<TDraft, TEntity>({
           setSaveState('idle')
         }
       } catch {
-        allOk = false
+        outcome = 'error'
         setSaveState('error')
         setSaveError('Save failed.')
       } finally {
         inFlightRef.current = false
         chainRef.current = null
-        resolveChain(allOk)
+        resolveChain(outcome)
       }
     })()
 
@@ -194,6 +203,8 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setAutosaveHeld,
     /** Current edit generation — use to detect typing during publish/unpublish. */
     getEditGen: () => editGenRef.current,
+    /** Edit generation of the draft last successfully persisted. */
+    getLastSavedGen: () => lastSavedGenRef.current,
   }
 }
 
