@@ -42,6 +42,12 @@ Details: [data-model.md](./data-model.md).
 
 ## Publisher outputs
 
+Stream scope (`collectRebuildScope`) selects **publish targets** under
+`services/publisher/src/publish-targets/targets/*.target.ts`. Each new target
+module is wired in `publish-targets/bootstrap.ts` (esbuild bundles explicit
+imports). The orchestrator loads shared deps, runs matching targets, invalidates
+CloudFront, then syncs blog slugs to KVS (CHR-123 order).
+
 On relevant stream events the publisher updates, among others:
 
 - `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html` (prerendered pages)

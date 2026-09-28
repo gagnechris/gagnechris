@@ -18,7 +18,7 @@ code.
 | `pk`                | Partition key                                                                               |
 | `sk`                | Sort key                                                                                    |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                           |
-| `gsi2pk` / `gsi2sk` | GSI2 — list published posts by tag                                                          |
+| `gsi2pk` / `gsi2sk` | GSI2 — **reserved** (tag rows mirror pk/sk today; Notebook may adopt this index)            |
 | `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
@@ -101,7 +101,11 @@ Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
 For each tag on a **published** post, maintain:
 
 `TAG#<tag>` / `TS#<publishedAt>#POST#<postId>` with `gsi2pk`/`gsi2sk` mirroring
-pk/sk (or project from GSI2 only). Simpler pattern used here:
+pk/sk so items remain GSI-projectable. **No application query uses GSI2 yet**
+(list-by-tag uses the table primary key). GSI2 is reserved for a future Notebook
+access pattern; do not repurpose without a migration plan.
+
+Pattern used here:
 
 | Keys             |                                  |
 | ---------------- | -------------------------------- |
