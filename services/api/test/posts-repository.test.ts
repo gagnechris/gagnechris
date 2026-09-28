@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { PostsRepository } from '../src/posts/repository.js';
-import { buildMetaItem, buildPublishedItem, postPublishedSk } from '../src/posts/keys.js';
+import {
+  buildMetaItem,
+  buildPublishedItem,
+  postMetaSk,
+  postPk,
+  postPublishedSk,
+} from '../src/posts/keys.js';
 import type { Post } from '@gagnechris/shared';
+import { encodeCursor } from '../src/data/cursor.js';
 
 const draft: Post = {
   id: '01TESTPOSTID00000000000000',
@@ -21,13 +28,26 @@ const draft: Post = {
 };
 
 function mockDoc(
-  impl: (command: { constructor: { name: string }; input: unknown }) => Promise<unknown>,
+  impl: (command: {
+    constructor: { name: string };
+    input: unknown;
+  }) => Promise<unknown>,
 ): DynamoDBDocumentClient {
   return {
-    send: vi.fn(async (command: { constructor: { name: string }; input: unknown }) =>
-      impl(command),
-    ),
+    send: vi.fn(async (command: {
+      constructor: { name: string };
+      input: unknown;
+    }) => impl(command)),
   } as unknown as DynamoDBDocumentClient;
+}
+
+/** BatchGet responses used by PublishableKeyedRepository.loadDraftAndPublished. */
+function batchGetResponses(...items: Record<string, unknown>[]) {
+  return {
+    Responses: {
+      'gagnechris-test': items,
+    },
+  };
 }
 
 describe('PostsRepository', () => {
@@ -55,8 +75,13 @@ describe('PostsRepository', () => {
     expect(cmd.input.TransactItems).toHaveLength(2);
   });
 
-  it('gets by id from META item', async () => {
-    const doc = mockDoc(async () => ({ Item: buildMetaItem(draft) }));
+  it('gets by id from META item via BatchGet', async () => {
+    const doc = mockDoc(async (command) => {
+      if (command.constructor.name === 'BatchGetCommand') {
+        return batchGetResponses(buildMetaItem(draft));
+      }
+      return {};
+    });
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const got = await repo.getById(draft.id);
     expect(got?.slug).toBe('hello');
@@ -66,16 +91,17 @@ describe('PostsRepository', () => {
     let calls = 0;
     const doc = mockDoc(async (command) => {
       calls += 1;
-      if (calls === 1) {
-        expect(command.constructor.name).toBe('GetCommand');
+      if (command.constructor.name === 'GetCommand') {
         return { Item: { postId: draft.id } };
       }
-      return { Item: buildMetaItem(draft) };
+      if (command.constructor.name === 'BatchGetCommand') {
+        return batchGetResponses(buildMetaItem(draft));
+      }
+      return {};
     });
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const got = await repo.getBySlug('hello');
     expect(got?.id).toBe(draft.id);
-    // slug claim + META + PUBLISHED (for hasUnpublishedChanges)
     expect(calls).toBeGreaterThanOrEqual(2);
   });
 
@@ -86,12 +112,32 @@ describe('PostsRepository', () => {
     expect(page.items).toHaveLength(1);
   });
 
+  it('list returns nextCursor from LastEvaluatedKey', async () => {
+    const lek = {
+      pk: postPk(draft.id),
+      sk: postMetaSk(),
+      gsi1pk: 'STATUS#draft',
+      gsi1sk: 'x',
+    };
+    const doc = mockDoc(async () => ({
+      Items: [buildMetaItem(draft)],
+      LastEvaluatedKey: lek,
+    }));
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const page = await repo.list('draft', { limit: 1 });
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBe(encodeCursor(lek));
+  });
+
   it('publish flips status and bumps version', async () => {
     let calls = 0;
     const doc = mockDoc(async (command) => {
       calls += 1;
+      if (command.constructor.name === 'BatchGetCommand') {
+        return batchGetResponses(buildMetaItem(draft));
+      }
       if (command.constructor.name === 'GetCommand') {
-        return { Item: buildMetaItem(draft) };
+        return {};
       }
       return {};
     });
@@ -105,8 +151,11 @@ describe('PostsRepository', () => {
 
   it('publish accepts an explicit publishedAt for migrations', async () => {
     const doc = mockDoc(async (command) => {
+      if (command.constructor.name === 'BatchGetCommand') {
+        return batchGetResponses(buildMetaItem(draft));
+      }
       if (command.constructor.name === 'GetCommand') {
-        return { Item: buildMetaItem(draft) };
+        return {};
       }
       return {};
     });
@@ -125,23 +174,27 @@ describe('PostsRepository', () => {
       version: 2,
     };
     const live = { ...published, title: 'Live title' };
-    const send = vi.fn(async (command: { constructor: { name: string }; input: Record<string, unknown> }) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === postPublishedSk()) {
-          return { Item: buildPublishedItem(live) };
+    const send = vi.fn(
+      async (command: {
+        constructor: { name: string };
+        input: Record<string, unknown>;
+      }) => {
+        if (command.constructor.name === 'BatchGetCommand') {
+          return batchGetResponses(
+            buildMetaItem(published),
+            buildPublishedItem(live),
+          );
         }
-        return { Item: buildMetaItem(published) };
-      }
-      if (command.constructor.name === 'BatchGetCommand') {
-        return {
-          Responses: {
-            'gagnechris-test': [buildPublishedItem(live)],
-          },
-        };
-      }
-      return {};
-    });
+        if (command.constructor.name === 'GetCommand') {
+          const key = command.input.Key as { sk?: string };
+          if (key.sk === postPublishedSk()) {
+            return { Item: buildPublishedItem(live) };
+          }
+          return { Item: buildMetaItem(published) };
+        }
+        return {};
+      },
+    );
     const doc = { send } as unknown as DynamoDBDocumentClient;
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const next = await repo.update(published.id, {
@@ -151,8 +204,12 @@ describe('PostsRepository', () => {
     expect(next.title).toBe('Draft title');
     expect(next.hasUnpublishedChanges).toBe(true);
     const tx = send.mock.calls.find(
-      (c) => (c[0] as { constructor: { name: string } }).constructor.name === 'TransactWriteCommand',
-    )![0] as { input: { TransactItems: Array<Record<string, unknown>> } };
+      (c) =>
+        (c[0] as { constructor: { name: string } }).constructor.name ===
+        'TransactWriteCommand',
+    )![0] as {
+      input: { TransactItems: Array<Record<string, unknown>> };
+    };
     const sks = tx.input.TransactItems.flatMap((item) => {
       const put = item.Put as { Item?: { sk?: string } } | undefined;
       return put?.Item?.sk ? [put.Item.sk] : [];
@@ -173,24 +230,39 @@ describe('PostsRepository', () => {
       title: 'Live title',
       version: 2,
     };
-    const send = vi.fn(async (command: { constructor: { name: string }; input: Record<string, unknown> }) => {
-      if (command.constructor.name === 'GetCommand') {
-        const key = command.input.Key as { sk?: string };
-        if (key.sk === postPublishedSk()) {
-          return { Item: buildPublishedItem(live) };
+    const send = vi.fn(
+      async (command: {
+        constructor: { name: string };
+        input: Record<string, unknown>;
+      }) => {
+        if (command.constructor.name === 'BatchGetCommand') {
+          return batchGetResponses(
+            buildMetaItem(published),
+            buildPublishedItem(live),
+          );
         }
-        return { Item: buildMetaItem(published) };
-      }
-      return {};
-    });
+        if (command.constructor.name === 'GetCommand') {
+          const key = command.input.Key as { sk?: string };
+          if (key.sk === postPublishedSk()) {
+            return { Item: buildPublishedItem(live) };
+          }
+          return { Item: buildMetaItem(published) };
+        }
+        return {};
+      },
+    );
     const doc = { send } as unknown as DynamoDBDocumentClient;
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const next = await repo.publish(published.id);
     expect(next.title).toBe('Draft title');
     expect(next.hasUnpublishedChanges).toBe(false);
     const tx = send.mock.calls.find(
-      (c) => (c[0] as { constructor: { name: string } }).constructor.name === 'TransactWriteCommand',
-    )![0] as { input: { TransactItems: Array<Record<string, unknown>> } };
+      (c) =>
+        (c[0] as { constructor: { name: string } }).constructor.name ===
+        'TransactWriteCommand',
+    )![0] as {
+      input: { TransactItems: Array<Record<string, unknown>> };
+    };
     const sks = tx.input.TransactItems.flatMap((item) => {
       const put = item.Put as { Item?: { sk?: string } } | undefined;
       return put?.Item?.sk ? [put.Item.sk] : [];
