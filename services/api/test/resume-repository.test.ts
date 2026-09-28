@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ConditionalCheckFailedException,
   TransactionCanceledException,
 } from '@aws-sdk/client-dynamodb';
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DEFAULT_RESUME, type Resume } from '@gagnechris/shared';
 import { ConflictError } from '../src/data/errors.js';
 import {
@@ -11,6 +10,7 @@ import {
   buildResumePublishedItem,
 } from '../src/resume/keys.js';
 import { ResumeRepository } from '../src/resume/repository.js';
+import { mockDoc, mockPair } from './support/mock-doc.js';
 
 const stored: Resume = {
   ...DEFAULT_RESUME,
@@ -20,63 +20,6 @@ const stored: Resume = {
   version: 3,
   hasUnpublishedChanges: false,
 };
-
-type FakeCommand = {
-  constructor: { name: string };
-  input: Record<string, unknown>;
-};
-
-function itemsForKeys(
-  keys: Array<{ sk?: string }>,
-  meta: unknown,
-  published: unknown | undefined,
-): unknown[] {
-  const out: unknown[] = [];
-  for (const key of keys) {
-    if (key.sk === 'META' && meta) out.push(meta);
-    if (key.sk === 'PUBLISHED' && published) out.push(published);
-  }
-  return out;
-}
-
-function mockPair(
-  meta: unknown,
-  published?: unknown,
-  onWrite?: (command: FakeCommand) => Promise<unknown> | unknown,
-): (command: FakeCommand) => Promise<unknown> {
-  return async (command) => {
-    if (command.constructor.name === 'BatchGetCommand') {
-      const requestItems = command.input.RequestItems as Record<
-        string,
-        { Keys: Array<{ sk?: string }> }
-      >;
-      const table = Object.keys(requestItems)[0]!;
-      const keys = requestItems[table]!.Keys;
-      return {
-        Responses: { [table]: itemsForKeys(keys, meta, published) },
-      };
-    }
-    if (command.constructor.name === 'GetCommand') {
-      const key = command.input.Key as { sk?: string };
-      if (key.sk === 'PUBLISHED') {
-        return published ? { Item: published } : {};
-      }
-      return meta ? { Item: meta } : {};
-    }
-    if (onWrite) {
-      return (await onWrite(command)) ?? {};
-    }
-    return {};
-  };
-}
-
-function mockDoc(impl: (command: FakeCommand) => Promise<unknown>) {
-  const send = vi.fn(async (command: FakeCommand) => impl(command));
-  return {
-    doc: { send } as unknown as DynamoDBDocumentClient,
-    send,
-  };
-}
 
 describe('ResumeRepository', () => {
   beforeEach(() => {

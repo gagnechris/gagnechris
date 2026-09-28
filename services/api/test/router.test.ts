@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { z } from 'zod';
 import { handler } from '../src/handler.js';
 import {
@@ -9,48 +8,7 @@ import {
   type RouteDef,
 } from '../src/router.js';
 import { json } from '../src/http.js';
-
-function event(
-  method: string,
-  path: string,
-  opts?: {
-    claims?: Record<string, string>;
-    body?: unknown;
-    query?: Record<string, string>;
-  },
-): APIGatewayProxyEventV2 {
-  return {
-    version: '2.0',
-    routeKey: `${method} ${path}`,
-    rawPath: path,
-    rawQueryString: '',
-    headers: {},
-    queryStringParameters: opts?.query,
-    body: opts?.body === undefined ? undefined : JSON.stringify(opts.body),
-    isBase64Encoded: false,
-    requestContext: {
-      accountId: '123',
-      apiId: 'api',
-      domainName: 'example.com',
-      domainPrefix: 'example',
-      http: {
-        method,
-        path,
-        protocol: 'HTTP/1.1',
-        sourceIp: '127.0.0.1',
-        userAgent: 'vitest',
-      },
-      requestId: 'req',
-      routeKey: `${method} ${path}`,
-      stage: '$default',
-      time: 'now',
-      timeEpoch: Date.now(),
-      authorizer: opts?.claims
-        ? { jwt: { claims: opts.claims, scopes: [] } }
-        : undefined,
-    },
-  } as APIGatewayProxyEventV2;
-}
+import { makeEvent } from './support/make-event.js';
 
 describe('router helpers', () => {
   it('canonicalPath strips /api prefix', () => {
@@ -99,7 +57,7 @@ describe('dispatchRoutes', () => {
   it('returns 405 for known path with wrong method', async () => {
     const result = await dispatchRoutes(
       echoRoutes,
-      event('DELETE', '/api/echo/1'),
+      makeEvent('DELETE', '/api/echo/1'),
       'DELETE',
       '/api/echo/1',
     );
@@ -111,7 +69,7 @@ describe('dispatchRoutes', () => {
   it('returns 404 for unknown path', async () => {
     const result = await dispatchRoutes(
       echoRoutes,
-      event('GET', '/api/nope'),
+      makeEvent('GET', '/api/nope'),
       'GET',
       '/api/nope',
     );
@@ -121,8 +79,8 @@ describe('dispatchRoutes', () => {
   it('validates body with zod and returns 400', async () => {
     const result = await dispatchRoutes(
       echoRoutes,
-      event('POST', '/api/echo/1', {
-        claims: { sub: 'u1' },
+      makeEvent('POST', '/api/echo/1', {
+        jwtClaims: { sub: 'u1' },
         body: { name: '' },
       }),
       'POST',
@@ -137,8 +95,8 @@ describe('dispatchRoutes', () => {
   it('passes ctx.userId from JWT claims', async () => {
     const result = await dispatchRoutes(
       echoRoutes,
-      event('POST', '/api/echo/1', {
-        claims: { sub: 'user-42' },
+      makeEvent('POST', '/api/echo/1', {
+        jwtClaims: { sub: 'user-42' },
         body: { name: 'hi' },
       }),
       'POST',
@@ -154,7 +112,7 @@ describe('dispatchRoutes', () => {
   it('rejects admin routes without claims when enforceAuth', async () => {
     const result = await dispatchRoutes(
       echoRoutes,
-      event('POST', '/api/echo/1', { body: { name: 'hi' } }),
+      makeEvent('POST', '/api/echo/1', { body: { name: 'hi' } }),
       'POST',
       '/api/echo/1',
     );
@@ -165,7 +123,7 @@ describe('dispatchRoutes', () => {
 describe('api handler routing', () => {
   it('GET /api/health returns ok', async () => {
     const result = await handler(
-      event('GET', '/api/health'),
+      makeEvent('GET', '/api/health'),
       {} as never,
       () => undefined,
     );
@@ -177,8 +135,8 @@ describe('api handler routing', () => {
 
   it('GET /api/admin/me returns claims', async () => {
     const result = await handler(
-      event('GET', '/api/admin/me', {
-        claims: {
+      makeEvent('GET', '/api/admin/me', {
+        jwtClaims: {
           sub: 'abc-123',
           email: 'admin@example.com',
           'cognito:username': 'admin@example.com',
@@ -198,7 +156,7 @@ describe('api handler routing', () => {
 
   it('GET /api/admin/me without claims is 401', async () => {
     const result = await handler(
-      event('GET', '/api/admin/me'),
+      makeEvent('GET', '/api/admin/me'),
       {} as never,
       () => undefined,
     );
@@ -207,7 +165,7 @@ describe('api handler routing', () => {
 
   it('wrong method on /api/health is 405', async () => {
     const result = await handler(
-      event('POST', '/api/health'),
+      makeEvent('POST', '/api/health'),
       {} as never,
       () => undefined,
     );
@@ -216,7 +174,7 @@ describe('api handler routing', () => {
 
   it('unknown route is 404', async () => {
     const result = await handler(
-      event('GET', '/api/nope'),
+      makeEvent('GET', '/api/nope'),
       {} as never,
       () => undefined,
     );
@@ -225,7 +183,7 @@ describe('api handler routing', () => {
 
   it('does not set CORS headers (API Gateway corsPreflight owns that)', async () => {
     const result = await handler(
-      event('GET', '/api/health'),
+      makeEvent('GET', '/api/health'),
       {} as never,
       () => undefined,
     );

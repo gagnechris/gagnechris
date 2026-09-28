@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import type { Post } from '@gagnechris/shared';
 import { handlePostsRoute } from '../src/posts/handlers.js';
 import {
@@ -7,42 +6,7 @@ import {
   NotFoundError,
   PostsRepository,
 } from '../src/posts/repository.js';
-
-function event(
-  method: string,
-  path: string,
-  body?: unknown,
-  query?: Record<string, string>,
-): APIGatewayProxyEventV2 {
-  return {
-    version: '2.0',
-    routeKey: `${method} ${path}`,
-    rawPath: path,
-    rawQueryString: '',
-    headers: {},
-    queryStringParameters: query,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    isBase64Encoded: false,
-    requestContext: {
-      accountId: '123',
-      apiId: 'api',
-      domainName: 'example.com',
-      domainPrefix: 'example',
-      http: {
-        method,
-        path,
-        protocol: 'HTTP/1.1',
-        sourceIp: '127.0.0.1',
-        userAgent: 'vitest',
-      },
-      requestId: 'req',
-      routeKey: `${method} ${path}`,
-      stage: '$default',
-      time: 'now',
-      timeEpoch: Date.now(),
-    },
-  } as APIGatewayProxyEventV2;
-}
+import { makeEvent } from './support/make-event.js';
 
 const samplePost: Post = {
   id: '01TESTPOSTID00000000000000',
@@ -78,7 +42,7 @@ describe('posts HTTP handlers', () => {
   it('lists posts', async () => {
     vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
     const result = await handlePostsRoute(
-      event('GET', '/api/admin/posts'),
+      makeEvent('GET', '/api/admin/posts'),
       'GET',
       '/api/admin/posts',
       repo,
@@ -90,7 +54,7 @@ describe('posts HTTP handlers', () => {
   it('creates a draft', async () => {
     vi.mocked(repo.create).mockResolvedValue(samplePost);
     const result = await handlePostsRoute(
-      event('POST', '/api/admin/posts', { title: 'Hello' }),
+      makeEvent('POST', '/api/admin/posts', { body: { title: 'Hello' } }),
       'POST',
       '/api/admin/posts',
       repo,
@@ -101,7 +65,9 @@ describe('posts HTTP handlers', () => {
   it('returns 409 on conflict', async () => {
     vi.mocked(repo.create).mockRejectedValue(new ConflictError('taken'));
     const result = await handlePostsRoute(
-      event('POST', '/api/admin/posts', { title: 'Hello', slug: 'hello' }),
+      makeEvent('POST', '/api/admin/posts', {
+        body: { title: 'Hello', slug: 'hello' },
+      }),
       'POST',
       '/api/admin/posts',
       repo,
@@ -122,8 +88,8 @@ describe('posts HTTP handlers', () => {
     );
 
     const published = await handlePostsRoute(
-      event('POST', `/api/admin/posts/${samplePost.id}/publish`, {
-        version: 1,
+      makeEvent('POST', `/api/admin/posts/${samplePost.id}/publish`, {
+        body: { version: 1 },
       }),
       'POST',
       `/api/admin/posts/${samplePost.id}/publish`,
@@ -132,7 +98,9 @@ describe('posts HTTP handlers', () => {
     expect(published?.statusCode).toBe(200);
 
     const deleted = await handlePostsRoute(
-      event('DELETE', `/api/admin/posts/${samplePost.id}`, { version: 1 }),
+      makeEvent('DELETE', `/api/admin/posts/${samplePost.id}`, {
+        body: { version: 1 },
+      }),
       'DELETE',
       `/api/admin/posts/${samplePost.id}`,
       repo,

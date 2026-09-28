@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
   CONTACT_PER_IP_PER_HOUR,
   RateLimitExceededError,
@@ -15,26 +14,11 @@ import {
   rateResumeIpPk,
   rateSesGlobalPk,
 } from '../src/contact/keys.js';
-
-function mockDoc(
-  impl: (command: {
-    constructor: { name: string };
-    input: Record<string, unknown>;
-  }) => Promise<unknown>,
-): DynamoDBDocumentClient {
-  return {
-    send: vi.fn(
-      async (command: {
-        constructor: { name: string };
-        input: Record<string, unknown>;
-      }) => impl(command),
-    ),
-  } as unknown as DynamoDBDocumentClient;
-}
+import { mockDocClient } from './support/mock-doc.js';
 
 describe('tryIncrementCounter', () => {
   it('returns true when Update succeeds', async () => {
-    const doc = mockDoc(async () => ({}));
+    const doc = mockDocClient(async () => ({}));
     const ok = await tryIncrementCounter({
       doc,
       tableName: 't',
@@ -55,7 +39,7 @@ describe('tryIncrementCounter', () => {
   });
 
   it('returns false on ConditionalCheckFailedException', async () => {
-    const doc = mockDoc(async () => {
+    const doc = mockDocClient(async () => {
       throw new ConditionalCheckFailedException({
         message: 'conditional',
         $metadata: {},
@@ -73,7 +57,7 @@ describe('tryIncrementCounter', () => {
   });
 
   it('rethrows unexpected errors', async () => {
-    const doc = mockDoc(async () => {
+    const doc = mockDocClient(async () => {
       throw new Error('boom');
     });
     await expect(
@@ -98,7 +82,7 @@ describe('RateLimiter', () => {
 
   it('allows contact posts up to the hourly IP cap then rejects', async () => {
     let count = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       expect(command.constructor.name).toBe('UpdateCommand');
       const key = command.input.Key as { pk: string; sk: string };
       expect(key.pk).toBe(rateContactIpPk('1.2.3.4'));
@@ -125,7 +109,7 @@ describe('RateLimiter', () => {
 
   it('enforces the global SES daily cap', async () => {
     let count = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       const key = command.input.Key as { pk: string; sk: string };
       expect(key.pk).toBe(rateSesGlobalPk());
       expect(key.sk).toBe(rateDaySk(fixed));
@@ -154,7 +138,7 @@ describe('RateLimiter', () => {
 
   it('dedupes resume notify to one claim per IP per day', async () => {
     let count = 0;
-    const doc = mockDoc(async (command) => {
+    const doc = mockDocClient(async (command) => {
       const key = command.input.Key as { pk: string; sk: string };
       expect(key.pk).toBe(rateResumeIpPk('9.9.9.9'));
       expect(key.sk).toBe(rateDaySk(fixed));
