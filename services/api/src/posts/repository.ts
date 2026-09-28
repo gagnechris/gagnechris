@@ -24,6 +24,7 @@ import {
   metaToPost,
   normalizeTags,
   nowIso,
+  parsePostMetaItem,
   postContentEqual,
   postMetaSk,
   postPk,
@@ -35,7 +36,6 @@ import {
   statusGsi1Pk,
   tagPk,
   tagSk,
-  type PostMetaItem,
 } from './keys.js';
 
 export { ConflictError, NotFoundError } from '../data/errors.js';
@@ -54,7 +54,7 @@ export class PostsRepository {
       }),
     );
     if (!result.Item) return undefined;
-    return metaToPost(result.Item as PostMetaItem, false);
+    return metaToPost(parsePostMetaItem(result.Item), false);
   }
 
   async getById(postId: string): Promise<Post | undefined> {
@@ -65,7 +65,7 @@ export class PostsRepository {
       }),
     );
     if (!result.Item) return undefined;
-    const draft = metaToPost(result.Item as PostMetaItem);
+    const draft = metaToPost(parsePostMetaItem(result.Item));
     if (draft.status === 'deleted') return draft;
     await this.migratePublishedSnapshot(draft);
     const published = await this.getPublished(postId);
@@ -104,7 +104,7 @@ export class PostsRepository {
           .filter(
             (item) => item.entityType === 'post' && item.sk === postMetaSk(),
           )
-          .map((item) => metaToPost(item as PostMetaItem));
+          .map((item) => metaToPost(parsePostMetaItem(item)));
       }),
     );
     const drafts = batches
@@ -154,7 +154,7 @@ export class PostsRepository {
         },
       );
       for (const item of responses[this.tableName] ?? []) {
-        const post = metaToPost(item as PostMetaItem, false);
+        const post = metaToPost(parsePostMetaItem(item), false);
         map.set(post.id, post);
       }
     }

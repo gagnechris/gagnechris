@@ -46,6 +46,20 @@ export const PostStatusSchema = z
 
 export type PostStatus = z.infer<typeof PostStatusSchema>;
 
+/** Shared publish lifecycle fields for Post / Home / Resume (CHR-128). */
+export const PublishableFieldsSchema = z.object({
+  status: PostStatusSchema,
+  publishedAt: z.string().datetime({ offset: true }).nullable(),
+  updatedAt: z.string().datetime({ offset: true }),
+  version: z.number().int().nonnegative(),
+  hasUnpublishedChanges: z.boolean().openapi({
+    description:
+      'True when a published snapshot exists and the editable draft differs from it',
+  }),
+});
+
+export type PublishableFields = z.infer<typeof PublishableFieldsSchema>;
+
 export const PostSeoSchema = z
   .object({
     title: z.string().optional(),
@@ -64,17 +78,10 @@ export const PostSchema = z
     excerpt: z.string(),
     bodyMarkdown: z.string(),
     tags: z.array(z.string()),
-    status: PostStatusSchema,
-    publishedAt: z.string().datetime({ offset: true }).nullable(),
-    updatedAt: z.string().datetime({ offset: true }),
     coverImage: z.string().nullable(),
     seo: PostSeoSchema.nullable(),
-    version: z.number().int().nonnegative(),
-    hasUnpublishedChanges: z.boolean().openapi({
-      description:
-        'True when a published snapshot exists and the editable draft differs from it',
-    }),
   })
+  .merge(PublishableFieldsSchema)
   .openapi('Post');
 
 export type Post = z.infer<typeof PostSchema>;
@@ -222,16 +229,9 @@ export const HomeSchema = z
     about: z.string().openapi({
       description: 'About Me body text; blank lines separate paragraphs',
     }),
-    status: PostStatusSchema,
-    publishedAt: z.string().datetime({ offset: true }).nullable(),
-    updatedAt: z.string().datetime({ offset: true }),
     seo: PostSeoSchema.nullable(),
-    version: z.number().int().nonnegative(),
-    hasUnpublishedChanges: z.boolean().openapi({
-      description:
-        'True when a published snapshot exists and the editable draft differs from it',
-    }),
   })
+  .merge(PublishableFieldsSchema)
   .openapi('Home');
 
 export type Home = z.infer<typeof HomeSchema>;
@@ -296,16 +296,9 @@ export const ResumeSchema = z
         'Site-relative path to the downloadable PDF (publisher always serves /resume.pdf)',
     }),
     content: ResumeContentSchema,
-    status: PostStatusSchema,
-    publishedAt: z.string().datetime({ offset: true }).nullable(),
-    updatedAt: z.string().datetime({ offset: true }),
     seo: PostSeoSchema.nullable(),
-    version: z.number().int().nonnegative(),
-    hasUnpublishedChanges: z.boolean().openapi({
-      description:
-        'True when a published snapshot exists and the editable draft differs from it',
-    }),
   })
+  .merge(PublishableFieldsSchema)
   .openapi('Resume');
 
 export type Resume = z.infer<typeof ResumeSchema>;
