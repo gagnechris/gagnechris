@@ -1,9 +1,15 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
 import type { Home } from './schemas.js';
+import {
+  SITE_AUTHOR_NAME,
+  SITE_GITHUB_URL,
+  SITE_LINKEDIN_URL,
+  SITE_PROFILE_IMAGE_SRC,
+} from './site-config.js';
 
 /** Stable public URL (also used by the React home header). */
-export const HOME_PROFILE_IMAGE_SRC = '/profile.jpg';
+export const HOME_PROFILE_IMAGE_SRC = SITE_PROFILE_IMAGE_SRC;
 
 /**
  * Shared chrome link data for the home Quick Links + footer.
@@ -28,13 +34,13 @@ export const HOME_QUICK_LINKS: readonly SiteChromeLink[] = [
   { label: 'Contact', href: '/contact', kind: 'spa' },
   {
     label: 'LinkedIn',
-    href: 'https://www.linkedin.com/in/christophergagne/',
+    href: SITE_LINKEDIN_URL,
     kind: 'external',
     trackId: 'linkedin',
   },
   {
     label: 'GitHub',
-    href: 'https://github.com/gagnechris',
+    href: SITE_GITHUB_URL,
     kind: 'external',
     trackId: 'github',
   },
@@ -43,13 +49,13 @@ export const HOME_QUICK_LINKS: readonly SiteChromeLink[] = [
 export const HOME_FOOTER_LINKS: readonly SiteChromeLink[] = [
   {
     label: 'LinkedIn',
-    href: 'https://www.linkedin.com/in/christophergagne/',
+    href: SITE_LINKEDIN_URL,
     kind: 'external',
     trackId: 'linkedin_footer',
   },
   {
     label: 'GitHub',
-    href: 'https://github.com/gagnechris',
+    href: SITE_GITHUB_URL,
     kind: 'external',
     trackId: 'github_footer',
   },
@@ -64,6 +70,7 @@ export const HOME_FOOTER_LINKS: readonly SiteChromeLink[] = [
   },
 ];
 
+export { SITE_AUTHOR_NAME };
 const renderChromeLinkHtml = (link: SiteChromeLink): string => {
   const label = escapeHtml(link.label);
   const href = escapeHtml(link.href);
@@ -112,7 +119,7 @@ export const renderHomeQuickLinksHtml = (): string =>
  */
 export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
   `<footer class="site-footer">` +
-  `<p class="site-footer__copy">© ${year} Chris Gagne</p>` +
+  `<p class="site-footer__copy">© ${year} ${escapeHtml(SITE_AUTHOR_NAME)}</p>` +
   `<ul class="site-footer__links">` +
   HOME_FOOTER_LINKS.map(
     (link) => `<li>${renderChromeLinkHtml(link)}</li>`,

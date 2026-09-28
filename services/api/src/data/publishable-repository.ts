@@ -12,7 +12,7 @@ import {
 import {
   batchGetAllWithDocClient,
   isOptimisticLockConflict,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/server';
 import { getDocClient, requireTableName } from './client.js';
 import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError, NotFoundError } from './errors.js';
