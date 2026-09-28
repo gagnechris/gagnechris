@@ -188,4 +188,42 @@ describe('syncBlogSlugsOnce / concurrent sync (CHR-119)', () => {
     ).rejects.toBeInstanceOf(KvsSyncError);
     expect(sleep).toHaveBeenCalledTimes(2);
   });
+
+  it('re-resolves desired slugs after list so concurrent publishes are kept (CHR-123)', async () => {
+    // Republish-all started with [a]; meanwhile stream published b into KVS.
+    // Stale desired [a] would delete b — thunk must return [a,b] after list.
+    const store = createInMemoryKvs([BLOG_SLUG_SYNCED_KEY, 'a', 'b']);
+    let desired = ['a'];
+    const order: string[] = [];
+    const client: BlogSlugKvsClient = {
+      async describeETag(arn) {
+        order.push('describe');
+        return store.client.describeETag(arn);
+      },
+      async listKeys(arn) {
+        order.push('list');
+        return store.client.listKeys(arn);
+      },
+      async updateKeys(input) {
+        order.push('update');
+        return store.client.updateKeys(input);
+      },
+    };
+
+    await syncBlogSlugsOnce(
+      'arn:test',
+      async () => {
+        order.push('resolve');
+        // Fresh Dynamo read after describe+list sees the concurrent publish.
+        desired = ['a', 'b'];
+        return desired;
+      },
+      client,
+    );
+
+    expect(order).toEqual(['describe', 'list', 'resolve']);
+    expect(store.getKeys()).toEqual(
+      new Set(['a', 'b', BLOG_SLUG_SYNCED_KEY]),
+    );
+  });
 });

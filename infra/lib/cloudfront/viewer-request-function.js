@@ -89,6 +89,12 @@ async function handler(event) {
 
   var blogSlug = blogPostSlug(uri);
   if (blogSlug !== null) {
+    // Reject reserved / malformed slugs before KVS (CHR-123): __synced__ and
+    // over-long keys must not fail-open to Option B or hit raw S3 XML.
+    if (!isValidBlogSlug(blogSlug)) {
+      request.uri = '/404.html';
+      return request;
+    }
     if (await isPublishedBlogSlug(blogSlug)) {
       request.uri = rewriteOptionB(uri);
     } else {
@@ -157,6 +163,31 @@ function blogPostSlug(uri) {
     }
   }
   return segment;
+}
+
+/** Published post slugs: lowercase alnum + hyphen, max 120; no reserved __*__ keys. */
+function isValidBlogSlug(slug) {
+  if (!slug || slug.length > 120) {
+    return false;
+  }
+  if (
+    slug.length >= 4 &&
+    slug.indexOf('__') === 0 &&
+    slug.substring(slug.length - 2) === '__'
+  ) {
+    return false;
+  }
+  for (var i = 0; i < slug.length; i++) {
+    var c = slug.charCodeAt(i);
+    var ok =
+      (c >= 48 && c <= 57) ||
+      (c >= 97 && c <= 122) ||
+      c === 45;
+    if (!ok) {
+      return false;
+    }
+  }
+  return true;
 }
 
 async function isPublishedBlogSlug(slug) {

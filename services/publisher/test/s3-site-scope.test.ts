@@ -94,7 +94,11 @@ function postMeta(post: Post) {
   };
 }
 
-function memoryStorage(): SiteStorage & { puts: string[]; deletes: string[] } {
+function memoryStorage(): SiteStorage & {
+  puts: string[];
+  deletes: string[];
+  invalidations: string[][];
+} {
   const shell =
     '<html><head></head><body><div id="root"></div></body></html>';
   const objects = new Map<string, string>();
@@ -102,9 +106,11 @@ function memoryStorage(): SiteStorage & { puts: string[]; deletes: string[] } {
   objects.set('index.html', shell);
   const puts: string[] = [];
   const deletes: string[] = [];
+  const invalidations: string[][] = [];
   return {
     puts,
     deletes,
+    invalidations,
     async readShell() {
       return objects.get('_shell.html') ?? shell;
     },
@@ -127,7 +133,9 @@ function memoryStorage(): SiteStorage & { puts: string[]; deletes: string[] } {
     async list(prefix) {
       return [...objects.keys()].filter((k) => k.startsWith(prefix));
     },
-    async invalidate() {},
+    async invalidate(paths) {
+      invalidations.push([...paths]);
+    },
   };
 }
 
@@ -355,5 +363,63 @@ describe('rebuildPublishedSite selective scope', () => {
       (await storage.read('blog/posts.json')) ?? '{}',
     ) as { items: Array<{ title: string }> };
     expect(postsJson.items[0]?.title).toBe(published.title);
+  });
+
+  it('invalidates CloudFront before KVS sync so a sync failure still clears cache (CHR-123)', async () => {
+    const post = makePost('welcome', 1);
+    const order: string[] = [];
+
+    const { syncViewerRequestBlogSlugs } = await import(
+      '../src/viewer-request-slugs.js'
+    );
+    vi.mocked(syncViewerRequestBlogSlugs).mockImplementation(async () => {
+      order.push('kvs');
+      throw new Error('forced KVS failure');
+    });
+
+    ddbSend.mockImplementation(
+      async (cmd: {
+        input?: {
+          IndexName?: string;
+          RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
+        };
+      }) => {
+        if (cmd.input?.IndexName === 'gsi1') {
+          return { Items: [postMeta(post)] };
+        }
+        if (cmd.input?.RequestItems) {
+          const table = Object.keys(cmd.input.RequestItems)[0]!;
+          return { Responses: { [table]: [postPublished(post)] } };
+        }
+        return {};
+      },
+    );
+
+    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const storage = memoryStorage();
+    const origInvalidate = storage.invalidate.bind(storage);
+    storage.invalidate = async (paths) => {
+      order.push('invalidate');
+      await origInvalidate(paths);
+    };
+
+    await expect(
+      rebuildPublishedSite({
+        scope: {
+          allPosts: false,
+          postSlugs: new Set(['welcome']),
+          slugsToRemove: new Set(),
+          feeds: true,
+          home: false,
+          resume: false,
+        },
+        storage,
+      }),
+    ).rejects.toThrow('forced KVS failure');
+
+    expect(order).toEqual(['invalidate', 'kvs']);
+    expect(storage.invalidations[0]).toEqual(
+      expect.arrayContaining(['/blog*', '/sitemap.xml', '/rss.xml']),
+    );
   });
 });
