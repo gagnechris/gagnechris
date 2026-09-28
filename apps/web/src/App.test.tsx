@@ -1,4 +1,5 @@
 import { screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
 import App from './App'
@@ -101,6 +102,46 @@ describe('App', () => {
       'external_link',
       'github_footer',
     )
+  })
+
+  test('tracks Quick Links LinkedIn and GitHub clicks (CHR-125)', () => {
+    renderWithProviders(<App />)
+
+    fireEvent.click(
+      document.querySelector('#quick-links a[href*="linkedin"]')!,
+    )
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      'click',
+      'external_link',
+      'linkedin',
+    )
+
+    fireEvent.click(
+      document.querySelector('#quick-links a[href*="github.com"]')!,
+    )
+    expect(mockTrackEvent).toHaveBeenCalledWith(
+      'click',
+      'external_link',
+      'github',
+    )
+  })
+
+  test('Quick Links internal routes use SPA Links (CHR-125)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<App />)
+
+    for (const name of ['Resume', 'Blog', 'Contact'] as const) {
+      const link = screen.getByRole('link', { name })
+      expect(link.tagName).toBe('A')
+      // react-router Link still renders <a>; ensure no target=_blank full reload.
+      expect(link).not.toHaveAttribute('target')
+      expect(link.getAttribute('href')).toMatch(
+        name === 'Resume' ? '/resume' : name === 'Blog' ? '/blog' : '/contact',
+      )
+    }
+
+    await user.click(screen.getByRole('link', { name: 'Resume' }))
+    expect(window.location.pathname).toBe('/resume')
   })
 
   test('LinkedIn link has correct attributes', () => {

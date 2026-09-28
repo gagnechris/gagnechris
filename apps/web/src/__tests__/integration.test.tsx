@@ -44,6 +44,28 @@ describe('Integration Tests', () => {
       )
       expect(mockTrackEvent).toHaveBeenCalledTimes(2)
     })
+
+    test('tracks Quick Links LinkedIn and GitHub clicks (CHR-125)', () => {
+      renderWithProviders(<App />)
+
+      fireEvent.click(
+        document.querySelector('#quick-links a[href*="linkedin"]')!,
+      )
+      fireEvent.click(
+        document.querySelector('#quick-links a[href*="github.com"]')!,
+      )
+
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'click',
+        'external_link',
+        'linkedin',
+      )
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'click',
+        'external_link',
+        'github',
+      )
+    })
   })
 
   describe('Page Tracking', () => {

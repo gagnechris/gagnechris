@@ -5,6 +5,84 @@ import type { Home } from './schemas.js';
 /** Stable public URL (also used by the React home header). */
 export const HOME_PROFILE_IMAGE_SRC = '/profile.jpg';
 
+/**
+ * Shared chrome link data for the home Quick Links + footer.
+ * React renders these as JSX (`<Link>` / tracked `<a>`); the publisher
+ * prerender renders the same list as HTML (CHR-125).
+ */
+export type SiteChromeLink = {
+  label: string
+  href: string
+  /** `spa` → React Router; `external` → new tab; `href` → plain same-tab navigation. */
+  kind: 'spa' | 'external' | 'href'
+  /** GA4 event label (`click` / `external_link` / trackId). */
+  trackId?: string
+  className?: string
+  ariaLabel?: string
+  title?: string
+}
+
+export const HOME_QUICK_LINKS: readonly SiteChromeLink[] = [
+  { label: 'Resume', href: '/resume', kind: 'spa' },
+  { label: 'Blog', href: '/blog', kind: 'spa' },
+  { label: 'Contact', href: '/contact', kind: 'spa' },
+  {
+    label: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/christophergagne/',
+    kind: 'external',
+    trackId: 'linkedin',
+  },
+  {
+    label: 'GitHub',
+    href: 'https://github.com/gagnechris',
+    kind: 'external',
+    trackId: 'github',
+  },
+]
+
+export const HOME_FOOTER_LINKS: readonly SiteChromeLink[] = [
+  {
+    label: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/christophergagne/',
+    kind: 'external',
+    trackId: 'linkedin_footer',
+  },
+  {
+    label: 'GitHub',
+    href: 'https://github.com/gagnechris',
+    kind: 'external',
+    trackId: 'github_footer',
+  },
+  { label: 'RSS', href: '/rss.xml', kind: 'href' },
+  {
+    label: "🐻 Don't Feed the Bears",
+    href: '/dont-feed-the-bears?from=footer',
+    kind: 'spa',
+    className: 'site-footer__bear',
+    ariaLabel: "Don't Feed the Bears — Vermont camp mini-game",
+    title: "Don't Feed the Bears",
+  },
+]
+
+const renderChromeLinkHtml = (link: SiteChromeLink): string => {
+  const label = escapeHtml(link.label)
+  const href = escapeHtml(link.href)
+  const classAttr = link.className
+    ? ` class="${escapeHtml(link.className)}"`
+    : ''
+  const ariaAttr = link.ariaLabel
+    ? ` aria-label="${escapeHtml(link.ariaLabel)}"`
+    : ''
+  const titleAttr = link.title ? ` title="${escapeHtml(link.title)}"` : ''
+  if (link.kind === 'external') {
+    return (
+      `<a href="${href}" target="_blank" rel="noopener noreferrer"` +
+      `${classAttr}${ariaAttr}${titleAttr}>${label}</a>`
+    )
+  }
+  return `<a href="${href}"${classAttr}${ariaAttr}${titleAttr}>${label}</a>`
+}
+
 /** Plain text → paragraphs; blank lines split, single newlines become breaks. */
 export const renderHomeAboutHtml = (about: string): string =>
   about
@@ -18,25 +96,25 @@ export const renderHomeAboutHtml = (about: string): string =>
 export const renderHomeAboutSectionHtml = (about: string): string =>
   `<section id="about"><h2>About Me</h2><div class="about-body">${renderHomeAboutHtml(about)}</div></section>`;
 
-/** Quick Links section — same markup as `apps/web/src/App.tsx` (CHR-116). */
+/** Quick Links section from {@link HOME_QUICK_LINKS} (CHR-125). */
 export const renderHomeQuickLinksHtml = (): string =>
   `<section id="quick-links"><h2>Quick Links</h2><ul>` +
-  `<li><a href="/resume">Resume</a></li>` +
-  `<li><a href="/blog">Blog</a></li>` +
-  `<li><a href="/contact">Contact</a></li>` +
-  `<li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>` +
-  `<li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li>` +
+  HOME_QUICK_LINKS.map(
+    (link) => `<li>${renderChromeLinkHtml(link)}</li>`,
+  ).join('') +
   `</ul></section>`;
 
-/** Site footer for no-JS / crawlers (CHR-122). Year is fixed at publish time. */
+/**
+ * Site footer for no-JS / crawlers. Year is fixed at publish time; the SPA
+ * renders the live year from the same link list (CHR-125).
+ */
 export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
   `<footer class="site-footer">` +
   `<p class="site-footer__copy">© ${year} Chris Gagne</p>` +
   `<ul class="site-footer__links">` +
-  `<li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>` +
-  `<li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li>` +
-  `<li><a href="/rss.xml">RSS</a></li>` +
-  `<li><a href="/dont-feed-the-bears?from=footer" class="site-footer__bear" aria-label="Don't Feed the Bears — Vermont camp mini-game" title="Don't Feed the Bears">🐻 Don't Feed the Bears</a></li>` +
+  HOME_FOOTER_LINKS.map(
+    (link) => `<li>${renderChromeLinkHtml(link)}</li>`,
+  ).join('') +
   `</ul></footer>`;
 
 /**
