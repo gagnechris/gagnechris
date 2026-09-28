@@ -1,111 +1,114 @@
-import { Link } from 'react-router-dom';
-import PublicNav from '../components/PublicNav';
-import { useState, FormEvent } from 'react';
-import { trackEvent } from '../utils/analytics';
-import './Contact.css';
+import { Link } from 'react-router-dom'
+import PublicNav from '../components/PublicNav'
+import { useState, FormEvent } from 'react'
+import { ContactRequestSchema } from '@gagnechris/shared'
+import { createPublicApiClient } from '../api/public-client'
+import { trackEvent } from '../utils/analytics'
+import './Contact.css'
 
 function Contact() {
   // Client-only elapsed clock — avoids comparing browser Date.now to server time.
-  const [formOpenedAt] = useState(() => performance.now());
+  const [formOpenedAt] = useState(() => performance.now())
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     message: '',
     hp_field: '',
-  });
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  })
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+    const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt))
+    const parsed = ContactRequestSchema.safeParse({
+      name: formData.name,
+      email: formData.email,
+      message: formData.message,
+      hp_field: formData.hp_field,
+      elapsedMs,
+    })
+    if (parsed.success) {
+      setErrors({})
+      return parsed.data
     }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+    const newErrors: { [key: string]: string } = {}
+    for (const issue of parsed.error.issues) {
+      const key =
+        issue.path.length > 0 ? String(issue.path[0]) : 'submit'
+      if (!(key in newErrors)) {
+        newErrors[key] = issue.message
+      }
     }
-
-    if (!formData.message.trim()) {
-      newErrors.message = 'Message is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return null
+  }
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!validateForm()) {
-      return;
+    const body = validateForm()
+    if (!body) {
+      return
     }
 
-    setSubmitting(true);
+    setSubmitting(true)
 
     try {
-      const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt));
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          message: formData.message,
-          hp_field: formData.hp_field,
-          elapsedMs,
-        }),
-      });
+      const client = createPublicApiClient()
+      const { error, response } = await client.POST('/api/contact', { body })
 
-      if (response.ok) {
-        trackEvent('submit', 'contact_form', 'contact_page');
-        setSubmitted(true);
-        return;
+      if (!error) {
+        trackEvent('submit', 'contact_form', 'contact_page')
+        setSubmitted(true)
+        return
       }
 
-      let message = 'Failed to send message. Please try again.';
-      try {
-        const payload = (await response.json()) as { message?: string };
-        if (payload.message) {
-          message = payload.message;
+      const fieldErrors: { [key: string]: string } = {}
+      if (error.fields) {
+        for (const [key, code] of Object.entries(error.fields)) {
+          fieldErrors[key] = typeof code === 'string' ? code : 'invalid'
         }
-      } catch {
-        // keep default
       }
+      let message =
+        error.message ?? 'Failed to send message. Please try again.'
       if (response.status === 429) {
         message =
-          message ||
-          'Too many submissions. Please wait a bit and try again.';
+          error.message ||
+          'Too many submissions. Please wait a bit and try again.'
       }
-      setErrors({ submit: message });
-    } catch (error) {
-      console.error('Form submission error:', error);
-      setErrors({ submit: 'Failed to send message. Please try again.' });
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors({
+          ...fieldErrors,
+          ...(error.message ? { submit: message } : {}),
+        })
+      } else {
+        setErrors({ submit: message })
+      }
+    } catch (err) {
+      console.error('Form submission error:', err)
+      setErrors({ submit: 'Failed to send message. Please try again.' })
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }));
+    }))
 
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: '',
-      }));
+      }))
     }
-  };
+  }
 
   if (submitted) {
     return (
@@ -118,7 +121,10 @@ function Contact() {
         <main>
           <div className="success-message">
             <h2>Thank You!</h2>
-            <p>Your message has been sent successfully. I'll get back to you as soon as possible.</p>
+            <p>
+              Your message has been sent successfully. I'll get back to you as
+              soon as possible.
+            </p>
             <p className="contact-bear-nudge">
               While you wait —{' '}
               <Link to="/dont-feed-the-bears?from=contact">
@@ -126,11 +132,13 @@ function Contact() {
               </Link>
               ?
             </p>
-            <Link to="/" className="btn-home">Return to Home</Link>
+            <Link to="/" className="btn-home">
+              Return to Home
+            </Link>
           </div>
         </main>
       </div>
-    );
+    )
   }
 
   return (
@@ -144,7 +152,8 @@ function Contact() {
       <main>
         <div className="contact-intro">
           <p>
-            Have a question or want to get in touch? Fill out the form below and I'll get back to you as soon as possible.
+            Have a question or want to get in touch? Fill out the form below and
+            I'll get back to you as soon as possible.
           </p>
         </div>
 
@@ -245,7 +254,7 @@ function Contact() {
         </form>
       </main>
     </div>
-  );
+  )
 }
 
-export default Contact;
+export default Contact

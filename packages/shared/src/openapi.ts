@@ -5,6 +5,7 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import {
   AdminMeResponseSchema,
+  ConflictErrorResponseSchema,
   ContactRequestSchema,
   ContactResponseSchema,
   CreatePostRequestSchema,
@@ -41,6 +42,12 @@ const ListPostsQuerySchema = z.object({
   }),
 });
 
+const MediaObjectKeyParamsSchema = z.object({
+  key: z.string().min(1).openapi({
+    description: 'Object key under media/ (may include slashes)',
+  }),
+});
+
 const versionBody = {
   body: {
     content: {
@@ -49,12 +56,42 @@ const versionBody = {
   },
 };
 
+/** Shared OpenAPI response fragments (CHR-130). */
+function jsonBody(schema: z.ZodType) {
+  return { content: { 'application/json': { schema } } };
+}
+
+function ok(schema: z.ZodType, description: string) {
+  return { description, ...jsonBody(schema) };
+}
+
+function err(description: string) {
+  return { description, ...jsonBody(ErrorResponseSchema) };
+}
+
+function conflict(description = 'Conflict') {
+  return { description, ...jsonBody(ConflictErrorResponseSchema) };
+}
+
+const r400 = err('Validation error (may include `fields`)');
+const r401 = err('Unauthorized');
+const r404 = err('Not found');
+const r405 = err('Method not allowed on this path');
+const r409 = conflict('Conflict (may include `currentVersion` / `current`)');
+const r429 = err('Rate limited');
+const r502 = err('Upstream failure (e.g. SES)');
+const r503 = err('Service unavailable (throttling)');
+
+const adminAuth = { 401: r401, 405: r405, 503: r503 };
+const publicBase = { 405: r405, 503: r503 };
+
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();
 
   registry.register('HealthResponse', HealthResponseSchema);
   registry.register('AdminMeResponse', AdminMeResponseSchema);
   registry.register('ErrorResponse', ErrorResponseSchema);
+  registry.register('ConflictErrorResponse', ConflictErrorResponseSchema);
   registry.register('Post', PostSchema);
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
@@ -83,12 +120,8 @@ export function buildOpenApiDocument() {
     summary: 'Health check',
     tags: ['Public'],
     responses: {
-      200: {
-        description: 'Service is healthy',
-        content: {
-          'application/json': { schema: HealthResponseSchema },
-        },
-      },
+      200: ok(HealthResponseSchema, 'Service is healthy'),
+      ...publicBase,
     },
   });
 
@@ -99,18 +132,8 @@ export function buildOpenApiDocument() {
     tags: ['Admin'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: {
-        description: 'Authenticated user claims',
-        content: {
-          'application/json': { schema: AdminMeResponseSchema },
-        },
-      },
-      401: {
-        description: 'Missing or invalid JWT',
-        content: {
-          'application/json': { schema: ErrorResponseSchema },
-        },
-      },
+      200: ok(AdminMeResponseSchema, 'Authenticated user claims'),
+      ...adminAuth,
     },
   });
 
@@ -122,18 +145,8 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { query: ListPostsQuerySchema },
     responses: {
-      200: {
-        description: 'Post list',
-        content: {
-          'application/json': { schema: PostListResponseSchema },
-        },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: {
-          'application/json': { schema: ErrorResponseSchema },
-        },
-      },
+      200: ok(PostListResponseSchema, 'Post list'),
+      ...adminAuth,
     },
   });
 
@@ -145,14 +158,9 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema },
     responses: {
-      200: {
-        description: 'Post',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Post'),
+      404: r404,
+      ...adminAuth,
     },
   });
 
@@ -170,14 +178,10 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      201: {
-        description: 'Created',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      409: {
-        description: 'Slug conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      201: ok(PostSchema, 'Created'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -196,18 +200,11 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Updated',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      409: {
-        description: 'Version conflict or slug taken',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Updated'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -219,18 +216,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: {
-        description: 'Published',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Published'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -242,18 +232,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: {
-        description: 'Unpublished (draft)',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Unpublished (draft)'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -265,18 +248,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: {
-        description: 'Draft restored from published snapshot',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Draft restored from published snapshot'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -288,36 +264,24 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: {
-        description: 'Soft-deleted',
-        content: { 'application/json': { schema: PostSchema } },
-      },
-      404: {
-        description: 'Not found',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(PostSchema, 'Soft-deleted'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...adminAuth,
     },
   });
 
   registry.registerPath({
     method: 'get',
     path: '/api/admin/home',
-    summary: 'Get home draft (seeded as draft on first read; includes hasUnpublishedChanges)',
+    summary:
+      'Get home draft (seeded as draft on first read; includes hasUnpublishedChanges)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: {
-        description: 'Home',
-        content: { 'application/json': { schema: HomeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(HomeSchema, 'Home'),
+      ...adminAuth,
     },
   });
 
@@ -335,18 +299,10 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Updated',
-        content: { 'application/json': { schema: HomeSchema } },
-      },
-      400: {
-        description: 'Invalid request body',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(HomeSchema, 'Updated'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -358,14 +314,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Published',
-        content: { 'application/json': { schema: HomeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(HomeSchema, 'Published'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -377,14 +329,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Unpublished (draft)',
-        content: { 'application/json': { schema: HomeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(HomeSchema, 'Unpublished (draft)'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -396,32 +344,23 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Draft restored from published snapshot',
-        content: { 'application/json': { schema: HomeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(HomeSchema, 'Draft restored from published snapshot'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
   registry.registerPath({
     method: 'get',
     path: '/api/admin/resume',
-    summary: 'Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges)',
+    summary:
+      'Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: {
-        description: 'Resume',
-        content: { 'application/json': { schema: ResumeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(ResumeSchema, 'Resume'),
+      ...adminAuth,
     },
   });
 
@@ -439,18 +378,10 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Updated',
-        content: { 'application/json': { schema: ResumeSchema } },
-      },
-      400: {
-        description: 'Invalid request body',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
-      409: {
-        description: 'Version conflict',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(ResumeSchema, 'Updated'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -462,14 +393,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Published',
-        content: { 'application/json': { schema: ResumeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(ResumeSchema, 'Published'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -481,14 +408,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Unpublished (draft)',
-        content: { 'application/json': { schema: ResumeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(ResumeSchema, 'Unpublished (draft)'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -500,14 +423,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: {
-        description: 'Draft restored from published snapshot',
-        content: { 'application/json': { schema: ResumeSchema } },
-      },
-      401: {
-        description: 'Unauthorized',
-        content: { 'application/json': { schema: ErrorResponseSchema } },
-      },
+      200: ok(ResumeSchema, 'Draft restored from published snapshot'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
     },
   });
 
@@ -525,18 +444,25 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Upload URL and public path',
-        content: {
-          'application/json': { schema: MediaUploadUrlResponseSchema },
-        },
-      },
-      400: {
-        description: 'Invalid content type, size, or body',
-        content: {
-          'application/json': { schema: ErrorResponseSchema },
-        },
-      },
+      200: ok(MediaUploadUrlResponseSchema, 'Upload URL and public path'),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/admin/media/objects/{key}',
+    summary:
+      'Local-only media PUT (filesystem SITE_STORAGE). Production uses the S3 uploadUrl.',
+    tags: ['Media'],
+    security: [{ bearerAuth: [] }],
+    request: { params: MediaObjectKeyParamsSchema },
+    responses: {
+      204: { description: 'Stored' },
+      400: r400,
+      404: err('Not available outside filesystem mode'),
+      ...adminAuth,
     },
   });
 
@@ -553,18 +479,11 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Accepted',
-        content: {
-          'application/json': { schema: ContactResponseSchema },
-        },
-      },
-      400: {
-        description: 'Validation error',
-        content: {
-          'application/json': { schema: ErrorResponseSchema },
-        },
-      },
+      200: ok(ContactResponseSchema, 'Accepted'),
+      400: r400,
+      429: r429,
+      502: r502,
+      ...publicBase,
     },
   });
 
@@ -581,12 +500,9 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: {
-        description: 'Accepted',
-        content: {
-          'application/json': { schema: ResumeDownloadNotifyResponseSchema },
-        },
-      },
+      200: ok(ResumeDownloadNotifyResponseSchema, 'Accepted'),
+      400: r400,
+      ...publicBase,
     },
   });
 
@@ -602,13 +518,16 @@ export function buildOpenApiDocument() {
     openapi: '3.0.3',
     info: {
       title: 'gagnechris API',
-      version: '0.2.0',
+      version: '0.3.0',
       description:
         'HTTP API for Blog CMS and Notebook admin. Same-origin via CloudFront /api/*. Shared DynamoDB single-table (docs/data-model.md).',
     },
     servers: [
       { url: 'https://gagnechris.com', description: 'Production' },
-      { url: 'http://localhost:3000', description: 'Local API (optional)' },
+      {
+        url: 'http://localhost:8787',
+        description: 'Local API (services/api/local/server.ts)',
+      },
     ],
   });
 }

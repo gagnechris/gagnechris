@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: OpenAPI contract drift
+        run: npm run openapi:check
+
       # Root scripts delegate into workspaces. The site lives in apps/web.
       - name: Lint
         run: npm run lint

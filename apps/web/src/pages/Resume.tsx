@@ -6,6 +6,7 @@ import {
   loadPublishedResume,
   type ResumeView,
 } from '../resume/publishedResume'
+import { createPublicApiClient } from '../api/public-client'
 import PublicNav from '../components/PublicNav'
 import './Resume.css'
 
@@ -36,14 +37,13 @@ function Resume() {
   const handleDownload = () => {
     if (resume.unavailable || !resume.pdfPath) return
     trackResumeDownload()
-    void fetch('/api/resume/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ referrer: document.referrer || undefined }),
-      keepalive: true,
-    }).catch(() => {
-      /* notify is best-effort; download still proceeds */
-    })
+    void createPublicApiClient()
+      .POST('/api/resume/download', {
+        body: { referrer: document.referrer || undefined },
+      })
+      .catch(() => {
+        /* notify is best-effort; download still proceeds */
+      })
     const link = document.createElement('a')
     link.href = resume.pdfPath
     link.download = 'Chris-Gagne-Resume.pdf'
