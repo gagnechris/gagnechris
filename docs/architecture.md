@@ -28,6 +28,14 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 | Unpublish / soft-delete | Removes the live snapshot; publisher removes HTML and updates feeds/KVS. |
 | Optimistic concurrency | `version` on entities; conflicting publishes return 409. |
 
+API repositories share one layering:
+
+- `VersionedEntityRepository` — optimistic concurrency + cursor queries (no publish state; for Notebook notes/tasks).
+- `PublishableKeyedRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
+- Posts keep slug claims and tag-index side effects in `posts/mutation-builders.ts`.
+
+Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
+
 Details: [data-model.md](./data-model.md).
 
 ## Publisher outputs
