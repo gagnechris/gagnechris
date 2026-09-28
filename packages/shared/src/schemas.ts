@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import { API_SERVICE_NAME } from './constants.js';
 
 extendZodWithOpenApi(z);
 
 export const HealthResponseSchema = z
   .object({
     status: z.literal('ok'),
-    service: z.literal('gagnechris-api'),
+    service: z.literal(API_SERVICE_NAME),
   })
   .openapi('HealthResponse');
 

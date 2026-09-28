@@ -4,6 +4,7 @@
  */
 import {
   AdminMeResponseSchema,
+  API_SERVICE_NAME,
   HealthResponseSchema,
   type AdminMeResponse,
   type HealthResponse,
@@ -24,7 +25,7 @@ const health: RouteDef = {
   handler: async () => {
     const body: HealthResponse = HealthResponseSchema.parse({
       status: 'ok',
-      service: 'gagnechris-api',
+      service: API_SERVICE_NAME,
     });
     return json(200, body);
   },

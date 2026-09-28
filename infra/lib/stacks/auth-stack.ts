@@ -25,10 +25,15 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { APEX_DOMAIN } from './dns-stack.js';
+import {
+  APEX_DOMAIN,
+  AUTH_DOMAIN as AUTH_DOMAIN_CONST,
+  DEV_ORIGINS,
+  ssmParameterName,
+} from '../config/constants.js';
 
 /** Managed-login hostname (Cognito custom domain). */
-export const AUTH_DOMAIN = `auth.${APEX_DOMAIN}`;
+export const AUTH_DOMAIN = AUTH_DOMAIN_CONST;
 
 export interface AuthStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -112,11 +117,11 @@ export class AuthStack extends Stack {
 
     const callbackUrls = [
       `https://${APEX_DOMAIN}/auth/callback`,
-      'http://localhost:5173/auth/callback',
+      `${DEV_ORIGINS[0]}/auth/callback`,
     ];
     const logoutUrls = [
       `https://${APEX_DOMAIN}/`,
-      'http://localhost:5173/',
+      `${DEV_ORIGINS[0]}/`,
     ];
 
     const clientCommon = {
@@ -193,22 +198,20 @@ export class AuthStack extends Stack {
       comment: 'Cognito managed login IPv6',
     });
 
-    const paramPrefix = `/gagnechris/${config.name}`;
-
     new StringParameter(this, 'UserPoolIdParam', {
-      parameterName: `${paramPrefix}/cognito-user-pool-id`,
+      parameterName: ssmParameterName(config.name, 'cognitoUserPoolId'),
       stringValue: this.userPool.userPoolId,
       description: 'Cognito user pool ID',
     });
 
     new StringParameter(this, 'WebClientIdParam', {
-      parameterName: `${paramPrefix}/cognito-web-client-id`,
+      parameterName: ssmParameterName(config.name, 'cognitoWebClientId'),
       stringValue: this.webClient.userPoolClientId,
       description: 'Cognito web app client ID (public, PKCE)',
     });
 
     new StringParameter(this, 'AuthDomainParam', {
-      parameterName: `${paramPrefix}/cognito-auth-domain`,
+      parameterName: ssmParameterName(config.name, 'cognitoAuthDomain'),
       stringValue: AUTH_DOMAIN,
       description: 'Cognito managed-login custom domain',
     });

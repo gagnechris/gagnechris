@@ -33,7 +33,7 @@ import {
   Signing,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
-import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import {
   BlockPublicAccess,
@@ -50,7 +50,10 @@ import type { Construct } from 'constructs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { APEX_DOMAIN } from './dns-stack.js';
+import {
+  siteOrigins,
+  ssmParameterName,
+} from '../config/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,7 +79,7 @@ export class SiteStack extends Stack {
 
     const { config, certificate, alertsTopic } = props;
 
-    const domainNames = [APEX_DOMAIN, `www.${APEX_DOMAIN}`];
+    const domainNames = [config.domainName, `www.${config.domainName}`];
 
     const accessLogs = new Bucket(this, 'AccessLogs', {
       encryption: BucketEncryption.S3_MANAGED,
@@ -123,11 +126,7 @@ export class SiteStack extends Stack {
       cors: [
         {
           allowedMethods: [HttpMethods.PUT, HttpMethods.GET, HttpMethods.HEAD],
-          allowedOrigins: [
-            `https://${APEX_DOMAIN}`,
-            'http://localhost:5173',
-            'http://localhost:3000',
-          ],
+          allowedOrigins: siteOrigins(config.domainName),
           allowedHeaders: ['Content-Type', 'Content-Length'],
           exposedHeaders: ['ETag'],
           maxAge: 3600,
@@ -172,7 +171,7 @@ export class SiteStack extends Stack {
             "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
             "font-src 'self'",
             // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
-            `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${APEX_DOMAIN} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
+            `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${config.domainName} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'",
@@ -288,7 +287,22 @@ export class SiteStack extends Stack {
           cachePolicy: assetsCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
-        // /api/* is attached by ApiStack (HTTP API origin).
+        // HTTP API id from SSM (Api stack writes it). Avoids Api→Site exports.
+        '/api/*': {
+          origin: new HttpOrigin(
+            `${StringParameter.valueForStringParameter(
+              this,
+              ssmParameterName(config.name, 'httpApiId'),
+            )}.execute-api.${Stack.of(this).region}.amazonaws.com`,
+            {
+              readTimeout: Duration.seconds(30),
+            },
+          ),
+          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: AllowedMethods.ALLOW_ALL,
+          cachePolicy: CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        },
         '/media/*': {
           origin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -358,22 +372,22 @@ export class SiteStack extends Stack {
 
     // CI reads these for web deploy (no hard-coded bucket/distribution IDs).
     new StringParameter(this, 'SiteBucketParam', {
-      parameterName: `/gagnechris/${config.name}/site-bucket-name`,
+      parameterName: ssmParameterName(config.name, 'siteBucketName'),
       stringValue: this.siteBucket.bucketName,
       description: 'Static site S3 bucket name (web deploy pipeline)',
     });
     new StringParameter(this, 'DistributionIdParam', {
-      parameterName: `/gagnechris/${config.name}/cloudfront-distribution-id`,
+      parameterName: ssmParameterName(config.name, 'cloudfrontDistributionId'),
       stringValue: this.distribution.distributionId,
       description: 'CloudFront distribution ID (web deploy pipeline)',
     });
     new StringParameter(this, 'ViewerRequestFunctionNameParam', {
-      parameterName: `/gagnechris/${config.name}/viewer-request-function-name`,
+      parameterName: ssmParameterName(config.name, 'viewerRequestFunctionName'),
       stringValue: viewerRequestFunctionName,
       description: 'CloudFront viewer-request function (CDK-managed)',
     });
     new StringParameter(this, 'BlogSlugsKvsArnParam', {
-      parameterName: `/gagnechris/${config.name}/blog-slugs-kvs-arn`,
+      parameterName: ssmParameterName(config.name, 'blogSlugsKvsArn'),
       stringValue: this.blogSlugsKeyValueStoreArn,
       description:
         'CloudFront KeyValueStore ARN for published blog slugs (CHR-115)',

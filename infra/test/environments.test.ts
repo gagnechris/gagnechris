@@ -486,6 +486,14 @@ describe('SiteStack', () => {
       Name: '/gagnechris/prod/site-bucket-name',
       Type: 'String',
     });
+    // /api/* owned by Site (CHR-135), not Api→Site export.
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        CacheBehaviors: Match.arrayWith([
+          Match.objectLike({ PathPattern: '/api/*' }),
+        ]),
+      }),
+    });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/cloudfront-distribution-id',
       Type: 'String',
@@ -554,12 +562,6 @@ describe('ApiStack', () => {
       'Cert',
       `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
     );
-    const site = new SiteStack(app, 'SiteForApi', {
-      env: { account: config.account, region: config.region },
-      config,
-      certificate,
-      alertsTopic,
-    });
     const auth = new AuthStack(app, 'AuthForApi', {
       env: { account: config.account, region: config.region },
       config,
@@ -588,7 +590,6 @@ describe('ApiStack', () => {
       userPool: auth.userPool,
       webClient: auth.webClient,
       iosClient: auth.iosClient,
-      distribution: site.distribution,
       alertsTopic,
       dataTable: data.table,
       emailIdentity: email.emailIdentity,
@@ -667,7 +668,6 @@ describe('PublisherStack', () => {
       config,
       dataTable: data.table,
       siteBucket: site.siteBucket,
-      distribution: site.distribution,
       blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
       alertsTopic,
     });

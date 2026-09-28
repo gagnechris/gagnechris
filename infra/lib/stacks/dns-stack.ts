@@ -12,10 +12,11 @@ import {
 } from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
+import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
-/** Apex zone for the site (registration nameservers must match this zone). */
-export const APEX_DOMAIN = 'gagnechris.com';
+/** @deprecated Import from `../config/constants.js` instead. */
+export { APEX_DOMAIN } from '../config/constants.js';
 
 export interface DnsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
