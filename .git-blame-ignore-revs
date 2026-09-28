@@ -1,1 +1,2 @@
 # Formatting-only commits (CHR-138). See `git blame --ignore-revs-file`.
+5919ce0f5d52ca53b7cdd193ad4f787df7307310  # CHR-138 prettier + tooling format
