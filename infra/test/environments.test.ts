@@ -668,6 +668,7 @@ describe('PublisherStack', () => {
       config,
       dataTable: data.table,
       siteBucket: site.siteBucket,
+      distribution: site.distribution,
       blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
       alertsTopic,
     });

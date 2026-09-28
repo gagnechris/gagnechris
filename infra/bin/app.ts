@@ -108,6 +108,7 @@ new PublisherStack(app, `Publisher-${config.name}`, {
   config,
   dataTable: data.table,
   siteBucket: site.siteBucket,
+  distribution: site.distribution,
   blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
   alertsTopic: guardrails.alertsTopic,
 });
