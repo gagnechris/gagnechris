@@ -59,6 +59,15 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 - Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
 - Optimistic update + rollback pattern: `optimisticMutationHandlers` in `apps/web/src/admin/query/optimistic.ts` (ready for Notebook tasks).
 
+## Admin editor foundation
+
+Post, Home, and Resume editors share one publish/discard flow and a small UI kit:
+
+- `useQueuedAutosave` + `useDraftPublishEditor` (autosave return passed as one `autosave` object; hold → busy → try/finally via `withHold`)
+- `useDraftUpdater` / `useNullableDraftUpdater` for draft edits (`bumpEdit` + dirty)
+- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextArea`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids), `navLinkClass`
+- Post editor splits container (`PostEditorPage`) from presentational sections and `uploadImages` (uses shared `MEDIA_CONTENT_TYPES`)
+
 ## 404 handling
 
 - Unknown / unpublished **blog slugs**: viewer-request checks KVS; miss → `/404.html` (not S3 `NoSuchKey` XML), once `__synced__` exists.

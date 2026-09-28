@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { renderHomePrerenderHtml } from '@gagnechris/shared/home'
 import type { components } from '../api/schema'
+import { EditorActionBar } from '../ui/EditorActionBar'
+import { Field, TextArea, TextInput } from '../ui/Field'
 import { ApiError, updateHome } from './query/api'
 import {
   useHomeLifecycleMutators,
@@ -8,6 +10,7 @@ import {
   useSetHomeCache,
 } from './query/home'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
+import { useNullableDraftUpdater } from './useDraftUpdater'
 import {
   mergeEditorSeo,
   useQueuedAutosave,
@@ -106,18 +109,7 @@ const AdminHomePage = () => {
 
   const getVersion = useCallback((entity: Home) => entity.version, [])
 
-  const {
-    save,
-    saveState,
-    saveError,
-    setSaveError,
-    setSaveState,
-    bumpEdit,
-    getEditGen,
-    getLastSavedGen,
-    markClean,
-    setAutosaveHeld,
-  } = useQueuedAutosave({
+  const autosave = useQueuedAutosave({
     draft,
     dirty,
     setDirty,
@@ -129,16 +121,16 @@ const AdminHomePage = () => {
       'Conflict — another save updated the home page. Reload and try again.',
   })
 
+  const { save, saveState, saveError, bumpEdit } = autosave
+
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
   )
-
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
   )
-
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
@@ -160,15 +152,9 @@ const AdminHomePage = () => {
   )
 
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
+    autosave,
     dirty,
     setDirty,
-    save,
-    setSaveState,
-    setSaveError,
-    getEditGen,
-    getLastSavedGen,
-    markClean,
-    setAutosaveHeld,
     versionRef,
     getVersion,
     onEntityMeta,
@@ -182,10 +168,9 @@ const AdminHomePage = () => {
       'Discard unpublished edits and restore the last published home content?',
   })
 
+  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty)
   const setField = (key: keyof DraftFields, value: string) => {
-    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
-    bumpEdit()
-    setDirty(true)
+    updateDraft((prev) => ({ ...prev, [key]: value }))
   }
 
   const loadError =
@@ -215,70 +200,21 @@ const AdminHomePage = () => {
 
   const previewHtml = renderHomePrerenderHtml(toHome(home, draft))
 
-  const saveLabel =
-    saveState === 'saving' ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved'
-
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
-        <div className="admin-action-bar__status">
-          <h1>Home</h1>
-          <span className={`admin-badge admin-badge--${home.status}`}>
-            {home.status}
-          </span>
-          {home.hasUnpublishedChanges ? (
-            <span className="admin-badge admin-badge--unpublished">
-              Unpublished changes
-            </span>
-          ) : null}
-          <span className="admin-save-indicator" data-state={saveState}>
-            {saveLabel}
-          </span>
-        </div>
-        <div className="admin-actions">
-          <a className="admin-btn" href="/" target="_blank" rel="noreferrer">
-            View live
-          </a>
-          {home.status === 'draft' || home.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runPublish()}
-            >
-              {home.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-            </button>
-          ) : null}
-          {home.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runDiscard()}
-            >
-              Discard changes
-            </button>
-          ) : null}
-          {home.status === 'published' ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runUnpublish()}
-            >
-              Unpublish
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="admin-btn"
-            disabled={busy || !dirty}
-            onClick={() => void save()}
-          >
-            Save
-          </button>
-        </div>
-      </div>
+      <EditorActionBar
+        leading={<h1>Home</h1>}
+        status={home.status}
+        hasUnpublishedChanges={home.hasUnpublishedChanges}
+        saveState={saveState}
+        dirty={dirty}
+        busy={busy}
+        viewLiveHref="/"
+        onPublish={() => void runPublish()}
+        onUnpublish={() => void runUnpublish()}
+        onDiscard={() => void runDiscard()}
+        onSave={() => void save()}
+      />
 
       {saveError ? (
         <p className="admin-panel__error" role="alert">
@@ -294,56 +230,45 @@ const AdminHomePage = () => {
             void save()
           }}
         >
-          <label className="admin-field">
-            <span>Name</span>
-            <input
-              className="admin-input"
+          <Field label="Name">
+            <TextInput
               value={draft.name}
               onChange={(e) => setField('name', e.target.value)}
             />
-          </label>
-          <label className="admin-field">
-            <span>Title</span>
-            <input
-              className="admin-input"
+          </Field>
+          <Field label="Title">
+            <TextInput
               value={draft.title}
               onChange={(e) => setField('title', e.target.value)}
             />
-          </label>
-          <label className="admin-field">
-            <span>About Me</span>
-            <textarea
-              className="admin-input admin-textarea"
+          </Field>
+          <Field
+            label="About Me"
+            hint="Blank lines start a new paragraph. Quick Links and the profile photo are not editable yet."
+          >
+            <TextArea
               rows={8}
               value={draft.about}
               onChange={(e) => setField('about', e.target.value)}
             />
-            <span className="admin-hint">
-              Blank lines start a new paragraph. Quick Links and the profile photo
-              are not editable yet.
-            </span>
-          </label>
-          <label className="admin-field">
-            <span>SEO title (optional)</span>
-            <input
-              className="admin-input"
+          </Field>
+          <Field label="SEO title (optional)">
+            <TextInput
               value={draft.seoTitle}
               onChange={(e) => setField('seoTitle', e.target.value)}
               placeholder={`${draft.name} - ${draft.title}`}
             />
-          </label>
-          <label className="admin-field">
-            <span>SEO description (optional)</span>
-            <textarea
-              className="admin-input admin-textarea"
+          </Field>
+          <Field
+            label="SEO description (optional)"
+            hint="Defaults to the first 200 characters of About Me."
+          >
+            <TextArea
               rows={3}
               value={draft.seoDescription}
               onChange={(e) => setField('seoDescription', e.target.value)}
             />
-            <span className="admin-hint">
-              Defaults to the first 200 characters of About Me.
-            </span>
-          </label>
+          </Field>
         </form>
 
         <div className="admin-editor-split__preview">

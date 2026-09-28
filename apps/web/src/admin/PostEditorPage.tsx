@@ -3,14 +3,23 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
 } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { slugify } from '@gagnechris/shared'
-import { createApiClient } from '../api/client'
 import type { components } from '../api/schema'
-import MarkdownEditor from '../components/markdown/MarkdownEditor'
-import MarkdownPreview from '../components/markdown/MarkdownPreview'
+import { Button } from '../ui/Button'
+import { EditorActionBar } from '../ui/EditorActionBar'
+import {
+  emptyPostDraft,
+  parsePostTags,
+  postDraftFromPost,
+} from './postDraft'
+import {
+  PostEditorBody,
+  PostEditorMeta,
+  PostEditorTitle,
+  type PostDraftFields,
+} from './PostEditorSections'
 import { ApiError, updatePost } from './query/api'
 import {
   useDeletePostMutation,
@@ -18,44 +27,13 @@ import {
   usePostQuery,
   useSetPostCache,
 } from './query/posts'
+import { uploadImages } from './uploadImages'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
+import { useDraftUpdater } from './useDraftUpdater'
 import { useQueuedAutosave } from './useQueuedAutosave'
-import '../components/markdown/markdown.css'
 
 type Post = components['schemas']['Post']
-
-type DraftFields = {
-  title: string
-  slug: string
-  excerpt: string
-  bodyMarkdown: string
-  tagsText: string
-  coverImage: string
-}
-
-const emptyDraft = (): DraftFields => ({
-  title: 'Untitled',
-  slug: '',
-  excerpt: '',
-  bodyMarkdown: '',
-  tagsText: '',
-  coverImage: '',
-})
-
-const fromPost = (post: Post): DraftFields => ({
-  title: post.title,
-  slug: post.slug,
-  excerpt: post.excerpt,
-  bodyMarkdown: post.bodyMarkdown,
-  tagsText: post.tags.join(', '),
-  coverImage: post.coverImage ?? '',
-})
-
-const parseTags = (text: string): string[] =>
-  text
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
+type DraftFields = PostDraftFields
 
 export default function PostEditorPage() {
   const { postId } = useParams<{ postId: string }>()
@@ -73,7 +51,7 @@ export default function PostEditorPage() {
     discard: discardRequest,
   } = usePostLifecycleMutators(postId)
 
-  const [draft, setDraft] = useState<DraftFields>(emptyDraft)
+  const [draft, setDraft] = useState<DraftFields>(emptyPostDraft)
   const [hydratedId, setHydratedId] = useState<string | null>(null)
   const [slugManual, setSlugManual] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -83,22 +61,18 @@ export default function PostEditorPage() {
 
   if (post && post.id !== hydratedId) {
     setHydratedId(post.id)
-    setDraft(fromPost(post))
+    setDraft(postDraftFromPost(post))
     setSlugManual(true)
     setDirty(false)
   }
 
   useEffect(() => {
-    if (post) {
-      versionRef.current = post.version
-    }
+    if (post) versionRef.current = post.version
   }, [post])
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
-      if (!postId) {
-        return { ok: false as const, status: 0 }
-      }
+      if (!postId) return { ok: false as const, status: 0 }
       try {
         const entity = await updatePost(postId, {
           version,
@@ -106,7 +80,7 @@ export default function PostEditorPage() {
           slug: current.slug.trim() || 'untitled',
           excerpt: current.excerpt,
           bodyMarkdown: current.bodyMarkdown,
-          tags: parseTags(current.tagsText),
+          tags: parsePostTags(current.tagsText),
           coverImage: current.coverImage.trim() || null,
         })
         return { ok: true as const, entity }
@@ -120,27 +94,20 @@ export default function PostEditorPage() {
     [postId],
   )
 
+  const getVersion = useCallback((entity: Post) => entity.version, [])
   const onSaved = useCallback(
+    (entity: Post) => setPostCache(entity),
+    [setPostCache],
+  )
+  const onReplaceDraft = useCallback(
     (entity: Post) => {
       setPostCache(entity)
+      setDraft(postDraftFromPost(entity))
     },
     [setPostCache],
   )
 
-  const getVersion = useCallback((entity: Post) => entity.version, [])
-
-  const {
-    save,
-    saveState,
-    saveError,
-    setSaveError,
-    setSaveState,
-    bumpEdit,
-    getEditGen,
-    getLastSavedGen,
-    markClean,
-    setAutosaveHeld,
-  } = useQueuedAutosave({
+  const autosave = useQueuedAutosave({
     draft,
     dirty,
     setDirty,
@@ -152,51 +119,29 @@ export default function PostEditorPage() {
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
   })
+  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
   )
-
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
   )
-
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
   )
 
-  const onEntityMeta = useCallback(
-    (entity: Post) => {
-      setPostCache(entity)
-    },
-    [setPostCache],
-  )
-
-  const onReplaceDraft = useCallback(
-    (entity: Post) => {
-      setPostCache(entity)
-      setDraft(fromPost(entity))
-    },
-    [setPostCache],
-  )
-
   const { busy, setBusy, runPublish, runUnpublish, runDiscard } =
     useDraftPublishEditor({
+      autosave,
       dirty,
       setDirty,
-      save,
-      setSaveState,
-      setSaveError,
-      getEditGen,
-      getLastSavedGen,
-      markClean,
-      setAutosaveHeld,
       versionRef,
       getVersion,
-      onEntityMeta,
+      onEntityMeta: onSaved,
       onReplaceDraft,
       publish: publishMutate,
       unpublish: unpublishMutate,
@@ -208,7 +153,6 @@ export default function PostEditorPage() {
       enabled: Boolean(postId),
     })
 
-  // Auto-grow the wrapping title field as the user types.
   useEffect(() => {
     const el = titleRef.current
     if (!el) return
@@ -216,62 +160,19 @@ export default function PostEditorPage() {
     el.style.height = `${el.scrollHeight}px`
   }, [draft.title, post])
 
-  const setField = <K extends keyof DraftFields>(key: K, value: DraftFields[K]) => {
-    setDraft((prev) => {
+  const updateDraft = useDraftUpdater(setDraft, bumpEdit, setDirty)
+  const setField = <K extends keyof DraftFields>(
+    key: K,
+    value: DraftFields[K],
+  ) => {
+    updateDraft((prev) => {
       const next = { ...prev, [key]: value }
       if (key === 'title' && !slugManual) {
         next.slug = slugify(String(value)) || 'untitled'
       }
       return next
     })
-    bumpEdit()
-    setDirty(true)
   }
-
-  const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
-    const client = createApiClient()
-    const paths: string[] = []
-    const allowed = new Set([
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/gif',
-    ])
-    for (const file of files) {
-      if (!allowed.has(file.type)) {
-        throw new Error(`Unsupported image type: ${file.type || file.name}`)
-      }
-      const { data, error, response } = await client.POST(
-        '/api/admin/media/upload-url',
-        {
-          body: {
-            contentType: file.type as
-              | 'image/jpeg'
-              | 'image/png'
-              | 'image/webp'
-              | 'image/gif',
-            contentLength: file.size,
-            filename: file.name,
-          },
-        },
-      )
-      if (error || !data) {
-        throw new Error(
-          `Image upload rejected (${response.status}): ${file.name || file.type}`,
-        )
-      }
-      const put = await fetch(data.uploadUrl, {
-        method: 'PUT',
-        headers: data.headers,
-        body: file,
-      })
-      if (!put.ok) {
-        throw new Error(`Upload failed (${put.status}) for ${file.name}`)
-      }
-      paths.push(data.publicPath)
-    }
-    return paths
-  }, [])
 
   const handleUploadImages = useCallback(
     async (files: File[]) => {
@@ -283,14 +184,16 @@ export default function PostEditorPage() {
         return []
       }
     },
-    [setSaveError, uploadImages],
+    [setSaveError],
   )
 
   const runDelete = async () => {
-    if (!postId || busy) {
-      return
-    }
-    if (!window.confirm('Soft-delete this post? You can recover it later via the API.')) {
+    if (!postId || busy) return
+    if (
+      !window.confirm(
+        'Soft-delete this post? You can recover it later via the API.',
+      )
+    ) {
       return
     }
     setBusy(true)
@@ -299,9 +202,7 @@ export default function PostEditorPage() {
       setDirty(false)
       void navigate('/admin')
     } catch (err) {
-      setSaveError(
-        err instanceof ApiError ? err.message : 'Delete failed.',
-      )
+      setSaveError(err instanceof ApiError ? err.message : 'Delete failed.')
     } finally {
       setBusy(false)
     }
@@ -333,104 +234,42 @@ export default function PostEditorPage() {
     )
   }
 
-  const saveLabel =
-    saveState === 'saving'
-      ? 'Saving…'
-      : saveState === 'saved' && !dirty
-        ? 'Saved'
-        : dirty
-          ? 'Unsaved changes'
-          : 'Saved'
-
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
-        <div className="admin-action-bar__status">
+      <EditorActionBar
+        leading={
           <Link to="/admin" className="admin-back">
             ← Posts
           </Link>
-          <span className={`admin-badge admin-badge--${post.status}`}>
-            {post.status}
-          </span>
-          {post.hasUnpublishedChanges ? (
-            <span className="admin-badge admin-badge--unpublished">
-              Unpublished changes
-            </span>
-          ) : null}
-          <span className="admin-save-indicator" data-state={saveState}>
-            {saveLabel}
-          </span>
-        </div>
-        <div className="admin-actions">
-          {post.status === 'published' ? (
-            <a
-              className="admin-btn"
-              href={`/blog/${post.slug}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View live
-            </a>
-          ) : null}
-          {post.status === 'draft' || post.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runPublish()}
-            >
-              {post.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-            </button>
-          ) : null}
-          {post.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runDiscard()}
-            >
-              Discard changes
-            </button>
-          ) : null}
-          {post.status === 'published' ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runUnpublish()}
-            >
-              Unpublish
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="admin-btn"
-            disabled={busy || !dirty}
-            onClick={() => void save()}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            className="admin-btn admin-btn--danger"
+        }
+        status={post.status}
+        hasUnpublishedChanges={post.hasUnpublishedChanges}
+        saveState={saveState}
+        dirty={dirty}
+        busy={busy}
+        viewLiveHref={
+          post.status === 'published' ? `/blog/${post.slug}` : null
+        }
+        onPublish={() => void runPublish()}
+        onUnpublish={() => void runUnpublish()}
+        onDiscard={() => void runDiscard()}
+        onSave={() => void save()}
+        extraActions={
+          <Button
+            variant="danger"
             disabled={busy}
             onClick={() => void runDelete()}
           >
             Delete
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      <h1 className="admin-editor-title">
-        <textarea
-          ref={titleRef}
-          className="admin-title-input"
-          rows={1}
-          value={draft.title}
-          onChange={(e) => setField('title', e.target.value)}
-          aria-label="Title"
-        />
-      </h1>
+      <PostEditorTitle
+        title={draft.title}
+        titleRef={titleRef}
+        onChange={(value) => setField('title', value)}
+      />
 
       {saveError ? (
         <p className="admin-panel__error" role="alert">
@@ -438,93 +277,20 @@ export default function PostEditorPage() {
         </p>
       ) : null}
 
-      <details className="admin-details">
-        <summary>Details</summary>
-        <form
-          className="admin-editor-fields admin-editor-fields--meta"
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault()
-            void save()
-          }}
-        >
-          <label className="admin-field">
-            <span>Slug</span>
-            <input
-              className="admin-input"
-              value={draft.slug}
-              onChange={(e) => {
-                setSlugManual(true)
-                setField('slug', e.target.value)
-              }}
-            />
-          </label>
-          <label className="admin-field">
-            <span>Tags (comma-separated)</span>
-            <input
-              className="admin-input"
-              value={draft.tagsText}
-              onChange={(e) => setField('tagsText', e.target.value)}
-            />
-          </label>
-          <label className="admin-field admin-field--full">
-            <span>Excerpt</span>
-            <textarea
-              className="admin-input admin-textarea"
-              rows={2}
-              value={draft.excerpt}
-              onChange={(e) => setField('excerpt', e.target.value)}
-            />
-          </label>
-          <label className="admin-field admin-field--full">
-            <span>Cover image URL</span>
-            <input
-              className="admin-input"
-              value={draft.coverImage}
-              onChange={(e) => setField('coverImage', e.target.value)}
-              placeholder="/media/… or https://…"
-            />
-          </label>
-        </form>
-      </details>
+      <PostEditorMeta
+        draft={draft}
+        setField={setField}
+        setSlugManual={setSlugManual}
+        onSave={() => void save()}
+      />
 
-      <div className="markdown-workspace">
-        <div
-          className="markdown-tabs"
-          role="tablist"
-          aria-label="Editor view"
-        >
-          <button
-            type="button"
-            role="tab"
-            className="markdown-tabs__btn"
-            aria-selected={mobilePane === 'edit'}
-            onClick={() => setMobilePane('edit')}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className="markdown-tabs__btn"
-            aria-selected={mobilePane === 'preview'}
-            onClick={() => setMobilePane('preview')}
-          >
-            Preview
-          </button>
-        </div>
-        <div className="markdown-split" data-pane={mobilePane}>
-          <MarkdownEditor
-            value={draft.bodyMarkdown}
-            onChange={(value) => setField('bodyMarkdown', value)}
-            onUploadImages={handleUploadImages}
-          />
-          <MarkdownPreview markdown={draft.bodyMarkdown} />
-        </div>
-      </div>
-      <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images into
-        the editor
-      </p>
+      <PostEditorBody
+        draft={draft}
+        mobilePane={mobilePane}
+        setMobilePane={setMobilePane}
+        setField={setField}
+        onUploadImages={handleUploadImages}
+      />
     </section>
   )
 }

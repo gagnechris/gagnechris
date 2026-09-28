@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { renderResumePrerenderHtml } from '@gagnechris/shared/resume'
 import type { components } from '../api/schema'
+import { EditorActionBar } from '../ui/EditorActionBar'
+import { ResumeEditorForm } from './ResumeEditorForm'
+import {
+  resumeContentFromDraft,
+  resumeDraftFromResume,
+  type ResumeDraftFields,
+} from './resumeDraft'
 import { ApiError, updateResume } from './query/api'
 import {
   useResumeLifecycleMutators,
@@ -8,96 +15,11 @@ import {
   useSetResumeCache,
 } from './query/resume'
 import { useDraftPublishEditor } from './useDraftPublishEditor'
+import { useNullableDraftUpdater } from './useDraftUpdater'
 import { useQueuedAutosave } from './useQueuedAutosave'
 import '../pages/Resume.css'
 
 type Resume = components['schemas']['Resume']
-type ResumeContent = components['schemas']['ResumeContent']
-
-type ExperienceDraft = {
-  title: string
-  company: string
-  bulletsText: string
-}
-
-type EducationDraft = {
-  title: string
-  degreeDetail: string
-  institution: string
-  location: string
-  year: string
-}
-
-type DraftFields = {
-  name: string
-  pdfPath: string
-  summary: string
-  competenciesText: string
-  experience: ExperienceDraft[]
-  skillsText: string
-  education: EducationDraft[]
-}
-
-const emptyExperience = (): ExperienceDraft => ({
-  title: '',
-  company: '',
-  bulletsText: '',
-})
-
-const emptyEducation = (): EducationDraft => ({
-  title: '',
-  degreeDetail: '',
-  institution: '',
-  location: '',
-  year: '',
-})
-
-/** Normalize list fields for the API / preview — not applied back onto the live draft. */
-const parseLines = (text: string): string[] =>
-  text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-const fromResume = (resume: Resume): DraftFields => ({
-  name: resume.name,
-  pdfPath: resume.pdfPath,
-  summary: resume.content.summary,
-  competenciesText: resume.content.competencies.join('\n'),
-  experience: resume.content.experience.map((item) => ({
-    title: item.title,
-    company: item.company,
-    bulletsText: item.bullets.join('\n'),
-  })),
-  skillsText: resume.content.skills.join('\n'),
-  education: resume.content.education.map((item) => ({
-    title: item.title,
-    degreeDetail: item.degreeDetail ?? '',
-    institution: item.institution,
-    location: item.location,
-    year: item.year,
-  })),
-})
-
-const toContent = (draft: DraftFields): ResumeContent => ({
-  summary: draft.summary.trim(),
-  competencies: parseLines(draft.competenciesText),
-  experience: draft.experience.map((item) => ({
-    title: item.title.trim(),
-    company: item.company.trim(),
-    bullets: parseLines(item.bulletsText),
-  })),
-  skills: parseLines(draft.skillsText),
-  education: draft.education.map((item) => ({
-    title: item.title.trim(),
-    institution: item.institution.trim(),
-    location: item.location.trim(),
-    year: item.year.trim(),
-    ...(item.degreeDetail.trim()
-      ? { degreeDetail: item.degreeDetail.trim() }
-      : {}),
-  })),
-})
 
 const AdminResumePage = () => {
   const {
@@ -112,31 +34,29 @@ const AdminResumePage = () => {
     discard: discardRequest,
   } = useResumeLifecycleMutators()
 
-  const [draft, setDraft] = useState<DraftFields | null>(null)
+  const [draft, setDraft] = useState<ResumeDraftFields | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [dirty, setDirty] = useState(false)
   const versionRef = useRef(0)
 
   if (resume && !hydrated) {
     setHydrated(true)
-    setDraft(fromResume(resume))
+    setDraft(resumeDraftFromResume(resume))
     setDirty(false)
   }
 
   useEffect(() => {
-    if (resume) {
-      versionRef.current = resume.version
-    }
+    if (resume) versionRef.current = resume.version
   }, [resume])
 
   const performSave = useCallback(
-    async (current: DraftFields, version: number) => {
+    async (current: ResumeDraftFields, version: number) => {
       try {
         const entity = await updateResume({
           version,
           name: current.name.trim() || 'Chris Gagne',
           pdfPath: '/resume.pdf',
-          content: toContent(current),
+          content: resumeContentFromDraft(current),
         })
         return { ok: true as const, entity }
       } catch (err) {
@@ -149,27 +69,20 @@ const AdminResumePage = () => {
     [],
   )
 
+  const getVersion = useCallback((entity: Resume) => entity.version, [])
   const onSaved = useCallback(
+    (entity: Resume) => setResumeCache(entity),
+    [setResumeCache],
+  )
+  const onReplaceDraft = useCallback(
     (entity: Resume) => {
       setResumeCache(entity)
+      setDraft(resumeDraftFromResume(entity))
     },
     [setResumeCache],
   )
 
-  const getVersion = useCallback((entity: Resume) => entity.version, [])
-
-  const {
-    save,
-    saveState,
-    saveError,
-    setSaveError,
-    setSaveState,
-    bumpEdit,
-    getEditGen,
-    getLastSavedGen,
-    markClean,
-    setAutosaveHeld,
-  } = useQueuedAutosave({
+  const autosave = useQueuedAutosave({
     draft,
     dirty,
     setDirty,
@@ -180,50 +93,28 @@ const AdminResumePage = () => {
     conflictMessage:
       'Conflict — another save updated the resume. Reload and try again.',
   })
+  const { save, saveState, saveError, bumpEdit } = autosave
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
     [publishRequest],
   )
-
   const unpublishMutate = useCallback(
     () => unpublishRequest({ version: versionRef.current }),
     [unpublishRequest],
   )
-
   const discardMutate = useCallback(
     () => discardRequest({ version: versionRef.current }),
     [discardRequest],
   )
 
-  const onEntityMeta = useCallback(
-    (entity: Resume) => {
-      setResumeCache(entity)
-    },
-    [setResumeCache],
-  )
-
-  const onReplaceDraft = useCallback(
-    (entity: Resume) => {
-      setResumeCache(entity)
-      setDraft(fromResume(entity))
-    },
-    [setResumeCache],
-  )
-
   const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
+    autosave,
     dirty,
     setDirty,
-    save,
-    setSaveState,
-    setSaveError,
-    getEditGen,
-    getLastSavedGen,
-    markClean,
-    setAutosaveHeld,
     versionRef,
     getVersion,
-    onEntityMeta,
+    onEntityMeta: onSaved,
     onReplaceDraft,
     publish: publishMutate,
     unpublish: unpublishMutate,
@@ -234,13 +125,12 @@ const AdminResumePage = () => {
       'Discard unpublished edits and restore the last published resume?',
   })
 
-  const setField = <K extends keyof DraftFields>(
+  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty)
+  const setField = <K extends keyof ResumeDraftFields>(
     key: K,
-    value: DraftFields[K],
+    value: ResumeDraftFields[K],
   ) => {
-    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
-    bumpEdit()
-    setDirty(true)
+    updateDraft((prev) => ({ ...prev, [key]: value }))
   }
 
   const loadError =
@@ -272,73 +162,24 @@ const AdminResumePage = () => {
     ...resume,
     name: draft.name,
     pdfPath: '/resume.pdf',
-    content: toContent(draft),
+    content: resumeContentFromDraft(draft),
   })
-
-  const saveLabel =
-    saveState === 'saving' ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved'
 
   return (
     <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
-        <div className="admin-action-bar__status">
-          <h1>Resume</h1>
-          <span className={`admin-badge admin-badge--${resume.status}`}>
-            {resume.status}
-          </span>
-          {resume.hasUnpublishedChanges ? (
-            <span className="admin-badge admin-badge--unpublished">
-              Unpublished changes
-            </span>
-          ) : null}
-          <span className="admin-save-indicator" data-state={saveState}>
-            {saveLabel}
-          </span>
-        </div>
-        <div className="admin-actions">
-          <a className="admin-btn" href="/resume" target="_blank" rel="noreferrer">
-            View live
-          </a>
-          {resume.status === 'draft' || resume.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn admin-btn--primary"
-              disabled={busy}
-              onClick={() => void runPublish()}
-            >
-              {resume.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-            </button>
-          ) : null}
-          {resume.hasUnpublishedChanges ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runDiscard()}
-            >
-              Discard changes
-            </button>
-          ) : null}
-          {resume.status === 'published' ? (
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={busy}
-              onClick={() => void runUnpublish()}
-            >
-              Unpublish
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="admin-btn"
-            disabled={busy || !dirty}
-            onClick={() => void save()}
-          >
-            Save
-          </button>
-        </div>
-      </div>
+      <EditorActionBar
+        leading={<h1>Resume</h1>}
+        status={resume.status}
+        hasUnpublishedChanges={resume.hasUnpublishedChanges}
+        saveState={saveState}
+        dirty={dirty}
+        busy={busy}
+        viewLiveHref="/resume"
+        onPublish={() => void runPublish()}
+        onUnpublish={() => void runUnpublish()}
+        onDiscard={() => void runDiscard()}
+        onSave={() => void save()}
+      />
 
       {saveError ? (
         <p className="admin-panel__error" role="alert">
@@ -347,193 +188,11 @@ const AdminResumePage = () => {
       ) : null}
 
       <div className="admin-editor-split">
-        <form
-          className="admin-editor-fields"
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault()
-            void save()
-          }}
-        >
-        <label className="admin-field">
-          <span>Name</span>
-          <input
-            className="admin-input"
-            value={draft.name}
-            onChange={(e) => setField('name', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>PDF download</span>
-          <input
-            className="admin-input"
-            value="/resume.pdf"
-            readOnly
-            aria-readonly="true"
-          />
-          <span className="admin-hint">
-            Regenerated from this content on every Publish
-          </span>
-        </label>
-        <label className="admin-field">
-          <span>Summary</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={6}
-            value={draft.summary}
-            onChange={(e) => setField('summary', e.target.value)}
-          />
-        </label>
-        <label className="admin-field">
-          <span>Core competencies (one per line)</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={7}
-            value={draft.competenciesText}
-            onChange={(e) => setField('competenciesText', e.target.value)}
-          />
-        </label>
-
-        <fieldset className="admin-repeat">
-          <legend>Professional experience</legend>
-          {draft.experience.map((item, index) => (
-            <div className="admin-repeat__item" key={`experience-${index}`}>
-              <label className="admin-field">
-                <span>Title</span>
-                <input
-                  className="admin-input"
-                  value={item.title}
-                  onChange={(e) =>
-                    setField(
-                      'experience',
-                      draft.experience.map((row, i) =>
-                        i === index ? { ...row, title: e.target.value } : row,
-                      ),
-                    )
-                  }
-                />
-              </label>
-              <label className="admin-field">
-                <span>Company / dates</span>
-                <input
-                  className="admin-input"
-                  value={item.company}
-                  onChange={(e) =>
-                    setField(
-                      'experience',
-                      draft.experience.map((row, i) =>
-                        i === index ? { ...row, company: e.target.value } : row,
-                      ),
-                    )
-                  }
-                />
-              </label>
-              <label className="admin-field">
-                <span>Bullets (one per line)</span>
-                <textarea
-                  className="admin-input admin-textarea"
-                  rows={4}
-                  value={item.bulletsText}
-                  onChange={(e) =>
-                    setField(
-                      'experience',
-                      draft.experience.map((row, i) =>
-                        i === index
-                          ? { ...row, bulletsText: e.target.value }
-                          : row,
-                      ),
-                    )
-                  }
-                />
-              </label>
-              <button
-                type="button"
-                className="admin-btn admin-btn--danger"
-                onClick={() =>
-                  setField(
-                    'experience',
-                    draft.experience.filter((_, i) => i !== index),
-                  )
-                }
-              >
-                Remove role
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="admin-btn"
-            onClick={() =>
-              setField('experience', [...draft.experience, emptyExperience()])
-            }
-          >
-            Add role
-          </button>
-        </fieldset>
-
-        <label className="admin-field">
-          <span>Technical skills (one per line)</span>
-          <textarea
-            className="admin-input admin-textarea"
-            rows={6}
-            value={draft.skillsText}
-            onChange={(e) => setField('skillsText', e.target.value)}
-          />
-        </label>
-
-        <fieldset className="admin-repeat">
-          <legend>Education</legend>
-          {draft.education.map((item, index) => (
-            <div className="admin-repeat__item" key={`education-${index}`}>
-              {(
-                [
-                  ['title', 'Degree'],
-                  ['degreeDetail', 'Degree detail (optional)'],
-                  ['institution', 'Institution'],
-                  ['location', 'Location'],
-                  ['year', 'Year'],
-                ] as const
-              ).map(([field, label]) => (
-                <label className="admin-field" key={field}>
-                  <span>{label}</span>
-                  <input
-                    className="admin-input"
-                    value={item[field]}
-                    onChange={(e) =>
-                      setField(
-                        'education',
-                        draft.education.map((row, i) =>
-                          i === index ? { ...row, [field]: e.target.value } : row,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              ))}
-              <button
-                type="button"
-                className="admin-btn admin-btn--danger"
-                onClick={() =>
-                  setField(
-                    'education',
-                    draft.education.filter((_, i) => i !== index),
-                  )
-                }
-              >
-                Remove entry
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="admin-btn"
-            onClick={() =>
-              setField('education', [...draft.education, emptyEducation()])
-            }
-          >
-            Add entry
-          </button>
-        </fieldset>
-        </form>
+        <ResumeEditorForm
+          draft={draft}
+          setField={setField}
+          onSave={() => void save()}
+        />
 
         <div className="admin-editor-split__preview">
           <h2 className="admin-preview-title">Preview</h2>
