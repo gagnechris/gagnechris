@@ -1,0 +1,13 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "paths": {
+      "@gagnechris/shared": ["../../packages/shared/src/index.ts"],
+      "@gagnechris/api-client": ["../../packages/api-client/src/index.ts"],
+      "@gagnechris/tokens": ["../../packages/tokens/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

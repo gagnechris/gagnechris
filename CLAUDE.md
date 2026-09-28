@@ -14,6 +14,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, draft-publish, TanStack Query)
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
+- `apps/mobile` — Expo spike (CHR-142); see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `scripts/` — local stack, web deploy, branch protection
 - `docs/` — architecture, development, data model, local E2E

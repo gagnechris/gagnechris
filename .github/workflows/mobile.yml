@@ -1,0 +1,56 @@
+name: Mobile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'packages/api-client/**'
+      - 'packages/tokens/**'
+      - 'packages/app-core/**'
+      - '.github/workflows/mobile.yml'
+      - 'package-lock.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'packages/api-client/**'
+      - 'packages/tokens/**'
+      - 'packages/app-core/**'
+      - '.github/workflows/mobile.yml'
+      - 'package-lock.json'
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# No AWS credentials — typecheck/lint/test only (CHR-142).
+jobs:
+  mobile:
+    name: Mobile typecheck, lint, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Typecheck mobile + client packages
+        run: |
+          npm run typecheck -w @gagnechris/shared
+          npm run typecheck -w @gagnechris/api-client
+          npm run typecheck -w @gagnechris/tokens
+          npm run typecheck -w @gagnechris/mobile
+
+      - name: Lint mobile
+        run: npm run lint -w @gagnechris/mobile
+
+      - name: Test mobile + client packages
+        run: |
+          npm test -w @gagnechris/api-client
+          npm test -w @gagnechris/tokens
+          npm test -w @gagnechris/mobile

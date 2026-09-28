@@ -63,6 +63,7 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 - Optimistic update + rollback pattern: `optimisticMutationHandlers` in `@gagnechris/app-core` (ready for Notebook tasks).
 - Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token).
 - Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app.
+- Mobile spike: `apps/mobile` (Expo) imports shared / api-client / tokens under Metro — see `docs/mobile.md` (CHR-142).
 
 ## Admin editor foundation
 
