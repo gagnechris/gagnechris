@@ -1,4 +1,10 @@
-import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnResource,
+  Duration,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
@@ -64,7 +70,7 @@ export class PublisherStack extends Stack {
       powertoolsServiceName: 'gagnechris-publisher',
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
-      errorsAlarmLogicalId: 'PublisherLambdaErrors',
+      createErrorsAlarm: false,
       iam5NagReason:
         'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
       bundling: {
@@ -105,6 +111,23 @@ export class PublisherStack extends Stack {
         SITE_APEX_DOMAIN: APEX_DOMAIN,
       },
     });
+
+    const publisherErrorsAlarm = new Alarm(this, 'PublisherLambdaErrors', {
+      alarmName: `gagnechris-${config.name}-publisher-lambda-errors`,
+      alarmDescription: 'Publisher Lambda Errors > 0',
+      metric: this.publisherFunction.metricErrors({
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
+    (publisherErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
+      'PublisherLambdaErrors',
+    );
+    publisherErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     // Read published snapshots + write lazy META→PUBLISHED rollout copies (CHR-96).
     dataTable.grantReadWriteData(this.publisherFunction);

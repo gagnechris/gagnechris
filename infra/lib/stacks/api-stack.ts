@@ -1,4 +1,10 @@
-import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnResource,
+  Duration,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import {
   CorsHttpMethod,
@@ -17,6 +23,12 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import {
+  Alarm,
+  ComparisonOperator,
+  TreatMissingData,
+} from 'aws-cdk-lib/aws-cloudwatch';
+import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -97,7 +109,8 @@ export class ApiStack extends Stack {
       powertoolsServiceName: 'gagnechris-api',
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api`,
-      errorsAlarmLogicalId: 'ApiLambdaErrors',
+      // Keep legacy stack-level ApiLambdaErrors resource (CHR-134 migration).
+      createErrorsAlarm: false,
       iam5NagReason:
         'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
       environment: {
@@ -108,6 +121,23 @@ export class ApiStack extends Stack {
         SITE_APEX_DOMAIN: APEX_DOMAIN,
       },
     });
+
+    const apiErrorsAlarm = new Alarm(this, 'ApiLambdaErrors', {
+      alarmName: `gagnechris-${config.name}-api-lambda-errors`,
+      alarmDescription: 'API Lambda Errors > 0',
+      metric: this.apiFunction.metricErrors({
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
+    (apiErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
+      'ApiLambdaErrors',
+    );
+    apiErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only — objects are read via CloudFront OAC.
