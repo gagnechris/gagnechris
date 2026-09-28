@@ -1,5 +1,6 @@
 export {
   AdminMeResponseSchema,
+  ConflictErrorResponseSchema,
   ContactRequestSchema,
   ContactResponseSchema,
   CreatePostRequestSchema,
@@ -27,6 +28,7 @@ export {
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
   type AdminMeResponse,
+  type ConflictErrorResponse,
   type ContactRequest,
   type ContactResponse,
   type CreatePostRequest,
