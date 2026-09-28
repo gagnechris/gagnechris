@@ -208,9 +208,32 @@ Counters use non-`META` sort keys so streams ignore them.
 | SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
 | Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 
+## Notebook sync ledger (CHR-141 fixture spike)
+
+Per authenticated user, append-only sync rows drive `GET /api/notebook/sync/changes`:
+
+| Attr         | Notes                                                         |
+| ------------ | ------------------------------------------------------------- |
+| `pk`         | `SYNC#<userId>` (Cognito `sub`)                               |
+| `sk`         | `TS#<updatedAt>#FIXTURE#<fixtureId>` (lex order ≈ time order) |
+| `entityType` | `syncChange`                                                  |
+| `changeType` | `fixtureNote` (future: `note`, `task`, …)                     |
+| `entityId`   | ULID                                                          |
+| `version`    | Entity version after the change                               |
+| `deleted`    | `true` for tombstone rows                                     |
+| `updatedAt`  | ISO-8601 UTC                                                  |
+
+Fixture note **META** items use `FIXTURE#<id>` / `META` (not `NOTE#`). Creates/updates/deletes dual-write META + a ledger row in one `TransactWriteItems` when possible. Tombstoned META items carry `ttl` (epoch seconds, default 30 days from delete).
+
+Clients:
+
+- Generate **ULIDs** locally for idempotent create.
+- Poll or page the change feed with `since` + opaque `cursor`.
+- Send **`If-Match: "<version>"`** (or body `version`) on update/delete; treat **412** vs **409** as documented in [architecture.md](./architecture.md).
+
 ## Notebook (reserved key space)
 
-No Notebook APIs in this ticket; keys are reserved so posts never collide.
+Production Notebook notes/tasks will use the keys below; the CHR-141 fixture uses `FIXTURE#` instead so the spike does not collide with future `NOTE#` data.
 
 | Entity               | `pk`            | `sk`   | GSI1                                       |
 | -------------------- | --------------- | ------ | ------------------------------------------ |

@@ -85,8 +85,19 @@ Post, Home, and Resume editors share one publish/discard flow and a small UI kit
 
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API authorizer validates Cognito JWTs for `/api/admin/*` (and related) routes.
-- Local API (`services/api/local/server.ts`) injects fake JWT claims **only** on `/api/admin/*` paths (mirroring API Gateway), so public routes still exercise the missing-auth path.
+- API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
+- Local API (`services/api/local/server.ts`) injects fake JWT claims on `/api/admin/*` and `/api/notebook/*` paths (mirroring API Gateway), so public routes still exercise the missing-auth path.
+
+## Notebook sync contract (CHR-141 spike)
+
+Fixture notes under `/api/notebook/fixture-notes` exercise the sync patterns real Notebook entities will use:
+
+- **Client ULID** on create (`POST` body `id`); retries with the same id and user are idempotent (no duplicate sync rows).
+- **Per-user sync ledger** in DynamoDB: `pk = SYNC#<userId>`, `sk = TS#<updatedAt>#FIXTURE#<id>`. `GET /api/notebook/sync/changes?since=` returns changes in sort-key order (ISO `updatedAt` in the key).
+- **Soft delete / tombstones**: `DELETE` sets `deleted=true`, bumps `version`, appends a ledger row with `deleted: true`, and sets item `ttl` (~30 days via `SYNC_TOMBSTONE_TTL_DAYS`).
+- **Optimistic concurrency**: responses include `ETag: "<version>"`. Mutations accept `If-Match` or body `version`; `If-Match` mismatch → **412**, body-only mismatch → **409**.
+
+Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 

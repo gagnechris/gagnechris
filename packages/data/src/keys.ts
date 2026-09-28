@@ -139,6 +139,42 @@ export function ttlEndOfUtcDay(at: Date = new Date()): number {
   return Math.floor(end / 1000) + 86_400;
 }
 
+/** Tombstone TTL for soft-deleted sync entities (CHR-141), default 30 days. */
+export const SYNC_TOMBSTONE_TTL_DAYS = 30;
+
+export function ttlDaysFromNow(
+  days: number = SYNC_TOMBSTONE_TTL_DAYS,
+  at: Date = new Date(),
+): number {
+  return Math.floor(at.getTime() / 1000) + days * 86_400;
+}
+
+/** Fixture entity for sync-pattern spike (CHR-141) — not Notebook NOTE#. */
+export function fixturePk(fixtureId: string): string {
+  return `FIXTURE#${fixtureId}`;
+}
+
+export function fixtureMetaSk(): string {
+  return SK_META;
+}
+
+/** Sync ledger partition per authenticated user (CHR-141). */
+export function syncPk(userId: string): string {
+  return `SYNC#${userId}`;
+}
+
+/**
+ * Sync ledger sort key — lexicographic order ≈ time order when `updatedAt` is ISO-8601.
+ * Example: `TS#2026-09-28T22:00:00.000Z#FIXTURE#01ABC…`
+ */
+export function syncSk(
+  updatedAt: string,
+  entityType: string,
+  entityId: string,
+): string {
+  return `TS#${updatedAt}#${entityType.toUpperCase()}#${entityId}`;
+}
+
 export function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase().replace(/\s+/g, '-');
 }
@@ -170,6 +206,14 @@ export const keys = {
       meta: () => ({ pk: resumePk(), sk: resumeMetaSk() }),
       published: () => ({ pk: resumePk(), sk: resumePublishedSk() }),
     },
+  },
+  fixture: {
+    meta: (id: string) => ({ pk: fixturePk(id), sk: fixtureMetaSk() }),
+  },
+  sync: {
+    pk: (userId: string) => syncPk(userId),
+    sk: (updatedAt: string, entityType: string, entityId: string) =>
+      syncSk(updatedAt, entityType, entityId),
   },
   status: (status: string) => statusGsi1Pk(status),
 } as const;

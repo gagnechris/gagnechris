@@ -6,6 +6,7 @@ import { ZodError } from 'zod';
 import {
   ConflictError,
   NotFoundError,
+  PreconditionFailedError,
   ServiceUnavailableError,
 } from './data/errors.js';
 import { RateLimitExceededError } from './contact/rateLimit.js';
@@ -19,6 +20,41 @@ export function json(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   };
+}
+
+/** JSON response with weak ETag quoting the entity `version` (CHR-141). */
+export function jsonWithEtag(
+  statusCode: number,
+  body: unknown,
+  version: number,
+): APIGatewayProxyStructuredResultV2 {
+  return {
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      ETag: `"${version}"`,
+    },
+    body: JSON.stringify(body),
+  };
+}
+
+/** Parse `If-Match` as an integer entity version (strips surrounding quotes). */
+export function parseIfMatchVersion(
+  headers: Record<string, string | undefined> | undefined,
+): number | undefined {
+  const raw =
+    headers?.['if-match'] ??
+    headers?.['If-Match'] ??
+    (headers
+      ? Object.entries(headers).find(
+          ([k]) => k.toLowerCase() === 'if-match',
+        )?.[1]
+      : undefined);
+  if (raw == null || raw === '') return undefined;
+  const stripped = raw.trim().replace(/^"|"$/g, '');
+  const n = Number(stripped);
+  if (!Number.isInteger(n) || n < 0) return undefined;
+  return n;
 }
 
 export function parseBody(event: APIGatewayProxyEventV2): unknown {
@@ -71,6 +107,15 @@ export function mapRouteError(
   }
   if (error instanceof NotFoundError) {
     return json(404, { error: 'not_found', message: error.message });
+  }
+  if (error instanceof PreconditionFailedError) {
+    return json(412, {
+      error: 'precondition_failed',
+      message: error.message,
+      ...(error.currentVersion !== undefined
+        ? { currentVersion: error.currentVersion }
+        : {}),
+    });
   }
   if (error instanceof ConflictError) {
     return json(409, {
