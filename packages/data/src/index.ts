@@ -46,6 +46,23 @@ export {
 } from './keys.js';
 
 export {
+  APP_TABLE,
+  appTableAttributeDefinitions,
+  appTableName,
+  type AppTableDefinition,
+  type DynamoAttributeTypeCode,
+  type TableIndexDefinition,
+  type TableKeyAttribute,
+} from './table.js';
+
+export {
+  PUBLISH_STREAM_SK,
+  isPublishRelevant,
+  isPublishRelevantAdminMutation,
+  type DynamoStreamKeyImage,
+} from './publish-relevance.js';
+
+export {
   ContactEmailStatusSchema,
   ContactMsgItemSchema,
   HomeMetaItemSchema,

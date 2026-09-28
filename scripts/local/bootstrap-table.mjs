@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Idempotent CreateTable for gagnechris-local (DynamoDB Local).
+ * Idempotent CreateTable / UpdateTable for gagnechris-local (DynamoDB Local).
+ * Schema comes from `@gagnechris/data` APP_TABLE — missing GSIs are added.
  * Requires scripts/local/env.sh sourced (or equivalent env).
  */
 import {
@@ -9,8 +10,13 @@ import {
   DynamoDBClient,
   ResourceInUseException,
   ResourceNotFoundException,
+  UpdateTableCommand,
   waitUntilTableExists,
 } from '@aws-sdk/client-dynamodb';
+import {
+  APP_TABLE,
+  appTableAttributeDefinitions,
+} from '@gagnechris/data';
 
 const tableName = process.env.DATA_TABLE_NAME || 'gagnechris-local';
 const endpoint =
@@ -30,52 +36,76 @@ const client = new DynamoDBClient({
   },
 });
 
+function createTableInput() {
+  const def = APP_TABLE;
+  return {
+    TableName: tableName,
+    BillingMode: def.billingMode,
+    AttributeDefinitions: [...appTableAttributeDefinitions(def)],
+    KeySchema: [
+      { AttributeName: def.partitionKey.name, KeyType: 'HASH' },
+      { AttributeName: def.sortKey.name, KeyType: 'RANGE' },
+    ],
+    GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
+      IndexName: gsi.indexName,
+      KeySchema: [
+        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' },
+        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' },
+      ],
+      Projection: { ProjectionType: gsi.projectionType },
+    })),
+  };
+}
+
+async function ensureMissingGsis(existingIndexNames: Set<string>) {
+  const def = APP_TABLE;
+  for (const gsi of def.globalSecondaryIndexes) {
+    if (existingIndexNames.has(gsi.indexName)) continue;
+    console.log(`Adding missing GSI ${gsi.indexName} to ${tableName}`);
+    await client.send(
+      new UpdateTableCommand({
+        TableName: tableName,
+        AttributeDefinitions: [...appTableAttributeDefinitions(def)],
+        GlobalSecondaryIndexUpdates: [
+          {
+            Create: {
+              IndexName: gsi.indexName,
+              KeySchema: [
+                { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' },
+                { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' },
+              ],
+              Projection: { ProjectionType: gsi.projectionType },
+            },
+          },
+        ],
+      }),
+    );
+    await waitUntilTableExists(
+      { client, maxWaitTime: 60 },
+      { TableName: tableName },
+    );
+    existingIndexNames.add(gsi.indexName);
+  }
+}
+
 async function main() {
   try {
-    await client.send(new DescribeTableCommand({ TableName: tableName }));
+    const described = await client.send(
+      new DescribeTableCommand({ TableName: tableName }),
+    );
+    const existing = new Set(
+      (described.Table?.GlobalSecondaryIndexes ?? []).map((g) => g.IndexName),
+    );
     console.log(`Table ${tableName} already exists`);
+    await ensureMissingGsis(existing);
+    console.log(`Table ${tableName} schema is up to date`);
     return;
   } catch (err) {
     if (!(err instanceof ResourceNotFoundException)) throw err;
   }
 
   try {
-    await client.send(
-      new CreateTableCommand({
-        TableName: tableName,
-        BillingMode: 'PAY_PER_REQUEST',
-        AttributeDefinitions: [
-          { AttributeName: 'pk', AttributeType: 'S' },
-          { AttributeName: 'sk', AttributeType: 'S' },
-          { AttributeName: 'gsi1pk', AttributeType: 'S' },
-          { AttributeName: 'gsi1sk', AttributeType: 'S' },
-          { AttributeName: 'gsi2pk', AttributeType: 'S' },
-          { AttributeName: 'gsi2sk', AttributeType: 'S' },
-        ],
-        KeySchema: [
-          { AttributeName: 'pk', KeyType: 'HASH' },
-          { AttributeName: 'sk', KeyType: 'RANGE' },
-        ],
-        GlobalSecondaryIndexes: [
-          {
-            IndexName: 'gsi1',
-            KeySchema: [
-              { AttributeName: 'gsi1pk', KeyType: 'HASH' },
-              { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
-            ],
-            Projection: { ProjectionType: 'ALL' },
-          },
-          {
-            IndexName: 'gsi2',
-            KeySchema: [
-              { AttributeName: 'gsi2pk', KeyType: 'HASH' },
-              { AttributeName: 'gsi2sk', KeyType: 'RANGE' },
-            ],
-            Projection: { ProjectionType: 'ALL' },
-          },
-        ],
-      }),
-    );
+    await client.send(new CreateTableCommand(createTableInput()));
   } catch (err) {
     if (!(err instanceof ResourceInUseException)) throw err;
   }

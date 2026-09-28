@@ -13,7 +13,8 @@ import type {
   Context,
 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
-import { rebuildPublishedSite } from '../../publisher/src/s3-site.js';
+import { isPublishRelevantAdminMutation } from '@gagnechris/data';
+import { rebuildPublishedSite } from '@gagnechris/publisher/s3-site';
 import { canonicalPath } from '../src/router.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
@@ -103,24 +104,6 @@ function buildEvent(
   };
 }
 
-/** Rebuild only when a PUBLISHED snapshot changes (CHR-96). */
-function shouldRebuildPublishedSite(method: string, path: string): boolean {
-  const normalized = path.replace(/\/$/, '') || '/';
-  if (method === 'POST') {
-    return (
-      (normalized.endsWith('/publish') || normalized.endsWith('/unpublish')) &&
-      (normalized.startsWith('/api/admin/posts/') ||
-        normalized.startsWith('/api/admin/home') ||
-        normalized.startsWith('/api/admin/resume'))
-    );
-  }
-  // Soft-delete removes the PUBLISHED snapshot for live posts.
-  if (method === 'DELETE' && /^\/api\/admin\/posts\/[^/]+$/.test(normalized)) {
-    return true;
-  }
-  return false;
-}
-
 const fakeContext = {
   callbackWaitsForEmptyEventLoop: false,
   functionName: 'gagnechris-local-api',
@@ -138,7 +121,8 @@ const fakeContext = {
 
 async function maybeRebuild(method: string, path: string, status: number) {
   if (status < 200 || status >= 300) return;
-  if (!shouldRebuildPublishedSite(method, path)) {
+  // Local stand-in for stream filter Keys.sk == PUBLISHED (see isPublishRelevant).
+  if (!isPublishRelevantAdminMutation(method, path)) {
     return;
   }
   try {
