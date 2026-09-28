@@ -86,7 +86,7 @@ Prod admin still: `npm run dev:prod-api` (explicit + banner).
 | `docker-compose.local.yml` | Official DynamoDB Local image |
 | `scripts/local/dev.sh` | One-command admin (`npm run local:dev`) |
 | `scripts/local/env.sh` | Safe env (source before local tools) |
-| `scripts/local/bootstrap-table.mjs` | Create `gagnechris-local` + GSIs |
+| `scripts/local/bootstrap-table.ts` | Create `gagnechris-local` + GSIs |
 | `scripts/local/seed-shell.sh` | Copy `apps/web/dist` → `.local-site` |
 | `scripts/local/e2e.sh` | Automated smoke (`npm run e2e:local`) |
 | `services/api/local/server.ts` | HTTP → Lambda handler + publisher rebuild |

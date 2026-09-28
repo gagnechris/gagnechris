@@ -134,7 +134,7 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 ## DynamoDB data plane (CHR-29)
 
-`Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.mjs` (creates or adds missing GSIs). Key design: `docs/data-model.md`.
+`Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates or adds missing GSIs). Key design: `docs/data-model.md`.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env npx tsx
 /**
  * Idempotent CreateTable / UpdateTable for gagnechris-local (DynamoDB Local).
  * Schema comes from `@gagnechris/data` APP_TABLE — missing GSIs are added.
@@ -43,14 +43,14 @@ function createTableInput() {
     BillingMode: def.billingMode,
     AttributeDefinitions: [...appTableAttributeDefinitions(def)],
     KeySchema: [
-      { AttributeName: def.partitionKey.name, KeyType: 'HASH' },
-      { AttributeName: def.sortKey.name, KeyType: 'RANGE' },
+      { AttributeName: def.partitionKey.name, KeyType: 'HASH' as const },
+      { AttributeName: def.sortKey.name, KeyType: 'RANGE' as const },
     ],
     GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
       IndexName: gsi.indexName,
       KeySchema: [
-        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' },
-        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' },
+        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
+        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
       ],
       Projection: { ProjectionType: gsi.projectionType },
     })),
@@ -71,8 +71,8 @@ async function ensureMissingGsis(existingIndexNames: Set<string>) {
             Create: {
               IndexName: gsi.indexName,
               KeySchema: [
-                { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' },
-                { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' },
+                { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
+                { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
               ],
               Projection: { ProjectionType: gsi.projectionType },
             },
@@ -94,7 +94,9 @@ async function main() {
       new DescribeTableCommand({ TableName: tableName }),
     );
     const existing = new Set(
-      (described.Table?.GlobalSecondaryIndexes ?? []).map((g) => g.IndexName),
+      (described.Table?.GlobalSecondaryIndexes ?? [])
+        .map((g) => g.IndexName)
+        .filter((name): name is string => typeof name === 'string'),
     );
     console.log(`Table ${tableName} already exists`);
     await ensureMissingGsis(existing);
