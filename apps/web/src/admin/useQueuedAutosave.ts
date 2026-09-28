@@ -205,6 +205,15 @@ export function useQueuedAutosave<TDraft, TEntity>({
     getEditGen: () => editGenRef.current,
     /** Edit generation of the draft last successfully persisted. */
     getLastSavedGen: () => lastSavedGenRef.current,
+    /**
+     * Treat the current draft as clean (e.g. after Discard restores server
+     * content) so a following Publish does not see a stale lastSavedGen.
+     */
+    markClean: () => {
+      lastSavedGenRef.current = editGenRef.current
+      setDirtyRef.current(false)
+      setSaveState('saved')
+    },
   }
 }
 

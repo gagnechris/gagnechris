@@ -282,4 +282,40 @@ describe('useQueuedAutosave', () => {
 
     vi.useRealTimers()
   })
+
+  test('markClean aligns lastSavedGen after discard (CHR-145)', () => {
+    const versionRef = { current: 1 }
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState('a')
+      const [dirty, setDirty] = useState(false)
+      const autosave = useQueuedAutosave({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        versionRef,
+        getVersion: (e: { version: number }) => e.version,
+        performSave: async () => ({ ok: true as const, entity: { version: 2 } }),
+        onSaved: () => {},
+        conflictMessage: 'Conflict',
+      })
+      return { ...autosave, setDraft, setDirty, dirty }
+    })
+
+    act(() => {
+      result.current.bumpEdit()
+      result.current.setDraft('edited')
+      result.current.setDirty(true)
+    })
+    expect(result.current.getEditGen()).toBe(1)
+    expect(result.current.getLastSavedGen()).toBe(0)
+    expect(result.current.dirty).toBe(true)
+
+    act(() => {
+      result.current.markClean()
+    })
+    expect(result.current.getLastSavedGen()).toBe(1)
+    expect(result.current.dirty).toBe(false)
+    expect(result.current.saveState).toBe('saved')
+  })
 })

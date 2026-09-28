@@ -135,6 +135,7 @@ const AdminResumePage = () => {
     bumpEdit,
     getEditGen,
     getLastSavedGen,
+    markClean,
     setAutosaveHeld,
   } = useQueuedAutosave({
     draft,
@@ -180,6 +181,7 @@ const AdminResumePage = () => {
     setSaveError,
     getEditGen,
     getLastSavedGen,
+    markClean,
     setAutosaveHeld,
     versionRef,
     getVersion,

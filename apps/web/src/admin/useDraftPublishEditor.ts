@@ -16,6 +16,8 @@ type Options<TEntity> = {
   setSaveError: (message: string | null) => void
   getEditGen: () => number
   getLastSavedGen: () => number
+  /** Align lastSavedGen after Discard so Publish does not look falsely dirty. */
+  markClean: () => void
   setAutosaveHeld: (held: boolean) => void
   versionRef: React.MutableRefObject<number>
   getVersion: (entity: TEntity) => number
@@ -44,6 +46,7 @@ export function useDraftPublishEditor<TEntity>({
   setSaveError,
   getEditGen,
   getLastSavedGen,
+  markClean,
   setAutosaveHeld,
   versionRef,
   getVersion,
@@ -213,8 +216,7 @@ export function useDraftPublishEditor<TEntity>({
       }
       onReplaceDraft(data)
       versionRef.current = getVersion(data)
-      setDirty(false)
-      setSaveState('saved')
+      markClean()
     } finally {
       setAutosaveHeld(false)
       setBusy(false)
@@ -225,11 +227,10 @@ export function useDraftPublishEditor<TEntity>({
     discardConfirm,
     enabled,
     getVersion,
+    markClean,
     onReplaceDraft,
     setAutosaveHeld,
-    setDirty,
     setSaveError,
-    setSaveState,
     versionRef,
   ])
 
