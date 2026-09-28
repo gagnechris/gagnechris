@@ -1,6 +1,10 @@
+import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { render, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import MarkdownEditor from './MarkdownEditor'
+import { createRef } from 'react'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor'
+import { taskListToggle, toggleTaskAtPos } from './taskListToggle'
 
 const LONG_MARKDOWN = Array.from(
   { length: 80 },
@@ -97,5 +101,76 @@ describe('MarkdownEditor scroll (CHR-111)', () => {
     expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight)
     scroller.scrollTop = 250
     expect(scroller.scrollTop).toBe(250)
+  })
+})
+
+describe('MarkdownEditor task list + options (CHR-133)', () => {
+  let parent: HTMLDivElement
+  let view: EditorView
+
+  afterEach(() => {
+    view?.destroy()
+    parent?.remove()
+  })
+
+  test('clicking a - [ ] item toggles to - [x] and back', () => {
+    parent = document.createElement('div')
+    document.body.appendChild(parent)
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: '- [ ] buy milk\n- [x] done',
+        extensions: [taskListToggle()],
+      }),
+    })
+
+    // Position on the unchecked checkbox brackets (`[ ]` starts at offset 2).
+    expect(toggleTaskAtPos(view, 3, true)).toBe(true)
+    expect(view.state.doc.toString()).toBe('- [x] buy milk\n- [x] done')
+
+    expect(toggleTaskAtPos(view, 3, true)).toBe(true)
+    expect(view.state.doc.toString()).toBe('- [ ] buy milk\n- [x] done')
+  })
+
+  test('lineNumbers can be turned off via prop', async () => {
+    const { container, rerender } = render(
+      <MarkdownEditor value="hello" onChange={() => {}} lineNumbers={false} />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('.cm-editor')).toBeTruthy()
+    })
+    expect(container.querySelector('.cm-lineNumbers')).toBeNull()
+
+    rerender(<MarkdownEditor value="hello" onChange={() => {}} lineNumbers />)
+    await waitFor(() => {
+      expect(container.querySelector('.cm-lineNumbers')).toBeTruthy()
+    })
+  })
+
+  test('ref handle focuses and inserts text', async () => {
+    const handle = createRef<MarkdownEditorHandle>()
+    const onChange = vi.fn()
+    render(
+      <MarkdownEditor
+        ref={handle}
+        value="hi"
+        onChange={onChange}
+        lineNumbers={false}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(handle.current).toBeTruthy()
+    })
+
+    handle.current!.focus()
+    handle.current!.insertText('there')
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalled()
+      const calls = onChange.mock.calls
+      const last = calls[calls.length - 1]?.[0] as string
+      expect(last).toContain('there')
+    })
   })
 })

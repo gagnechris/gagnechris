@@ -10,6 +10,7 @@ import Contact from './pages/Contact.tsx'
 import NotFound from './pages/NotFound.tsx'
 import AppWithTracking from './components/AppWithTracking.tsx'
 import { LazyFallback } from './components/LazyFallback.tsx'
+import { lazyRoute } from './routing/lazyRoute'
 
 // HydrateFallback must be a static route property (sibling to `lazy`), not returned
 // from lazy(). React Router skips HydrateFallback from lazy() during initial hydration,
@@ -40,94 +41,63 @@ const router = createBrowserRouter([
         path: 'contact',
         element: <Contact />,
       },
-      {
+      lazyRoute({
         path: 'dont-feed-the-bears',
-        HydrateFallback: LazyFallback,
-        lazy: async () => {
-          const { default: DontFeedTheBears } = await import(
-            './pages/DontFeedTheBears.tsx'
-          )
-          return { Component: DontFeedTheBears }
-        },
-      },
-      {
+        load: () => import('./pages/DontFeedTheBears.tsx'),
+      }),
+      lazyRoute({
         path: 'auth/callback',
-        HydrateFallback: LazyFallback,
-        lazy: async () => {
-          const { default: AuthCallback } = await import('./auth/AuthCallback.tsx')
-          return { Component: AuthCallback }
-        },
-      },
-      {
+        load: () => import('./auth/AuthCallback.tsx'),
+      }),
+      lazyRoute({
         path: 'admin',
-        HydrateFallback: LazyFallback,
-        lazy: async () => {
-          const { default: AdminLayout } = await import('./admin/AdminLayout.tsx')
-          return { Component: AdminLayout }
-        },
+        load: () => import('./admin/AdminLayout.tsx'),
         children: [
-          {
+          lazyRoute({
             index: true,
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: AdminPostsPage } = await import(
-                './admin/AdminPostsPage.tsx'
-              )
-              return { Component: AdminPostsPage }
-            },
-          },
-          {
+            load: () => import('./admin/AdminPostsPage.tsx'),
+          }),
+          lazyRoute({
             path: 'posts',
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: AdminPostsPage } = await import(
-                './admin/AdminPostsPage.tsx'
-              )
-              return { Component: AdminPostsPage }
-            },
-          },
-          {
+            load: () => import('./admin/AdminPostsPage.tsx'),
+          }),
+          lazyRoute({
             path: 'posts/:postId',
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: PostEditorPage } = await import(
-                './admin/PostEditorPage.tsx'
-              )
-              return { Component: PostEditorPage }
-            },
-          },
-          {
+            load: () => import('./admin/PostEditorPage.tsx'),
+          }),
+          lazyRoute({
             path: 'home',
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: AdminHomePage } = await import(
-                './admin/AdminHomePage.tsx'
-              )
-              return { Component: AdminHomePage }
-            },
-          },
-          {
+            load: () => import('./admin/AdminHomePage.tsx'),
+          }),
+          lazyRoute({
             path: 'resume',
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: AdminResumePage } = await import(
-                './admin/AdminResumePage.tsx'
-              )
-              return { Component: AdminResumePage }
-            },
-          },
-          {
+            load: () => import('./admin/AdminResumePage.tsx'),
+          }),
+          lazyRoute({
             path: 'notebook',
-            HydrateFallback: LazyFallback,
-            lazy: async () => {
-              const { default: AdminNotebookPage } = await import(
-                './admin/AdminNotebookPage.tsx'
-              )
-              return { Component: AdminNotebookPage }
-            },
-          },
+            load: () => import('./admin/AdminNotebookLayout.tsx'),
+            children: [
+              lazyRoute({
+                index: true,
+                load: () => import('./admin/AdminNotebookPage.tsx'),
+              }),
+              // Nested placeholders for CHR-41 / CHR-42 (today, notes, tasks).
+              lazyRoute({
+                path: 'today',
+                load: () => import('./admin/AdminNotebookPage.tsx'),
+              }),
+              lazyRoute({
+                path: 'notes/:id',
+                load: () => import('./admin/AdminNotebookPage.tsx'),
+              }),
+              lazyRoute({
+                path: 'tasks',
+                load: () => import('./admin/AdminNotebookPage.tsx'),
+              }),
+            ],
+          }),
         ],
-      },
+      }),
       {
         path: '*',
         element: <NotFound />,
