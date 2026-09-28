@@ -97,6 +97,7 @@ export class ApiStack extends Stack {
       powertoolsServiceName: 'gagnechris-api',
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api`,
+      errorsAlarmLogicalId: 'ApiLambdaErrors',
       iam5NagReason:
         'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
       environment: {
