@@ -102,17 +102,23 @@ const AdminHomePage = () => {
 
   const publishMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/home/publish')
+    return client.POST('/api/admin/home/publish', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const unpublishMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/home/unpublish')
+    return client.POST('/api/admin/home/unpublish', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const discardMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/home/discard')
+    return client.POST('/api/admin/home/discard', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const onEntityMeta = useCallback((entity: Home) => {

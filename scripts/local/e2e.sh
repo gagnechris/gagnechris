@@ -115,8 +115,11 @@ CREATE="$(curl -sS -X POST "${API}/api/admin/posts" \
   -H 'Content-Type: application/json' \
   -d "{\"title\":\"Local E2E Post\",\"slug\":\"${SLUG}\",\"excerpt\":\"Local excerpt\",\"bodyMarkdown\":\"## Hello\\n\\nLocal body.\"}")"
 POST_ID="$(node -e "const p=JSON.parse(process.argv[1]); if(!p.id){console.error(p);process.exit(1)}; console.log(p.id)" "${CREATE}")"
+VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${CREATE}")"
 
-PUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish")"
+PUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${VERSION}}")"
 node -e "const p=JSON.parse(process.argv[1]); if(p.status!=='published'){console.error(p);process.exit(1)}" "${PUBLISH}"
 
 echo "==> Assert prerendered HTML + OG"
@@ -129,7 +132,10 @@ echo "${HTML}" | grep -q 'Local body'
 echo "==> Seed home as draft, publish, assert prerender (CHR-96)"
 HOME_JSON="$(curl -sS "${API}/api/admin/home")"
 node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='draft'){console.error('expected draft seed',h);process.exit(1)}" "${HOME_JSON}"
-HOME_PUB="$(curl -sS -X POST "${API}/api/admin/home/publish")"
+HOME_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${HOME_JSON}")"
+HOME_PUB="$(curl -sS -X POST "${API}/api/admin/home/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${HOME_VERSION}}")"
 node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'||h.hasUnpublishedChanges){console.error(h);process.exit(1)}" "${HOME_PUB}"
 HOME_HTML="$(curl -sS "${SITE}/")"
 echo "${HOME_HTML}" | grep -q 'home-page-prerender'
@@ -159,7 +165,10 @@ if echo "${HTML2}" | grep -q 'Local E2E Updated'; then
 fi
 
 echo "==> Publish changes makes the edit live"
-REPUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish")"
+VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${UPDATED}")"
+REPUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${VERSION}}")"
 node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${REPUBLISH}"
 HTML3="$(curl -sS "${SITE}/blog/${SLUG}")"
 echo "${HTML3}" | grep -q 'Local E2E Updated'
@@ -172,7 +181,10 @@ if [[ "${ORPHAN_CODE}" != "404" ]]; then
 fi
 
 echo "==> Unpublish removes prerender"
-curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/unpublish" >/dev/null
+VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${REPUBLISH}")"
+curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/unpublish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${VERSION}}" >/dev/null
 GONE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/blog/${SLUG}")"
 if [[ "${GONE}" != "404" ]]; then
   echo "Expected /blog/${SLUG} 404 after unpublish, got ${GONE}" >&2

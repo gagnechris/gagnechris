@@ -151,17 +151,23 @@ const AdminResumePage = () => {
 
   const publishMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/resume/publish')
+    return client.POST('/api/admin/resume/publish', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const unpublishMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/resume/unpublish')
+    return client.POST('/api/admin/resume/unpublish', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const discardMutate = useCallback(async () => {
     const client = createApiClient()
-    return client.POST('/api/admin/resume/discard')
+    return client.POST('/api/admin/resume/discard', {
+      body: { version: versionRef.current },
+    })
   }, [])
 
   const onEntityMeta = useCallback((entity: Resume) => {

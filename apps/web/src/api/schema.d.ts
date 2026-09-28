@@ -98,6 +98,10 @@ export interface paths {
                 query?: {
                     /** @description Filter by status (omit to list draft + published) */
                     status?: components["schemas"]["PostStatus"] & unknown;
+                    /** @description Opaque pagination cursor from a previous list response */
+                    cursor?: string;
+                    /** @description Page size (single-status queries only) */
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -264,7 +268,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Soft-deleted */
                 200: {
@@ -277,6 +285,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Version conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -311,7 +328,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Published */
                 200: {
@@ -324,6 +345,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Version conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -359,7 +389,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Unpublished (draft) */
                 200: {
@@ -372,6 +406,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Version conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -407,7 +450,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Draft restored from published snapshot */
                 200: {
@@ -420,6 +467,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Version conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -539,7 +595,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Published */
                 200: {
@@ -584,7 +644,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Unpublished (draft) */
                 200: {
@@ -629,7 +693,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Draft restored from published snapshot */
                 200: {
@@ -761,7 +829,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Published */
                 200: {
@@ -806,7 +878,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Unpublished (draft) */
                 200: {
@@ -851,7 +927,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ExpectedVersionRequest"];
+                };
+            };
             responses: {
                 /** @description Draft restored from published snapshot */
                 200: {
@@ -1053,26 +1133,27 @@ export interface components {
             excerpt: string;
             bodyMarkdown: string;
             tags: string[];
+            coverImage: string | null;
+            seo: components["schemas"]["PostSeo"];
             status: components["schemas"]["PostStatus"];
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
-            coverImage: string | null;
-            seo: components["schemas"]["PostSeo"];
             version: number;
             /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;
         };
-        /** @enum {string} */
-        PostStatus: "draft" | "published" | "deleted";
         PostSeo: {
             title?: string;
             description?: string;
             ogImage?: string;
         } | null;
+        /** @enum {string} */
+        PostStatus: "draft" | "published" | "deleted";
         PostListResponse: {
             items: components["schemas"]["Post"][];
+            nextCursor?: string;
         };
         CreatePostRequest: {
             /** @default Untitled */
@@ -1097,6 +1178,10 @@ export interface components {
             tags?: string[];
             coverImage?: string | null;
             seo?: components["schemas"]["PostSeo"];
+        };
+        ExpectedVersionRequest: {
+            /** @description Expected version for optimistic concurrency */
+            version: number;
         };
         MediaUploadUrlRequest: {
             contentType: components["schemas"]["MediaContentType"];
@@ -1145,12 +1230,12 @@ export interface components {
             title: string;
             /** @description About Me body text; blank lines separate paragraphs */
             about: string;
+            seo: components["schemas"]["PostSeo"];
             status: components["schemas"]["PostStatus"];
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
-            seo: components["schemas"]["PostSeo"];
             version: number;
             /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;
@@ -1168,12 +1253,12 @@ export interface components {
             /** @description Site-relative path to the downloadable PDF (publisher always serves /resume.pdf) */
             pdfPath: string;
             content: components["schemas"]["ResumeContent"];
+            seo: components["schemas"]["PostSeo"];
             status: components["schemas"]["PostStatus"];
             /** Format: date-time */
             publishedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
-            seo: components["schemas"]["PostSeo"];
             version: number;
             /** @description True when a published snapshot exists and the editable draft differs from it */
             hasUnpublishedChanges: boolean;

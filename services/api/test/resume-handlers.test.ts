@@ -132,7 +132,7 @@ describe('resume HTTP handlers', () => {
     });
 
     const published = await handleResumeRoute(
-      event('POST', '/api/admin/resume/publish'),
+      event('POST', '/api/admin/resume/publish', { version: 1 }),
       'POST',
       '/api/admin/resume/publish',
       repo,
@@ -141,7 +141,7 @@ describe('resume HTTP handlers', () => {
     expect(JSON.parse(published!.body as string).status).toBe('published');
 
     const unpublished = await handleResumeRoute(
-      event('POST', '/api/admin/resume/unpublish'),
+      event('POST', '/api/admin/resume/unpublish', { version: 1 }),
       'POST',
       '/api/admin/resume/unpublish',
       repo,

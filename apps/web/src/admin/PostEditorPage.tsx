@@ -122,6 +122,7 @@ export default function PostEditorPage() {
     const client = createApiClient()
     return client.POST('/api/admin/posts/{id}/publish', {
       params: { path: { id: postId! } },
+      body: { version: versionRef.current },
     })
   }, [postId])
 
@@ -129,6 +130,7 @@ export default function PostEditorPage() {
     const client = createApiClient()
     return client.POST('/api/admin/posts/{id}/unpublish', {
       params: { path: { id: postId! } },
+      body: { version: versionRef.current },
     })
   }, [postId])
 
@@ -136,6 +138,7 @@ export default function PostEditorPage() {
     const client = createApiClient()
     return client.POST('/api/admin/posts/{id}/discard', {
       params: { path: { id: postId! } },
+      body: { version: versionRef.current },
     })
   }, [postId])
 

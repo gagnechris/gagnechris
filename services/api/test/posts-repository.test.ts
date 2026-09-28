@@ -82,8 +82,8 @@ describe('PostsRepository', () => {
   it('lists via gsi1 status partition', async () => {
     const doc = mockDoc(async () => ({ Items: [buildMetaItem(draft)] }));
     const repo = new PostsRepository(doc, 'gagnechris-test');
-    const items = await repo.list('draft');
-    expect(items).toHaveLength(1);
+    const page = await repo.list('draft');
+    expect(page.items).toHaveLength(1);
   });
 
   it('publish flips status and bumps version', async () => {
