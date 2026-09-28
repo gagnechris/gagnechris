@@ -8,9 +8,8 @@ type MutateResult<TEntity> = {
   response: { status: number }
 }
 
-type Options<TEntity> = {
-  dirty: boolean
-  setDirty: (dirty: boolean) => void
+/** Subset of `useQueuedAutosave` return used by the publish flow. */
+export type DraftPublishAutosave = {
   save: () => Promise<FlushResult>
   setSaveState: (state: SaveState) => void
   setSaveError: (message: string | null) => void
@@ -19,6 +18,12 @@ type Options<TEntity> = {
   /** Align lastSavedGen after Discard so Publish does not look falsely dirty. */
   markClean: () => void
   setAutosaveHeld: (held: boolean) => void
+}
+
+type Options<TEntity> = {
+  autosave: DraftPublishAutosave
+  dirty: boolean
+  setDirty: (dirty: boolean) => void
   versionRef: React.MutableRefObject<number>
   getVersion: (entity: TEntity) => number
   /** Update entity metadata only — never replace the live draft. */
@@ -35,19 +40,13 @@ type Options<TEntity> = {
 
 /**
  * Shared Publish / Unpublish / Discard flow for post, home, and resume editors
- * (CHR-124): hold autosave, flush without treating pending edits as clean,
- * preserve typing during the request, leave guard, ⌘S / ⌘⏎ shortcuts.
+ * (CHR-124 / CHR-132): hold autosave, flush without treating pending edits as
+ * clean, preserve typing during the request, leave guard, ⌘S / ⌘⏎ shortcuts.
  */
 export function useDraftPublishEditor<TEntity>({
+  autosave,
   dirty,
   setDirty,
-  save,
-  setSaveState,
-  setSaveError,
-  getEditGen,
-  getLastSavedGen,
-  markClean,
-  setAutosaveHeld,
   versionRef,
   getVersion,
   onEntityMeta,
@@ -59,6 +58,16 @@ export function useDraftPublishEditor<TEntity>({
   discardConfirm,
   enabled = true,
 }: Options<TEntity>) {
+  const {
+    save,
+    setSaveState,
+    setSaveError,
+    getEditGen,
+    getLastSavedGen,
+    markClean,
+    setAutosaveHeld,
+  } = autosave
+
   const [busy, setBusy] = useState(false)
   const saveRef = useRef(save)
   const publishRef = useRef<() => Promise<void>>(async () => {})
@@ -112,12 +121,24 @@ export function useDraftPublishEditor<TEntity>({
     ],
   )
 
+  const withHold = useCallback(
+    async (fn: () => Promise<void>) => {
+      if (!enabled || busy) return
+      setAutosaveHeld(true)
+      setBusy(true)
+      setSaveError(null)
+      try {
+        await fn()
+      } finally {
+        setAutosaveHeld(false)
+        setBusy(false)
+      }
+    },
+    [busy, enabled, setAutosaveHeld, setSaveError],
+  )
+
   const runPublish = useCallback(async () => {
-    if (!enabled || busy) return
-    setAutosaveHeld(true)
-    setBusy(true)
-    setSaveError(null)
-    try {
+    await withHold(async () => {
       if (dirty) {
         const flush = await save()
         if (flush === 'error') return
@@ -131,20 +152,15 @@ export function useDraftPublishEditor<TEntity>({
         return
       }
       applyKeepDraft(data, baselineGen)
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
+    })
   }, [
     applyKeepDraft,
-    busy,
     dirty,
-    enabled,
     getLastSavedGen,
     publish,
     save,
-    setAutosaveHeld,
     setSaveError,
+    withHold,
   ])
 
   useEffect(() => {
@@ -170,10 +186,7 @@ export function useDraftPublishEditor<TEntity>({
   const runUnpublish = useCallback(async () => {
     if (!enabled || busy) return
     if (!window.confirm(unpublishConfirm)) return
-    setAutosaveHeld(true)
-    setBusy(true)
-    setSaveError(null)
-    try {
+    await withHold(async () => {
       if (dirty) {
         const flush = await save()
         if (flush === 'error') return
@@ -185,10 +198,7 @@ export function useDraftPublishEditor<TEntity>({
         return
       }
       applyKeepDraft(data, baselineGen)
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
+    })
   }, [
     applyKeepDraft,
     busy,
@@ -196,19 +206,16 @@ export function useDraftPublishEditor<TEntity>({
     enabled,
     getLastSavedGen,
     save,
-    setAutosaveHeld,
     setSaveError,
     unpublish,
     unpublishConfirm,
+    withHold,
   ])
 
   const runDiscard = useCallback(async () => {
     if (!enabled || busy) return
     if (!window.confirm(discardConfirm)) return
-    setAutosaveHeld(true)
-    setBusy(true)
-    setSaveError(null)
-    try {
+    await withHold(async () => {
       const { data, error, response } = await discard()
       if (error || !data) {
         setSaveError(`Discard failed (${response.status}).`)
@@ -217,10 +224,7 @@ export function useDraftPublishEditor<TEntity>({
       onReplaceDraft(data)
       versionRef.current = getVersion(data)
       markClean()
-    } finally {
-      setAutosaveHeld(false)
-      setBusy(false)
-    }
+    })
   }, [
     busy,
     discard,
@@ -229,9 +233,9 @@ export function useDraftPublishEditor<TEntity>({
     getVersion,
     markClean,
     onReplaceDraft,
-    setAutosaveHeld,
     setSaveError,
     versionRef,
+    withHold,
   ])
 
   return {

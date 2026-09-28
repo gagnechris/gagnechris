@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { isDevProdApiTarget } from '../api/apiTarget'
 import RequireAuth from '../auth/RequireAuth'
 import { signOutUser, type AuthUser } from '../auth/session'
+import { navLinkClass } from '../ui/navLinkClass'
 import { AdminQueryProvider } from './query/AdminQueryProvider'
 import './admin.css'
 
@@ -27,37 +28,16 @@ function AdminChrome({ user }: { user: AuthUser }) {
           <span className="admin-brand__user">{user.label}</span>
         </div>
         <nav className="admin-nav" aria-label="Admin">
-          <NavLink
-            to="/admin"
-            end
-            className={({ isActive }) =>
-              isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'
-            }
-          >
+          <NavLink to="/admin" end className={navLinkClass}>
             Posts
           </NavLink>
-          <NavLink
-            to="/admin/home"
-            className={({ isActive }) =>
-              isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'
-            }
-          >
+          <NavLink to="/admin/home" className={navLinkClass}>
             Home
           </NavLink>
-          <NavLink
-            to="/admin/resume"
-            className={({ isActive }) =>
-              isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'
-            }
-          >
+          <NavLink to="/admin/resume" className={navLinkClass}>
             Resume
           </NavLink>
-          <NavLink
-            to="/admin/notebook"
-            className={({ isActive }) =>
-              isActive ? 'admin-nav__link admin-nav__link--active' : 'admin-nav__link'
-            }
-          >
+          <NavLink to="/admin/notebook" className={navLinkClass}>
             Notebook
           </NavLink>
           <button

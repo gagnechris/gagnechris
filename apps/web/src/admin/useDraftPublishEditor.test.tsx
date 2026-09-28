@@ -50,15 +50,9 @@ describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
           conflictMessage: 'Conflict',
         })
         const editor = useDraftPublishEditor({
+          autosave,
           dirty,
           setDirty,
-          save: autosave.save,
-          setSaveState: autosave.setSaveState,
-          setSaveError: autosave.setSaveError,
-          getEditGen: autosave.getEditGen,
-          getLastSavedGen: autosave.getLastSavedGen,
-          markClean: autosave.markClean,
-          setAutosaveHeld: autosave.setAutosaveHeld,
           versionRef,
           getVersion: (e: Entity) => e.version,
           onEntityMeta: () => {},
