@@ -59,7 +59,7 @@ If CloudFormation reports a resource already exists, **do not delete it by hand*
 
 Ask before any production change that is not a stack deploy.
 
-## GitHub Actions OIDC (CHR-19)
+## GitHub Actions OIDC (CHR-19 / CHR-137)
 
 CI assumes short-lived roles (no AWS keys in GitHub).
 
@@ -67,11 +67,12 @@ CI assumes short-lived roles (no AWS keys in GitHub).
 
 ```bash
 export ALERTS_EMAIL='you@example.com'
-AWS_PROFILE=gagnechris-admin npm run cdk -- deploy CiDeployRole-prod --require-approval never
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy CiDeployRole-prod Guardrails-prod --require-approval never
 
 # Copy ARNs from stack outputs, then:
 gh variable set AWS_DEPLOY_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-deploy'
 gh variable set AWS_DIFF_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-diff'
+gh variable set AWS_DRIFT_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-drift'
 gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 ```
 
@@ -81,10 +82,18 @@ gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 bash scripts/apply-github-environments.sh
 ```
 
-3. Workflows (`.github/workflows/cdk.yml`):
-   - **PR:** `cdk synth` + `cdk diff` (diff role); posts a sticky PR comment
-   - **main / workflow_dispatch deploy:** `cdk deploy --all` (deploy role, `prod` environment; concurrency does not cancel in-flight deploys)
-   - **Nightly / workflow_dispatch drift:** `cdk drift --fail` (separate concurrency group); SNS alert on failure
+3. Require CI checks on `main` (includes Local E2E):
+
+```bash
+bash scripts/apply-branch-protection.sh
+```
+
+4. Workflows:
+   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs). Shared setup via `.github/actions/setup` (Node from `.nvmrc`).
+   - **CDK** (`.github/workflows/cdk.yml`):
+     - **PR:** `cdk synth` + `cdk diff` (diff role); sticky PR comment
+     - **main deploy:** runs only after CI succeeds (`workflow_run`), with path filters so docs-only merges skip `cdk deploy` / web sync (deploy role, `prod` environment; concurrency does not cancel in-flight deploys)
+     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; SNS alert on failure uses SSM `/gagnechris/prod/alerts-topic-arn`
 
 Prod only — there is no staging environment.
 

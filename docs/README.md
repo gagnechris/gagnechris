@@ -61,8 +61,8 @@ docs/                  Architecture, development, data model, E2E
 ## Workflow
 
 - One Linear ticket → one branch → one PR into `main` (prefer the issue `gitBranchName`)
-- CI on PRs: lint, typecheck (all workspaces), tests, build, CDK diff
-- Merge to `main` deploys via OIDC (CDK + web sync + CloudFront invalidation)
+- CI on PRs: lint, typecheck (all workspaces), tests, build, CDK diff; Local E2E required
+- Merge to `main` deploys via OIDC only after CI succeeds (CDK + web sync + CloudFront invalidation; path-filtered)
 - Infrastructure only through CDK — no console edits to production
 
 ## Docs index

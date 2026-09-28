@@ -18,6 +18,7 @@ import {
 } from 'aws-cdk-lib/aws-s3';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
   AwsCustomResource,
   AwsCustomResourcePolicy,
@@ -25,6 +26,7 @@ import {
 } from 'aws-cdk-lib/custom-resources';
 import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
+import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
 export interface GuardrailsStackProps extends StackProps {
@@ -262,6 +264,11 @@ export class GuardrailsStack extends Stack {
     new CfnAnalyzer(this, 'AccountAccessAnalyzer', {
       analyzerName: `gagnechris-${config.name}-account`,
       type: 'ACCOUNT',
+    });
+
+    new StringParameter(this, 'AlertsTopicArnParam', {
+      parameterName: ssmParameterName(config.name, 'alertsTopicArn'),
+      stringValue: this.alertsTopic.topicArn,
     });
 
     new CfnOutput(this, 'AlertsTopicArn', {

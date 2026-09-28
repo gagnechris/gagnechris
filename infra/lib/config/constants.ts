@@ -48,6 +48,7 @@ export const SSM_PARAM_KEYS = {
   cognitoAuthDomain: 'cognito-auth-domain',
   publisherFunctionName: 'publisher-function-name',
   publisherFunctionArn: 'publisher-function-arn',
+  alertsTopicArn: 'alerts-topic-arn',
 } as const;
 
 export type SsmParamKey = keyof typeof SSM_PARAM_KEYS;

@@ -3,8 +3,10 @@ name: CDK
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  # Deploy only after CI succeeds on main (not on push alone).
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   schedule:
     # Nightly drift check (08:00 UTC)
     - cron: "0 8 * * *"
@@ -27,6 +29,9 @@ env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
   ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL || 'ci-placeholder@example.com' }}
+  VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
+  VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
+  VITE_COGNITO_AUTH_DOMAIN: auth.example.com
 
 jobs:
   diff:
@@ -41,14 +46,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Configure AWS credentials (diff role)
         uses: aws-actions/configure-aws-credentials@v6
@@ -101,7 +100,10 @@ jobs:
   deploy:
     name: CDK + web deploy (main)
     if: >
-      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -113,23 +115,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          # Deploy the commit CI validated (workflow_run), not a floating main tip.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Path filter
+        if: github.event_name == 'workflow_run'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          filters: |
+            cdk:
+              - 'infra/**'
+              - 'services/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/cdk.yml'
+              - '.github/actions/setup/**'
+            web:
+              - 'apps/web/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'scripts/deploy-web.sh'
+              - '.github/workflows/cdk.yml'
+              - '.github/actions/setup/**'
+
+      - name: Setup
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.filter.outputs.cdk == 'true' ||
+          steps.filter.outputs.web == 'true'
+        uses: ./.github/actions/setup
 
       - name: Configure AWS credentials (deploy role)
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.filter.outputs.cdk == 'true' ||
+          steps.filter.outputs.web == 'true'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Require ALERTS_EMAIL
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.filter.outputs.cdk == 'true'
         run: |
           if [ -z "${{ vars.ALERTS_EMAIL }}" ]; then
             echo "Set repository variable ALERTS_EMAIL before deploying."
@@ -137,11 +172,18 @@ jobs:
           fi
 
       - name: CDK deploy
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.filter.outputs.cdk == 'true'
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never
 
       - name: Build, sync to S3, invalidate CloudFront
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.filter.outputs.web == 'true' ||
+          steps.filter.outputs.cdk == 'true'
         run: bash scripts/deploy-web.sh
         env:
           ENV_NAME: prod
@@ -162,19 +204,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
+      - name: Setup
+        uses: ./.github/actions/setup
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Configure AWS credentials (deploy role)
+      - name: Configure AWS credentials (drift role)
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: CDK drift
@@ -197,9 +233,9 @@ jobs:
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: |
-          TOPIC_ARN=$(aws cloudformation describe-stacks \
-            --stack-name Guardrails-prod \
-            --query "Stacks[0].Outputs[?OutputKey=='AlertsTopicArn'].OutputValue" \
+          TOPIC_ARN=$(aws ssm get-parameter \
+            --name "/gagnechris/prod/alerts-topic-arn" \
+            --query 'Parameter.Value' \
             --output text)
           aws sns publish \
             --topic-arn "$TOPIC_ARN" \
