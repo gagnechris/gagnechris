@@ -1,4 +1,4 @@
-import type { components } from '../api/schema';
+import type { components } from '@gagnechris/api-client';
 import type { PostDraftFields } from './PostEditorSections';
 
 type Post = components['schemas']['Post'];

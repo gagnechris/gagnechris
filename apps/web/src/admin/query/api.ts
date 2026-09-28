@@ -1,215 +1,94 @@
+import {
+  ApiError,
+  asMutateResult,
+  createPost as createPostCore,
+  deletePost as deletePostCore,
+  discardHome as discardHomeCore,
+  discardPost as discardPostCore,
+  discardResume as discardResumeCore,
+  fetchHome as fetchHomeCore,
+  fetchPost as fetchPostCore,
+  fetchPosts as fetchPostsCore,
+  fetchResume as fetchResumeCore,
+  publishHome as publishHomeCore,
+  publishPost as publishPostCore,
+  publishResume as publishResumeCore,
+  unpublishHome as unpublishHomeCore,
+  unpublishPost as unpublishPostCore,
+  unpublishResume as unpublishResumeCore,
+  updateHome as updateHomeCore,
+  updatePost as updatePostCore,
+  updateResume as updateResumeCore,
+  type CreatePostRequest,
+  type ExpectedVersionRequest,
+  type Home,
+  type MutateResult,
+  type Post,
+  type Resume,
+  type UpdateHomeRequest,
+  type UpdatePostRequest,
+  type UpdateResumeRequest,
+} from '@gagnechris/app-core';
 import { createApiClient } from '../../api/client';
-import type { components } from '../../api/schema';
 
-export type Post = components['schemas']['Post'];
-export type Home = components['schemas']['Home'];
-export type Resume = components['schemas']['Resume'];
-export type CreatePostRequest = components['schemas']['CreatePostRequest'];
-export type UpdatePostRequest = components['schemas']['UpdatePostRequest'];
-export type UpdateHomeRequest = components['schemas']['UpdateHomeRequest'];
-export type UpdateResumeRequest = components['schemas']['UpdateResumeRequest'];
-export type ExpectedVersionRequest =
-  components['schemas']['ExpectedVersionRequest'];
-
-export class ApiError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-  }
-}
-
-type OpenApiResult<T> = {
-  data?: T;
-  error?: unknown;
-  response: { status: number };
+export {
+  ApiError,
+  asMutateResult,
+  type CreatePostRequest,
+  type ExpectedVersionRequest,
+  type Home,
+  type MutateResult,
+  type Post,
+  type Resume,
+  type UpdateHomeRequest,
+  type UpdatePostRequest,
+  type UpdateResumeRequest,
 };
 
-const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
-  if (result.error || !result.data) {
-    throw new ApiError(
-      `${label} (${result.response.status}).`,
-      result.response.status,
-    );
-  }
-  return result.data;
-};
-
-/** Non-throwing shape for useDraftPublishEditor. */
-export type MutateResult<T> = {
-  data?: T;
-  error?: unknown;
-  response: { status: number };
-};
-
-export const asMutateResult = async <T>(
-  run: () => Promise<T>,
-): Promise<MutateResult<T>> => {
-  try {
-    const data = await run();
-    return { data, error: undefined, response: { status: 200 } };
-  } catch (error) {
-    const status = error instanceof ApiError ? error.status : 0;
-    return { data: undefined, error, response: { status } };
-  }
-};
-
-export const fetchPosts = async (): Promise<Post[]> => {
-  const client = createApiClient();
-  const result = await client.GET('/api/admin/posts');
-  const data = unwrap(result, 'Could not load posts');
-  return data.items.filter((p) => p.status !== 'deleted');
-};
-
-export const fetchPost = async (id: string): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.GET('/api/admin/posts/{id}', {
-    params: { path: { id } },
-  });
-  return unwrap(result, 'Could not load post');
-};
-
-export const createPost = async (body?: CreatePostRequest): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/posts', {
-    body: body ?? {
-      title: 'Untitled',
-      excerpt: '',
-      bodyMarkdown: '',
-      tags: [],
-    },
-  });
-  return unwrap(result, 'Could not create draft');
-};
-
-export const updatePost = async (
+/** Web helpers: inject Amplify-backed client (admin pages / autosave). */
+export const fetchPosts = (): Promise<Post[]> =>
+  fetchPostsCore(createApiClient());
+export const fetchPost = (id: string): Promise<Post> =>
+  fetchPostCore(createApiClient(), id);
+export const createPost = (body?: CreatePostRequest): Promise<Post> =>
+  createPostCore(createApiClient(), body);
+export const updatePost = (
   id: string,
   body: UpdatePostRequest,
-): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.PUT('/api/admin/posts/{id}', {
-    params: { path: { id } },
-    body,
-  });
-  return unwrap(result, 'Could not save post');
-};
-
-export const deletePost = async (id: string): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.DELETE('/api/admin/posts/{id}', {
-    params: { path: { id } },
-  });
-  return unwrap(result, 'Delete failed');
-};
-
-export const publishPost = async (
+): Promise<Post> => updatePostCore(createApiClient(), id, body);
+export const deletePost = (id: string): Promise<Post> =>
+  deletePostCore(createApiClient(), id);
+export const publishPost = (
   id: string,
   body: ExpectedVersionRequest,
-): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/posts/{id}/publish', {
-    params: { path: { id } },
-    body,
-  });
-  return unwrap(result, 'Publish failed');
-};
-
-export const unpublishPost = async (
+): Promise<Post> => publishPostCore(createApiClient(), id, body);
+export const unpublishPost = (
   id: string,
   body: ExpectedVersionRequest,
-): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/posts/{id}/unpublish', {
-    params: { path: { id } },
-    body,
-  });
-  return unwrap(result, 'Unpublish failed');
-};
-
-export const discardPost = async (
+): Promise<Post> => unpublishPostCore(createApiClient(), id, body);
+export const discardPost = (
   id: string,
   body: ExpectedVersionRequest,
-): Promise<Post> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/posts/{id}/discard', {
-    params: { path: { id } },
-    body,
-  });
-  return unwrap(result, 'Discard failed');
-};
+): Promise<Post> => discardPostCore(createApiClient(), id, body);
 
-export const fetchHome = async (): Promise<Home> => {
-  const client = createApiClient();
-  const result = await client.GET('/api/admin/home');
-  return unwrap(result, 'Could not load home content');
-};
+export const fetchHome = (): Promise<Home> => fetchHomeCore(createApiClient());
+export const updateHome = (body: UpdateHomeRequest): Promise<Home> =>
+  updateHomeCore(createApiClient(), body);
+export const publishHome = (body: ExpectedVersionRequest): Promise<Home> =>
+  publishHomeCore(createApiClient(), body);
+export const unpublishHome = (body: ExpectedVersionRequest): Promise<Home> =>
+  unpublishHomeCore(createApiClient(), body);
+export const discardHome = (body: ExpectedVersionRequest): Promise<Home> =>
+  discardHomeCore(createApiClient(), body);
 
-export const updateHome = async (body: UpdateHomeRequest): Promise<Home> => {
-  const client = createApiClient();
-  const result = await client.PUT('/api/admin/home', { body });
-  return unwrap(result, 'Could not save home');
-};
-
-export const publishHome = async (
+export const fetchResume = (): Promise<Resume> =>
+  fetchResumeCore(createApiClient());
+export const updateResume = (body: UpdateResumeRequest): Promise<Resume> =>
+  updateResumeCore(createApiClient(), body);
+export const publishResume = (body: ExpectedVersionRequest): Promise<Resume> =>
+  publishResumeCore(createApiClient(), body);
+export const unpublishResume = (
   body: ExpectedVersionRequest,
-): Promise<Home> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/home/publish', { body });
-  return unwrap(result, 'Publish failed');
-};
-
-export const unpublishHome = async (
-  body: ExpectedVersionRequest,
-): Promise<Home> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/home/unpublish', { body });
-  return unwrap(result, 'Unpublish failed');
-};
-
-export const discardHome = async (
-  body: ExpectedVersionRequest,
-): Promise<Home> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/home/discard', { body });
-  return unwrap(result, 'Discard failed');
-};
-
-export const fetchResume = async (): Promise<Resume> => {
-  const client = createApiClient();
-  const result = await client.GET('/api/admin/resume');
-  return unwrap(result, 'Could not load resume');
-};
-
-export const updateResume = async (
-  body: UpdateResumeRequest,
-): Promise<Resume> => {
-  const client = createApiClient();
-  const result = await client.PUT('/api/admin/resume', { body });
-  return unwrap(result, 'Could not save resume');
-};
-
-export const publishResume = async (
-  body: ExpectedVersionRequest,
-): Promise<Resume> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/resume/publish', { body });
-  return unwrap(result, 'Publish failed');
-};
-
-export const unpublishResume = async (
-  body: ExpectedVersionRequest,
-): Promise<Resume> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/resume/unpublish', { body });
-  return unwrap(result, 'Unpublish failed');
-};
-
-export const discardResume = async (
-  body: ExpectedVersionRequest,
-): Promise<Resume> => {
-  const client = createApiClient();
-  const result = await client.POST('/api/admin/resume/discard', { body });
-  return unwrap(result, 'Discard failed');
-};
+): Promise<Resume> => unpublishResumeCore(createApiClient(), body);
+export const discardResume = (body: ExpectedVersionRequest): Promise<Resume> =>
+  discardResumeCore(createApiClient(), body);

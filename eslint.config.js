@@ -40,8 +40,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/cdk.out/**',
       '**/node_modules/**',
-      'apps/web/src/api/schema.d.ts',
+      'packages/api-client/src/schema.d.ts',
       'packages/shared/openapi/openapi.json',
+      'packages/tokens/src/variables.css',
     ],
   },
   {

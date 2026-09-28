@@ -274,8 +274,8 @@ Reach admin by opening `https://gagnechris.com/admin` (no public login link). AP
 
 `Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizer on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
-OpenAPI contract: `packages/shared/openapi/openapi.json` and web types
-`apps/web/src/api/schema.d.ts`. Regenerate both with `npm run openapi`; CI runs
+OpenAPI contract: `packages/shared/openapi/openapi.json` and client types
+`packages/api-client/src/schema.d.ts`. Regenerate both with `npm run openapi`; CI runs
 `npm run openapi:check` and fails on drift.
 
 ```bash

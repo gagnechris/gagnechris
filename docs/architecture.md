@@ -56,10 +56,13 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 
 Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/react-query`). Public pages stay outside Query so the public bundle stays lean.
 
-- Query-key factories and UI-free hooks live under `apps/web/src/admin/query/` (keys, api helpers, posts/home/resume hooks, optimistic helpers) so they can later move to app-core.
+- Query-key factories, API helpers, and TanStack Query hooks live in `@gagnechris/app-core` (re-exported from `apps/web/src/admin/query/` for the admin SPA).
+- `useQueuedAutosave` and draft/publish logic live in `@gagnechris/app-core` (no DOM); the web shell wraps `useDraftPublishEditor` with confirm / leave-guards / shortcuts.
 - List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
 - Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
-- Optimistic update + rollback pattern: `optimisticMutationHandlers` in `apps/web/src/admin/query/optimistic.ts` (ready for Notebook tasks).
+- Optimistic update + rollback pattern: `optimisticMutationHandlers` in `@gagnechris/app-core` (ready for Notebook tasks).
+- Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token).
+- Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app.
 
 ## Admin editor foundation
 

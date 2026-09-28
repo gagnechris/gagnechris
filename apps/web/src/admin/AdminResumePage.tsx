@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/resume';
-import type { components } from '../api/schema';
+import type { components } from '@gagnechris/api-client';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import {

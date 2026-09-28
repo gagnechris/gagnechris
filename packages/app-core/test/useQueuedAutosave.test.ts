@@ -1,11 +1,18 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { useState } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 import {
   mergeEditorSeo,
   useQueuedAutosave,
   type FlushResult,
-} from './useQueuedAutosave';
+} from '../src/useQueuedAutosave.js';
+import { act, renderHook, useState } from './renderHook.js';
+
+/** flushMicrotasks + optional timer advance without jsdom waitFor. */
+const flush = async () => {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+};
 
 describe('mergeEditorSeo', () => {
   test('preserves ogImage when title/description change', () => {
@@ -85,10 +92,9 @@ describe('useQueuedAutosave', () => {
     await act(async () => {
       resolvers[0]!({ ok: true, entity: { version: 2 } });
     });
+    await flush();
 
-    await waitFor(() => {
-      expect(performSave).toHaveBeenCalledTimes(2);
-    });
+    expect(performSave).toHaveBeenCalledTimes(2);
     expect(performSave.mock.calls[1]?.[0]).toBe('Hello world');
     expect(performSave.mock.calls[1]?.[1]).toBe(2);
 
@@ -153,8 +159,8 @@ describe('useQueuedAutosave', () => {
     await act(async () => {
       resolvers[0]!({ ok: true, entity: { version: 2 } });
     });
-
-    await waitFor(() => expect(performSave).toHaveBeenCalledTimes(2));
+    await flush();
+    expect(performSave).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       resolvers[1]!({ ok: true, entity: { version: 3 } });
@@ -241,6 +247,11 @@ describe('useQueuedAutosave', () => {
         performSave,
         onSaved: () => {},
         conflictMessage: 'Conflict',
+        timers: {
+          setTimeout: (handler, ms) =>
+            setTimeout(handler, ms) as ReturnType<typeof setTimeout>,
+          clearTimeout: (h) => clearTimeout(h),
+        },
       });
       return { ...autosave, setDraft, setDirty, dirty };
     });
@@ -265,7 +276,6 @@ describe('useQueuedAutosave', () => {
     });
     expect(performSave).not.toHaveBeenCalled();
 
-    // Explicit flush still works while held (publish path).
     await act(async () => {
       await result.current.save();
     });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { slugify } from '@gagnechris/shared';
-import type { components } from '../api/schema';
+import type { components } from '@gagnechris/api-client';
 import { Button } from '../ui/Button';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';

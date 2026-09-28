@@ -1,5 +1,7 @@
+import { AppApiProvider } from '@gagnechris/app-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
+import { createApiClient } from '../../api/client';
 
 /** QueryClientProvider scoped to the admin chunk only (not the public SPA). */
 export function AdminQueryProvider({ children }: { children: ReactNode }) {
@@ -18,5 +20,9 @@ export function AdminQueryProvider({ children }: { children: ReactNode }) {
         },
       }),
   );
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <AppApiProvider getClient={createApiClient}>
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    </AppApiProvider>
+  );
 }
