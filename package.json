@@ -36,7 +36,8 @@
     "migrate:posts": "npx tsx scripts/migrate-posts.ts",
     "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client",
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
-    "tokens:generate": "npm run generate -w @gagnechris/tokens"
+    "tokens:generate": "npm run generate -w @gagnechris/tokens",
+    "mobile": "npm run start -w @gagnechris/mobile"
   },
   "engines": {
     "node": "^22.12.0"
