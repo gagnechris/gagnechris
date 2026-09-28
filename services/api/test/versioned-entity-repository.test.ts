@@ -1,0 +1,170 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  VersionedEntityRepository,
+  type VersionedEntity,
+} from '../src/data/versioned-entity-repository.js';
+import { ConflictError } from '../src/data/errors.js';
+import { decodeCursor, encodeCursor } from '../src/data/cursor.js';
+
+type Note = VersionedEntity & {
+  id: string;
+  title: string;
+  deleted?: boolean;
+};
+
+type NoteItem = {
+  pk: string;
+  sk: string;
+  id: string;
+  title: string;
+  version: number;
+  updatedAt: string;
+  deleted?: boolean;
+};
+
+/** ~30 lines of config for a non-publishable versioned entity (CHR-129 AC). */
+function createNotesRepo(doc: {
+  send: ReturnType<typeof vi.fn>;
+}) {
+  return new VersionedEntityRepository<Note, NoteItem>(
+    {
+      conflictLabel: 'note',
+      keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+      idOf: (n) => n.id,
+      toEntity: (item) => ({
+        id: item.id,
+        title: item.title,
+        version: item.version,
+        updatedAt: item.updatedAt,
+        deleted: item.deleted,
+      }),
+      toItem: (n) => ({
+        pk: `NOTE#${n.id}`,
+        sk: 'META',
+        id: n.id,
+        title: n.title,
+        version: n.version,
+        updatedAt: n.updatedAt,
+        deleted: n.deleted,
+      }),
+      isDeleted: (n) => n.deleted === true,
+    },
+    doc as never,
+    'test-table',
+  );
+}
+
+describe('VersionedEntityRepository (fake note)', () => {
+  const send = vi.fn();
+  const repo = createNotesRepo({ send });
+
+  beforeEach(() => {
+    send.mockReset();
+  });
+
+  it('creates and gets a note', async () => {
+    send.mockResolvedValueOnce({});
+    const created = await repo.create({
+      id: 'n1',
+      title: 'Hello',
+      version: 1,
+      updatedAt: '2026-09-28T00:00:00.000Z',
+    });
+    expect(created.id).toBe('n1');
+    expect(send.mock.calls[0]![0]).toBeInstanceOf(PutCommand);
+
+    send.mockResolvedValueOnce({
+      Item: {
+        pk: 'NOTE#n1',
+        sk: 'META',
+        id: 'n1',
+        title: 'Hello',
+        version: 1,
+        updatedAt: '2026-09-28T00:00:00.000Z',
+      },
+    });
+    const got = await repo.get('n1');
+    expect(got?.title).toBe('Hello');
+    expect(send.mock.calls[1]![0]).toBeInstanceOf(GetCommand);
+  });
+
+  it('updateIfVersion returns conflict with current entity', async () => {
+    send
+      .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
+      .mockResolvedValueOnce({
+        Item: {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'Server',
+          version: 3,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      });
+
+    await expect(
+      repo.updateIfVersion('n1', 2, {
+        id: 'n1',
+        title: 'Client',
+        version: 3,
+        updatedAt: '2026-09-28T00:00:01.000Z',
+      }),
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      currentVersion: 3,
+      current: expect.objectContaining({ title: 'Server', version: 3 }),
+    } satisfies Partial<ConflictError>);
+  });
+
+  it('queryPage follows LastEvaluatedKey via opaque cursor', async () => {
+    send.mockResolvedValueOnce({
+      Items: [
+        {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'A',
+          version: 1,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      ],
+      LastEvaluatedKey: { pk: 'NOTE#n1', sk: 'META' },
+    });
+    const page = await repo.queryPage({
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': 'NOTE#n1' },
+      limit: 1,
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeTruthy();
+    expect(decodeCursor(page.nextCursor)).toEqual({
+      pk: 'NOTE#n1',
+      sk: 'META',
+    });
+  });
+
+  it('hides soft-deleted notes from get', async () => {
+    send.mockResolvedValueOnce({
+      Item: {
+        pk: 'NOTE#n1',
+        sk: 'META',
+        id: 'n1',
+        title: 'Gone',
+        version: 2,
+        updatedAt: '2026-09-28T00:00:00.000Z',
+        deleted: true,
+      },
+    });
+    expect(await repo.get('n1')).toBeUndefined();
+  });
+});
+
+describe('cursor helpers', () => {
+  it('round-trips LastEvaluatedKey', () => {
+    const key = { pk: 'POST#1', sk: 'META' };
+    const cursor = encodeCursor(key);
+    expect(cursor).toBeTruthy();
+    expect(decodeCursor(cursor)).toEqual(key);
+  });
+});

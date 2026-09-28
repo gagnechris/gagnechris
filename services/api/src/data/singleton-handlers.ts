@@ -3,6 +3,7 @@ import type {
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
 import type { ZodType } from 'zod';
+import { ExpectedVersionRequestSchema } from '@gagnechris/shared';
 import { json } from '../http.js';
 import {
   dispatchRoutes,
@@ -13,9 +14,9 @@ import {
 export type SingletonRepo<T, TUpdate> = {
   getOrCreate: () => Promise<T>;
   update: (input: TUpdate) => Promise<T>;
-  publish: () => Promise<T>;
-  unpublish: () => Promise<T>;
-  discard: () => Promise<T>;
+  publish: (expectedVersion?: number) => Promise<T>;
+  unpublish: (expectedVersion?: number) => Promise<T>;
+  discard: (expectedVersion?: number) => Promise<T>;
 };
 
 export type SingletonRouteConfig<T, TUpdate> = {
@@ -47,12 +48,27 @@ function singletonHandlers<T, TUpdate>(
           await store().update(body as TUpdate),
         ),
       ),
-    publish: async () =>
-      json(200, config.entitySchema.parse(await store().publish())),
-    unpublish: async () =>
-      json(200, config.entitySchema.parse(await store().unpublish())),
-    discard: async () =>
-      json(200, config.entitySchema.parse(await store().discard())),
+    publish: async (_ctx, { body }) => {
+      const { version } = body as { version: number };
+      return json(
+        200,
+        config.entitySchema.parse(await store().publish(version)),
+      );
+    },
+    unpublish: async (_ctx, { body }) => {
+      const { version } = body as { version: number };
+      return json(
+        200,
+        config.entitySchema.parse(await store().unpublish(version)),
+      );
+    },
+    discard: async (_ctx, { body }) => {
+      const { version } = body as { version: number };
+      return json(
+        200,
+        config.entitySchema.parse(await store().discard(version)),
+      );
+    },
   };
 }
 
@@ -84,6 +100,7 @@ export function createSingletonRoutes<T, TUpdate>(
       pattern: `${base}/publish`,
       auth: 'admin',
       metric: `Publish_${base.replace(/\//g, '_')}`,
+      body: ExpectedVersionRequestSchema,
       handler: h.publish,
     },
     {
@@ -91,6 +108,7 @@ export function createSingletonRoutes<T, TUpdate>(
       pattern: `${base}/unpublish`,
       auth: 'admin',
       metric: `Unpublish_${base.replace(/\//g, '_')}`,
+      body: ExpectedVersionRequestSchema,
       handler: h.unpublish,
     },
     {
@@ -98,6 +116,7 @@ export function createSingletonRoutes<T, TUpdate>(
       pattern: `${base}/discard`,
       auth: 'admin',
       metric: `Discard_${base.replace(/\//g, '_')}`,
+      body: ExpectedVersionRequestSchema,
       handler: h.discard,
     },
   ];

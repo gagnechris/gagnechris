@@ -16,6 +16,7 @@ import type {
 import { batchGetAllWithDocClient, isOptimisticLockConflict } from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { decodeCursor, encodeCursor } from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
 import { ConflictError, NotFoundError } from '../data/errors.js';
 import {
@@ -66,7 +67,7 @@ export class PostsRepository {
     );
     if (!result.Item) return undefined;
     const draft = metaToPost(parsePostMetaItem(result.Item));
-    if (draft.status === 'deleted') return draft;
+    if (draft.status === 'deleted') return undefined;
     await this.migratePublishedSnapshot(draft);
     const published = await this.getPublished(postId);
     return this.withUnpublishedFlag(draft, published);
@@ -85,10 +86,62 @@ export class PostsRepository {
     return this.getById(postId);
   }
 
-  async list(status?: PostStatus): Promise<Post[]> {
+  async list(
+    status?: PostStatus,
+    opts?: { cursor?: string; limit?: number },
+  ): Promise<{ items: Post[]; nextCursor?: string }> {
     const statuses: PostStatus[] = status
       ? [status]
       : ['draft', 'published'];
+
+    // Single-status queries can page via LastEvaluatedKey. Multi-status
+    // (default admin list) still merges pages in memory (small catalogs).
+    if (statuses.length === 1) {
+      const s = statuses[0]!;
+      const exclusiveStartKey = decodeCursor(opts?.cursor);
+      const result = await this.doc.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'gsi1',
+          KeyConditionExpression: 'gsi1pk = :pk',
+          ExpressionAttributeValues: { ':pk': statusGsi1Pk(s) },
+          ScanIndexForward: false,
+          ExclusiveStartKey: exclusiveStartKey,
+          Limit: opts?.limit,
+        }),
+      );
+      const drafts = (result.Items ?? [])
+        .filter(
+          (item) => item.entityType === 'post' && item.sk === postMetaSk(),
+        )
+        .map((item) => metaToPost(parsePostMetaItem(item)));
+
+      const publishedDrafts = drafts.filter((d) => d.status === 'published');
+      const publishedById = await this.batchGetPublished(
+        publishedDrafts.map((d) => d.id),
+      );
+
+      const items: Post[] = [];
+      for (const draft of drafts) {
+        if (draft.status !== 'published') {
+          items.push(this.withUnpublishedFlag(draft, undefined));
+          continue;
+        }
+        let published = publishedById.get(draft.id);
+        if (!published) {
+          await this.migratePublishedSnapshot(draft);
+          published = await this.getPublished(draft.id);
+        }
+        items.push(this.withUnpublishedFlag(draft, published));
+      }
+      return {
+        items,
+        nextCursor: encodeCursor(
+          result.LastEvaluatedKey as Record<string, unknown> | undefined,
+        ),
+      };
+    }
+
     const batches = await Promise.all(
       statuses.map(async (s) => {
         const result = await this.doc.send(
@@ -116,10 +169,10 @@ export class PostsRepository {
       publishedDrafts.map((d) => d.id),
     );
 
-    const out: Post[] = [];
+    const items: Post[] = [];
     for (const draft of drafts) {
       if (draft.status !== 'published') {
-        out.push(this.withUnpublishedFlag(draft, undefined));
+        items.push(this.withUnpublishedFlag(draft, undefined));
         continue;
       }
       let published = publishedById.get(draft.id);
@@ -127,9 +180,9 @@ export class PostsRepository {
         await this.migratePublishedSnapshot(draft);
         published = await this.getPublished(draft.id);
       }
-      out.push(this.withUnpublishedFlag(draft, published));
+      items.push(this.withUnpublishedFlag(draft, published));
     }
-    return out;
+    return { items };
   }
 
   /** BatchGet PUBLISHED snapshots (chunks of 100); retries UnprocessedKeys (CHR-120). */
@@ -219,12 +272,13 @@ export class PostsRepository {
 
   async update(postId: string, input: UpdatePostRequest): Promise<Post> {
     const existing = await this.getById(postId);
-    if (!existing || existing.status === 'deleted') {
+    if (!existing) {
       throw new NotFoundError(`Post ${postId} not found`);
     }
     if (existing.version !== input.version) {
       throw new ConflictError(
         `Version conflict: expected ${input.version}, current ${existing.version}`,
+        { currentVersion: existing.version, current: existing },
       );
     }
 
@@ -258,11 +312,20 @@ export class PostsRepository {
    */
   async publish(
     postId: string,
-    options?: { publishedAt?: string },
+    options?: { publishedAt?: string; version?: number },
   ): Promise<Post> {
     const existing = await this.getById(postId);
-    if (!existing || existing.status === 'deleted') {
+    if (!existing) {
       throw new NotFoundError(`Post ${postId} not found`);
+    }
+    if (
+      options?.version !== undefined &&
+      existing.version !== options.version
+    ) {
+      throw new ConflictError(
+        `Version conflict: expected ${options.version}, current ${existing.version}`,
+        { currentVersion: existing.version, current: existing },
+      );
     }
     const published = await this.getPublished(postId);
     if (
@@ -291,10 +354,19 @@ export class PostsRepository {
     return this.withUnpublishedFlag(next, next);
   }
 
-  async unpublish(postId: string): Promise<Post> {
+  async unpublish(postId: string, expectedVersion?: number): Promise<Post> {
     const existing = await this.getById(postId);
-    if (!existing || existing.status === 'deleted') {
+    if (!existing) {
       throw new NotFoundError(`Post ${postId} not found`);
+    }
+    if (
+      expectedVersion !== undefined &&
+      existing.version !== expectedVersion
+    ) {
+      throw new ConflictError(
+        `Version conflict: expected ${expectedVersion}, current ${existing.version}`,
+        { currentVersion: existing.version, current: existing },
+      );
     }
     if (existing.status === 'draft') {
       return this.withUnpublishedFlag(existing, undefined);
@@ -316,10 +388,19 @@ export class PostsRepository {
     return next;
   }
 
-  async discard(postId: string): Promise<Post> {
+  async discard(postId: string, expectedVersion?: number): Promise<Post> {
     const existing = await this.getById(postId);
-    if (!existing || existing.status === 'deleted') {
+    if (!existing) {
       throw new NotFoundError(`Post ${postId} not found`);
+    }
+    if (
+      expectedVersion !== undefined &&
+      existing.version !== expectedVersion
+    ) {
+      throw new ConflictError(
+        `Version conflict: expected ${expectedVersion}, current ${existing.version}`,
+        { currentVersion: existing.version, current: existing },
+      );
     }
     const published = await this.getPublished(postId);
     if (!published) {
@@ -340,10 +421,19 @@ export class PostsRepository {
     return this.withUnpublishedFlag(next, published);
   }
 
-  async softDelete(postId: string): Promise<Post> {
+  async softDelete(postId: string, expectedVersion?: number): Promise<Post> {
     const existing = await this.getById(postId);
-    if (!existing || existing.status === 'deleted') {
+    if (!existing) {
       throw new NotFoundError(`Post ${postId} not found`);
+    }
+    if (
+      expectedVersion !== undefined &&
+      existing.version !== expectedVersion
+    ) {
+      throw new ConflictError(
+        `Version conflict: expected ${expectedVersion}, current ${existing.version}`,
+        { currentVersion: existing.version, current: existing },
+      );
     }
     const published = await this.getPublished(postId);
     const updatedAt = nowIso();

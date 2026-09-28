@@ -9,6 +9,7 @@ import {
   ContactResponseSchema,
   CreatePostRequestSchema,
   ErrorResponseSchema,
+  ExpectedVersionRequestSchema,
   HealthResponseSchema,
   HomeSchema,
   MediaUploadUrlRequestSchema,
@@ -32,7 +33,21 @@ const ListPostsQuerySchema = z.object({
   status: PostStatusSchema.optional().openapi({
     description: 'Filter by status (omit to list draft + published)',
   }),
+  cursor: z.string().min(1).optional().openapi({
+    description: 'Opaque pagination cursor from a previous list response',
+  }),
+  limit: z.coerce.number().int().positive().max(100).optional().openapi({
+    description: 'Page size (single-status queries only)',
+  }),
 });
+
+const versionBody = {
+  body: {
+    content: {
+      'application/json': { schema: ExpectedVersionRequestSchema },
+    },
+  },
+};
 
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();
@@ -44,6 +59,7 @@ export function buildOpenApiDocument() {
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
   registry.register('UpdatePostRequest', UpdatePostRequestSchema);
+  registry.register('ExpectedVersionRequest', ExpectedVersionRequestSchema);
   registry.register('MediaUploadUrlRequest', MediaUploadUrlRequestSchema);
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
   registry.register('ContactRequest', ContactRequestSchema);
@@ -201,7 +217,7 @@ export function buildOpenApiDocument() {
     summary: 'Publish post (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema },
+    request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
       200: {
         description: 'Published',
@@ -209,6 +225,10 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },
@@ -220,7 +240,7 @@ export function buildOpenApiDocument() {
     summary: 'Unpublish post',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema },
+    request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
       200: {
         description: 'Unpublished (draft)',
@@ -228,6 +248,10 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },
@@ -239,7 +263,7 @@ export function buildOpenApiDocument() {
     summary: 'Discard draft edits and restore from the published snapshot',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema },
+    request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
       200: {
         description: 'Draft restored from published snapshot',
@@ -247,6 +271,10 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },
@@ -258,7 +286,7 @@ export function buildOpenApiDocument() {
     summary: 'Soft-delete post',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema },
+    request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
       200: {
         description: 'Soft-deleted',
@@ -266,6 +294,10 @@ export function buildOpenApiDocument() {
       },
       404: {
         description: 'Not found',
+        content: { 'application/json': { schema: ErrorResponseSchema } },
+      },
+      409: {
+        description: 'Version conflict',
         content: { 'application/json': { schema: ErrorResponseSchema } },
       },
     },
@@ -324,6 +356,7 @@ export function buildOpenApiDocument() {
     summary: 'Publish home (copies draft to PUBLISHED snapshot; stream rebuild)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Published',
@@ -342,6 +375,7 @@ export function buildOpenApiDocument() {
     summary: 'Unpublish home (live index.html is left in place)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Unpublished (draft)',
@@ -360,6 +394,7 @@ export function buildOpenApiDocument() {
     summary: 'Discard draft edits and restore from the published snapshot',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Draft restored from published snapshot',
@@ -425,6 +460,7 @@ export function buildOpenApiDocument() {
     summary: 'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Published',
@@ -443,6 +479,7 @@ export function buildOpenApiDocument() {
     summary: 'Unpublish resume (live HTML is left in place)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Unpublished (draft)',
@@ -461,6 +498,7 @@ export function buildOpenApiDocument() {
     summary: 'Discard draft edits and restore from the published snapshot',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
+    request: versionBody,
     responses: {
       200: {
         description: 'Draft restored from published snapshot',

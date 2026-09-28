@@ -1,7 +1,15 @@
 export class ConflictError extends Error {
-  constructor(message: string) {
+  readonly currentVersion?: number;
+  readonly current?: unknown;
+
+  constructor(
+    message: string,
+    opts?: { currentVersion?: number; current?: unknown },
+  ) {
     super(message);
     this.name = 'ConflictError';
+    this.currentVersion = opts?.currentVersion;
+    this.current = opts?.current;
   }
 }
 

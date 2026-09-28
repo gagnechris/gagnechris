@@ -76,7 +76,7 @@ describe('posts HTTP handlers', () => {
   });
 
   it('lists posts', async () => {
-    vi.mocked(repo.list).mockResolvedValue([samplePost]);
+    vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
     const result = await handlePostsRoute(
       event('GET', '/api/admin/posts'),
       'GET',
@@ -122,7 +122,9 @@ describe('posts HTTP handlers', () => {
     );
 
     const published = await handlePostsRoute(
-      event('POST', `/api/admin/posts/${samplePost.id}/publish`),
+      event('POST', `/api/admin/posts/${samplePost.id}/publish`, {
+        version: 1,
+      }),
       'POST',
       `/api/admin/posts/${samplePost.id}/publish`,
       repo,
@@ -130,7 +132,11 @@ describe('posts HTTP handlers', () => {
     expect(published?.statusCode).toBe(200);
 
     const deleted = await handlePostsRoute(
-      event('DELETE', `/api/admin/posts/${samplePost.id}`),
+      event(
+        'DELETE',
+        `/api/admin/posts/${samplePost.id}`,
+        { version: 1 },
+      ),
       'DELETE',
       `/api/admin/posts/${samplePost.id}`,
       repo,

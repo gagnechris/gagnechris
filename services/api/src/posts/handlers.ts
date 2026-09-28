@@ -5,6 +5,7 @@ import type {
 import { z } from 'zod';
 import {
   CreatePostRequestSchema,
+  ExpectedVersionRequestSchema,
   PostListResponseSchema,
   PostSchema,
   PostStatusSchema,
@@ -21,6 +22,8 @@ import { PostsRepository } from './repository.js';
 const IdParams = z.object({ id: z.string().min(1) });
 const ListQuery = z.object({
   status: PostStatusSchema.optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
 });
 
 function postsHandlers(repo?: PostsRepository): {
@@ -36,9 +39,9 @@ function postsHandlers(repo?: PostsRepository): {
   const posts = () => repo ?? new PostsRepository();
   return {
     list: async (_ctx, { query }) => {
-      const { status } = query as z.infer<typeof ListQuery>;
-      const items = await posts().list(status);
-      return json(200, PostListResponseSchema.parse({ items }));
+      const { status, cursor, limit } = query as z.infer<typeof ListQuery>;
+      const page = await posts().list(status, { cursor, limit });
+      return json(200, PostListResponseSchema.parse(page));
     },
     create: async (_ctx, { body }) => {
       const post = await posts().create(
@@ -49,7 +52,7 @@ function postsHandlers(repo?: PostsRepository): {
     get: async (_ctx, { params }) => {
       const { id } = params as z.infer<typeof IdParams>;
       const post = await posts().getById(id);
-      if (!post || post.status === 'deleted') {
+      if (!post) {
         return json(404, {
           error: 'not_found',
           message: `Post ${id} not found`,
@@ -65,24 +68,28 @@ function postsHandlers(repo?: PostsRepository): {
       );
       return json(200, PostSchema.parse(post));
     },
-    softDelete: async (_ctx, { params }) => {
+    softDelete: async (_ctx, { params, body }) => {
       const { id } = params as z.infer<typeof IdParams>;
-      const post = await posts().softDelete(id);
+      const { version } = body as z.infer<typeof ExpectedVersionRequestSchema>;
+      const post = await posts().softDelete(id, version);
       return json(200, PostSchema.parse(post));
     },
-    publish: async (_ctx, { params }) => {
+    publish: async (_ctx, { params, body }) => {
       const { id } = params as z.infer<typeof IdParams>;
-      const post = await posts().publish(id);
+      const { version } = body as z.infer<typeof ExpectedVersionRequestSchema>;
+      const post = await posts().publish(id, { version });
       return json(200, PostSchema.parse(post));
     },
-    unpublish: async (_ctx, { params }) => {
+    unpublish: async (_ctx, { params, body }) => {
       const { id } = params as z.infer<typeof IdParams>;
-      const post = await posts().unpublish(id);
+      const { version } = body as z.infer<typeof ExpectedVersionRequestSchema>;
+      const post = await posts().unpublish(id, version);
       return json(200, PostSchema.parse(post));
     },
-    discard: async (_ctx, { params }) => {
+    discard: async (_ctx, { params, body }) => {
       const { id } = params as z.infer<typeof IdParams>;
-      const post = await posts().discard(id);
+      const { version } = body as z.infer<typeof ExpectedVersionRequestSchema>;
+      const post = await posts().discard(id, version);
       return json(200, PostSchema.parse(post));
     },
   };
@@ -130,6 +137,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       auth: 'admin',
       metric: 'DeletePost',
       params: IdParams,
+      body: ExpectedVersionRequestSchema,
       handler: h.softDelete,
     },
     {
@@ -138,6 +146,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       auth: 'admin',
       metric: 'PublishPost',
       params: IdParams,
+      body: ExpectedVersionRequestSchema,
       handler: h.publish,
     },
     {
@@ -146,6 +155,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       auth: 'admin',
       metric: 'UnpublishPost',
       params: IdParams,
+      body: ExpectedVersionRequestSchema,
       handler: h.unpublish,
     },
     {
@@ -154,6 +164,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       auth: 'admin',
       metric: 'DiscardPost',
       params: IdParams,
+      body: ExpectedVersionRequestSchema,
       handler: h.discard,
     },
   ];

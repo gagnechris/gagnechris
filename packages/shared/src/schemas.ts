@@ -89,6 +89,8 @@ export type Post = z.infer<typeof PostSchema>;
 export const PostListResponseSchema = z
   .object({
     items: z.array(PostSchema),
+    /** Opaque cursor for the next page (absent when no more items). */
+    nextCursor: z.string().min(1).optional(),
   })
   .openapi('PostListResponse');
 
@@ -126,6 +128,21 @@ export const UpdatePostRequestSchema = z
   .openapi('UpdatePostRequest');
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
+
+/** Body for publish / unpublish / discard / delete (CHR-129). */
+export const ExpectedVersionRequestSchema = z
+  .object({
+    version: z
+      .number()
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Expected version for optimistic concurrency' }),
+  })
+  .openapi('ExpectedVersionRequest');
+
+export type ExpectedVersionRequest = z.infer<
+  typeof ExpectedVersionRequestSchema
+>;
 
 /** Allowed Content-Type values for admin media uploads (CHR-31). */
 export const MEDIA_CONTENT_TYPES = [

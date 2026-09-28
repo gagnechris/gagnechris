@@ -73,7 +73,14 @@ export function mapRouteError(
     return json(404, { error: 'not_found', message: error.message });
   }
   if (error instanceof ConflictError) {
-    return json(409, { error: 'conflict', message: error.message });
+    return json(409, {
+      error: 'conflict',
+      message: error.message,
+      ...(error.currentVersion !== undefined
+        ? { currentVersion: error.currentVersion }
+        : {}),
+      ...(error.current !== undefined ? { current: error.current } : {}),
+    });
   }
   if (error instanceof ServiceUnavailableError) {
     return json(503, { error: 'service_unavailable', message: error.message });

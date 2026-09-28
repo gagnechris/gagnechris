@@ -136,7 +136,7 @@ describe('home HTTP handlers', () => {
     });
 
     const published = await handleHomeRoute(
-      event('POST', '/api/admin/home/publish'),
+      event('POST', '/api/admin/home/publish', { version: 1 }),
       'POST',
       '/api/admin/home/publish',
       repo,
@@ -145,7 +145,7 @@ describe('home HTTP handlers', () => {
     expect(JSON.parse(published!.body as string).status).toBe('published');
 
     const unpublished = await handleHomeRoute(
-      event('POST', '/api/admin/home/unpublish'),
+      event('POST', '/api/admin/home/unpublish', { version: 1 }),
       'POST',
       '/api/admin/home/unpublish',
       repo,
