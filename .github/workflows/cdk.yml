@@ -120,11 +120,20 @@ jobs:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
+      - name: Resolve path-filter base
+        if: github.event_name == 'workflow_run'
+        id: path_base
+        run: |
+          # After merge, HEAD is origin/main, so comparing to main is empty.
+          # Diff the validated commit against its parent (squash/merge tip).
+          echo "sha=$(git rev-parse HEAD~1)" >> "$GITHUB_OUTPUT"
+
       - name: Path filter
         if: github.event_name == 'workflow_run'
         uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ steps.path_base.outputs.sha }}
           ref: ${{ github.event.workflow_run.head_sha }}
           filters: |
             cdk:
