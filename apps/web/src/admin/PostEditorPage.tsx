@@ -66,12 +66,7 @@ export default function PostEditorPage() {
   }
 
   // Clean editor + newer server: adopt content (render-time adjust).
-  if (
-    post &&
-    hydratedId === post.id &&
-    !dirty &&
-    post.version > boundVersion
-  ) {
+  if (post && hydratedId === post.id && !dirty && post.version > boundVersion) {
     setDraft(postDraftFromPost(post));
     setBoundVersion(post.version);
   }
