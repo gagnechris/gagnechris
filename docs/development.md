@@ -79,6 +79,10 @@ npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
 
+### Integration tests (CHR-151)
+
+`npm run test:integration -w @gagnechris/api` **ignores** `DATA_TABLE_NAME`. Each file creates an ephemeral `gagnechris-it-*` table and deletes it afterward, so sourcing `env.sh` and running tests will not wipe `gagnechris-local`. Tables that do not start with `gagnechris-it-` are refused.
+
 ### CDK / deploy
 
 - Region: `us-east-1`

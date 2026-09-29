@@ -1,10 +1,16 @@
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 
 const repoRoot = path.resolve(
   fileURLToPath(new URL('../../../..', import.meta.url)),
+);
+
+const STARTED_FLAG = path.join(
+  repoRoot,
+  'services/api/test/integration/.dynamodb-ci-started',
 );
 
 function applyIntegrationEnv(): void {
@@ -16,8 +22,8 @@ function applyIntegrationEnv(): void {
   delete process.env.AWS_PROFILE;
   process.env.AWS_ENDPOINT_URL_DYNAMODB =
     process.env.AWS_ENDPOINT_URL_DYNAMODB ?? 'http://127.0.0.1:8000';
-  process.env.DATA_TABLE_NAME =
-    process.env.DATA_TABLE_NAME?.trim() || 'gagnechris-test';
+  // Never inherit DATA_TABLE_NAME (e.g. gagnechris-local from env.sh).
+  delete process.env.DATA_TABLE_NAME;
   process.env.COMPOSE_PROJECT_NAME =
     process.env.COMPOSE_PROJECT_NAME ?? 'gagnechris-ci';
 }
@@ -40,14 +46,17 @@ async function waitForDynamo(maxAttempts = 60): Promise<void> {
   throw new Error(`DynamoDB Local did not become ready at ${endpoint}`);
 }
 
-export default async function globalSetup(): Promise<void> {
+export default async function globalSetup(): Promise<() => Promise<void>> {
   applyIntegrationEnv();
 
   if (process.env.SKIP_DYNAMODB_INTEGRATION_SETUP === '1') {
     await waitForDynamo();
-    return;
+    return async () => {
+      /* CI owns the compose lifecycle */
+    };
   }
 
+  let startedByUs = false;
   try {
     await waitForDynamo(3);
   } catch {
@@ -57,15 +66,31 @@ export default async function globalSetup(): Promise<void> {
         stdio: 'inherit',
         env: { ...process.env },
       });
-    } catch {
-      // Port may already be bound by another compose project; wait for readiness.
+      startedByUs = true;
+      fs.writeFileSync(STARTED_FLAG, '1', 'utf8');
+    } catch (err) {
+      throw new Error(
+        `Failed to start DynamoDB Local via compose project ${process.env.COMPOSE_PROJECT_NAME}. ` +
+          `Refusing to reuse an unknown listener on the endpoint. ${String(err)}`,
+      );
     }
     await waitForDynamo();
   }
 
-  execSync('npx tsx scripts/local/bootstrap-table.ts', {
-    cwd: repoRoot,
-    stdio: 'inherit',
-    env: { ...process.env },
-  });
+  return async () => {
+    if (!startedByUs && !fs.existsSync(STARTED_FLAG)) return;
+    try {
+      execSync('docker compose -f docker-compose.local.yml down', {
+        cwd: repoRoot,
+        stdio: 'inherit',
+        env: { ...process.env },
+      });
+    } finally {
+      try {
+        fs.unlinkSync(STARTED_FLAG);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 }

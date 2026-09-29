@@ -1,94 +1,155 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { GetCommand } from '@aws-sdk/lib-dynamodb';
+import { keys, slugPk, slugPostSk } from '@gagnechris/data';
 import { ConflictError } from '../../src/data/errors.js';
-import { PostsRepository } from '../../src/posts/repository.js';
+import { handlePostsRoute } from '../../src/posts/handlers.js';
+import { makeCtx, makePost } from '../support/builders.js';
 import {
+  createEphemeralIntegrationTable,
   createLocalDocClient,
-  integrationTableName,
+  deleteIntegrationTable,
   truncateTable,
 } from '../support/dynamo-local.js';
+import { makeEvent } from '../support/make-event.js';
 
 describe('posts transactions (DynamoDB Local)', () => {
-  const tableName = integrationTableName();
+  let tableName: string;
   const doc = createLocalDocClient();
+
+  beforeAll(async () => {
+    tableName = await createEphemeralIntegrationTable('posts-tx');
+  });
+
+  afterAll(async () => {
+    await deleteIntegrationTable(tableName);
+  });
 
   beforeEach(async () => {
     await truncateTable(doc, tableName);
   });
 
-  it('publish, unpublish, and discard', async () => {
-    const repo = new PostsRepository(doc, tableName);
-    const draft = await repo.create({
-      title: 'Integration Post',
-      excerpt: '',
-      bodyMarkdown: 'Body',
-      tags: [],
-    });
+  it('publish, unpublish, and discard (PUBLISHED row)', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const draft = await makePost(ctx, { title: 'Integration Post' });
     expect(draft.status).toBe('draft');
 
-    const published = await repo.publish(draft.id);
+    const published = await ctx.posts.publish(draft.id);
     expect(published.status).toBe('published');
+    const publishedRow = await doc.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: keys.post.published(draft.id),
+      }),
+    );
+    expect(publishedRow.Item).toBeTruthy();
+    expect(publishedRow.Item?.status).toBe('published');
 
-    const edited = await repo.update(published.id, {
+    const edited = await ctx.posts.update(published.id, {
       version: published.version,
       title: 'Edited title',
     });
     expect(edited.hasUnpublishedChanges).toBe(true);
 
-    const discarded = await repo.discard(edited.id, edited.version);
+    const discarded = await ctx.posts.discard(edited.id, edited.version);
     expect(discarded.title).toBe(published.title);
+    const afterDiscard = await doc.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: keys.post.published(draft.id),
+      }),
+    );
+    expect(afterDiscard.Item?.title).toBe(published.title);
 
-    const unpublished = await repo.unpublish(discarded.id, discarded.version);
+    const unpublished = await ctx.posts.unpublish(
+      discarded.id,
+      discarded.version,
+    );
     expect(unpublished.status).toBe('draft');
+    const afterUnpublish = await doc.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: keys.post.published(draft.id),
+      }),
+    );
+    expect(afterUnpublish.Item).toBeUndefined();
   });
 
-  it('moves slug claims on rename', async () => {
-    const repo = new PostsRepository(doc, tableName);
-    const post = await repo.create({
-      title: 'Original Slug Post',
-      excerpt: '',
-      bodyMarkdown: '',
-      tags: [],
-    });
-    const originalSlug = post.slug;
+  it('moves slug claims on rename (including published)', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const post = await makePost(ctx, { title: 'Original Slug Post' });
+    const published = await ctx.posts.publish(post.id);
+    const originalSlug = published.slug;
 
-    const renamed = await repo.update(post.id, {
-      version: post.version,
-      slug: 'renamed-slug-post',
+    const renamed = await ctx.posts.update(published.id, {
+      version: published.version,
+      slug: 'renamed-published-slug',
     });
-    expect(renamed.slug).toBe('renamed-slug-post');
+    expect(renamed.slug).toBe('renamed-published-slug');
 
-    const byNew = await repo.getBySlug('renamed-slug-post');
+    const byNew = await ctx.posts.getBySlug('renamed-published-slug');
     expect(byNew?.id).toBe(post.id);
 
-    const byOld = await repo.getBySlug(originalSlug);
+    const byOld = await ctx.posts.getBySlug(originalSlug);
     expect(byOld).toBeUndefined();
   });
 
-  it('rejects stale version updates', async () => {
-    const repo = new PostsRepository(doc, tableName);
-    const post = await repo.create({
-      title: 'Version Gate',
-      excerpt: '',
-      bodyMarkdown: '',
-      tags: [],
+  it('rejects slug collision without orphan claim', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const first = await makePost(ctx, {
+      title: 'First',
+      slug: 'taken-slug',
     });
     await expect(
-      repo.update(post.id, { version: post.version + 99, title: 'Nope' }),
+      makePost(ctx, { title: 'Second', slug: 'taken-slug' }),
+    ).rejects.toBeInstanceOf(ConflictError);
+
+    const claim = await doc.send(
+      new GetCommand({
+        TableName: tableName,
+        Key: { pk: slugPk('taken-slug'), sk: slugPostSk() },
+      }),
+    );
+    expect(claim.Item?.postId).toBe(first.id);
+
+    const secondAttempt = await makePost(ctx, {
+      title: 'Other',
+      slug: 'other-slug',
+    });
+    expect(secondAttempt.slug).toBe('other-slug');
+  });
+
+  it('returns HTTP 409 on conflict', async () => {
+    const ctx = makeCtx(doc, tableName);
+    await makePost(ctx, { title: 'Existing', slug: 'http-taken' });
+    const result = await handlePostsRoute(
+      makeEvent('POST', '/api/admin/posts', {
+        body: { title: 'Clash', slug: 'http-taken' },
+      }),
+      'POST',
+      '/api/admin/posts',
+      ctx.posts,
+    );
+    expect(result?.statusCode).toBe(409);
+  });
+
+  it('rejects stale version updates', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const post = await makePost(ctx, { title: 'Version Gate' });
+    await expect(
+      ctx.posts.update(post.id, {
+        version: post.version + 99,
+        title: 'Nope',
+      }),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('surfaces concurrent update conflicts', async () => {
-    const repo = new PostsRepository(doc, tableName);
-    const post = await repo.create({
-      title: 'Concurrent',
-      excerpt: '',
-      bodyMarkdown: '',
-      tags: [],
-    });
+    const ctx = makeCtx(doc, tableName);
+    const post = await makePost(ctx, { title: 'Concurrent' });
 
     const results = await Promise.allSettled([
-      repo.update(post.id, { version: post.version, title: 'Writer A' }),
-      repo.update(post.id, { version: post.version, title: 'Writer B' }),
+      ctx.posts.update(post.id, { version: post.version, title: 'Writer A' }),
+      ctx.posts.update(post.id, { version: post.version, title: 'Writer B' }),
     ]);
 
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
@@ -98,30 +159,39 @@ describe('posts transactions (DynamoDB Local)', () => {
     expect(rejected[0]?.reason).toBeInstanceOf(ConflictError);
   });
 
-  it('paginates draft list via cursor', async () => {
-    const repo = new PostsRepository(doc, tableName);
+  it('paginates draft list with exact counts and no duplicates', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const created = [];
     for (let i = 0; i < 3; i += 1) {
-      await repo.create({
-        title: `Paginate ${i} ${Date.now()}`,
-        excerpt: '',
-        bodyMarkdown: '',
-        tags: [],
-      });
+      created.push(
+        await makePost(ctx, {
+          title: `Paginate ${i} ${Date.now()}`,
+        }),
+      );
     }
 
-    const first = await repo.list('draft', { limit: 2 });
-    expect(first.items.length).toBe(2);
+    const first = await ctx.posts.list('draft', { limit: 2 });
+    expect(first.items).toHaveLength(2);
     expect(first.nextCursor).toBeTruthy();
 
-    const second = await repo.list('draft', {
+    const second = await ctx.posts.list('draft', {
       limit: 2,
       cursor: first.nextCursor,
     });
-    expect(second.items.length).toBeGreaterThanOrEqual(1);
-    const ids = new Set([
+    expect(second.items).toHaveLength(1);
+    expect(second.nextCursor).toBeFalsy();
+
+    const ids = [
       ...first.items.map((p) => p.id),
       ...second.items.map((p) => p.id),
-    ]);
-    expect(ids.size).toBeGreaterThanOrEqual(3);
+    ];
+    expect(new Set(ids).size).toBe(3);
+    expect(ids.sort()).toEqual(created.map((p) => p.id).sort());
+  });
+
+  it('refuses to operate on non gagnechris-it- tables', async () => {
+    await expect(truncateTable(doc, 'gagnechris-local')).rejects.toThrow(
+      /gagnechris-it-/,
+    );
   });
 });
