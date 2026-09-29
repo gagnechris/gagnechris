@@ -1,3 +1,4 @@
+import { Prec } from '@codemirror/state';
 import {
   EditorSelection,
   type ChangeSpec,
@@ -5,8 +6,11 @@ import {
 } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
-/** GFM task list marker: `- [ ]` / `- [x]` (also `*` / `+`). */
-const TASK_LINE = /^(\s*[-*+]\s+)\[([ xX])\]/;
+/**
+ * GFM task list marker: `- [ ]` / `- [x]` (also `*` / `+`).
+ * Negative lookahead avoids matching markdown links like `- [x](url)`.
+ */
+const TASK_LINE = /^(\s*[-*+]\s+)\[([ xX])\](?!\()/;
 
 export type TaskCheckbox = {
   /** Absolute doc position of `[`. */
@@ -30,6 +34,14 @@ export function taskCheckboxAt(
   };
 }
 
+/** True when `pos` is strictly inside `[ ]` / `[x]` (not on the brackets). */
+export function isStrictlyInsideTaskBox(
+  pos: number,
+  task: TaskCheckbox,
+): boolean {
+  return pos > task.boxFrom && pos < task.boxTo;
+}
+
 /** Toggle `- [ ]` ↔ `- [x]` when `pos` is on that line (optionally only inside the brackets). */
 export function toggleTaskAtPos(
   view: EditorView,
@@ -40,7 +52,7 @@ export function toggleTaskAtPos(
   const line = view.state.doc.lineAt(pos);
   const task = taskCheckboxAt(line.text, line.from);
   if (!task) return false;
-  if (requireInsideBrackets && (pos < task.boxFrom || pos > task.boxTo)) {
+  if (requireInsideBrackets && !isStrictlyInsideTaskBox(pos, task)) {
     return false;
   }
   const insert = task.checked ? '[ ]' : '[x]';
@@ -59,24 +71,29 @@ function toggleTaskNearSelection(view: EditorView): boolean {
 }
 
 /**
- * Click / keyboard toggle for markdown task-list checkboxes.
- * - Click on `[ ]` / `[x]` toggles
- * - Space while the cursor is inside the brackets toggles
- * - Mod-Enter toggles the task on the current line
+ * Opt-in click / keyboard toggle for markdown task-list checkboxes (CHR-148).
+ * Pass via `MarkdownEditor` `extensions={[taskListToggle()]}` (e.g. Notebook).
+ * The blog editor leaves this off so typing `- [ ] ` inserts spaces normally.
+ *
+ * - Click strictly inside `[ ]` / `[x]` toggles
+ * - Space while the cursor is strictly inside the brackets toggles
+ * - Mod-Shift-x toggles the task on the current line (avoids ⌘⏎ / basicSetup clash)
  */
 export function taskListToggle(): Extension {
   return [
-    keymap.of([
-      {
-        key: 'Mod-Enter',
-        run: toggleTaskNearSelection,
-      },
-      {
-        key: ' ',
-        run: (view) =>
-          toggleTaskAtPos(view, view.state.selection.main.head, true),
-      },
-    ]),
+    Prec.high(
+      keymap.of([
+        {
+          key: 'Mod-Shift-x',
+          run: toggleTaskNearSelection,
+        },
+        {
+          key: ' ',
+          run: (view) =>
+            toggleTaskAtPos(view, view.state.selection.main.head, true),
+        },
+      ]),
+    ),
     EditorView.domEventHandlers({
       mousedown(event, view) {
         if (event.button !== 0 || event.metaKey || event.ctrlKey) return false;

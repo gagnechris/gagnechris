@@ -1,12 +1,16 @@
 .admin-shell {
-  /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome. */
+  /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
+     --vv-height accounts for the on-screen keyboard (CHR-148). */
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: var(--vv-height, 100dvh);
   width: 100%;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: calc(
+    env(safe-area-inset-bottom, 0px) + var(--keyboard-inset-bottom, 0px)
+  );
   padding-left: env(safe-area-inset-left, 0px);
   background: linear-gradient(
     165deg,
@@ -196,7 +200,7 @@
 /* Sticky status + actions bar for editors (CHR-108). */
 .admin-action-bar {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 20;
   display: flex;
   flex-wrap: wrap;

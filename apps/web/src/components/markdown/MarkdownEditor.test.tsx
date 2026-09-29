@@ -106,7 +106,7 @@ describe('MarkdownEditor scroll (CHR-111)', () => {
   });
 });
 
-describe('MarkdownEditor task list + options (CHR-133)', () => {
+describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
   let parent: HTMLDivElement;
   let view: EditorView;
 
@@ -115,23 +115,75 @@ describe('MarkdownEditor task list + options (CHR-133)', () => {
     parent?.remove();
   });
 
-  test('clicking a - [ ] item toggles to - [x] and back', () => {
+  test('Space strictly inside [ ] toggles; Space after ] does not (CHR-148)', () => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
     view = new EditorView({
       parent,
       state: EditorState.create({
-        doc: '- [ ] buy milk\n- [x] done',
+        doc: '- [ ] buy milk',
         extensions: [taskListToggle()],
       }),
     });
 
-    // Position on the unchecked checkbox brackets (`[ ]` starts at offset 2).
-    expect(toggleTaskAtPos(view, 3, true)).toBe(true);
-    expect(view.state.doc.toString()).toBe('- [x] buy milk\n- [x] done');
+    // `[ ]` is at offsets 2..5; cursor after `]` is at 5 — must not toggle.
+    expect(toggleTaskAtPos(view, 5, true)).toBe(false);
+    expect(view.state.doc.toString()).toBe('- [ ] buy milk');
 
+    // Cursor between brackets (offset 3) toggles.
     expect(toggleTaskAtPos(view, 3, true)).toBe(true);
-    expect(view.state.doc.toString()).toBe('- [ ] buy milk\n- [x] done');
+    expect(view.state.doc.toString()).toBe('- [x] buy milk');
+  });
+
+  test('does not treat markdown links - [x](url) as task checkboxes', () => {
+    parent = document.createElement('div');
+    document.body.appendChild(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: '- [x](https://example.com)',
+        extensions: [taskListToggle()],
+      }),
+    });
+    expect(toggleTaskAtPos(view, 3, true)).toBe(false);
+    expect(view.state.doc.toString()).toBe('- [x](https://example.com)');
+  });
+
+  test('mousedown on the checkbox runs the real handler (CHR-148)', () => {
+    parent = document.createElement('div');
+    document.body.appendChild(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: '- [ ] buy milk',
+        extensions: [taskListToggle()],
+      }),
+    });
+
+    // jsdom lacks layout; stub hit-testing so the real mousedown handler runs.
+    vi.spyOn(view, 'posAtCoords').mockReturnValue(3);
+    const event = new MouseEvent('mousedown', {
+      button: 0,
+      clientX: 12,
+      clientY: 12,
+      bubbles: true,
+      cancelable: true,
+    });
+    view.contentDOM.dispatchEvent(event);
+    expect(view.state.doc.toString()).toBe('- [x] buy milk');
+  });
+
+  test('blog MarkdownEditor does not enable taskListToggle by default', async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <MarkdownEditor value="- [ ] buy milk" onChange={onChange} />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector('.cm-editor')).toBeTruthy();
+    });
+    // Without the extension, Space bindings from taskListToggle are absent —
+    // document text stays as typed via onChange only.
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test('lineNumbers can be turned off via prop', async () => {

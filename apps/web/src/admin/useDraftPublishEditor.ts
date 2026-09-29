@@ -49,8 +49,19 @@ export function useDraftPublishEditor<TEntity>(
       if (meta && event.key.toLowerCase() === 's') {
         event.preventDefault();
         void saveRef.current();
+        return;
       }
+      // ⌘⏎ = publish. Skip when typing inside CodeMirror so Enter/Mod-Enter
+      // keep their editor meaning (CHR-148).
       if (meta && event.key === 'Enter') {
+        const target = event.target;
+        if (
+          target instanceof Element &&
+          target.closest('.cm-editor, .markdown-editor')
+        ) {
+          return;
+        }
+        if (event.defaultPrevented) return;
         event.preventDefault();
         void publishRef.current();
       }
