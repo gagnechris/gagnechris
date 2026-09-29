@@ -54,7 +54,12 @@ const toHome = (home: Home, draft: DraftFields): Home => ({
 });
 
 const AdminHomePage = () => {
-  const { data: home, error: queryError, isPending } = useHomeQuery();
+  const {
+    data: home,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = useHomeQuery();
   const setHomeCache = useSetHomeCache();
   const {
     publish: publishRequest,
@@ -68,17 +73,18 @@ const AdminHomePage = () => {
   const versionRef = useRef(0);
   const homeRef = useRef<Home | null>(null);
 
-  if (home && !hydrated) {
+  const conflictMessage =
+    'Conflict — another save updated the home page. Reload and try again.';
+
+  if (home && isFetchedAfterMount && !hydrated) {
     setHydrated(true);
     setDraft(fromHome(home));
     setDirty(false);
+    versionRef.current = home.version;
   }
 
   useEffect(() => {
     homeRef.current = home ?? null;
-    if (home) {
-      versionRef.current = home.version;
-    }
   }, [home]);
 
   const performSave = useCallback(
@@ -116,11 +122,22 @@ const AdminHomePage = () => {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated the home page. Reload and try again.',
+    conflictMessage,
   });
 
-  const { save, saveState, saveError, bumpEdit } = autosave;
+  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+
+  useEffect(() => {
+    if (!home || !hydrated) return;
+    if (home.version <= versionRef.current) return;
+    if (dirty) {
+      setSaveError(conflictMessage);
+      return;
+    }
+    setDraft(fromHome(home));
+    versionRef.current = home.version;
+    setSaveError(null);
+  }, [home, hydrated, dirty, setSaveError]);
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -189,7 +206,7 @@ const AdminHomePage = () => {
     );
   }
 
-  if (isPending || !home || !draft) {
+  if (isPending || !isFetchedAfterMount || !home || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading home content…</p>

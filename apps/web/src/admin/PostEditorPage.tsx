@@ -29,7 +29,12 @@ type DraftFields = PostDraftFields;
 export default function PostEditorPage() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  const { data: post, error: queryError, isPending } = usePostQuery(postId);
+  const {
+    data: post,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = usePostQuery(postId);
   const setPostCache = useSetPostCache();
   const deleteMutation = useDeletePostMutation();
   const {
@@ -46,16 +51,17 @@ export default function PostEditorPage() {
   const versionRef = useRef(0);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  if (post && post.id !== hydratedId) {
+  const conflictMessage =
+    'Conflict — another save updated this post. Reload and try again.';
+
+  // Hydrate only from a mount fetch so stale cache cannot seed the draft (CHR-147).
+  if (post && isFetchedAfterMount && post.id !== hydratedId) {
     setHydratedId(post.id);
     setDraft(postDraftFromPost(post));
     setSlugManual(true);
     setDirty(false);
+    versionRef.current = post.version;
   }
-
-  useEffect(() => {
-    if (post) versionRef.current = post.version;
-  }, [post]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -103,10 +109,22 @@ export default function PostEditorPage() {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated this post. Reload and try again.',
+    conflictMessage,
   });
   const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+
+  // Newer server version: adopt when clean; conflict when dirty — never bump version alone.
+  useEffect(() => {
+    if (!post || hydratedId !== post.id) return;
+    if (post.version <= versionRef.current) return;
+    if (dirty) {
+      setSaveError(conflictMessage);
+      return;
+    }
+    setDraft(postDraftFromPost(post));
+    versionRef.current = post.version;
+    setSaveError(null);
+  }, [post, hydratedId, dirty, setSaveError]);
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -214,7 +232,7 @@ export default function PostEditorPage() {
     );
   }
 
-  if (isPending || !post || hydratedId !== post.id) {
+  if (isPending || !isFetchedAfterMount || !post || hydratedId !== post.id) {
     return (
       <section className="admin-panel">
         <p>Loading editor…</p>

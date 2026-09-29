@@ -22,7 +22,12 @@ import '../pages/Resume.css';
 type Resume = components['schemas']['Resume'];
 
 const AdminResumePage = () => {
-  const { data: resume, error: queryError, isPending } = useResumeQuery();
+  const {
+    data: resume,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = useResumeQuery();
   const setResumeCache = useSetResumeCache();
   const {
     publish: publishRequest,
@@ -35,15 +40,15 @@ const AdminResumePage = () => {
   const [dirty, setDirty] = useState(false);
   const versionRef = useRef(0);
 
-  if (resume && !hydrated) {
+  const conflictMessage =
+    'Conflict — another save updated the resume. Reload and try again.';
+
+  if (resume && isFetchedAfterMount && !hydrated) {
     setHydrated(true);
     setDraft(resumeDraftFromResume(resume));
     setDirty(false);
+    versionRef.current = resume.version;
   }
-
-  useEffect(() => {
-    if (resume) versionRef.current = resume.version;
-  }, [resume]);
 
   const performSave = useCallback(
     async (current: ResumeDraftFields, version: number) => {
@@ -86,10 +91,21 @@ const AdminResumePage = () => {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated the resume. Reload and try again.',
+    conflictMessage,
   });
-  const { save, saveState, saveError, bumpEdit } = autosave;
+  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+
+  useEffect(() => {
+    if (!resume || !hydrated) return;
+    if (resume.version <= versionRef.current) return;
+    if (dirty) {
+      setSaveError(conflictMessage);
+      return;
+    }
+    setDraft(resumeDraftFromResume(resume));
+    versionRef.current = resume.version;
+    setSaveError(null);
+  }, [resume, hydrated, dirty, setSaveError]);
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -146,7 +162,7 @@ const AdminResumePage = () => {
     );
   }
 
-  if (isPending || !resume || !draft) {
+  if (isPending || !isFetchedAfterMount || !resume || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading resume…</p>

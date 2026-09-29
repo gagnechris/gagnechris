@@ -16,7 +16,11 @@ import {
   type Post,
   type UpdatePostRequest,
 } from './api.js';
-import { removeCachedPost, setCachedPost } from './cache.js';
+import {
+  preferNewerByVersion,
+  removeCachedPost,
+  setCachedPost,
+} from './cache.js';
 import { queryKeys } from './keys.js';
 
 export const usePostsQuery = () => {
@@ -29,10 +33,19 @@ export const usePostsQuery = () => {
 
 export const usePostQuery = (id: string | undefined) => {
   const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.posts.detail(id ?? ''),
-    queryFn: () => fetchPost(getClient(), id!),
+    queryFn: async () => {
+      const fetched = await fetchPost(getClient(), id!);
+      const cached = queryClient.getQueryData<Post>(
+        queryKeys.posts.detail(id!),
+      );
+      return preferNewerByVersion(cached, fetched);
+    },
     enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };
 

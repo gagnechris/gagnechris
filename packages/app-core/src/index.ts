@@ -46,6 +46,7 @@ export {
   type UpdateResumeRequest,
 } from './query/api.js';
 export {
+  preferNewerByVersion,
   removeCachedPost,
   setCachedHome,
   setCachedPost,
