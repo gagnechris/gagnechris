@@ -184,14 +184,9 @@ export abstract class PublishableKeyedRepository<
     const draft = this.config.toEntity(draftItem);
     if (this.config.isDeleted?.(draft)) return undefined;
 
-    let published = publishedItem
+    const published = publishedItem
       ? this.config.toEntity(publishedItem, false)
       : undefined;
-
-    if (draft.status === 'published' && !published) {
-      await this.putPublishedIfAbsent(draft);
-      published = { ...draft, hasUnpublishedChanges: false };
-    }
 
     return { draft, published };
   }
@@ -266,21 +261,6 @@ export abstract class PublishableKeyedRepository<
     const next = nextDiscardState(existing, published);
     await this.persistMutation(existing, next, {});
     return withUnpublishedFlag(next, published, this.config.contentEqual);
-  }
-
-  protected async putPublishedIfAbsent(draft: T): Promise<void> {
-    try {
-      await this.doc.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: this.config.toPublishedItem(draft),
-          ConditionExpression: 'attribute_not_exists(pk)',
-        }),
-      );
-    } catch (error) {
-      if (isOptimisticLockConflict(error)) return;
-      throw error;
-    }
   }
 }
 
@@ -359,14 +339,9 @@ export class PublishableSingletonRepository<
     if (!draftItem) return undefined;
 
     const draft = this.config.toEntity(draftItem);
-    let published = publishedItem
+    const published = publishedItem
       ? this.config.toEntity(publishedItem, false)
       : undefined;
-
-    if (draft.status === 'published' && !published) {
-      await this.putPublishedIfAbsent(draft);
-      published = { ...draft, hasUnpublishedChanges: false };
-    }
 
     return { draft, published };
   }
@@ -502,21 +477,6 @@ export class PublishableSingletonRepository<
     const next = nextDiscardState(existing, published);
     await this.writeDraft(existing.version, next);
     return withUnpublishedFlag(next, published, this.config.contentEqual);
-  }
-
-  private async putPublishedIfAbsent(draft: T): Promise<void> {
-    try {
-      await this.doc.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: this.config.toPublishedItem(draft),
-          ConditionExpression: 'attribute_not_exists(pk)',
-        }),
-      );
-    } catch (error) {
-      if (isOptimisticLockConflict(error)) return;
-      throw error;
-    }
   }
 
   private async writeDraft(expectedVersion: number, next: T): Promise<void> {

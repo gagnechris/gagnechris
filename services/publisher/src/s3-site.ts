@@ -1,13 +1,11 @@
 import {
   BatchGetCommand,
   GetCommand,
-  PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
   SK_META,
-  SK_PUBLISHED,
   getDocClient,
   keys,
   metaToHome,
@@ -53,27 +51,6 @@ export function getSiteStorage(): SiteStorage {
   return siteStorageMode() === 'filesystem'
     ? createFilesystemSiteStorage()
     : createS3SiteStorage();
-}
-
-/** Best-effort write of a PUBLISHED snapshot; never fail the rebuild on Put. */
-async function putPublishedSnapshot(
-  tableName: string,
-  item: Record<string, unknown>,
-): Promise<void> {
-  try {
-    await ddb.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: item,
-        ConditionExpression: 'attribute_not_exists(pk)',
-      }),
-    );
-  } catch (err) {
-    const name = (err as { name?: string }).name;
-    // ConditionalCheckFailedException: already migrated. AccessDenied: IAM lag.
-    if (name === 'ConditionalCheckFailedException') return;
-    console.warn('PUBLISHED snapshot write skipped', { name, pk: item.pk });
-  }
 }
 
 export async function listPublishedPosts(tableName: string): Promise<Post[]> {
@@ -124,30 +101,9 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
 
   for (const postId of uniqueIds) {
     const publishedItem = publishedById.get(postId);
-    if (publishedItem) {
-      posts.push(metaToPost(publishedItem));
-      continue;
-    }
-
-    // Rollout safety: copy published META → PUBLISHED when snapshot is missing.
-    const legacy = await ddb.send(
-      new GetCommand({
-        TableName: tableName,
-        Key: keys.post.meta(postId),
-      }),
-    );
-    if (!legacy.Item) continue;
-    const legacyItem = parsePostMetaItem(legacy.Item);
-    if (legacyItem.status !== 'published') {
-      continue;
-    }
-    const { gsi1pk: _g1, gsi1sk: _g2, ...rest } = legacyItem;
-    await putPublishedSnapshot(tableName, {
-      ...rest,
-      sk: SK_PUBLISHED,
-      status: 'published',
-    });
-    posts.push(metaToPost(legacyItem));
+    // Skip META-only rows: never synthesize PUBLISHED from a stale META read (CHR-146).
+    if (!publishedItem) continue;
+    posts.push(metaToPost(publishedItem));
   }
 
   return posts.sort((a, b) => {
@@ -166,32 +122,10 @@ export async function getPublishedResume(
       Key: keys.singleton.resume.published(),
     }),
   );
-  if (result.Item) {
-    const item = parseResumeMetaItem(result.Item);
-    if (item.status === 'published') {
-      return metaToResume(item);
-    }
-  }
-
-  // Rollout safety: copy legacy META → PUBLISHED without changing live content.
-  const legacy = await ddb.send(
-    new GetCommand({
-      TableName: tableName,
-      Key: keys.singleton.resume.meta(),
-    }),
-  );
-  if (!legacy.Item) return undefined;
-  const legacyItem = parseResumeMetaItem(legacy.Item);
-  if (legacyItem.status !== 'published') {
-    return undefined;
-  }
-  const resume = metaToResume(legacyItem);
-  await putPublishedSnapshot(tableName, {
-    ...legacyItem,
-    sk: SK_PUBLISHED,
-    status: 'published',
-  });
-  return resume;
+  if (!result.Item) return undefined;
+  const item = parseResumeMetaItem(result.Item);
+  if (item.status !== 'published') return undefined;
+  return metaToResume(item);
 }
 
 export async function getPublishedHome(
@@ -203,32 +137,10 @@ export async function getPublishedHome(
       Key: keys.singleton.home.published(),
     }),
   );
-  if (result.Item) {
-    const item = parseHomeMetaItem(result.Item);
-    if (item.status === 'published') {
-      return metaToHome(item);
-    }
-  }
-
-  // Rollout safety: copy legacy META → PUBLISHED without changing live content.
-  const legacy = await ddb.send(
-    new GetCommand({
-      TableName: tableName,
-      Key: keys.singleton.home.meta(),
-    }),
-  );
-  if (!legacy.Item) return undefined;
-  const legacyItem = parseHomeMetaItem(legacy.Item);
-  if (legacyItem.status !== 'published') {
-    return undefined;
-  }
-  const home = metaToHome(legacyItem);
-  await putPublishedSnapshot(tableName, {
-    ...legacyItem,
-    sk: SK_PUBLISHED,
-    status: 'published',
-  });
-  return home;
+  if (!result.Item) return undefined;
+  const item = parseHomeMetaItem(result.Item);
+  if (item.status !== 'published') return undefined;
+  return metaToHome(item);
 }
 
 export type { RebuildSiteSources } from './publish-targets/types.js';

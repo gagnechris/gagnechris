@@ -203,12 +203,7 @@ export class PostsRepository extends PublishableKeyedRepository<
         items.push(withUnpublishedFlag(draft, undefined, postContentEqual));
         continue;
       }
-      let published = publishedById.get(draft.id);
-      if (!published) {
-        // Migration path: keyed base putPublishedIfAbsent via loadDraftAndPublished
-        const loaded = await this.loadDraftAndPublished(draft.id);
-        published = loaded?.published;
-      }
+      const published = publishedById.get(draft.id);
       items.push(withUnpublishedFlag(draft, published, postContentEqual));
     }
     return items;
