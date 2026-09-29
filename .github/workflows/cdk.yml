@@ -120,16 +120,46 @@ jobs:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
+      # Path filters compare against the last SHA that actually finished a
+      # deploy (SSM /gagnechris/prod/deployed-sha), not HEAD~1. Otherwise an
+      # infra commit whose CI was cancelled is invisible to a later docs-only
+      # push and never deploys (CHR-149).
+      - name: Configure AWS credentials (deploy role)
+        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Resolve path-filter base
         if: github.event_name == 'workflow_run'
         id: path_base
         run: |
-          # After merge, HEAD is origin/main, so comparing to main is empty.
-          # Diff the validated commit against its parent (squash/merge tip).
-          echo "sha=$(git rev-parse HEAD~1)" >> "$GITHUB_OUTPUT"
+          set +e
+          DEPLOYED=$(aws ssm get-parameter \
+            --name /gagnechris/prod/deployed-sha \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null)
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] || [ -z "$DEPLOYED" ] || [ "$DEPLOYED" = "None" ]; then
+            echo "No deployed-sha in SSM; deploying everything."
+            echo "deploy_all=true" >> "$GITHUB_OUTPUT"
+            echo "sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git cat-file -e "${DEPLOYED}^{commit}" 2>/dev/null; then
+            echo "deployed-sha ${DEPLOYED} not in this clone; deploying everything."
+            echo "deploy_all=true" >> "$GITHUB_OUTPUT"
+            echo "sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Path-filter base = last deployed SHA ${DEPLOYED}"
+          echo "deploy_all=false" >> "$GITHUB_OUTPUT"
+          echo "sha=${DEPLOYED}" >> "$GITHUB_OUTPUT"
 
       - name: Path filter
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' && steps.path_base.outputs.deploy_all != 'true'
         uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -142,13 +172,20 @@ jobs:
               - 'packages/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
               - '.github/workflows/cdk.yml'
               - '.github/actions/setup/**'
             web:
               - 'apps/web/**'
+              - 'packages/api-client/**'
+              - 'packages/app-core/**'
               - 'packages/shared/**'
+              - 'packages/tokens/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
               - 'scripts/deploy-web.sh'
               - '.github/workflows/cdk.yml'
               - '.github/actions/setup/**'
@@ -156,23 +193,15 @@ jobs:
       - name: Setup
         if: >
           github.event_name == 'workflow_dispatch' ||
+          steps.path_base.outputs.deploy_all == 'true' ||
           steps.filter.outputs.cdk == 'true' ||
           steps.filter.outputs.web == 'true'
         uses: ./.github/actions/setup
 
-      - name: Configure AWS credentials (deploy role)
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          steps.filter.outputs.cdk == 'true' ||
-          steps.filter.outputs.web == 'true'
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Require ALERTS_EMAIL
         if: >
           github.event_name == 'workflow_dispatch' ||
+          steps.path_base.outputs.deploy_all == 'true' ||
           steps.filter.outputs.cdk == 'true'
         run: |
           if [ -z "${{ vars.ALERTS_EMAIL }}" ]; then
@@ -183,6 +212,7 @@ jobs:
       - name: CDK deploy
         if: >
           github.event_name == 'workflow_dispatch' ||
+          steps.path_base.outputs.deploy_all == 'true' ||
           steps.filter.outputs.cdk == 'true'
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
@@ -191,11 +221,29 @@ jobs:
       - name: Build, sync to S3, invalidate CloudFront
         if: >
           github.event_name == 'workflow_dispatch' ||
+          steps.path_base.outputs.deploy_all == 'true' ||
           steps.filter.outputs.web == 'true' ||
           steps.filter.outputs.cdk == 'true'
         run: bash scripts/deploy-web.sh
         env:
           ENV_NAME: prod
+
+      - name: Record deployed SHA
+        if: >
+          success() && (
+            github.event_name == 'workflow_dispatch' ||
+            steps.path_base.outputs.deploy_all == 'true' ||
+            steps.filter.outputs.cdk == 'true' ||
+            steps.filter.outputs.web == 'true'
+          )
+        run: |
+          SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+          aws ssm put-parameter \
+            --name /gagnechris/prod/deployed-sha \
+            --type String \
+            --value "$SHA" \
+            --overwrite
+          echo "Recorded deployed-sha=${SHA}"
 
   drift:
     name: CDK drift

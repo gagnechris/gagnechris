@@ -1,5 +1,5 @@
 import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
-import type { IHostedZone } from 'aws-cdk-lib/aws-route53';
+import { HostedZone, type IHostedZone } from 'aws-cdk-lib/aws-route53';
 import { EmailIdentity, Identity } from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
@@ -7,7 +7,12 @@ import { APEX_DOMAIN } from '../config/constants.js';
 
 export interface EmailStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  readonly hostedZone: IHostedZone;
+  /**
+   * Optional zone override for unit tests. Production uses
+   * `HostedZone.fromLookup` so Email does not depend on Dns (CHR-149:
+   * avoids Site → Api → Email → Dns → Site cycle).
+   */
+  readonly hostedZone?: IHostedZone;
 }
 
 /**
@@ -24,8 +29,14 @@ export class EmailStack extends Stack {
   constructor(scope: Construct, id: string, props: EmailStackProps) {
     super(scope, id, props);
 
-    const { config, hostedZone } = props;
+    const { config } = props;
     this.fromEmail = `noreply@${APEX_DOMAIN}`;
+
+    const hostedZone =
+      props.hostedZone ??
+      HostedZone.fromLookup(this, 'HostedZone', {
+        domainName: APEX_DOMAIN,
+      });
 
     this.emailIdentity = new EmailIdentity(this, 'DomainIdentity', {
       identity: Identity.publicHostedZone(hostedZone),

@@ -51,6 +51,57 @@ After deploying Guardrails:
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
+### Stack dependency order (CHR-149)
+
+Steady-state deploy order (CDK `addDependency` + props):
+
+1. Certificate, Guardrails, Data, Email, Auth
+2. **Api** (reads SSM `site-bucket-name`; writes `http-api-id`)
+3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`)
+4. Dns (needs Site's distribution for Route 53 aliases)
+5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
+6. CiDeployRole
+
+Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM so Site exports can drop after Publisher no longer imports them.
+
+### First-time / disaster-recovery bootstrap (two-pass)
+
+Site and Api each read an SSM parameter the other writes:
+
+| Stack     | Needs SSM (must exist at deploy)    | Writes SSM                                                                |
+| --------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| Api       | `/gagnechris/prod/site-bucket-name` | `http-api-id`, `http-api-url`                                             |
+| Site      | `/gagnechris/prod/http-api-id`      | `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, … |
+| Publisher | Site's three params above           | `publisher-function-name`, `publisher-function-arn`                       |
+
+On a greenfield account those parameters do not exist yet. Practical sequence:
+
+```bash
+export ALERTS_EMAIL='you@example.com'
+export AWS_PROFILE=gagnechris-admin
+
+# 1. Stacks with no Site↔Api SSM coupling
+npm run cdk -- deploy Certificate-prod Guardrails-prod Data-prod Email-prod Auth-prod --require-approval never
+
+# 2. Seed placeholders so Api (and later Site) can resolve SSM on first create
+aws ssm put-parameter --name /gagnechris/prod/site-bucket-name --type String --value placeholder-site-bucket --overwrite
+aws ssm put-parameter --name /gagnechris/prod/http-api-id --type String --value placeholder --overwrite
+
+# 3. Deploy Api (IAM media policy uses the placeholder bucket name — fine until pass 2)
+npm run cdk -- deploy Api-prod --require-approval never
+
+# 4. Deploy Site (reads real http-api-id from step 3; writes real site-bucket-name)
+npm run cdk -- deploy Site-prod Dns-prod --require-approval never
+
+# 5. Redeploy Api so media PutObject targets the real bucket name
+npm run cdk -- deploy Api-prod --require-approval never
+
+# 6. Publisher (SSM params from Site now exist) + CI roles
+npm run cdk -- deploy Publisher-prod CiDeployRole-prod --require-approval never
+```
+
+After that, a normal `cdk deploy --all` (or CI) is enough: Site follows Api, Publisher follows Site. Do not hand-seed placeholders again unless you are rebuilding from scratch.
+
 ### Adopting existing resources (`cdk import`)
 
 If CloudFormation reports a resource already exists, **do not delete it by hand**. Prefer:
@@ -90,10 +141,10 @@ bash scripts/apply-branch-protection.sh
 ```
 
 4. Workflows:
-   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs). Shared setup via `.github/actions/setup` (Node from `.nvmrc`).
+   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs; includes `apps/web/**` and `packages/**`). Shared setup via `.github/actions/setup` (Node from `.nvmrc`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit (CHR-149).
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR:** `cdk synth` + `cdk diff` (diff role); sticky PR comment
-     - **main deploy:** runs only after CI succeeds (`workflow_run`), with path filters so docs-only merges skip `cdk deploy` / web sync (deploy role, `prod` environment; concurrency does not cancel in-flight deploys)
+     - **main deploy:** runs only after CI succeeds (`workflow_run`). Path filters use SSM `/gagnechris/prod/deployed-sha` (last SHA that finished CDK and/or web deploy) as the base — not `HEAD~1` — so a cancelled CI followed by a docs-only push still deploys the skipped infra/web changes. Missing/unknown base → deploy everything. After a successful deploy, CI writes `deployed-sha`. Docs-only merges that change nothing since that SHA skip deploy. Deploy role + `prod` environment; concurrency does not cancel in-flight deploys.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; SNS alert on failure uses SSM `/gagnechris/prod/alerts-topic-arn`
 
 Prod only — there is no staging environment.
@@ -139,6 +190,8 @@ AWS_PROFILE=gagnechris-admin npm run deploy:web
 ## HTTP API (CHR-28 / CHR-30)
 
 `Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`; CHR-135). Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts CRUD uses the shared `Data-prod` table (`DATA_TABLE_NAME`); Notebook will share the same table with different key prefixes (`docs/data-model.md`).
+
+Site depends on Api (CHR-149) so `/api` origin updates when the HttpApi is replaced. First-time bootstrap (circular SSM) is documented under **First-time / disaster-recovery bootstrap** above.
 
 SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
@@ -204,9 +257,11 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
 ```
 
-## Publisher (CHR-34 / CHR-134)
+## Publisher (CHR-34 / CHR-134 / CHR-149)
 
 `Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
+
+Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist.
 
 After stream retries (`retryAttempts: 3`), discarded records go to SQS `gagnechris-prod-publisher-stream-failures` (on-failure destination) with a depth alarm on the Guardrails alerts topic.
 

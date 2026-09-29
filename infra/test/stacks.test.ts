@@ -97,17 +97,6 @@ describe('stack Template assertions (CHR-136)', () => {
       env: { account: config.account, region: config.region },
     });
     const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
-    const certificate = Certificate.fromCertificateArn(
-      deps,
-      'Cert',
-      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
-    );
-    const site = new SiteStack(app, 'SiteForPubAssert', {
-      env: { account: config.account, region: config.region },
-      config,
-      certificate,
-      alertsTopic,
-    });
     const data = new DataStack(app, 'DataForPubAssert', {
       env: { account: config.account, region: config.region },
       config,
@@ -116,9 +105,6 @@ describe('stack Template assertions (CHR-136)', () => {
       env: { account: config.account, region: config.region },
       config,
       dataTable: data.table,
-      siteBucket: site.siteBucket,
-      distribution: site.distribution,
-      blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
       alertsTopic,
     });
     applyStandardTags(publisher, config);

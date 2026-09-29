@@ -49,6 +49,8 @@ export const SSM_PARAM_KEYS = {
   publisherFunctionName: 'publisher-function-name',
   publisherFunctionArn: 'publisher-function-arn',
   alertsTopicArn: 'alerts-topic-arn',
+  /** Last git SHA that finished CDK and/or web deploy (written by CI, not a stack). */
+  deployedSha: 'deployed-sha',
 } as const;
 
 export type SsmParamKey = keyof typeof SSM_PARAM_KEYS;
