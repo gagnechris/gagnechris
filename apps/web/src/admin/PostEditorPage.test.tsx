@@ -2,8 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, createTestQueryClient } from '../test-utils';
 import PostEditorPage from './PostEditorPage';
+import { queryKeys } from './query/keys';
 
 const get = vi.fn();
 const put = vi.fn();
@@ -54,13 +55,13 @@ const basePost = {
   hasUnpublishedChanges: false,
 };
 
-function renderEditor() {
+function renderEditor(queryClient = createTestQueryClient()) {
   const router = createMemoryRouter(
     [{ path: '/admin/posts/:postId', element: <PostEditorPage /> }],
     { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
   );
   return render(
-    <QueryClientTestProvider>
+    <QueryClientTestProvider queryClient={queryClient}>
       <RouterProvider router={router} />
     </QueryClientTestProvider>,
   );
@@ -185,5 +186,81 @@ describe('PostEditorPage publish (CHR-113)', () => {
     });
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
+  });
+});
+
+describe('PostEditorPage version / refetch (CHR-147)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('waits for mount fetch before hydrating so stale cache cannot seed the draft', async () => {
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.posts.detail(basePost.id), {
+      ...basePost,
+      title: 'Stale cache title',
+      bodyMarkdown: 'stale body',
+      version: 1,
+    });
+
+    get.mockResolvedValue({
+      data: {
+        ...basePost,
+        title: 'Fresh from server',
+        bodyMarkdown: 'fresh body',
+        version: 2,
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+
+    renderEditor(queryClient);
+    expect(screen.getByText('Loading editor…')).toBeInTheDocument();
+    await screen.findByDisplayValue('Fresh from server');
+    expect(screen.getByLabelText('Markdown')).toHaveValue('fresh body');
+  });
+
+  test('newer refetch while dirty shows conflict and does not PUT with new version + old content', async () => {
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+
+    get.mockResolvedValue({
+      data: { ...basePost },
+      error: undefined,
+      response: { status: 200 },
+    });
+    put.mockResolvedValue({
+      data: { ...basePost, version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+
+    renderEditor(queryClient);
+    await screen.findByDisplayValue('Hello');
+
+    const markdown = screen.getByLabelText('Markdown');
+    await user.type(markdown, ' local edit');
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+
+    put.mockClear();
+    queryClient.setQueryData(queryKeys.posts.detail(basePost.id), {
+      ...basePost,
+      version: 5,
+      bodyMarkdown: 'phone edit',
+      title: 'Phone title',
+    });
+
+    await screen.findByRole('alert');
+    expect(
+      screen.getByText(
+        'Conflict — another save updated this post. Reload and try again.',
+      ),
+    ).toBeInTheDocument();
+
+    // Still showing local dirty draft, not adopting phone content
+    expect(screen.getByLabelText('Markdown')).toHaveValue(
+      'line one local edit',
+    );
+    expect(put).not.toHaveBeenCalled();
   });
 });

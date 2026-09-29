@@ -22,7 +22,12 @@ import '../pages/Resume.css';
 type Resume = components['schemas']['Resume'];
 
 const AdminResumePage = () => {
-  const { data: resume, error: queryError, isPending } = useResumeQuery();
+  const {
+    data: resume,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = useResumeQuery();
   const setResumeCache = useSetResumeCache();
   const {
     publish: publishRequest,
@@ -33,17 +38,27 @@ const AdminResumePage = () => {
   const [draft, setDraft] = useState<ResumeDraftFields | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
 
-  if (resume && !hydrated) {
+  const conflictMessage =
+    'Conflict — another save updated the resume. Reload and try again.';
+
+  if (resume && isFetchedAfterMount && !hydrated) {
     setHydrated(true);
     setDraft(resumeDraftFromResume(resume));
     setDirty(false);
+    setBoundVersion(resume.version);
+  }
+
+  if (resume && hydrated && !dirty && resume.version > boundVersion) {
+    setDraft(resumeDraftFromResume(resume));
+    setBoundVersion(resume.version);
   }
 
   useEffect(() => {
-    if (resume) versionRef.current = resume.version;
-  }, [resume]);
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: ResumeDraftFields, version: number) => {
@@ -67,13 +82,17 @@ const AdminResumePage = () => {
 
   const getVersion = useCallback((entity: Resume) => entity.version, []);
   const onSaved = useCallback(
-    (entity: Resume) => setResumeCache(entity),
+    (entity: Resume) => {
+      setResumeCache(entity);
+      setBoundVersion(entity.version);
+    },
     [setResumeCache],
   );
   const onReplaceDraft = useCallback(
     (entity: Resume) => {
       setResumeCache(entity);
       setDraft(resumeDraftFromResume(entity));
+      setBoundVersion(entity.version);
     },
     [setResumeCache],
   );
@@ -86,10 +105,13 @@ const AdminResumePage = () => {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated the resume. Reload and try again.',
+    conflictMessage,
   });
   const { save, saveState, saveError, bumpEdit } = autosave;
+
+  const remoteConflict =
+    Boolean(resume) && hydrated && dirty && resume!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -146,7 +168,7 @@ const AdminResumePage = () => {
     );
   }
 
-  if (isPending || !resume || !draft) {
+  if (isPending || !isFetchedAfterMount || !resume || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading resume…</p>
@@ -177,9 +199,9 @@ const AdminResumePage = () => {
         onSave={() => void save()}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 

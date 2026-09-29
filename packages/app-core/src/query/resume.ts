@@ -12,14 +12,21 @@ import {
   type Resume,
   type UpdateResumeRequest,
 } from './api.js';
-import { setCachedResume } from './cache.js';
+import { preferNewerByVersion, setCachedResume } from './cache.js';
 import { queryKeys } from './keys.js';
 
 export const useResumeQuery = () => {
   const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.resume(),
-    queryFn: () => fetchResume(getClient()),
+    queryFn: async () => {
+      const fetched = await fetchResume(getClient());
+      const cached = queryClient.getQueryData<Resume>(queryKeys.resume());
+      return preferNewerByVersion(cached, fetched);
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };
 

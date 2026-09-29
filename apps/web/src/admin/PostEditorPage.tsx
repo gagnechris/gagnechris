@@ -29,7 +29,12 @@ type DraftFields = PostDraftFields;
 export default function PostEditorPage() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
-  const { data: post, error: queryError, isPending } = usePostQuery(postId);
+  const {
+    data: post,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = usePostQuery(postId);
   const setPostCache = useSetPostCache();
   const deleteMutation = useDeletePostMutation();
   const {
@@ -43,19 +48,32 @@ export default function PostEditorPage() {
   const [slugManual, setSlugManual] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
+  /** Last version adopted for edits (hydrate / clean refetch / save). Not read from query alone. */
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  if (post && post.id !== hydratedId) {
+  const conflictMessage =
+    'Conflict — another save updated this post. Reload and try again.';
+
+  // Hydrate only from a mount fetch so stale cache cannot seed the draft (CHR-147).
+  if (post && isFetchedAfterMount && post.id !== hydratedId) {
     setHydratedId(post.id);
     setDraft(postDraftFromPost(post));
     setSlugManual(true);
     setDirty(false);
+    setBoundVersion(post.version);
+  }
+
+  // Clean editor + newer server: adopt content (render-time adjust).
+  if (post && hydratedId === post.id && !dirty && post.version > boundVersion) {
+    setDraft(postDraftFromPost(post));
+    setBoundVersion(post.version);
   }
 
   useEffect(() => {
-    if (post) versionRef.current = post.version;
-  }, [post]);
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -83,13 +101,17 @@ export default function PostEditorPage() {
 
   const getVersion = useCallback((entity: Post) => entity.version, []);
   const onSaved = useCallback(
-    (entity: Post) => setPostCache(entity),
+    (entity: Post) => {
+      setPostCache(entity);
+      setBoundVersion(entity.version);
+    },
     [setPostCache],
   );
   const onReplaceDraft = useCallback(
     (entity: Post) => {
       setPostCache(entity);
       setDraft(postDraftFromPost(entity));
+      setBoundVersion(entity.version);
     },
     [setPostCache],
   );
@@ -103,10 +125,16 @@ export default function PostEditorPage() {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated this post. Reload and try again.',
+    conflictMessage,
   });
   const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+
+  const remoteConflict =
+    Boolean(post) &&
+    hydratedId === post!.id &&
+    dirty &&
+    post!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -214,7 +242,7 @@ export default function PostEditorPage() {
     );
   }
 
-  if (isPending || !post || hydratedId !== post.id) {
+  if (isPending || !isFetchedAfterMount || !post || hydratedId !== post.id) {
     return (
       <section className="admin-panel">
         <p>Loading editor…</p>
@@ -257,9 +285,9 @@ export default function PostEditorPage() {
         onChange={(value) => setField('title', value)}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 

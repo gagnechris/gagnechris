@@ -12,14 +12,21 @@ import {
   type Home,
   type UpdateHomeRequest,
 } from './api.js';
-import { setCachedHome } from './cache.js';
+import { preferNewerByVersion, setCachedHome } from './cache.js';
 import { queryKeys } from './keys.js';
 
 export const useHomeQuery = () => {
   const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.home(),
-    queryFn: () => fetchHome(getClient()),
+    queryFn: async () => {
+      const fetched = await fetchHome(getClient());
+      const cached = queryClient.getQueryData<Home>(queryKeys.home());
+      return preferNewerByVersion(cached, fetched);
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };
 

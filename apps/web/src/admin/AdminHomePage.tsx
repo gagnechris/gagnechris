@@ -54,7 +54,12 @@ const toHome = (home: Home, draft: DraftFields): Home => ({
 });
 
 const AdminHomePage = () => {
-  const { data: home, error: queryError, isPending } = useHomeQuery();
+  const {
+    data: home,
+    error: queryError,
+    isPending,
+    isFetchedAfterMount,
+  } = useHomeQuery();
   const setHomeCache = useSetHomeCache();
   const {
     publish: publishRequest,
@@ -65,21 +70,32 @@ const AdminHomePage = () => {
   const [draft, setDraft] = useState<DraftFields | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
   const homeRef = useRef<Home | null>(null);
 
-  if (home && !hydrated) {
+  const conflictMessage =
+    'Conflict — another save updated the home page. Reload and try again.';
+
+  if (home && isFetchedAfterMount && !hydrated) {
     setHydrated(true);
     setDraft(fromHome(home));
     setDirty(false);
+    setBoundVersion(home.version);
+  }
+
+  if (home && hydrated && !dirty && home.version > boundVersion) {
+    setDraft(fromHome(home));
+    setBoundVersion(home.version);
   }
 
   useEffect(() => {
     homeRef.current = home ?? null;
-    if (home) {
-      versionRef.current = home.version;
-    }
   }, [home]);
+
+  useEffect(() => {
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -102,6 +118,7 @@ const AdminHomePage = () => {
   const onSaved = useCallback(
     (entity: Home) => {
       setHomeCache(entity);
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -116,11 +133,14 @@ const AdminHomePage = () => {
     getVersion,
     performSave,
     onSaved,
-    conflictMessage:
-      'Conflict — another save updated the home page. Reload and try again.',
+    conflictMessage,
   });
 
   const { save, saveState, saveError, bumpEdit } = autosave;
+
+  const remoteConflict =
+    Boolean(home) && hydrated && dirty && home!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -138,6 +158,7 @@ const AdminHomePage = () => {
   const onEntityMeta = useCallback(
     (entity: Home) => {
       setHomeCache(entity);
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -146,6 +167,7 @@ const AdminHomePage = () => {
     (entity: Home) => {
       setHomeCache(entity);
       setDraft(fromHome(entity));
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -189,7 +211,7 @@ const AdminHomePage = () => {
     );
   }
 
-  if (isPending || !home || !draft) {
+  if (isPending || !isFetchedAfterMount || !home || !draft) {
     return (
       <section className="admin-panel">
         <p>Loading home content…</p>
@@ -215,9 +237,9 @@ const AdminHomePage = () => {
         onSave={() => void save()}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 
