@@ -282,9 +282,9 @@ describe('HomeRepository', () => {
     expect(home.version).toBe(6);
   });
 
-  it('migrates legacy published META to PUBLISHED without changing content', async () => {
+  it('does not write PUBLISHED when META is published but snapshot is missing (CHR-146)', async () => {
     const puts: unknown[] = [];
-    const { doc } = mockDoc(
+    const { doc, send } = mockDoc(
       mockPair(buildHomeMetaItem(stored), undefined, async (command) => {
         if (command.constructor.name === 'PutCommand') {
           puts.push(command.input.Item);
@@ -293,9 +293,13 @@ describe('HomeRepository', () => {
       }),
     );
     const home = await new HomeRepository(doc, 'gagnechris-test').get();
+    // Stale META after unpublish must not re-create the live snapshot.
+    expect(home?.status).toBe('published');
     expect(home?.hasUnpublishedChanges).toBe(false);
-    expect(puts).toHaveLength(1);
-    expect((puts[0] as { sk: string }).sk).toBe('PUBLISHED');
+    expect(puts).toHaveLength(0);
+    expect(
+      send.mock.calls.some((c) => c[0]!.constructor.name === 'PutCommand'),
+    ).toBe(false);
   });
 
   it('loads META and PUBLISHED in one BatchGet (no redundant GetItem)', async () => {
