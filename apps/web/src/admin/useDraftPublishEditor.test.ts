@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { DraftPublishEditorOptions } from '@gagnechris/app-core';
 import { useDraftPublishEditor } from './useDraftPublishEditor';
 
 vi.mock('react-router-dom', async () => {
@@ -13,30 +14,57 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const publishMock = vi.fn();
+
 vi.mock('@gagnechris/app-core', async () => {
   const actual = await vi.importActual<typeof import('@gagnechris/app-core')>(
     '@gagnechris/app-core',
   );
   return {
     ...actual,
-    useDraftPublishEditor: (options: {
-      confirm: (message: string) => boolean;
-    }) => {
-      void options;
-      return {
-        busy: false,
-        setBusy: vi.fn(),
-        saveRef: { current: vi.fn() },
-        publishRef: { current: publishMock },
-        runPublish: vi.fn(),
-        runUnpublish: vi.fn(),
-        runDiscard: vi.fn(),
-      };
-    },
+    useDraftPublishEditor: () => ({
+      busy: false,
+      setBusy: vi.fn(),
+      saveRef: { current: vi.fn() },
+      publishRef: { current: publishMock },
+      runPublish: vi.fn(),
+      runUnpublish: vi.fn(),
+      runDiscard: vi.fn(),
+    }),
   };
 });
 
-const publishMock = vi.fn();
+const baseOptions = {
+  autosave: {
+    save: vi.fn(async (): Promise<'clean'> => 'clean'),
+    setSaveState: vi.fn(),
+    setSaveError: vi.fn(),
+    getEditGen: () => 0,
+    getLastSavedGen: () => 0,
+    markClean: vi.fn(),
+    setAutosaveHeld: vi.fn(),
+  },
+  dirty: false,
+  setDirty: vi.fn(),
+  versionRef: { current: 1 },
+  getVersion: () => 1,
+  onEntityMeta: vi.fn(),
+  onReplaceDraft: vi.fn(),
+  publish: vi.fn(async () => ({
+    data: {},
+    response: { status: 200 },
+  })),
+  unpublish: vi.fn(async () => ({
+    data: {},
+    response: { status: 200 },
+  })),
+  discard: vi.fn(async () => ({
+    data: {},
+    response: { status: 200 },
+  })),
+  unpublishConfirm: 'unpublish?',
+  discardConfirm: 'discard?',
+} satisfies Omit<DraftPublishEditorOptions<object>, 'confirm'>;
 
 describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
   beforeEach(() => {
@@ -48,20 +76,7 @@ describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
   });
 
   test('⌘⏎ outside the editor publishes', () => {
-    renderHook(() =>
-      useDraftPublishEditor({
-        autosave: {} as never,
-        dirty: false,
-        setDirty: vi.fn(),
-        versionRef: { current: 1 },
-        getVersion: () => 1,
-        onEntityMeta: vi.fn(),
-        onReplaceDraft: vi.fn(),
-        publish: vi.fn(),
-        unpublish: vi.fn(),
-        discard: vi.fn(),
-      }),
-    );
+    renderHook(() => useDraftPublishEditor(baseOptions));
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {
@@ -80,20 +95,7 @@ describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
     cm.appendChild(inner);
     document.body.appendChild(cm);
 
-    renderHook(() =>
-      useDraftPublishEditor({
-        autosave: {} as never,
-        dirty: false,
-        setDirty: vi.fn(),
-        versionRef: { current: 1 },
-        getVersion: () => 1,
-        onEntityMeta: vi.fn(),
-        onReplaceDraft: vi.fn(),
-        publish: vi.fn(),
-        unpublish: vi.fn(),
-        discard: vi.fn(),
-      }),
-    );
+    renderHook(() => useDraftPublishEditor(baseOptions));
 
     inner.dispatchEvent(
       new KeyboardEvent('keydown', {
@@ -102,7 +104,6 @@ describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
         bubbles: true,
       }),
     );
-    // Window listener sees the bubbled event with target inside .cm-editor.
     expect(publishMock).not.toHaveBeenCalled();
     cm.remove();
   });
