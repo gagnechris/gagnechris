@@ -70,6 +70,7 @@ const AdminHomePage = () => {
   const [draft, setDraft] = useState<DraftFields | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
   const homeRef = useRef<Home | null>(null);
 
@@ -80,12 +81,21 @@ const AdminHomePage = () => {
     setHydrated(true);
     setDraft(fromHome(home));
     setDirty(false);
-    versionRef.current = home.version;
+    setBoundVersion(home.version);
+  }
+
+  if (home && hydrated && !dirty && home.version > boundVersion) {
+    setDraft(fromHome(home));
+    setBoundVersion(home.version);
   }
 
   useEffect(() => {
     homeRef.current = home ?? null;
   }, [home]);
+
+  useEffect(() => {
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -108,6 +118,7 @@ const AdminHomePage = () => {
   const onSaved = useCallback(
     (entity: Home) => {
       setHomeCache(entity);
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -125,19 +136,11 @@ const AdminHomePage = () => {
     conflictMessage,
   });
 
-  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+  const { save, saveState, saveError, bumpEdit } = autosave;
 
-  useEffect(() => {
-    if (!home || !hydrated) return;
-    if (home.version <= versionRef.current) return;
-    if (dirty) {
-      setSaveError(conflictMessage);
-      return;
-    }
-    setDraft(fromHome(home));
-    versionRef.current = home.version;
-    setSaveError(null);
-  }, [home, hydrated, dirty, setSaveError]);
+  const remoteConflict =
+    Boolean(home) && hydrated && dirty && home!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -155,6 +158,7 @@ const AdminHomePage = () => {
   const onEntityMeta = useCallback(
     (entity: Home) => {
       setHomeCache(entity);
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -163,6 +167,7 @@ const AdminHomePage = () => {
     (entity: Home) => {
       setHomeCache(entity);
       setDraft(fromHome(entity));
+      setBoundVersion(entity.version);
     },
     [setHomeCache],
   );
@@ -232,9 +237,9 @@ const AdminHomePage = () => {
         onSave={() => void save()}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 

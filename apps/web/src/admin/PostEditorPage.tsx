@@ -48,6 +48,8 @@ export default function PostEditorPage() {
   const [slugManual, setSlugManual] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
+  /** Last version adopted for edits (hydrate / clean refetch / save). Not read from query alone. */
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
@@ -60,8 +62,23 @@ export default function PostEditorPage() {
     setDraft(postDraftFromPost(post));
     setSlugManual(true);
     setDirty(false);
-    versionRef.current = post.version;
+    setBoundVersion(post.version);
   }
+
+  // Clean editor + newer server: adopt content (render-time adjust).
+  if (
+    post &&
+    hydratedId === post.id &&
+    !dirty &&
+    post.version > boundVersion
+  ) {
+    setDraft(postDraftFromPost(post));
+    setBoundVersion(post.version);
+  }
+
+  useEffect(() => {
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: DraftFields, version: number) => {
@@ -89,13 +106,17 @@ export default function PostEditorPage() {
 
   const getVersion = useCallback((entity: Post) => entity.version, []);
   const onSaved = useCallback(
-    (entity: Post) => setPostCache(entity),
+    (entity: Post) => {
+      setPostCache(entity);
+      setBoundVersion(entity.version);
+    },
     [setPostCache],
   );
   const onReplaceDraft = useCallback(
     (entity: Post) => {
       setPostCache(entity);
       setDraft(postDraftFromPost(entity));
+      setBoundVersion(entity.version);
     },
     [setPostCache],
   );
@@ -113,18 +134,12 @@ export default function PostEditorPage() {
   });
   const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
 
-  // Newer server version: adopt when clean; conflict when dirty — never bump version alone.
-  useEffect(() => {
-    if (!post || hydratedId !== post.id) return;
-    if (post.version <= versionRef.current) return;
-    if (dirty) {
-      setSaveError(conflictMessage);
-      return;
-    }
-    setDraft(postDraftFromPost(post));
-    versionRef.current = post.version;
-    setSaveError(null);
-  }, [post, hydratedId, dirty, setSaveError]);
+  const remoteConflict =
+    Boolean(post) &&
+    hydratedId === post!.id &&
+    dirty &&
+    post!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -275,9 +290,9 @@ export default function PostEditorPage() {
         onChange={(value) => setField('title', value)}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 

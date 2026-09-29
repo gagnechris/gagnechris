@@ -38,6 +38,7 @@ const AdminResumePage = () => {
   const [draft, setDraft] = useState<ResumeDraftFields | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [boundVersion, setBoundVersion] = useState(0);
   const versionRef = useRef(0);
 
   const conflictMessage =
@@ -47,8 +48,17 @@ const AdminResumePage = () => {
     setHydrated(true);
     setDraft(resumeDraftFromResume(resume));
     setDirty(false);
-    versionRef.current = resume.version;
+    setBoundVersion(resume.version);
   }
+
+  if (resume && hydrated && !dirty && resume.version > boundVersion) {
+    setDraft(resumeDraftFromResume(resume));
+    setBoundVersion(resume.version);
+  }
+
+  useEffect(() => {
+    versionRef.current = boundVersion;
+  }, [boundVersion]);
 
   const performSave = useCallback(
     async (current: ResumeDraftFields, version: number) => {
@@ -72,13 +82,17 @@ const AdminResumePage = () => {
 
   const getVersion = useCallback((entity: Resume) => entity.version, []);
   const onSaved = useCallback(
-    (entity: Resume) => setResumeCache(entity),
+    (entity: Resume) => {
+      setResumeCache(entity);
+      setBoundVersion(entity.version);
+    },
     [setResumeCache],
   );
   const onReplaceDraft = useCallback(
     (entity: Resume) => {
       setResumeCache(entity);
       setDraft(resumeDraftFromResume(entity));
+      setBoundVersion(entity.version);
     },
     [setResumeCache],
   );
@@ -93,19 +107,11 @@ const AdminResumePage = () => {
     onSaved,
     conflictMessage,
   });
-  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
+  const { save, saveState, saveError, bumpEdit } = autosave;
 
-  useEffect(() => {
-    if (!resume || !hydrated) return;
-    if (resume.version <= versionRef.current) return;
-    if (dirty) {
-      setSaveError(conflictMessage);
-      return;
-    }
-    setDraft(resumeDraftFromResume(resume));
-    versionRef.current = resume.version;
-    setSaveError(null);
-  }, [resume, hydrated, dirty, setSaveError]);
+  const remoteConflict =
+    Boolean(resume) && hydrated && dirty && resume!.version > boundVersion;
+  const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(
     () => publishRequest({ version: versionRef.current }),
@@ -193,9 +199,9 @@ const AdminResumePage = () => {
         onSave={() => void save()}
       />
 
-      {saveError ? (
+      {displayError ? (
         <p className="admin-panel__error" role="alert">
-          {saveError}
+          {displayError}
         </p>
       ) : null}
 
