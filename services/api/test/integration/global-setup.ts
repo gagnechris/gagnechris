@@ -71,7 +71,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     } catch (err) {
       throw new Error(
         `Failed to start DynamoDB Local via compose project ${process.env.COMPOSE_PROJECT_NAME}. ` +
-          `Refusing to reuse an unknown listener on the endpoint. ${String(err)}`,
+          `Refusing to reuse an unknown listener on the endpoint.`,
+        { cause: err },
       );
     }
     await waitForDynamo();
