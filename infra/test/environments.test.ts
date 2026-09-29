@@ -654,9 +654,7 @@ describe('ApiStack', () => {
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
     const destArn = stage?.Properties?.AccessLogSettings?.DestinationArn as
-      | { 'Fn::GetAtt'?: string[] }
-      | string
-      | undefined;
+      { 'Fn::GetAtt'?: string[] } | string | undefined;
     expect(destArn).toEqual(
       expect.objectContaining({
         'Fn::GetAtt': expect.arrayContaining([expect.any(String), 'Arn']),

@@ -70,7 +70,11 @@ export class PublisherStack extends Stack {
       ssmParameterName(config.name, 'blogSlugsKvsArn'),
     );
 
-    const siteBucket = Bucket.fromBucketName(this, 'SiteBucket', siteBucketName);
+    const siteBucket = Bucket.fromBucketName(
+      this,
+      'SiteBucket',
+      siteBucketName,
+    );
     // domainName is required by fromDistributionAttributes; Publisher only uses
     // distributionId (invalidations). Apex is a stable stand-in.
     const distribution = Distribution.fromDistributionAttributes(
