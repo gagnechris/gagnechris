@@ -12,7 +12,7 @@ import {
   TreatMissingData,
 } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import type { IDistribution } from 'aws-cdk-lib/aws-cloudfront';
+import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
@@ -21,7 +21,7 @@ import {
   StartingPosition,
 } from 'aws-cdk-lib/aws-lambda';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import type { IBucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
@@ -38,20 +38,13 @@ import { PUBLISH_STREAM_SK } from '@gagnechris/data';
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly dataTable: ITable;
-  readonly siteBucket: IBucket;
-  /**
-   * Kept as a direct ref so Site continues to export the distribution ID
-   * (Dns also needs it). Switching this to SSM alone cannot drop the export
-   * while Publisher still imports it in the same deploy (CHR-135).
-   */
-  readonly distribution: IDistribution;
   readonly alertsTopic: ITopic;
-  /** CloudFront KeyValueStore ARN for published blog slug allowlist (CHR-115). */
-  readonly blogSlugsKeyValueStoreArn: string;
 }
 
 /**
  * DynamoDB Streams → Publisher Lambda → S3 static blog + CloudFront invalidation.
+ * Site bucket, distribution, and blog-slugs KVS are resolved from SSM (CHR-149)
+ * so Publisher does not import Site CloudFormation exports.
  */
 export class PublisherStack extends Stack {
   readonly publisherFunction: NodeLambda;
@@ -61,14 +54,37 @@ export class PublisherStack extends Stack {
   constructor(scope: Construct, id: string, props: PublisherStackProps) {
     super(scope, id, props);
 
-    const {
-      config,
-      dataTable,
-      siteBucket,
-      distribution,
-      alertsTopic,
-      blogSlugsKeyValueStoreArn,
-    } = props;
+    const { config, dataTable, alertsTopic } = props;
+
+    // Site writes these SSM params; Publisher looks them up (no CFN exports).
+    const siteBucketName = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'siteBucketName'),
+    );
+    const distributionId = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'cloudfrontDistributionId'),
+    );
+    const blogSlugsKeyValueStoreArn = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'blogSlugsKvsArn'),
+    );
+
+    const siteBucket = Bucket.fromBucketName(
+      this,
+      'SiteBucket',
+      siteBucketName,
+    );
+    // domainName is required by fromDistributionAttributes; Publisher only uses
+    // distributionId (invalidations). Apex is a stable stand-in.
+    const distribution = Distribution.fromDistributionAttributes(
+      this,
+      'SiteDistribution',
+      {
+        distributionId,
+        domainName: config.domainName,
+      },
+    );
 
     this.publisherFunction = new NodeLambda(this, 'PublisherFunction', {
       functionName: `gagnechris-${config.name}-publisher`,
@@ -113,8 +129,8 @@ export class PublisherStack extends Stack {
       },
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
-        SITE_BUCKET_NAME: siteBucket.bucketName,
-        CLOUDFRONT_DISTRIBUTION_ID: distribution.distributionId,
+        SITE_BUCKET_NAME: siteBucketName,
+        CLOUDFRONT_DISTRIBUTION_ID: distributionId,
         BLOG_SLUGS_KVS_ARN: blogSlugsKeyValueStoreArn,
         SITE_APEX_DOMAIN: config.domainName,
       },

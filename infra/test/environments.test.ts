@@ -645,11 +645,22 @@ describe('ApiStack', () => {
           'http://localhost:5173',
           'http://localhost:3000',
         ],
-        AllowHeaders: ['Authorization', 'Content-Type'],
+        AllowHeaders: ['authorization', 'content-type'],
         AllowMethods: Match.arrayWith(['GET', 'OPTIONS']),
         MaxAge: 86400,
       },
     });
+    // Access-log DestinationArn must be the log-group ARN without `:*` (CHR-149).
+    const stages = template.findResources('AWS::ApiGatewayV2::Stage');
+    const stage = Object.values(stages)[0];
+    const destArn = stage?.Properties?.AccessLogSettings?.DestinationArn as
+      { 'Fn::GetAtt'?: string[] } | string | undefined;
+    expect(destArn).toEqual(
+      expect.objectContaining({
+        'Fn::GetAtt': expect.arrayContaining([expect.any(String), 'Arn']),
+      }),
+    );
+    expect(JSON.stringify(destArn)).not.toContain(':*');
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
       AuthorizerType: 'JWT',
     });
@@ -676,24 +687,13 @@ describe('ApiStack', () => {
 });
 
 describe('PublisherStack', () => {
-  it('wires stream source, S3/CF env, error alarm, and SSM name', () => {
+  it('wires stream source, S3/CF env via SSM, error alarm, and SSM name', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'PublisherDeps', {
       env: { account: config.account, region: config.region },
     });
     const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
-    const certificate = Certificate.fromCertificateArn(
-      deps,
-      'Cert',
-      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
-    );
-    const site = new SiteStack(app, 'SiteForPublisher', {
-      env: { account: config.account, region: config.region },
-      config,
-      certificate,
-      alertsTopic,
-    });
     const data = new DataStack(app, 'DataForPublisher', {
       env: { account: config.account, region: config.region },
       config,
@@ -702,15 +702,18 @@ describe('PublisherStack', () => {
       env: { account: config.account, region: config.region },
       config,
       dataTable: data.table,
-      siteBucket: site.siteBucket,
-      distribution: site.distribution,
-      blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
       alertsTopic,
     });
     applyStandardTags(publisher, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(publisher);
+    // Site bucket / distribution / KVS come from SSM, not Site exports (CHR-149).
+    const rendered = JSON.stringify(template.toJSON());
+    expect(rendered).not.toMatch(/ImportValue":"[^"]*Site/);
+    expect(rendered).toContain('/gagnechris/prod/site-bucket-name');
+    expect(rendered).toContain('/gagnechris/prod/cloudfront-distribution-id');
+    expect(rendered).toContain('/gagnechris/prod/blog-slugs-kvs-arn');
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'gagnechris-prod-publisher',
       Runtime: 'nodejs24.x',

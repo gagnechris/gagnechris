@@ -8,7 +8,10 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel main: a cancelled CI never triggers CDK deploy, and the
+  # next push's path filter would not see that commit's infra/web changes
+  # if the base were HEAD~1 (CHR-149). PRs may still cancel in progress.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Shared Vite placeholders for CI builds (not deployed from this workflow).
 env:
@@ -84,6 +87,10 @@ jobs:
               - 'services/api/**'
               - 'packages/data/**'
               - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
               - 'scripts/local/**'
               - 'docker-compose.local.yml'
               - '.github/workflows/ci.yml'
@@ -162,10 +169,14 @@ jobs:
         with:
           filters: |
             e2e:
+              - 'apps/web/**'
               - 'services/api/**'
               - 'services/publisher/**'
-              - 'packages/shared/**'
-              - 'packages/data/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
               - 'scripts/local/**'
               - 'docker-compose.local.yml'
               - 'infra/lib/cloudfront/viewer-request-function.js'

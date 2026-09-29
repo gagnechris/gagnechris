@@ -56,29 +56,12 @@ const data = new DataStack(app, `Data-${config.name}`, {
   config,
 });
 
-const site = new SiteStack(app, `Site-${config.name}`, {
-  env: stackEnv,
-  description: `Static site hosting (${config.name}).`,
-  config,
-  certificate: certificate.certificate,
-  alertsTopic: guardrails.alertsTopic,
-});
-
-// DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
-// Direct distribution ref is intentional: Route 53 alias targets need the
-// distribution domain/hosted-zone IDs (SSM alone is awkward for AliasTarget).
-const dns = new DnsStack(app, `Dns-${config.name}`, {
-  env: stackEnv,
-  description: `DNS records for ${config.domainName} (${config.name}).`,
-  config,
-  distribution: site.distribution,
-});
-
+// Email looks up the hosted zone itself (not via Dns) so Site can depend on
+// Api without a cycle through Dns → Email → Api (CHR-149).
 const email = new EmailStack(app, `Email-${config.name}`, {
   env: stackEnv,
   description: `SES domain identity for transactional email (${config.name}).`,
   config,
-  hostedZone: dns.hostedZone,
 });
 
 const auth = new AuthStack(app, `Auth-${config.name}`, {
@@ -88,8 +71,9 @@ const auth = new AuthStack(app, `Auth-${config.name}`, {
   certificate: certificate.authCertificate,
 });
 
-// Api after Site so this deploy updates Site's /api origin to SSM before Api
-// drops the old CloudFormation export (CHR-135; avoids ImportValue breakage).
+// Api before Site so Site's /api origin picks up http-api-id on the same
+// deploy when the HttpApi is replaced (CHR-149). Api still needs Site's
+// site-bucket-name SSM — see RUNBOOK two-pass bootstrap.
 const api = new ApiStack(app, `Api-${config.name}`, {
   env: stackEnv,
   description: `HTTP API + Lambda behind CloudFront /api (${config.name}).`,
@@ -103,18 +87,35 @@ const api = new ApiStack(app, `Api-${config.name}`, {
   notifyEmailIdentity: email.notifyEmailIdentity,
   fromEmail: email.fromEmail,
 });
-api.node.addDependency(site);
 
-new PublisherStack(app, `Publisher-${config.name}`, {
+const site = new SiteStack(app, `Site-${config.name}`, {
+  env: stackEnv,
+  description: `Static site hosting (${config.name}).`,
+  config,
+  certificate: certificate.certificate,
+  alertsTopic: guardrails.alertsTopic,
+});
+site.node.addDependency(api);
+
+// DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
+// Direct distribution ref is intentional: Route 53 alias targets need the
+// distribution domain/hosted-zone IDs (SSM alone is awkward for AliasTarget).
+new DnsStack(app, `Dns-${config.name}`, {
+  env: stackEnv,
+  description: `DNS records for ${config.domainName} (${config.name}).`,
+  config,
+  distribution: site.distribution,
+});
+
+const publisher = new PublisherStack(app, `Publisher-${config.name}`, {
   env: stackEnv,
   description: `DynamoDB Streams publisher for static blog pages (${config.name}).`,
   config,
   dataTable: data.table,
-  siteBucket: site.siteBucket,
-  distribution: site.distribution,
-  blogSlugsKeyValueStoreArn: site.blogSlugsKeyValueStoreArn,
   alertsTopic: guardrails.alertsTopic,
 });
+// Site must write bucket / distribution / KVS SSM params before Publisher.
+publisher.node.addDependency(site);
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
   env: stackEnv,

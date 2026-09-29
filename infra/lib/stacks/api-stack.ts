@@ -7,6 +7,7 @@ import {
 } from 'aws-cdk-lib';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import {
+  CfnStage,
   CorsHttpMethod,
   HttpApi,
   HttpMethod,
@@ -27,7 +28,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { CfnLogGroup, LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
@@ -160,7 +161,9 @@ export class ApiStack extends Stack {
       apiName: `gagnechris-${config.name}`,
       description: 'Blog CMS API (JWT on /api/admin/* and /api/notebook/*)',
       corsPreflight: {
-        allowHeaders: ['Authorization', 'Content-Type'],
+        // API Gateway stores AllowHeaders lowercase; keep template aligned
+        // to avoid nightly drift (CHR-149).
+        allowHeaders: ['authorization', 'content-type'],
         allowMethods: [
           CorsHttpMethod.GET,
           CorsHttpMethod.POST,
@@ -179,7 +182,7 @@ export class ApiStack extends Stack {
       retention: RetentionDays.TWO_WEEKS,
     });
 
-    new HttpStage(this, 'DefaultStage', {
+    const defaultStage = new HttpStage(this, 'DefaultStage', {
       httpApi: this.httpApi,
       stageName: '$default',
       autoDeploy: true,
@@ -189,6 +192,14 @@ export class ApiStack extends Stack {
         format: AccessLogFormat.jsonWithStandardFields(),
       },
     });
+    // API Gateway stores DestinationArn without the `:*` suffix. Pin to
+    // AttrArn (no `:*`) so nightly drift stays quiet (CHR-149).
+    const cfnStage = defaultStage.node.defaultChild as CfnStage;
+    const cfnLogGroup = accessLogGroup.node.defaultChild as CfnLogGroup;
+    cfnStage.addPropertyOverride(
+      'AccessLogSettings.DestinationArn',
+      cfnLogGroup.attrArn,
+    );
 
     const healthRoutes = this.httpApi.addRoutes({
       path: '/api/health',
