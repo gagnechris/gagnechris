@@ -4,10 +4,12 @@ import RequireAuth from '../auth/RequireAuth';
 import { signOutUser, type AuthUser } from '../auth/session';
 import { navLinkClass } from '../ui/navLinkClass';
 import { AdminQueryProvider } from './query/AdminQueryProvider';
+import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import './admin.css';
 
 function AdminChrome({ user }: { user: AuthUser }) {
   const prodApi = isDevProdApiTarget();
+  useVisualViewportCssVars();
 
   return (
     <div className="admin-shell">

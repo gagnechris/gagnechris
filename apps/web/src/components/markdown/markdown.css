@@ -98,6 +98,7 @@
   gap: var(--space-3);
   min-height: min(70vh, 40rem);
   min-height: min(70dvh, 40rem);
+  min-height: min(var(--vv-height, 70dvh), 40rem);
 }
 
 .markdown-tabs {
@@ -133,6 +134,7 @@
   flex: 1;
   min-height: min(70vh, 40rem);
   min-height: min(70dvh, 40rem);
+  min-height: min(var(--vv-height, 70dvh), 40rem);
 }
 
 .markdown-split > .markdown-editor,
@@ -140,6 +142,7 @@
   min-height: 0;
   height: min(70vh, 40rem);
   height: min(70dvh, 40rem);
+  height: min(var(--vv-height, 70dvh), 40rem);
 }
 
 @media (max-width: 1023px) {

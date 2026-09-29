@@ -7,7 +7,6 @@ import {
   type KeyBinding,
 } from '@codemirror/view';
 import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
-import { taskListToggle } from './taskListToggle';
 
 export type MarkdownEditorHandle = {
   focus: () => void;
@@ -25,9 +24,14 @@ type MarkdownEditorProps = {
    * When omitted, paste/drop of images is ignored.
    */
   onUploadImages?: (files: File[]) => Promise<string[]>;
-  /** Extra CodeMirror extensions (merged after built-ins). */
+  /**
+   * Extra CodeMirror extensions (merged after built-ins).
+   * Memoize this array (and `keymap`) — a new reference reconfigures CodeMirror
+   * on every render and can reset scroll/selection.
+   * Opt-in task checkboxes: `extensions={[taskListToggle()]}`.
+   */
   extensions?: Extension[];
-  /** Extra key bindings (higher precedence than defaults). */
+  /** Extra key bindings (higher precedence than defaults). Memoize like `extensions`. */
   keymap?: readonly KeyBinding[];
   /** Show line numbers in the gutter. @default true */
   lineNumbers?: boolean;
@@ -103,11 +107,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
     }));
 
     const extensions = useMemo(() => {
-      const base: Extension[] = [
-        markdown(),
-        EditorView.lineWrapping,
-        taskListToggle(),
-      ];
+      const base: Extension[] = [markdown(), EditorView.lineWrapping];
       if (extraKeymap && extraKeymap.length > 0) {
         base.push(cmKeymap.of(extraKeymap));
       }
