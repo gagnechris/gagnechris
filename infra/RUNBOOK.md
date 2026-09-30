@@ -59,7 +59,7 @@ Steady-state deploy order (CDK `addDependency` + props):
 2. **Api** (reads SSM `site-bucket-name`; writes `http-api-id`)
 3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`)
 4. Dns (needs Site's distribution for Route 53 aliases)
-5. **Publisher** (SSM lookups for Site; during CHR-149 cutover Site waits on Publisher so exports can drop — see Publisher section)
+5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
 6. CiDeployRole
 
 Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM so Site exports used only by Publisher can drop after Publisher no longer imports them.
@@ -261,9 +261,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 `Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
 
-Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports.
-
-**Cutover note (CHR-149):** while the live Publisher stack still imported Site exports, Site could not drop them in the same `cdk deploy --all` wave (exports-in-use). The app temporarily orders **Publisher before Site** so Publisher switches to SSM first; Site then drops the unused exports. After that deploy succeeds, restore `publisher.addDependency(site)` for greenfield (Publisher needs Site's SSM params). Dns still imports Site's distribution for Route 53 aliases — that export stays.
+Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
 After stream retries (`retryAttempts: 3`), discarded records go to SQS `gagnechris-prod-publisher-stream-failures` (on-failure destination) with a depth alarm on the Guardrails alerts topic.
 

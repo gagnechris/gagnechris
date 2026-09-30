@@ -114,11 +114,8 @@ const publisher = new PublisherStack(app, `Publisher-${config.name}`, {
   dataTable: data.table,
   alertsTopic: guardrails.alertsTopic,
 });
-// CHR-149 cutover: live Publisher still Fn::ImportValue's Site exports.
-// Deploy Publisher (SSM lookups) *before* Site so those exports can drop.
-// Steady-state after this lands: restore publisher.addDependency(site)
-// (Publisher needs Site's SSM params on a greenfield account).
-site.node.addDependency(publisher);
+// Site must write bucket / distribution / KVS SSM params before Publisher.
+publisher.node.addDependency(site);
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
   env: stackEnv,
