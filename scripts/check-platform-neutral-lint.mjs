@@ -45,15 +45,11 @@ try {
     writeFileSync(filePath, fixture.source);
     created.push(filePath);
 
-    const result = spawnSync(
-      'npx',
-      ['eslint', filePath, '--no-warn-ignored'],
-      {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        env: process.env,
-      },
-    );
+    const result = spawnSync('npx', ['eslint', filePath, '--no-warn-ignored'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: process.env,
+    });
 
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
     const lintFailed = result.status !== 0;

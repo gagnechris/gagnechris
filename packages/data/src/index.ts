@@ -5,7 +5,6 @@ export {
   setDocClient,
 } from './client.js';
 
-
 export {
   batchGetAll,
   batchGetAllWithDocClient,
@@ -19,7 +18,6 @@ export {
   type BatchGetTableRequest,
   type DynamoWriteErrorKind,
 } from './dynamodb.js';
-
 
 export {
   GSI1_NAME,
