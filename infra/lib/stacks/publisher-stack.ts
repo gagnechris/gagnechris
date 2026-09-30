@@ -136,7 +136,7 @@ export class PublisherStack extends Stack {
         'Action::s3:GetBucket*',
         'Action::s3:GetObject*',
         'Action::s3:List*',
-        { regex: '/^Resource::.*/index\*/g' },
+        { regex: '/^Resource::.*/index*/g' },
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/g' },
       ],
       bundling: {

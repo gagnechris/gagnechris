@@ -101,8 +101,8 @@ export class ApiStack extends Stack {
       iam5NagAppliesTo: [
         'Resource::*',
         'Action::s3:Abort*',
-        { regex: '/^Resource::.*/index\*/g' },
-        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/\*/g' },
+        { regex: '/^Resource::.*/index*/g' },
+        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/*/g' },
       ],
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
