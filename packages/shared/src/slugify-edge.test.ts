@@ -24,5 +24,6 @@ describe('MAX_SLUG_LENGTH vs CloudFront (CHR-145)', () => {
     expect(slug.length).toBeGreaterThan(0);
     expect(slug.length).toBeLessThanOrEqual(MAX_SLUG_LENGTH);
     expect(/^[a-z0-9-]+$/.test(slug)).toBe(true);
+    expect(slug.endsWith('-')).toBe(false);
   });
 });

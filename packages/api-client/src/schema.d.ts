@@ -35,8 +35,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -121,8 +121,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -172,11 +172,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description Filter by status (omit to list draft + published) */
                     status?: "draft" | "published" | "deleted";
-                    /** @description Opaque pagination cursor from a previous list response */
                     cursor?: string;
-                    /** @description Page size (single-status queries only) */
                     limit?: number;
                 };
                 header?: never;
@@ -218,6 +215,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
                 /** @description Unauthorized */
                 401: {
                     headers: {
@@ -233,8 +245,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -356,21 +368,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -385,6 +382,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -491,8 +503,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -628,21 +640,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -657,6 +654,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -772,21 +784,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -801,6 +798,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -929,21 +941,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -958,6 +955,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1087,21 +1099,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1116,6 +1113,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1245,21 +1257,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1274,6 +1271,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1358,8 +1370,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1470,21 +1482,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1499,6 +1496,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1607,21 +1619,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1636,6 +1633,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1743,21 +1755,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1772,6 +1769,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1879,21 +1891,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -1908,6 +1905,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -2008,8 +2020,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2152,21 +2164,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -2181,6 +2178,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -2305,21 +2317,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -2334,6 +2331,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -2457,21 +2469,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -2486,6 +2483,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -2609,21 +2621,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -2638,6 +2635,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -2740,8 +2752,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2851,8 +2863,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2971,21 +2983,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -3000,6 +2997,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -3098,8 +3110,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3203,21 +3215,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -3237,6 +3234,21 @@ export interface paths {
                 };
                 /** @description Precondition failed (`If-Match` version mismatch) */
                 412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3339,21 +3351,6 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                        };
-                    };
-                };
                 /** @description Conflict (may include `currentVersion` / `current`) */
                 409: {
                     headers: {
@@ -3373,6 +3370,21 @@ export interface paths {
                 };
                 /** @description Precondition failed (`If-Match` version mismatch) */
                 412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3491,8 +3503,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3592,8 +3604,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Rate limited */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3607,8 +3619,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Rate limited */
-                429: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3712,8 +3724,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Method not allowed on this path */
-                405: {
+                /** @description Internal error */
+                500: {
                     headers: {
                         [name: string]: unknown;
                     };

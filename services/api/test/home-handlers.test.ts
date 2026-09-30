@@ -1,6 +1,6 @@
 import { expect, vi } from 'vitest';
 import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
-import { handleHomeRoute } from '../src/home/handlers.js';
+import { createHomeRoutes } from '../src/home/handlers.js';
 import { definePublishableHandlerTests } from './support/publishable-handler.suite.js';
 
 const sampleHome: Home = {
@@ -31,8 +31,7 @@ definePublishableHandlerTests({
   assertUpdateInput: (input) => {
     expect(input.about).toBe('New about copy.');
   },
-  handleRoute: (event, method, path, repo) =>
-    handleHomeRoute(event, method, path, repo as never),
+  createRoutes: (repo) => createHomeRoutes(repo as never),
   createRepo: () => ({
     get: vi.fn(),
     getOrCreate: vi.fn(),

@@ -31,4 +31,10 @@ describe('slugify', () => {
     expect(slug.length).toBe(MAX_SLUG_LENGTH);
     expect(slug).toBe('a'.repeat(MAX_SLUG_LENGTH));
   });
+
+  it('never ends with a hyphen after truncation (CHR-154)', () => {
+    const slug = slugify('Word '.repeat(40).trim());
+    expect(slug.endsWith('-')).toBe(false);
+    expect(slug.length).toBeLessThanOrEqual(MAX_SLUG_LENGTH);
+  });
 });

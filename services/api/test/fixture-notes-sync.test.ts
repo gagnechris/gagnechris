@@ -168,7 +168,6 @@ describe('fixture notes sync (CHR-141)', () => {
       }),
       'POST',
       '/api/notebook/fixture-notes',
-      { enforceAuth: true },
     );
     expect(createRes?.statusCode).toBe(201);
     const created = JSON.parse(createRes!.body as string);
@@ -184,7 +183,6 @@ describe('fixture notes sync (CHR-141)', () => {
       ),
       'PUT',
       `/api/notebook/fixture-notes/${NOTE_ID}`,
-      { enforceAuth: true },
     );
     expect(updateRes?.statusCode).toBe(200);
 
@@ -198,7 +196,6 @@ describe('fixture notes sync (CHR-141)', () => {
       ),
       'DELETE',
       `/api/notebook/fixture-notes/${NOTE_ID}`,
-      { enforceAuth: true },
     );
     expect(deleteRes?.statusCode).toBe(200);
 
@@ -207,7 +204,6 @@ describe('fixture notes sync (CHR-141)', () => {
       adminEvent('GET', '/api/notebook/sync/changes'),
       'GET',
       '/api/notebook/sync/changes',
-      { enforceAuth: true },
     );
     expect(feedRes?.statusCode).toBe(200);
     const feed = JSON.parse(feedRes!.body as string);
@@ -255,7 +251,6 @@ describe('fixture notes sync (CHR-141)', () => {
         }),
         'POST',
         '/api/notebook/fixture-notes',
-        { enforceAuth: true },
       );
       expect(res?.statusCode).toBe(201);
     }
@@ -270,7 +265,6 @@ describe('fixture notes sync (CHR-141)', () => {
       adminEvent('GET', '/api/notebook/sync/changes'),
       'GET',
       '/api/notebook/sync/changes',
-      { enforceAuth: true },
     );
     const feed = JSON.parse(feedRes!.body as string);
     expect(feed.changes).toHaveLength(1);
@@ -290,7 +284,6 @@ describe('fixture notes sync (CHR-141)', () => {
       adminEvent('POST', '/api/notebook/fixture-notes', { id: NOTE_ID }),
       'POST',
       '/api/notebook/fixture-notes',
-      { enforceAuth: true },
     );
 
     const res = await dispatchRoutes(
@@ -303,7 +296,6 @@ describe('fixture notes sync (CHR-141)', () => {
       ),
       'PUT',
       `/api/notebook/fixture-notes/${NOTE_ID}`,
-      { enforceAuth: true },
     );
     expect(res?.statusCode).toBe(412);
     expect(JSON.parse(res!.body as string).error).toBe('precondition_failed');

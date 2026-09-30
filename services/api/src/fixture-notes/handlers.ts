@@ -1,17 +1,14 @@
-import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyStructuredResultV2,
-} from 'aws-lambda';
-import { z } from 'zod';
 import {
   CreateFixtureNoteRequestSchema,
   FixtureNoteSchema,
   UpdateFixtureNoteRequestSchema,
   UlidSchema,
 } from '@gagnechris/shared';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { z } from 'zod';
 import { ConflictError, PreconditionFailedError } from '../data/errors.js';
 import { json, jsonWithEtag, parseIfMatchVersion } from '../http.js';
-import { dispatchRoutes, type RouteDef, type RouteHandler } from '../router.js';
+import { defineRoute, type RouteDef } from '../router.js';
 import { isDeletedFixtureNote } from './items.js';
 import { FixtureNotesRepository } from './repository.js';
 
@@ -50,157 +47,100 @@ function mapVersionConflict(error: unknown, fromIfMatch: boolean): never {
   throw error;
 }
 
-function fixtureNoteHandlers(repo?: FixtureNotesRepository): {
-  create: RouteHandler;
-  get: RouteHandler;
-  update: RouteHandler;
-  remove: RouteHandler;
-} {
-  const notes = () => repo ?? new FixtureNotesRepository();
-  return {
-    create: async (ctx, { body }) => {
-      const userId = ctx.userId;
-      if (!userId) {
-        return json(401, {
-          error: 'unauthorized',
-          message: 'Missing JWT claims',
-        });
-      }
-      const req = body as z.infer<typeof CreateFixtureNoteRequestSchema>;
-      const note = await notes().createIdempotent(userId, req);
-      const parsed = FixtureNoteSchema.parse(note);
-      return jsonWithEtag(201, parsed, parsed.version);
-    },
-    get: async (ctx, { params }) => {
-      const userId = ctx.userId;
-      if (!userId) {
-        return json(401, {
-          error: 'unauthorized',
-          message: 'Missing JWT claims',
-        });
-      }
-      const { id } = params as z.infer<typeof IdParams>;
-      const note = await notes().getForUser(userId, id);
-      if (isDeletedFixtureNote(note)) {
-        return json(404, {
-          error: 'not_found',
-          message: `Fixture note ${id} not found`,
-        });
-      }
-      const parsed = FixtureNoteSchema.parse(note);
-      return jsonWithEtag(200, parsed, parsed.version);
-    },
-    update: async (ctx, { params, body }) => {
-      const userId = ctx.userId;
-      if (!userId) {
-        return json(401, {
-          error: 'unauthorized',
-          message: 'Missing JWT claims',
-        });
-      }
-      const { id } = params as z.infer<typeof IdParams>;
-      const patch = body as z.infer<typeof UpdateFixtureNoteRequestSchema>;
-      const { expected, fromIfMatch } = resolveExpectedVersion(
-        ctx.event,
-        patch,
-      );
-      if (expected === undefined) {
-        return json(400, {
-          error: 'bad_request',
-          message: 'Expected version required (If-Match or body.version)',
-        });
-      }
-      try {
-        const note = await notes().update(userId, id, expected, patch);
-        const parsed = FixtureNoteSchema.parse(note);
-        return jsonWithEtag(200, parsed, parsed.version);
-      } catch (error) {
-        mapVersionConflict(error, fromIfMatch);
-      }
-    },
-    remove: async (ctx, { params, body }) => {
-      const userId = ctx.userId;
-      if (!userId) {
-        return json(401, {
-          error: 'unauthorized',
-          message: 'Missing JWT claims',
-        });
-      }
-      const { id } = params as z.infer<typeof IdParams>;
-      const parsedBody = DeleteBodySchema.parse(body ?? {});
-      const { expected, fromIfMatch } = resolveExpectedVersion(
-        ctx.event,
-        parsedBody,
-      );
-      if (expected === undefined) {
-        return json(400, {
-          error: 'bad_request',
-          message: 'Expected version required (If-Match or body.version)',
-        });
-      }
-      try {
-        const note = await notes().tombstone(userId, id, expected);
-        const parsed = FixtureNoteSchema.parse(note);
-        return jsonWithEtag(200, parsed, parsed.version);
-      } catch (error) {
-        mapVersionConflict(error, fromIfMatch);
-      }
-    },
-  };
-}
-
 export function createFixtureNoteRoutes(
   repo?: FixtureNotesRepository,
 ): RouteDef[] {
-  const h = fixtureNoteHandlers(repo);
+  const notes = () => repo ?? new FixtureNotesRepository();
   return [
-    {
+    defineRoute({
       method: 'POST',
       pattern: '/notebook/fixture-notes',
       auth: 'admin',
       metric: 'CreateFixtureNote',
       body: CreateFixtureNoteRequestSchema,
-      handler: h.create,
-    },
-    {
+      handler: async (ctx, { body }) => {
+        const userId = ctx.userId!;
+        const note = await notes().createIdempotent(userId, body);
+        const parsed = FixtureNoteSchema.parse(note);
+        return jsonWithEtag(201, parsed, parsed.version);
+      },
+    }),
+    defineRoute({
       method: 'GET',
       pattern: '/notebook/fixture-notes/:id',
       auth: 'admin',
       metric: 'GetFixtureNote',
       params: IdParams,
-      handler: h.get,
-    },
-    {
+      handler: async (ctx, { params }) => {
+        const userId = ctx.userId!;
+        const note = await notes().getForUser(userId, params.id);
+        if (isDeletedFixtureNote(note)) {
+          return json(404, {
+            error: 'not_found',
+            message: `Fixture note ${params.id} not found`,
+          });
+        }
+        const parsed = FixtureNoteSchema.parse(note);
+        return jsonWithEtag(200, parsed, parsed.version);
+      },
+    }),
+    defineRoute({
       method: 'PUT',
       pattern: '/notebook/fixture-notes/:id',
       auth: 'admin',
       metric: 'UpdateFixtureNote',
       params: IdParams,
       body: UpdateFixtureNoteRequestSchema,
-      handler: h.update,
-    },
-    {
+      handler: async (ctx, { params, body }) => {
+        const userId = ctx.userId!;
+        const { expected, fromIfMatch } = resolveExpectedVersion(
+          ctx.event,
+          body,
+        );
+        if (expected === undefined) {
+          return json(400, {
+            error: 'bad_request',
+            message: 'Expected version required (If-Match or body.version)',
+          });
+        }
+        try {
+          const note = await notes().update(userId, params.id, expected, body);
+          const parsed = FixtureNoteSchema.parse(note);
+          return jsonWithEtag(200, parsed, parsed.version);
+        } catch (error) {
+          mapVersionConflict(error, fromIfMatch);
+        }
+      },
+    }),
+    defineRoute({
       method: 'DELETE',
       pattern: '/notebook/fixture-notes/:id',
       auth: 'admin',
       metric: 'DeleteFixtureNote',
       params: IdParams,
       body: DeleteBodySchema,
-      handler: h.remove,
-    },
+      handler: async (ctx, { params, body }) => {
+        const userId = ctx.userId!;
+        const { expected, fromIfMatch } = resolveExpectedVersion(
+          ctx.event,
+          body,
+        );
+        if (expected === undefined) {
+          return json(400, {
+            error: 'bad_request',
+            message: 'Expected version required (If-Match or body.version)',
+          });
+        }
+        try {
+          const note = await notes().tombstone(userId, params.id, expected);
+          const parsed = FixtureNoteSchema.parse(note);
+          return jsonWithEtag(200, parsed, parsed.version);
+        } catch (error) {
+          mapVersionConflict(error, fromIfMatch);
+        }
+      },
+    }),
   ];
 }
 
 export const fixtureNoteRoutes = createFixtureNoteRoutes();
-
-export async function handleFixtureNoteRoutes(
-  event: APIGatewayProxyEventV2,
-  method: string,
-  path: string,
-  repo?: FixtureNotesRepository,
-): Promise<APIGatewayProxyStructuredResultV2 | undefined> {
-  return dispatchRoutes(createFixtureNoteRoutes(repo), event, method, path, {
-    onMiss: 'undefined',
-    enforceAuth: false,
-  });
-}

@@ -16,7 +16,7 @@ describe('post keys (single-table prefixes)', () => {
 
   it('slugifies titles', () => {
     expect(slugify('Hello World!')).toBe('hello-world');
-    expect(slugify('  ')).toBe('post');
+    expect(slugify('  ')).toBe('untitled');
     expect(slugify('  Café  ')).toBe('cafe');
   });
 

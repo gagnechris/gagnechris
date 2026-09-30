@@ -6,6 +6,24 @@ import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 
+const FIELD_CODE_MESSAGES: Record<string, string> = {
+  too_small: 'This field is required',
+  too_big: 'This value is too long',
+  invalid_format: 'Enter a valid value',
+  invalid_string: 'Enter a valid value',
+  invalid_type: 'Enter a valid value',
+};
+
+function friendlyFieldMessage(field: string, code: string): string {
+  if (
+    field === 'email' &&
+    (code === 'invalid_format' || code === 'invalid_string')
+  ) {
+    return 'Enter a valid email address';
+  }
+  return FIELD_CODE_MESSAGES[code] ?? 'Please check this field';
+}
+
 function Contact() {
   // Client-only elapsed clock — avoids comparing browser Date.now to server time.
   const [formOpenedAt] = useState(() => performance.now());
@@ -66,7 +84,10 @@ function Contact() {
       const fieldErrors: { [key: string]: string } = {};
       if (error.fields) {
         for (const [key, code] of Object.entries(error.fields)) {
-          fieldErrors[key] = typeof code === 'string' ? code : 'invalid';
+          fieldErrors[key] = friendlyFieldMessage(
+            key,
+            typeof code === 'string' ? code : 'invalid',
+          );
         }
       }
       let message =

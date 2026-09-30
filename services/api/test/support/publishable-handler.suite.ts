@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ConflictError } from '../../src/data/errors.js';
+import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { makeEvent } from './make-event.js';
 
-type RouteResult = { statusCode?: number; body?: string } | undefined;
+type RouteResult = { statusCode?: number; body?: string };
 
 type MockPublishableRepo = {
   get: ReturnType<typeof vi.fn>;
@@ -29,14 +30,11 @@ export type PublishableHandlerSuiteOptions<
   updateBody: Record<string, unknown>;
   assertGetBody: (body: Record<string, unknown>) => void;
   assertUpdateInput: (input: Record<string, unknown>) => void;
-  handleRoute: (
-    event: APIGatewayProxyEventV2,
-    method: string,
-    path: string,
-    repo: MockPublishableRepo,
-  ) => Promise<RouteResult>;
+  createRoutes: (repo: MockPublishableRepo) => RouteDef[];
   createRepo: () => MockPublishableRepo;
 };
+
+const ADMIN = { sub: 'admin-1' };
 
 export function definePublishableHandlerTests<
   TSample extends {
@@ -53,26 +51,29 @@ export function definePublishableHandlerTests<
       vi.clearAllMocks();
     });
 
-    it('ignores routes outside the admin path', async () => {
-      const result = await opts.handleRoute(
-        makeEvent(opts.foreignMethod, opts.foreignPath),
-        opts.foreignMethod,
-        opts.foreignPath,
-        repo,
+    async function dispatch(
+      method: string,
+      path: string,
+      event?: APIGatewayProxyEventV2,
+    ): Promise<RouteResult> {
+      return dispatchRoutes(
+        opts.createRoutes(repo),
+        event ?? makeEvent(method, path, { jwtClaims: ADMIN }),
+        method,
+        path,
       );
-      expect(result).toBeUndefined();
+    }
+
+    it('returns 404 for routes outside the module path', async () => {
+      const result = await dispatch(opts.foreignMethod, opts.foreignPath);
+      expect(result.statusCode).toBe(404);
     });
 
     it('gets (seeding) content', async () => {
       vi.mocked(repo.getOrCreate).mockResolvedValue(opts.sample);
-      const result = await opts.handleRoute(
-        makeEvent('GET', opts.basePath),
-        'GET',
-        opts.basePath,
-        repo,
-      );
-      expect(result?.statusCode).toBe(200);
-      opts.assertGetBody(JSON.parse(result!.body as string));
+      const result = await dispatch('GET', opts.basePath);
+      expect(result.statusCode).toBe(200);
+      opts.assertGetBody(JSON.parse(result.body as string));
     });
 
     it('updates with the expected version', async () => {
@@ -80,39 +81,43 @@ export function definePublishableHandlerTests<
         ...opts.sample,
         version: opts.sample.version + 1,
       });
-      const result = await opts.handleRoute(
-        makeEvent('PUT', opts.basePath, { body: opts.updateBody }),
+      const result = await dispatch(
         'PUT',
         opts.basePath,
-        repo,
+        makeEvent('PUT', opts.basePath, {
+          jwtClaims: ADMIN,
+          body: opts.updateBody,
+        }),
       );
-      expect(result?.statusCode).toBe(200);
+      expect(result.statusCode).toBe(200);
       opts.assertUpdateInput(vi.mocked(repo.update).mock.calls[0]![0]!);
     });
 
     it('rejects an update body without a version', async () => {
       const { version: _v, ...withoutVersion } = opts.updateBody;
-      const result = await opts.handleRoute(
-        makeEvent('PUT', opts.basePath, { body: withoutVersion }),
+      const result = await dispatch(
         'PUT',
         opts.basePath,
-        repo,
+        makeEvent('PUT', opts.basePath, {
+          jwtClaims: ADMIN,
+          body: withoutVersion,
+        }),
       );
-      expect(result?.statusCode).toBe(400);
+      expect(result.statusCode).toBe(400);
       expect(vi.mocked(repo.update)).not.toHaveBeenCalled();
     });
 
     it('returns 409 on a version conflict', async () => {
       vi.mocked(repo.update).mockRejectedValue(new ConflictError('stale'));
-      const result = await opts.handleRoute(
-        makeEvent('PUT', opts.basePath, {
-          body: { version: opts.sample.version },
-        }),
+      const result = await dispatch(
         'PUT',
         opts.basePath,
-        repo,
+        makeEvent('PUT', opts.basePath, {
+          jwtClaims: ADMIN,
+          body: { version: opts.sample.version },
+        }),
       );
-      expect(result?.statusCode).toBe(409);
+      expect(result.statusCode).toBe(409);
     });
 
     it('publishes and unpublishes', async () => {
@@ -124,28 +129,28 @@ export function definePublishableHandlerTests<
         hasUnpublishedChanges: false,
       });
 
-      const published = await opts.handleRoute(
-        makeEvent('POST', `${opts.basePath}/publish`, {
-          body: { version: opts.sample.version },
-        }),
+      const published = await dispatch(
         'POST',
         `${opts.basePath}/publish`,
-        repo,
-      );
-      expect(published?.statusCode).toBe(200);
-      expect(JSON.parse(published!.body as string).status).toBe('published');
-
-      const unpublished = await opts.handleRoute(
-        makeEvent('POST', `${opts.basePath}/unpublish`, {
+        makeEvent('POST', `${opts.basePath}/publish`, {
+          jwtClaims: ADMIN,
           body: { version: opts.sample.version },
         }),
+      );
+      expect(published.statusCode).toBe(200);
+      expect(JSON.parse(published.body as string).status).toBe('published');
+
+      const unpublished = await dispatch(
         'POST',
         `${opts.basePath}/unpublish`,
-        repo,
+        makeEvent('POST', `${opts.basePath}/unpublish`, {
+          jwtClaims: ADMIN,
+          body: { version: opts.sample.version },
+        }),
       );
-      expect(unpublished?.statusCode).toBe(200);
-      expect(JSON.parse(unpublished!.body as string).status).toBe('draft');
-      expect(JSON.parse(unpublished!.body as string).publishedAt).toBe(
+      expect(unpublished.statusCode).toBe(200);
+      expect(JSON.parse(unpublished.body as string).status).toBe('draft');
+      expect(JSON.parse(unpublished.body as string).publishedAt).toBe(
         opts.sample.publishedAt,
       );
     });

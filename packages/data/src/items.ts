@@ -7,7 +7,10 @@ import {
   type Post,
   type Resume,
 } from '@gagnechris/shared';
-import { slugify as sharedSlugify } from '@gagnechris/shared';
+import {
+  EMPTY_SLUG_FALLBACK,
+  slugify as sharedSlugify,
+} from '@gagnechris/shared';
 import {
   HOME_ID,
   homeMetaSk,
@@ -28,9 +31,9 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Shared slugify with API fallback when the title yields an empty slug. */
+/** Shared slugify with EMPTY_SLUG_FALLBACK when the title yields an empty slug. */
 export function slugify(input: string): string {
-  return sharedSlugify(input) || 'post';
+  return sharedSlugify(input) || EMPTY_SLUG_FALLBACK;
 }
 
 export const PostMetaItemSchema = z.object({

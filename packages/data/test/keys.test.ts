@@ -31,10 +31,10 @@ describe('@gagnechris/data keys', () => {
     expect(statusGsi1Pk('published')).toBe('STATUS#published');
   });
 
-  it('slugify matches shared NFKD rules with post fallback', () => {
+  it('slugify matches shared NFKD rules with untitled fallback', () => {
     expect(slugify('Hello World!')).toBe('hello-world');
     expect(slugify('  Café  ')).toBe('cafe');
-    expect(slugify('  ')).toBe('post');
+    expect(slugify('  ')).toBe('untitled');
   });
 
   it('parsePostMetaItem rejects invalid items', () => {

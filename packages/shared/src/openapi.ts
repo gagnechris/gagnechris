@@ -14,12 +14,12 @@ import {
   ExpectedVersionRequestSchema,
   HealthResponseSchema,
   HomeSchema,
+  ListPostsQuerySchema,
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
   PostListResponseSchema,
   PostSchema,
   PostSeoSchema,
-  PostStatusSchema,
   ResumeContentSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
@@ -40,18 +40,6 @@ import {
 
 const PostIdParamsSchema = z.object({
   id: z.string().min(1).openapi({ description: 'Post id (ULID)' }),
-});
-
-const ListPostsQuerySchema = z.object({
-  status: PostStatusSchema.optional().openapi({
-    description: 'Filter by status (omit to list draft + published)',
-  }),
-  cursor: z.string().min(1).optional().openapi({
-    description: 'Opaque pagination cursor from a previous list response',
-  }),
-  limit: z.coerce.number().int().positive().max(100).optional().openapi({
-    description: 'Page size (single-status queries only)',
-  }),
 });
 
 const MediaObjectKeyParamsSchema = z.object({
@@ -88,21 +76,21 @@ function conflict(description = 'Conflict') {
 const r400 = err('Validation error (may include `fields`)');
 const r401 = err('Unauthorized');
 const r404 = err('Not found');
-const r405 = err('Method not allowed on this path');
 const r409 = conflict('Conflict (may include `currentVersion` / `current`)');
 const r412 = err('Precondition failed (`If-Match` version mismatch)');
 const r429 = err('Rate limited');
+const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
 const r503 = err('Service unavailable (throttling)');
 
-const notebookAuth = { 401: r401, 405: r405, 503: r503 };
+const notebookAuth = { 401: r401, 500: r500, 503: r503 };
 
 const FixtureNoteIdParamsSchema = z.object({
   id: UlidSchema.openapi({ description: 'Fixture note id (client ULID)' }),
 });
 
-const adminAuth = { 401: r401, 405: r405, 503: r503 };
-const publicBase = { 405: r405, 503: r503 };
+const adminAuth = { 401: r401, 500: r500, 503: r503 };
+const publicBase = { 500: r500, 503: r503 };
 
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();
@@ -174,6 +162,7 @@ export function buildOpenApiDocument() {
     request: { query: ListPostsQuerySchema },
     responses: {
       200: ok(PostListResponseSchema, 'Post list'),
+      400: r400,
       ...adminAuth,
     },
   });
