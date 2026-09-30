@@ -1,22 +1,28 @@
 # Mobile (Expo) — CHR-142 spike
 
-Minimal Expo app that proves monorepo packages resolve under Metro.
+Minimal Expo app that proves monorepo packages resolve **and run** under Metro.
+
+This app is not part of the root npm workspaces and has its own lockfile, so its
+dependencies install separately. See `docs/mobile.md`.
 
 ## Run
 
 ```bash
+# Once, and after any packages/* dependency change
+npm ci --prefix apps/mobile
+
 # Terminal 1 — local CMS API (fake auth)
 npm run local:dev
 
 # Terminal 2 — Expo
-npm run start -w @gagnechris/mobile
+npm run mobile
 # then press i for iOS Simulator
 ```
 
 Override API target:
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm run start -w @gagnechris/mobile
+EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 ```
 
 (Authenticated admin calls need a real Cognito ID token against prod; local uses `local-dev-token`.)
@@ -25,12 +31,27 @@ EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm run start -w @gagnechris/mob
 
 - `@gagnechris/shared` — `HealthResponseSchema`
 - `@gagnechris/api-client` — `createApiClient` (public + TokenProvider)
-- `@gagnechris/tokens` — primary/neutral colors on the spike screen
+- `@gagnechris/app-core` — `useQueuedAutosave` (single-React check)
+- `@gagnechris/tokens` — colors plus numeric space / text / radius scales
+
+## Bundle checks
+
+```bash
+npm run export:ios      # expo export --platform ios --source-maps
+npm run check:bundle    # no .d.ts sources; zod runtime present
+npm run smoke:bundle    # build with the real metro.config.js and run it in Node
+```
+
+`expo export` succeeding is not evidence on its own: the original resolver
+bundled `zod`'s `.d.ts` files and the app crashed at module load (CHR-150).
 
 ## Metro
 
-`metro.config.js` watches the workspace root, sets `nodeModulesPaths`, enables package exports, and remaps NodeNext `.js` import specifiers to `.ts` / `.tsx`.
+`metro.config.js` watches the workspace root, sets `nodeModulesPaths`, enables
+package exports, and remaps NodeNext `.js` specifiers to `.ts` / `.tsx` — only
+for relative imports from first-party files, never `node_modules`.
 
 ## React versions
 
-Expo 57 pins `react@19.2.3`; web stays on `^19.3.0`. Versions are **isolated** (not forced via root overrides) — see `docs/mobile.md`.
+Root and this app are both on React `19.3.0` (RN 0.86.3 accepts `^19.2.3`).
+Two copies exist on disk because of the split lockfiles; see `docs/mobile.md`.

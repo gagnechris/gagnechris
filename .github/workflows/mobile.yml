@@ -26,31 +26,56 @@ concurrency:
   group: mobile-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# No AWS credentials — typecheck/lint/test only (CHR-142).
+# No AWS credentials — typecheck/lint/test/bundle only (CHR-142).
 jobs:
   mobile:
-    name: Mobile typecheck, lint, test
+    name: Mobile typecheck, lint, test, bundle
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Root install: the shared packages plus eslint/prettier. It no longer
+      # carries Expo or React Native (CHR-150).
       - name: Setup
         uses: ./.github/actions/setup
+
+      # apps/mobile is outside the root workspaces and has its own lockfile, so
+      # only this job pays for the Expo / RN tree.
+      - name: Install mobile
+        working-directory: apps/mobile
+        run: npm ci
 
       - name: Typecheck mobile + client packages
         run: |
           npm run typecheck -w @gagnechris/shared
           npm run typecheck -w @gagnechris/api-client
           npm run typecheck -w @gagnechris/tokens
-          npm run typecheck -w @gagnechris/mobile
+          npm run typecheck -w @gagnechris/app-core
+          npm run typecheck --prefix apps/mobile
 
       - name: Lint mobile
-        run: npm run lint -w @gagnechris/mobile
+        run: npm run lint --prefix apps/mobile
 
       - name: Test mobile + client packages
         run: |
           npm test -w @gagnechris/api-client
           npm test -w @gagnechris/tokens
-          npm test -w @gagnechris/mobile
+          npm test -w @gagnechris/app-core
+          npm test --prefix apps/mobile
+
+      # `expo export` succeeding proves nothing on its own: the CHR-142 spike
+      # bundled `zod`'s `.d.ts` files and the app crashed on launch. Check the
+      # sourcemap, then execute a bundle that evaluates shared Zod schemas.
+      - name: Export iOS bundle
+        working-directory: apps/mobile
+        run: npm run export:ios
+
+      - name: Reject type-only sources in the bundle
+        working-directory: apps/mobile
+        run: npm run check:bundle
+
+      - name: Smoke-run shared Zod from a real Metro bundle
+        working-directory: apps/mobile
+        run: npm run smoke:bundle

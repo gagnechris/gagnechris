@@ -36,7 +36,7 @@ export type DraftPublishEditorOptions<TEntity> = {
   unpublishConfirm: string;
   discardConfirm: string;
   enabled?: boolean;
-  /** Injected confirm (web: `window.confirm`). Required — no DOM default. */
+  /** Injected async confirm (web wraps `window.confirm`). No DOM default. */
   confirm: ConfirmFn;
 };
 
@@ -145,7 +145,7 @@ export function useDraftPublishEditor<TEntity>({
 
   const runUnpublish = useCallback(async () => {
     if (!enabled || busy) return;
-    if (!confirm(unpublishConfirm)) return;
+    if (!(await confirm(unpublishConfirm))) return;
     await withHold(async () => {
       if (dirty) {
         const flush = await save();
@@ -175,7 +175,7 @@ export function useDraftPublishEditor<TEntity>({
 
   const runDiscard = useCallback(async () => {
     if (!enabled || busy) return;
-    if (!confirm(discardConfirm)) return;
+    if (!(await confirm(discardConfirm))) return;
     await withHold(async () => {
       const { data, error, response } = await discard();
       if (error || !data) {

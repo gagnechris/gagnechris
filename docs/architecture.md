@@ -68,8 +68,8 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 - Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
 - Optimistic update + rollback pattern: `optimisticMutationHandlers` in `@gagnechris/app-core` (ready for Notebook tasks).
 - Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token).
-- Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app.
-- Mobile spike: `apps/mobile` (Expo) imports shared / api-client / tokens under Metro — see `docs/mobile.md` (CHR-142).
+- Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app. `text` / `space` / `radius` are px numbers for RN; the generator emits `rem` (`npm run tokens:check` guards drift).
+- Mobile spike: `apps/mobile` (Expo) imports shared / api-client / app-core / tokens under Metro. Outside the root workspaces with its own lockfile, and CI executes a real Metro bundle — see `docs/mobile.md` (CHR-142, CHR-150).
 
 ## Admin editor foundation
 

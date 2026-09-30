@@ -10,6 +10,10 @@
 nvm install   # reads .nvmrc
 nvm use
 npm ci
+
+# Only for the Expo app: it sits outside the root workspaces with its own
+# lockfile so web / API / infra work never installs React Native (CHR-150).
+npm ci --prefix apps/mobile
 ```
 
 ## Day-to-day: full local CMS
@@ -47,10 +51,16 @@ npm run test:integration -w @gagnechris/api   # DynamoDB Local transaction paths
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
+npm run openapi:check # OpenAPI + generated client drift (CI)
+npm run tokens:check  # design token CSS drift (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + Vite → apps/web/dist
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 ```
+
+The root scripts skip `apps/mobile`; its gates (including a real Metro bundle
+that is executed, not just built) run with `--prefix apps/mobile`. See
+[mobile.md](./mobile.md).
 
 ## Environment variables
 

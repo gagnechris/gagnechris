@@ -14,7 +14,7 @@ export function useDraftPublishEditor<TEntity>(
 ) {
   const editor = useDraftPublishEditorCore({
     ...options,
-    confirm: (message) => window.confirm(message),
+    confirm: (message) => Promise.resolve(window.confirm(message)),
   });
 
   const { dirty } = options;
