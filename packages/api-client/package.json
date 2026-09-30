@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "generate": "openapi-typescript @gagnechris/shared/openapi.json -o src/schema.d.ts",
+    "generate": "openapi-typescript ../../packages/shared/openapi/openapi.json -o src/schema.d.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
