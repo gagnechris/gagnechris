@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
-import { useDraftPublishEditor } from '../src/useDraftPublishEditor.js';
+import {
+  useDraftPublishEditor,
+  type DraftPublishAutosave,
+} from '../src/useDraftPublishEditor.js';
 import { useQueuedAutosave } from '../src/useQueuedAutosave.js';
 import { act, renderHook, useState } from './renderHook.js';
 import { useRef } from 'react';
@@ -99,14 +102,14 @@ describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
 });
 
 describe('useDraftPublishEditor async confirm (CHR-150)', () => {
-  const stubAutosave = () => ({
-    save: vi.fn(async () => 'saved' as const),
-    setSaveState: vi.fn(),
-    setSaveError: vi.fn(),
+  const stubAutosave = (): DraftPublishAutosave => ({
+    save: async () => 'clean',
+    setSaveState: () => {},
+    setSaveError: () => {},
     getEditGen: () => 0,
     getLastSavedGen: () => 0,
-    markClean: vi.fn(),
-    setAutosaveHeld: vi.fn(),
+    markClean: () => {},
+    setAutosaveHeld: () => {},
   });
 
   /** RN's `Alert` resolves on a later tick; a sync read would see a promise. */
