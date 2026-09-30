@@ -194,15 +194,28 @@ export function buildSoftDeleteSlugRelease(
   ];
 }
 
+export type DraftMutationPlan = {
+  items: TransactItem[];
+  /** TransactWrite indexes of slug-claim Puts (attribute_not_exists). */
+  slugClaimIndexes: number[];
+};
+
 /** Assemble the full TransactWrite item list for a draft mutation. */
 export function buildDraftMutationItems(
   tableName: string,
   before: Post,
   after: Post,
   options: DraftMutationOptions = {},
-): TransactItem[] {
+): DraftMutationPlan {
   const items: TransactItem[] = [buildMetaPut(tableName, before, after)];
-  items.push(...buildSlugChangeItems(tableName, before, after));
+  const slugItems = buildSlugChangeItems(tableName, before, after);
+  const slugClaimIndexes: number[] = [];
+  for (const item of slugItems) {
+    if (item.Put?.ConditionExpression?.includes('attribute_not_exists(pk)')) {
+      slugClaimIndexes.push(items.length);
+    }
+    items.push(item);
+  }
   if (options.writePublished) {
     items.push(buildPublishedPut(tableName, after));
   }
@@ -211,5 +224,5 @@ export function buildDraftMutationItems(
   }
   items.push(...buildTagSyncItems(tableName, after, options));
   items.push(...buildSoftDeleteSlugRelease(tableName, before, after));
-  return items;
+  return { items, slugClaimIndexes };
 }

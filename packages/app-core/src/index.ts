@@ -25,6 +25,7 @@ export {
   fetchHome,
   fetchPost,
   fetchPosts,
+  fetchPostsPage,
   fetchResume,
   publishHome,
   publishPost,

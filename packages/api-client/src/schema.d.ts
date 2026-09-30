@@ -378,7 +378,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -650,7 +651,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -794,7 +796,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -951,7 +954,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1109,7 +1113,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1267,7 +1272,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1492,7 +1498,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1629,7 +1636,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1765,7 +1773,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1901,7 +1910,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2174,7 +2184,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2327,7 +2338,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2479,7 +2491,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2631,7 +2644,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2993,7 +3007,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3225,7 +3240,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3361,7 +3377,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            error: string;
+                            /** @enum {string} */
+                            error: "conflict" | "slug_taken";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3774,7 +3791,8 @@ export interface components {
             };
         };
         ConflictErrorResponse: {
-            error: string;
+            /** @enum {string} */
+            error: "conflict" | "slug_taken";
             message?: string;
             fields?: {
                 [key: string]: string;

@@ -112,7 +112,11 @@ describe('HomeRepository', () => {
     );
     await expect(
       new HomeRepository(doc, 'gagnechris-test').update({ version: 3 }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      currentVersion: expect.any(Number),
+      current: expect.objectContaining({ version: expect.any(Number) }),
+    });
   });
 
   it('maps TransactionCanceledException on publish to a 409 conflict', async () => {

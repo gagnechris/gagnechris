@@ -10,10 +10,11 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import { isOptimisticLockConflict } from '@gagnechris/data';
+import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
-import { decodeCursor, encodeCursor } from './cursor.js';
+import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
 import { runDynamoWrite } from './dynamo-write.js';
-import { ConflictError, NotFoundError } from './errors.js';
+import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 
 export type VersionedEntity = {
   version: number;
@@ -34,6 +35,8 @@ export type VersionedEntityConfig<
   /** True when the entity should be treated as soft-deleted / missing. */
   isDeleted?: (entity: T) => boolean;
   nowIso?: () => string;
+  /** Required cursor key names for queryPage (defaults to primary keys). */
+  cursorKeyNames?: readonly string[];
 };
 
 export type QueryPage<T> = {
@@ -55,6 +58,26 @@ export class VersionedEntityRepository<
     return this.config.nowIso?.() ?? new Date().toISOString();
   }
 
+  protected mapItem(raw: unknown): T {
+    try {
+      return this.config.toEntity(raw as TItem);
+    } catch (error) {
+      const item =
+        raw && typeof raw === 'object'
+          ? (raw as { pk?: unknown; sk?: unknown })
+          : {};
+      const pk = typeof item.pk === 'string' ? item.pk : undefined;
+      const sk = typeof item.sk === 'string' ? item.sk : undefined;
+      if (error instanceof ZodError || error instanceof DataIntegrityError) {
+        throw new DataIntegrityError(
+          `Corrupt stored ${this.config.conflictLabel}${pk ? ` (${pk}/${sk ?? '?'})` : ''}`,
+          { pk, sk, cause: error },
+        );
+      }
+      throw error;
+    }
+  }
+
   async get(id: string): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
@@ -63,7 +86,7 @@ export class VersionedEntityRepository<
       }),
     );
     if (!result.Item) return undefined;
-    const entity = this.config.toEntity(result.Item as TItem);
+    const entity = this.mapItem(result.Item);
     if (this.config.isDeleted?.(entity)) return undefined;
     return entity;
   }
@@ -122,6 +145,7 @@ export class VersionedEntityRepository<
           {
             currentVersion: current?.version,
             current,
+            code: error instanceof ConflictError ? error.code : 'conflict',
           },
         );
       }
@@ -149,7 +173,8 @@ export class VersionedEntityRepository<
       limit?: number;
     },
   ): Promise<QueryPage<T>> {
-    const exclusiveStartKey = decodeCursor(input.cursor);
+    const cursorKeys = this.config.cursorKeyNames ?? PRIMARY_CURSOR_KEYS;
+    const exclusiveStartKey = decodeCursor(input.cursor, cursorKeys);
     const result = await this.doc.send(
       new QueryCommand({
         ...input,
@@ -158,9 +183,17 @@ export class VersionedEntityRepository<
         Limit: input.limit,
       }),
     );
-    const items = (result.Items ?? []).map((item) =>
-      this.config.toEntity(item as TItem),
-    );
+    const items: T[] = [];
+    for (const raw of result.Items ?? []) {
+      try {
+        const entity = this.mapItem(raw);
+        if (this.config.isDeleted?.(entity)) continue;
+        items.push(entity);
+      } catch (error) {
+        if (error instanceof DataIntegrityError) continue;
+        throw error;
+      }
+    }
     return {
       items,
       nextCursor: encodeCursor(

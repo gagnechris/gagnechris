@@ -18,7 +18,15 @@ const formatDate = (iso: string | null): string => {
 
 export default function AdminPostsPage() {
   const navigate = useNavigate();
-  const { data: posts, error: queryError, isPending } = usePostsQuery();
+  const {
+    data,
+    error: queryError,
+    isPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePostsQuery();
+  const posts = data?.pages.flatMap((p) => p.items);
   const createMutation = useCreatePostMutation();
   const [actionError, setActionError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -160,6 +168,16 @@ export default function AdminPostsPage() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {hasNextPage ? (
+        <button
+          type="button"
+          className="admin-btn"
+          disabled={isFetchingNextPage}
+          onClick={() => void fetchNextPage()}
+        >
+          {isFetchingNextPage ? 'Loading…' : 'Load more'}
+        </button>
       ) : null}
     </section>
   );

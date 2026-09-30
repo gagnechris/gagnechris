@@ -5,7 +5,7 @@ import {
   type UpdateResumeRequest,
 } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { SingletonRepository } from '../data/singleton-repository.js';
+import { PublishableSingletonRepository } from '../data/publishable-repository.js';
 import {
   buildResumeMetaItem,
   buildResumePublishedItem,
@@ -15,10 +15,11 @@ import {
   resumeMetaSk,
   resumePk,
   resumePublishedSk,
+  RESUME_ID,
   type ResumeMetaItem,
 } from './keys.js';
 
-export class ResumeRepository extends SingletonRepository<
+export class ResumeRepository extends PublishableSingletonRepository<
   Resume,
   ResumeMetaItem,
   UpdateResumeRequest
@@ -30,10 +31,14 @@ export class ResumeRepository extends SingletonRepository<
     super(
       {
         conflictLabel: 'resume',
+        singletonId: RESUME_ID,
         defaultEntity: DEFAULT_RESUME,
-        pk: resumePk,
-        metaSk: resumeMetaSk,
-        publishedSk: resumePublishedSk,
+        keysFor: () => ({
+          pk: resumePk(),
+          metaSk: resumeMetaSk(),
+          publishedSk: resumePublishedSk(),
+        }),
+        idOf: () => RESUME_ID,
         toEntity: (item, hasUnpublishedChanges) =>
           metaToResume(parseResumeMetaItem(item), hasUnpublishedChanges),
         toItem: buildResumeMetaItem,
