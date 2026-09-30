@@ -13,14 +13,20 @@ import {
   UpdateTableCommand,
   waitUntilTableExists,
 } from '@aws-sdk/client-dynamodb';
-import { APP_TABLE, appTableAttributeDefinitions } from '@gagnechris/data';
+import {
+  APP_TABLE,
+  appTableAttributeDefinitions,
+  appTableName,
+} from '@gagnechris/data';
 
-const tableName = process.env.DATA_TABLE_NAME || 'gagnechris-local';
+const tableName = process.env.DATA_TABLE_NAME || appTableName('local');
 const endpoint =
   process.env.AWS_ENDPOINT_URL_DYNAMODB || 'http://127.0.0.1:8000';
 
-if (tableName === 'gagnechris-prod') {
-  console.error('Refusing to bootstrap gagnechris-prod from local scripts');
+if (tableName === appTableName('prod')) {
+  console.error(
+    `Refusing to bootstrap ${appTableName('prod')} from local scripts`,
+  );
   process.exit(1);
 }
 
@@ -43,6 +49,10 @@ function createTableInput() {
       { AttributeName: def.partitionKey.name, KeyType: 'HASH' as const },
       { AttributeName: def.sortKey.name, KeyType: 'RANGE' as const },
     ],
+    StreamSpecification: {
+      StreamEnabled: true,
+      StreamViewType: def.streamViewType,
+    },
     GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
       IndexName: gsi.indexName,
       KeySchema: [
@@ -52,6 +62,27 @@ function createTableInput() {
       Projection: { ProjectionType: gsi.projectionType },
     })),
   };
+}
+
+async function ensureTtl() {
+  const def = APP_TABLE;
+  if (endpoint.includes('127.0.0.1') || endpoint.includes('localhost')) {
+    console.log(
+      `TTL attribute for writers: ${def.timeToLiveAttribute} (DynamoDB Local; no UpdateTimeToLive)`,
+    );
+    return;
+  }
+  const { UpdateTimeToLiveCommand } = await import('@aws-sdk/client-dynamodb');
+  await client.send(
+    new UpdateTimeToLiveCommand({
+      TableName: tableName,
+      TimeToLiveSpecification: {
+        Enabled: true,
+        AttributeName: def.timeToLiveAttribute,
+      },
+    }),
+  );
+  console.log(`Enabled TTL on ${def.timeToLiveAttribute} for ${tableName}`);
 }
 
 async function ensureMissingGsis(existingIndexNames: Set<string>) {
@@ -100,6 +131,7 @@ async function main() {
     );
     console.log(`Table ${tableName} already exists`);
     await ensureMissingGsis(existing);
+    await ensureTtl();
     console.log(`Table ${tableName} schema is up to date`);
     return;
   } catch (err) {
@@ -116,6 +148,7 @@ async function main() {
     { client, maxWaitTime: 30 },
     { TableName: tableName },
   );
+  await ensureTtl();
   console.log(`Created table ${tableName} at ${endpoint}`);
 }
 

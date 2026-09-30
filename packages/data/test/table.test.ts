@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   APP_TABLE,
+  LAST_DEPLOYED_GSI_NAMES,
   appTableAttributeDefinitions,
   appTableName,
+  assertSafeGsiUpdate,
 } from '../src/table.js';
 import {
   isPublishRelevant,
@@ -30,6 +32,39 @@ describe('APP_TABLE', () => {
       'gsi1',
       'gsi2',
     ]);
+  });
+
+  it('allows at most one GSI create or delete vs last deployed (CHR-155)', () => {
+    expect([...LAST_DEPLOYED_GSI_NAMES]).toEqual(
+      APP_TABLE.globalSecondaryIndexes.map((g) => g.indexName),
+    );
+    assertSafeGsiUpdate(
+      LAST_DEPLOYED_GSI_NAMES,
+      APP_TABLE.globalSecondaryIndexes,
+    );
+    const gsi3 = {
+      indexName: 'gsi3',
+      partitionKey: { name: 'gsi3pk', type: 'S' as const },
+      sortKey: { name: 'gsi3sk', type: 'S' as const },
+      projectionType: 'ALL' as const,
+    };
+    const gsi4 = {
+      indexName: 'gsi4',
+      partitionKey: { name: 'gsi4pk', type: 'S' as const },
+      sortKey: { name: 'gsi4sk', type: 'S' as const },
+      projectionType: 'ALL' as const,
+    };
+    assertSafeGsiUpdate(LAST_DEPLOYED_GSI_NAMES, [
+      ...APP_TABLE.globalSecondaryIndexes,
+      gsi3,
+    ]);
+    expect(() =>
+      assertSafeGsiUpdate(LAST_DEPLOYED_GSI_NAMES, [
+        ...APP_TABLE.globalSecondaryIndexes,
+        gsi3,
+        gsi4,
+      ]),
+    ).toThrow(/at most one GSI create or delete/);
   });
 });
 

@@ -15,7 +15,9 @@ ssm_name() {
   local key="$1"
   local leaf
   leaf="$(node -e "const j=require(process.argv[1]); const k=process.argv[2]; if(!j.keys[k]) { console.error('unknown SSM key: '+k); process.exit(1)}; process.stdout.write(j.keys[k])" "${SSM_JSON}" "${key}")"
-  echo "/gagnechris/${ENV_NAME}/${leaf}"
+  local prefix
+  prefix="$(node -e "const j=require(process.argv[1]); process.stdout.write(j.prefixTemplate.replaceAll('\${ENV_NAME}', process.argv[2]))" "${SSM_JSON}" "${ENV_NAME}")"
+  echo "${prefix}/${leaf}"
 }
 
 BUCKET="$(aws ssm get-parameter \

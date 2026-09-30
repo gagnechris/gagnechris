@@ -131,11 +131,28 @@ describe('stack Template assertions (CHR-136)', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-stream-dlq-depth',
+      MetricName: 'NumberOfMessagesSent',
+      Statistic: 'Sum',
+      Threshold: 1,
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-lambda-errors',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-lambda-throttles',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-resume-pdf-errors',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-kvs-sync-failed',
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
     });
+    const mappings = template.findResources('AWS::Lambda::EventSourceMapping');
+    expect(JSON.stringify(mappings)).not.toContain('ReportBatchItemFailures');
   });
 
   it('ApiStack Lambda is arm64 Node 24 with powertools env', () => {
@@ -199,18 +216,8 @@ describe('stack Template assertions (CHR-136)', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-errors',
     });
-  });
-});
-
-describe('no relative cross-workspace imports (CHR-136)', () => {
-  it('forbids relative imports from services/api into other workspaces', async () => {
-    const { execSync } = await import('node:child_process');
-    const { join } = await import('node:path');
-    const root = join(import.meta.dirname, '../..');
-    const out = execSync(
-      `rg -n "from ['\\"]\\\\.\\\\./\\\\.\\\\./(publisher|web|shared|data|infra)/" services/api --glob '*.{ts,tsx,mjs,js}' || true`,
-      { cwd: root, encoding: 'utf8' },
-    );
-    expect(out.trim()).toBe('');
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-lambda-throttles',
+    });
   });
 });

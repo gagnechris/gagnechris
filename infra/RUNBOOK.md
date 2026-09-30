@@ -197,7 +197,9 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 ## DynamoDB data plane (CHR-29)
 
-`Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates or adds missing GSIs). Key design: `docs/data-model.md`.
+`Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
+
+**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSI_NAMES` in `@gagnechris/data` fail CI if a PR adds or removes more than one index vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSI_NAMES`.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
@@ -263,7 +265,24 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
-After stream retries (`retryAttempts: 3`), discarded records go to SQS `gagnechris-prod-publisher-stream-failures` (on-failure destination) with a depth alarm on the Guardrails alerts topic.
+After stream retries (`retryAttempts: 3`), discarded records go to SQS
+`gagnechris-prod-publisher-stream-failures` (on-failure destination). The depth
+alarm watches `NumberOfMessagesSent` (Sum ≥ 1) so each new failure re-notifies;
+`ApproximateNumberOfMessagesVisible` would stay ALARM until purge and mute
+follow-up alerts for up to 14 days.
+
+### Stream DLQ recovery
+
+Stream DLQ messages hold only failure metadata (not the DynamoDB item payload).
+Stream records themselves expire after ~24h, so replaying the queue is not enough.
+
+On DLQ alarm:
+
+1. Invoke republish-all (rebuilds site from the table — preferred recovery).
+2. Purge the failure queue (`gagnechris-prod-publisher-stream-failures`).
+
+Manual verification (optional): temporarily throw from the publisher handler,
+publish a post, confirm a DLQ message + SNS alert, then republish and purge.
 
 Manual republish-all (after shell deploy, or recovery):
 
@@ -286,7 +305,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
-SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-auth-domain`.
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-auth-domain`.
 
 Deploy (after Certificate has the `auth` SAN):
 

@@ -1,4 +1,4 @@
-import { Aspects, Duration, type CfnResource, type IAspect } from 'aws-cdk-lib';
+import { Aspects, Duration, type IAspect } from 'aws-cdk-lib';
 import {
   Alarm,
   ComparisonOperator,
@@ -6,6 +6,7 @@ import {
 } from 'aws-cdk-lib/aws-cloudwatch';
 import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import { Architecture, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
+import { SqsDestination } from 'aws-cdk-lib/aws-lambda-destinations';
 import { SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
 import {
   NodejsFunction,
@@ -14,7 +15,11 @@ import {
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import { NagSuppressions, type NagPackSuppression } from 'cdk-nag';
+import {
+  NagSuppressions,
+  type NagPackSuppression,
+  type NagPackSuppressionAppliesTo,
+} from 'cdk-nag';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Construct, type IConstruct } from 'constructs';
@@ -35,57 +40,31 @@ export interface NodeLambdaProps extends Omit<
   | 'depsLockFilePath'
   | 'projectRoot'
 > {
-  /**
-   * POWERTOOLS_SERVICE_NAME (and alarm dimension context).
-   * Metrics namespace is always {@link POWERTOOLS_METRICS_NAMESPACE}.
-   */
   readonly powertoolsServiceName: string;
-  /** SNS topic for errors / throttles / optional duration alarms. */
   readonly alertsTopic: ITopic;
-  /**
-   * Prefix for CloudWatch alarm names, e.g. `gagnechris-prod-api`
-   * → `…-lambda-errors`, `…-lambda-throttles`.
-   */
   readonly alarmNamePrefix: string;
-  /**
-   * When false, skip creating the errors alarm (stack owns a legacy
-   * `ApiLambdaErrors` / `PublisherLambdaErrors` sibling). @default true
-   */
-  readonly createErrorsAlarm?: boolean;
-  /**
-   * Construct id (and CloudFormation logical ID) for the errors alarm when
-   * NodeLambda creates it. Prefer stack-owned legacy alarms during migration.
-   */
-  readonly errorsAlarmLogicalId?: string;
-  /**
-   * cdk-nag AwsSolutions-IAM5 reason (X-Ray + stack-specific wildcards).
-   * IAM4 (AWSLambdaBasicExecutionRole) is suppressed with a fixed reason.
-   */
   readonly iam5NagReason: string;
-  /** @default RetentionDays.TWO_WEEKS */
+  readonly iam5NagAppliesTo: NagPackSuppressionAppliesTo[];
   readonly logRetention?: RetentionDays;
-  /** When true, alarm if p99 duration exceeds 80% of the function timeout. */
   readonly enableDurationAlarm?: boolean;
 }
 
 export interface LambdaFailureDestinationProps {
   readonly alertsTopic: ITopic;
-  /**
-   * CloudWatch alarm name for ApproximateNumberOfMessagesVisible ≥ 1.
-   */
   readonly depthAlarmName: string;
-  /** Optional explicit queue name (useful for ops / SSM). */
   readonly queueName?: string;
-  /** @default Duration.days(14) */
   readonly retentionPeriod?: Duration;
 }
 
 /**
- * SQS destination for discarded Lambda stream / async records, plus a depth alarm.
- * Use with `DynamoEventSource` / `KinesisEventSource` `onFailure`.
+ * SQS on-failure destination for Lambda stream event sources and async
+ * invokes, plus an alarm that re-notifies when new messages are sent.
  */
 export class LambdaFailureDestination extends Construct {
   readonly queue: Queue;
+  readonly streamDestination: SqsDlq;
+  readonly asyncDestination: SqsDestination;
+  /** @deprecated Prefer {@link streamDestination}. */
   readonly destination: SqsDlq;
   readonly depthAlarm: Alarm;
 
@@ -103,15 +82,17 @@ export class LambdaFailureDestination extends Construct {
       enforceSSL: true,
     });
 
-    this.destination = new SqsDlq(this.queue);
+    this.streamDestination = new SqsDlq(this.queue);
+    this.destination = this.streamDestination;
+    this.asyncDestination = new SqsDestination(this.queue);
 
     this.depthAlarm = new Alarm(this, 'DepthAlarm', {
       alarmName: props.depthAlarmName,
       alarmDescription:
-        'Lambda failure destination has visible messages (discarded stream/async records)',
-      metric: this.queue.metricApproximateNumberOfMessagesVisible({
+        'Lambda failure destination received a message (discarded stream/async record). Republish then purge — see RUNBOOK.',
+      metric: this.queue.metricNumberOfMessagesSent({
         period: Duration.minutes(5),
-        statistic: 'Maximum',
+        statistic: 'Sum',
       }),
       threshold: 1,
       evaluationPeriods: 1,
@@ -120,7 +101,6 @@ export class LambdaFailureDestination extends Construct {
     });
     this.depthAlarm.addAlarmAction(new SnsAction(props.alertsTopic));
 
-    // This queue *is* the DLQ for stream failures; it does not need its own DLQ.
     NagSuppressions.addResourceSuppressions(
       this.queue,
       [
@@ -136,14 +116,11 @@ export class LambdaFailureDestination extends Construct {
 }
 
 /**
- * Shared Node.js Lambda: arm64, X-Ray, log retention, esbuild defaults,
- * Powertools env, standard alarms, and documented cdk-nag suppressions.
- *
- * Extends {@link NodejsFunction} so stack construct IDs (`ApiFunction`,
- * `PublisherFunction`) keep stable CloudFormation logical IDs for the function.
+ * Shared Node.js Lambda. Errors alarm id is `${id without Function}LambdaErrors`
+ * at stack scope (ApiFunction → ApiLambdaErrors).
  */
 export class NodeLambda extends NodejsFunction {
-  readonly errorsAlarm?: Alarm;
+  readonly errorsAlarm: Alarm;
   readonly throttlesAlarm: Alarm;
   readonly durationAlarm?: Alarm;
 
@@ -152,9 +129,8 @@ export class NodeLambda extends NodejsFunction {
       powertoolsServiceName,
       alertsTopic,
       alarmNamePrefix,
-      errorsAlarmLogicalId,
-      createErrorsAlarm = true,
       iam5NagReason,
+      iam5NagAppliesTo,
       logRetention = RetentionDays.TWO_WEEKS,
       enableDurationAlarm = false,
       environment,
@@ -163,14 +139,11 @@ export class NodeLambda extends NodejsFunction {
       ...rest
     } = props;
 
-    const logGroup = new LogGroup(
-      scope,
-      // Preserve prior sibling IDs (ApiLogGroup / PublisherLogGroup).
-      `${id.replace(/Function$/, '')}LogGroup`,
-      {
-        retention: logRetention,
-      },
-    );
+    const baseId = id.replace(/Function$/, '');
+
+    const logGroup = new LogGroup(scope, `${baseId}LogGroup`, {
+      retention: logRetention,
+    });
 
     super(scope, id, {
       runtime: Runtime.NODEJS_24_X,
@@ -196,28 +169,19 @@ export class NodeLambda extends NodejsFunction {
       ...rest,
     });
 
-    // Alarms live as siblings of the function (stack scope).
-    if (createErrorsAlarm) {
-      this.errorsAlarm = new Alarm(scope, `${id}ErrorsAlarm`, {
-        alarmName: `${alarmNamePrefix}-lambda-errors`,
-        alarmDescription: `${powertoolsServiceName} Lambda errors > 0 in 5 minutes`,
-        metric: this.metricErrors({
-          period: Duration.minutes(5),
-          statistic: 'Sum',
-        }),
-        threshold: 1,
-        evaluationPeriods: 1,
-        comparisonOperator:
-          ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-        treatMissingData: TreatMissingData.NOT_BREACHING,
-      });
-      if (errorsAlarmLogicalId) {
-        (this.errorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-          errorsAlarmLogicalId,
-        );
-      }
-      this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
-    }
+    this.errorsAlarm = new Alarm(scope, `${baseId}LambdaErrors`, {
+      alarmName: `${alarmNamePrefix}-lambda-errors`,
+      alarmDescription: `${powertoolsServiceName} Lambda errors > 0 in 5 minutes`,
+      metric: this.metricErrors({
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
+    this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     this.throttlesAlarm = new Alarm(scope, `${id}ThrottlesAlarm`, {
       alarmName: `${alarmNamePrefix}-lambda-throttles`,
@@ -251,9 +215,6 @@ export class NodeLambda extends NodejsFunction {
       this.durationAlarm.addAlarmAction(new SnsAction(alertsTopic));
     }
 
-    // Defer until after stack grant*/addToRolePolicy calls so IAM policy
-    // children exist; priority < AwsSolutionsChecks default so suppressions
-    // land before nag evaluation.
     const nagSuppressions: NagPackSuppression[] = [
       {
         id: 'AwsSolutions-IAM4',
@@ -266,6 +227,7 @@ export class NodeLambda extends NodejsFunction {
       {
         id: 'AwsSolutions-IAM5',
         reason: iam5NagReason,
+        appliesTo: iam5NagAppliesTo,
       },
     ];
     Aspects.of(this).add(new ApplyNodeLambdaNagSuppressions(nagSuppressions), {
@@ -274,7 +236,6 @@ export class NodeLambda extends NodejsFunction {
   }
 }
 
-/** Applies standard NodeLambda IAM nag suppressions after the construct tree is complete. */
 class ApplyNodeLambdaNagSuppressions implements IAspect {
   constructor(private readonly suppressions: NagPackSuppression[]) {}
 

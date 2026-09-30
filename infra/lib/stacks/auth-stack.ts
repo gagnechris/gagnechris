@@ -207,6 +207,12 @@ export class AuthStack extends Stack {
       description: 'Cognito web app client ID (public, PKCE)',
     });
 
+    new StringParameter(this, 'IosClientIdParam', {
+      parameterName: ssmParameterName(config.name, 'cognitoIosClientId'),
+      stringValue: this.iosClient.userPoolClientId,
+      description: 'Cognito iOS app client ID (public, PKCE)',
+    });
+
     new StringParameter(this, 'AuthDomainParam', {
       parameterName: ssmParameterName(config.name, 'cognitoAuthDomain'),
       stringValue: AUTH_DOMAIN,

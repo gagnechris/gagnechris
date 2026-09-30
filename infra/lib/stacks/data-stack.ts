@@ -8,7 +8,11 @@ import {
 } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
-import { APP_TABLE, type DynamoAttributeTypeCode } from '@gagnechris/data';
+import {
+  APP_TABLE,
+  appTableName,
+  type DynamoAttributeTypeCode,
+} from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
@@ -22,6 +26,32 @@ function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
       return AttributeType.BINARY;
     default: {
       const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
+}
+
+function toCdkBillingMode(
+  mode: (typeof APP_TABLE)['billingMode'],
+): BillingMode {
+  switch (mode) {
+    case 'PAY_PER_REQUEST':
+      return BillingMode.PAY_PER_REQUEST;
+    default: {
+      const _exhaustive: never = mode;
+      return _exhaustive;
+    }
+  }
+}
+
+function toCdkStreamViewType(
+  view: (typeof APP_TABLE)['streamViewType'],
+): StreamViewType {
+  switch (view) {
+    case 'NEW_AND_OLD_IMAGES':
+      return StreamViewType.NEW_AND_OLD_IMAGES;
+    default: {
+      const _exhaustive: never = view;
       return _exhaustive;
     }
   }
@@ -45,7 +75,7 @@ export class DataStack extends Stack {
     const def = APP_TABLE;
 
     this.table = new Table(this, 'AppTable', {
-      tableName: `gagnechris-${config.name}`,
+      tableName: appTableName(config.name),
       partitionKey: {
         name: def.partitionKey.name,
         type: toCdkAttrType(def.partitionKey.type),
@@ -54,15 +84,14 @@ export class DataStack extends Stack {
         name: def.sortKey.name,
         type: toCdkAttrType(def.sortKey.type),
       },
-      billingMode: BillingMode.PAY_PER_REQUEST,
+      billingMode: toCdkBillingMode(def.billingMode),
       encryption: TableEncryption.AWS_MANAGED,
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
       deletionProtection: true,
       removalPolicy: config.statefulRemovalPolicy,
-      stream: StreamViewType.NEW_AND_OLD_IMAGES,
-      // Rate-limit counters (CHR-98); contact messages do not set ttl.
+      stream: toCdkStreamViewType(def.streamViewType),
       timeToLiveAttribute: def.timeToLiveAttribute,
     });
 
@@ -80,7 +109,6 @@ export class DataStack extends Stack {
       });
     }
 
-    // Prefer RETAIN even if a future env flips statefulRemovalPolicy.
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
     new StringParameter(this, 'TableNameParam', {

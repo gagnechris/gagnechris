@@ -288,6 +288,17 @@ describe('CiDeployRoleStack', () => {
       'cloudformation:DetectStackDrift',
     );
     expect(JSON.stringify(driftPolicy)).toContain('sns:Publish');
+
+    const denyPolicies = policies.filter((p) =>
+      JSON.stringify(p).includes('DenyPrivateDataReads'),
+    );
+    expect(denyPolicies.length).toBeGreaterThanOrEqual(2);
+    for (const p of denyPolicies) {
+      const json = JSON.stringify(p);
+      expect(json).toContain('dynamodb:GetItem');
+      expect(json).toContain('s3:GetObject');
+      expect(json).toContain('"Effect":"Deny"');
+    }
   });
 });
 
@@ -734,7 +745,6 @@ describe('PublisherStack', () => {
       StartingPosition: 'LATEST',
       BatchSize: 10,
       BisectBatchOnFunctionError: true,
-      FunctionResponseTypes: ['ReportBatchItemFailures'],
       FilterCriteria: {
         Filters: Match.anyValue(),
       },

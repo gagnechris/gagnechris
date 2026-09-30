@@ -83,6 +83,25 @@ export class CiDeployRoleStack extends Stack {
     this.diffRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
     );
+    // Deny item/object reads so PR diffs cannot pull future private Notebook data.
+
+    this.diffRole.addToPolicy(
+      new PolicyStatement({
+        sid: 'DenyPrivateDataReads',
+        effect: Effect.DENY,
+        actions: [
+          'dynamodb:GetItem',
+          'dynamodb:BatchGetItem',
+          'dynamodb:Query',
+          'dynamodb:Scan',
+          'dynamodb:GetRecords',
+          's3:GetObject',
+          's3:GetObjectVersion',
+          's3:GetObject*',
+        ],
+        resources: ['*'],
+      }),
+    );
     // cdk diff needs the bootstrap lookup role only — never deploy/cfn-exec
     // (those trust the whole account; AssumeRole * would escalate to admin).
     this.diffRole.addToPolicy(
@@ -110,6 +129,24 @@ export class CiDeployRoleStack extends Stack {
     });
     this.driftRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
+    );
+
+    this.driftRole.addToPolicy(
+      new PolicyStatement({
+        sid: 'DenyPrivateDataReads',
+        effect: Effect.DENY,
+        actions: [
+          'dynamodb:GetItem',
+          'dynamodb:BatchGetItem',
+          'dynamodb:Query',
+          'dynamodb:Scan',
+          'dynamodb:GetRecords',
+          's3:GetObject',
+          's3:GetObjectVersion',
+          's3:GetObject*',
+        ],
+        resources: ['*'],
+      }),
     );
     this.driftRole.addToPolicy(
       new PolicyStatement({
@@ -202,9 +239,11 @@ export class CiDeployRoleStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'Diff role may assume CDK bootstrap lookup roles (cdk-*-lookup-role-* only); ReadOnlyAccess covers CFN/SSM reads for cdk diff.',
+            'Diff role may assume CDK bootstrap lookup roles (cdk-*-lookup-role-* only); ReadOnlyAccess covers CFN/SSM reads for cdk diff; DenyPrivateDataReads uses s3:GetObject* on * so private Notebook objects stay out of PR diffs.',
           appliesTo: [
             `Resource::arn:aws:iam::${props.config.account}:role/cdk-*-lookup-role-*`,
+            'Resource::*',
+            'Action::s3:GetObject*',
           ],
         },
       ],
@@ -225,10 +264,11 @@ export class CiDeployRoleStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'Drift detection must target all stacks (*); lookup AssumeRole is scoped to cdk-*-lookup-role-* only.',
+            'Drift detection must target all stacks (*); lookup AssumeRole is scoped to cdk-*-lookup-role-* only; DenyPrivateDataReads uses s3:GetObject* on * so private Notebook objects stay out of drift jobs.',
           appliesTo: [
             'Resource::*',
             `Resource::arn:aws:iam::${props.config.account}:role/cdk-*-lookup-role-*`,
+            'Action::s3:GetObject*',
           ],
         },
       ],

@@ -80,3 +80,33 @@ export function appTableAttributeDefinitions(
 export function appTableName(envName: string): string {
   return `${APP_TABLE.namePrefix}-${envName}`;
 }
+
+/**
+ * GSI index names last verified deployed in production.
+ * Update this list in the same PR that lands a single GSI create/delete.
+ * CloudFormation allows at most one GSI create or delete per table update.
+ */
+export const LAST_DEPLOYED_GSI_NAMES = ['gsi1', 'gsi2'] as const;
+
+/**
+ * Guard for Notebook / schema PRs: CloudFormation rejects updates that
+ * create or delete more than one GSI on the same table in one deploy.
+ */
+export function assertSafeGsiUpdate(
+  previousNames: readonly string[],
+  next: readonly TableIndexDefinition[],
+): void {
+  const prev = new Set(previousNames);
+  const nextNames = next.map((g) => g.indexName);
+  const nextSet = new Set(nextNames);
+  const added = nextNames.filter((n) => !prev.has(n));
+  const removed = [...prev].filter((n) => !nextSet.has(n));
+  const changeCount = added.length + removed.length;
+  if (changeCount > 1) {
+    throw new Error(
+      `CloudFormation allows at most one GSI create or delete per table update; ` +
+        `this change adds [${added.join(', ') || 'none'}] and removes [${removed.join(', ') || 'none'}]. ` +
+        `Split into separate deploys (see infra/RUNBOOK.md).`,
+    );
+  }
+}
