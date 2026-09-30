@@ -5,24 +5,35 @@ import {
   TransactWriteCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type {
   CreatePostRequest,
   Post,
   PostStatus,
   UpdatePostRequest,
 } from '@gagnechris/shared';
-import { batchGetAllWithDocClient } from '@gagnechris/data';
+import { GSI1_NAME, batchGetAllWithDocClient } from '@gagnechris/data';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { decodeCursor, encodeCursor } from '../data/cursor.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  GSI1_CURSOR_KEYS,
+} from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
 import {
-  PublishableKeyedRepository,
+  ConflictError,
+  DataIntegrityError,
+  NotFoundError,
+} from '../data/errors.js';
+import {
+  PublishableRepository,
   assertExpectedVersion,
   nowIso,
   withUnpublishedFlag,
   type PersistPublishOptions,
 } from '../data/publishable-repository.js';
+import { logger, metrics } from '../observability.js';
 import {
   buildMetaItem,
   buildPublishedItem,
@@ -43,7 +54,57 @@ import { buildDraftMutationItems } from './mutation-builders.js';
 
 export { ConflictError, NotFoundError } from '../data/errors.js';
 
-export class PostsRepository extends PublishableKeyedRepository<
+type MultiStatusCursor = {
+  i: number;
+  lek?: Record<string, unknown>;
+};
+
+function encodeMultiStatusCursor(
+  cursor: MultiStatusCursor | undefined,
+): string | undefined {
+  if (!cursor) return undefined;
+  return encodeCursor(cursor as unknown as Record<string, unknown>);
+}
+
+function decodeMultiStatusCursor(cursor: string | undefined): MultiStatusCursor {
+  if (!cursor?.trim()) return { i: 0 };
+  const raw = decodeCursor(cursor);
+  if (
+    !raw ||
+    typeof raw.i !== 'number' ||
+    !Number.isInteger(raw.i) ||
+    raw.i < 0
+  ) {
+    throw new SyntaxError('Invalid pagination cursor');
+  }
+  const lek = raw.lek;
+  if (lek !== undefined) {
+    if (!lek || typeof lek !== 'object' || Array.isArray(lek)) {
+      throw new SyntaxError('Invalid pagination cursor');
+    }
+    for (const name of GSI1_CURSOR_KEYS) {
+      if (!(name in (lek as Record<string, unknown>))) {
+        throw new SyntaxError('Invalid pagination cursor');
+      }
+    }
+  }
+  return {
+    i: raw.i,
+    lek: lek as Record<string, unknown> | undefined,
+  };
+}
+
+function logCorruptItem(error: DataIntegrityError): void {
+  logger.warn('Skipping corrupt stored item', {
+    pk: error.pk,
+    sk: error.sk,
+    message: error.message,
+  });
+  metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+}
+
+
+export class PostsRepository extends PublishableRepository<
   Post,
   PostMetaItem
 > {
@@ -66,13 +127,14 @@ export class PostsRepository extends PublishableKeyedRepository<
         toPublishedItem: buildPublishedItem,
         contentEqual: postContentEqual,
         isDeleted: (p) => p.status === 'deleted',
+        cursorKeyNames: GSI1_CURSOR_KEYS,
       },
       doc,
       tableName,
     );
   }
 
-  protected async persistMutation(
+  async persistMutation(
     before: Post,
     after: Post,
     options: PersistPublishOptions<Post>,
@@ -101,19 +163,40 @@ export class PostsRepository extends PublishableKeyedRepository<
       previousPublished?: Post;
     } = {},
   ): Promise<void> {
-    const transactItems = buildDraftMutationItems(
+    const { items: transactItems, slugClaimIndexes } = buildDraftMutationItems(
       this.tableName,
       before,
       after,
       options,
     );
-    await runDynamoWrite(
-      () =>
-        this.doc.send(
-          new TransactWriteCommand({ TransactItems: transactItems }),
-        ),
-      'Update conflict (version or slug)',
-    );
+    try {
+      await runDynamoWrite(
+        () =>
+          this.doc.send(
+            new TransactWriteCommand({ TransactItems: transactItems }),
+          ),
+        'Update conflict (version)',
+        {
+          slugClaimIndexes,
+          slugTakenMessage: `Slug "${after.slug}" is already taken`,
+        },
+      );
+    } catch (error) {
+      if (error instanceof ConflictError && error.code === 'slug_taken') {
+        throw error;
+      }
+      if (error instanceof ConflictError) {
+        const current = await this.getById(after.id);
+        throw new ConflictError(
+          `Version conflict: expected ${before.version}, current ${current?.version ?? 'unknown'}`,
+          {
+            currentVersion: current?.version,
+            current,
+          },
+        );
+      }
+      throw error;
+    }
   }
 
   async getBySlug(slug: string): Promise<Post | undefined> {
@@ -134,61 +217,108 @@ export class PostsRepository extends PublishableKeyedRepository<
     opts?: { cursor?: string; limit?: number },
   ): Promise<{ items: Post[]; nextCursor?: string }> {
     const statuses: PostStatus[] = status ? [status] : ['draft', 'published'];
-
-    // Single-status queries can page via LastEvaluatedKey. Multi-status
-    // (default admin list) still merges pages in memory (small catalogs).
     if (statuses.length === 1) {
-      const s = statuses[0]!;
-      const exclusiveStartKey = decodeCursor(opts?.cursor);
+      return this.listSingleStatus(statuses[0]!, opts);
+    }
+    return this.listMultiStatus(statuses, {
+      cursor: opts?.cursor,
+      limit: opts?.limit,
+    });
+  }
+
+  private async listSingleStatus(
+    status: PostStatus,
+    opts?: { cursor?: string; limit?: number },
+  ): Promise<{ items: Post[]; nextCursor?: string }> {
+    const exclusiveStartKey = decodeCursor(opts?.cursor, GSI1_CURSOR_KEYS);
+    const result = await this.doc.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        IndexName: GSI1_NAME,
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: { ':pk': statusGsi1Pk(status) },
+        ScanIndexForward: false,
+        ExclusiveStartKey: exclusiveStartKey,
+        Limit: opts?.limit,
+      }),
+    );
+    const drafts = this.parseListItems(result.Items ?? []);
+    return {
+      items: await this.attachUnpublishedFlags(drafts),
+      nextCursor: encodeCursor(
+        result.LastEvaluatedKey as Record<string, unknown> | undefined,
+      ),
+    };
+  }
+
+  private async listMultiStatus(
+    statuses: PostStatus[],
+    opts: { cursor?: string; limit?: number },
+  ): Promise<{ items: Post[]; nextCursor?: string }> {
+    let state = decodeMultiStatusCursor(opts.cursor);
+    const limit = opts.limit;
+    const collected: Post[] = [];
+
+    while (state.i < statuses.length) {
+      const status = statuses[state.i]!;
+      const remaining =
+        limit !== undefined ? Math.max(limit - collected.length, 1) : undefined;
       const result = await this.doc.send(
         new QueryCommand({
           TableName: this.tableName,
-          IndexName: 'gsi1',
+          IndexName: GSI1_NAME,
           KeyConditionExpression: 'gsi1pk = :pk',
-          ExpressionAttributeValues: { ':pk': statusGsi1Pk(s) },
+          ExpressionAttributeValues: { ':pk': statusGsi1Pk(status) },
           ScanIndexForward: false,
-          ExclusiveStartKey: exclusiveStartKey,
-          Limit: opts?.limit,
+          ExclusiveStartKey: state.lek,
+          Limit: remaining,
         }),
       );
-      const drafts = (result.Items ?? [])
-        .filter(
-          (item) => item.entityType === 'post' && item.sk === postMetaSk(),
-        )
-        .map((item) => metaToPost(parsePostMetaItem(item)));
-
-      const items = await this.attachUnpublishedFlags(drafts);
-      return {
-        items,
-        nextCursor: encodeCursor(
-          result.LastEvaluatedKey as Record<string, unknown> | undefined,
-        ),
-      };
+      collected.push(...this.parseListItems(result.Items ?? []));
+      const lek = result.LastEvaluatedKey as
+        | Record<string, unknown>
+        | undefined;
+      if (lek && Object.keys(lek).length > 0) {
+        return {
+          items: await this.attachUnpublishedFlags(collected),
+          nextCursor: encodeMultiStatusCursor({ i: state.i, lek }),
+        };
+      }
+      state = { i: state.i + 1 };
+      if (limit !== undefined && collected.length >= limit) {
+        if (state.i < statuses.length) {
+          return {
+            items: await this.attachUnpublishedFlags(collected),
+            nextCursor: encodeMultiStatusCursor({ i: state.i }),
+          };
+        }
+        break;
+      }
     }
+    return { items: await this.attachUnpublishedFlags(collected) };
+  }
 
-    const batches = await Promise.all(
-      statuses.map(async (s) => {
-        const result = await this.doc.send(
-          new QueryCommand({
-            TableName: this.tableName,
-            IndexName: 'gsi1',
-            KeyConditionExpression: 'gsi1pk = :pk',
-            ExpressionAttributeValues: { ':pk': statusGsi1Pk(s) },
-            ScanIndexForward: false,
+  private parseListItems(rawItems: Record<string, unknown>[]): Post[] {
+    const drafts: Post[] = [];
+    for (const item of rawItems) {
+      if (item.entityType !== 'post' || item.sk !== postMetaSk()) continue;
+      try {
+        const post = metaToPost(parsePostMetaItem(item));
+        if (post.status === 'deleted') continue;
+        drafts.push(post);
+      } catch (error) {
+        const pk = typeof item.pk === 'string' ? item.pk : undefined;
+        const sk = typeof item.sk === 'string' ? item.sk : undefined;
+        logCorruptItem(
+          new DataIntegrityError('Corrupt stored Post', {
+            pk,
+            sk,
+            cause: error,
           }),
         );
-        return (result.Items ?? [])
-          .filter(
-            (item) => item.entityType === 'post' && item.sk === postMetaSk(),
-          )
-          .map((item) => metaToPost(parsePostMetaItem(item)));
-      }),
-    );
-    const drafts = batches
-      .flat()
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
-    return { items: await this.attachUnpublishedFlags(drafts) };
+      }
+    }
+    return drafts;
   }
 
   private async attachUnpublishedFlags(drafts: Post[]): Promise<Post[]> {
@@ -231,8 +361,19 @@ export class PostsRepository extends PublishableKeyedRepository<
         },
       );
       for (const item of responses[this.tableName] ?? []) {
-        const post = metaToPost(parsePostMetaItem(item), false);
-        map.set(post.id, post);
+        try {
+          const post = metaToPost(parsePostMetaItem(item), false);
+          map.set(post.id, post);
+        } catch (error) {
+          const raw = item as { pk?: string; sk?: string };
+          logCorruptItem(
+            new DataIntegrityError('Corrupt stored Post', {
+              pk: typeof raw.pk === 'string' ? raw.pk : undefined,
+              sk: typeof raw.sk === 'string' ? raw.sk : undefined,
+              cause: error,
+            }),
+          );
+        }
       }
     }
     return map;
@@ -289,13 +430,25 @@ export class PostsRepository extends PublishableKeyedRepository<
           }),
         ),
       `Slug "${slug}" is already taken`,
+      {
+        slugClaimIndexes: [0],
+        slugTakenMessage: `Slug "${slug}" is already taken`,
+      },
     );
 
     return post;
   }
 
   async update(postId: string, input: UpdatePostRequest): Promise<Post> {
-    const existing = await this.getByIdOrThrow(postId);
+    const loaded = await this.loadDraftAndPublished(postId);
+    if (!loaded) {
+      throw new NotFoundError(`Post ${postId} not found`);
+    }
+    const existing = withUnpublishedFlag(
+      loaded.draft,
+      loaded.published,
+      postContentEqual,
+    );
     assertExpectedVersion(existing, input.version);
 
     const nextSlug = input.slug ? slugify(input.slug) : existing.slug;
@@ -316,16 +469,21 @@ export class PostsRepository extends PublishableKeyedRepository<
       hasUnpublishedChanges: false,
     };
 
-    // Draft edits never rewrite the public tag index — that stays tied to PUBLISHED.
     await this.writeDraftMutation(existing, next, { syncTags: false });
-    const published = await this.getPublished(postId);
-    return withUnpublishedFlag(next, published, postContentEqual);
+    return withUnpublishedFlag(next, loaded.published, postContentEqual);
   }
 
-  async softDelete(postId: string, expectedVersion?: number): Promise<Post> {
-    const existing = await this.getByIdOrThrow(postId);
+  async softDelete(postId: string, expectedVersion: number): Promise<Post> {
+    const loaded = await this.loadDraftAndPublished(postId);
+    if (!loaded) {
+      throw new NotFoundError(`Post ${postId} not found`);
+    }
+    const existing = withUnpublishedFlag(
+      loaded.draft,
+      loaded.published,
+      postContentEqual,
+    );
     assertExpectedVersion(existing, expectedVersion);
-    const published = await this.getPublished(postId);
     const updatedAt = nowIso();
     const next: Post = {
       ...existing,
@@ -337,7 +495,7 @@ export class PostsRepository extends PublishableKeyedRepository<
     await this.writeDraftMutation(existing, next, {
       syncTags: true,
       deletePublished: true,
-      previousPublished: published,
+      previousPublished: loaded.published,
     });
     return next;
   }

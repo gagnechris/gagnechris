@@ -1,10 +1,9 @@
 /**
- * @deprecated Prefer `PublishableSingletonRepository` (CHR-129).
- * Kept as a stable alias for Home/Resume repositories.
+ * @deprecated Prefer `PublishableSingletonRepository` (CHR-152).
  */
 export {
   PublishableSingletonRepository as SingletonRepository,
   nowIso,
   type PublishableEntity as VersionedSingleton,
-  type PublishableRepositoryConfig as SingletonRepositoryConfig,
+  type PublishableSingletonConfig as SingletonRepositoryConfig,
 } from './publishable-repository.js';

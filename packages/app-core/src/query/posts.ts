@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
@@ -7,7 +12,7 @@ import {
   deletePost,
   discardPost,
   fetchPost,
-  fetchPosts,
+  fetchPostsPage,
   publishPost,
   unpublishPost,
   updatePost,
@@ -25,9 +30,11 @@ import { queryKeys } from './keys.js';
 
 export const usePostsQuery = () => {
   const getClient = useGetApiClient();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.posts.list(),
-    queryFn: () => fetchPosts(getClient()),
+    queryFn: ({ pageParam }) => fetchPostsPage(getClient(), pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor,
   });
 };
 

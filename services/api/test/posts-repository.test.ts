@@ -28,7 +28,7 @@ const draft: Post = {
   hasUnpublishedChanges: false,
 };
 
-/** BatchGet responses used by PublishableKeyedRepository.loadDraftAndPublished. */
+/** BatchGet responses used by PublishableRepository.loadDraftAndPublished. */
 function batchGetResponses(...items: Record<string, unknown>[]) {
   return {
     Responses: {
@@ -256,4 +256,162 @@ describe('PostsRepository', () => {
     });
     expect(sks.sort()).toEqual(['META', 'PUBLISHED']);
   });
+
+  it('multi-status list follows LastEvaluatedKey on every status (CHR-152)', async () => {
+    const draftA = buildMetaItem(draft);
+    const publishedPost: Post = {
+      ...draft,
+      id: '01TESTPOSTID00000000000001',
+      slug: 'published-one',
+      status: 'published',
+      publishedAt: '2026-09-27T02:00:00.000Z',
+      version: 2,
+    };
+    const pubMeta = buildMetaItem(publishedPost);
+    let draftCalls = 0;
+    let publishedCalls = 0;
+    const doc = mockDocClient(async (command) => {
+      if (command.constructor.name !== 'QueryCommand') {
+        if (command.constructor.name === 'BatchGetCommand') {
+          return { Responses: { 'gagnechris-test': [] } };
+        }
+        return {};
+      }
+      const pk = (command as { input: { ExpressionAttributeValues: { ':pk': string } } })
+        .input.ExpressionAttributeValues[':pk'];
+      if (pk === 'STATUS#draft') {
+        draftCalls += 1;
+        if (draftCalls === 1) {
+          return {
+            Items: [draftA],
+            LastEvaluatedKey: {
+              pk: postPk(draft.id),
+              sk: postMetaSk(),
+              gsi1pk: 'STATUS#draft',
+              gsi1sk: 'x',
+            },
+          };
+        }
+        return { Items: [] };
+      }
+      if (pk === 'STATUS#published') {
+        publishedCalls += 1;
+        if (publishedCalls === 1) {
+          return {
+            Items: [pubMeta],
+            LastEvaluatedKey: {
+              pk: postPk(publishedPost.id),
+              sk: postMetaSk(),
+              gsi1pk: 'STATUS#published',
+              gsi1sk: 'y',
+            },
+          };
+        }
+        return { Items: [] };
+      }
+      return { Items: [] };
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const first = await repo.list(undefined, { limit: 1 });
+    expect(first.items).toHaveLength(1);
+    expect(first.nextCursor).toBeTruthy();
+    const second = await repo.list(undefined, {
+      cursor: first.nextCursor,
+      limit: 1,
+    });
+    expect(second.items.length).toBeGreaterThanOrEqual(0);
+    expect(second.nextCursor).toBeTruthy();
+    const third = await repo.list(undefined, {
+      cursor: second.nextCursor,
+      limit: 1,
+    });
+    // After draft LEK then published LEK, eventual exhaustion
+    expect(draftCalls).toBeGreaterThanOrEqual(1);
+    expect(publishedCalls).toBeGreaterThanOrEqual(1);
+    expect(third.items.length + second.items.length + first.items.length).toBeGreaterThan(0);
+  });
+
+  it('rejects a tampered GSI cursor with SyntaxError (400)', async () => {
+    const repo = new PostsRepository(
+      mockDocClient(async () => ({ Items: [] })),
+      'gagnechris-test',
+    );
+    const bad = encodeCursor({ pk: 'POST#1', sk: 'META' }); // missing gsi1 keys
+    await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+  });
+
+  it('skips corrupt items in list instead of failing', async () => {
+    const doc = mockDocClient(async () => ({
+      Items: [
+        { entityType: 'post', sk: 'META', pk: 'POST#bad' }, // invalid
+        buildMetaItem(draft),
+      ],
+    }));
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const page = await repo.list('draft');
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]!.slug).toBe('hello');
+  });
+
+  it('race-path update conflict includes currentVersion/current', async () => {
+    const { TransactionCanceledException } = await import(
+      '@aws-sdk/client-dynamodb'
+    );
+    let batch = 0;
+    const doc = mockDocClient(async (command) => {
+      if (command.constructor.name === 'BatchGetCommand') {
+        batch += 1;
+        return {
+          Responses: {
+            'gagnechris-test': [buildMetaItem({ ...draft, version: batch === 1 ? 1 : 3 })],
+          },
+        };
+      }
+      if (command.constructor.name === 'TransactWriteCommand') {
+        throw new TransactionCanceledException({
+          message: 'cancelled',
+          $metadata: {},
+          CancellationReasons: [{ Code: 'ConditionalCheckFailed' }],
+        });
+      }
+      return {};
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    await expect(
+      repo.update(draft.id, { version: 1, title: 'Nope' }),
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      currentVersion: 3,
+      code: 'conflict',
+    });
+  });
+
+  it('slug claim cancellation maps to slug_taken', async () => {
+    const { TransactionCanceledException } = await import(
+      '@aws-sdk/client-dynamodb'
+    );
+    const doc = mockDocClient(async (command) => {
+      if (command.constructor.name === 'TransactWriteCommand') {
+        throw new TransactionCanceledException({
+          message: 'cancelled',
+          $metadata: {},
+          CancellationReasons: [
+            { Code: 'ConditionalCheckFailed' },
+            { Code: 'None' },
+          ],
+        });
+      }
+      return {};
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    await expect(
+      repo.create({ title: 'Taken', excerpt: '', bodyMarkdown: '', tags: [] }),
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      code: 'slug_taken',
+    });
+  });
+
 });

@@ -89,7 +89,11 @@
         "type": "object",
         "properties": {
           "error": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "conflict",
+              "slug_taken"
+            ]
           },
           "message": {
             "type": "string"
@@ -2014,7 +2018,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -2587,7 +2595,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -2892,7 +2904,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -3199,7 +3215,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -3506,7 +3526,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -3813,7 +3837,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -4250,7 +4278,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -4496,7 +4528,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -4742,7 +4778,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -4988,7 +5028,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -5662,7 +5706,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -5987,7 +6035,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -6312,7 +6364,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -6637,7 +6693,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -7243,7 +7303,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -7685,7 +7749,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
@@ -7956,7 +8024,11 @@
                   "type": "object",
                   "properties": {
                     "error": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "slug_taken"
+                      ]
                     },
                     "message": {
                       "type": "string"
