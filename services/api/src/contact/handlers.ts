@@ -4,6 +4,7 @@ import type {
 } from 'aws-lambda';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
+  APEX_DOMAIN,
   ContactRequestSchema,
   ContactResponseSchema,
   ResumeDownloadNotifyRequestSchema,
@@ -125,7 +126,7 @@ function contactHandlers(deps: ContactHandlerDeps = {}): {
       throw error;
     }
 
-    const apex = process.env.SITE_APEX_DOMAIN?.trim() || 'gagnechris.com';
+    const apex = process.env.SITE_APEX_DOMAIN?.trim() || APEX_DOMAIN;
     try {
       await sendEmail({
         subject: `[${apex}] Contact from ${parsed.name}`,
@@ -180,7 +181,7 @@ function contactHandlers(deps: ContactHandlerDeps = {}): {
       throw error;
     }
 
-    const apex = process.env.SITE_APEX_DOMAIN?.trim() || 'gagnechris.com';
+    const apex = process.env.SITE_APEX_DOMAIN?.trim() || APEX_DOMAIN;
     const ua =
       ctx.event.headers['user-agent'] ?? ctx.event.headers['User-Agent'] ?? '';
     try {

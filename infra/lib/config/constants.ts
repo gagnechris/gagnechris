@@ -1,10 +1,22 @@
 /**
  * Shared infra constants (not environment-specific).
- * SSM key names are mirrored in `ssm-params.json` for shell scripts.
+ * Service names / metrics namespace / apex domain are owned by `@gagnechris/shared`.
+ * SSM leaf names come from `ssm-params.json` (also read by deploy-web.sh).
  */
+import {
+  API_SERVICE_NAME,
+  APEX_DOMAIN,
+  POWERTOOLS_METRICS_NAMESPACE,
+  PUBLISHER_SERVICE_NAME,
+} from '@gagnechris/shared';
+import ssmParams from './ssm-params.json' with { type: 'json' };
 
-/** Apex zone / site hostname (must match `environments.ts` DOMAIN_BY_ENV.prod). */
-export const APEX_DOMAIN = 'gagnechris.com' as const;
+export {
+  API_SERVICE_NAME,
+  APEX_DOMAIN,
+  POWERTOOLS_METRICS_NAMESPACE,
+  PUBLISHER_SERVICE_NAME,
+};
 
 /** Cognito managed-login hostname. */
 export const AUTH_DOMAIN = `auth.${APEX_DOMAIN}` as const;
@@ -20,38 +32,14 @@ export function siteOrigins(apexDomain: string = APEX_DOMAIN): string[] {
   return [`https://${apexDomain}`, ...DEV_ORIGINS];
 }
 
-/** CloudWatch EMF / Powertools metrics namespace for all Lambdas. */
-export const POWERTOOLS_METRICS_NAMESPACE = 'gagnechris' as const;
-
-export const API_SERVICE_NAME = 'gagnechris-api' as const;
-export const PUBLISHER_SERVICE_NAME = 'gagnechris-publisher' as const;
-
 export const GITHUB_OWNER = 'gagnechris' as const;
 export const GITHUB_REPO = 'gagnechris' as const;
 
 /**
  * SSM parameter leaf names under `/gagnechris/<env>/`.
- * Keep in sync with `ssm-params.json`.
+ * Sourced from `ssm-params.json` (single source for CDK + shell).
  */
-export const SSM_PARAM_KEYS = {
-  siteBucketName: 'site-bucket-name',
-  cloudfrontDistributionId: 'cloudfront-distribution-id',
-  viewerRequestFunctionName: 'viewer-request-function-name',
-  blogSlugsKvsArn: 'blog-slugs-kvs-arn',
-  httpApiId: 'http-api-id',
-  httpApiUrl: 'http-api-url',
-  dataTableName: 'data-table-name',
-  dataTableArn: 'data-table-arn',
-  dataTableStreamArn: 'data-table-stream-arn',
-  cognitoUserPoolId: 'cognito-user-pool-id',
-  cognitoWebClientId: 'cognito-web-client-id',
-  cognitoAuthDomain: 'cognito-auth-domain',
-  publisherFunctionName: 'publisher-function-name',
-  publisherFunctionArn: 'publisher-function-arn',
-  alertsTopicArn: 'alerts-topic-arn',
-  /** Last git SHA that finished CDK and/or web deploy (written by CI, not a stack). */
-  deployedSha: 'deployed-sha',
-} as const;
+export const SSM_PARAM_KEYS = ssmParams.keys;
 
 export type SsmParamKey = keyof typeof SSM_PARAM_KEYS;
 

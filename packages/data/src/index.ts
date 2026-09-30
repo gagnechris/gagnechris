@@ -53,8 +53,10 @@ export {
 
 export {
   APP_TABLE,
+  LAST_DEPLOYED_GSI_NAMES,
   appTableAttributeDefinitions,
   appTableName,
+  assertSafeGsiUpdate,
   type AppTableDefinition,
   type DynamoAttributeTypeCode,
   type TableIndexDefinition,

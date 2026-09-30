@@ -1,6 +1,5 @@
 import {
   CfnOutput,
-  CfnResource,
   Duration,
   Stack,
   type StackProps,
@@ -16,12 +15,6 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import {
-  Alarm,
-  ComparisonOperator,
-  TreatMissingData,
-} from 'aws-cdk-lib/aws-cloudwatch';
-import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
 import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -32,7 +25,11 @@ import { CfnLogGroup, LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
-import { siteOrigins, ssmParameterName } from '../config/constants.js';
+import {
+  API_SERVICE_NAME,
+  siteOrigins,
+  ssmParameterName,
+} from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
@@ -96,13 +93,17 @@ export class ApiStack extends Stack {
       handler: 'handler',
       memorySize: 256,
       timeout: Duration.seconds(10),
-      powertoolsServiceName: 'gagnechris-api',
+      powertoolsServiceName: API_SERVICE_NAME,
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api`,
-      // Keep legacy stack-level ApiLambdaErrors resource (CHR-134 migration).
-      createErrorsAlarm: false,
       iam5NagReason:
-        'X-Ray tracing wildcards, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
+        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
+      iam5NagAppliesTo: [
+        'Resource::*',
+        'Action::s3:Abort*',
+        { regex: '/^Resource::.*/index\*/g' },
+        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/\*/g' },
+      ],
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucketName,
@@ -111,25 +112,6 @@ export class ApiStack extends Stack {
         SITE_APEX_DOMAIN: config.domainName,
       },
     });
-
-    const apiErrorsAlarm = new Alarm(this, 'ApiLambdaErrors', {
-      alarmName: `gagnechris-${config.name}-api-lambda-errors`,
-      alarmDescription: 'API Lambda Errors > 0',
-      metric: this.apiFunction.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    });
-    // Live Api-prod already uses this hashed logical ID (AlarmName collision if
-    // we recreate as ApiLambdaErrors). Keep it so CFN updates in place.
-    (apiErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-      'ApiLambdaErrorsC2E62DF4',
-    );
-    apiErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only — objects are read via CloudFront OAC.

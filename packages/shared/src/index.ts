@@ -4,6 +4,7 @@
  */
 export {
   API_SERVICE_NAME,
+  APEX_DOMAIN,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
 } from './constants.js';

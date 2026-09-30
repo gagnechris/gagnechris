@@ -12,6 +12,7 @@
     "dataTableStreamArn": "data-table-stream-arn",
     "cognitoUserPoolId": "cognito-user-pool-id",
     "cognitoWebClientId": "cognito-web-client-id",
+    "cognitoIosClientId": "cognito-ios-client-id",
     "cognitoAuthDomain": "cognito-auth-domain",
     "publisherFunctionName": "publisher-function-name",
     "publisherFunctionArn": "publisher-function-arn",

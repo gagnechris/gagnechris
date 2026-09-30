@@ -1,10 +1,4 @@
-import {
-  CfnOutput,
-  CfnResource,
-  Duration,
-  Stack,
-  type StackProps,
-} from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import {
   Alarm,
   ComparisonOperator,
@@ -26,14 +20,18 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
-import { ssmParameterName } from '../config/constants.js';
+import { PUBLISH_STREAM_SK } from '@gagnechris/data';
+import {
+  POWERTOOLS_METRICS_NAMESPACE,
+  PUBLISHER_SERVICE_NAME,
+  ssmParameterName,
+} from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
   LambdaFailureDestination,
   NodeLambda,
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
-import { PUBLISH_STREAM_SK } from '@gagnechris/data';
 
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -46,6 +44,38 @@ export interface PublisherStackProps extends StackProps {
  * Site bucket, distribution, and blog-slugs KVS are resolved from SSM (CHR-149)
  * so Publisher does not import Site CloudFormation exports.
  */
+
+/** EMF custom-metric alarm shared by ResumePdfError / KvsSyncFailed. */
+function publisherEmfAlarm(
+  scope: Construct,
+  id: string,
+  props: {
+    readonly configName: string;
+    readonly alarmSuffix: string;
+    readonly alarmDescription: string;
+    readonly metricName: string;
+    readonly alertsTopic: ITopic;
+  },
+): Alarm {
+  const alarm = new Alarm(scope, id, {
+    alarmName: `gagnechris-${props.configName}-publisher-${props.alarmSuffix}`,
+    alarmDescription: props.alarmDescription,
+    metric: new Metric({
+      namespace: POWERTOOLS_METRICS_NAMESPACE,
+      metricName: props.metricName,
+      dimensionsMap: { service: PUBLISHER_SERVICE_NAME },
+      statistic: 'Sum',
+      period: Duration.minutes(5),
+    }),
+    threshold: 1,
+    evaluationPeriods: 1,
+    comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+    treatMissingData: TreatMissingData.NOT_BREACHING,
+  });
+  alarm.addAlarmAction(new SnsAction(props.alertsTopic));
+  return alarm;
+}
+
 export class PublisherStack extends Stack {
   readonly publisherFunction: NodeLambda;
   /** On-failure SQS destination for discarded stream records (CHR-134). */
@@ -94,12 +124,21 @@ export class PublisherStack extends Stack {
       handler: 'handler',
       memorySize: 512,
       timeout: Duration.seconds(60),
-      powertoolsServiceName: 'gagnechris-publisher',
+      powertoolsServiceName: PUBLISHER_SERVICE_NAME,
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
-      createErrorsAlarm: false,
       iam5NagReason:
-        'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), and uses X-Ray tracing wildcards required by the managed tracing pattern.',
+        'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern.',
+      iam5NagAppliesTo: [
+        'Resource::*',
+        'Action::s3:Abort*',
+        'Action::s3:DeleteObject*',
+        'Action::s3:GetBucket*',
+        'Action::s3:GetObject*',
+        'Action::s3:List*',
+        { regex: '/^Resource::.*/index\*/g' },
+        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/g' },
+      ],
       bundling: {
         // Runtime provides most @aws-sdk/* clients. Bundle only CloudFront
         // KeyValueStore + SigV4a so they share one @smithy/signature-v4
@@ -135,25 +174,6 @@ export class PublisherStack extends Stack {
         SITE_APEX_DOMAIN: config.domainName,
       },
     });
-
-    const publisherErrorsAlarm = new Alarm(this, 'PublisherLambdaErrors', {
-      alarmName: `gagnechris-${config.name}-publisher-lambda-errors`,
-      alarmDescription: 'Publisher Lambda Errors > 0',
-      metric: this.publisherFunction.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    });
-    // Live Publisher-prod already uses this hashed logical ID (same AlarmName
-    // collision as Api). Keep it so CFN updates in place.
-    (publisherErrorsAlarm.node.defaultChild as CfnResource).overrideLogicalId(
-      'PublisherLambdaErrors71132C5B',
-    );
-    publisherErrorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
 
     // Read published snapshots + write lazy META→PUBLISHED rollout copies (CHR-96).
     dataTable.grantReadWriteData(this.publisherFunction);
@@ -199,8 +219,9 @@ export class PublisherStack extends Stack {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
-        reportBatchItemFailures: true,
-        onFailure: this.streamFailureDestination.destination,
+        // Handler rebuilds from the whole batch and throws on failure; partial
+        // batchItemFailures are not returned, so reportBatchItemFailures is omitted.
+        onFailure: this.streamFailureDestination.streamDestination,
         filters: [
           FilterCriteria.filter({
             dynamodb: {
@@ -215,41 +236,25 @@ export class PublisherStack extends Stack {
 
     // PDF failures are isolated from the rebuild (CHR-97) so Lambda Errors
     // stays quiet; alert on the dedicated EMF metric instead.
-    new Alarm(this, 'PublisherResumePdfErrors', {
-      alarmName: `gagnechris-${config.name}-publisher-resume-pdf-errors`,
+    publisherEmfAlarm(this, 'PublisherResumePdfErrors', {
+      configName: config.name,
+      alarmSuffix: 'resume-pdf-errors',
       alarmDescription:
         'Resume PDF generation failed during site rebuild (last good PDF kept)',
-      metric: new Metric({
-        namespace: 'gagnechris',
-        metricName: 'ResumePdfError',
-        dimensionsMap: { service: 'gagnechris-publisher' },
-        statistic: 'Sum',
-        period: Duration.minutes(5),
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    }).addAlarmAction(new SnsAction(alertsTopic));
+      metricName: 'ResumePdfError',
+      alertsTopic,
+    });
 
     // KVS slug sync failures also fail the invocation (stream retries), but
     // surface a dedicated metric so alerts name the root cause (CHR-119).
-    new Alarm(this, 'PublisherKvsSyncFailed', {
-      alarmName: `gagnechris-${config.name}-publisher-kvs-sync-failed`,
+    publisherEmfAlarm(this, 'PublisherKvsSyncFailed', {
+      configName: config.name,
+      alarmSuffix: 'kvs-sync-failed',
       alarmDescription:
         'CloudFront KVS blog slug sync failed after retries (new posts may 404)',
-      metric: new Metric({
-        namespace: 'gagnechris',
-        metricName: 'KvsSyncFailed',
-        dimensionsMap: { service: 'gagnechris-publisher' },
-        statistic: 'Sum',
-        period: Duration.minutes(5),
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    }).addAlarmAction(new SnsAction(alertsTopic));
+      metricName: 'KvsSyncFailed',
+      alertsTopic,
+    });
 
     new StringParameter(this, 'PublisherFunctionNameParam', {
       parameterName: ssmParameterName(config.name, 'publisherFunctionName'),

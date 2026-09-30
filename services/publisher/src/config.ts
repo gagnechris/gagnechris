@@ -1,4 +1,6 @@
-export const APEX = process.env.SITE_APEX_DOMAIN?.trim() || 'gagnechris.com';
+import { APEX_DOMAIN } from '@gagnechris/shared';
+
+export const APEX = process.env.SITE_APEX_DOMAIN?.trim() || APEX_DOMAIN;
 
 export function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
