@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { slugify } from '@gagnechris/shared';
+import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
 import type { components } from '@gagnechris/api-client';
 import { Button } from '../ui/Button';
 import { EditorActionBar } from '../ui/EditorActionBar';
@@ -82,7 +82,7 @@ export default function PostEditorPage() {
         const entity = await updatePost(postId, {
           version,
           title: current.title.trim() || 'Untitled',
-          slug: current.slug.trim() || 'untitled',
+          slug: current.slug.trim() || EMPTY_SLUG_FALLBACK,
           excerpt: current.excerpt,
           bodyMarkdown: current.bodyMarkdown,
           tags: parsePostTags(current.tagsText),
@@ -182,7 +182,7 @@ export default function PostEditorPage() {
     updateDraft((prev) => {
       const next = { ...prev, [key]: value };
       if (key === 'title' && !slugManual) {
-        next.slug = slugify(String(value)) || 'untitled';
+        next.slug = slugify(String(value)) || EMPTY_SLUG_FALLBACK;
       }
       return next;
     });

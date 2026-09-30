@@ -1,6 +1,6 @@
 import { expect, vi } from 'vitest';
 import { DEFAULT_RESUME, type Resume } from '@gagnechris/shared';
-import { handleResumeRoute } from '../src/resume/handlers.js';
+import { createResumeRoutes } from '../src/resume/handlers.js';
 import { definePublishableHandlerTests } from './support/publishable-handler.suite.js';
 
 const sampleResume: Resume = {
@@ -30,8 +30,7 @@ definePublishableHandlerTests({
   assertUpdateInput: (input) => {
     expect(input.version).toBe(1);
   },
-  handleRoute: (event, method, path, repo) =>
-    handleResumeRoute(event, method, path, repo as never),
+  createRoutes: (repo) => createResumeRoutes(repo as never),
   createRepo: () => ({
     get: vi.fn(),
     getOrCreate: vi.fn(),

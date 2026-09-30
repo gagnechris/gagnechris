@@ -8,8 +8,9 @@ import {
   createMediaUploadUrl,
   setS3Client,
 } from '../src/media/storage.js';
-import { handleMediaRoute } from '../src/media/handlers.js';
-import type { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { mediaRoutes } from '../src/media/handlers.js';
+import { dispatchRoutes } from '../src/router.js';
+import { makeEvent } from './support/make-event.js';
 
 describe('media upload', () => {
   afterEach(() => {
@@ -61,26 +62,26 @@ describe('media upload', () => {
     expect(result.publicPath.endsWith('.webp')).toBe(true);
   });
 
-  it('handleMediaRoute rejects invalid body with 400', async () => {
-    const event = {
-      body: JSON.stringify({ contentType: 'text/plain', contentLength: 1 }),
-      isBase64Encoded: false,
-      headers: {},
-    } as unknown as APIGatewayProxyEventV2;
-    const res = await handleMediaRoute(
-      event,
+  it('rejects invalid body with 400', async () => {
+    const res = await dispatchRoutes(
+      mediaRoutes,
+      makeEvent('POST', '/api/admin/media/upload-url', {
+        jwtClaims: { sub: 'admin-1' },
+        body: { contentType: 'text/plain', contentLength: 1 },
+      }),
       'POST',
       '/api/admin/media/upload-url',
     );
-    expect(res?.statusCode).toBe(400);
+    expect(res.statusCode).toBe(400);
   });
 
-  it('handleMediaRoute ignores non-media paths', async () => {
-    const res = await handleMediaRoute(
-      {} as APIGatewayProxyEventV2,
+  it('returns 404 for non-media paths on the media table', async () => {
+    const res = await dispatchRoutes(
+      mediaRoutes,
+      makeEvent('GET', '/api/admin/posts', { jwtClaims: { sub: 'admin-1' } }),
       'GET',
       '/api/admin/posts',
     );
-    expect(res).toBeUndefined();
+    expect(res.statusCode).toBe(404);
   });
 });

@@ -4,8 +4,11 @@
  */
 export const MAX_SLUG_LENGTH = 120;
 
+/** Shared empty-title / empty-slug fallback for web + API (CHR-154). */
+export const EMPTY_SLUG_FALLBACK = 'untitled';
+
 export const slugify = (input: string): string => {
-  return input
+  const slug = input
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -13,4 +16,6 @@ export const slugify = (input: string): string => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, MAX_SLUG_LENGTH);
+  // Truncation can leave a trailing `-` (e.g. mid-token cut) — trim again.
+  return slug.replace(/-+$/g, '');
 };

@@ -1,4 +1,5 @@
 import type { FormEvent, RefObject } from 'react';
+import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
 import MarkdownEditor from '../components/markdown/MarkdownEditor';
 import MarkdownPreview from '../components/markdown/MarkdownPreview';
 import { Field, TextArea, TextInput } from '../ui/Field';
@@ -42,6 +43,7 @@ export function PostEditorMeta({
         <Field label="Slug">
           <TextInput
             value={draft.slug}
+            maxLength={MAX_SLUG_LENGTH}
             onChange={(e) => {
               setSlugManual(true);
               setField('slug', e.target.value);

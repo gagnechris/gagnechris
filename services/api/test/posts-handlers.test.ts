@@ -1,12 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { Post } from '@gagnechris/shared';
-import { handlePostsRoute } from '../src/posts/handlers.js';
+import { createPostRoutes } from '../src/posts/handlers.js';
 import {
   ConflictError,
   NotFoundError,
   PostsRepository,
 } from '../src/posts/repository.js';
+import { dispatchRoutes } from '../src/router.js';
 import { makeEvent } from './support/make-event.js';
+
+const ADMIN = { sub: 'admin-1' };
 
 const samplePost: Post = {
   id: '01TESTPOSTID00000000000000',
@@ -39,40 +42,40 @@ describe('posts HTTP handlers', () => {
     vi.clearAllMocks();
   });
 
+  async function dispatch(
+    method: string,
+    path: string,
+    opts?: Parameters<typeof makeEvent>[2],
+  ) {
+    return dispatchRoutes(
+      createPostRoutes(repo),
+      makeEvent(method, path, { jwtClaims: ADMIN, ...opts }),
+      method,
+      path,
+    );
+  }
+
   it('lists posts', async () => {
     vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
-    const result = await handlePostsRoute(
-      makeEvent('GET', '/api/admin/posts'),
-      'GET',
-      '/api/admin/posts',
-      repo,
-    );
-    expect(result?.statusCode).toBe(200);
-    expect(JSON.parse(result!.body as string).items).toHaveLength(1);
+    const result = await dispatch('GET', '/api/admin/posts');
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body as string).items).toHaveLength(1);
   });
 
   it('creates a draft', async () => {
     vi.mocked(repo.create).mockResolvedValue(samplePost);
-    const result = await handlePostsRoute(
-      makeEvent('POST', '/api/admin/posts', { body: { title: 'Hello' } }),
-      'POST',
-      '/api/admin/posts',
-      repo,
-    );
-    expect(result?.statusCode).toBe(201);
+    const result = await dispatch('POST', '/api/admin/posts', {
+      body: { title: 'Hello' },
+    });
+    expect(result.statusCode).toBe(201);
   });
 
   it('returns 409 on conflict', async () => {
     vi.mocked(repo.create).mockRejectedValue(new ConflictError('taken'));
-    const result = await handlePostsRoute(
-      makeEvent('POST', '/api/admin/posts', {
-        body: { title: 'Hello', slug: 'hello' },
-      }),
-      'POST',
-      '/api/admin/posts',
-      repo,
-    );
-    expect(result?.statusCode).toBe(409);
+    const result = await dispatch('POST', '/api/admin/posts', {
+      body: { title: 'Hello', slug: 'hello' },
+    });
+    expect(result.statusCode).toBe(409);
   });
 
   it('publishes and soft-deletes', async () => {
@@ -87,24 +90,18 @@ describe('posts HTTP handlers', () => {
       new NotFoundError('Post missing'),
     );
 
-    const published = await handlePostsRoute(
-      makeEvent('POST', `/api/admin/posts/${samplePost.id}/publish`, {
-        body: { version: 1 },
-      }),
+    const published = await dispatch(
       'POST',
       `/api/admin/posts/${samplePost.id}/publish`,
-      repo,
+      { body: { version: 1 } },
     );
-    expect(published?.statusCode).toBe(200);
+    expect(published.statusCode).toBe(200);
 
-    const deleted = await handlePostsRoute(
-      makeEvent('DELETE', `/api/admin/posts/${samplePost.id}`, {
-        body: { version: 1 },
-      }),
+    const deleted = await dispatch(
       'DELETE',
       `/api/admin/posts/${samplePost.id}`,
-      repo,
+      { body: { version: 1 } },
     );
-    expect(deleted?.statusCode).toBe(404);
+    expect(deleted.statusCode).toBe(404);
   });
 });

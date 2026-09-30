@@ -1,7 +1,8 @@
 /**
  * Dev-only HTTP wrapper around the API Lambda handler.
- * Injects Cognito JWT claims the same way API Gateway would — only on admin
- * routes — so public routes still exercise the missing-auth path.
+ * Injects Cognito JWT claims the same way API Gateway would — only when the
+ * matched route declares `auth: 'admin'` — so public routes still exercise the
+ * missing-auth path.
  *
  * Not bundled into the Lambda (CDK entry is src/handler.ts only).
  */
@@ -15,7 +16,8 @@ import type {
 import { handler } from '../src/handler.js';
 import { isPublishRelevantAdminMutation } from '@gagnechris/data';
 import { rebuildPublishedSite } from '@gagnechris/publisher/s3-site';
-import { canonicalPath } from '../src/router.js';
+import { pathRequiresAdminAuth } from '../src/router.js';
+import { routes } from '../src/routes.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
 
@@ -32,16 +34,6 @@ function readBody(req: IncomingMessage): Promise<Buffer> {
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
-}
-
-function isAdminRoute(rawPath: string): boolean {
-  const path = canonicalPath(rawPath);
-  return (
-    path === '/admin' ||
-    path.startsWith('/admin/') ||
-    path === '/notebook' ||
-    path.startsWith('/notebook/')
-  );
 }
 
 function buildEvent(
@@ -63,7 +55,7 @@ function buildEvent(
     contentType.startsWith('image/') ||
     contentType.startsWith('application/octet-stream');
 
-  const injectClaims = isAdminRoute(url.pathname);
+  const injectClaims = pathRequiresAdminAuth(routes, url.pathname);
 
   return {
     version: '2.0',

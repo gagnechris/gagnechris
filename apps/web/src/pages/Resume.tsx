@@ -40,6 +40,7 @@ function Resume() {
     void createPublicApiClient()
       .POST('/api/resume/download', {
         body: { referrer: document.referrer || undefined },
+        keepalive: true,
       })
       .catch(() => {
         /* notify is best-effort; download still proceeds */

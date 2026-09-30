@@ -1,8 +1,5 @@
 import { ResumeSchema, UpdateResumeRequestSchema } from '@gagnechris/shared';
-import {
-  createSingletonRouteHandler,
-  createSingletonRoutes,
-} from '../data/singleton-handlers.js';
+import { createSingletonRoutes } from '../data/singleton-handlers.js';
 import type { RouteDef } from '../router.js';
 import { ResumeRepository } from './repository.js';
 
@@ -13,6 +10,10 @@ const resumeConfig = {
   createRepo: () => new ResumeRepository(),
 };
 
-export const resumeRoutes: RouteDef[] = createSingletonRoutes(resumeConfig);
+export function createResumeRoutes(
+  repo?: ReturnType<typeof resumeConfig.createRepo>,
+): RouteDef[] {
+  return createSingletonRoutes(resumeConfig, repo);
+}
 
-export const handleResumeRoute = createSingletonRouteHandler(resumeConfig);
+export const resumeRoutes: RouteDef[] = createResumeRoutes();

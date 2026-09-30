@@ -2,14 +2,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
-  handleContactRoute,
+  createContactRoutes,
   MIN_CONTACT_SUBMIT_MS,
+  type ContactHandlerDeps,
 } from '../src/contact/handlers.js';
 import { setSesClient } from '../src/contact/mail.js';
 import { ContactRepository } from '../src/contact/repository.js';
 import { RateLimiter } from '../src/contact/rateLimit.js';
+import { dispatchRoutes } from '../src/router.js';
 import { makeEventWithBody } from './support/make-event.js';
 import { mockDocClient } from './support/mock-doc.js';
+
+async function handleContactRoute(
+  event: ReturnType<typeof makeEventWithBody>,
+  method: string,
+  path: string,
+  deps: ContactHandlerDeps = {},
+) {
+  return dispatchRoutes(createContactRoutes(deps), event, method, path);
+}
 
 describe('contact routes', () => {
   afterEach(() => {

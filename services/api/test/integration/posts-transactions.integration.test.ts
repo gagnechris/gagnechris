@@ -2,7 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { keys, slugPk, slugPostSk } from '@gagnechris/data';
 import { ConflictError } from '../../src/data/errors.js';
-import { handlePostsRoute } from '../../src/posts/handlers.js';
+import { createPostRoutes } from '../../src/posts/handlers.js';
+import { dispatchRoutes } from '../../src/router.js';
 import { makeCtx, makePost } from '../support/builders.js';
 import {
   createEphemeralIntegrationTable,
@@ -121,15 +122,16 @@ describe('posts transactions (DynamoDB Local)', () => {
   it('returns HTTP 409 on conflict', async () => {
     const ctx = makeCtx(doc, tableName);
     await makePost(ctx, { title: 'Existing', slug: 'http-taken' });
-    const result = await handlePostsRoute(
+    const result = await dispatchRoutes(
+      createPostRoutes(ctx.posts),
       makeEvent('POST', '/api/admin/posts', {
+        jwtClaims: { sub: 'admin-1' },
         body: { title: 'Clash', slug: 'http-taken' },
       }),
       'POST',
       '/api/admin/posts',
-      ctx.posts,
     );
-    expect(result?.statusCode).toBe(409);
+    expect(result.statusCode).toBe(409);
   });
 
   it('rejects stale version updates', async () => {

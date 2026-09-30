@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fnSource = readFileSync(
@@ -339,8 +340,7 @@ describe('viewer-request CloudFront Function', () => {
     });
 
     it('routes a max-length published slug (CHR-145)', async () => {
-      // Keep in sync with MAX_SLUG_LENGTH in packages/shared/src/slugify.ts
-      const maxSlug = 'a'.repeat(120);
+      const maxSlug = 'a'.repeat(MAX_SLUG_LENGTH);
       const { kvs, calls } = createCountingKvs({
         __synced__: true,
         [maxSlug]: true,

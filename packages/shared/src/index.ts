@@ -22,6 +22,7 @@ export {
   CreatePostRequestSchema,
   ErrorResponseSchema,
   ExpectedVersionRequestSchema,
+  ListPostsQuerySchema,
   FixtureNoteSchema,
   CreateFixtureNoteRequestSchema,
   UpdateFixtureNoteRequestSchema,
@@ -58,6 +59,7 @@ export {
   type CreateFixtureNoteRequest,
   type ErrorResponse,
   type ExpectedVersionRequest,
+  type ListPostsQuery,
   type FixtureNote,
   type HealthResponse,
   type Home,
@@ -85,6 +87,6 @@ export {
 } from './schemas.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
-export { MAX_SLUG_LENGTH, slugify } from './slugify.js';
+export { EMPTY_SLUG_FALLBACK, MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export { formatPostDate, postDateAttribute } from './post-date.js';
 export { textExcerpt } from './excerpt.js';

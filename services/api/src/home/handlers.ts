@@ -1,8 +1,5 @@
 import { HomeSchema, UpdateHomeRequestSchema } from '@gagnechris/shared';
-import {
-  createSingletonRouteHandler,
-  createSingletonRoutes,
-} from '../data/singleton-handlers.js';
+import { createSingletonRoutes } from '../data/singleton-handlers.js';
 import type { RouteDef } from '../router.js';
 import { HomeRepository } from './repository.js';
 
@@ -13,6 +10,10 @@ const homeConfig = {
   createRepo: () => new HomeRepository(),
 };
 
-export const homeRoutes: RouteDef[] = createSingletonRoutes(homeConfig);
+export function createHomeRoutes(
+  repo?: ReturnType<typeof homeConfig.createRepo>,
+): RouteDef[] {
+  return createSingletonRoutes(homeConfig, repo);
+}
 
-export const handleHomeRoute = createSingletonRouteHandler(homeConfig);
+export const homeRoutes: RouteDef[] = createHomeRoutes();

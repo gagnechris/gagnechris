@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { API_SERVICE_NAME } from './constants.js';
+import { MAX_SLUG_LENGTH } from './slugify.js';
 
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
@@ -82,7 +83,7 @@ export type PostListResponse = z.infer<typeof PostListResponseSchema>;
 
 export const CreatePostRequestSchema = z.object({
   title: z.string().min(1).default('Untitled'),
-  slug: z.string().min(1).optional(),
+  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
   excerpt: z.string().default(''),
   bodyMarkdown: z.string().default(''),
   tags: z.array(z.string()).default([]),
@@ -95,7 +96,7 @@ export type CreatePostRequest = z.infer<typeof CreatePostRequestSchema>;
 export const UpdatePostRequestSchema = z.object({
   version: z.number().int().nonnegative(),
   title: z.string().min(1).optional(),
-  slug: z.string().min(1).optional(),
+  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
   excerpt: z.string().optional(),
   bodyMarkdown: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -104,6 +105,15 @@ export const UpdatePostRequestSchema = z.object({
 });
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
+
+/** Query params for `GET /admin/posts` (API + OpenAPI — CHR-154). */
+export const ListPostsQuerySchema = z.object({
+  status: PostStatusSchema.optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+export type ListPostsQuery = z.infer<typeof ListPostsQuerySchema>;
 
 /** Body for publish / unpublish / discard / delete (CHR-129). */
 export const ExpectedVersionRequestSchema = z.object({
@@ -151,9 +161,21 @@ export type MediaUploadUrlResponse = z.infer<
 >;
 
 export const ContactRequestSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  email: z.string().trim().email().max(320),
-  message: z.string().trim().min(1).max(10_000),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Name is required')
+    .max(200, 'Name is too long'),
+  email: z
+    .string()
+    .trim()
+    .email('Enter a valid email address')
+    .max(320, 'Email is too long'),
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message is required')
+    .max(10_000, 'Message is too long'),
   /**
    * Honeypot — must be empty. Non-semantic name resists autofill (CHR-98).
    * Legacy `website` still accepted so old bots keep triggering the trap.

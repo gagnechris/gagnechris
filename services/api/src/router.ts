@@ -1,5 +1,5 @@
 /**
- * Declarative API router (CHR-127).
+ * Declarative API router (CHR-127 / CHR-154).
  * Path patterns use `/admin/...` (no `/api` prefix); incoming `/api/*` is stripped.
  */
 import type {
@@ -10,7 +10,7 @@ import type {
 import type { Logger } from '@aws-lambda-powertools/logger';
 import type { Metrics } from '@aws-lambda-powertools/metrics';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
-import type { ZodType } from 'zod';
+import type { z, ZodType } from 'zod';
 import { json, mapRouteError, parseBody } from './http.js';
 import {
   logger as defaultLogger,
@@ -41,9 +41,13 @@ export type RouteInput<
   body: TBody;
 };
 
-export type RouteHandler = (
+export type RouteHandler<
+  TParams = Record<string, string>,
+  TQuery = unknown,
+  TBody = unknown,
+> = (
   ctx: RouteCtx,
-  input: RouteInput,
+  input: RouteInput<TParams, TQuery, TBody>,
 ) => Promise<APIGatewayProxyStructuredResultV2>;
 
 export type RouteDef = {
@@ -61,6 +65,54 @@ export type RouteDef = {
   handler: RouteHandler;
 };
 
+type InferOrDefault<T extends ZodType | undefined, TDefault> = [T] extends [
+  ZodType,
+]
+  ? z.infer<T>
+  : TDefault;
+
+/**
+ * Build a `RouteDef` with handler input inferred from zod schemas (CHR-154).
+ * Use this instead of casting `params` / `query` / `body` inside handlers.
+ */
+export function defineRoute<
+  TParams extends ZodType | undefined = undefined,
+  TQuery extends ZodType | undefined = undefined,
+  TBody extends ZodType | undefined = undefined,
+>(def: {
+  method: RouteDef['method'];
+  pattern: string;
+  auth: AuthMode;
+  metric?: string;
+  params?: TParams;
+  query?: TQuery;
+  body?: TBody;
+  rawBody?: boolean;
+  handler: RouteHandler<
+    InferOrDefault<TParams, Record<string, string>>,
+    InferOrDefault<TQuery, Record<string, string | undefined>>,
+    InferOrDefault<TBody, unknown>
+  >;
+}): RouteDef {
+  return def as RouteDef;
+}
+
+/** Thrown when a path segment fails `decodeURIComponent` (malformed % escape). */
+export class MalformedPathError extends Error {
+  constructor(message = 'Malformed path encoding') {
+    super(message);
+    this.name = 'MalformedPathError';
+  }
+}
+
+function decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    throw new MalformedPathError();
+  }
+}
+
 export function normalizePath(rawPath: string): string {
   return rawPath.replace(/\/$/, '') || '/';
 }
@@ -71,6 +123,34 @@ export function canonicalPath(rawPath: string): string {
   if (normalized === '/api') return '/';
   if (normalized.startsWith('/api/')) return normalized.slice(4) || '/';
   return normalized;
+}
+
+/**
+ * API Gateway JWT authorizer prefixes (must stay aligned with
+ * `infra/lib/stacks/api-stack.ts`). Admin route patterns must live under these.
+ */
+export const API_GATEWAY_JWT_PREFIXES = ['/admin', '/notebook'] as const;
+
+/** True when a canonical path is under an API Gateway JWT-protected prefix. */
+export function isJwtProtectedPath(path: string): boolean {
+  return API_GATEWAY_JWT_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+/**
+ * Whether any route matching this path declares `auth: 'admin'` (for local
+ * claim injection — mirrors JWT gate without duplicating prefixes).
+ */
+export function pathRequiresAdminAuth(
+  routes: readonly RouteDef[],
+  rawPath: string,
+): boolean {
+  const path = canonicalPath(rawPath);
+  return routes.some(
+    (route) =>
+      route.auth === 'admin' && matchPattern(route.pattern, path) != null,
+  );
 }
 
 export function claimsFromEvent(
@@ -98,7 +178,7 @@ export function claimsFromEvent(
 
 /**
  * Match `/admin/posts/:id` or `/admin/media/objects/:key+` against a path.
- * Returns params or null.
+ * Returns params or null. Throws {@link MalformedPathError} on bad % escapes.
  */
 export function matchPattern(
   pattern: string,
@@ -113,11 +193,11 @@ export function matchPattern(
     const part = patternParts[i]!;
     if (part.startsWith(':') && part.endsWith('+')) {
       const name = part.slice(1, -1);
-      params[name] = pathParts.slice(j).map(decodeURIComponent).join('/');
+      params[name] = pathParts.slice(j).map(decodePathSegment).join('/');
       return params;
     }
     if (part.startsWith(':')) {
-      params[part.slice(1)] = decodeURIComponent(pathParts[j]!);
+      params[part.slice(1)] = decodePathSegment(pathParts[j]!);
       i += 1;
       j += 1;
       continue;
@@ -128,6 +208,14 @@ export function matchPattern(
   }
   if (i === patternParts.length && j === pathParts.length) return params;
   return null;
+}
+
+/** Higher = more literal segments (prefer `/tasks/today` over `/tasks/:id`). */
+export function patternSpecificity(pattern: string): number {
+  return pattern
+    .split('/')
+    .filter(Boolean)
+    .filter((part) => !part.startsWith(':')).length;
 }
 
 function metricName(route: RouteDef): string {
@@ -157,9 +245,8 @@ async function invokeRoute(
   route: RouteDef,
   ctx: RouteCtx,
   params: Record<string, string>,
-  enforceAuth: boolean,
 ): Promise<APIGatewayProxyStructuredResultV2> {
-  if (enforceAuth && route.auth === 'admin' && !ctx.userId) {
+  if (route.auth === 'admin' && !ctx.userId) {
     return json(401, {
       error: 'unauthorized',
       message: 'Missing JWT claims',
@@ -193,47 +280,50 @@ async function invokeRoute(
   return route.handler(ctx, { params: typedParams, query, body });
 }
 
-export type DispatchOptions = {
-  /**
-   * When no route matches: `'404'` (default) or `'undefined'` (module fallthrough
-   * for legacy per-module tests).
-   */
-  onMiss?: '404' | 'undefined';
-  /**
-   * Enforce `auth: 'admin'` (default true for the Lambda entry). Module test
-   * helpers set false — API Gateway already gated those routes in prod.
-   */
-  enforceAuth?: boolean;
-};
+/**
+ * Convert a router pattern to an OpenAPI path (`/admin/posts/:id` →
+ * `/api/admin/posts/{id}`; `:key+` → `{key}`).
+ */
+export function routePatternToOpenApiPath(pattern: string): string {
+  const openApi = pattern.replace(/:([A-Za-z_][A-Za-z0-9_]*)\+?/g, '{$1}');
+  return `/api${openApi}`;
+}
 
 /**
  * Dispatch a request against a route table.
- * Known path + wrong method → 405; unknown path → 404 (or undefined).
+ * Known path + wrong method → 405 (with `Allow`); unknown path → 404.
+ * When multiple patterns match, prefer more literal segments (CHR-154).
  */
 export async function dispatchRoutes(
   routes: readonly RouteDef[],
   event: APIGatewayProxyEventV2,
   method: string,
   rawPath: string,
-  options: DispatchOptions = {},
-): Promise<APIGatewayProxyStructuredResultV2 | undefined> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   const path = canonicalPath(rawPath);
   const methodUpper = method.toUpperCase();
   const ctx = buildCtx(event, methodUpper, path);
-  const onMiss = options.onMiss ?? '404';
-  const enforceAuth = options.enforceAuth ?? true;
 
   const pathMatches: Array<{
     route: RouteDef;
     params: Record<string, string>;
   }> = [];
-  for (const route of routes) {
-    const params = matchPattern(route.pattern, path);
-    if (params) pathMatches.push({ route, params });
+  try {
+    for (const route of routes) {
+      const params = matchPattern(route.pattern, path);
+      if (params) pathMatches.push({ route, params });
+    }
+  } catch (error) {
+    if (error instanceof MalformedPathError) {
+      return json(400, {
+        error: 'bad_request',
+        message: error.message,
+      });
+    }
+    throw error;
   }
 
   if (pathMatches.length === 0) {
-    if (onMiss === 'undefined') return undefined;
     defaultMetrics.addMetric('NotFound', MetricUnit.Count, 1);
     return json(404, {
       error: 'not_found',
@@ -241,26 +331,35 @@ export async function dispatchRoutes(
     });
   }
 
-  const methodMatch = pathMatches.find((m) => m.route.method === methodUpper);
-  if (!methodMatch) {
+  const methodMatches = pathMatches.filter(
+    (m) => m.route.method === methodUpper,
+  );
+  if (methodMatches.length === 0) {
     defaultMetrics.addMetric('MethodNotAllowed', MetricUnit.Count, 1);
-    const allowed = [...new Set(pathMatches.map((m) => m.route.method))].join(
-      ', ',
-    );
-    return json(405, {
-      error: 'method_not_allowed',
-      message: `Method ${methodUpper} not allowed; use ${allowed}`,
-    });
+    const allowed = [...new Set(pathMatches.map((m) => m.route.method))].sort();
+    return {
+      statusCode: 405,
+      headers: {
+        'Content-Type': 'application/json',
+        Allow: allowed.join(', '),
+      },
+      body: JSON.stringify({
+        error: 'method_not_allowed',
+        message: `Method ${methodUpper} not allowed; use ${allowed.join(', ')}`,
+      }),
+    };
   }
 
-  const { route, params } = methodMatch;
-  const metric = defaultMetrics
-    .singleMetric()
-    .addDimension('route', `${route.method} ${route.pattern}`);
-  metric.addMetric(metricName(route), MetricUnit.Count, 1);
+  methodMatches.sort(
+    (a, b) =>
+      patternSpecificity(b.route.pattern) - patternSpecificity(a.route.pattern),
+  );
+  const { route, params } = methodMatches[0]!;
+  // Per-route metric name only (no redundant `route` dimension) — CHR-154.
+  defaultMetrics.addMetric(metricName(route), MetricUnit.Count, 1);
 
   try {
-    return await invokeRoute(route, ctx, params, enforceAuth);
+    return await invokeRoute(route, ctx, params);
   } catch (error) {
     const mapped = mapRouteError(error);
     if (mapped) return mapped;
