@@ -28,10 +28,12 @@ export function applyPageMeta(shellHtml: string, meta: PageMetaInput): string {
   html = replaceMeta(html, 'property', 'og:url', meta.url);
   if (meta.image) {
     html = replaceMeta(html, 'property', 'og:image', meta.image);
-    html = replaceMeta(html, 'name', 'twitter:image', meta.image);
   }
   html = replaceMeta(html, 'name', 'twitter:title', meta.title);
   html = replaceMeta(html, 'name', 'twitter:description', meta.description);
+  if (meta.image) {
+    html = replaceMeta(html, 'name', 'twitter:image', meta.image);
+  }
   if (meta.articlePublishedTime) {
     html = upsertMeta(
       html,

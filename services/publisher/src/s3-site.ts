@@ -145,36 +145,6 @@ export async function getPublishedHome(
 
 export type { RebuildSiteSources } from './publish-targets/types.js';
 
-function trackingStorage(inner: SiteStorage): {
-  storage: SiteStorage;
-  changedKeys: string[];
-} {
-  const changedKeys: string[] = [];
-  return {
-    changedKeys,
-    storage: {
-      readShell: () => inner.readShell(),
-      read: (key) => inner.read(key),
-      list: (prefix) => inner.list(prefix),
-      invalidate: (paths) => inner.invalidate(paths),
-      async put(key, body, contentType, cacheControl, contentDisposition) {
-        const wrote = await inner.put(
-          key,
-          body,
-          contentType,
-          cacheControl,
-          contentDisposition,
-        );
-        if (wrote) changedKeys.push(key);
-        return wrote;
-      },
-      async delete(key) {
-        await inner.delete(key);
-        changedKeys.push(key);
-      },
-    },
-  };
-}
 
 /**
  * Rebuild published static artifacts from DynamoDB + the site shell.
@@ -195,9 +165,7 @@ export async function rebuildPublishedSite(options?: {
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();
   const tableName = requireEnv('DATA_TABLE_NAME');
-  const { storage, changedKeys } = trackingStorage(
-    options?.storage ?? getSiteStorage(),
-  );
+  const storage = options?.storage ?? getSiteStorage();
   const sources: RebuildSiteSources = options?.sources ?? {
     listPublishedPosts: () => listPublishedPosts(tableName),
     getPublishedResume: () => getPublishedResume(tableName),
@@ -207,7 +175,6 @@ export async function rebuildPublishedSite(options?: {
   return runPublishTargets({
     scope,
     storage,
-    changedKeys,
     sources,
   });
 }

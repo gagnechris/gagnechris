@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog index, resume, and post 1`] = `
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for home, blog index, resume, and post 1`] = `
 "<!doctype html>
 <html lang="en">
   <head>
@@ -23,7 +23,7 @@ exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog 
 </html>"
 `;
 
-exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog index, resume, and post 2`] = `
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for home, blog index, resume, and post 2`] = `
 "<!doctype html>
 <html lang="en">
   <head>
@@ -49,7 +49,7 @@ exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog 
 </html>"
 `;
 
-exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog index, resume, and post 3`] = `
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for home, blog index, resume, and post 3`] = `
 "<!doctype html>
 <html lang="en">
   <head>
@@ -72,7 +72,7 @@ exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog 
 </html>"
 `;
 
-exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog index, resume, and post 4`] = `
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for home, blog index, resume, and post 4`] = `
 "<!doctype html>
 <html lang="en">
   <head>
@@ -102,4 +102,39 @@ exports[`render HTML snapshots (CHR-143) > matches frozen output for home, blog 
     <script type="module" src="/assets/index.js"></script>
   </body>
 </html>"
+`;
+
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for resume-unavailable, RSS, and sitemap 1`] = `
+"<!doctype html>
+<html lang="en">
+  <head>
+    <title>Resume - Chris Gagne</title>
+    <meta name="description" content="Resume available on request." />
+    <meta property="og:title" content="Resume - Chris Gagne" />
+    <meta property="og:description" content="Resume available on request." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gagnechris.com/resume" />
+    <meta property="og:image" content="https://gagnechris.com/og-image.jpg" />
+    <meta name="twitter:title" content="Resume - Chris Gagne" />
+    <meta name="twitter:description" content="Resume available on request." />
+    <meta name="twitter:image" content="https://gagnechris.com/og-image.jpg" />
+    <link rel="canonical" href="https://gagnechris.com/resume" />
+  </head>
+  <body>
+    <div id="root"><!--prerender:start--><article class="resume-page-unavailable"><header><div class="name-section"><h1>Resume</h1></div></header><main><p>Resume available on request.</p></main></article><!--prerender:end--></div>
+    <script type="module" src="/assets/index.js"></script>
+  </body>
+</html>"
+`;
+
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for resume-unavailable, RSS, and sitemap 2`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://gagnechris.com/blog</link><atom:link href="https://gagnechris.com/rss.xml" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description><item><title>Hello World</title><link>https://gagnechris.com/blog/hello-world</link><guid>https://gagnechris.com/blog/hello-world</guid><description>A short excerpt.</description><pubDate>Sun, 27 Sep 2026 12:00:00 GMT</pubDate></item></channel></rss>
+"
+`;
+
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for resume-unavailable, RSS, and sitemap 3`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gagnechris.com/</loc></url><url><loc>https://gagnechris.com/blog</loc></url><url><loc>https://gagnechris.com/resume</loc></url><url><loc>https://gagnechris.com/contact</loc></url><url><loc>https://gagnechris.com/blog/hello-world</loc><lastmod>2026-09-27</lastmod></url></urlset>
+"
 `;

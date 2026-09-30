@@ -23,29 +23,39 @@ const target: PublishTarget = {
     const { shell, storage, sources } = ctx;
     const home = await sources.getPublishedHome();
     if (home) {
-      await storage.put(
-        'index.html',
-        renderHomePage(shell, home),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      await storage.put(
-        HOME_LAST_PUBLISHED_KEY,
-        JSON.stringify(homeToSnapshot(home)),
-        'application/json; charset=utf-8',
-        CACHE_HTML,
-      );
-      return { homePublished: true };
+      return {
+        artifacts: [
+          {
+            key: 'index.html',
+            body: renderHomePage(shell, home),
+            contentType: 'text/html; charset=utf-8',
+            cacheControl: CACHE_HTML,
+          },
+          {
+            key: HOME_LAST_PUBLISHED_KEY,
+            body: JSON.stringify(homeToSnapshot(home)),
+            contentType: 'application/json; charset=utf-8',
+            cacheControl: CACHE_HTML,
+          },
+        ],
+        invalidationPaths: ['/', '/index.html'],
+        homePublished: true,
+      };
     }
     const snapshot = await readHomePublishSnapshot(storage);
     if (snapshot) {
-      await storage.put(
-        'index.html',
-        renderHomePage(shell, snapshotToHome(snapshot)),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      return { homeRestoredFromSnapshot: true };
+      return {
+        artifacts: [
+          {
+            key: 'index.html',
+            body: renderHomePage(shell, snapshotToHome(snapshot)),
+            contentType: 'text/html; charset=utf-8',
+            cacheControl: CACHE_HTML,
+          },
+        ],
+        invalidationPaths: ['/', '/index.html'],
+        homeRestoredFromSnapshot: true,
+      };
     }
     return {};
   },

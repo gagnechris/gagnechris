@@ -53,6 +53,11 @@ export function fullRebuildScope(): RebuildScope {
   };
 }
 
+/** Republish-all / local full rebuild — CloudFront invalidation collapses to `/*`. */
+export function isFullRebuildScope(scope: RebuildScope): boolean {
+  return scope.allPosts && scope.home && scope.resume && scope.feeds;
+}
+
 /**
  * Derive a minimal rebuild scope from a DynamoDB Streams batch of PUBLISHED items.
  * Unknown entity types are ignored (Notebook / future entities must opt in).
@@ -128,67 +133,4 @@ export function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {
     scope.postSlugs.size > 0 ||
     scope.slugsToRemove.size > 0
   );
-}
-
-/**
- * CloudFront invalidation paths for a rebuild. Prefer wildcards so a single
- * post publish stays around ≤5 paths regardless of catalog size.
- *
- * Only paths whose objects actually changed (or were deleted) are included,
- * except full rebuild which uses `/*`.
- */
-export function buildInvalidationPaths(input: {
-  scope: RebuildScope;
-  /** Object keys that were actually written or deleted (no leading slash). */
-  changedKeys: Iterable<string>;
-  removedSlugs: Iterable<string>;
-}): string[] {
-  const { scope } = input;
-  const changed = new Set(input.changedKeys);
-  const removed = [...input.removedSlugs];
-  const paths = new Set<string>();
-
-  if (changed.size === 0 && removed.length === 0) {
-    return [];
-  }
-
-  // Full rebuild: one wildcard covers the site.
-  if (scope.allPosts && scope.home && scope.resume && scope.feeds) {
-    return ['/*'];
-  }
-
-  const blogOrFeedChanged =
-    [...changed].some(
-      (key) =>
-        key.startsWith('blog/') || key === 'sitemap.xml' || key === 'rss.xml',
-    ) || removed.length > 0;
-
-  if (blogOrFeedChanged) {
-    // One wildcard covers /blog, index, posts.json, slugs.json, and every slug.
-    paths.add('/blog*');
-    if (changed.has('sitemap.xml') || removed.length > 0 || scope.feeds) {
-      paths.add('/sitemap.xml');
-    }
-    if (changed.has('rss.xml') || removed.length > 0 || scope.feeds) {
-      paths.add('/rss.xml');
-    }
-  }
-
-  if (changed.has('resume/index.html') || changed.has('resume.pdf')) {
-    // Covers /resume, /resume/, /resume/index.html, and /resume.pdf.
-    paths.add('/resume*');
-  }
-
-  if (changed.has('index.html')) {
-    paths.add('/');
-    paths.add('/index.html');
-  }
-
-  if (paths.size === 0 && removed.length > 0) {
-    paths.add('/blog*');
-    paths.add('/sitemap.xml');
-    paths.add('/rss.xml');
-  }
-
-  return [...paths];
 }

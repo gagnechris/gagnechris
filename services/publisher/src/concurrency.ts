@@ -23,3 +23,6 @@ export async function mapWithConcurrency<T, R>(
   await Promise.all(workers);
   return results;
 }
+
+/** Shared S3 put concurrency for publisher artifact writes. */
+export const PUT_CONCURRENCY = 8;
