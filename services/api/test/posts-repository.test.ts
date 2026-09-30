@@ -277,8 +277,9 @@ describe('PostsRepository', () => {
         }
         return {};
       }
-      const pk = (command as { input: { ExpressionAttributeValues: { ':pk': string } } })
-        .input.ExpressionAttributeValues[':pk'];
+      const pk = (
+        command as { input: { ExpressionAttributeValues: { ':pk': string } } }
+      ).input.ExpressionAttributeValues[':pk'];
       if (pk === 'STATUS#draft') {
         draftCalls += 1;
         if (draftCalls === 1) {
@@ -328,7 +329,9 @@ describe('PostsRepository', () => {
     // After draft LEK then published LEK, eventual exhaustion
     expect(draftCalls).toBeGreaterThanOrEqual(1);
     expect(publishedCalls).toBeGreaterThanOrEqual(1);
-    expect(third.items.length + second.items.length + first.items.length).toBeGreaterThan(0);
+    expect(
+      third.items.length + second.items.length + first.items.length,
+    ).toBeGreaterThan(0);
   });
 
   it('rejects a tampered GSI cursor with SyntaxError (400)', async () => {
@@ -356,16 +359,17 @@ describe('PostsRepository', () => {
   });
 
   it('race-path update conflict includes currentVersion/current', async () => {
-    const { TransactionCanceledException } = await import(
-      '@aws-sdk/client-dynamodb'
-    );
+    const { TransactionCanceledException } =
+      await import('@aws-sdk/client-dynamodb');
     let batch = 0;
     const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'BatchGetCommand') {
         batch += 1;
         return {
           Responses: {
-            'gagnechris-test': [buildMetaItem({ ...draft, version: batch === 1 ? 1 : 3 })],
+            'gagnechris-test': [
+              buildMetaItem({ ...draft, version: batch === 1 ? 1 : 3 }),
+            ],
           },
         };
       }
@@ -389,9 +393,8 @@ describe('PostsRepository', () => {
   });
 
   it('slug claim cancellation maps to slug_taken', async () => {
-    const { TransactionCanceledException } = await import(
-      '@aws-sdk/client-dynamodb'
-    );
+    const { TransactionCanceledException } =
+      await import('@aws-sdk/client-dynamodb');
     const doc = mockDocClient(async (command) => {
       if (command.constructor.name === 'TransactWriteCommand') {
         throw new TransactionCanceledException({
@@ -413,5 +416,4 @@ describe('PostsRepository', () => {
       code: 'slug_taken',
     });
   });
-
 });

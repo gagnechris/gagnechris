@@ -168,9 +168,7 @@ export class PublishableRepository<
     return this.publishConfig.toEntity(result.Item as TItem, false);
   }
 
-  async loadDraftAndPublished(
-    id: string,
-  ): Promise<LoadedPair<T> | undefined> {
+  async loadDraftAndPublished(id: string): Promise<LoadedPair<T> | undefined> {
     const keys = this.publishConfig.keysFor(id);
     const responses = await batchGetAllWithDocClient(
       async (RequestItems) =>

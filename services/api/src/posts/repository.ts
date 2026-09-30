@@ -66,7 +66,9 @@ function encodeMultiStatusCursor(
   return encodeCursor(cursor as unknown as Record<string, unknown>);
 }
 
-function decodeMultiStatusCursor(cursor: string | undefined): MultiStatusCursor {
+function decodeMultiStatusCursor(
+  cursor: string | undefined,
+): MultiStatusCursor {
   if (!cursor?.trim()) return { i: 0 };
   const raw = decodeCursor(cursor);
   if (
@@ -103,11 +105,7 @@ function logCorruptItem(error: DataIntegrityError): void {
   metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
 }
 
-
-export class PostsRepository extends PublishableRepository<
-  Post,
-  PostMetaItem
-> {
+export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
@@ -276,8 +274,7 @@ export class PostsRepository extends PublishableRepository<
       );
       collected.push(...this.parseListItems(result.Items ?? []));
       const lek = result.LastEvaluatedKey as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (lek && Object.keys(lek).length > 0) {
         return {
           items: await this.attachUnpublishedFlags(collected),

@@ -12,17 +12,9 @@ import {
 import { isOptimisticLockConflict } from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
-import {
-  decodeCursor,
-  encodeCursor,
-  PRIMARY_CURSOR_KEYS,
-} from './cursor.js';
+import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
 import { runDynamoWrite } from './dynamo-write.js';
-import {
-  ConflictError,
-  DataIntegrityError,
-  NotFoundError,
-} from './errors.js';
+import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 
 export type VersionedEntity = {
   version: number;
@@ -70,7 +62,10 @@ export class VersionedEntityRepository<
     try {
       return this.config.toEntity(raw as TItem);
     } catch (error) {
-      const item = raw && typeof raw === 'object' ? (raw as { pk?: unknown; sk?: unknown }) : {};
+      const item =
+        raw && typeof raw === 'object'
+          ? (raw as { pk?: unknown; sk?: unknown })
+          : {};
       const pk = typeof item.pk === 'string' ? item.pk : undefined;
       const sk = typeof item.sk === 'string' ? item.sk : undefined;
       if (error instanceof ZodError || error instanceof DataIntegrityError) {
