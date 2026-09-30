@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
-import type { Post } from '../src/query/api.js';
+import type { Post, PostsPage } from '../src/query/api.js';
 import {
   removeCachedPost,
   setCachedHome,
@@ -26,6 +26,13 @@ const draftPost: Post = {
   hasUnpublishedChanges: false,
 };
 
+const listItems = (queryClient: QueryClient): Post[] => {
+  const data = queryClient.getQueryData<{
+    pages: PostsPage[];
+  }>(queryKeys.posts.list());
+  return data?.pages.flatMap((p) => p.items) ?? [];
+};
+
 describe('post cache helpers (CHR-131)', () => {
   test('setCachedPost upserts list + detail; removeCachedPost clears both', () => {
     const queryClient = new QueryClient();
@@ -33,9 +40,7 @@ describe('post cache helpers (CHR-131)', () => {
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
       draftPost,
     );
-    expect(queryClient.getQueryData(queryKeys.posts.list())).toEqual([
-      draftPost,
-    ]);
+    expect(listItems(queryClient)).toEqual([draftPost]);
 
     const published = {
       ...draftPost,
@@ -43,15 +48,13 @@ describe('post cache helpers (CHR-131)', () => {
       version: 2,
     };
     setCachedPost(queryClient, published);
-    expect(queryClient.getQueryData(queryKeys.posts.list())).toEqual([
-      published,
-    ]);
+    expect(listItems(queryClient)).toEqual([published]);
 
     removeCachedPost(queryClient, '01POST');
     expect(
       queryClient.getQueryData(queryKeys.posts.detail('01POST')),
     ).toBeUndefined();
-    expect(queryClient.getQueryData(queryKeys.posts.list())).toEqual([]);
+    expect(listItems(queryClient)).toEqual([]);
   });
 
   test('setCachedPost keeps a newer version when a stale write arrives (CHR-147)', () => {
@@ -62,7 +65,7 @@ describe('post cache helpers (CHR-131)', () => {
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
       v2,
     );
-    expect(queryClient.getQueryData(queryKeys.posts.list())).toEqual([v2]);
+    expect(listItems(queryClient)).toEqual([v2]);
   });
 });
 
