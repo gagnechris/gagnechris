@@ -103,7 +103,6 @@ const sharedDomainFiles = [
   'packages/shared/src/slugify.ts',
   'packages/shared/src/post-date.ts',
   'packages/shared/src/excerpt.ts',
-  'packages/shared/src/slugify-edge.test.ts',
   'packages/shared/src/post-date.test.ts',
   // Ephemeral files from `npm run check:platform-neutral-lint`
   'packages/shared/src/*platform-neutral-lint-fixture*.ts',
