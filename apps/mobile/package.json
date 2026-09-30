@@ -9,21 +9,28 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "export:ios": "expo export --platform ios --source-maps --output-dir dist",
+    "check:bundle": "node scripts/check-bundle-sources.mjs dist",
+    "smoke:bundle": "node scripts/bundle-smoke.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
-    "@gagnechris/api-client": "*",
-    "@gagnechris/shared": "*",
-    "@gagnechris/tokens": "*",
+    "@gagnechris/api-client": "file:../../packages/api-client",
+    "@gagnechris/app-core": "file:../../packages/app-core",
+    "@gagnechris/shared": "file:../../packages/shared",
+    "@gagnechris/tokens": "file:../../packages/tokens",
+    "@tanstack/react-query": "^5.104.0",
     "expo": "~57.0.25",
     "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
+    "react": "^19.3.0",
     "react-native": "0.86.3"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "@types/react-test-renderer": "^19.1.0",
+    "react-test-renderer": "^19.3.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.2"
   }

@@ -14,7 +14,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, draft-publish, TanStack Query)
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
-- `apps/mobile` — Expo spike (CHR-142); see `docs/mobile.md`
+- `apps/mobile` — Expo spike (CHR-142); **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `scripts/` — local stack, web deploy, branch protection
 - `docs/` — architecture, development, data model, local E2E
@@ -28,7 +28,8 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + Vite; fake auth)
 - Preview: `npm run preview` (production build locally)
-- Test: `npm test` (Vitest via `--workspaces --if-present`)
+- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
+- Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Local E2E: `npm run e2e:local`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)

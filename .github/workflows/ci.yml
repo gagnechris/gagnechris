@@ -35,6 +35,9 @@ jobs:
       - name: OpenAPI contract drift
         run: npm run openapi:check
 
+      - name: Design token CSS drift
+        run: npm run tokens:check
+
       # Root scripts delegate into workspaces. The site lives in apps/web.
       - name: Lint
         run: npm run lint

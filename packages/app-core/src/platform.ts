@@ -12,5 +12,10 @@ export const defaultTimers: Timers = {
   clearTimeout: (handle) => globalThis.clearTimeout(handle),
 };
 
-/** Injectable confirm (web: `window.confirm`; tests: mock). */
-export type ConfirmFn = (message: string) => boolean;
+/**
+ * Injectable confirm (web: `window.confirm`; tests: mock).
+ *
+ * Async because React Native's `Alert.alert` is callback-based; the web shell
+ * wraps the synchronous `window.confirm` in a resolved promise (CHR-150).
+ */
+export type ConfirmFn = (message: string) => Promise<boolean>;

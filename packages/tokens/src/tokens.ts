@@ -1,27 +1,31 @@
 /**
- * Design tokens (CHR-140). Single source for web CSS vars and future RN styles.
- * Values match the previous `apps/web/src/index.css` `:root` block (no visual change).
+ * Design tokens (CHR-140). Single source for web CSS vars and RN styles.
+ *
+ * `text`, `space`, and `radius` are **px numbers** so React Native can use them
+ * directly (CHR-150); the generator converts them to `rem` for CSS. Everything
+ * else is already a CSS-ready string. Values match the previous
+ * `apps/web/src/index.css` `:root` block (no visual change).
  */
 export const tokens = {
   text: {
-    xs: '0.75rem',
-    sm: '0.875rem',
-    base: '1rem',
-    lg: '1.125rem',
-    xl: '1.333rem',
-    '2xl': '1.777rem',
-    '3xl': '2.369rem',
-    '4xl': '3.157rem',
+    xs: 12,
+    sm: 14,
+    base: 16,
+    lg: 18,
+    xl: 21.328,
+    '2xl': 28.432,
+    '3xl': 37.904,
+    '4xl': 50.512,
   },
   space: {
-    1: '0.25rem',
-    2: '0.5rem',
-    3: '0.75rem',
-    4: '1rem',
-    6: '1.5rem',
-    8: '2rem',
-    12: '3rem',
-    16: '4rem',
+    1: 4,
+    2: 8,
+    3: 12,
+    4: 16,
+    6: 24,
+    8: 32,
+    12: 48,
+    16: 64,
   },
   primary: {
     50: '#f0f7f7',
@@ -74,26 +78,59 @@ export const tokens = {
     lg: '0 8px 16px rgba(16, 24, 40, 0.1)',
   },
   radius: {
-    sm: '0.25rem',
-    md: '0.5rem',
-    lg: '1rem',
-    full: '9999px',
+    sm: 4,
+    md: 8,
+    lg: 16,
+    full: 9999,
   },
 } as const;
 
 export type Tokens = typeof tokens;
 
+const ROOT_FONT_SIZE_PX = 16;
+
+/**
+ * Numeric tokens that stay in `px` on the web. `radius-full` is a pill
+ * sentinel, not a step on the scale, so scaling it with the root font size
+ * would be meaningless.
+ */
+const pxOnly = new Set(['--radius-full']);
+
+/** Trim float noise from a derived number: `1.3330000000000002` → `1.333`. */
+function round(value: number, decimals: number): string {
+  return String(Number(value.toFixed(decimals)));
+}
+
+/** px number → CSS value; strings pass through unchanged. */
+function toCssValue(name: string, value: number | string): string {
+  if (typeof value === 'string') return value;
+  if (pxOnly.has(name)) return `${value}px`;
+  return `${round(value / ROOT_FONT_SIZE_PX, 6)}rem`;
+}
+
+type TokenEntry = {
+  name: string;
+  css: string;
+  /** The stored value, so the generator can derive the px comments. */
+  raw: number | string;
+};
+
+function tokenEntries(source: Tokens): TokenEntry[] {
+  const entries: TokenEntry[] = [];
+  for (const [group, values] of Object.entries(source)) {
+    for (const [key, raw] of Object.entries(values)) {
+      const name = `--${group}-${key}`;
+      entries.push({ name, css: toCssValue(name, raw), raw });
+    }
+  }
+  return entries;
+}
+
 /** Flat CSS custom-property map: `--text-xs` → value. */
 export function tokenCssEntries(
   source: Tokens = tokens,
 ): Array<[string, string]> {
-  const entries: Array<[string, string]> = [];
-  for (const [group, values] of Object.entries(source)) {
-    for (const [key, value] of Object.entries(values)) {
-      entries.push([`--${group}-${key}`, value]);
-    }
-  }
-  return entries;
+  return tokenEntries(source).map(({ name, css }) => [name, css]);
 }
 
 /** `:root { … }` block generated from tokens (comments match prior index.css). */
@@ -117,41 +154,27 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
     '--radius-sm': '  /* Border Radius */',
   };
 
-  const remComments: Record<string, string> = {
-    '--text-xs': ' /* 12px */',
-    '--text-sm': ' /* 14px */',
-    '--text-base': ' /* 16px */',
-    '--text-lg': ' /* 18px */',
-    '--text-xl': ' /* 21.33px */',
-    '--text-2xl': ' /* 28.43px */',
-    '--text-3xl': ' /* 37.9px */',
-    '--text-4xl': ' /* 50.52px */',
-    '--space-1': ' /* 4px */',
-    '--space-2': ' /* 8px */',
-    '--space-3': ' /* 12px */',
-    '--space-4': ' /* 16px */',
-    '--space-6': ' /* 24px */',
-    '--space-8': ' /* 32px */',
-    '--space-12': ' /* 48px */',
-    '--space-16': ' /* 64px */',
+  const valueComments: Record<string, string> = {
     '--primary-500': ' /* Base sage green */',
-    '--radius-sm': ' /* 4px */',
-    '--radius-md': ' /* 8px */',
-    '--radius-lg': ' /* 16px */',
   };
 
-  for (const [name, value] of tokenCssEntries(source)) {
+  for (const { name, css, raw } of tokenEntries(source)) {
     const section = commentBefore[name];
     if (section) {
       lines.push('');
       lines.push(section);
     }
-    const suffix = remComments[name] ?? '';
+    // A rem value keeps a px comment derived from the token; px is literal.
+    const derivedPx =
+      typeof raw === 'number' && css.endsWith('rem')
+        ? ` /* ${round(raw, 2)}px */`
+        : '';
+    const suffix = valueComments[name] ?? derivedPx;
     if (name === '--font-sans' || name === '--font-display') {
       lines.push(`  ${name}:`);
-      lines.push(`    ${value};`);
+      lines.push(`    ${css};`);
     } else {
-      lines.push(`  ${name}: ${value};${suffix}`);
+      lines.push(`  ${name}: ${css};${suffix}`);
     }
   }
 

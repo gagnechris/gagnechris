@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "workspaces": [
-    "apps/*",
+    "apps/web",
     "packages/*",
     "services/*",
     "infra"
@@ -37,7 +37,8 @@
     "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client",
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
     "tokens:generate": "npm run generate -w @gagnechris/tokens",
-    "mobile": "npm run start -w @gagnechris/mobile"
+    "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
+    "mobile": "npm start --prefix apps/mobile"
   },
   "engines": {
     "node": "^22.12.0"
