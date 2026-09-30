@@ -45,8 +45,11 @@ jobs:
       - name: Format check
         run: npm run format:check
 
-      - name: Shared domain bundle guard
-        run: npm run check:domain-bundle -w @gagnechris/shared
+      - name: RN-facing package bundle guard
+        run: npm run check:rn-bundles
+
+      - name: Platform-neutral lint bans
+        run: npm run check:platform-neutral-lint
 
       - name: Typecheck
         run: npm run typecheck

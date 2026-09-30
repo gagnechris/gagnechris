@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { SaveState } from '../admin/useQueuedAutosave';
+import type { SaveState } from '@gagnechris/app-core';
 import { Button } from './Button';
 import { SaveIndicator } from './SaveIndicator';
 import { StatusBadge } from './StatusBadge';

@@ -32,5 +32,11 @@
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.0.2"
+  },
+  "exports": {
+    "./posts/repository": {
+      "types": "./src/posts/repository.ts",
+      "import": "./src/posts/repository.ts"
+    }
   }
 }

@@ -17,45 +17,31 @@
       "import": "./src/render.ts",
       "default": "./src/render.ts"
     },
-    "./openapi": {
-      "types": "./src/openapi.ts",
-      "import": "./src/openapi.ts",
-      "default": "./src/openapi.ts"
-    },
-    "./server": {
-      "types": "./src/server.ts",
-      "import": "./src/server.ts",
-      "default": "./src/server.ts"
-    },
     "./html": {
       "types": "./src/html.ts",
       "import": "./src/html.ts",
       "default": "./src/html.ts"
     },
-    "./home": {
-      "types": "./src/home.ts",
-      "import": "./src/home.ts",
-      "default": "./src/home.ts"
+    "./openapi": {
+      "types": "./src/openapi.ts",
+      "import": "./src/openapi.ts",
+      "default": "./src/openapi.ts"
     },
-    "./resume": {
-      "types": "./src/resume.ts",
-      "import": "./src/resume.ts",
-      "default": "./src/resume.ts"
-    }
+    "./openapi.json": "./openapi/openapi.json"
   },
   "scripts": {
     "openapi": "tsx src/generate-openapi.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "check:domain-bundle": "tsx scripts/check-domain-bundle.ts"
+    "check:domain-bundle": "tsx ../../scripts/check-rn-bundles.ts"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "marked": "^18.0.14",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@types/node": "^22.13.0",
     "esbuild": "^0.25.12",
     "tsx": "^4.20.0",

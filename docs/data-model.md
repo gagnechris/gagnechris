@@ -172,7 +172,7 @@ Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
 (home meta shell), then invokes `republishAll`, which reads `_shell.html` and
 writes the home prerender into `index.html`. Home-only head tags therefore
 cannot leak into `/blog` or `/resume`. Profile photo, Quick Links, and footer
-**link data** are defined once in `@gagnechris/shared/home` (`HOME_QUICK_LINKS` /
+**link data** are defined once in `@gagnechris/shared/render` (`HOME_QUICK_LINKS` /
 `HOME_FOOTER_LINKS`); the publisher prerenders HTML from that list and React
 renders the same list as JSX (`<Link>` / tracked `<a>`) so SPA navigation and
 GA4 click events stay intact (CHR-116 / CHR-122 / CHR-125). The prerender

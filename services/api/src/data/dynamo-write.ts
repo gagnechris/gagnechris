@@ -2,7 +2,7 @@
  * Map DynamoDB write failures using shared classification (CHR-120 / CHR-126).
  * Throttle retries are owned by the AWS SDK client — this only classifies.
  */
-import { classifyDynamoWriteError } from '@gagnechris/shared/server';
+import { classifyDynamoWriteError } from '@gagnechris/data';
 import { ConflictError, ServiceUnavailableError } from './errors.js';
 
 /**

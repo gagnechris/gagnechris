@@ -2,7 +2,7 @@
 import {
   DEFAULT_RESUME,
   renderResumeSectionsHtml,
-} from '@gagnechris/shared/resume';
+} from '@gagnechris/shared/render';
 
 export type ResumeView = {
   name: string;

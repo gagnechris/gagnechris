@@ -5,19 +5,20 @@ import {
   useState,
   type FormEvent,
 } from 'react';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
+import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import type { components } from '@gagnechris/api-client';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { Field, TextArea, TextInput } from '../ui/Field';
 import { ApiError, updateHome } from './query/api';
 import {
+  mergeEditorSeo,
   useHomeLifecycleMutators,
   useHomeQuery,
+  useQueuedAutosave,
   useSetHomeCache,
-} from './query/home';
+} from '@gagnechris/app-core';
 import { useDraftPublishEditor } from './useDraftPublishEditor';
 import { useNullableDraftUpdater } from './useDraftUpdater';
-import { mergeEditorSeo, useQueuedAutosave } from './useQueuedAutosave';
 
 type Home = components['schemas']['Home'];
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from './query/api';
-import { useCreatePostMutation, usePostsQuery } from './query/posts';
+import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';
