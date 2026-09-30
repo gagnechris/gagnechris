@@ -116,17 +116,18 @@ Details: [data-model.md](./data-model.md).
 4. Handlers receive `ctx.userId`, `ctx.claims`, `ctx.logger`, `ctx.metrics`, and `ctx.requestId`. Do **not** add per-module try/catch — validation and `mapRouteError` run in `dispatchRoutes`.
 5. Wrong method on a known path → **405**; unknown path → **404**. Per-route metrics use a `route` dimension.
 
-## `@gagnechris/shared` entry points (CHR-139)
+## `@gagnechris/shared` entry points (CHR-139 / CHR-156)
 
-| Import                         | Contents                                                                                       |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `@gagnechris/shared`           | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
-| `@gagnechris/shared/render`    | Markdown + HTML prerender helpers (web / publisher)                                            |
-| `@gagnechris/shared/openapi`   | OpenAPI document builder (build-time only)                                                     |
-| `@gagnechris/shared/server`    | DynamoDB helpers (API / publisher)                                                             |
-| `@gagnechris/shared/home` etc. | Zod-free HTML entry points for the public web bundle                                           |
+| Import                            | Contents                                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@gagnechris/shared`              | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
+| `@gagnechris/shared/render`       | Markdown + HTML prerender helpers (web / publisher)                                            |
+| `@gagnechris/shared/openapi`      | OpenAPI document builder (build-time only)                                                     |
+| `@gagnechris/shared/openapi.json` | Generated OpenAPI document (api-client `generate`)                                             |
 
-CI runs `npm run check:domain-bundle -w @gagnechris/shared` (esbuild metafile) so the domain entry cannot pull banned modules. Metro import is verified by the Expo spike (CHR-142).
+DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
+
+CI runs `npm run check:rn-bundles` (esbuild metafile + explicit ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` bans. Metro import is verified by the Expo spike (CHR-142).
 
 ## Related
 

@@ -1,7 +1,7 @@
 import { screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
+import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import App from './App';
 import { renderWithProviders } from './test-utils';
 import * as analytics from './utils/analytics';

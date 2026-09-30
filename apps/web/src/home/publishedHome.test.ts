@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/home';
+import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import {
   fallbackHomeView,
   homeViewFromDocument,

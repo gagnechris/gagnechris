@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "generate": "openapi-typescript ../../packages/shared/openapi/openapi.json -o src/schema.d.ts",
+    "generate": "openapi-typescript @gagnechris/shared/openapi.json -o src/schema.d.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
@@ -23,7 +23,7 @@
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.0",
+    "@gagnechris/shared": "*",
     "openapi-typescript": "^7.13.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.2"

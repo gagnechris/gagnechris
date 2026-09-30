@@ -17,7 +17,7 @@
     "local:dev": "bash scripts/local/dev.sh",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && eslint scripts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "npm run preview -w @gagnechris/web",
@@ -38,7 +38,9 @@
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
     "tokens:generate": "npm run generate -w @gagnechris/tokens",
     "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
-    "mobile": "npm start --prefix apps/mobile"
+    "mobile": "npm start --prefix apps/mobile",
+    "check:rn-bundles": "tsx scripts/check-rn-bundles.ts",
+    "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs"
   },
   "engines": {
     "node": "^22.12.0"
@@ -50,6 +52,7 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
     "prettier": "^3.9.9",
-    "typescript-eslint": "^8.70.1"
+    "typescript-eslint": "^8.70.1",
+    "eslint-plugin-import-x": "^4.17.1"
   }
 }

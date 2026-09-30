@@ -11,7 +11,7 @@ import type {
   PostStatus,
   UpdatePostRequest,
 } from '@gagnechris/shared';
-import { batchGetAllWithDocClient } from '@gagnechris/shared/server';
+import { batchGetAllWithDocClient } from '@gagnechris/data';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
 import { decodeCursor, encodeCursor } from '../data/cursor.js';

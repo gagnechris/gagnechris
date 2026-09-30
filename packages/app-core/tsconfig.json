@@ -5,8 +5,14 @@
     "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
     "noEmit": true,
-    "lib": ["ES2022"],
-    "types": ["node"]
+    "lib": [
+      "ES2022"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx"
+  ]
 }

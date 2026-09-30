@@ -17,7 +17,7 @@ import {
   statusGsi1Pk,
   type PostMetaItem,
 } from '@gagnechris/data';
-import { batchGetAllWithDocClient } from '@gagnechris/shared/server';
+import { batchGetAllWithDocClient } from '@gagnechris/data';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';

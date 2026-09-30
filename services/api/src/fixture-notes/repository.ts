@@ -8,7 +8,7 @@ import type {
   FixtureNote,
   UpdateFixtureNoteRequest,
 } from '@gagnechris/shared';
-import { isOptimisticLockConflict } from '@gagnechris/shared/server';
+import { isOptimisticLockConflict } from '@gagnechris/data';
 import { keys, syncPk, syncSk, ttlDaysFromNow } from '@gagnechris/data';
 import { getDocClient, requireTableName } from '../data/client.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';

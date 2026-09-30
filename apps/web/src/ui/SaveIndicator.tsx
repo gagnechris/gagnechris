@@ -1,4 +1,4 @@
-import type { SaveState } from '../admin/useQueuedAutosave';
+import type { SaveState } from '@gagnechris/app-core';
 import { saveLabel } from './saveLabel';
 
 type Props = {

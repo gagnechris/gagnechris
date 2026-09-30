@@ -8,7 +8,7 @@ import {
   escapeRegExp,
   replaceMeta,
   upsertCanonical,
-} from '@gagnechris/shared/html';
+} from '@gagnechris/shared/render';
 
 export type StaticPageMeta = {
   /** URL path without trailing slash; empty string = home. */

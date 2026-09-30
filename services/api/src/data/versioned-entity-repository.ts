@@ -9,7 +9,7 @@ import {
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { isOptimisticLockConflict } from '@gagnechris/shared/server';
+import { isOptimisticLockConflict } from '@gagnechris/data';
 import { getDocClient, requireTableName } from './client.js';
 import { decodeCursor, encodeCursor } from './cursor.js';
 import { runDynamoWrite } from './dynamo-write.js';

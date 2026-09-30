@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { QueryClientTestProvider, createTestQueryClient } from '../test-utils';
 import PostEditorPage from './PostEditorPage';
-import { queryKeys } from './query/keys';
+import { queryKeys } from '@gagnechris/app-core';
 
 const get = vi.fn();
 const put = vi.fn();
