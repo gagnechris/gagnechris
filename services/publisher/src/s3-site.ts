@@ -145,7 +145,6 @@ export async function getPublishedHome(
 
 export type { RebuildSiteSources } from './publish-targets/types.js';
 
-
 /**
  * Rebuild published static artifacts from DynamoDB + the site shell.
  *

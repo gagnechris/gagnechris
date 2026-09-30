@@ -121,9 +121,7 @@ describe('publish target registry', () => {
     expect(result.invalidated).toEqual(
       expect.arrayContaining(['/now*', '/', '/index.html']),
     );
-    expect(storage.invalidations[0]).toEqual(
-      expect.arrayContaining(['/now*']),
-    );
+    expect(storage.invalidations[0]).toEqual(expect.arrayContaining(['/now*']));
   });
 });
 
