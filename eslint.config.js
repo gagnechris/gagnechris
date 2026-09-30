@@ -1,9 +1,14 @@
 import js from '@eslint/js';
 import globals from 'globals';
-import importX from 'eslint-plugin-import-x';
+import importX, { createNodeResolver } from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
+
+/** ESLint 10-compatible resolver (legacy `node` peer is optional and wrong interface). */
+const importXResolverSettings = {
+  'import-x/resolver-next': [createNodeResolver()],
+};
 
 /** Ban relative imports that leave a workspace into another (CHR-138). */
 const crossWorkspaceRelativePatterns = [
@@ -135,6 +140,7 @@ export default tseslint.config(
     plugins: {
       'import-x': importX,
     },
+    settings: importXResolverSettings,
     rules: {
       ...noCrossWorkspaceRelativeImports,
       ...unusedVarsRule,
@@ -168,6 +174,7 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
       'import-x': importX,
     },
+    settings: importXResolverSettings,
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...noCrossWorkspaceRelativeImports,
@@ -190,6 +197,7 @@ export default tseslint.config(
       'react-hooks': reactHooks,
       'import-x': importX,
     },
+    settings: importXResolverSettings,
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...noCrossWorkspaceRelativeImports,
