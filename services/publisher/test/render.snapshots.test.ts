@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
 import {
+  buildRssXml,
+  buildSitemapXml,
   renderBlogIndexPage,
   renderHomePage,
   renderPostPage,
   renderResumePage,
+  renderResumeUnavailablePage,
 } from '../src/render.js';
 
 const samplePost = (): Post => ({
@@ -44,11 +47,17 @@ const shell = `<!doctype html>
   </body>
 </html>`;
 
-describe('render HTML snapshots (CHR-143)', () => {
+describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
   it('matches frozen output for home, blog index, resume, and post', () => {
     expect(renderHomePage(shell, DEFAULT_HOME)).toMatchSnapshot();
     expect(renderBlogIndexPage(shell, [samplePost()])).toMatchSnapshot();
     expect(renderResumePage(shell, DEFAULT_RESUME)).toMatchSnapshot();
     expect(renderPostPage(shell, samplePost())).toMatchSnapshot();
+  });
+
+  it('matches frozen output for resume-unavailable, RSS, and sitemap', () => {
+    expect(renderResumeUnavailablePage(shell)).toMatchSnapshot();
+    expect(buildRssXml([samplePost()])).toMatchSnapshot();
+    expect(buildSitemapXml([samplePost()])).toMatchSnapshot();
   });
 });

@@ -1,8 +1,14 @@
+import { Logger } from '@aws-lambda-powertools/logger';
 import { renderResumePage, renderResumeUnavailablePage } from '../../render.js';
-import { publishResumePdf } from '../../resume-pdf-publish.js';
-import { RESUME_PDF_KEY } from '../../resume-pdf.js';
-import type { PublishTarget } from '../types.js';
+import {
+  renderResumePdf,
+  RESUME_PDF_CONTENT_DISPOSITION,
+  RESUME_PDF_KEY,
+} from '../../resume-pdf.js';
+import type { PublishArtifact, PublishTarget } from '../types.js';
 import { CACHE_HTML } from '../types.js';
+
+const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 
 const target: PublishTarget = {
   id: 'resume',
@@ -16,29 +22,54 @@ const target: PublishTarget = {
     return true;
   },
   async run(ctx) {
-    const { shell, storage, sources } = ctx;
+    const { shell, sources } = ctx;
     const resume = await sources.getPublishedResume();
     if (resume) {
-      await storage.put(
-        'resume/index.html',
-        renderResumePage(shell, resume),
-        'text/html; charset=utf-8',
-        CACHE_HTML,
-      );
-      const pdfResult = await publishResumePdf(storage, resume);
+      const artifacts: PublishArtifact[] = [
+        {
+          key: 'resume/index.html',
+          body: renderResumePage(shell, resume),
+          contentType: 'text/html; charset=utf-8',
+          cacheControl: CACHE_HTML,
+        },
+      ];
+      let resumePdfFailed = false;
+      try {
+        const pdfBytes = await renderResumePdf(resume);
+        artifacts.push({
+          key: RESUME_PDF_KEY,
+          body: pdfBytes,
+          contentType: 'application/pdf',
+          cacheControl: CACHE_HTML,
+          contentDisposition: RESUME_PDF_CONTENT_DISPOSITION,
+        });
+      } catch (error) {
+        logger.error(
+          'Resume PDF generation failed; keeping previous resume.pdf',
+          { error },
+        );
+        resumePdfFailed = true;
+      }
       return {
+        artifacts,
+        invalidationPaths: ['/resume*'],
         resumePublished: true,
-        resumePdfFailed: pdfResult.status === 'kept-previous',
+        resumePdfFailed,
       };
     }
-    await storage.put(
-      'resume/index.html',
-      renderResumeUnavailablePage(shell),
-      'text/html; charset=utf-8',
-      CACHE_HTML,
-    );
-    await storage.delete(RESUME_PDF_KEY);
-    return { resumeUnpublished: true };
+    return {
+      artifacts: [
+        {
+          key: 'resume/index.html',
+          body: renderResumeUnavailablePage(shell),
+          contentType: 'text/html; charset=utf-8',
+          cacheControl: CACHE_HTML,
+        },
+      ],
+      deleteKeys: [RESUME_PDF_KEY],
+      invalidationPaths: ['/resume*'],
+      resumeUnpublished: true,
+    };
   },
 };
 

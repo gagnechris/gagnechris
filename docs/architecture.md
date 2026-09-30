@@ -43,10 +43,13 @@ Details: [data-model.md](./data-model.md).
 ## Publisher outputs
 
 Stream scope (`collectRebuildScope`) selects **publish targets** under
-`services/publisher/src/publish-targets/targets/*.target.ts`. Each new target
-module is wired in `publish-targets/bootstrap.ts` (esbuild bundles explicit
-imports). The orchestrator loads shared deps, runs matching targets, invalidates
-CloudFront, then syncs blog slugs to KVS (CHR-123 order).
+`services/publisher/src/publish-targets/targets/*.target.ts`. Each target is
+listed in the explicit `publishTargets` array in `publish-targets/registry.ts`
+(esbuild bundles those imports). Targets return `{ artifacts, deleteKeys,
+invalidationPaths }`; the orchestrator writes, deletes, and invalidates.
+CloudFront KeyValueStore slug sync remains a post-step after invalidation
+(CHR-123 order). Adding a page is one new `*.target.ts` plus one registry
+entry — no `rebuild-scope.ts` edits.
 
 On relevant stream events the publisher updates, among others:
 

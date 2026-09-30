@@ -13,7 +13,7 @@ export const CACHE_FEED = 'public,max-age=300';
 
 export type PublishArtifact = {
   key: string;
-  body: string;
+  body: string | Uint8Array;
   contentType: string;
   cacheControl: string;
   contentDisposition?: string;
@@ -22,6 +22,10 @@ export type PublishArtifact = {
 export type PublishTargetContext = {
   scope: RebuildScope;
   shell: string;
+  /**
+   * Read/list only. Targets return `artifacts` / `deleteKeys`; the orchestrator
+   * performs all writes, deletes, and invalidation.
+   */
   storage: SiteStorage;
   sources: RebuildSiteSources;
   /** Published posts (loaded once per rebuild when catalog is needed). */
@@ -31,6 +35,8 @@ export type PublishTargetContext = {
 export type PublishTargetRunResult = {
   artifacts?: PublishArtifact[];
   deleteKeys?: string[];
+  /** CloudFront paths owned by this target (orchestrator dedupes / collapses). */
+  invalidationPaths?: string[];
   removedSlugs?: string[];
   resumePublished?: boolean;
   resumeUnpublished?: boolean;

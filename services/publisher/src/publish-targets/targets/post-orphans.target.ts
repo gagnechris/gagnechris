@@ -30,12 +30,18 @@ const target: PublishTarget = {
     }
 
     const removedSlugs: string[] = [];
+    const deleteKeys: string[] = [];
     for (const slug of candidates) {
       if (!slug || publishedSlugs.has(slug)) continue;
-      await storage.delete(`blog/${slug}/index.html`);
+      deleteKeys.push(`blog/${slug}/index.html`);
       removedSlugs.push(slug);
     }
-    return { removedSlugs };
+    return {
+      deleteKeys,
+      removedSlugs,
+      invalidationPaths:
+        removedSlugs.length > 0 ? ['/blog*', '/sitemap.xml', '/rss.xml'] : [],
+    };
   },
 };
 

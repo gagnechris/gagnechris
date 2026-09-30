@@ -1,62 +1,91 @@
-import './bootstrap.js';
 import {
-  buildInvalidationPaths,
+  isFullRebuildScope,
   fullRebuildScope,
   type RebuildScope,
 } from '../rebuild-scope.js';
-import { mapWithConcurrency } from '../concurrency.js';
+import { mapWithConcurrency, PUT_CONCURRENCY } from '../concurrency.js';
 import type { RebuildResult } from '../rebuild-result.js';
 import type { SiteStorage } from '../storage.js';
 import { syncViewerRequestBlogSlugs } from '../viewer-request-slugs.js';
 import { getPublishTargets } from './registry.js';
 import type {
   PublishArtifact,
+  PublishTarget,
   PublishTargetContext,
   RebuildSiteSources,
 } from './types.js';
 
-const PUT_CONCURRENCY = 8;
-
-function scopeNeedsCatalog(scope: RebuildScope): boolean {
-  return getPublishTargets().some(
-    (t) => t.matches(scope) && t.needsCatalog(scope),
-  );
+function scopeNeedsCatalog(
+  targets: readonly PublishTarget[],
+  scope: RebuildScope,
+): boolean {
+  return targets.some((t) => t.matches(scope) && t.needsCatalog(scope));
 }
 
-function scopeNeedsShell(scope: RebuildScope): boolean {
-  return getPublishTargets().some(
-    (t) => t.matches(scope) && t.needsShell(scope),
-  );
+function scopeNeedsShell(
+  targets: readonly PublishTarget[],
+  scope: RebuildScope,
+): boolean {
+  return targets.some((t) => t.matches(scope) && t.needsShell(scope));
 }
 
 async function writeArtifacts(
   storage: SiteStorage,
   artifacts: PublishArtifact[],
-): Promise<void> {
+): Promise<string[]> {
+  const written: string[] = [];
   await mapWithConcurrency(artifacts, PUT_CONCURRENCY, async (artifact) => {
-    await storage.put(
+    const wrote = await storage.put(
       artifact.key,
       artifact.body,
       artifact.contentType,
       artifact.cacheControl,
       artifact.contentDisposition,
     );
+    if (wrote) written.push(artifact.key);
   });
+  return written;
+}
+
+async function deleteKeys(
+  storage: SiteStorage,
+  keys: string[],
+): Promise<string[]> {
+  for (const key of keys) {
+    await storage.delete(key);
+  }
+  return keys;
+}
+
+/**
+ * Collapse target-owned invalidation paths. Full rebuild → `/*`.
+ * Empty when nothing was written or deleted (hash-skip).
+ */
+export function finalizeInvalidationPaths(
+  scope: RebuildScope,
+  paths: string[],
+  hadChanges: boolean,
+): string[] {
+  if (!hadChanges) return [];
+  if (isFullRebuildScope(scope)) return ['/*'];
+  return [...new Set(paths)];
 }
 
 export async function runPublishTargets(options: {
   scope?: RebuildScope;
   storage: SiteStorage;
-  changedKeys: string[];
   sources: RebuildSiteSources;
+  /** Override production registry (tests / AC demos). */
+  targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options.scope ?? fullRebuildScope();
-  const { storage, changedKeys, sources } = options;
+  const { storage, sources } = options;
+  const targets = options.targets ?? getPublishTargets();
 
-  const activeTargets = getPublishTargets().filter((t) => t.matches(scope));
+  const activeTargets = targets.filter((t) => t.matches(scope));
 
-  const needsCatalog = scopeNeedsCatalog(scope);
-  const needsShell = scopeNeedsShell(scope);
+  const needsCatalog = scopeNeedsCatalog(targets, scope);
+  const needsShell = scopeNeedsShell(targets, scope);
 
   const shell = needsShell ? await storage.readShell() : '';
   const published = needsCatalog ? await sources.listPublishedPosts() : [];
@@ -75,6 +104,8 @@ export async function runPublishTargets(options: {
   let resumePdfFailed = false;
   let homePublished = false;
   let homeRestoredFromSnapshot = false;
+  const collectedPaths: string[] = [];
+  let hadChanges = false;
 
   for (const target of activeTargets) {
     const result = await target.run(ctx);
@@ -86,22 +117,33 @@ export async function runPublishTargets(options: {
     if (result.resumePdfFailed) resumePdfFailed = true;
     if (result.homePublished) homePublished = true;
     if (result.homeRestoredFromSnapshot) homeRestoredFromSnapshot = true;
-    if (result.artifacts?.length) {
-      await writeArtifacts(storage, result.artifacts);
-    }
-    if (result.deleteKeys?.length) {
-      for (const key of result.deleteKeys) {
-        await storage.delete(key);
+
+    const written = result.artifacts?.length
+      ? await writeArtifacts(storage, result.artifacts)
+      : [];
+    const deleted = result.deleteKeys?.length
+      ? await deleteKeys(storage, result.deleteKeys)
+      : [];
+
+    if (
+      written.length > 0 ||
+      deleted.length > 0 ||
+      (result.removedSlugs?.length ?? 0) > 0
+    ) {
+      hadChanges = true;
+      if (result.invalidationPaths?.length) {
+        collectedPaths.push(...result.invalidationPaths);
       }
     }
   }
 
-  const invalidated = buildInvalidationPaths({
+  const invalidated = finalizeInvalidationPaths(
     scope,
-    changedKeys,
-    removedSlugs,
-  });
+    collectedPaths,
+    hadChanges,
+  );
 
+  // Invalidate before KVS sync so a sync failure still clears cache (CHR-123).
   await storage.invalidate(invalidated);
 
   if (scope.feeds) {
@@ -118,6 +160,6 @@ export async function runPublishTargets(options: {
     resumePdfFailed,
     homePublished,
     homeRestoredFromSnapshot,
-    invalidated: [...new Set(invalidated)],
+    invalidated,
   };
 }

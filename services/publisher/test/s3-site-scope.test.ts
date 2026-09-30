@@ -43,9 +43,13 @@ vi.mock('../src/viewer-request-slugs.js', () => ({
   syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../src/resume-pdf-publish.js', () => ({
-  publishResumePdf: vi.fn().mockResolvedValue({ status: 'written' }),
-}));
+vi.mock('../src/resume-pdf.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/resume-pdf.js')>();
+  return {
+    ...actual,
+    renderResumePdf: vi.fn().mockResolvedValue(new Uint8Array([0x25, 0x50])),
+  };
+});
 
 function makePost(slug: string, n: number): Post {
   return {
@@ -176,7 +180,7 @@ describe('rebuildPublishedSite selective scope', () => {
     );
 
     const { rebuildPublishedSite } = await import('../src/s3-site.js');
-    const { publishResumePdf } = await import('../src/resume-pdf-publish.js');
+    const { renderResumePdf } = await import('../src/resume-pdf.js');
     const { syncViewerRequestBlogSlugs } =
       await import('../src/viewer-request-slugs.js');
 
@@ -199,7 +203,7 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(result.resumePublished).toBe(false);
     expect(result.resumeUnpublished).toBe(false);
     expect(result.invalidated.sort()).toEqual(['/', '/index.html']);
-    expect(publishResumePdf).not.toHaveBeenCalled();
+    expect(renderResumePdf).not.toHaveBeenCalled();
     expect(syncViewerRequestBlogSlugs).not.toHaveBeenCalled();
     expect(
       ddbSend.mock.calls.some(
@@ -246,7 +250,7 @@ describe('rebuildPublishedSite selective scope', () => {
     );
 
     const { rebuildPublishedSite } = await import('../src/s3-site.js');
-    const { publishResumePdf } = await import('../src/resume-pdf-publish.js');
+    const { renderResumePdf } = await import('../src/resume-pdf.js');
     const { syncViewerRequestBlogSlugs } =
       await import('../src/viewer-request-slugs.js');
 
@@ -281,7 +285,7 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(result.invalidated).toEqual(
       expect.arrayContaining(['/blog*', '/sitemap.xml', '/rss.xml']),
     );
-    expect(publishResumePdf).not.toHaveBeenCalled();
+    expect(renderResumePdf).not.toHaveBeenCalled();
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
   });
 

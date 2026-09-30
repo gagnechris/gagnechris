@@ -142,6 +142,7 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   const image = resume.seo?.ogImage
     ? absoluteUrl(resume.seo.ogImage)
     : defaultOgImage();
+  // Always point the SPA download at the publisher-generated PDF.
   const body = renderResumePrerenderHtml({
     ...resume,
     pdfPath: RESUME_PDF_PUBLIC_PATH,
