@@ -1,9 +1,4 @@
-import {
-  CfnOutput,
-  Duration,
-  Stack,
-  type StackProps,
-} from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import {
   CfnStage,
