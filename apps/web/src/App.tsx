@@ -5,7 +5,7 @@ import {
   HOME_PROFILE_IMAGE_SRC,
   HOME_QUICK_LINKS,
   type SiteChromeLink,
-} from '@gagnechris/shared/home';
+} from '@gagnechris/shared/render';
 import { trackEvent } from './utils/analytics';
 import {
   documentHomeView,

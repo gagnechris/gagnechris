@@ -165,4 +165,81 @@ describe('cursor helpers', () => {
     expect(cursor).toBeTruthy();
     expect(decodeCursor(cursor)).toEqual(key);
   });
+
+  it('rejects cursor missing required keys', () => {
+    const cursor = encodeCursor({ pk: 'POST#1', sk: 'META' });
+    expect(() =>
+      decodeCursor(cursor, ['pk', 'sk', 'gsi1pk', 'gsi1sk']),
+    ).toThrow(SyntaxError);
+  });
+});
+
+describe('VersionedEntityRepository queryPage tombstones', () => {
+  it('filters soft-deleted entities from queryPage', async () => {
+    const send = vi.fn().mockResolvedValueOnce({
+      Items: [
+        {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'Alive',
+          version: 1,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+        {
+          pk: 'NOTE#n2',
+          sk: 'META',
+          id: 'n2',
+          title: 'Gone',
+          version: 2,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+          deleted: true,
+        },
+      ],
+    });
+    const repo = new VersionedEntityRepository(
+      {
+        conflictLabel: 'note',
+        keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+        idOf: (n: { id: string }) => n.id,
+        toEntity: (item: {
+          id: string;
+          title: string;
+          version: number;
+          updatedAt: string;
+          deleted?: boolean;
+        }) => ({
+          id: item.id,
+          title: item.title,
+          version: item.version,
+          updatedAt: item.updatedAt,
+          deleted: item.deleted,
+        }),
+        toItem: (n: {
+          id: string;
+          title: string;
+          version: number;
+          updatedAt: string;
+          deleted?: boolean;
+        }) => ({
+          pk: `NOTE#${n.id}`,
+          sk: 'META',
+          id: n.id,
+          title: n.title,
+          version: n.version,
+          updatedAt: n.updatedAt,
+          deleted: n.deleted,
+        }),
+        isDeleted: (n: { deleted?: boolean }) => n.deleted === true,
+      },
+      { send } as never,
+      'test-table',
+    );
+    const page = await repo.queryPage({
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': 'NOTE#n1' },
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]!.title).toBe('Alive');
+  });
 });

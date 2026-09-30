@@ -55,10 +55,35 @@ export const asMutateResult = async <T>(
   }
 };
 
-export const fetchPosts = async (client: ApiClient): Promise<Post[]> => {
-  const result = await client.GET('/api/admin/posts');
+export type PostsPage = {
+  items: Post[];
+  nextCursor?: string;
+};
+
+export const fetchPostsPage = async (
+  client: ApiClient,
+  cursor?: string,
+): Promise<PostsPage> => {
+  const result = await client.GET('/api/admin/posts', {
+    params: { query: cursor ? { cursor } : {} },
+  });
   const data = unwrap(result, 'Could not load posts');
-  return data.items.filter((p) => p.status !== 'deleted');
+  return {
+    items: data.items.filter((p) => p.status !== 'deleted'),
+    nextCursor: data.nextCursor,
+  };
+};
+
+/** Follows `nextCursor` until exhausted (CHR-152). */
+export const fetchPosts = async (client: ApiClient): Promise<Post[]> => {
+  const all: Post[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await fetchPostsPage(client, cursor);
+    all.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return all;
 };
 
 export const fetchPost = async (

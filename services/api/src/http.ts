@@ -3,13 +3,16 @@ import type {
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
 import { ZodError } from 'zod';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   ConflictError,
+  DataIntegrityError,
   NotFoundError,
   PreconditionFailedError,
   ServiceUnavailableError,
 } from './data/errors.js';
 import { RateLimitExceededError } from './contact/rateLimit.js';
+import { logger, metrics } from './observability.js';
 
 export function json(
   statusCode: number,
@@ -119,12 +122,24 @@ export function mapRouteError(
   }
   if (error instanceof ConflictError) {
     return json(409, {
-      error: 'conflict',
+      error: error.code,
       message: error.message,
       ...(error.currentVersion !== undefined
         ? { currentVersion: error.currentVersion }
         : {}),
       ...(error.current !== undefined ? { current: error.current } : {}),
+    });
+  }
+  if (error instanceof DataIntegrityError) {
+    logger.error('Data integrity error', {
+      pk: error.pk,
+      sk: error.sk,
+      message: error.message,
+    });
+    metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+    return json(500, {
+      error: 'data_integrity',
+      message: 'Stored data failed validation',
     });
   }
   if (error instanceof ServiceUnavailableError) {

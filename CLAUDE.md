@@ -10,7 +10,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `services/api` — Lambda HTTP API
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
-- `packages/data` — DynamoDB keys, item schemas, DocumentClient for API + publisher
+- `packages/data` — DynamoDB keys, item schemas, DocumentClient, and Dynamo write helpers for API + publisher
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, draft-publish, TanStack Query)
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)

@@ -3,7 +3,9 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"],
+    "lib": ["ES2022"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["scripts/**/*.ts"]
 }

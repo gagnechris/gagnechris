@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { renderResumePrerenderHtml } from '@gagnechris/shared/resume';
+import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import type { components } from '@gagnechris/api-client';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
@@ -10,13 +10,13 @@ import {
 } from './resumeDraft';
 import { ApiError, updateResume } from './query/api';
 import {
+  useQueuedAutosave,
   useResumeLifecycleMutators,
   useResumeQuery,
   useSetResumeCache,
-} from './query/resume';
+} from '@gagnechris/app-core';
 import { useDraftPublishEditor } from './useDraftPublishEditor';
 import { useNullableDraftUpdater } from './useDraftUpdater';
-import { useQueuedAutosave } from './useQueuedAutosave';
 import '../pages/Resume.css';
 
 type Resume = components['schemas']['Resume'];

@@ -1,5 +1,5 @@
 /**
- * Opaque pagination cursor helpers (CHR-129).
+ * Opaque pagination cursor helpers (CHR-129 / CHR-152).
  * Cursor is base64url(JSON of DynamoDB LastEvaluatedKey).
  */
 
@@ -14,8 +14,13 @@ export function encodeCursor(
   );
 }
 
+/**
+ * Decode an opaque cursor. When `requiredKeys` is set, every key must be
+ * present. Throws SyntaxError → HTTP 400.
+ */
 export function decodeCursor(
   cursor: string | undefined,
+  requiredKeys?: readonly string[],
 ): Record<string, unknown> | undefined {
   if (!cursor?.trim()) return undefined;
   try {
@@ -24,8 +29,22 @@ export function decodeCursor(
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error('invalid');
     }
-    return parsed as Record<string, unknown>;
+    const key = parsed as Record<string, unknown>;
+    if (requiredKeys && requiredKeys.length > 0) {
+      for (const name of requiredKeys) {
+        if (!(name in key)) {
+          throw new Error(`missing key ${name}`);
+        }
+      }
+    }
+    return key;
   } catch {
     throw new SyntaxError('Invalid pagination cursor');
   }
 }
+
+/** Primary-table ExclusiveStartKey shape. */
+export const PRIMARY_CURSOR_KEYS = ['pk', 'sk'] as const;
+
+/** GSI1 ExclusiveStartKey shape (base table keys + index keys). */
+export const GSI1_CURSOR_KEYS = ['pk', 'sk', 'gsi1pk', 'gsi1sk'] as const;

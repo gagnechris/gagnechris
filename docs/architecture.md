@@ -122,17 +122,18 @@ Details: [data-model.md](./data-model.md).
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 
-## `@gagnechris/shared` entry points (CHR-139)
+## `@gagnechris/shared` entry points (CHR-139 / CHR-156)
 
-| Import                         | Contents                                                                                       |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `@gagnechris/shared`           | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
-| `@gagnechris/shared/render`    | Markdown + HTML prerender helpers (web / publisher)                                            |
-| `@gagnechris/shared/openapi`   | OpenAPI document builder (build-time only)                                                     |
-| `@gagnechris/shared/server`    | DynamoDB helpers (API / publisher)                                                             |
-| `@gagnechris/shared/home` etc. | Zod-free HTML entry points for the public web bundle                                           |
+| Import                            | Contents                                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@gagnechris/shared`              | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
+| `@gagnechris/shared/render`       | Markdown + HTML prerender helpers (web / publisher)                                            |
+| `@gagnechris/shared/openapi`      | OpenAPI document builder (build-time only)                                                     |
+| `@gagnechris/shared/openapi.json` | Generated OpenAPI document (api-client `generate`)                                             |
 
-CI runs `npm run check:domain-bundle -w @gagnechris/shared` (esbuild metafile) so the domain entry cannot pull banned modules. Metro import is verified by the Expo spike (CHR-142).
+DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
+
+CI runs `npm run check:rn-bundles` (esbuild metafile + explicit ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` bans. Metro import is verified by the Expo spike (CHR-142).
 
 ## Related
 

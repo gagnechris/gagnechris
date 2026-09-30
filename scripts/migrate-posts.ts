@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PostsRepository } from '../services/api/src/posts/repository.js';
+import { PostsRepository } from '@gagnechris/api/posts/repository';
 
 type MigrateTarget = {
   file: string;
@@ -147,7 +147,7 @@ async function main(): Promise<void> {
 
   if (process.env.SITE_STORAGE === 'filesystem') {
     const { rebuildPublishedSite } =
-      await import('../services/publisher/src/s3-site.js');
+      await import('@gagnechris/publisher/s3-site');
     console.log('rebuild local site…');
     await rebuildPublishedSite();
   } else if (published > 0) {

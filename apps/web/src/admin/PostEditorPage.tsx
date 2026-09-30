@@ -16,12 +16,12 @@ import {
   useDeletePostMutation,
   usePostLifecycleMutators,
   usePostQuery,
+  useQueuedAutosave,
   useSetPostCache,
-} from './query/posts';
+} from '@gagnechris/app-core';
 import { uploadImages } from './uploadImages';
 import { useDraftPublishEditor } from './useDraftPublishEditor';
 import { useDraftUpdater } from './useDraftUpdater';
-import { useQueuedAutosave } from './useQueuedAutosave';
 
 type Post = components['schemas']['Post'];
 type DraftFields = PostDraftFields;

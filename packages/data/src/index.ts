@@ -6,6 +6,20 @@ export {
 } from './client.js';
 
 export {
+  batchGetAll,
+  batchGetAllWithDocClient,
+  classifyDynamoWriteError,
+  isOptimisticLockConflict,
+  BATCH_GET_MAX_ATTEMPTS,
+  type BatchGetOutput,
+  type BatchGetRequestItems,
+  type BatchGetSend,
+  type BatchGetDocClientSend,
+  type BatchGetTableRequest,
+  type DynamoWriteErrorKind,
+} from './dynamodb.js';
+
+export {
   GSI1_NAME,
   GSI2_NAME,
   HOME_ID,
@@ -53,10 +67,8 @@ export {
 
 export {
   APP_TABLE,
-  LAST_DEPLOYED_GSI_NAMES,
   appTableAttributeDefinitions,
   appTableName,
-  assertSafeGsiUpdate,
   type AppTableDefinition,
   type DynamoAttributeTypeCode,
   type TableIndexDefinition,

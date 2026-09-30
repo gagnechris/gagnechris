@@ -17,7 +17,8 @@ import {
   statusGsi1Pk,
   type PostMetaItem,
 } from '@gagnechris/data';
-import { batchGetAllWithDocClient } from '@gagnechris/shared/server';
+import { batchGetAllWithDocClient } from '@gagnechris/data';
+import { Logger } from '@aws-lambda-powertools/logger';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';
@@ -29,6 +30,7 @@ import { createS3SiteStorage } from './storage-s3.js';
 import type { SiteStorage } from './storage.js';
 
 const ddb = getDocClient();
+const logger = new Logger({ serviceName: 'gagnechris-publisher' });
 
 export type { HomePublishSnapshot } from './home-publish.js';
 export {
@@ -94,8 +96,16 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       },
     );
     for (const item of responses[tableName] ?? []) {
-      const record = parsePostMetaItem(item);
-      publishedById.set(record.postId, record);
+      try {
+        const record = parsePostMetaItem(item);
+        publishedById.set(record.postId, record);
+      } catch (error) {
+        logger.warn('Skipping corrupt published post item', {
+          pk: (item as { pk?: string }).pk,
+          sk: (item as { sk?: string }).sk,
+          err: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 
@@ -123,9 +133,16 @@ export async function getPublishedResume(
     }),
   );
   if (!result.Item) return undefined;
-  const item = parseResumeMetaItem(result.Item);
-  if (item.status !== 'published') return undefined;
-  return metaToResume(item);
+  try {
+    const item = parseResumeMetaItem(result.Item);
+    if (item.status !== 'published') return undefined;
+    return metaToResume(item);
+  } catch (error) {
+    logger.warn('Skipping corrupt published resume item', {
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
 }
 
 export async function getPublishedHome(
@@ -138,9 +155,16 @@ export async function getPublishedHome(
     }),
   );
   if (!result.Item) return undefined;
-  const item = parseHomeMetaItem(result.Item);
-  if (item.status !== 'published') return undefined;
-  return metaToHome(item);
+  try {
+    const item = parseHomeMetaItem(result.Item);
+    if (item.status !== 'published') return undefined;
+    return metaToHome(item);
+  } catch (error) {
+    logger.warn('Skipping corrupt published home item', {
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
 }
 
 export type { RebuildSiteSources } from './publish-targets/types.js';

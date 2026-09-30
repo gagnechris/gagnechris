@@ -28,6 +28,7 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 /** 409 conflict body with optional current entity for client reconciliation. */
 export const ConflictErrorResponseSchema = ErrorResponseSchema.extend({
+  error: z.enum(['conflict', 'slug_taken']),
   currentVersion: z.number().int().optional(),
   current: z.unknown().optional(),
 });

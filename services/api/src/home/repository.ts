@@ -5,7 +5,7 @@ import {
   type UpdateHomeRequest,
 } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { SingletonRepository } from '../data/singleton-repository.js';
+import { PublishableSingletonRepository } from '../data/publishable-repository.js';
 import {
   buildHomeMetaItem,
   buildHomePublishedItem,
@@ -13,12 +13,13 @@ import {
   homeMetaSk,
   homePk,
   homePublishedSk,
+  HOME_ID,
   metaToHome,
   parseHomeMetaItem,
   type HomeMetaItem,
 } from './keys.js';
 
-export class HomeRepository extends SingletonRepository<
+export class HomeRepository extends PublishableSingletonRepository<
   Home,
   HomeMetaItem,
   UpdateHomeRequest
@@ -30,10 +31,14 @@ export class HomeRepository extends SingletonRepository<
     super(
       {
         conflictLabel: 'home',
+        singletonId: HOME_ID,
         defaultEntity: DEFAULT_HOME,
-        pk: homePk,
-        metaSk: homeMetaSk,
-        publishedSk: homePublishedSk,
+        keysFor: () => ({
+          pk: homePk(),
+          metaSk: homeMetaSk(),
+          publishedSk: homePublishedSk(),
+        }),
+        idOf: () => HOME_ID,
         toEntity: (item, hasUnpublishedChanges) =>
           metaToHome(parseHomeMetaItem(item), hasUnpublishedChanges),
         toItem: buildHomeMetaItem,
