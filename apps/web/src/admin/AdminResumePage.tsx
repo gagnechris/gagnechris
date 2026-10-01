@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
-import type { components } from '@gagnechris/api-client';
+import { resumeResource } from '@gagnechris/app-core';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import {
@@ -8,155 +8,67 @@ import {
   resumeDraftFromResume,
   type ResumeDraftFields,
 } from './resumeDraft';
-import { ApiError, updateResume } from './query/api';
-import {
-  useQueuedAutosave,
-  useResumeLifecycleMutators,
-  useResumeQuery,
-  useSetResumeCache,
-} from '@gagnechris/app-core';
-import { useDraftPublishEditor } from './useDraftPublishEditor';
-import { useNullableDraftUpdater } from './useDraftUpdater';
+import { useVersionedEntityEditor } from './useVersionedEntityEditor';
 import '../pages/Resume.css';
 
-type Resume = components['schemas']['Resume'];
+const emptyResumeDraft = (): ResumeDraftFields =>
+  resumeDraftFromResume({
+    ...DEFAULT_RESUME,
+    status: 'draft',
+    publishedAt: null,
+    updatedAt: '',
+    version: 0,
+    hasUnpublishedChanges: false,
+  });
 
 const AdminResumePage = () => {
   const {
-    data: resume,
-    error: queryError,
-    isPending,
-    isFetchedAfterMount,
-  } = useResumeQuery();
-  const setResumeCache = useSetResumeCache();
-  const {
-    publish: publishRequest,
-    unpublish: unpublishRequest,
-    discard: discardRequest,
-  } = useResumeLifecycleMutators();
-
-  const [draft, setDraft] = useState<ResumeDraftFields | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [boundVersion, setBoundVersion] = useState(0);
-  const versionRef = useRef(0);
-
-  const conflictMessage =
-    'Conflict — another save updated the resume. Reload and try again.';
-
-  if (resume && isFetchedAfterMount && !hydrated) {
-    setHydrated(true);
-    setDraft(resumeDraftFromResume(resume));
-    setDirty(false);
-    setBoundVersion(resume.version);
-  }
-
-  if (resume && hydrated && !dirty && resume.version > boundVersion) {
-    setDraft(resumeDraftFromResume(resume));
-    setBoundVersion(resume.version);
-  }
-
-  useEffect(() => {
-    versionRef.current = boundVersion;
-  }, [boundVersion]);
-
-  const performSave = useCallback(
-    async (current: ResumeDraftFields, version: number) => {
-      try {
-        const entity = await updateResume({
-          version,
-          name: current.name.trim() || 'Chris Gagne',
-          pdfPath: '/resume.pdf',
-          content: resumeContentFromDraft(current),
-        });
-        return { ok: true as const, entity };
-      } catch (err) {
-        return {
-          ok: false as const,
-          status: err instanceof ApiError ? err.status : 0,
-        };
-      }
-    },
-    [],
-  );
-
-  const getVersion = useCallback((entity: Resume) => entity.version, []);
-  const onSaved = useCallback(
-    (entity: Resume) => {
-      setResumeCache(entity);
-      setBoundVersion(entity.version);
-    },
-    [setResumeCache],
-  );
-  const onReplaceDraft = useCallback(
-    (entity: Resume) => {
-      setResumeCache(entity);
-      setDraft(resumeDraftFromResume(entity));
-      setBoundVersion(entity.version);
-    },
-    [setResumeCache],
-  );
-
-  const autosave = useQueuedAutosave({
     draft,
-    dirty,
-    setDirty,
-    versionRef,
-    getVersion,
-    performSave,
-    onSaved,
-    conflictMessage,
-  });
-  const { save, saveState, saveError, bumpEdit } = autosave;
-
-  const remoteConflict =
-    Boolean(resume) && hydrated && dirty && resume!.version > boundVersion;
-  const displayError = remoteConflict ? conflictMessage : saveError;
-
-  const publishMutate = useCallback(
-    () => publishRequest({ version: versionRef.current }),
-    [publishRequest],
-  );
-  const unpublishMutate = useCallback(
-    () => unpublishRequest({ version: versionRef.current }),
-    [unpublishRequest],
-  );
-  const discardMutate = useCallback(
-    () => discardRequest({ version: versionRef.current }),
-    [discardRequest],
-  );
-
-  const { busy, runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
-    autosave,
-    dirty,
-    setDirty,
-    versionRef,
-    getVersion,
-    onEntityMeta: onSaved,
-    onReplaceDraft,
-    publish: publishMutate,
-    unpublish: unpublishMutate,
-    discard: discardMutate,
+    updateDraft,
+    entity: resume,
+    save,
+    saveError,
+    loadError,
+    isLoading,
+    actionBarProps,
+  } = useVersionedEntityEditor({
+    resource: resumeResource,
+    params: {},
+    initialDraft: emptyResumeDraft(),
+    toDraft: resumeDraftFromResume,
+    getEntityId: () => 'resume',
+    toPayload: (current) => ({
+      name: current.name.trim() || 'Chris Gagne',
+      pdfPath: '/resume.pdf',
+      content: resumeContentFromDraft(current),
+    }),
+    conflictMessage:
+      'Conflict — another save updated the resume. Reload and try again.',
+    loadErrorFallback: 'Could not load resume.',
     unpublishConfirm:
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
   });
 
-  const updateDraft = useNullableDraftUpdater(setDraft, bumpEdit, setDirty);
   const setField = <K extends keyof ResumeDraftFields>(
     key: K,
-    value: ResumeDraftFields[K],
+    value:
+      | ResumeDraftFields[K]
+      | ((prev: ResumeDraftFields[K]) => ResumeDraftFields[K]),
   ) => {
-    updateDraft((prev) => ({ ...prev, [key]: value }));
+    updateDraft((prev) => ({
+      ...prev,
+      [key]:
+        typeof value === 'function'
+          ? (
+              value as (
+                field: ResumeDraftFields[K],
+              ) => ResumeDraftFields[K]
+            )(prev[key])
+          : value,
+    }));
   };
-
-  const loadError =
-    queryError instanceof ApiError
-      ? queryError.message
-      : queryError
-        ? 'Could not load resume.'
-        : null;
 
   if (loadError) {
     return (
@@ -168,7 +80,7 @@ const AdminResumePage = () => {
     );
   }
 
-  if (isPending || !isFetchedAfterMount || !resume || !draft) {
+  if (isLoading || !resume) {
     return (
       <section className="admin-panel">
         <p>Loading resume…</p>
@@ -187,21 +99,13 @@ const AdminResumePage = () => {
     <section className="admin-panel admin-panel--editor">
       <EditorActionBar
         leading={<h1>Resume</h1>}
-        status={resume.status}
-        hasUnpublishedChanges={resume.hasUnpublishedChanges}
-        saveState={saveState}
-        dirty={dirty}
-        busy={busy}
+        {...actionBarProps}
         viewLiveHref="/resume"
-        onPublish={() => void runPublish()}
-        onUnpublish={() => void runUnpublish()}
-        onDiscard={() => void runDiscard()}
-        onSave={() => void save()}
       />
 
-      {displayError ? (
+      {saveError ? (
         <p className="admin-panel__error" role="alert">
-          {displayError}
+          {saveError}
         </p>
       ) : null}
 

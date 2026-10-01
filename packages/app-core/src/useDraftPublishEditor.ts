@@ -20,6 +20,12 @@ export type DraftPublishAutosave = {
   setAutosaveHeld: (held: boolean) => void;
 };
 
+export type DraftPublishDeleteOptions = {
+  confirm: string;
+  mutate: () => Promise<void>;
+  onDeleted: () => void;
+};
+
 export type DraftPublishEditorOptions<TEntity> = {
   autosave: DraftPublishAutosave;
   dirty: boolean;
@@ -38,12 +44,14 @@ export type DraftPublishEditorOptions<TEntity> = {
   enabled?: boolean;
   /** Injected async confirm (web wraps `window.confirm`). No DOM default. */
   confirm: ConfirmFn;
+  /** Soft-delete via hold so a debounced PUT cannot race DELETE (CHR-158). */
+  delete?: DraftPublishDeleteOptions;
 };
 
 /**
- * Shared Publish / Unpublish / Discard flow for post, home, and resume editors
- * (CHR-124 / CHR-132): hold autosave, flush without treating pending edits as
- * clean, preserve typing during the request.
+ * Shared Publish / Unpublish / Discard / Delete flow for versioned editors
+ * (CHR-124 / CHR-132 / CHR-158): hold autosave, flush without treating pending
+ * edits as clean, preserve typing during the request.
  *
  * Navigation leave-guards, beforeunload, and keyboard shortcuts stay in the
  * web (or RN) shell — this hook has no `window` / `document` usage.
@@ -63,6 +71,7 @@ export function useDraftPublishEditor<TEntity>({
   discardConfirm,
   enabled = true,
   confirm,
+  delete: deleteOpts,
 }: DraftPublishEditorOptions<TEntity>) {
   const {
     save,
@@ -77,10 +86,17 @@ export function useDraftPublishEditor<TEntity>({
   const [busy, setBusy] = useState(false);
   const saveRef = useRef(save);
   const publishRef = useRef<() => Promise<void>>(async () => {});
+  const busyRef = useRef(false);
+  /** Set true before programmatic leave after delete so leave-guards skip. */
+  const suppressLeaveGuardRef = useRef(false);
 
   useEffect(() => {
     saveRef.current = save;
   }, [save]);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   const applyKeepDraft = useCallback(
     (entity: TEntity, baselineGen: number) => {
@@ -99,18 +115,20 @@ export function useDraftPublishEditor<TEntity>({
 
   const withHold = useCallback(
     async (fn: () => Promise<void>) => {
-      if (!enabled || busy) return;
+      if (!enabled || busyRef.current) return;
       setAutosaveHeld(true);
       setBusy(true);
+      busyRef.current = true;
       setSaveError(null);
       try {
         await fn();
       } finally {
         setAutosaveHeld(false);
         setBusy(false);
+        busyRef.current = false;
       }
     },
-    [busy, enabled, setAutosaveHeld, setSaveError],
+    [enabled, setAutosaveHeld, setSaveError],
   );
 
   const runPublish = useCallback(async () => {
@@ -144,7 +162,7 @@ export function useDraftPublishEditor<TEntity>({
   });
 
   const runUnpublish = useCallback(async () => {
-    if (!enabled || busy) return;
+    if (!enabled || busyRef.current) return;
     if (!(await confirm(unpublishConfirm))) return;
     await withHold(async () => {
       if (dirty) {
@@ -161,7 +179,6 @@ export function useDraftPublishEditor<TEntity>({
     });
   }, [
     applyKeepDraft,
-    busy,
     confirm,
     dirty,
     enabled,
@@ -174,7 +191,7 @@ export function useDraftPublishEditor<TEntity>({
   ]);
 
   const runDiscard = useCallback(async () => {
-    if (!enabled || busy) return;
+    if (!enabled || busyRef.current) return;
     if (!(await confirm(discardConfirm))) return;
     await withHold(async () => {
       const { data, error, response } = await discard();
@@ -187,7 +204,6 @@ export function useDraftPublishEditor<TEntity>({
       markClean();
     });
   }, [
-    busy,
     confirm,
     discard,
     discardConfirm,
@@ -200,14 +216,36 @@ export function useDraftPublishEditor<TEntity>({
     withHold,
   ]);
 
+  const runDelete = useCallback(async () => {
+    if (!deleteOpts || !enabled || busyRef.current) return;
+    if (!(await confirm(deleteOpts.confirm))) return;
+    await withHold(async () => {
+      try {
+        await deleteOpts.mutate();
+        // Clear dirty before navigation so leave-guards do not prompt (CHR-158).
+        markClean();
+        suppressLeaveGuardRef.current = true;
+        deleteOpts.onDeleted();
+      } catch (err) {
+        setSaveError(
+          err instanceof Error ? err.message : 'Delete failed.',
+        );
+      }
+    });
+  }, [confirm, deleteOpts, enabled, markClean, setSaveError, withHold]);
+
   return {
     busy,
-    setBusy,
     runPublish,
     runUnpublish,
     runDiscard,
+    runDelete,
     /** Exposed so the host can wire ⌘S / ⌘⏎ without DOM inside this package. */
     saveRef,
     publishRef,
+    /** True while publish/unpublish/discard/delete hold is active. */
+    isBusy: () => busyRef.current,
+    /** Host leave-guards should skip when this is true (post-delete navigate). */
+    suppressLeaveGuardRef,
   };
 }

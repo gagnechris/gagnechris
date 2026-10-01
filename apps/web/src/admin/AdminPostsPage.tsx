@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiError } from './query/api';
 import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
+import { ApiError } from './query/api';
+import { Button } from '../ui/Button';
+import { TextInput, Select } from '../ui/Field';
+import { StatusBadge } from '../ui/StatusBadge';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';
@@ -94,27 +97,24 @@ export default function AdminPostsPage() {
             Draft and published posts. Click a row to edit.
           </p>
         </div>
-        <button
-          type="button"
-          className="admin-btn admin-btn--primary"
+        <Button
+          variant="primary"
           disabled={creating}
           onClick={() => void createDraft()}
         >
           {creating ? 'Creating…' : 'New post'}
-        </button>
+        </Button>
       </div>
 
       <div className="admin-toolbar">
-        <input
+        <TextInput
           type="search"
-          className="admin-input"
           placeholder="Search title, slug, tags…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search posts"
         />
-        <select
-          className="admin-input"
+        <Select
           value={status}
           onChange={(e) => setStatus(e.target.value as StatusFilter)}
           aria-label="Filter by status"
@@ -122,9 +122,8 @@ export default function AdminPostsPage() {
           <option value="all">All statuses</option>
           <option value="draft">Drafts</option>
           <option value="published">Published</option>
-        </select>
-        <select
-          className="admin-input"
+        </Select>
+        <Select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
           aria-label="Sort posts"
@@ -132,7 +131,7 @@ export default function AdminPostsPage() {
           <option value="updated">Sort by updated</option>
           <option value="published">Sort by published</option>
           <option value="title">Sort by title</option>
-        </select>
+        </Select>
       </div>
 
       {error ? (
@@ -154,9 +153,7 @@ export default function AdminPostsPage() {
               >
                 <span className="admin-post-list__title">{post.title}</span>
                 <span className="admin-post-list__meta">
-                  <span className={`admin-badge admin-badge--${post.status}`}>
-                    {post.status}
-                  </span>
+                  <StatusBadge status={post.status} />
                   <code>/{post.slug}</code>
                   <span className="admin-post-list__date">
                     {sort === 'published'
@@ -170,14 +167,12 @@ export default function AdminPostsPage() {
         </ul>
       ) : null}
       {hasNextPage ? (
-        <button
-          type="button"
-          className="admin-btn"
+        <Button
           disabled={isFetchingNextPage}
           onClick={() => void fetchNextPage()}
         >
           {isFetchingNextPage ? 'Loading…' : 'Load more'}
-        </button>
+        </Button>
       ) : null}
     </section>
   );

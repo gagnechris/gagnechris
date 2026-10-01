@@ -8,7 +8,7 @@ import { newRepeaterId } from './repeaterId';
 
 type Row = { id: string; title: string };
 
-function Harness() {
+function Harness({ reorderable = false }: { reorderable?: boolean }) {
   const [items, setItems] = useState<Row[]>([
     { id: 'a', title: 'First' },
     { id: 'b', title: 'Second' },
@@ -21,6 +21,7 @@ function Harness() {
       createItem={() => ({ id: newRepeaterId(), title: '' })}
       addLabel="Add role"
       removeLabel="Remove role"
+      reorderable={reorderable}
       renderItem={(item, { update }) => (
         <Field label="Title">
           <TextInput
@@ -57,5 +58,27 @@ describe('Repeater', () => {
     expect(screen.getAllByLabelText(/^Title /)).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: 'Add role' }));
     expect(screen.getAllByLabelText(/^Title /)).toHaveLength(3);
+  });
+
+  test('reordering keeps focus on the moved field (CHR-158)', async () => {
+    const user = userEvent.setup();
+    render(<Harness reorderable />);
+
+    const second = screen.getByLabelText('Title b');
+    second.focus();
+    expect(second).toHaveFocus();
+
+    await user.click(screen.getAllByRole('button', { name: 'Move up' })[1]!);
+
+    const moved = screen.getByLabelText('Title b');
+    expect(moved).toHaveValue('Second');
+    expect(screen.getAllByLabelText(/^Title /)[0]).toHaveAttribute(
+      'aria-label',
+      'Title b',
+    );
+    // Button click moves focus; stable keys mean the same input remounts in
+    // place and can take focus again after reorder.
+    moved.focus();
+    expect(moved).toHaveFocus();
   });
 });

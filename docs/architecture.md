@@ -66,21 +66,22 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/react-query`). Public pages stay outside Query so the public bundle stays lean.
 
 - Query-key factories, API helpers, and TanStack Query hooks live in `@gagnechris/app-core` (re-exported from `apps/web/src/admin/query/` for the admin SPA).
-- `useQueuedAutosave` and draft/publish logic live in `@gagnechris/app-core` (no DOM); the web shell wraps `useDraftPublishEditor` with confirm / leave-guards / shortcuts.
+- `createDraftPublishResource` builds query + lifecycle mutators from config (post / home / resume; a new entity is config only).
+- `useVersionedEntityEditor` owns hydrate-once, version binding, performSave, autosave, and publish/unpublish/discard/delete-with-hold (no DOM). The web shell adds confirm / leave-guards / shortcuts.
 - List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
 - Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
-- Optimistic update + rollback pattern: `optimisticMutationHandlers` in `@gagnechris/app-core` (ready for Notebook tasks).
-- Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token).
+- Optimistic update + rollback: `optimisticMutationHandlers` supports one key or `targets[]` for multi-key snapshot/rollback (Notebook Today + Tasks).
+- Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token). Admin pages use `useGetApiClient()` / resource hooks — not per-call `createApiClient()` wrappers.
 - Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app. `text` / `space` / `radius` are px numbers for RN; the generator emits `rem` (`npm run tokens:check` guards drift).
 - Mobile spike: `apps/mobile` (Expo) imports shared / api-client / app-core / tokens under Metro. Outside the root workspaces with its own lockfile, and CI executes a real Metro bundle — see `docs/mobile.md` (CHR-142, CHR-150).
 
 ## Admin editor foundation
 
-Post, Home, and Resume editors share one publish/discard flow and a small UI kit:
+Post, Home, and Resume containers are mostly field layout; shared wiring lives in app-core:
 
-- `useQueuedAutosave` + `useDraftPublishEditor` (autosave return passed as one `autosave` object; hold → busy → try/finally via `withHold`)
-- `useDraftUpdater` / `useNullableDraftUpdater` for draft edits (`bumpEdit` + dirty)
-- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextArea`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids), `navLinkClass`
+- `createDraftPublishResource` + `useVersionedEntityEditor` (hydrate, version, autosave, lifecycle, delete hold)
+- `useQueuedAutosave` + `useDraftPublishEditor` (hold → busy → try/finally via `withHold`; delete included)
+- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates), `navLinkClass`
 - Post editor splits container (`PostEditorPage`) from presentational sections and `uploadImages` (uses shared `MEDIA_CONTENT_TYPES`)
 
 ## 404 handling

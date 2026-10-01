@@ -18,10 +18,21 @@ describe('Button', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  test('renders an external link when href is set', () => {
-    render(<Button href="/blog/hello">View live</Button>);
+  test('renders a link when href is set and forwards rest props', () => {
+    render(
+      <Button href="/blog/hello" target="_blank" rel="noreferrer">
+        View live
+      </Button>,
+    );
     const link = screen.getByRole('link', { name: 'View live' });
     expect(link).toHaveAttribute('href', '/blog/hello');
     expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  test('does not force target=_blank when omitted', () => {
+    render(<Button href="/blog/hello">View live</Button>);
+    const link = screen.getByRole('link', { name: 'View live' });
+    expect(link).not.toHaveAttribute('target');
   });
 });

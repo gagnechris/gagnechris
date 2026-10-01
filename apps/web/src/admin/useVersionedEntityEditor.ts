@@ -1,24 +1,25 @@
 import {
-  useDraftPublishEditor as useDraftPublishEditorCore,
-  type DraftPublishEditorOptions,
+  useVersionedEntityEditor as useVersionedEntityEditorCore,
+  type VersionedEntityEditorOptions,
 } from '@gagnechris/app-core';
 import { useEffect } from 'react';
 import { useBlocker } from 'react-router-dom';
 
 /**
- * Web shell around app-core draft/publish: injects `window.confirm`, leave
- * guards, beforeunload, and ⌘S / ⌘⏎ shortcuts (ignores shortcuts while busy).
+ * Web shell around app-core versioned editors: injects `window.confirm`, leave
+ * guards, beforeunload, and ⌘S / ⌘⏎ shortcuts (ignores ⌘S while busy).
  */
-export function useDraftPublishEditor<TEntity>(
-  options: Omit<DraftPublishEditorOptions<TEntity>, 'confirm'>,
-) {
-  const editor = useDraftPublishEditorCore({
+export function useVersionedEntityEditor<
+  TEntity extends { version: number; status: 'draft' | 'published' | 'deleted'; hasUnpublishedChanges: boolean },
+  TDraft,
+  TParams,
+>(options: Omit<VersionedEntityEditorOptions<TEntity, TDraft, TParams>, 'confirm'>) {
+  const editor = useVersionedEntityEditorCore({
     ...options,
     confirm: (message) => Promise.resolve(window.confirm(message)),
   });
 
-  const { dirty } = options;
-  const { busy, saveRef, publishRef, suppressLeaveGuardRef } = editor;
+  const { dirty, busy, saveRef, publishRef, suppressLeaveGuardRef } = editor;
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -53,12 +54,12 @@ export function useDraftPublishEditor<TEntity>(
       const meta = event.metaKey || event.ctrlKey;
       if (meta && event.key.toLowerCase() === 's') {
         event.preventDefault();
+        // Ignore ⌘S while publish/unpublish/discard/delete hold is active
+        // so a PUT cannot race with the in-flight version bump (CHR-158).
         if (busy) return;
         void saveRef.current();
         return;
       }
-      // ⌘⏎ = publish. Skip when typing inside CodeMirror so Enter/Mod-Enter
-      // keep their editor meaning (CHR-148).
       if (meta && event.key === 'Enter') {
         const target = event.target;
         if (
@@ -77,11 +78,5 @@ export function useDraftPublishEditor<TEntity>(
     return () => window.removeEventListener('keydown', onKey);
   }, [busy, publishRef, saveRef]);
 
-  return {
-    busy: editor.busy,
-    runPublish: editor.runPublish,
-    runUnpublish: editor.runUnpublish,
-    runDiscard: editor.runDiscard,
-    runDelete: editor.runDelete,
-  };
+  return editor;
 }

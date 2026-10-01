@@ -9,13 +9,14 @@ import { queryKeys } from '@gagnechris/app-core';
 const get = vi.fn();
 const put = vi.fn();
 const post = vi.fn();
+const del = vi.fn();
 
 vi.mock('../api/client', () => ({
   createApiClient: () => ({
     GET: (...args: unknown[]) => get(...args),
     PUT: (...args: unknown[]) => put(...args),
     POST: (...args: unknown[]) => post(...args),
-    DELETE: vi.fn(),
+    DELETE: (...args: unknown[]) => del(...args),
   }),
 }));
 
@@ -262,5 +263,88 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
       'line one local edit',
     );
     expect(put).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostEditorPage delete (CHR-158)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...basePost },
+      error: undefined,
+      response: { status: 200 },
+    });
+    put.mockResolvedValue({
+      data: { ...basePost, version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  test('no PUT after DELETE starts, no GET of deleted post, no leave prompt', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    let resolveDelete!: (value: unknown) => void;
+    del.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDelete = resolve;
+        }),
+    );
+
+    const router = createMemoryRouter(
+      [
+        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
+        { path: '/admin', element: <p>Posts list</p> },
+      ],
+      { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
+    );
+
+    render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+
+    await screen.findByDisplayValue('Hello');
+    const markdown = screen.getByLabelText('Markdown');
+    await user.type(markdown, ' dirty');
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+
+    put.mockClear();
+    get.mockClear();
+    confirmSpy.mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(del).toHaveBeenCalledTimes(1));
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Soft-delete'),
+    );
+
+    // Autosave hold: no PUT while DELETE is in flight.
+    await new Promise((r) => setTimeout(r, 1000));
+    expect(put).not.toHaveBeenCalled();
+
+    const getCallsDuringDelete = get.mock.calls.length;
+
+    resolveDelete({
+      data: { ...basePost, status: 'deleted', version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+
+    await screen.findByText('Posts list');
+    expect(router.state.location.pathname).toBe('/admin');
+
+    // No additional GET of the deleted post after DELETE started.
+    expect(get.mock.calls.length).toBe(getCallsDuringDelete);
+    expect(
+      confirmSpy.mock.calls.some(
+        ([msg]) => typeof msg === 'string' && msg.includes('Leave'),
+      ),
+    ).toBe(false);
+
+    confirmSpy.mockRestore();
   });
 });

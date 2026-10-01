@@ -6,7 +6,7 @@ export type RepeaterItem = { id: string };
 type Props<T extends RepeaterItem> = {
   legend: string;
   items: T[];
-  onChange: (items: T[]) => void;
+  onChange: (items: T[] | ((prev: T[]) => T[])) => void;
   createItem: () => T;
   renderItem: (
     item: T,
@@ -17,11 +17,14 @@ type Props<T extends RepeaterItem> = {
   ) => ReactNode;
   addLabel: string;
   removeLabel?: string;
+  /** When true, show Move up / Move down controls (CHR-158). */
+  reorderable?: boolean;
 };
 
 /**
  * Fieldset repeater with stable `id` keys so reordering / mid-list edits
- * keep field focus (no index keys).
+ * keep field focus (no index keys). Updates are functional so two patches
+ * in one tick do not lose either.
  */
 export function Repeater<T extends RepeaterItem>({
   legend,
@@ -31,30 +34,74 @@ export function Repeater<T extends RepeaterItem>({
   renderItem,
   addLabel,
   removeLabel = 'Remove',
+  reorderable = false,
 }: Props<T>) {
+  const apply = (fn: (rows: T[]) => T[]) => {
+    onChange(fn);
+  };
+
   return (
     <fieldset className="admin-repeat">
       <legend>{legend}</legend>
-      {items.map((item, index) => (
+      {items.map((item) => (
         <div className="admin-repeat__item" key={item.id}>
           {renderItem(item, {
             update: (patch) =>
-              onChange(
-                items.map((row, i) =>
-                  i === index ? { ...row, ...patch } : row,
+              apply((rows) =>
+                rows.map((row) =>
+                  row.id === item.id ? { ...row, ...patch } : row,
                 ),
               ),
-            remove: () => onChange(items.filter((_, i) => i !== index)),
+            remove: () =>
+              apply((rows) => rows.filter((row) => row.id !== item.id)),
           })}
-          <Button
-            variant="danger"
-            onClick={() => onChange(items.filter((_, i) => i !== index))}
-          >
-            {removeLabel}
-          </Button>
+          <div className="admin-repeat__actions">
+            {reorderable ? (
+              <>
+                <Button
+                  onClick={() =>
+                    apply((rows) => {
+                      const index = rows.findIndex((row) => row.id === item.id);
+                      if (index <= 0) return rows;
+                      const next = [...rows];
+                      const tmp = next[index - 1]!;
+                      next[index - 1] = next[index]!;
+                      next[index] = tmp;
+                      return next;
+                    })
+                  }
+                >
+                  Move up
+                </Button>
+                <Button
+                  onClick={() =>
+                    apply((rows) => {
+                      const index = rows.findIndex((row) => row.id === item.id);
+                      if (index < 0 || index >= rows.length - 1) return rows;
+                      const next = [...rows];
+                      const tmp = next[index + 1]!;
+                      next[index + 1] = next[index]!;
+                      next[index] = tmp;
+                      return next;
+                    })
+                  }
+                >
+                  Move down
+                </Button>
+              </>
+            ) : null}
+            <Button
+              variant="danger"
+              onClick={() =>
+                apply((rows) => rows.filter((row) => row.id !== item.id))
+              }
+            >
+              {removeLabel}
+            </Button>
+          </div>
         </div>
       ))}
-      <Button onClick={() => onChange([...items, createItem()])}>
+      <Button onClick={() => apply((rows) => [...rows, createItem()])}>
         {addLabel}
       </Button>
     </fieldset>

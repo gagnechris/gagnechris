@@ -1,6 +1,7 @@
 import type {
   InputHTMLAttributes,
   ReactNode,
+  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react';
 
@@ -37,4 +38,15 @@ export function TextArea({ className, ...props }: TextAreaProps) {
     .filter(Boolean)
     .join(' ');
   return <textarea className={classes} {...props} />;
+}
+
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+
+export function Select({ className, children, ...props }: SelectProps) {
+  const classes = ['admin-input', className].filter(Boolean).join(' ');
+  return (
+    <select className={classes} {...props}>
+      {children}
+    </select>
+  );
 }

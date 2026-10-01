@@ -15,6 +15,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 const publishMock = vi.fn();
+const saveMock = vi.fn();
 
 vi.mock('@gagnechris/app-core', async () => {
   const actual = await vi.importActual<typeof import('@gagnechris/app-core')>(
@@ -24,12 +25,13 @@ vi.mock('@gagnechris/app-core', async () => {
     ...actual,
     useDraftPublishEditor: () => ({
       busy: false,
-      setBusy: vi.fn(),
-      saveRef: { current: vi.fn() },
+      saveRef: { current: saveMock },
       publishRef: { current: publishMock },
+      suppressLeaveGuardRef: { current: false },
       runPublish: vi.fn(),
       runUnpublish: vi.fn(),
       runDiscard: vi.fn(),
+      runDelete: vi.fn(),
     }),
   };
 });
@@ -69,6 +71,7 @@ const baseOptions = {
 describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
   beforeEach(() => {
     publishMock.mockClear();
+    saveMock.mockClear();
   });
 
   afterEach(() => {
@@ -106,5 +109,17 @@ describe('useDraftPublishEditor shortcuts (CHR-148)', () => {
     );
     expect(publishMock).not.toHaveBeenCalled();
     cm.remove();
+  });
+
+  test('⌘S saves when not busy', () => {
+    renderHook(() => useDraftPublishEditor(baseOptions));
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 's',
+        metaKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(saveMock).toHaveBeenCalledTimes(1);
   });
 });

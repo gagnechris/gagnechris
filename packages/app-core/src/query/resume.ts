@@ -1,8 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
-  asMutateResult,
   discardResume,
   fetchResume,
   publishResume,
@@ -12,33 +10,29 @@ import {
   type Resume,
   type UpdateResumeRequest,
 } from './api.js';
-import { preferNewerByVersion, setCachedResume } from './cache.js';
+import { setCachedResume } from './cache.js';
+import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { queryKeys } from './keys.js';
 
-export const useResumeQuery = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: queryKeys.resume(),
-    queryFn: async () => {
-      const fetched = await fetchResume(getClient());
-      const cached = queryClient.getQueryData<Resume>(queryKeys.resume());
-      return preferNewerByVersion(cached, fetched);
-    },
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-};
+export type ResumeResourceParams = Record<string, never>;
 
-export const useSetResumeCache = () => {
-  const queryClient = useQueryClient();
-  return useCallback(
-    (resume: Resume) => {
-      setCachedResume(queryClient, resume);
-    },
-    [queryClient],
-  );
-};
+export const resumeResource = createDraftPublishResource<
+  Resume,
+  ResumeResourceParams
+>({
+  queryKey: () => queryKeys.resume(),
+  fetch: (client) => fetchResume(client),
+  update: (client, _params, body) =>
+    updateResume(client, body as UpdateResumeRequest),
+  publish: (client, _params, body) => publishResume(client, body),
+  unpublish: (client, _params, body) => unpublishResume(client, body),
+  discard: (client, _params, body) => discardResume(client, body),
+  setCache: setCachedResume,
+});
+
+export const useResumeQuery = () => resumeResource.useQuery({});
+
+export const useSetResumeCache = resumeResource.useSetCache;
 
 export const useUpdateResumeMutation = () => {
   const getClient = useGetApiClient();
@@ -87,30 +81,5 @@ export const useDiscardResumeMutation = () => {
   });
 };
 
-export const useResumeLifecycleMutators = () => {
-  const publish = usePublishResumeMutation();
-  const unpublish = useUnpublishResumeMutation();
-  const discard = useDiscardResumeMutation();
-
-  const publishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => publish.mutateAsync(body)),
-    [publish],
-  );
-  const unpublishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => unpublish.mutateAsync(body)),
-    [unpublish],
-  );
-  const discardFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => discard.mutateAsync(body)),
-    [discard],
-  );
-
-  return {
-    publish: publishFn,
-    unpublish: unpublishFn,
-    discard: discardFn,
-  };
-};
+export const useResumeLifecycleMutators = () =>
+  resumeResource.useLifecycleMutators({});

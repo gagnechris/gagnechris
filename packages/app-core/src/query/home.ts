@@ -1,8 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
-  asMutateResult,
   discardHome,
   fetchHome,
   publishHome,
@@ -12,33 +10,28 @@ import {
   type Home,
   type UpdateHomeRequest,
 } from './api.js';
-import { preferNewerByVersion, setCachedHome } from './cache.js';
+import { setCachedHome } from './cache.js';
+import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { queryKeys } from './keys.js';
 
-export const useHomeQuery = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: queryKeys.home(),
-    queryFn: async () => {
-      const fetched = await fetchHome(getClient());
-      const cached = queryClient.getQueryData<Home>(queryKeys.home());
-      return preferNewerByVersion(cached, fetched);
-    },
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-};
+export type HomeResourceParams = Record<string, never>;
 
-export const useSetHomeCache = () => {
-  const queryClient = useQueryClient();
-  return useCallback(
-    (home: Home) => {
-      setCachedHome(queryClient, home);
-    },
-    [queryClient],
-  );
-};
+export const homeResource = createDraftPublishResource<Home, HomeResourceParams>(
+  {
+    queryKey: () => queryKeys.home(),
+    fetch: (client) => fetchHome(client),
+    update: (client, _params, body) =>
+      updateHome(client, body as UpdateHomeRequest),
+    publish: (client, _params, body) => publishHome(client, body),
+    unpublish: (client, _params, body) => unpublishHome(client, body),
+    discard: (client, _params, body) => discardHome(client, body),
+    setCache: setCachedHome,
+  },
+);
+
+export const useHomeQuery = () => homeResource.useQuery({});
+
+export const useSetHomeCache = homeResource.useSetCache;
 
 export const useUpdateHomeMutation = () => {
   const getClient = useGetApiClient();
@@ -87,30 +80,5 @@ export const useDiscardHomeMutation = () => {
   });
 };
 
-export const useHomeLifecycleMutators = () => {
-  const publish = usePublishHomeMutation();
-  const unpublish = useUnpublishHomeMutation();
-  const discard = useDiscardHomeMutation();
-
-  const publishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => publish.mutateAsync(body)),
-    [publish],
-  );
-  const unpublishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => unpublish.mutateAsync(body)),
-    [unpublish],
-  );
-  const discardFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => discard.mutateAsync(body)),
-    [discard],
-  );
-
-  return {
-    publish: publishFn,
-    unpublish: unpublishFn,
-    discard: discardFn,
-  };
-};
+export const useHomeLifecycleMutators = () =>
+  homeResource.useLifecycleMutators({});
