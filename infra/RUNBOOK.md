@@ -199,7 +199,9 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
 
-**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSI_NAMES` in `@gagnechris/data` fail CI if a PR adds or removes more than one index vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSI_NAMES`.
+**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSI_NAMES` in `@gagnechris/data` fail CI if a PR adds or removes more than one index vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSI_NAMES` to match `APP_TABLE`.
+
+**CHR-153:** this deploy adds sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) for the Notebook sync feed. After Data-prod succeeds, set `LAST_DEPLOYED_GSI_NAMES` to `['gsi1', 'gsi2', 'gsi3']`.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 

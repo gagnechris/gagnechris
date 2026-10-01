@@ -29,13 +29,9 @@ import {
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
-  CreateFixtureNoteRequestSchema,
-  FixtureNoteSchema,
-  UpdateFixtureNoteRequestSchema,
   SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
-  UlidSchema,
 } from './schemas.js';
 
 const PostIdParamsSchema = z.object({
@@ -83,11 +79,7 @@ const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
 const r503 = err('Service unavailable (throttling)');
 
-const notebookAuth = { 401: r401, 500: r500, 503: r503 };
-
-const FixtureNoteIdParamsSchema = z.object({
-  id: UlidSchema.openapi({ description: 'Fixture note id (client ULID)' }),
-});
+const notebookAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
 
 const adminAuth = { 401: r401, 500: r500, 503: r503 };
 const publicBase = { 500: r500, 503: r503 };
@@ -124,9 +116,6 @@ export function buildOpenApiDocument() {
   registry.register('ResumeEducation', ResumeEducationSchema);
   registry.register('ResumeExperience', ResumeExperienceSchema);
   registry.register('PostSeo', PostSeoSchema);
-  registry.register('FixtureNote', FixtureNoteSchema);
-  registry.register('CreateFixtureNoteRequest', CreateFixtureNoteRequestSchema);
-  registry.register('UpdateFixtureNoteRequest', UpdateFixtureNoteRequestSchema);
   registry.register('SyncChange', SyncChangeSchema);
   registry.register('SyncChangesResponse', SyncChangesResponseSchema);
 
@@ -483,123 +472,6 @@ export function buildOpenApiDocument() {
       400: r400,
       404: err('Not available outside filesystem mode'),
       ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/notebook/fixture-notes',
-    summary: 'Create fixture note (client ULID, idempotent retry)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: CreateFixtureNoteRequestSchema },
-        },
-      },
-    },
-    responses: {
-      201: {
-        description: 'Created (ETag is the entity version)',
-        ...jsonBody(FixtureNoteSchema),
-        headers: {
-          ETag: {
-            schema: { type: 'string' },
-            description: 'Quoted entity version',
-          },
-        },
-      },
-      400: r400,
-      409: r409,
-      ...notebookAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/api/notebook/fixture-notes/{id}',
-    summary: 'Get fixture note by id',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { params: FixtureNoteIdParamsSchema },
-    responses: {
-      200: {
-        description: 'OK (ETag is the entity version)',
-        ...jsonBody(FixtureNoteSchema),
-        headers: {
-          ETag: {
-            schema: { type: 'string' },
-            description: 'Quoted entity version',
-          },
-        },
-      },
-      404: r404,
-      ...notebookAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'put',
-    path: '/api/notebook/fixture-notes/{id}',
-    summary: 'Update fixture note (If-Match or body.version)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: FixtureNoteIdParamsSchema,
-      body: {
-        content: {
-          'application/json': { schema: UpdateFixtureNoteRequestSchema },
-        },
-      },
-    },
-    responses: {
-      200: {
-        description: 'Updated (ETag is the entity version)',
-        ...jsonBody(FixtureNoteSchema),
-        headers: {
-          ETag: {
-            schema: { type: 'string' },
-            description: 'Quoted entity version',
-          },
-        },
-      },
-      400: r400,
-      409: r409,
-      412: r412,
-      ...notebookAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'delete',
-    path: '/api/notebook/fixture-notes/{id}',
-    summary: 'Soft-delete fixture note (tombstone + sync row)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: FixtureNoteIdParamsSchema,
-      body: {
-        content: {
-          'application/json': { schema: ExpectedVersionRequestSchema },
-        },
-      },
-    },
-    responses: {
-      200: {
-        description: 'Deleted (ETag is the entity version)',
-        ...jsonBody(FixtureNoteSchema),
-        headers: {
-          ETag: {
-            schema: { type: 'string' },
-            description: 'Quoted entity version',
-          },
-        },
-      },
-      400: r400,
-      409: r409,
-      412: r412,
-      ...notebookAuth,
     },
   });
 

@@ -3,7 +3,7 @@
  * Add GSIs / key attributes here only — both consumers read this module.
  */
 
-import { GSI1_NAME, GSI2_NAME } from './keys.js';
+import { GSI1_NAME, GSI2_NAME, GSI3_NAME } from './keys.js';
 
 export type DynamoAttributeTypeCode = 'S' | 'N' | 'B';
 
@@ -51,6 +51,12 @@ export const APP_TABLE: AppTableDefinition = {
       sortKey: { name: 'gsi2sk', type: 'S' },
       projectionType: 'ALL',
     },
+    {
+      indexName: GSI3_NAME,
+      partitionKey: { name: 'syncPk', type: 'S' },
+      sortKey: { name: 'syncSk', type: 'S' },
+      projectionType: 'ALL',
+    },
   ],
 };
 
@@ -83,8 +89,9 @@ export function appTableName(envName: string): string {
 
 /**
  * GSI index names last verified deployed in production.
- * Update this list in the same PR that lands a single GSI create/delete.
- * CloudFormation allows at most one GSI create or delete per table update.
+ * After a successful single-GSI create/delete deploy, bump this list to match
+ * APP_TABLE (see infra/RUNBOOK.md). CloudFormation allows at most one GSI
+ * create or delete per table update — enforced by assertSafeGsiUpdate.
  */
 export const LAST_DEPLOYED_GSI_NAMES = ['gsi1', 'gsi2'] as const;
 

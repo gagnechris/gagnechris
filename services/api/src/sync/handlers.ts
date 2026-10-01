@@ -16,8 +16,7 @@ export function createSyncRoutes(ledger?: SyncLedger): RouteDef[] {
       metric: 'SyncChanges',
       query: SyncChangesQuerySchema,
       handler: async (ctx, { query }) => {
-        const userId = ctx.userId!;
-        const page = await store().queryChangesSince(userId, query);
+        const page = await store().queryChangesSince(ctx.userId!, query);
         return json(200, SyncChangesResponseSchema.parse(page));
       },
     }),
