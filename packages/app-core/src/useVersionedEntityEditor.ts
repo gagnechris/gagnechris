@@ -108,11 +108,7 @@ export function useVersionedEntityEditor<
   }, [getEntityId]);
 
   const entity = query.data;
-  const {
-    error: queryError,
-    isPending,
-    isFetchedAfterMount,
-  } = query;
+  const { error: queryError, isPending, isFetchedAfterMount } = query;
 
   if (
     entity &&

@@ -227,9 +227,7 @@ export function useDraftPublishEditor<TEntity>({
         suppressLeaveGuardRef.current = true;
         deleteOpts.onDeleted();
       } catch (err) {
-        setSaveError(
-          err instanceof Error ? err.message : 'Delete failed.',
-        );
+        setSaveError(err instanceof Error ? err.message : 'Delete failed.');
       }
     });
   }, [confirm, deleteOpts, enabled, markClean, setSaveError, withHold]);

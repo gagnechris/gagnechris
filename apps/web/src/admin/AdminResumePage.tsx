@@ -61,11 +61,9 @@ const AdminResumePage = () => {
       ...prev,
       [key]:
         typeof value === 'function'
-          ? (
-              value as (
-                field: ResumeDraftFields[K],
-              ) => ResumeDraftFields[K]
-            )(prev[key])
+          ? (value as (field: ResumeDraftFields[K]) => ResumeDraftFields[K])(
+              prev[key],
+            )
           : value,
     }));
   };

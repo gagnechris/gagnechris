@@ -10,10 +10,19 @@ import { useBlocker } from 'react-router-dom';
  * guards, beforeunload, and ⌘S / ⌘⏎ shortcuts (ignores ⌘S while busy).
  */
 export function useVersionedEntityEditor<
-  TEntity extends { version: number; status: 'draft' | 'published' | 'deleted'; hasUnpublishedChanges: boolean },
+  TEntity extends {
+    version: number;
+    status: 'draft' | 'published' | 'deleted';
+    hasUnpublishedChanges: boolean;
+  },
   TDraft,
   TParams,
->(options: Omit<VersionedEntityEditorOptions<TEntity, TDraft, TParams>, 'confirm'>) {
+>(
+  options: Omit<
+    VersionedEntityEditorOptions<TEntity, TDraft, TParams>,
+    'confirm'
+  >,
+) {
   const editor = useVersionedEntityEditorCore({
     ...options,
     confirm: (message) => Promise.resolve(window.confirm(message)),

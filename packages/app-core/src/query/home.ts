@@ -16,18 +16,19 @@ import { queryKeys } from './keys.js';
 
 export type HomeResourceParams = Record<string, never>;
 
-export const homeResource = createDraftPublishResource<Home, HomeResourceParams>(
-  {
-    queryKey: () => queryKeys.home(),
-    fetch: (client) => fetchHome(client),
-    update: (client, _params, body) =>
-      updateHome(client, body as UpdateHomeRequest),
-    publish: (client, _params, body) => publishHome(client, body),
-    unpublish: (client, _params, body) => unpublishHome(client, body),
-    discard: (client, _params, body) => discardHome(client, body),
-    setCache: setCachedHome,
-  },
-);
+export const homeResource = createDraftPublishResource<
+  Home,
+  HomeResourceParams
+>({
+  queryKey: () => queryKeys.home(),
+  fetch: (client) => fetchHome(client),
+  update: (client, _params, body) =>
+    updateHome(client, body as UpdateHomeRequest),
+  publish: (client, _params, body) => publishHome(client, body),
+  unpublish: (client, _params, body) => unpublishHome(client, body),
+  discard: (client, _params, body) => discardHome(client, body),
+  setCache: setCachedHome,
+});
 
 export const useHomeQuery = () => homeResource.useQuery({});
 

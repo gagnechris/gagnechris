@@ -45,10 +45,8 @@ export function Button({
     );
   }
 
-  const {
-    type = 'button',
-    ...buttonRest
-  } = rest as ButtonHTMLAttributes<HTMLButtonElement>;
+  const { type = 'button', ...buttonRest } =
+    rest as ButtonHTMLAttributes<HTMLButtonElement>;
   return (
     <button type={type} className={classes} {...buttonRest}>
       {children}

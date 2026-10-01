@@ -74,7 +74,11 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       },
     });
 
-    expect(fakeResource.queryKey({ id: 'f1' })).toEqual(['admin', 'fake', 'f1']);
+    expect(fakeResource.queryKey({ id: 'f1' })).toEqual([
+      'admin',
+      'fake',
+      'f1',
+    ]);
     expect(await fakeResource.fetch(client, { id: 'f1' })).toMatchObject({
       title: 'Hello',
       version: 1,

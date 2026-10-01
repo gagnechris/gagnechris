@@ -24,18 +24,19 @@ import { queryKeys } from './keys.js';
 
 export type PostResourceParams = { id: string };
 
-export const postResource = createDraftPublishResource<Post, PostResourceParams>(
-  {
-    queryKey: ({ id }) => queryKeys.posts.detail(id),
-    fetch: (client, { id }) => fetchPost(client, id),
-    update: (client, { id }, body) =>
-      updatePost(client, id, body as UpdatePostRequest),
-    publish: (client, { id }, body) => publishPost(client, id, body),
-    unpublish: (client, { id }, body) => unpublishPost(client, id, body),
-    discard: (client, { id }, body) => discardPost(client, id, body),
-    setCache: setCachedPost,
-  },
-);
+export const postResource = createDraftPublishResource<
+  Post,
+  PostResourceParams
+>({
+  queryKey: ({ id }) => queryKeys.posts.detail(id),
+  fetch: (client, { id }) => fetchPost(client, id),
+  update: (client, { id }, body) =>
+    updatePost(client, id, body as UpdatePostRequest),
+  publish: (client, { id }, body) => publishPost(client, id, body),
+  unpublish: (client, { id }, body) => unpublishPost(client, id, body),
+  discard: (client, { id }, body) => discardPost(client, id, body),
+  setCache: setCachedPost,
+});
 
 export const usePostsQuery = () => {
   const getClient = useGetApiClient();
