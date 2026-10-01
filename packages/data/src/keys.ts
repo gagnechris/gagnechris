@@ -11,6 +11,8 @@ export const SK_MSG = 'MSG';
 
 export const GSI1_NAME = 'gsi1';
 export const GSI2_NAME = 'gsi2';
+/** Sparse sync feed index (CHR-153): META items with syncPk/syncSk. */
+export const GSI3_NAME = 'gsi3';
 
 export const HOME_ID = 'current';
 export const RESUME_ID = 'current';
@@ -158,21 +160,49 @@ export function fixtureMetaSk(): string {
   return SK_META;
 }
 
-/** Sync ledger partition per authenticated user (CHR-141). */
+/**
+ * Sparse GSI partition for a user's sync feed (CHR-153).
+ * Written on the entity META item (not a separate ledger row).
+ */
 export function syncPk(userId: string): string {
   return `SYNC#${userId}`;
 }
 
 /**
- * Sync ledger sort key — lexicographic order ≈ time order when `updatedAt` is ISO-8601.
- * Example: `TS#2026-09-28T22:00:00.000Z#FIXTURE#01ABC…`
+ * Normalize a client `since` / watermark to UTC ISO-8601 with milliseconds.
+ * Avoids lexicographic bugs when clients omit ms or send an offset.
+ */
+export function normalizeSyncSince(since: string): string {
+  const ms = Date.parse(since);
+  if (Number.isNaN(ms)) {
+    throw new SyntaxError(`Invalid sync since timestamp: ${since}`);
+  }
+  return new Date(ms).toISOString();
+}
+
+/** Overlap window re-queried on each poll so late-committed writes are not skipped. */
+export const SYNC_OVERLAP_MS = 5_000;
+
+/**
+ * Sync GSI sort key — lexicographic order ≈ time order when `updatedAt` is ISO-8601.
+ * Example: `2026-09-28T22:00:00.000Z#FIXTURE#01ABC…`
  */
 export function syncSk(
   updatedAt: string,
   entityType: string,
   entityId: string,
 ): string {
-  return `TS#${updatedAt}#${entityType.toUpperCase()}#${entityId}`;
+  const ts = normalizeSyncSince(updatedAt);
+  return `${ts}#${entityType.toUpperCase()}#${entityId}`;
+}
+
+/** Lower bound for a sync GSI query, applying the overlap window when `since` is set. */
+export function syncSinceLowerBound(
+  since: string | undefined,
+): string | undefined {
+  if (!since) return undefined;
+  const normalized = normalizeSyncSince(since);
+  return new Date(Date.parse(normalized) - SYNC_OVERLAP_MS).toISOString();
 }
 
 export function normalizeTag(tag: string): string {

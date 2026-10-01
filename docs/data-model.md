@@ -19,6 +19,7 @@ code.
 | `sk`                | Sort key                                                                                    |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                           |
 | `gsi2pk` / `gsi2sk` | GSI2 — **reserved** (tag rows mirror pk/sk today; Notebook may adopt this index)            |
+| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity; CHR-153)                  |
 | `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
@@ -212,38 +213,44 @@ Counters use non-`META` sort keys so streams ignore them.
 | SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
 | Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 
-## Notebook sync ledger (CHR-141 fixture spike)
+## Notebook sync feed (CHR-153)
 
-Per authenticated user, append-only sync rows drive `GET /api/notebook/sync/changes`:
+Synced entities stamp sparse GSI3 keys on their **META** item (no append-only ledger):
 
-| Attr         | Notes                                                         |
-| ------------ | ------------------------------------------------------------- |
-| `pk`         | `SYNC#<userId>` (Cognito `sub`)                               |
-| `sk`         | `TS#<updatedAt>#FIXTURE#<fixtureId>` (lex order ≈ time order) |
-| `entityType` | `syncChange`                                                  |
-| `changeType` | `fixtureNote` (future: `note`, `task`, …)                     |
-| `entityId`   | ULID                                                          |
-| `version`    | Entity version after the change                               |
-| `deleted`    | `true` for tombstone rows                                     |
-| `updatedAt`  | ISO-8601 UTC                                                  |
+| Attr         | Notes                                                               |
+| ------------ | ------------------------------------------------------------------- |
+| `syncPk`     | `SYNC#<userId>` (Cognito `sub`) — GSI3 partition                    |
+| `syncSk`     | `<updatedAt>#<TYPE>#<id>` (ISO-8601 UTC ms; lex order ≈ time order) |
+| `entityType` | Adapter key for the change feed (e.g. future `note`, `task`)        |
+| `ttl`        | Set on soft-delete (default 30 days via `SYNC_TOMBSTONE_TTL_DAYS`)  |
 
-Fixture note **META** items use `FIXTURE#<id>` / `META` (not `NOTE#`). Creates/updates/deletes dual-write META + a ledger row in one `TransactWriteItems` when possible. Tombstoned META items carry `ttl` (epoch seconds, default 30 days from delete).
+`GET /api/notebook/sync/changes`:
+
+- Normalizes `since` with `Date.parse` → `toISOString()` so missing milliseconds or offsets match UTC-ms keys.
+- Re-queries an overlap window (`SYNC_OVERLAP_MS`, 5s) below `since` so late-committed writes are not skipped; clients dedupe by `(id, version)`.
+- Returns opaque `nextSince` (server watermark at query start) for the next poll.
+- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`).
+- Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
+
+Adding a synced entity is **config on `VersionedEntityRepository`** (`sync: { changeType, userIdOf, createPayloadHash? }`) plus `registerSyncEntity` for the feed adapter — no edits to the ledger/feed modules.
 
 Clients:
 
-- Generate **ULIDs** locally for idempotent create.
-- Poll or page the change feed with `since` + opaque `cursor`.
+- Generate **ULIDs** locally for idempotent create (payload-hash mismatch → 409).
+- Poll or page the change feed with `since` / `nextSince` + opaque `cursor`.
 - Send **`If-Match: "<version>"`** (or body `version`) on update/delete; treat **412** vs **409** as documented in [architecture.md](./architecture.md).
 
 ## Notebook (reserved key space)
 
-Production Notebook notes/tasks will use the keys below; the CHR-141 fixture uses `FIXTURE#` instead so the spike does not collide with future `NOTE#` data.
+Production Notebook notes/tasks will use the keys below:
 
 | Entity               | `pk`            | `sk`   | GSI1                                       |
 | -------------------- | --------------- | ------ | ------------------------------------------ |
 | Note                 | `NOTE#<noteId>` | `META` | `TYPE#NOTE` / `TS#<updatedAt>#NOTE#<id>`   |
 | Task                 | `TASK#<taskId>` | `META` | `TYPE#TASK` / `STATUS#<open\|done>#TS#...` |
 | Note slug (optional) | `NSLUG#<slug>`  | `NOTE` | —                                          |
+
+Synced Notebook entities also set `syncPk` / `syncSk` (GSI3) on META — see above.
 
 Access patterns to support later: get note by id, list notes by updated, get/list
 tasks by status. Use `TYPE#*` on GSI1 so Notebook lists never scan `STATUS#*`

@@ -22,6 +22,7 @@ export {
 export {
   GSI1_NAME,
   GSI2_NAME,
+  GSI3_NAME,
   HOME_ID,
   RESUME_ID,
   SK_META,
@@ -57,6 +58,9 @@ export {
   statusGsi1Sk,
   syncPk,
   syncSk,
+  syncSinceLowerBound,
+  normalizeSyncSince,
+  SYNC_OVERLAP_MS,
   SYNC_TOMBSTONE_TTL_DAYS,
   tagPk,
   tagSk,
@@ -67,8 +71,10 @@ export {
 
 export {
   APP_TABLE,
+  LAST_DEPLOYED_GSI_NAMES,
   appTableAttributeDefinitions,
   appTableName,
+  assertSafeGsiUpdate,
   type AppTableDefinition,
   type DynamoAttributeTypeCode,
   type TableIndexDefinition,

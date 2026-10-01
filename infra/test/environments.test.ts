@@ -580,6 +580,7 @@ describe('DataStack', () => {
       GlobalSecondaryIndexes: Match.arrayWith([
         Match.objectLike({ IndexName: 'gsi1' }),
         Match.objectLike({ IndexName: 'gsi2' }),
+        Match.objectLike({ IndexName: 'gsi3' }),
       ]),
     });
     template.hasResource('AWS::DynamoDB::Table', {

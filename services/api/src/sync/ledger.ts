@@ -1,78 +1,94 @@
+/**
+ * Per-user sync change feed over the sparse sync GSI (CHR-153).
+ * One META row per entity; no N+1 GetItem; watermark + overlap for clock skew.
+ */
 import {
-  GetCommand,
   QueryCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
 import type { SyncChange, SyncChangesQuery } from '@gagnechris/shared';
-import { keys, syncPk } from '@gagnechris/data';
+import {
+  GSI3_NAME,
+  syncPk,
+  syncSinceLowerBound,
+  normalizeSyncSince,
+} from '@gagnechris/data';
 import { getDocClient, requireTableName } from '../data/client.js';
 import { decodeCursor, encodeCursor } from '../data/cursor.js';
-import { toEntity, type FixtureNoteItem } from '../fixture-notes/items.js';
-import type { SyncLedgerItem } from '../fixture-notes/repository.js';
+import { getSyncAdapter } from './registry.js';
+
+/** ExclusiveStartKey shape for the sync GSI (base keys + index keys). */
+export const SYNC_GSI_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
 
 export type SyncChangesPage = {
   changes: SyncChange[];
   nextCursor?: string;
+  /** Opaque server watermark; pass back as `since` on the next poll. */
+  nextSince: string;
 };
+
+function itemChangeType(item: Record<string, unknown>): string | undefined {
+  if (typeof item.entityType === 'string' && item.entityType.length > 0) {
+    return item.entityType;
+  }
+  if (typeof item.changeType === 'string' && item.changeType.length > 0) {
+    return item.changeType;
+  }
+  return undefined;
+}
 
 export class SyncLedger {
   constructor(
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
+    protected readonly nowIso: () => string = () => new Date().toISOString(),
   ) {}
 
   async queryChangesSince(
     userId: string,
     query: SyncChangesQuery,
   ): Promise<SyncChangesPage> {
+    const watermarkAt = this.nowIso();
     const { since, cursor, limit } = query;
-    const exclusiveStartKey = decodeCursor(cursor);
+    if (since !== undefined) {
+      // Validate / normalize early so bad client clocks fail as 400.
+      normalizeSyncSince(since);
+    }
+    const exclusiveStartKey = decodeCursor(cursor, SYNC_GSI_CURSOR_KEYS);
     const pk = syncPk(userId);
+    const lowerBound = syncSinceLowerBound(since);
 
     const result = await this.doc.send(
       new QueryCommand({
         TableName: this.tableName,
-        KeyConditionExpression: since
-          ? 'pk = :pk AND sk > :sinceSk'
-          : 'pk = :pk AND begins_with(sk, :tsPrefix)',
-        ExpressionAttributeValues: since
+        IndexName: GSI3_NAME,
+        KeyConditionExpression: lowerBound
+          ? 'syncPk = :pk AND syncSk >= :sinceSk'
+          : 'syncPk = :pk',
+        ExpressionAttributeValues: lowerBound
           ? {
               ':pk': pk,
-              ':sinceSk': `TS#${since}`,
+              // syncSk starts with ISO timestamp; compare against the lower-bound
+              // instant so any type/id suffix sorts after that prefix boundary.
+              ':sinceSk': lowerBound,
             }
           : {
               ':pk': pk,
-              ':tsPrefix': 'TS#',
             },
         ExclusiveStartKey: exclusiveStartKey,
         Limit: limit,
       }),
     );
 
-    const ledgerItems = (result.Items ?? []) as SyncLedgerItem[];
     const changes: SyncChange[] = [];
-
-    for (const row of ledgerItems) {
-      if (row.changeType !== 'fixtureNote') continue;
-      const change: SyncChange = {
-        type: 'fixtureNote',
-        id: row.entityId,
-        version: row.version,
-        deleted: row.deleted,
-        updatedAt: row.updatedAt,
-      };
-      if (!row.deleted) {
-        const got = await this.doc.send(
-          new GetCommand({
-            TableName: this.tableName,
-            Key: keys.fixture.meta(row.entityId),
-          }),
-        );
-        if (got.Item) {
-          change.entity = toEntity(got.Item as FixtureNoteItem);
-        }
-      }
-      changes.push(change);
+    for (const raw of result.Items ?? []) {
+      const item = raw as Record<string, unknown>;
+      const changeType = itemChangeType(item);
+      if (!changeType) continue;
+      const adapter = getSyncAdapter(changeType);
+      if (!adapter) continue;
+      const change = adapter.toChange(item);
+      if (change) changes.push(change);
     }
 
     return {
@@ -80,6 +96,7 @@ export class SyncLedger {
       nextCursor: encodeCursor(
         result.LastEvaluatedKey as Record<string, unknown> | undefined,
       ),
+      nextSince: watermarkAt,
     };
   }
 }

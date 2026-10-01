@@ -1,6 +1,6 @@
 /**
- * Generic optimistic-concurrency entity store (CHR-129).
- * No publish/META/PUBLISHED assumptions — suitable for Notebook notes/tasks.
+ * Generic optimistic-concurrency entity store (CHR-129 / CHR-153).
+ * Optional sync config writes sparse GSI keys on META (one row per entity).
  */
 import {
   GetCommand,
@@ -9,7 +9,12 @@ import {
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { isOptimisticLockConflict } from '@gagnechris/data';
+import {
+  isOptimisticLockConflict,
+  syncPk,
+  syncSk,
+  ttlDaysFromNow,
+} from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
@@ -19,6 +24,17 @@ import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 export type VersionedEntity = {
   version: number;
   updatedAt: string;
+};
+
+export type SyncEntityConfig<T extends VersionedEntity> = {
+  /** Stable change-feed type (e.g. `fakeNote`). Stored as `entityType` when writing sync keys. */
+  changeType: string;
+  userIdOf: (entity: T) => string;
+  /**
+   * Hash of create payload fields. Retries with the same id but a different
+   * hash throw ConflictError (409); matching hash is idempotent.
+   */
+  createPayloadHash?: (entity: T) => string;
 };
 
 export type VersionedEntityConfig<
@@ -37,6 +53,11 @@ export type VersionedEntityConfig<
   nowIso?: () => string;
   /** Required cursor key names for queryPage (defaults to primary keys). */
   cursorKeyNames?: readonly string[];
+  /**
+   * When set, every write stamps `syncPk` / `syncSk` on the META item so the
+   * sparse sync GSI returns one latest row per entity (CHR-153).
+   */
+  sync?: SyncEntityConfig<T>;
 };
 
 export type QueryPage<T> = {
@@ -78,6 +99,25 @@ export class VersionedEntityRepository<
     }
   }
 
+  /** Attach sparse sync GSI keys when sync is configured. */
+  protected toStoredItem(entity: T, opts?: { ttl?: number }): TItem {
+    const base = this.config.toItem(entity);
+    const sync = this.config.sync;
+    if (!sync) {
+      return opts?.ttl !== undefined
+        ? ({ ...base, ttl: opts.ttl } as TItem)
+        : base;
+    }
+    const userId = sync.userIdOf(entity);
+    const id = this.config.idOf(entity);
+    return {
+      ...base,
+      syncPk: syncPk(userId),
+      syncSk: syncSk(entity.updatedAt, sync.changeType, id),
+      ...(opts?.ttl !== undefined ? { ttl: opts.ttl } : {}),
+    } as TItem;
+  }
+
   async get(id: string): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
@@ -89,6 +129,18 @@ export class VersionedEntityRepository<
     const entity = this.mapItem(result.Item);
     if (this.config.isDeleted?.(entity)) return undefined;
     return entity;
+  }
+
+  /** Like get, but returns soft-deleted entities (for idempotent-create / conflicts). */
+  async getIncludingDeleted(id: string): Promise<T | undefined> {
+    const result = await this.doc.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: this.config.keyForId(id),
+      }),
+    );
+    if (!result.Item) return undefined;
+    return this.mapItem(result.Item);
   }
 
   async getOrThrow(id: string): Promise<T> {
@@ -105,13 +157,51 @@ export class VersionedEntityRepository<
         this.doc.send(
           new PutCommand({
             TableName: this.tableName,
-            Item: this.config.toItem(entity),
+            Item: this.toStoredItem(entity),
             ConditionExpression: 'attribute_not_exists(pk)',
           }),
         ),
       `Create conflict (${this.config.conflictLabel})`,
     );
     return entity;
+  }
+
+  /**
+   * Client-ULID create: retries with the same id are idempotent when the
+   * optional payload hash matches; mismatch or tombstone → ConflictError.
+   */
+  async createIdempotent(entity: T): Promise<T> {
+    const id = this.config.idOf(entity);
+    try {
+      return await this.create(entity);
+    } catch (error) {
+      if (
+        !(error instanceof ConflictError) &&
+        !isOptimisticLockConflict(error)
+      ) {
+        throw error;
+      }
+      const existing = await this.getIncludingDeleted(id);
+      if (!existing) {
+        throw new ConflictError(
+          `Create conflict (${this.config.conflictLabel})`,
+        );
+      }
+      if (this.config.isDeleted?.(existing)) {
+        throw new ConflictError(
+          `${this.config.conflictLabel} ${id} was deleted`,
+          { currentVersion: existing.version, current: existing },
+        );
+      }
+      const hashFn = this.config.sync?.createPayloadHash;
+      if (hashFn && hashFn(entity) !== hashFn(existing)) {
+        throw new ConflictError(
+          `${this.config.conflictLabel} ${id} already exists with a different payload`,
+          { currentVersion: existing.version, current: existing },
+        );
+      }
+      return existing;
+    }
   }
 
   /**
@@ -129,7 +219,7 @@ export class VersionedEntityRepository<
           this.doc.send(
             new PutCommand({
               TableName: this.tableName,
-              Item: this.config.toItem(next),
+              Item: this.toStoredItem(next),
               ConditionExpression: 'attribute_exists(pk) AND version = :v',
               ExpressionAttributeValues: { ':v': expectedVersion },
             }),
@@ -139,7 +229,7 @@ export class VersionedEntityRepository<
       return next;
     } catch (error) {
       if (error instanceof ConflictError || isOptimisticLockConflict(error)) {
-        const current = await this.get(id);
+        const current = await this.getIncludingDeleted(id);
         throw new ConflictError(
           `Version conflict: expected ${expectedVersion}, current ${current?.version ?? 'unknown'}`,
           {
@@ -155,13 +245,42 @@ export class VersionedEntityRepository<
 
   /**
    * Soft-delete via caller-supplied tombstone entity (must bump version).
+   * Sets DynamoDB TTL when sync is configured so the GSI row expires with META.
    */
   async softDelete(
     id: string,
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
-    return this.updateIfVersion(id, expectedVersion, tombstone);
+    const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
+    try {
+      await runDynamoWrite(
+        () =>
+          this.doc.send(
+            new PutCommand({
+              TableName: this.tableName,
+              Item: this.toStoredItem(tombstone, { ttl }),
+              ConditionExpression: 'attribute_exists(pk) AND version = :v',
+              ExpressionAttributeValues: { ':v': expectedVersion },
+            }),
+          ),
+        `Delete conflict (${this.config.conflictLabel} version)`,
+      );
+      return tombstone;
+    } catch (error) {
+      if (error instanceof ConflictError || isOptimisticLockConflict(error)) {
+        const current = await this.getIncludingDeleted(id);
+        throw new ConflictError(
+          `Version conflict: expected ${expectedVersion}, current ${current?.version ?? 'unknown'}`,
+          {
+            currentVersion: current?.version,
+            current,
+            code: error instanceof ConflictError ? error.code : 'conflict',
+          },
+        );
+      }
+      throw error;
+    }
   }
 
   /**

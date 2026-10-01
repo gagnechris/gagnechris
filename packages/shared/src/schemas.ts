@@ -331,13 +331,13 @@ export type UpdateFixtureNoteRequest = z.infer<
 >;
 
 export const SyncChangeSchema = z.object({
-  type: z.literal('fixtureNote'),
-  id: UlidSchema,
+  type: z.string().min(1),
+  id: z.string().min(1),
   version: z.number().int().nonnegative(),
   deleted: z.boolean(),
   updatedAt: z.string().datetime({ offset: true }),
   /** Present when not deleted (full entity for convenience). */
-  entity: FixtureNoteSchema.optional(),
+  entity: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type SyncChange = z.infer<typeof SyncChangeSchema>;
@@ -345,6 +345,8 @@ export type SyncChange = z.infer<typeof SyncChangeSchema>;
 export const SyncChangesResponseSchema = z.object({
   changes: z.array(SyncChangeSchema),
   nextCursor: z.string().min(1).optional(),
+  /** Opaque server watermark; clients pass this back as `since`. */
+  nextSince: z.string().datetime({ offset: true }),
 });
 
 export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
