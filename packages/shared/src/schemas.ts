@@ -292,43 +292,9 @@ export const UlidSchema = z
   .regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i, 'Must be a ULID');
 
 /**
- * Sync-pattern fixture entity (CHR-141). Not a Notebook note — proves
- * changes-since, tombstones, client ULID create, and ETag/If-Match.
+ * Sync-pattern fixture entity schemas lived here for CHR-141; removed from the
+ * public package surface in CHR-153 (test-only fake entities cover the patterns).
  */
-export const FixtureNoteSchema = z.object({
-  id: UlidSchema,
-  userId: z.string().min(1),
-  title: z.string(),
-  body: z.string(),
-  version: z.number().int().nonnegative(),
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
-  deleted: z.boolean(),
-});
-
-export type FixtureNote = z.infer<typeof FixtureNoteSchema>;
-
-export const CreateFixtureNoteRequestSchema = z.object({
-  /** Client-generated ULID; retries with the same id are idempotent. */
-  id: UlidSchema,
-  title: z.string().default(''),
-  body: z.string().default(''),
-});
-
-export type CreateFixtureNoteRequest = z.infer<
-  typeof CreateFixtureNoteRequestSchema
->;
-
-export const UpdateFixtureNoteRequestSchema = z.object({
-  /** Optional when `If-Match` header supplies the expected version. */
-  version: z.number().int().nonnegative().optional(),
-  title: z.string().optional(),
-  body: z.string().optional(),
-});
-
-export type UpdateFixtureNoteRequest = z.infer<
-  typeof UpdateFixtureNoteRequestSchema
->;
 
 export const SyncChangeSchema = z.object({
   type: z.string().min(1),

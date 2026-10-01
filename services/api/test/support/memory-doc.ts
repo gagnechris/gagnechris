@@ -76,8 +76,7 @@ export function createMemoryDoc(): {
       }
 
       const startKey = cmd.input.ExclusiveStartKey as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (startKey && indexName === 'gsi3') {
         const startSk = startKey.syncSk as string;
         rows = rows.filter((item) => (item.syncSk as string) > startSk);
@@ -88,7 +87,8 @@ export function createMemoryDoc(): {
 
       const limit = cmd.input.Limit as number | undefined;
       const sliced = limit ? rows.slice(0, limit) : rows;
-      const last = limit && rows.length > sliced.length ? sliced.at(-1) : undefined;
+      const last =
+        limit && rows.length > sliced.length ? sliced.at(-1) : undefined;
       return {
         Items: sliced.map((r) => ({ ...r })),
         LastEvaluatedKey: last

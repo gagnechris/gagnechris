@@ -204,7 +204,12 @@ describe('sync feed (CHR-153)', () => {
       () => '2026-09-28T10:00:00.000Z',
     );
     await repo.createIdempotent(
-      buildFakeNote(USER, NOTE_ID, { title: 'via-config' }, '2026-09-28T10:00:00.000Z'),
+      buildFakeNote(
+        USER,
+        NOTE_ID,
+        { title: 'via-config' },
+        '2026-09-28T10:00:00.000Z',
+      ),
     );
 
     const ledger = new SyncLedger(doc, TABLE, () => '2026-09-28T11:00:00.000Z');
@@ -244,7 +249,12 @@ describe('sync feed (CHR-153)', () => {
 
     await expect(
       repo.createIdempotent(
-        buildFakeNote(USER, NOTE_ID, { title: 'B' }, '2026-09-28T10:00:00.000Z'),
+        buildFakeNote(
+          USER,
+          NOTE_ID,
+          { title: 'B' },
+          '2026-09-28T10:00:00.000Z',
+        ),
       ),
     ).rejects.toMatchObject({ name: 'ConflictError' });
   });

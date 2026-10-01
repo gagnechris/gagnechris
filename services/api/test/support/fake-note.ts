@@ -38,7 +38,9 @@ export type FakeNoteItem = {
   ttl?: number;
 };
 
-export function fakeNotePayloadHash(n: Pick<FakeNote, 'title' | 'body'>): string {
+export function fakeNotePayloadHash(
+  n: Pick<FakeNote, 'title' | 'body'>,
+): string {
   return `${n.title}\0${n.body}`;
 }
 
