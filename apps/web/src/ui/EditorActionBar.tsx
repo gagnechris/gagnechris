@@ -49,7 +49,11 @@ export function EditorActionBar({
         <SaveIndicator saveState={saveState} dirty={dirty} />
       </div>
       <div className="admin-actions">
-        {viewLiveHref ? <Button href={viewLiveHref}>View live</Button> : null}
+        {viewLiveHref ? (
+          <Button href={viewLiveHref} target="_blank" rel="noreferrer">
+            View live
+          </Button>
+        ) : null}
         {showPublish ? (
           <Button variant="primary" disabled={busy} onClick={onPublish}>
             {hasUnpublishedChanges ? 'Publish changes' : 'Publish'}

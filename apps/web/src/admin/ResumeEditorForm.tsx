@@ -11,7 +11,9 @@ type Props = {
   draft: ResumeDraftFields;
   setField: <K extends keyof ResumeDraftFields>(
     key: K,
-    value: ResumeDraftFields[K],
+    value:
+      | ResumeDraftFields[K]
+      | ((prev: ResumeDraftFields[K]) => ResumeDraftFields[K]),
   ) => void;
   onSave: () => void;
 };

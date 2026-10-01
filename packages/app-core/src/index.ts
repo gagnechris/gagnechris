@@ -10,8 +10,15 @@ export {
 export {
   useDraftPublishEditor,
   type DraftPublishAutosave,
+  type DraftPublishDeleteOptions,
   type DraftPublishEditorOptions,
 } from './useDraftPublishEditor.js';
+export {
+  useVersionedEntityEditor,
+  type VersionedEditorEntity,
+  type VersionedEntityActionBarProps,
+  type VersionedEntityEditorOptions,
+} from './useVersionedEntityEditor.js';
 
 export { queryKeys } from './query/keys.js';
 export {
@@ -54,10 +61,19 @@ export {
   setCachedResume,
 } from './query/cache.js';
 export {
+  createDraftPublishResource,
+  type DraftPublishLifecycleMutators,
+  type DraftPublishResource,
+  type DraftPublishResourceConfig,
+  type VersionedEntity,
+} from './query/createDraftPublishResource.js';
+export {
   optimisticMutationHandlers,
   type OptimisticContext,
+  type OptimisticTarget,
 } from './query/optimistic.js';
 export {
+  postResource,
   useCreatePostMutation,
   useDeletePostMutation,
   useDiscardPostMutation,
@@ -68,8 +84,10 @@ export {
   useSetPostCache,
   useUnpublishPostMutation,
   useUpdatePostMutation,
+  type PostResourceParams,
 } from './query/posts.js';
 export {
+  homeResource,
   useDiscardHomeMutation,
   useHomeLifecycleMutators,
   useHomeQuery,
@@ -77,8 +95,10 @@ export {
   useSetHomeCache,
   useUnpublishHomeMutation,
   useUpdateHomeMutation,
+  type HomeResourceParams,
 } from './query/home.js';
 export {
+  resumeResource,
   useDiscardResumeMutation,
   usePublishResumeMutation,
   useResumeLifecycleMutators,
@@ -86,4 +106,5 @@ export {
   useSetResumeCache,
   useUnpublishResumeMutation,
   useUpdateResumeMutation,
+  type ResumeResourceParams,
 } from './query/resume.js';

@@ -1,4 +1,4 @@
-import type { FormEvent, RefObject } from 'react';
+import { useEffect, type FormEvent, type RefObject } from 'react';
 import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
 import MarkdownEditor from '../components/markdown/MarkdownEditor';
 import MarkdownPreview from '../components/markdown/MarkdownPreview';
@@ -140,6 +140,13 @@ type TitleProps = {
 };
 
 export function PostEditorTitle({ title, titleRef, onChange }: TitleProps) {
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [title, titleRef]);
+
   return (
     <h1 className="admin-editor-title">
       <textarea

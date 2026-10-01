@@ -1,13 +1,10 @@
 import {
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useCallback } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
-  asMutateResult,
   createPost,
   deletePost,
   discardPost,
@@ -21,12 +18,25 @@ import {
   type Post,
   type UpdatePostRequest,
 } from './api.js';
-import {
-  preferNewerByVersion,
-  removeCachedPost,
-  setCachedPost,
-} from './cache.js';
+import { setCachedPost } from './cache.js';
+import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { queryKeys } from './keys.js';
+
+export type PostResourceParams = { id: string };
+
+export const postResource = createDraftPublishResource<
+  Post,
+  PostResourceParams
+>({
+  queryKey: ({ id }) => queryKeys.posts.detail(id),
+  fetch: (client, { id }) => fetchPost(client, id),
+  update: (client, { id }, body) =>
+    updatePost(client, id, body as UpdatePostRequest),
+  publish: (client, { id }, body) => publishPost(client, id, body),
+  unpublish: (client, { id }, body) => unpublishPost(client, id, body),
+  discard: (client, { id }, body) => discardPost(client, id, body),
+  setCache: setCachedPost,
+});
 
 export const usePostsQuery = () => {
   const getClient = useGetApiClient();
@@ -38,23 +48,8 @@ export const usePostsQuery = () => {
   });
 };
 
-export const usePostQuery = (id: string | undefined) => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: queryKeys.posts.detail(id ?? ''),
-    queryFn: async () => {
-      const fetched = await fetchPost(getClient(), id!);
-      const cached = queryClient.getQueryData<Post>(
-        queryKeys.posts.detail(id!),
-      );
-      return preferNewerByVersion(cached, fetched);
-    },
-    enabled: Boolean(id),
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-};
+export const usePostQuery = (id: string | undefined) =>
+  postResource.useQuery({ id: id ?? '' }, Boolean(id));
 
 export const useCreatePostMutation = () => {
   const getClient = useGetApiClient();
@@ -79,24 +74,20 @@ export const useUpdatePostMutation = () => {
   });
 };
 
-/** Apply a successful save (from useQueuedAutosave) into Query caches. */
-export const useSetPostCache = () => {
-  const queryClient = useQueryClient();
-  return useCallback(
-    (post: Post) => {
-      setCachedPost(queryClient, post);
-    },
-    [queryClient],
-  );
-};
+/** Apply a successful save into Query caches. */
+export const useSetPostCache = postResource.useSetCache;
 
+/**
+ * Soft-delete. Uses setCachedPost (not removeQueries) so an open editor does
+ * not flash Loading / GET the deleted post (CHR-158).
+ */
 export const useDeletePostMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deletePost(getClient(), id),
-    onSuccess: (_post, id) => {
-      removeCachedPost(queryClient, id);
+    onSuccess: (post) => {
+      setCachedPost(queryClient, post);
     },
   });
 };
@@ -137,31 +128,6 @@ export const useDiscardPostMutation = (id: string) => {
   });
 };
 
-/** MutateResult adapters for useDraftPublishEditor. */
-export const usePostLifecycleMutators = (id: string | undefined) => {
-  const publish = usePublishPostMutation(id ?? '');
-  const unpublish = useUnpublishPostMutation(id ?? '');
-  const discard = useDiscardPostMutation(id ?? '');
-
-  const publishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => publish.mutateAsync(body)),
-    [publish],
-  );
-  const unpublishFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => unpublish.mutateAsync(body)),
-    [unpublish],
-  );
-  const discardFn = useCallback(
-    (body: ExpectedVersionRequest) =>
-      asMutateResult(() => discard.mutateAsync(body)),
-    [discard],
-  );
-
-  return {
-    publish: publishFn,
-    unpublish: unpublishFn,
-    discard: discardFn,
-  };
-};
+/** MutateResult adapters for useDraftPublishEditor / useVersionedEntityEditor. */
+export const usePostLifecycleMutators = (id: string | undefined) =>
+  postResource.useLifecycleMutators({ id: id ?? '' });
