@@ -313,6 +313,18 @@ Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHa
 
 API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/update/delete; posts remain on id-only `VersionedEntityRepository` / `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
 
+### Tasks HTTP API (CHR-43)
+
+| Method                   | Path                                | Notes                                                                                                                                                                                         |
+| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`                    | `/api/notebook/tasks`               | Query: `area`, `status`, `priority`, `dueOn`, `dueBefore`, `noteId`, `cursor`, `limit`. Single area+status uses GSI1; `noteId` uses GSI2; multi-partition merges in memory (no `nextCursor`). |
+| `POST`                   | `/api/notebook/tasks`               | Client ULID create; idempotent                                                                                                                                                                |
+| `GET` / `PUT` / `DELETE` | `/api/notebook/tasks/{id}`          | Soft-delete tombstone; `If-Match` / body `version`                                                                                                                                            |
+| `POST`                   | `/api/notebook/tasks/{id}/complete` | Sets `status=done` and `completedAt`                                                                                                                                                          |
+| `POST`                   | `/api/notebook/tasks/{id}/reopen`   | Sets `status=todo`, clears `completedAt`                                                                                                                                                      |
+
+`dueBefore` / `dueOn` key conditions use the `DUE#` prefix only (undated `UPDATED#…` rows are excluded). List sort is applied **on the server**: overdue (`dueDate` &lt; UTC today), then earlier due dates, then priority, then id.
+
 ## Conventions
 
 - Timestamps: UTC ISO-8601 with millisecond precision.
