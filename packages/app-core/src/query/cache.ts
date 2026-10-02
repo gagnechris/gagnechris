@@ -1,9 +1,19 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import type { Home, Note, NotesPage, Post, PostsPage, Resume } from './api.js';
+import type {
+  Home,
+  Note,
+  NotesPage,
+  Post,
+  PostsPage,
+  Resume,
+  Task,
+  TasksPage,
+} from './api.js';
 import { queryKeys } from './keys.js';
 
 type PostsListData = InfiniteData<PostsPage, string | undefined>;
 type NotesListData = InfiniteData<NotesPage, string | undefined>;
+type TasksListData = InfiniteData<TasksPage, string | undefined>;
 
 /** Keep the higher-version entity when a stale GET races a mutation (CHR-147). */
 export const preferNewerByVersion = <T extends { version: number }>(
@@ -174,5 +184,70 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
   })) {
     if (!data || !Array.isArray(data.pages)) continue;
     queryClient.setQueryData<NotesListData>(key, upsertNoteInPages(data, note));
+  }
+};
+
+const upsertTaskInPages = (
+  prev: TasksListData | undefined,
+  task: Task,
+): TasksListData | undefined => {
+  if (!prev) {
+    if (task.deleted) return prev;
+    return {
+      pages: [{ items: [task] }],
+      pageParams: [undefined],
+    };
+  }
+
+  const exists = prev.pages.some((page) =>
+    page.items.some((t) => t.id === task.id),
+  );
+
+  if (task.deleted) {
+    return {
+      ...prev,
+      pages: prev.pages.map((page) => ({
+        ...page,
+        items: page.items.filter((t) => t.id !== task.id),
+      })),
+    };
+  }
+
+  if (!exists) {
+    if (prev.pages.length === 0) {
+      return {
+        pages: [{ items: [task] }],
+        pageParams: prev.pageParams.length ? prev.pageParams : [undefined],
+      };
+    }
+    const [first, ...rest] = prev.pages;
+    return {
+      ...prev,
+      pages: [{ ...first, items: [task, ...first.items] }, ...rest],
+    };
+  }
+
+  return {
+    ...prev,
+    pages: prev.pages.map((page) => {
+      const index = page.items.findIndex((t) => t.id === task.id);
+      if (index === -1) return page;
+      const items = [...page.items];
+      items[index] = preferNewerByVersion(page.items[index], task);
+      return { ...page, items };
+    }),
+  };
+};
+
+/** Write a task into detail + infinite list caches. */
+export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
+  queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>
+    preferNewerByVersion(prev, task),
+  );
+  for (const [key, data] of queryClient.getQueriesData<TasksListData>({
+    queryKey: [...queryKeys.tasks.all, 'list'],
+  })) {
+    if (!data || !Array.isArray(data.pages)) continue;
+    queryClient.setQueryData<TasksListData>(key, upsertTaskInPages(data, task));
   }
 };

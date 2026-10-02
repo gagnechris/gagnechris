@@ -37,4 +37,19 @@ export const queryKeys = {
     ) =>
       [...queryKeys.notes.all, 'daily-dates', area ?? 'all', from, to] as const,
   },
+  tasks: {
+    all: ['admin', 'notebook', 'tasks'] as const,
+    list: (filters?: {
+      area?: 'work' | 'personal';
+      status?: 'todo' | 'in_progress' | 'done';
+      priority?: 'low' | 'med' | 'high';
+      dueOn?: string;
+      dueBefore?: string;
+      noteId?: string;
+    }) =>
+      filters
+        ? ([...queryKeys.tasks.all, 'list', filters] as const)
+        : ([...queryKeys.tasks.all, 'list'] as const),
+    detail: (id: string) => [...queryKeys.tasks.all, 'detail', id] as const,
+  },
 };
