@@ -190,7 +190,10 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
           new TransactWriteCommand({ TransactItems: transactItems }),
         ),
       'Update conflict (version)',
-      () => throwVersionConflict(before.version, () => this.getById(after.id, { consistentRead: true })),
+      () =>
+        throwVersionConflict(before.version, () =>
+          this.getById(after.id, { consistentRead: true }),
+        ),
       {
         slugClaimIndexes,
         slugTakenMessage: `Slug "${after.slug}" is already taken`,

@@ -301,7 +301,10 @@ export class PublishableRepository<
         : options.deletePublished
           ? `Unpublish conflict (${this.publishConfig.conflictLabel} version)`
           : `Update conflict (${this.publishConfig.conflictLabel} version)`,
-      () => throwVersionConflict(before.version, () => this.getById(id, { consistentRead: true })),
+      () =>
+        throwVersionConflict(before.version, () =>
+          this.getById(id, { consistentRead: true }),
+        ),
     );
   }
 
