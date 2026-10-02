@@ -1,11 +1,19 @@
-import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import {
   AttributeType,
   BillingMode,
+  Operation,
   StreamViewType,
   Table,
   TableEncryption,
 } from 'aws-cdk-lib/aws-dynamodb';
+import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
 import {
@@ -15,6 +23,7 @@ import {
 } from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { metricAlarm } from '../constructs/emf-alarm.js';
 
 function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
   switch (code) {
@@ -57,8 +66,23 @@ function toCdkStreamViewType(
   }
 }
 
+/** App-table operations we actually use (CHR-168 DynamoDB alarms). */
+const APP_TABLE_OPERATIONS = [
+  Operation.GET_ITEM,
+  Operation.PUT_ITEM,
+  Operation.UPDATE_ITEM,
+  Operation.DELETE_ITEM,
+  Operation.QUERY,
+  Operation.SCAN,
+  Operation.BATCH_GET_ITEM,
+  Operation.BATCH_WRITE_ITEM,
+  Operation.TRANSACT_WRITE_ITEMS,
+  Operation.TRANSACT_GET_ITEMS,
+];
+
 export interface DataStackProps extends StackProps {
   readonly config: EnvironmentConfig;
+  readonly alertsTopic: ITopic;
 }
 
 /**
@@ -71,7 +95,7 @@ export class DataStack extends Stack {
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
 
-    const { config } = props;
+    const { config, alertsTopic } = props;
     const def = APP_TABLE;
 
     this.table = new Table(this, 'AppTable', {
@@ -110,6 +134,29 @@ export class DataStack extends Stack {
     }
 
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
+
+    metricAlarm(this, 'AppTableSystemErrors', {
+      alarmName: `gagnechris-${config.name}-dynamodb-system-errors`,
+      alarmDescription:
+        'DynamoDB AppTable SystemErrors ≥ 1 in 5 minutes (CHR-168)',
+      metric: this.table.metricSystemErrorsForOperations({
+        operations: APP_TABLE_OPERATIONS,
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      alertsTopic,
+    });
+    metricAlarm(this, 'AppTableThrottledRequests', {
+      alarmName: `gagnechris-${config.name}-dynamodb-throttled-requests`,
+      alarmDescription:
+        'DynamoDB AppTable ThrottledRequests ≥ 1 in 5 minutes (CHR-168)',
+      metric: this.table.metricThrottledRequestsForOperations({
+        operations: APP_TABLE_OPERATIONS,
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      alertsTopic,
+    });
 
     new StringParameter(this, 'TableNameParam', {
       parameterName: ssmParameterName(config.name, 'dataTableName'),

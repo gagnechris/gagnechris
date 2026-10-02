@@ -11,7 +11,13 @@ import type { Logger } from '@aws-lambda-powertools/logger';
 import type { Metrics } from '@aws-lambda-powertools/metrics';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type { z, ZodType } from 'zod';
-import { json, mapRouteError, parseBody } from './http.js';
+import {
+  isZodError,
+  json,
+  mapRouteError,
+  parseBody,
+  zodBadRequest,
+} from './http.js';
 import {
   logger as defaultLogger,
   metrics as defaultMetrics,
@@ -262,14 +268,28 @@ async function invokeRoute(
 
   let query: unknown = ctx.event.queryStringParameters ?? {};
   if (route.query) {
-    query = route.query.parse(query);
+    try {
+      query = route.query.parse(query);
+    } catch (error) {
+      if (isZodError(error)) {
+        return zodBadRequest(error, 'Invalid query parameters');
+      }
+      throw error;
+    }
   }
 
   let body: unknown = undefined;
   if (route.rawBody) {
     body = undefined;
   } else if (route.body) {
-    body = route.body.parse(parseBody(ctx.event));
+    try {
+      body = route.body.parse(parseBody(ctx.event));
+    } catch (error) {
+      if (isZodError(error)) {
+        return zodBadRequest(error, 'Invalid request body');
+      }
+      throw error;
+    }
   } else if (
     route.method === 'POST' ||
     route.method === 'PUT' ||
@@ -281,7 +301,14 @@ async function invokeRoute(
 
   let typedParams: Record<string, string> = params;
   if (route.params) {
-    typedParams = route.params.parse(params) as Record<string, string>;
+    try {
+      typedParams = route.params.parse(params) as Record<string, string>;
+    } catch (error) {
+      if (isZodError(error)) {
+        return zodBadRequest(error, 'Invalid path parameters');
+      }
+      throw error;
+    }
   }
 
   return route.handler(ctx, { params: typedParams, query, body });

@@ -24,9 +24,14 @@ describe('stack Template assertions (CHR-136)', () => {
   it('DataStack matches APP_TABLE keys and GSIs', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'DataAssertDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
     const data = new DataStack(app, 'Data-prod', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     const template = Template.fromStack(data);
     template.hasResourceProperties('AWS::DynamoDB::Table', {
@@ -100,6 +105,7 @@ describe('stack Template assertions (CHR-136)', () => {
     const data = new DataStack(app, 'DataForPubAssert', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     const publisher = new PublisherStack(app, 'Publisher-prod', {
       env: { account: config.account, region: config.region },
@@ -147,6 +153,12 @@ describe('stack Template assertions (CHR-136)', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-kvs-sync-failed',
     });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-data-integrity',
+      Namespace: 'gagnechris',
+      MetricName: 'DataIntegrityError',
+      AlarmActions: Match.anyValue(),
+    });
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
@@ -179,6 +191,7 @@ describe('stack Template assertions (CHR-136)', () => {
     const data = new DataStack(app, 'DataForApiAssert', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     const zone = HostedZone.fromHostedZoneAttributes(deps, 'EmailZone', {
       hostedZoneId: 'ZXXXXXXXXXXXX',
@@ -215,6 +228,22 @@ describe('stack Template assertions (CHR-136)', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-errors',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-handler-errors',
+      Namespace: 'gagnechris',
+      MetricName: 'HandlerError',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-data-integrity',
+      Namespace: 'gagnechris',
+      MetricName: 'DataIntegrityError',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-gateway-5xx',
+      AlarmActions: Match.anyValue(),
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-throttles',

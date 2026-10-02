@@ -54,6 +54,7 @@ const data = new DataStack(app, `Data-${config.name}`, {
   env: stackEnv,
   description: `DynamoDB single-table for posts and notebook (${config.name}).`,
   config,
+  alertsTopic: guardrails.alertsTopic,
 });
 
 // Email looks up the hosted zone itself (not via Dns) so Site can depend on
