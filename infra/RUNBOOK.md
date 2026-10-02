@@ -46,8 +46,11 @@ npm run cdk -- deploy Guardrails-prod --profile gagnechris-admin
 After deploying Guardrails:
 
 1. Confirm the SNS subscription email (AWS sends a Confirm subscription link).
-2. `aws budgets describe-budgets --account-id "$CDK_DEFAULT_ACCOUNT" --profile gagnechris-readonly`
-3. Optional test: publish to the alerts topic ARN from the stack outputs.
+2. Verify: `aws sns list-subscriptions-by-topic --topic-arn "$(aws ssm get-parameter --name /gagnechris/prod/alerts-topic-arn --query Parameter.Value --output text)" --profile gagnechris-readonly` — SubscriptionArn must not be `PendingConfirmation`.
+3. `aws budgets describe-budgets --account-id "$CDK_DEFAULT_ACCOUNT" --profile gagnechris-readonly`
+4. Optional test: `aws sns publish --topic-arn … --subject "gagnechris alert test" --message "ping" --profile gagnechris-admin` and confirm the email arrives.
+
+If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `AWS::SNS::Subscription` (deleted outside CFN), redeploy Guardrails so `AlertsEmailV2` recreates it (CHR-159), then confirm the email again.
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
