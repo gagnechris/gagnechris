@@ -72,6 +72,7 @@ export {
 export {
   APP_TABLE,
   LAST_DEPLOYED_GSI_NAMES,
+  LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
   appTableName,
   assertSafeGsiUpdate,

@@ -3,14 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
+import {
+  CI_COMPOSE_PROJECT_NAME,
+  dynamodbCiStartedFlagPath,
+  integrationComposeEnv,
+  teardownDynamodbCi,
+} from '../support/dynamodb-ci-lifecycle.js';
 
 const repoRoot = path.resolve(
   fileURLToPath(new URL('../../../..', import.meta.url)),
-);
-
-const STARTED_FLAG = path.join(
-  repoRoot,
-  'services/api/test/integration/.dynamodb-ci-started',
 );
 
 function applyIntegrationEnv(): void {
@@ -24,8 +25,8 @@ function applyIntegrationEnv(): void {
     process.env.AWS_ENDPOINT_URL_DYNAMODB ?? 'http://127.0.0.1:8000';
   // Never inherit DATA_TABLE_NAME (e.g. gagnechris-local from env.sh).
   delete process.env.DATA_TABLE_NAME;
-  process.env.COMPOSE_PROJECT_NAME =
-    process.env.COMPOSE_PROJECT_NAME ?? 'gagnechris-ci';
+  // Always isolate from `env.sh`'s COMPOSE_PROJECT_NAME=gagnechris.
+  process.env.COMPOSE_PROJECT_NAME = CI_COMPOSE_PROJECT_NAME;
 }
 
 async function waitForDynamo(maxAttempts = 60): Promise<void> {
@@ -56,21 +57,26 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     };
   }
 
+  const flagPath = dynamodbCiStartedFlagPath();
   let startedByUs = false;
   try {
     await waitForDynamo(3);
   } catch {
     try {
-      execSync('docker compose -f docker-compose.local.yml up -d dynamodb', {
-        cwd: repoRoot,
-        stdio: 'inherit',
-        env: { ...process.env },
-      });
+      execSync(
+        `docker compose -p ${CI_COMPOSE_PROJECT_NAME} -f docker-compose.local.yml up -d dynamodb`,
+        {
+          cwd: repoRoot,
+          stdio: 'inherit',
+          env: integrationComposeEnv(process.env),
+        },
+      );
       startedByUs = true;
-      fs.writeFileSync(STARTED_FLAG, '1', 'utf8');
+      fs.mkdirSync(path.dirname(flagPath), { recursive: true });
+      fs.writeFileSync(flagPath, '1', 'utf8');
     } catch (err) {
       throw new Error(
-        `Failed to start DynamoDB Local via compose project ${process.env.COMPOSE_PROJECT_NAME}. ` +
+        `Failed to start DynamoDB Local via compose project ${CI_COMPOSE_PROJECT_NAME}. ` +
           `Refusing to reuse an unknown listener on the endpoint.`,
         { cause: err },
       );
@@ -79,19 +85,17 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   }
 
   return async () => {
-    if (!startedByUs && !fs.existsSync(STARTED_FLAG)) return;
-    try {
-      execSync('docker compose -f docker-compose.local.yml down', {
-        cwd: repoRoot,
-        stdio: 'inherit',
-        env: { ...process.env },
-      });
-    } finally {
-      try {
-        fs.unlinkSync(STARTED_FLAG);
-      } catch {
-        /* ignore */
-      }
-    }
+    teardownDynamodbCi({
+      startedByUs,
+      repoRoot,
+      flagPath,
+      exec: (command, options) => {
+        execSync(command, {
+          cwd: options?.cwd,
+          stdio: 'inherit',
+          env: options?.env,
+        });
+      },
+    });
   };
 }

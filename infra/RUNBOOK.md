@@ -29,6 +29,8 @@ Concrete IDs and values: private note. Commands:
    `npx aws-cdk bootstrap aws://ACCOUNT/us-east-1 --profile gagnechris-admin`  
    (us-east-1 required for CloudFront certificates.)
 
+   **CHR-163:** `CiDeployRole-prod` attaches `DenyPrivateDataReads` (including `dynamodb:PartiQLSelect`) to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. Re-bootstrap is not required for that deny; deploying `CiDeployRole-prod` is enough. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
+
 ## CDK app (`infra/`)
 
 ```bash
@@ -145,6 +147,7 @@ bash scripts/apply-branch-protection.sh
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR:** `cdk synth` + `cdk diff` (diff role); sticky PR comment
      - **main deploy:** runs only after CI succeeds (`workflow_run`). Path filters use SSM `/gagnechris/prod/deployed-sha` (last SHA that finished CDK and/or web deploy) as the base — not `HEAD~1` — so a cancelled CI followed by a docs-only push still deploys the skipped infra/web changes. Missing/unknown base → deploy everything. After a successful deploy, CI writes `deployed-sha`. Docs-only merges that change nothing since that SHA skip deploy. Deploy role + `prod` environment; concurrency does not cancel in-flight deploys.
+     - **CHR-149 dry-run note (2026-10, no live cancel required):** path-filter base is resolved from SSM `deployed-sha` in `.github/workflows/cdk.yml` (`Resolve path-filter base`). A cancelled infra build therefore cannot strand changes behind a later docs-only commit — the next successful CI still diffs against the last deployed SHA. Live cancel→docs-only exercise left as optional ops confirmation.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; SNS alert on failure uses SSM `/gagnechris/prod/alerts-topic-arn`
 
 Prod only — there is no staging environment.
@@ -199,9 +202,9 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
 
-**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSI_NAMES` in `@gagnechris/data` fail CI if a PR adds or removes more than one index vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSI_NAMES` to match `APP_TABLE`.
+**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSIS` in `@gagnechris/data` fail CI if a PR adds/removes more than one index, or changes an existing index key schema, vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSIS` to match `APP_TABLE` (names **and** key attributes).
 
-**CHR-153:** this deploy adds sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) for the Notebook sync feed. After Data-prod succeeds, set `LAST_DEPLOYED_GSI_NAMES` to `['gsi1', 'gsi2', 'gsi3']`.
+**CHR-153 / CHR-163:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` includes `gsi1`/`gsi2`/`gsi3` in lockstep with `APP_TABLE`.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 

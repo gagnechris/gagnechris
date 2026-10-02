@@ -292,13 +292,20 @@ describe('CiDeployRoleStack', () => {
     const denyPolicies = policies.filter((p) =>
       JSON.stringify(p).includes('DenyPrivateDataReads'),
     );
-    expect(denyPolicies.length).toBeGreaterThanOrEqual(2);
+    // Diff + drift + bootstrap lookup role (closes AssumeRole hop).
+    expect(denyPolicies.length).toBeGreaterThanOrEqual(3);
     for (const p of denyPolicies) {
       const json = JSON.stringify(p);
       expect(json).toContain('dynamodb:GetItem');
+      expect(json).toContain('dynamodb:PartiQLSelect');
       expect(json).toContain('s3:GetObject');
       expect(json).toContain('"Effect":"Deny"');
     }
+    const lookupDeny = denyPolicies.find((p) =>
+      JSON.stringify(p).includes('cdk-hnb659fds-lookup-role-'),
+    );
+    expect(lookupDeny).toBeDefined();
+    expect(JSON.stringify(lookupDeny)).toContain('dynamodb:PartiQLSelect');
   });
 });
 

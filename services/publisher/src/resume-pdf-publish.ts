@@ -1,5 +1,5 @@
 import { Logger } from '@aws-lambda-powertools/logger';
-import type { Resume } from '@gagnechris/shared';
+import { PUBLISHER_SERVICE_NAME, type Resume } from '@gagnechris/shared';
 import {
   renderResumePdf,
   RESUME_PDF_CONTENT_DISPOSITION,
@@ -7,7 +7,7 @@ import {
 } from './resume-pdf.js';
 import type { SiteStorage } from './storage.js';
 
-const logger = new Logger({ serviceName: 'gagnechris-publisher' });
+const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 const CACHE_HTML = 'public,max-age=0,must-revalidate';
 
