@@ -128,11 +128,12 @@ jobs:
 
       # Path filters and ancestry checks use ReadOnly creds only — third-party
       # actions must not run while the AdministratorAccess deploy role is loaded (CHR-176).
+      # Drift role trusts `environment:prod` (diff role is PR-only).
       - name: Configure AWS credentials (planning role)
         if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       # Path filters compare against the last SHA that actually finished a
