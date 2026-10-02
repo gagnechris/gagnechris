@@ -126,8 +126,8 @@ export function PostEditorBody({
         </div>
       </div>
       <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes · paste or drop images
-        into the editor
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (does nothing in the body
+        editor) · paste or drop images into the editor
       </p>
     </>
   );

@@ -80,9 +80,10 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 Post, Home, and Resume containers are mostly field layout; shared wiring lives in app-core:
 
 - `createDraftPublishResource` + `useVersionedEntityEditor` (hydrate, version, autosave, lifecycle, delete hold)
-- `useQueuedAutosave` + `useDraftPublishEditor` (hold → busy → try/finally via `withHold`; delete included)
-- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates), `navLinkClass`
-- Post editor splits container (`PostEditorPage`) from presentational sections and `uploadImages` (uses shared `MEDIA_CONTENT_TYPES`)
+- `useQueuedAutosave` + `useDraftPublishEditor` (hold → busy → try/finally via `withHold`; delete awaits in-flight PUT)
+- Web shell `apps/web/src/admin/useVersionedEntityEditor.ts` adds confirm, leave guards, and ⌘S / ⌘⏎ shortcuts
+- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates + reorder focus), `navLinkClass`
+- Post editor splits container (`PostEditorPage`, keyed by `postId`) from presentational sections; `uploadImages(client, files)` takes the AppApiProvider client
 
 ## 404 handling
 

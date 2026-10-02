@@ -110,6 +110,7 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
     getLastSavedGen: () => 0,
     markClean: () => {},
     setAutosaveHeld: () => {},
+    awaitInFlight: async () => 'clean',
   });
 
   /** RN's `Alert` resolves on a later tick; a sync read would see a promise. */

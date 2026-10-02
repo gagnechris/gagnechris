@@ -1,10 +1,10 @@
-import { EditorState } from '@codemirror/state';
+import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
-import { taskListToggle, toggleTaskAtPos } from './taskListToggle';
+import { taskListToggle } from './taskListToggle';
 
 const LONG_MARKDOWN = Array.from(
   { length: 80 },
@@ -42,6 +42,19 @@ const SCROLL_FIX_CSS = `
   height: min(70vh, 40rem);
 }
 `;
+
+/** Fire a real Space keydown through CodeMirror's keymap (CHR-165). */
+function typeSpace(view: EditorView) {
+  view.focus();
+  view.contentDOM.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
 
 describe('MarkdownEditor scroll (CHR-111)', () => {
   let styleEl: HTMLStyleElement;
@@ -126,12 +139,14 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
       }),
     });
 
-    // `[ ]` is at offsets 2..5; cursor after `]` is at 5 — must not toggle.
-    expect(toggleTaskAtPos(view, 5, true)).toBe(false);
+    // `[ ]` is at offsets 2..5; cursor after `]` is at 5 — Space must not toggle.
+    view.dispatch({ selection: EditorSelection.cursor(5) });
+    typeSpace(view);
     expect(view.state.doc.toString()).toBe('- [ ] buy milk');
 
-    // Cursor between brackets (offset 3) toggles.
-    expect(toggleTaskAtPos(view, 3, true)).toBe(true);
+    // Cursor between brackets (offset 3) — Space toggles via the keymap.
+    view.dispatch({ selection: EditorSelection.cursor(3) });
+    typeSpace(view);
     expect(view.state.doc.toString()).toBe('- [x] buy milk');
   });
 
@@ -145,7 +160,8 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
         extensions: [taskListToggle()],
       }),
     });
-    expect(toggleTaskAtPos(view, 3, true)).toBe(false);
+    view.dispatch({ selection: EditorSelection.cursor(3) });
+    typeSpace(view);
     expect(view.state.doc.toString()).toBe('- [x](https://example.com)');
   });
 
@@ -181,9 +197,21 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     await waitFor(() => {
       expect(container.querySelector('.cm-editor')).toBeTruthy();
     });
-    // Without the extension, Space bindings from taskListToggle are absent —
-    // document text stays as typed via onChange only.
-    expect(onChange).not.toHaveBeenCalled();
+
+    const cm = container.querySelector('.cm-content') as HTMLElement;
+    // Place caret inside [ ] and type Space — without taskListToggle this
+    // must not flip the box to [x].
+    cm.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: ' ',
+        code: 'Space',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(onChange.mock.calls.some(([v]) => String(v).includes('- [x]'))).toBe(
+      false,
+    );
   });
 
   test('lineNumbers can be turned off via prop', async () => {

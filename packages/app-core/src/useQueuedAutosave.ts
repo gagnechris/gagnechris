@@ -201,6 +201,10 @@ export function useQueuedAutosave<TDraft, TEntity>({
     return () => timersRef.current.clearTimeout(handle);
   }, [dirty, draft, debounceMs, enabled, save, held]);
 
+  const awaitInFlight = useCallback((): Promise<FlushResult> => {
+    return chainRef.current ?? Promise.resolve('clean');
+  }, []);
+
   return {
     save,
     saveState,
@@ -209,6 +213,11 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setSaveState,
     bumpEdit,
     setAutosaveHeld,
+    /**
+     * Resolve when any in-flight PUT chain finishes (or immediately if idle).
+     * Delete joins this so DELETE cannot race an autosave PUT (CHR-165).
+     */
+    awaitInFlight,
     /** Current edit generation — use to detect typing during publish/unpublish. */
     getEditGen: () => editGenRef.current,
     /** Edit generation of the draft last successfully persisted. */

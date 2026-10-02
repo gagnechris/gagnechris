@@ -55,7 +55,6 @@ export {
 } from './query/api.js';
 export {
   preferNewerByVersion,
-  removeCachedPost,
   setCachedHome,
   setCachedPost,
   setCachedResume,
@@ -76,35 +75,18 @@ export {
   postResource,
   useCreatePostMutation,
   useDeletePostMutation,
-  useDiscardPostMutation,
-  usePostLifecycleMutators,
-  usePostQuery,
   usePostsQuery,
-  usePublishPostMutation,
   useSetPostCache,
-  useUnpublishPostMutation,
-  useUpdatePostMutation,
   type PostResourceParams,
 } from './query/posts.js';
 export {
   homeResource,
-  useDiscardHomeMutation,
-  useHomeLifecycleMutators,
-  useHomeQuery,
-  usePublishHomeMutation,
   useSetHomeCache,
-  useUnpublishHomeMutation,
-  useUpdateHomeMutation,
   type HomeResourceParams,
 } from './query/home.js';
 export {
   resumeResource,
-  useDiscardResumeMutation,
-  usePublishResumeMutation,
-  useResumeLifecycleMutators,
   useResumeQuery,
   useSetResumeCache,
-  useUnpublishResumeMutation,
-  useUpdateResumeMutation,
   type ResumeResourceParams,
 } from './query/resume.js';
