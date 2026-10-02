@@ -3252,11 +3252,11 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description ISO-8601 watermark; omit for the beginning of the user sync stream */
+                    /** @description ISO-8601 watermark from a prior nextSince; omit for a full resync. Older than the tombstone horizon → 410 resync_required */
                     since?: string;
                     /** @description Opaque pagination cursor from a previous sync page */
                     cursor?: string;
-                    /** @description Page size (1-100) */
+                    /** @description Page size (1-100; default 50) */
                     limit?: number;
                 };
                 header?: never;
@@ -3273,14 +3273,27 @@ export interface paths {
                     content: {
                         "application/json": {
                             changes: {
-                                type: string;
+                                /** @enum {string} */
+                                type: "fakeNote";
                                 id: string;
                                 version: number;
                                 deleted: boolean;
                                 /** Format: date-time */
                                 updatedAt: string;
                                 entity?: {
-                                    [key: string]: unknown;
+                                    id: string;
+                                    userId: string;
+                                    title: string;
+                                    body: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    deleted: boolean;
+                                    /** @enum {string} */
+                                    area?: "work" | "personal";
+                                    noteDate?: string;
                                 };
                             }[];
                             nextCursor?: string;
@@ -3306,6 +3319,21 @@ export interface paths {
                 };
                 /** @description Unauthorized */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Gone — sync watermark older than tombstone horizon (`resync_required`) */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3865,27 +3893,92 @@ export interface components {
             description?: string;
             ogImage?: string;
         };
-        SyncChange: {
-            type: string;
+        FakeNoteEntity: {
+            id: string;
+            userId: string;
+            title: string;
+            body: string;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            deleted: boolean;
+            /** @enum {string} */
+            area?: "work" | "personal";
+            noteDate?: string;
+        };
+        FakeNoteSyncChange: {
+            /** @enum {string} */
+            type: "fakeNote";
             id: string;
             version: number;
             deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
             entity?: {
-                [key: string]: unknown;
+                id: string;
+                userId: string;
+                title: string;
+                body: string;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+                /** @enum {string} */
+                area?: "work" | "personal";
+                noteDate?: string;
+            };
+        };
+        SyncChange: {
+            /** @enum {string} */
+            type: "fakeNote";
+            id: string;
+            version: number;
+            deleted: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            entity?: {
+                id: string;
+                userId: string;
+                title: string;
+                body: string;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+                /** @enum {string} */
+                area?: "work" | "personal";
+                noteDate?: string;
             };
         };
         SyncChangesResponse: {
             changes: {
-                type: string;
+                /** @enum {string} */
+                type: "fakeNote";
                 id: string;
                 version: number;
                 deleted: boolean;
                 /** Format: date-time */
                 updatedAt: string;
                 entity?: {
-                    [key: string]: unknown;
+                    id: string;
+                    userId: string;
+                    title: string;
+                    body: string;
+                    version: number;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    deleted: boolean;
+                    /** @enum {string} */
+                    area?: "work" | "personal";
+                    noteDate?: string;
                 };
             }[];
             nextCursor?: string;

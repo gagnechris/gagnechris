@@ -191,6 +191,27 @@ export class ApiStack extends Stack {
         arnFormat: ArnFormat.COLON_RESOURCE_NAME,
       }),
     );
+    // Notebook sync gets a higher ceiling than public contact/resume so a
+    // contact spike is less likely to starve offline catch-up (CHR-172).
+    // Gateway 429 bodies are still `{"message":…}` (not ErrorResponse).
+    cfnStage.addPropertyOverride('RouteSettings', {
+      'ANY /api/notebook/{proxy+}': {
+        ThrottlingRateLimit: 50,
+        ThrottlingBurstLimit: 100,
+      },
+      'ANY /api/notebook': {
+        ThrottlingRateLimit: 50,
+        ThrottlingBurstLimit: 100,
+      },
+      'POST /api/contact': {
+        ThrottlingRateLimit: 5,
+        ThrottlingBurstLimit: 10,
+      },
+      'POST /api/resume/download': {
+        ThrottlingRateLimit: 5,
+        ThrottlingBurstLimit: 10,
+      },
+    });
 
     const healthRoutes = this.httpApi.addRoutes({
       path: '/api/health',

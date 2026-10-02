@@ -12,7 +12,9 @@ import {
   syncSk,
   SYNC_CREATE_CLAIM_TTL_DAYS,
   SYNC_OVERLAP_MS,
+  SYNC_RESYNC_MARGIN_MS,
   SYNC_TOMBSTONE_TTL_DAYS,
+  syncResyncHorizonIso,
   ttlDaysFromNow,
 } from '../src/index.js';
 
@@ -103,6 +105,16 @@ describe('@gagnechris/data keys', () => {
   it('sync overlap is at least the API Lambda timeout (CHR-162)', () => {
     expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
     expect(SYNC_CREATE_CLAIM_TTL_DAYS).toBeGreaterThan(SYNC_TOMBSTONE_TTL_DAYS);
+  });
+
+  it('syncResyncHorizonIso is tombstone TTL plus margin before now (CHR-172)', () => {
+    const at = new Date('2026-10-02T12:00:00.000Z');
+    const horizon = syncResyncHorizonIso(at);
+    expect(Date.parse(horizon)).toBe(
+      at.getTime() -
+        SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 -
+        SYNC_RESYNC_MARGIN_MS,
+    );
   });
 
   it('ttlDaysFromNow defaults to SYNC_TOMBSTONE_TTL_DAYS', () => {

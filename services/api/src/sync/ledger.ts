@@ -1,17 +1,23 @@
 /**
- * Per-user sync change feed over the sparse sync GSI (CHR-153).
+ * Per-user sync change feed over the sparse sync GSI (CHR-153 / CHR-172).
  * One META row per entity; no N+1 GetItem; watermark + overlap for clock skew.
  */
 import {
   QueryCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import type { SyncChange, SyncChangesQuery } from '@gagnechris/shared';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
+import {
+  SYNC_DEFAULT_PAGE_LIMIT,
+  type SyncChange,
+  type SyncChangesQuery,
+} from '@gagnechris/shared';
 import {
   GSI3_NAME,
   syncPk,
   syncSinceLowerBound,
   normalizeSyncSince,
+  syncResyncHorizonIso,
 } from '@gagnechris/data';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
@@ -20,6 +26,8 @@ import {
   encodeCursor,
 } from '../data/cursor.js';
 import { throwCursorValidation } from '../data/dynamo-errors.js';
+import { ResyncRequiredError } from '../data/errors.js';
+import { logger, metrics } from '../observability.js';
 import { getSyncAdapter } from './registry.js';
 
 /** ExclusiveStartKey shape for the sync GSI (base keys + index keys). */
@@ -57,7 +65,13 @@ export class SyncLedger {
     const { since, cursor, limit } = query;
     if (since !== undefined) {
       // Validate / normalize early so bad client clocks fail as 400.
-      normalizeSyncSince(since);
+      const normalized = normalizeSyncSince(since);
+      const horizon = syncResyncHorizonIso(new Date(watermarkAt));
+      if (Date.parse(normalized) < Date.parse(horizon)) {
+        throw new ResyncRequiredError(
+          'Sync watermark is older than the tombstone retention horizon; full resync required',
+        );
+      }
     }
     const exclusiveStartKey = decodeCursor(cursor, SYNC_GSI_CURSOR_KEYS);
     const pk = syncPk(userId);
@@ -90,7 +104,7 @@ export class SyncLedger {
                 ':pk': pk,
               },
           ExclusiveStartKey: exclusiveStartKey,
-          Limit: limit,
+          Limit: limit ?? SYNC_DEFAULT_PAGE_LIMIT,
         }),
       );
     } catch (error) {
@@ -103,7 +117,13 @@ export class SyncLedger {
       const changeType = itemChangeType(item);
       if (!changeType) continue;
       const adapter = getSyncAdapter(changeType);
-      if (!adapter) continue;
+      if (!adapter) {
+        logger.warn('Skipping sync row with no registered adapter', {
+          changeType,
+        });
+        metrics.addMetric('SyncAdapterMissing', MetricUnit.Count, 1);
+        continue;
+      }
       const change = adapter.toChange(item);
       if (change) changes.push(change);
     }

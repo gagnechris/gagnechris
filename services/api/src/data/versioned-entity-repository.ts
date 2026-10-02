@@ -19,6 +19,7 @@ import {
   SYNC_CREATE_CLAIM_TTL_DAYS,
   ttlDaysFromNow,
 } from '@gagnechris/data';
+import type { SyncChange } from '@gagnechris/shared';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { logCorruptStoredItem } from './corrupt-item.js';
@@ -37,6 +38,7 @@ import {
   throwVersionConflict,
   versionMatchValues,
 } from './version-condition.js';
+import { registerSyncEntity } from '../sync/registry.js';
 
 export { VERSION_MATCH_CONDITION } from './version-condition.js';
 
@@ -55,6 +57,11 @@ export type SyncEntityConfig<T extends VersionedEntity> = {
    * matching hash is idempotent. Required when sync is configured (CHR-162).
    */
   createPayloadHash: (entity: T) => string;
+  /**
+   * Feed adapter — registered automatically when the repository is constructed
+   * (CHR-172). Maps a projected META item to a SyncChange.
+   */
+  toChange: (item: Record<string, unknown>) => SyncChange | undefined;
 };
 
 export type VersionedEntityConfig<
@@ -98,7 +105,15 @@ export class VersionedEntityRepository<
     protected readonly config: VersionedEntityConfig<T, TItem>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
-  ) {}
+  ) {
+    // Derive feed adapters from repository sync config (CHR-172).
+    if (config.sync) {
+      registerSyncEntity({
+        changeType: config.sync.changeType,
+        toChange: config.sync.toChange,
+      });
+    }
+  }
 
   protected now(): string {
     return this.config.nowIso?.() ?? new Date().toISOString();
@@ -337,10 +352,9 @@ export class VersionedEntityRepository<
         const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        // Prefer the create-time hash so a later legitimate update does not
-        // 409 a delayed identical create retry (CHR-162).
-        const baseline = storedHash ?? hashFn(existing);
-        if (requestHash !== baseline) {
+        // Legacy rows without createHash cannot prove create-time identity
+        // (hashing current state is unsafe after updates) — CHR-172.
+        if (storedHash === undefined || requestHash !== storedHash) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
             {
@@ -396,18 +410,48 @@ export class VersionedEntityRepository<
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
-    const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
+    const sync = this.config.sync;
+    const ttl = sync ? ttlDaysFromNow() : undefined;
     const raw = await this.getRawItem(id);
     const createHash =
       typeof raw?.createHash === 'string' ? raw.createHash : undefined;
+    const claimTtl = sync
+      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS)
+      : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
-          new PutCommand({
-            TableName: this.tableName,
-            Item: this.toStoredItem(tombstone, { ttl, createHash }),
-            ConditionExpression: VERSION_MATCH_CONDITION,
-            ExpressionAttributeValues: versionMatchValues(expectedVersion),
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: this.toStoredItem(tombstone, { ttl, createHash }),
+                  ConditionExpression: VERSION_MATCH_CONDITION,
+                  ExpressionAttributeValues:
+                    versionMatchValues(expectedVersion),
+                },
+              },
+              ...(sync && claimTtl !== undefined
+                ? [
+                    {
+                      Put: {
+                        TableName: this.tableName,
+                        Item: {
+                          pk: syncCreateClaimPk(sync.changeType, id),
+                          sk: syncCreateClaimSk(),
+                          entityType: 'syncCreateClaim',
+                          changeType: sync.changeType,
+                          entityId: id,
+                          ...(createHash !== undefined ? { createHash } : {}),
+                          createdAt: tombstone.updatedAt,
+                          ttl: claimTtl,
+                        },
+                      },
+                    },
+                  ]
+                : []),
+            ],
           }),
         ),
       `Delete conflict (${this.config.conflictLabel} version)`,

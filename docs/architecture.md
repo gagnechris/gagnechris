@@ -124,13 +124,18 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
-## Notebook sync contract (CHR-153 / CHR-162)
+## Notebook sync contract (CHR-153 / CHR-162 / CHR-172)
 
 `GET /api/notebook/sync/changes` is the generic change feed real Notebook entities will use:
 
-- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, includes `userId`) are idempotent (mismatch → 409). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge.
+- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, includes `userId`) are idempotent (mismatch → 409). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge. Soft-delete **extends** the claim TTL from delete time. Rows without `createHash` cannot prove create-time identity and return **409** `payload_mismatch`.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
-- **`since` normalization + `nextSince` watermark** with a `SYNC_OVERLAP_MS` (15s) overlap window (≥ API Lambda timeout) so late-committed writes are delivered; clients dedupe by `(id, version)`.
+- **Adapters** come from `config.sync.toChange` (registered when the repository is constructed). Missing adapters log + emit `SyncAdapterMissing`; a unit test fails if a synced fixture has no adapter.
+- **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (today: `fakeNote` fixture; Note/Task variants land with those entities).
+- **`since` / `nextSince`**: `nextSince` is an ISO-8601 server watermark (treat as opaque; echo as `since`). Overlap window `SYNC_OVERLAP_MS` (15s ≥ API Lambda timeout); clients dedupe by `(id, version)`. **`since` older than `now − SYNC_TOMBSTONE_TTL_DAYS − SYNC_RESYNC_MARGIN_MS` → 410 `resync_required`** (full resync). Omit `since` for a full feed.
+- **Paging**: default `limit` is 50 (max 100). No batch mutate endpoint — clients apply changes one-by-one.
+- **`updatedAt` is server-stamped**; clients must not rely on client clocks for ordering.
+- **Throttle**: stage default 20 rps / 50 burst; notebook routes 50/100; public contact and resume-download 5/10. API Gateway 429 bodies are `{"message":…}` (not `ErrorResponse`) — retry with backoff and refresh Cognito tokens before a long offline catch-up.
 - **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version` (helpers in `services/api/src/data/versioned-route.ts` / `concurrency.ts`):
   - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
@@ -138,7 +143,14 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   - Body-only `version` mismatch → **409** (`version_conflict`) with `currentVersion` + `current`
 - **409 `error` codes** (machine-readable): `version_conflict`, `deleted`, `payload_mismatch`, `slug_taken`, `daily_taken` (plus legacy `conflict`).
 
-Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (CHR-153). Details: [data-model.md](./data-model.md).
+### API versioning policy (sync contract v1)
+
+- OpenAPI info version tracks the HTTP contract (currently `0.3.0`). Sync feed changes are **additive only** until a major bump: new `SyncChange` variants, optional fields, new query params with defaults.
+- Clients must **tolerant-decode**: ignore unknown `type` values and unknown entity fields.
+- A future `X-Client-Version` / minimum-client gate may return **426**; until then there is no min-client header.
+- On **410 `resync_required`**, discard tombstone-dependent local state and re-fetch with no `since`.
+
+Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union as the typed contract fixture until Note/Task ship. Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 

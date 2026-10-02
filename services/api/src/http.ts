@@ -9,6 +9,7 @@ import {
   DataIntegrityError,
   NotFoundError,
   PreconditionFailedError,
+  ResyncRequiredError,
   ServiceUnavailableError,
 } from './data/errors.js';
 import { isExclusiveStartKeyValidationError } from './data/dynamo-errors.js';
@@ -108,6 +109,9 @@ export function mapRouteError(
   }
   if (error instanceof NotFoundError) {
     return json(404, { error: 'not_found', message: error.message });
+  }
+  if (error instanceof ResyncRequiredError) {
+    return json(410, { error: 'resync_required', message: error.message });
   }
   if (error instanceof PreconditionFailedError) {
     return json(412, {

@@ -14,7 +14,11 @@ import {
   noteTasksGsi2Sk,
   type NotebookArea,
 } from '@gagnechris/data';
-import type { SyncChange } from '@gagnechris/shared';
+import {
+  FakeNoteEntitySchema,
+  FakeNoteSyncChangeSchema,
+  type SyncChange,
+} from '@gagnechris/shared';
 import {
   OwnerScopedVersionedEntityRepository,
   type UniqueClaimHook,
@@ -123,21 +127,26 @@ export function fakeNoteToChange(
   item: Record<string, unknown>,
 ): SyncChange | undefined {
   if (item.entityType !== FAKE_NOTE_CHANGE_TYPE) return undefined;
-  const entity = toFakeNoteEntity(item as FakeNoteItem);
-  const change: SyncChange = {
+  const parsed = FakeNoteEntitySchema.safeParse(
+    toFakeNoteEntity(item as FakeNoteItem),
+  );
+  if (!parsed.success) return undefined;
+  const entity = parsed.data;
+  const change = FakeNoteSyncChangeSchema.parse({
     type: FAKE_NOTE_CHANGE_TYPE,
     id: entity.id,
     version: entity.version,
     deleted: entity.deleted,
     updatedAt: entity.updatedAt,
-  };
-  if (!entity.deleted) {
-    change.entity = { ...entity };
-  }
+    ...(entity.deleted ? {} : { entity }),
+  });
   return change;
 }
 
-/** Register the fake-note adapter once for a test file. */
+/**
+ * Ensures the fake-note adapter is registered (also happens via repo construct).
+ * Kept for tests that call the ledger without constructing a repo first.
+ */
 export function registerFakeNoteSync(): void {
   registerSyncEntity({
     changeType: FAKE_NOTE_CHANGE_TYPE,
@@ -233,6 +242,7 @@ export function createFakeNotesRepo(
         changeType: FAKE_NOTE_CHANGE_TYPE,
         userIdOf: (n) => n.userId,
         createPayloadHash: fakeNotePayloadHash,
+        toChange: fakeNoteToChange,
       },
       uniqueClaim: dailyNoteClaimHook(doc, tableName),
     },

@@ -38,6 +38,7 @@ import {
   throwVersionConflict,
   versionMatchValues,
 } from './version-condition.js';
+import { registerSyncEntity } from '../sync/registry.js';
 import {
   type QueryPage,
   type SyncEntityConfig,
@@ -111,7 +112,15 @@ export class OwnerScopedVersionedEntityRepository<
     protected readonly config: OwnerScopedVersionedEntityConfig<T, TItem>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
-  ) {}
+  ) {
+    // Derive feed adapters from repository sync config (CHR-172).
+    if (config.sync) {
+      registerSyncEntity({
+        changeType: config.sync.changeType,
+        toChange: config.sync.toChange,
+      });
+    }
+  }
 
   protected now(): string {
     return this.config.nowIso?.() ?? new Date().toISOString();
@@ -420,8 +429,9 @@ export class OwnerScopedVersionedEntityRepository<
         const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        const baseline = storedHash ?? hashFn(existing);
-        if (requestHash !== baseline) {
+        // Legacy rows without createHash cannot prove create-time identity
+        // (hashing current state is unsafe after updates) — CHR-172.
+        if (storedHash === undefined || requestHash !== storedHash) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
             {
@@ -477,7 +487,8 @@ export class OwnerScopedVersionedEntityRepository<
     tombstone: T,
   ): Promise<T> {
     this.assertOwner(userId, tombstone);
-    const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
+    const sync = this.config.sync;
+    const ttl = sync ? ttlDaysFromNow() : undefined;
     const raw = await this.getRawItem(userId, id);
     if (!raw) {
       throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
@@ -486,14 +497,50 @@ export class OwnerScopedVersionedEntityRepository<
     this.assertOwner(userId, existing);
     const createHash =
       typeof raw.createHash === 'string' ? raw.createHash : undefined;
+    const claimTtl = sync
+      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS)
+      : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
-          new PutCommand({
-            TableName: this.tableName,
-            Item: this.toStoredItem(tombstone, { ttl, createHash }),
-            ConditionExpression: VERSION_MATCH_CONDITION,
-            ExpressionAttributeValues: versionMatchValues(expectedVersion),
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: this.toStoredItem(tombstone, { ttl, createHash }),
+                  ConditionExpression: VERSION_MATCH_CONDITION,
+                  ExpressionAttributeValues:
+                    versionMatchValues(expectedVersion),
+                },
+              },
+              // Extend create-claim TTL from delete time so it always outlives
+              // the tombstone (CHR-172).
+              ...(sync && claimTtl !== undefined
+                ? [
+                    {
+                      Put: {
+                        TableName: this.tableName,
+                        Item: {
+                          pk: ownerSyncCreateClaimPk(
+                            userId,
+                            sync.changeType,
+                            id,
+                          ),
+                          sk: syncCreateClaimSk(),
+                          entityType: 'syncCreateClaim',
+                          changeType: sync.changeType,
+                          entityId: id,
+                          userId,
+                          ...(createHash !== undefined ? { createHash } : {}),
+                          createdAt: tombstone.updatedAt,
+                          ttl: claimTtl,
+                        },
+                      },
+                    },
+                  ]
+                : []),
+            ],
           }),
         ),
       `Delete conflict (${this.config.conflictLabel} version)`,

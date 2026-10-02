@@ -32,6 +32,8 @@ import {
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
+  FakeNoteEntitySchema,
+  FakeNoteSyncChangeSchema,
   SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
@@ -114,13 +116,16 @@ const r400 = err('Validation error (may include `fields`)');
 const r401 = err('Unauthorized');
 const r404 = err('Not found');
 const r409 = conflict('Conflict (may include `currentVersion` / `current`)');
+const r410 = err(
+  'Gone — sync watermark older than tombstone horizon (`resync_required`)',
+);
 const r412 = preconditionFailed();
 const r429 = err('Rate limited');
 const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
 const r503 = err('Service unavailable (throttling)');
 
-const notebookAuth = { 401: r401, 500: r500, 503: r503 };
+const notebookAuth = { 401: r401, 410: r410, 500: r500, 503: r503 };
 const versionedAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
 
 const adminAuth = { 401: r401, 500: r500, 503: r503 };
@@ -162,6 +167,8 @@ export function buildOpenApiDocument() {
   registry.register('ResumeEducation', ResumeEducationSchema);
   registry.register('ResumeExperience', ResumeExperienceSchema);
   registry.register('PostSeo', PostSeoSchema);
+  registry.register('FakeNoteEntity', FakeNoteEntitySchema);
+  registry.register('FakeNoteSyncChange', FakeNoteSyncChangeSchema);
   registry.register('SyncChange', SyncChangeSchema);
   registry.register('SyncChangesResponse', SyncChangesResponseSchema);
 
