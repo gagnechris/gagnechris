@@ -8,6 +8,7 @@ import {
   type NotebookAreaFilter,
 } from './notebook/notebookAreaPreference';
 import NotebookSearchPalette from './notebook/NotebookSearchPalette';
+import { useNotebookExport } from './notebook/useNotebookExport';
 
 export type NotebookOutletContext = {
   areaFilter: NotebookAreaFilter;
@@ -35,6 +36,11 @@ export default function AdminNotebookLayout() {
     readNotebookAreaFilter(),
   );
   const [searchOpen, setSearchOpen] = useState(false);
+  const {
+    exportZip,
+    busy: exportBusy,
+    error: exportError,
+  } = useNotebookExport();
 
   const setAreaFilter = (next: NotebookAreaFilter) => {
     setAreaFilterState(next);
@@ -99,8 +105,22 @@ export default function AdminNotebookLayout() {
             Search
             <kbd className="notebook-search__kbd">⌘K</kbd>
           </button>
+          <button
+            type="button"
+            className="admin-nav__link admin-nav__button"
+            onClick={() => void exportZip()}
+            disabled={exportBusy}
+            aria-busy={exportBusy}
+          >
+            {exportBusy ? 'Exporting…' : 'Export'}
+          </button>
         </nav>
       </div>
+      {exportError ? (
+        <p className="admin-hint" role="alert">
+          Export failed: {exportError}
+        </p>
+      ) : null}
       <Outlet context={outletContext} />
       {searchOpen ? (
         <NotebookSearchPalette

@@ -331,6 +331,10 @@ API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/
 | ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | `/api/notebook/search` | Query: `q` (required), optional `area`, `limit` (max 50). Scans the caller's notes and tasks (capped) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
 
+### Human export (CHR-47)
+
+No dedicated export API. The admin **Export** button pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). See `infra/RUNBOOK.md` (human export vs PITR).
+
 ## Conventions
 
 - Timestamps: UTC ISO-8601 with millisecond precision.
