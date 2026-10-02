@@ -331,11 +331,9 @@ describe('PostsRepository', () => {
     expect(third.items).toEqual([]);
     expect(third.nextCursor).toBeUndefined();
 
-    const allIds = [
-      ...first.items,
-      ...second.items,
-      ...third.items,
-    ].map((p) => p.id);
+    const allIds = [...first.items, ...second.items, ...third.items].map(
+      (p) => p.id,
+    );
     expect(allIds).toEqual([publishedPost.id, draft.id]);
     expect(new Set(allIds).size).toBe(allIds.length);
     expect(publishedCalls).toBe(2);

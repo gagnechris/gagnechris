@@ -174,7 +174,9 @@ describe('ResumeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildResumeMetaItem(draft), buildResumePublishedItem(stored)),
     );
-    const resume = await new ResumeRepository(doc, 'gagnechris-test').publish(draft.version);
+    const resume = await new ResumeRepository(doc, 'gagnechris-test').publish(
+      draft.version,
+    );
     expect(resume.status).toBe('published');
     expect(resume.name).toBe('Edited Name');
     expect(resume.hasUnpublishedChanges).toBe(false);
@@ -195,7 +197,9 @@ describe('ResumeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
     );
-    const resume = await new ResumeRepository(doc, 'gagnechris-test').publish(stored.version);
+    const resume = await new ResumeRepository(doc, 'gagnechris-test').publish(
+      stored.version,
+    );
     expect(resume.version).toBe(3);
     expect(
       send.mock.calls.some(
@@ -208,10 +212,9 @@ describe('ResumeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildResumeMetaItem(stored), buildResumePublishedItem(stored)),
     );
-    const resume = await new ResumeRepository(
-      doc,
-      'gagnechris-test',
-    ).unpublish(stored.version);
+    const resume = await new ResumeRepository(doc, 'gagnechris-test').unpublish(
+      stored.version,
+    );
     expect(resume.status).toBe('draft');
     expect(resume.publishedAt).toBe(stored.publishedAt);
     expect(resume.version).toBe(4);

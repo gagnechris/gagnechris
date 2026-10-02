@@ -21,10 +21,7 @@ import {
   GSI1_CURSOR_KEYS,
 } from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
-import {
-  DataIntegrityError,
-  NotFoundError,
-} from '../data/errors.js';
+import { DataIntegrityError, NotFoundError } from '../data/errors.js';
 import {
   PublishableRepository,
   assertExpectedVersion,
@@ -176,8 +173,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
           new TransactWriteCommand({ TransactItems: transactItems }),
         ),
       'Update conflict (version)',
-      () =>
-        throwVersionConflict(before.version, () => this.getById(after.id)),
+      () => throwVersionConflict(before.version, () => this.getById(after.id)),
       {
         slugClaimIndexes,
         slugTakenMessage: `Slug "${after.slug}" is already taken`,
