@@ -85,7 +85,43 @@ const platformNeutralRestrictedImports = {
           message:
             'Platform-neutral packages must not import react-dom (CHR-156).',
         },
+        {
+          group: ['@gagnechris/shared/*'],
+          message:
+            'RN-facing packages must import @gagnechris/shared (domain root) only — not /render or /openapi (CHR-164).',
+        },
       ],
+    },
+  ],
+};
+
+/** Node / DOM globals that must not sneak into platform-neutral packages (CHR-164). */
+const platformNeutralRestrictedGlobals = {
+  'no-restricted-globals': [
+    'error',
+    {
+      name: 'process',
+      message:
+        'Platform-neutral packages must not use process (CHR-164). Inject env at the app boundary.',
+    },
+    {
+      name: 'Buffer',
+      message: 'Platform-neutral packages must not use Buffer (CHR-164).',
+    },
+    {
+      name: 'window',
+      message:
+        'Platform-neutral packages must not use window (CHR-164). Inject platform APIs.',
+    },
+    {
+      name: 'document',
+      message:
+        'Platform-neutral packages must not use document (CHR-164). Inject platform APIs.',
+    },
+    {
+      name: 'localStorage',
+      message:
+        'Platform-neutral packages must not use localStorage (CHR-164). Inject storage.',
     },
   ],
 };
@@ -97,20 +133,17 @@ const unusedVarsRule = {
   ],
 };
 
-/** Shared domain entry modules (not render / openapi / scripts). */
-const sharedDomainFiles = [
-  'packages/shared/src/index.ts',
-  'packages/shared/src/constants.ts',
-  'packages/shared/src/site-config.ts',
-  'packages/shared/src/schemas.ts',
-  'packages/shared/src/home-default.ts',
-  'packages/shared/src/resume-default.ts',
-  'packages/shared/src/slugify.ts',
-  'packages/shared/src/post-date.ts',
-  'packages/shared/src/excerpt.ts',
-  'packages/shared/src/post-date.test.ts',
-  // Ephemeral files from `npm run check:platform-neutral-lint`
-  'packages/shared/src/*platform-neutral-lint-fixture*.ts',
+/** Shared domain sources — everything under src/ except render / openapi / scripts / tests (CHR-164). */
+const sharedDomainIgnores = [
+  'packages/shared/src/**/*.test.ts',
+  'packages/shared/src/render.ts',
+  'packages/shared/src/html.ts',
+  'packages/shared/src/markdown.ts',
+  'packages/shared/src/home-html.ts',
+  'packages/shared/src/resume-html.ts',
+  'packages/shared/src/openapi.ts',
+  'packages/shared/src/openapi-extend.ts',
+  'packages/shared/src/generate-openapi.ts',
 ];
 
 export default tseslint.config(
@@ -152,14 +185,16 @@ export default tseslint.config(
       'packages/app-core/**/*.{ts,tsx}',
       'packages/api-client/**/*.{ts,tsx}',
       'packages/tokens/src/**/*.{ts,tsx}',
-      ...sharedDomainFiles,
+      'packages/shared/src/**/*.{ts,tsx}',
     ],
+    ignores: sharedDomainIgnores,
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.es2022,
     },
     rules: {
       ...platformNeutralRestrictedImports,
+      ...platformNeutralRestrictedGlobals,
     },
   },
   {
@@ -197,7 +232,11 @@ export default tseslint.config(
       'react-hooks': reactHooks,
       'import-x': importX,
     },
-    settings: importXResolverSettings,
+    settings: {
+      ...importXResolverSettings,
+      // Avoid parsing react-native Flow sources for cycle detection (CHR-164).
+      'import-x/ignore': ['node_modules'],
+    },
     rules: {
       ...reactHooks.configs.recommended.rules,
       ...noCrossWorkspaceRelativeImports,

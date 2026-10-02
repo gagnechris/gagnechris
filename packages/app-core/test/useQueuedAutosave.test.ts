@@ -4,6 +4,7 @@ import {
   useQueuedAutosave,
   type FlushResult,
 } from '../src/useQueuedAutosave.js';
+import { defaultTimers } from '../src/platform.js';
 import { act, renderHook, useState } from './renderHook.js';
 
 /** flushMicrotasks + optional timer advance without jsdom waitFor. */
@@ -247,11 +248,7 @@ describe('useQueuedAutosave', () => {
         performSave,
         onSaved: () => {},
         conflictMessage: 'Conflict',
-        timers: {
-          setTimeout: (handler, ms) =>
-            setTimeout(handler, ms) as ReturnType<typeof setTimeout>,
-          clearTimeout: (h) => clearTimeout(h),
-        },
+        timers: defaultTimers,
       });
       return { ...autosave, setDraft, setDirty, dirty };
     });

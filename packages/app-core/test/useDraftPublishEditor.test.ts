@@ -115,12 +115,7 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
 
   /** RN's `Alert` resolves on a later tick; a sync read would see a promise. */
   const deferredConfirm = (answer: boolean) =>
-    vi.fn(
-      (_message: string) =>
-        new Promise<boolean>((resolve) => {
-          setTimeout(() => resolve(answer), 0);
-        }),
-    );
+    vi.fn((_message: string) => Promise.resolve(answer));
 
   const renderEditor = (confirm: (message: string) => Promise<boolean>) => {
     const unpublish = vi.fn(async () => ({
