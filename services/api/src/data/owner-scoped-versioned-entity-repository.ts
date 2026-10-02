@@ -31,12 +31,7 @@ import {
 } from './cursor.js';
 import { throwCursorValidation } from './dynamo-errors.js';
 import { runDynamoWrite } from './dynamo-write.js';
-import {
-  ConflictError,
-  DataIntegrityError,
-  NotFoundError,
-  type ConflictCode,
-} from './errors.js';
+import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
   runVersionedWrite,
@@ -66,7 +61,7 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   }>;
   /** Indexes into the array returned by `buildItems` that are unique claims. */
   claimIndexes: readonly number[];
-  conflictCode: Exclude<ConflictCode, 'conflict'>;
+  conflictCode: 'slug_taken' | 'daily_taken';
   conflictMessage?: string;
   /**
    * When a unique claim conflicts during `createIdempotent`, resolve to the
