@@ -1,12 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import {
+  buildResumePdfArtifact,
   renderResumePdf,
   sanitizeResumePdfText,
   RESUME_PDF_PUBLIC_PATH,
 } from '../src/resume-pdf.js';
-import { publishResumePdf } from '../src/resume-pdf-publish.js';
-import type { SiteStorage } from '../src/storage.js';
 
 const publishedResume = {
   ...DEFAULT_RESUME,
@@ -68,41 +67,29 @@ describe('renderResumePdf', () => {
   });
 });
 
-describe('publishResumePdf', () => {
-  it('writes the PDF when generation succeeds', async () => {
-    const put = vi.fn(async () => undefined);
-    const storage = { put } as unknown as SiteStorage;
+describe('buildResumePdfArtifact', () => {
+  it('returns the PDF artifact when generation succeeds', async () => {
     const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
-    const result = await publishResumePdf(
-      storage,
+    const result = await buildResumePdfArtifact(
       publishedResume,
       async () => pdf,
     );
-    expect(result).toEqual({ status: 'written' });
-    expect(put).toHaveBeenCalledWith(
-      'resume.pdf',
-      pdf,
-      'application/pdf',
-      'public,max-age=0,must-revalidate',
-      'attachment; filename="Chris-Gagne-Resume.pdf"',
-    );
+    expect(result).toEqual({
+      ok: true,
+      artifact: {
+        key: 'resume.pdf',
+        body: pdf,
+        contentType: 'application/pdf',
+        cacheControl: 'public,max-age=0,must-revalidate',
+        contentDisposition: 'attachment; filename="Chris-Gagne-Resume.pdf"',
+      },
+    });
   });
 
-  it('keeps the previous PDF when generation throws', async () => {
-    const put = vi.fn(async () => undefined);
-    const storage = { put } as unknown as SiteStorage;
-    const result = await publishResumePdf(
-      storage,
-      publishedResume,
-      async () => {
-        throw new Error('forced PDF failure');
-      },
-    );
-    expect(result.status).toBe('kept-previous');
-    if (result.status === 'kept-previous') {
-      expect(result.error).toBeInstanceOf(Error);
-      expect((result.error as Error).message).toBe('forced PDF failure');
-    }
-    expect(put).not.toHaveBeenCalled();
+  it('returns ok:false when generation throws', async () => {
+    const result = await buildResumePdfArtifact(publishedResume, async () => {
+      throw new Error('forced PDF failure');
+    });
+    expect(result).toEqual({ ok: false });
   });
 });

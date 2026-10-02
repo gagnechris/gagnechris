@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
+import { homeToSnapshot } from '../src/home-publish.js';
+import { toListItem } from '../src/posts.js';
 import {
   buildRssXml,
   buildSitemapXml,
@@ -59,5 +61,14 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
     expect(renderResumeUnavailablePage(shell)).toMatchSnapshot();
     expect(buildRssXml([samplePost()])).toMatchSnapshot();
     expect(buildSitemapXml([samplePost()])).toMatchSnapshot();
+  });
+
+  it('matches frozen JSON for posts.json, slugs.json, and last-published.json (CHR-166)', () => {
+    const post = samplePost();
+    expect(
+      JSON.stringify({ items: [toListItem(post)] }, null, 0),
+    ).toMatchSnapshot();
+    expect(JSON.stringify({ slugs: [post.slug] }, null, 0)).toMatchSnapshot();
+    expect(JSON.stringify(homeToSnapshot(DEFAULT_HOME))).toMatchSnapshot();
   });
 });

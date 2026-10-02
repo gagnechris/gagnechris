@@ -19,6 +19,12 @@ export type RebuildScope = {
   home: boolean;
   /** Update resume HTML + PDF. */
   resume: boolean;
+  /**
+   * PUBLISHED entity types seen in this stream batch (including types that are
+   * not yet scope flags). Targets with their own Dynamo entity match via this
+   * set — no new RebuildScope boolean required (CHR-166).
+   */
+  touchedEntityTypes: Set<string>;
 };
 
 export type StreamMeta = {
@@ -50,6 +56,7 @@ export function fullRebuildScope(): RebuildScope {
     feeds: true,
     home: true,
     resume: true,
+    touchedEntityTypes: new Set(),
   };
 }
 
@@ -60,11 +67,13 @@ export function isFullRebuildScope(scope: RebuildScope): boolean {
 
 /**
  * Derive a minimal rebuild scope from a DynamoDB Streams batch of PUBLISHED items.
- * Unknown entity types are ignored (Notebook / future entities must opt in).
+ * Unknown entity types do not set home/resume/feeds flags (CHR-128) but are
+ * recorded in `touchedEntityTypes` so registered targets can match them (CHR-166).
  */
 export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   const postSlugs = new Set<string>();
   const slugsToRemove = new Set<string>();
+  const touchedEntityTypes = new Set<string>();
   let home = false;
   let resume = false;
   let feeds = false;
@@ -74,6 +83,12 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     const newMeta = imageToStreamMeta(record.dynamodb?.NewImage);
     const entity = newMeta?.entityType ?? oldMeta?.entityType ?? undefined;
 
+    if (entity != null) {
+      touchedEntityTypes.add(entity);
+    }
+
+    // Unknown entity types do not set home/resume/feeds/post flags (CHR-128),
+    // but remain in `touchedEntityTypes` so targets can match them (CHR-166).
     if (entity != null && !KNOWN_ENTITY_TYPES.has(entity)) {
       continue;
     }
@@ -121,6 +136,7 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     feeds,
     home,
     resume,
+    touchedEntityTypes,
   };
 }
 

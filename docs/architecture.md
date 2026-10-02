@@ -48,8 +48,18 @@ listed in the explicit `publishTargets` array in `publish-targets/registry.ts`
 (esbuild bundles those imports). Targets return `{ artifacts, deleteKeys,
 invalidationPaths }`; the orchestrator writes, deletes, and invalidates.
 CloudFront KeyValueStore slug sync remains a post-step after invalidation
-(CHR-123 order). Adding a page is one new `*.target.ts` plus one registry
-entry — no `rebuild-scope.ts` edits.
+(CHR-123 order).
+
+**Adding a page:** one new `*.target.ts` plus one registry entry. Prefer matching
+existing scope flags (`home`, `feeds`, …) or `touchedEntityTypes` for a page
+with its own Dynamo entity — no new `RebuildScope` boolean. `collectRebuildScope`
+records every PUBLISHED `entityType` in `touchedEntityTypes` (including types
+that are not yet known flags); unknown types still do not set home/resume/feeds
+(CHR-128 / CHR-166).
+
+Invalidation is target-owned: a body-only post edit that does not change feed
+artifacts will not re-invalidate `/rss.xml` or `/sitemap.xml` when those files
+are unchanged (hash-skip / no feed rewrite). That is intentional after CHR-157.
 
 On relevant stream events the publisher updates, among others:
 
@@ -97,7 +107,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
 - API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
-- Local API (`services/api/local/server.ts`) injects fake JWT claims on `/api/admin/*` and `/api/notebook/*` paths (mirroring API Gateway), so public routes still exercise the missing-auth path.
+- Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
 ## Notebook sync contract (CHR-153 / CHR-162)
 
@@ -122,8 +132,8 @@ Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (
 5. Wrong method on a known path → **405** with an `Allow` header; unknown path → **404**. Malformed `%` escapes in path params → **400**. When multiple patterns match, **literal segments win** over `:param` (e.g. `/tasks/today` over `/tasks/:id`).
 6. Per-route CloudWatch metrics use the route `metric` name (no redundant `route` dimension).
 7. Keep these three places in sync (CI/tests assert agreement):
-   - **Route table** `auth: 'admin'` patterns must live under `/admin` or `/notebook` (`API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`).
-   - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`).
+   - **Route table** `auth: 'admin'` patterns must live under `/admin` or `/notebook` (`API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
+   - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`) — no extra JWT paths. Each `auth: 'public'` route also needs its own `addRoutes` entry (method + `/api…` path); there is no `$default` catch-all.
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 

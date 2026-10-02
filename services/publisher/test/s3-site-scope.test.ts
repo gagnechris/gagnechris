@@ -145,9 +145,13 @@ function memoryStorage(): SiteStorage & {
 describe('rebuildPublishedSite selective scope', () => {
   const prevTable = process.env.DATA_TABLE_NAME;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.DATA_TABLE_NAME = 'test-table';
     ddbSend.mockReset();
+    const { syncViewerRequestBlogSlugs } =
+      await import('../src/viewer-request-slugs.js');
+    vi.mocked(syncViewerRequestBlogSlugs).mockReset();
+    vi.mocked(syncViewerRequestBlogSlugs).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -192,6 +196,7 @@ describe('rebuildPublishedSite selective scope', () => {
       feeds: false,
       home: true,
       resume: false,
+      touchedEntityTypes: new Set(),
     };
 
     const result = await rebuildPublishedSite({ scope, storage });
@@ -262,6 +267,7 @@ describe('rebuildPublishedSite selective scope', () => {
       feeds: true,
       home: false,
       resume: false,
+      touchedEntityTypes: new Set(),
     };
 
     const result = await rebuildPublishedSite({ scope, storage });
@@ -354,6 +360,7 @@ describe('rebuildPublishedSite selective scope', () => {
         feeds: true,
         home: false,
         resume: false,
+        touchedEntityTypes: new Set(),
       },
       storage,
     });
@@ -414,6 +421,7 @@ describe('rebuildPublishedSite selective scope', () => {
           feeds: true,
           home: false,
           resume: false,
+          touchedEntityTypes: new Set(),
         },
         storage,
       }),
@@ -423,5 +431,52 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(storage.invalidations[0]).toEqual(
       expect.arrayContaining(['/blog*', '/sitemap.xml', '/rss.xml']),
     );
+  });
+
+  it('skips META-only published rows when building feeds (CHR-146)', async () => {
+    const staleMeta = makePost('stale-only', 1);
+
+    ddbSend.mockImplementation(
+      async (cmd: {
+        input?: {
+          IndexName?: string;
+          RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
+        };
+      }) => {
+        if (cmd.input?.IndexName === 'gsi1') {
+          return { Items: [postMeta(staleMeta)] };
+        }
+        if (cmd.input?.RequestItems) {
+          const table = Object.keys(cmd.input.RequestItems)[0]!;
+          // BatchGet finds no PUBLISHED snapshot — do not synthesize from META.
+          return { Responses: { [table]: [] } };
+        }
+        return {};
+      },
+    );
+
+    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const storage = memoryStorage();
+    await rebuildPublishedSite({
+      scope: {
+        allPosts: false,
+        postSlugs: new Set(),
+        slugsToRemove: new Set(),
+        feeds: true,
+        home: false,
+        resume: false,
+        touchedEntityTypes: new Set(),
+      },
+      storage,
+    });
+
+    const postsJson = JSON.parse(
+      (await storage.read('blog/posts.json')) ?? '{}',
+    ) as { items: unknown[] };
+    const slugsJson = JSON.parse(
+      (await storage.read('blog/slugs.json')) ?? '{}',
+    ) as { slugs: unknown[] };
+    expect(postsJson.items).toEqual([]);
+    expect(slugsJson.slugs).toEqual([]);
   });
 });
