@@ -223,6 +223,34 @@ jobs:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never
 
+      # Scratch PITR restore + Scan COUNT compare (CHR-175). Runs after Data
+      # deploys so Backup/PITR stay proven; does not rename gagnechris-prod.
+      - name: PITR restore rehearsal
+        if: >
+          success() && (
+            github.event_name == 'workflow_dispatch' ||
+            steps.path_base.outputs.deploy_all == 'true' ||
+            steps.filter.outputs.cdk == 'true'
+          )
+        run: |
+          chmod +x scripts/rehearse-pitr-restore.sh
+          scripts/rehearse-pitr-restore.sh | tee pitr-rehearsal.log
+          # Surface for the Actions summary / RUNBOOK paste.
+          grep '^REHEARSAL_OK' pitr-rehearsal.log >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload PITR rehearsal log
+        if: >
+          always() && (
+            github.event_name == 'workflow_dispatch' ||
+            steps.path_base.outputs.deploy_all == 'true' ||
+            steps.filter.outputs.cdk == 'true'
+          )
+        uses: actions/upload-artifact@v4
+        with:
+          name: pitr-rehearsal-log
+          path: pitr-rehearsal.log
+          if-no-files-found: ignore
+
       - name: Build, sync to S3, invalidate CloudFront
         if: >
           github.event_name == 'workflow_dispatch' ||
