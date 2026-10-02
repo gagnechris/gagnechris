@@ -61,6 +61,7 @@ describe('collectRebuildScope', () => {
     const scope = collectRebuildScope(records);
     expect(scope.feeds).toBe(false);
     expect([...scope.postSlugs]).toEqual([]);
+    expect([...scope.touchedEntityTypes]).toEqual(['note']);
     expect(streamNeedsRebuild(records)).toBe(false);
   });
 
@@ -199,6 +200,7 @@ describe('isFullRebuildScope', () => {
         feeds: true,
         home: false,
         resume: false,
+        touchedEntityTypes: new Set(),
       }),
     ).toBe(false);
   });

@@ -3,8 +3,9 @@
  * `import.meta.glob`, so each `*.target.ts` is imported below.
  *
  * Adding a published page: add `targets/<name>.target.ts` and one entry in
- * `publishTargets` — no `rebuild-scope.ts` edits; the target owns its
- * `invalidationPaths`.
+ * `publishTargets`. Match existing scope flags or `touchedEntityTypes` for an
+ * own Dynamo entity — no new RebuildScope boolean; the target owns its
+ * `invalidationPaths` (CHR-166).
  */
 import type { PublishTarget } from './types.js';
 import blogFeedsTarget from './targets/blog-feeds.target.js';

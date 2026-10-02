@@ -1,10 +1,16 @@
 /**
- * AC demo target (CHR-157): a real new page (`now/index.html`) owned entirely
- * by this file. Production registry is unchanged; tests append this target to
- * the explicit `publishTargets` array (one registry entry, no rebuild-scope edits).
+ * AC demo target (CHR-157 / CHR-166): a real new page (`now/index.html`) owned
+ * entirely by this file. Production registry is unchanged; tests append this
+ * target to the explicit `publishTargets` array.
+ *
+ * Matches via `touchedEntityTypes` (own Dynamo entity trigger) or a full
+ * rebuild — no new RebuildScope boolean / rebuild-scope.ts edit required.
  */
+import { isFullRebuildScope } from '../../src/rebuild-scope.js';
 import type { PublishTarget } from '../../src/publish-targets/types.js';
 import { CACHE_HTML } from '../../src/publish-targets/types.js';
+
+const NOW_ENTITY = 'now';
 
 const NOW_HTML = `<!doctype html>
 <html lang="en">
@@ -16,8 +22,9 @@ const NOW_HTML = `<!doctype html>
 const target: PublishTarget = {
   id: 'now-page',
   matches(scope) {
-    // Piggyback on full rebuild / home without a new RebuildScope boolean.
-    return scope.home;
+    return (
+      scope.touchedEntityTypes.has(NOW_ENTITY) || isFullRebuildScope(scope)
+    );
   },
   needsCatalog: () => false,
   needsShell: () => false,
