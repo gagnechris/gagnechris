@@ -241,6 +241,9 @@ describe('daily note first write (CHR-42 false conflict)', () => {
 
     expect(result.current.saveError).toBeNull();
     expect(result.current.entity?.version).toBeGreaterThan(0);
-    expect(stored?.version).toBeGreaterThan(0);
+    if (!stored) {
+      throw new Error('expected persisted daily note after first write');
+    }
+    expect(stored.version).toBeGreaterThan(0);
   });
 });
