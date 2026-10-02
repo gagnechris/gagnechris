@@ -6,6 +6,12 @@ import {
   type StackProps,
 } from 'aws-cdk-lib';
 import {
+  BackupPlan,
+  BackupPlanRule,
+  BackupResource,
+  BackupVault,
+} from 'aws-cdk-lib/aws-backup';
+import {
   AttributeType,
   BillingMode,
   Operation,
@@ -13,8 +19,10 @@ import {
   Table,
   TableEncryption,
 } from 'aws-cdk-lib/aws-dynamodb';
+import { Schedule } from 'aws-cdk-lib/aws-events';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import {
   APP_TABLE,
@@ -140,6 +148,45 @@ export class DataStack extends Stack {
     }
 
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
+
+    // AWS Backup beyond PITR (CHR-175): daily snapshots, 35-day retention,
+    // vault lock (governance window) so retention cannot be silently shortened.
+    const backupVault = new BackupVault(this, 'AppTableBackupVault', {
+      backupVaultName: `gagnechris-${config.name}-app-table`,
+      removalPolicy: RemovalPolicy.RETAIN,
+      lockConfiguration: {
+        minRetention: Duration.days(7),
+        maxRetention: Duration.days(35),
+        // Governance: lock settings can still change for 3 days after enable.
+        changeableFor: Duration.days(3),
+      },
+    });
+    NagSuppressions.addResourceSuppressions(backupVault, [
+      {
+        id: 'AwsSolutions-BACKUP1',
+        reason:
+          'Vault uses AWS-owned key; customer-managed KMS is a follow-up if Notebook data classification requires it (CHR-175).',
+      },
+    ]);
+
+    const backupPlan = new BackupPlan(this, 'AppTableBackupPlan', {
+      backupPlanName: `gagnechris-${config.name}-app-table-daily`,
+      backupVault,
+      backupPlanRules: [
+        new BackupPlanRule({
+          ruleName: 'Daily',
+          scheduleExpression: Schedule.cron({
+            minute: '0',
+            hour: '7',
+          }),
+          deleteAfter: Duration.days(35),
+        }),
+      ],
+    });
+    backupPlan.addSelection('AppTableSelection', {
+      resources: [BackupResource.fromDynamoDbTable(this.table)],
+      allowRestores: true,
+    });
 
     metricAlarm(this, 'AppTableSystemErrors', {
       alarmName: `gagnechris-${config.name}-dynamodb-system-errors`,

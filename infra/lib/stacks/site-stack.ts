@@ -119,6 +119,14 @@ export class SiteStack extends Stack {
       serverAccessLogsPrefix: 's3-site/',
       removalPolicy: config.statefulRemovalPolicy,
       autoDeleteObjects: config.statefulRemovalPolicy === RemovalPolicy.DESTROY,
+      // Expire noncurrent versions so versioning cannot grow unbound (CHR-175).
+      lifecycleRules: [
+        {
+          id: 'ExpireNoncurrentVersions',
+          enabled: true,
+          noncurrentVersionExpiration: Duration.days(90),
+        },
+      ],
       // Browser PUTs for admin media uploads (CHR-31).
       cors: [
         {

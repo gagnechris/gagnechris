@@ -224,6 +224,57 @@ When Notebook (or any feature) needs several new indexes:
 
 **CHR-153 / CHR-163 / CHR-174:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` currently matches that set and lags `APP_TABLE` by at most one intentional create.
 
+### Backups beyond PITR (CHR-175)
+
+In addition to DynamoDB PITR (35 days, same-region):
+
+- **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`), 35-day retention, and vault lock (`MinRetentionDays=7`, `MaxRetentionDays=35`, 3-day changeable window).
+- Cross-region / cross-account copy is a follow-up; do not rely on a second region yet.
+- Site bucket: versioning on + lifecycle expires noncurrent versions after 90 days.
+
+### PITR restore + cut-over (scratch rehearsal)
+
+The live table name is fixed (`gagnechris-prod`). A PITR restore always creates a **new** table; cut-over is a deliberate rename/swap, not an in-place undo.
+
+**Rehearsal (safe — does not touch the live table name):**
+
+```bash
+# Prefer the CI workflow: Actions → "PITR restore rehearsal" → Run workflow
+# Or locally with a break-glass admin profile (record use here):
+SOURCE=gagnechris-prod
+TARGET=gagnechris-prod-restore-$(date -u +%Y%m%d)
+REGION=us-east-1
+
+# 1) Item count on source (approx; Scan)
+SRC_COUNT=$(aws dynamodb scan --table-name "$SOURCE" --region "$REGION" \
+  --select COUNT --query 'Count' --output text)
+
+# 2) Restore to a scratch table (PITR; latest restorable time)
+aws dynamodb restore-table-to-point-in-time \
+  --region "$REGION" \
+  --source-table-name "$SOURCE" \
+  --target-table-name "$TARGET" \
+  --use-latest-restorable-time
+
+# 3) Wait until ACTIVE, then compare counts
+aws dynamodb wait table-exists --table-name "$TARGET" --region "$REGION"
+# (also wait until TableStatus=ACTIVE via describe-table)
+DST_COUNT=$(aws dynamodb scan --table-name "$TARGET" --region "$REGION" \
+  --select COUNT --query 'Count' --output text)
+test "$SRC_COUNT" = "$DST_COUNT"
+
+# 4) Delete the scratch table (never delete gagnechris-prod here)
+aws dynamodb delete-table --table-name "$TARGET" --region "$REGION"
+```
+
+**Production cut-over (disaster only — stop and ask Chris first):** restore to a new name, pause writers (API/publisher), verify counts/sample keys, then swap by updating SSM / redeploying consumers to the restored table name, or rename via a planned dual-write window. Document the chosen name in the incident notes. Do not `delete-table` on `gagnechris-prod` while cut-over is incomplete.
+
+#### Restore rehearsal log
+
+| Date (UTC)                                         | Operator | Source count | Restored table | Restored count | Duration | Notes |
+| -------------------------------------------------- | -------- | ------------ | -------------- | -------------- | -------- | ----- |
+| _(pending first CI rehearsal after Backup deploy)_ |          |              |                |                |          |       |
+
 **CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
 
 ```bash

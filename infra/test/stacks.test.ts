@@ -55,6 +55,29 @@ describe('stack Template assertions (CHR-136)', () => {
         }),
       ),
     });
+
+    // CHR-175: AWS Backup plan selects the AppTable.
+    template.hasResourceProperties('AWS::Backup::BackupVault', {
+      BackupVaultName: 'gagnechris-prod-app-table',
+      LockConfiguration: Match.objectLike({
+        MinRetentionDays: 7,
+        MaxRetentionDays: 35,
+      }),
+    });
+    template.hasResourceProperties('AWS::Backup::BackupPlan', {
+      BackupPlan: Match.objectLike({
+        BackupPlanName: 'gagnechris-prod-app-table-daily',
+      }),
+    });
+    template.hasResourceProperties('AWS::Backup::BackupSelection', {
+      BackupSelection: {
+        SelectionName: 'AppTableSelection',
+        Resources: Match.arrayWith([
+          { 'Fn::GetAtt': [Match.stringLikeRegexp('AppTable'), 'Arn'] },
+        ]),
+        IamRoleArn: Match.anyValue(),
+      },
+    });
   });
 
   it('SiteStack has /api/* and /media/* behaviors', () => {
@@ -92,6 +115,21 @@ describe('stack Template assertions (CHR-136)', () => {
     expect(siteJson).toContain('"/assets/*"');
     template.hasResourceProperties('AWS::CloudFront::KeyValueStore', {
       Name: 'gagnechris-prod-blog-slugs',
+    });
+    // CHR-175: noncurrent version lifecycle on the versioned site bucket.
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      VersioningConfiguration: { Status: 'Enabled' },
+      LifecycleConfiguration: {
+        Rules: Match.arrayWith([
+          Match.objectLike({
+            Id: 'ExpireNoncurrentVersions',
+            Status: 'Enabled',
+            NoncurrentVersionExpiration: Match.objectLike({
+              NoncurrentDays: 90,
+            }),
+          }),
+        ]),
+      },
     });
   });
 
