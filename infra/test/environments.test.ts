@@ -24,7 +24,10 @@ import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
-import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
+import {
+  CDK_DEFAULT_BOOTSTRAP_QUALIFIER,
+  CiDeployRoleStack,
+} from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 
 const testEnv = {
@@ -302,7 +305,9 @@ describe('CiDeployRoleStack', () => {
       expect(json).toContain('"Effect":"Deny"');
     }
     const lookupDeny = denyPolicies.find((p) =>
-      JSON.stringify(p).includes('cdk-hnb659fds-lookup-role-'),
+      JSON.stringify(p).includes(
+        `cdk-${CDK_DEFAULT_BOOTSTRAP_QUALIFIER}-lookup-role-`,
+      ),
     );
     expect(lookupDeny).toBeDefined();
     expect(JSON.stringify(lookupDeny)).toContain('dynamodb:PartiQLSelect');

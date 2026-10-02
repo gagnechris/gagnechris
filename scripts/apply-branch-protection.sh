@@ -35,4 +35,4 @@ else
     --jq '{id, name, enforcement, created_at: .created_at}'
 fi
 
-echo "Done. Direct pushes to main should be rejected; PRs need \"Lint, test, and build\", \"Local E2E smoke (CHR-82)\", and \"API integration (DynamoDB Local)\" green."
+echo "Done. Direct pushes to main should be rejected; PRs need \"Lint, test, and build\", \"Local E2E smoke (CHR-82)\", \"API integration (DynamoDB Local)\", and \"Mobile typecheck, lint, test, bundle\" green."

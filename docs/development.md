@@ -113,7 +113,9 @@ docker compose -f docker-compose.local.yml ps
 lsof -iTCP:8000 -sTCP:LISTEN
 ```
 
-Use the stable Compose project name (`gagnechris`) so worktrees share one Local instance, or stop the conflicting container/process. Override with `AWS_ENDPOINT_URL_DYNAMODB` / Compose port mapping only if you know you need a second instance.
+Use the stable Compose project name (`gagnechris`) so worktrees share one Local instance, or stop the conflicting container/process. Override with `DYNAMODB_LOCAL_HOST_PORT` / `AWS_ENDPOINT_URL_DYNAMODB` / Compose port mapping only if you need a second instance.
+
+GitHub Actions API integration uses Compose project `gagnechris-ci` on host port **8001** (`docker-compose.ci.yml`) so a long-running CI container does not block `npm run local:dev` on **8000**.
 
 ### Admin still hits Cognito locally
 

@@ -6,6 +6,15 @@ import path from 'node:path';
 /** Compose project for API integration tests — never the local-dev `gagnechris`. */
 export const CI_COMPOSE_PROJECT_NAME = 'gagnechris-ci' as const;
 
+export const CI_COMPOSE_FILES = [
+  'docker-compose.local.yml',
+  'docker-compose.ci.yml',
+] as const;
+
+export function ciComposeFileArgs(): string {
+  return CI_COMPOSE_FILES.map((f) => `-f ${f}`).join(' ');
+}
+
 /** Flag that this process started DynamoDB Local (lives in os.tmpdir, not the repo). */
 export function dynamodbCiStartedFlagPath(
   tmpDir: string = os.tmpdir(),
@@ -54,7 +63,7 @@ export function teardownDynamodbCi(opts: {
     });
   try {
     run(
-      `docker compose -p ${CI_COMPOSE_PROJECT_NAME} -f docker-compose.local.yml down`,
+      `docker compose -p ${CI_COMPOSE_PROJECT_NAME} ${ciComposeFileArgs()} down`,
       {
         cwd: opts.repoRoot,
         stdio: 'inherit',

@@ -20,11 +20,6 @@ on:
           - drift
         default: deploy
 
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
-
 env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
@@ -39,6 +34,10 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
     concurrency:
       group: cdk-diff-${{ github.ref }}
       cancel-in-progress: true
@@ -95,7 +94,7 @@ jobs:
 
       - name: Post diff comment
         if: ${{ !cancelled() && hashFiles('cdk-diff-comment.md') != '' }}
-        uses: marocchino/sticky-pull-request-comment@v3
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88
         with:
           header: cdk-diff
           path: cdk-diff-comment.md
@@ -112,9 +111,11 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
     environment: prod
     concurrency:
-      # Shared with drift so a nightly check queues behind (or after) deploys.
       group: cdk-prod
       cancel-in-progress: false
     steps:
@@ -125,28 +126,34 @@ jobs:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
-      # Path filters compare against the last SHA that actually finished a
-      # deploy (SSM /gagnechris/prod/deployed-sha), not HEAD~1. Otherwise an
-      # infra commit whose CI was cancelled is invisible to a later docs-only
-      # push and never deploys (CHR-149).
-      - name: Configure AWS credentials (deploy role)
+      # Path filters and ancestry checks use ReadOnly creds only — third-party
+      # actions must not run while the AdministratorAccess deploy role is loaded (CHR-176).
+      - name: Configure AWS credentials (planning role)
         if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Path filters compare against the last SHA that actually finished a
+      # deploy (SSM deployed-sha), not HEAD~1. Otherwise an infra commit whose
+      # CI was cancelled is invisible to a later docs-only push and never
+      # deploys (CHR-149).
       - name: Resolve path-filter base
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
         id: path_base
         run: |
+          DEPLOYED_SHA_PARAM="$(bash scripts/ssm-param-name.sh prod deployedSha)"
+          echo "DEPLOYED_SHA_PARAM=${DEPLOYED_SHA_PARAM}" >> "$GITHUB_ENV"
           set +e
           DEPLOYED=$(aws ssm get-parameter \
-            --name /gagnechris/prod/deployed-sha \
+            --name "${DEPLOYED_SHA_PARAM}" \
             --query 'Parameter.Value' \
             --output text 2>/dev/null)
           code=$?
           set -e
+          HEAD="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+          echo "head_sha=${HEAD}" >> "$GITHUB_OUTPUT"
           if [ "$code" -ne 0 ] || [ -z "$DEPLOYED" ] || [ "$DEPLOYED" = "None" ]; then
             echo "No deployed-sha in SSM; deploying everything."
             echo "deploy_all=true" >> "$GITHUB_OUTPUT"
@@ -163,9 +170,24 @@ jobs:
           echo "deploy_all=false" >> "$GITHUB_OUTPUT"
           echo "sha=${DEPLOYED}" >> "$GITHUB_OUTPUT"
 
+      - name: Refuse rollback deploy
+        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+        run: |
+          HEAD="${{ steps.path_base.outputs.head_sha }}"
+          BASE="${{ steps.path_base.outputs.sha }}"
+          if [ "${{ steps.path_base.outputs.deploy_all }}" = "true" ] || [ -z "$BASE" ]; then
+            echo "Skipping ancestry check (no deployed base)."
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "$BASE" "$HEAD"; then
+            echo "Refusing deploy: ${HEAD} is not a descendant of deployed ${BASE}." >&2
+            exit 1
+          fi
+          echo "Deploy head ${HEAD} descends from deployed ${BASE}."
+
       - name: Path filter
         if: github.event_name == 'workflow_run' && steps.path_base.outputs.deploy_all != 'true'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
         id: filter
         with:
           base: ${{ steps.path_base.outputs.sha }}
@@ -194,6 +216,20 @@ jobs:
               - 'scripts/deploy-web.sh'
               - '.github/workflows/cdk.yml'
               - '.github/actions/setup/**'
+
+      - name: Configure AWS credentials (deploy role)
+        if: >
+          (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch') &&
+          (
+            github.event_name == 'workflow_dispatch' ||
+            steps.path_base.outputs.deploy_all == 'true' ||
+            steps.filter.outputs.cdk == 'true' ||
+            steps.filter.outputs.web == 'true'
+          )
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup
         if: >
@@ -272,7 +308,7 @@ jobs:
         run: |
           SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
           aws ssm put-parameter \
-            --name /gagnechris/prod/deployed-sha \
+            --name "${DEPLOYED_SHA_PARAM}" \
             --type String \
             --value "$SHA" \
             --overwrite
@@ -285,10 +321,13 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'drift')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     environment: prod
     concurrency:
-      # Same group as deploy so drift never overlaps an in-progress stack update.
-      group: cdk-prod
+      # Separate from deploy so nightly drift never queues behind or blocks deploy (CHR-176).
+      group: cdk-drift
       cancel-in-progress: false
     steps:
       - name: Checkout
@@ -323,8 +362,9 @@ jobs:
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: |
+          ALERTS_TOPIC_PARAM="$(bash scripts/ssm-param-name.sh prod alertsTopicArn)"
           TOPIC_ARN=$(aws ssm get-parameter \
-            --name "/gagnechris/prod/alerts-topic-arn" \
+            --name "${ALERTS_TOPIC_PARAM}" \
             --query 'Parameter.Value' \
             --output text)
           aws sns publish \

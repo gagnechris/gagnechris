@@ -33,6 +33,9 @@
           },
           {
             "context": "API integration (DynamoDB Local)"
+          },
+          {
+            "context": "Mobile typecheck, lint, test, bundle"
           }
         ]
       }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import {
   CI_COMPOSE_PROJECT_NAME,
+  ciComposeFileArgs,
   dynamodbCiStartedFlagPath,
   integrationComposeEnv,
   teardownDynamodbCi,
@@ -64,7 +65,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   } catch {
     try {
       execSync(
-        `docker compose -p ${CI_COMPOSE_PROJECT_NAME} -f docker-compose.local.yml up -d dynamodb`,
+        `docker compose -p ${CI_COMPOSE_PROJECT_NAME} ${ciComposeFileArgs()} up -d dynamodb`,
         {
           cwd: repoRoot,
           stdio: 'inherit',

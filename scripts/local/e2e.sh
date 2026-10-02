@@ -30,18 +30,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> DynamoDB Local"
+DDB_PORT="${DYNAMODB_LOCAL_HOST_PORT:-8000}"
+DDB_ENDPOINT="http://127.0.0.1:${DDB_PORT}"
+
+echo "==> DynamoDB Local (host port ${DDB_PORT})"
 docker compose -f docker-compose.local.yml up -d
 
 echo "==> Wait for DynamoDB Local"
 for i in $(seq 1 60); do
   if AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local \
-    AWS_REGION=us-east-1 AWS_ENDPOINT_URL_DYNAMODB=http://127.0.0.1:8000 \
+    AWS_REGION=us-east-1 AWS_ENDPOINT_URL_DYNAMODB="${DDB_ENDPOINT}" \
     node -e "
       import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
       const c = new DynamoDBClient({
         region: 'us-east-1',
-        endpoint: 'http://127.0.0.1:8000',
+        endpoint: process.env.AWS_ENDPOINT_URL_DYNAMODB,
         credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
       });
       await c.send(new ListTablesCommand({}));
@@ -50,7 +53,7 @@ for i in $(seq 1 60); do
   fi
   sleep 0.5
   if [[ "$i" -eq 60 ]]; then
-    echo "DynamoDB Local did not become ready on :8000" >&2
+    echo "DynamoDB Local did not become ready on :${DDB_PORT}" >&2
     exit 1
   fi
 done

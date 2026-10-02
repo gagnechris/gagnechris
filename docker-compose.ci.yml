@@ -1,0 +1,5 @@
+# CI / API integration only: host port 8001 so local dev can keep 8000 (CHR-176).
+services:
+  dynamodb:
+    ports:
+      - '8001:8000'
