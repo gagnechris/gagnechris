@@ -558,9 +558,14 @@ describe('DataStack', () => {
   it('creates on-demand single-table with GSIs, PITR, stream, and RETAIN', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'DataDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
     const data = new DataStack(app, 'Data-prod', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     applyStandardTags(data, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
@@ -600,6 +605,14 @@ describe('DataStack', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/data-table-stream-arn',
     });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-dynamodb-system-errors',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-dynamodb-throttled-requests',
+      AlarmActions: Match.anyValue(),
+    });
   });
 });
 
@@ -628,6 +641,7 @@ describe('ApiStack', () => {
     const data = new DataStack(app, 'DataForApi', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     const zone = HostedZone.fromHostedZoneAttributes(deps, 'EmailZone', {
       hostedZoneId: 'ZXXXXXXXXXXXX',
@@ -697,6 +711,30 @@ describe('ApiStack', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-throttles',
     });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-handler-errors',
+      Namespace: 'gagnechris',
+      MetricName: 'HandlerError',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
+      ]),
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-data-integrity',
+      Namespace: 'gagnechris',
+      MetricName: 'DataIntegrityError',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
+      ]),
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-gateway-5xx',
+      Namespace: 'AWS/ApiGateway',
+      MetricName: '5xx',
+      AlarmActions: Match.anyValue(),
+    });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
     });
@@ -714,6 +752,7 @@ describe('PublisherStack', () => {
     const data = new DataStack(app, 'DataForPublisher', {
       env: { account: config.account, region: config.region },
       config,
+      alertsTopic,
     });
     const publisher = new PublisherStack(app, 'Publisher-prod', {
       env: { account: config.account, region: config.region },
@@ -782,6 +821,15 @@ describe('PublisherStack', () => {
       AlarmName: 'gagnechris-prod-publisher-kvs-sync-failed',
       Namespace: 'gagnechris',
       MetricName: 'KvsSyncFailed',
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-data-integrity',
+      Namespace: 'gagnechris',
+      MetricName: 'DataIntegrityError',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-publisher' }),
+      ]),
+      AlarmActions: Match.anyValue(),
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',

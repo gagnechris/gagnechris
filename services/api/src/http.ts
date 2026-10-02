@@ -93,7 +93,6 @@ export function zodBadRequest(
 /** Map common handler errors to HTTP responses; return undefined to rethrow. */
 export function mapRouteError(
   error: unknown,
-  zodMessage = 'Invalid request body',
 ): APIGatewayProxyStructuredResultV2 | undefined {
   if (error instanceof SyntaxError) {
     return json(400, { error: 'bad_request', message: error.message });
@@ -141,8 +140,7 @@ export function mapRouteError(
   if (error instanceof RateLimitExceededError) {
     return json(429, { error: 'rate_limited', message: error.message });
   }
-  if (isZodError(error)) {
-    return zodBadRequest(error, zodMessage);
-  }
+  // Request Zod is caught in invokeRoute. Handler/response ZodError is a server
+  // bug and must surface as 500 via the outer handler (CHR-168).
   return undefined;
 }

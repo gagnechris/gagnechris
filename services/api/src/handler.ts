@@ -36,9 +36,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     const response = await dispatchRoutes(routes, event, method, path);
     return response as APIGatewayProxyStructuredResultV2;
   } catch (error) {
+    // Use errMessage — Powertools reserves `message` and drops it with a WARN (CHR-168).
     logger.error('handler error', {
       error,
-      message: error instanceof Error ? error.message : String(error),
+      errMessage: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
     metrics.addMetric('HandlerError', MetricUnit.Count, 1);

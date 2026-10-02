@@ -48,6 +48,8 @@ Integrity notes (CHR-160 / CHR-167):
 - List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition.
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
 
+Observability (CHR-168): handled API 500s emit EMF `HandlerError` (Lambda `Errors` stays quiet). Alarms on the Guardrails SNS topic cover API `HandlerError` / `DataIntegrityError`, publisher `DataIntegrityError`, API Gateway `5xx`, and DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Response-schema Zod failures are 500s; request Zod stays 400.
+
 Details: [data-model.md](./data-model.md).
 
 ## Publisher outputs

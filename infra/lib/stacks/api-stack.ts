@@ -25,7 +25,6 @@ import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
-import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
@@ -33,6 +32,7 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
 export interface ApiStackProps extends StackProps {
@@ -266,6 +266,32 @@ export class ApiStack extends Stack {
     });
 
     // /api/* CloudFront behavior lives in SiteStack (SSM http-api-id).
+
+    // Handled 500s never increment Lambda Errors — alarm on EMF instead (CHR-168).
+    emfServiceAlarm(this, 'ApiHandlerErrors', {
+      alarmName: `gagnechris-${config.name}-api-handler-errors`,
+      alarmDescription:
+        'API handler returned a handled 500 (uncaught route/handler error)',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'HandlerError',
+      alertsTopic,
+    });
+    emfServiceAlarm(this, 'ApiDataIntegrityErrors', {
+      alarmName: `gagnechris-${config.name}-api-data-integrity`,
+      alarmDescription: 'API hit a corrupt DynamoDB row (data_integrity 500)',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'DataIntegrityError',
+      alertsTopic,
+    });
+    metricAlarm(this, 'ApiGateway5xx', {
+      alarmName: `gagnechris-${config.name}-api-gateway-5xx`,
+      alarmDescription: 'API Gateway HTTP API 5XX responses ≥ 1 in 5 minutes',
+      metric: this.httpApi.metricServerError({
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      alertsTopic,
+    });
 
     new StringParameter(this, 'HttpApiIdParam', {
       parameterName: ssmParameterName(config.name, 'httpApiId'),

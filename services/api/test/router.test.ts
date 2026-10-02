@@ -75,6 +75,16 @@ describe('dispatchRoutes', () => {
           userId: ctx.userId,
         }),
     }),
+    defineRoute({
+      method: 'GET',
+      pattern: '/broken-response',
+      auth: 'public',
+      handler: async () => {
+        // Response schema failure — server bug, must not look like 400 (CHR-168).
+        z.object({ ok: z.literal(true) }).parse({ ok: false });
+        return json(200, { ok: true });
+      },
+    }),
   ];
 
   it('returns 405 with Allow for known path with wrong method', async () => {
@@ -178,6 +188,20 @@ describe('dispatchRoutes', () => {
     );
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body as string).error).toBe('bad_request');
+  });
+
+  it('lets response-schema ZodError bubble (handler turns it into 500) (CHR-168)', async () => {
+    await expect(
+      dispatchRoutes(
+        echoRoutes,
+        makeEvent('GET', '/api/broken-response'),
+        'GET',
+        '/api/broken-response',
+      ),
+    ).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof z.ZodError || (err as Error)?.name === 'ZodError',
+    );
   });
 });
 
