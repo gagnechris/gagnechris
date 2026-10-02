@@ -43,24 +43,31 @@ export const createApiClient = ({
     return client;
   }
 
+  /** Clones taken in onRequest so POST bodies survive a 401 retry. */
+  const clones = new Map<string, globalThis.Request>();
+
   const authMiddleware: Middleware = {
-    async onRequest({ request }) {
+    async onRequest({ request, id }) {
+      clones.set(id, request.clone());
       const token = await getToken();
       if (token) {
         request.headers.set('Authorization', `Bearer ${token}`);
       }
       return request;
     },
-    async onResponse({ request, response, options }) {
+    async onResponse({ request, response, options, id }) {
+      const clone = clones.get(id);
+      clones.delete(id);
       if (
         !retryOnUnauthorized ||
         response.status !== 401 ||
-        request.headers.get(RETRIED_HEADER) === '1'
+        request.headers.get(RETRIED_HEADER) === '1' ||
+        !clone
       ) {
         return undefined;
       }
       const token = await getToken({ forceRefresh: true });
-      const headers = new Headers(request.headers);
+      const headers = new globalThis.Headers(clone.headers);
       headers.set(RETRIED_HEADER, '1');
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
@@ -68,7 +75,7 @@ export const createApiClient = ({
         headers.delete('Authorization');
       }
       // options.fetch is the raw fetch — set the refreshed token explicitly.
-      return options.fetch(new Request(request, { headers }));
+      return options.fetch(new globalThis.Request(clone, { headers }));
     },
   };
   client.use(authMiddleware);
