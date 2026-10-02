@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { buildOpenApiDocument } from '@gagnechris/shared/openapi';
@@ -20,8 +17,6 @@ import {
 } from '../src/router.js';
 import { routes } from '../src/routes.js';
 import { makeEvent } from './support/make-event.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('router helpers', () => {
   it('canonicalPath strips /api prefix', () => {
@@ -205,12 +200,7 @@ describe('dispatchRoutes', () => {
   });
 });
 
-describe('route table contract (CHR-154 / CHR-166)', () => {
-  const stackSrc = readFileSync(
-    join(__dirname, '../../../infra/lib/stacks/api-stack.ts'),
-    'utf8',
-  );
-
+describe('route table contract (CHR-154 / CHR-166 / CHR-171)', () => {
   it('admin routes use exactly the API Gateway JWT prefixes', () => {
     for (const route of routes) {
       if (route.auth !== 'admin') continue;
@@ -225,70 +215,21 @@ describe('route table contract (CHR-154 / CHR-166)', () => {
         ),
       ).toBe(true);
     }
-
-    for (const prefix of API_GATEWAY_JWT_PREFIXES) {
-      expect(stackSrc).toContain(`path: '/api${prefix}/{proxy+}'`);
-      expect(stackSrc).toContain(`path: '/api${prefix}'`);
-    }
   });
 
-  it('rejects the three public/JWT misconfigurations (CHR-166)', () => {
-    // 1. Public route under a JWT prefix → gateway 401 in prod.
+  it('rejects public routes under JWT prefixes (CHR-166)', () => {
     for (const route of routes) {
       if (route.auth !== 'public') continue;
       expect(
         isJwtProtectedPath(route.pattern),
         `public route ${route.method} ${route.pattern} must not sit under JWT prefixes`,
       ).toBe(false);
-    }
-
-    // 2. Extra JWT path in the stack beyond API_GATEWAY_JWT_PREFIXES.
-    const stackLines = stackSrc.split('\n');
-    const jwtPathBlocks: string[] = [];
-    for (let i = 0; i < stackLines.length; i++) {
-      if (!stackLines[i]!.includes('authorizer: jwtAuthorizer')) continue;
-      for (let j = i; j >= Math.max(0, i - 12); j--) {
-        const pathMatch = stackLines[j]!.match(/path:\s*'([^']+)'/);
-        if (pathMatch) {
-          jwtPathBlocks.push(pathMatch[1]!);
-          break;
-        }
-      }
-    }
-    const expectedJwtPaths = new Set(
-      API_GATEWAY_JWT_PREFIXES.flatMap((prefix) => [
-        `/api${prefix}`,
-        `/api${prefix}/{proxy+}`,
-      ]),
-    );
-    for (const path of jwtPathBlocks) {
-      expect(
-        expectedJwtPaths.has(path),
-        `unexpected JWT path in api-stack.ts: ${path}`,
-      ).toBe(true);
-    }
-    expect(jwtPathBlocks.sort()).toEqual([...expectedJwtPaths].sort());
-
-    // 3. Public route with no API Gateway route → 404 in prod (no $default).
-    for (const route of routes) {
-      if (route.auth !== 'public') continue;
       // Static public routes are registered as exact `/api…` paths (no params).
+      // Gateway registration is asserted on the synthesized template (infra).
       expect(
         route.pattern.includes(':'),
         `public route ${route.pattern} must be an exact gateway path`,
       ).toBe(false);
-      const apiPath = `/api${route.pattern === '/' ? '' : route.pattern}`;
-      expect(
-        stackSrc.includes(`path: '${apiPath}'`),
-        `public route ${route.method} ${route.pattern} missing addRoutes in api-stack.ts`,
-      ).toBe(true);
-      // Method appears in the same addRoutes block (best-effort: nearby HttpMethod).
-      const pathIdx = stackSrc.indexOf(`path: '${apiPath}'`);
-      const block = stackSrc.slice(pathIdx, pathIdx + 200);
-      expect(
-        block.includes(`HttpMethod.${route.method}`),
-        `public route ${route.method} ${apiPath} method missing near addRoutes path`,
-      ).toBe(true);
     }
   });
 

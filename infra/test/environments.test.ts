@@ -678,8 +678,9 @@ describe('ApiStack', () => {
           'http://localhost:5173',
           'http://localhost:3000',
         ],
-        AllowHeaders: ['authorization', 'content-type'],
+        AllowHeaders: ['authorization', 'content-type', 'if-match'],
         AllowMethods: Match.arrayWith(['GET', 'OPTIONS']),
+        ExposeHeaders: ['etag'],
         MaxAge: 86400,
       },
     });
@@ -695,6 +696,46 @@ describe('ApiStack', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
       AuthorizerType: 'JWT',
     });
+
+    // JWT prefix contract on the synthesized template (CHR-171): catches
+    // authorizer shorthand and unauthenticated routes under /api/admin|/notebook.
+    const expectedJwtRouteKeys = new Set([
+      'ANY /api/admin',
+      'ANY /api/admin/{proxy+}',
+      'ANY /api/notebook',
+      'ANY /api/notebook/{proxy+}',
+    ]);
+    const expectedPublicRouteKeys = new Set([
+      'GET /api/health',
+      'POST /api/contact',
+      'POST /api/resume/download',
+    ]);
+    const httpRoutes = template.findResources('AWS::ApiGatewayV2::Route');
+    const jwtRouteKeys: string[] = [];
+    const publicRouteKeys: string[] = [];
+    for (const route of Object.values(httpRoutes)) {
+      const routeKey = route.Properties?.RouteKey as string;
+      const authType = route.Properties?.AuthorizationType as string;
+      const path = routeKey.replace(/^(ANY|GET|POST|PUT|PATCH|DELETE)\s+/, '');
+      if (authType === 'JWT') {
+        jwtRouteKeys.push(routeKey);
+        expect(
+          expectedJwtRouteKeys.has(routeKey),
+          `unexpected JWT route in template: ${routeKey}`,
+        ).toBe(true);
+      } else {
+        publicRouteKeys.push(routeKey);
+        expect(
+          path === '/api/admin' ||
+            path.startsWith('/api/admin/') ||
+            path === '/api/notebook' ||
+            path.startsWith('/api/notebook/'),
+          `unauthenticated route under JWT prefix: ${routeKey}`,
+        ).toBe(false);
+      }
+    }
+    expect(jwtRouteKeys.sort()).toEqual([...expectedJwtRouteKeys].sort());
+    expect(publicRouteKeys.sort()).toEqual([...expectedPublicRouteKeys].sort());
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],

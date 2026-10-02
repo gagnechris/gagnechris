@@ -28,12 +28,32 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 /** 409 conflict body with optional current entity for client reconciliation. */
 export const ConflictErrorResponseSchema = ErrorResponseSchema.extend({
-  error: z.enum(['conflict', 'slug_taken']),
+  error: z.enum([
+    'conflict',
+    'version_conflict',
+    'deleted',
+    'payload_mismatch',
+    'slug_taken',
+    'daily_taken',
+  ]),
   currentVersion: z.number().int().optional(),
   current: z.unknown().optional(),
 });
 
 export type ConflictErrorResponse = z.infer<typeof ConflictErrorResponseSchema>;
+
+/** 412 body when If-Match version mismatches (CHR-171). */
+export const PreconditionFailedErrorResponseSchema = ErrorResponseSchema.extend(
+  {
+    error: z.literal('precondition_failed'),
+    currentVersion: z.number().int().optional(),
+    current: z.unknown().optional(),
+  },
+);
+
+export type PreconditionFailedErrorResponse = z.infer<
+  typeof PreconditionFailedErrorResponseSchema
+>;
 
 export const PostStatusSchema = z.enum(['draft', 'published', 'deleted']);
 
@@ -106,11 +126,21 @@ export const UpdatePostRequestSchema = z.object({
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
 
-/** Query params for `GET /admin/posts` (API + OpenAPI — CHR-154). */
+/** Query params for `GET /admin/posts` (API + OpenAPI — CHR-154 / CHR-171). */
 export const ListPostsQuerySchema = z.object({
-  status: PostStatusSchema.optional(),
-  cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
+  status: PostStatusSchema.optional().describe('Filter by post status'),
+  cursor: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('Opaque pagination cursor from a previous list response'),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .describe('Page size (1-100)'),
 });
 
 export type ListPostsQuery = z.infer<typeof ListPostsQuerySchema>;
@@ -286,10 +316,17 @@ export type ResumeDownloadNotifyResponse = z.infer<
   typeof ResumeDownloadNotifyResponseSchema
 >;
 
-/** Crockford ULID (26 chars) — client-generated for idempotent creates (CHR-141). */
-export const UlidSchema = z
-  .string()
-  .regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i, 'Must be a ULID');
+/**
+ * Crockford ULID (26 chars) — client-generated for idempotent creates (CHR-141).
+ * Uppercase pattern with no `/i` flag so OpenAPI emits a valid ECMA-262 pattern
+ * (CHR-171). Input is normalized to uppercase before the regex check.
+ */
+export const ULID_PATTERN = '^[0-7][0-9A-HJKMNP-TV-Z]{25}$';
+
+export const UlidSchema = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+  z.string().regex(new RegExp(ULID_PATTERN), 'Must be a ULID'),
+);
 
 /**
  * Sync-pattern fixture entity schemas lived here for CHR-141; removed from the
@@ -318,10 +355,25 @@ export const SyncChangesResponseSchema = z.object({
 export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
 
 export const SyncChangesQuerySchema = z.object({
-  /** ISO-8601 watermark; omit for the beginning of the user's sync stream. */
-  since: z.string().datetime({ offset: true }).optional(),
-  cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
+  since: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .describe(
+      'ISO-8601 watermark; omit for the beginning of the user sync stream',
+    ),
+  cursor: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('Opaque pagination cursor from a previous sync page'),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .describe('Page size (1-100)'),
 });
 
 export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;

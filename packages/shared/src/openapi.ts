@@ -20,12 +20,15 @@ import {
   PostListResponseSchema,
   PostSchema,
   PostSeoSchema,
+  PreconditionFailedErrorResponseSchema,
   ResumeContentSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
   ResumeEducationSchema,
   ResumeExperienceSchema,
   ResumeSchema,
+  ULID_PATTERN,
+  UlidSchema,
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
@@ -35,7 +38,11 @@ import {
 } from './schemas.js';
 
 const PostIdParamsSchema = z.object({
-  id: z.string().min(1).openapi({ description: 'Post id (ULID)' }),
+  id: UlidSchema.openapi({
+    description: 'Post id (ULID)',
+    type: 'string',
+    pattern: ULID_PATTERN,
+  }),
 });
 
 const MediaObjectKeyParamsSchema = z.object({
@@ -44,7 +51,24 @@ const MediaObjectKeyParamsSchema = z.object({
   }),
 });
 
+/** Optional If-Match on versioned mutations (CHR-171). */
+const IfMatchHeadersSchema = z.object({
+  'if-match': z.string().optional().openapi({
+    description:
+      'Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*`',
+    example: '"3"',
+  }),
+});
+
+const etagResponseHeaders = {
+  ETag: {
+    description: 'Strong entity version tag (quoted integer), e.g. `"3"`',
+    schema: { type: 'string' as const, example: '"3"' },
+  },
+};
+
 const versionBody = {
+  headers: IfMatchHeadersSchema,
   body: {
     content: {
       'application/json': { schema: ExpectedVersionRequestSchema },
@@ -52,13 +76,21 @@ const versionBody = {
   },
 };
 
-/** Shared OpenAPI response fragments (CHR-130). */
+/** Shared OpenAPI response fragments (CHR-130 / CHR-171). */
 function jsonBody(schema: z.ZodType) {
   return { content: { 'application/json': { schema } } };
 }
 
 function ok(schema: z.ZodType, description: string) {
   return { description, ...jsonBody(schema) };
+}
+
+function okWithEtag(schema: z.ZodType, description: string) {
+  return {
+    description,
+    headers: etagResponseHeaders,
+    ...jsonBody(schema),
+  };
 }
 
 function err(description: string) {
@@ -69,17 +101,27 @@ function conflict(description = 'Conflict') {
   return { description, ...jsonBody(ConflictErrorResponseSchema) };
 }
 
+function preconditionFailed(
+  description = 'Precondition failed (`If-Match` version mismatch)',
+) {
+  return {
+    description,
+    ...jsonBody(PreconditionFailedErrorResponseSchema),
+  };
+}
+
 const r400 = err('Validation error (may include `fields`)');
 const r401 = err('Unauthorized');
 const r404 = err('Not found');
 const r409 = conflict('Conflict (may include `currentVersion` / `current`)');
-const r412 = err('Precondition failed (`If-Match` version mismatch)');
+const r412 = preconditionFailed();
 const r429 = err('Rate limited');
 const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
 const r503 = err('Service unavailable (throttling)');
 
-const notebookAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
+const notebookAuth = { 401: r401, 500: r500, 503: r503 };
+const versionedAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
 
 const adminAuth = { 401: r401, 500: r500, 503: r503 };
 const publicBase = { 500: r500, 503: r503 };
@@ -91,6 +133,10 @@ export function buildOpenApiDocument() {
   registry.register('AdminMeResponse', AdminMeResponseSchema);
   registry.register('ErrorResponse', ErrorResponseSchema);
   registry.register('ConflictErrorResponse', ConflictErrorResponseSchema);
+  registry.register(
+    'PreconditionFailedErrorResponse',
+    PreconditionFailedErrorResponseSchema,
+  );
   registry.register('Post', PostSchema);
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
@@ -164,7 +210,8 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema },
     responses: {
-      200: ok(PostSchema, 'Post'),
+      200: okWithEtag(PostSchema, 'Post'),
+      400: r400,
       404: r404,
       ...adminAuth,
     },
@@ -184,7 +231,7 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      201: ok(PostSchema, 'Created'),
+      201: okWithEtag(PostSchema, 'Created'),
       400: r400,
       409: r409,
       ...adminAuth,
@@ -194,11 +241,12 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'put',
     path: '/api/admin/posts/{id}',
-    summary: 'Update post (optimistic concurrency via version)',
+    summary: 'Update post (optimistic concurrency via version / If-Match)',
     tags: ['Posts'],
     security: [{ bearerAuth: [] }],
     request: {
       params: PostIdParamsSchema,
+      headers: IfMatchHeadersSchema,
       body: {
         content: {
           'application/json': { schema: UpdatePostRequestSchema },
@@ -206,11 +254,11 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: ok(PostSchema, 'Updated'),
+      200: okWithEtag(PostSchema, 'Updated'),
       400: r400,
       404: r404,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -223,11 +271,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: ok(PostSchema, 'Published'),
+      200: okWithEtag(PostSchema, 'Published'),
       400: r400,
       404: r404,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -239,11 +287,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: ok(PostSchema, 'Unpublished (draft)'),
+      200: okWithEtag(PostSchema, 'Unpublished (draft)'),
       400: r400,
       404: r404,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -255,11 +303,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: ok(PostSchema, 'Draft restored from published snapshot'),
+      200: okWithEtag(PostSchema, 'Draft restored from published snapshot'),
       400: r400,
       404: r404,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -271,11 +319,11 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: PostIdParamsSchema, ...versionBody },
     responses: {
-      200: ok(PostSchema, 'Soft-deleted'),
+      200: okWithEtag(PostSchema, 'Soft-deleted'),
       400: r400,
       404: r404,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -287,7 +335,7 @@ export function buildOpenApiDocument() {
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: ok(HomeSchema, 'Home'),
+      200: okWithEtag(HomeSchema, 'Home'),
       ...adminAuth,
     },
   });
@@ -295,10 +343,12 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'put',
     path: '/api/admin/home',
-    summary: 'Update home content (optimistic concurrency via version)',
+    summary:
+      'Update home content (optimistic concurrency via version / If-Match)',
     tags: ['Home'],
     security: [{ bearerAuth: [] }],
     request: {
+      headers: IfMatchHeadersSchema,
       body: {
         content: {
           'application/json': { schema: UpdateHomeRequestSchema },
@@ -306,10 +356,10 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: ok(HomeSchema, 'Updated'),
+      200: okWithEtag(HomeSchema, 'Updated'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -322,10 +372,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(HomeSchema, 'Published'),
+      200: okWithEtag(HomeSchema, 'Published'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -337,10 +387,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(HomeSchema, 'Unpublished (draft)'),
+      200: okWithEtag(HomeSchema, 'Unpublished (draft)'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -352,10 +402,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(HomeSchema, 'Draft restored from published snapshot'),
+      200: okWithEtag(HomeSchema, 'Draft restored from published snapshot'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -367,7 +417,7 @@ export function buildOpenApiDocument() {
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     responses: {
-      200: ok(ResumeSchema, 'Resume'),
+      200: okWithEtag(ResumeSchema, 'Resume'),
       ...adminAuth,
     },
   });
@@ -375,10 +425,11 @@ export function buildOpenApiDocument() {
   registry.registerPath({
     method: 'put',
     path: '/api/admin/resume',
-    summary: 'Update resume (optimistic concurrency via version)',
+    summary: 'Update resume (optimistic concurrency via version / If-Match)',
     tags: ['Resume'],
     security: [{ bearerAuth: [] }],
     request: {
+      headers: IfMatchHeadersSchema,
       body: {
         content: {
           'application/json': { schema: UpdateResumeRequestSchema },
@@ -386,10 +437,10 @@ export function buildOpenApiDocument() {
       },
     },
     responses: {
-      200: ok(ResumeSchema, 'Updated'),
+      200: okWithEtag(ResumeSchema, 'Updated'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -402,10 +453,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(ResumeSchema, 'Published'),
+      200: okWithEtag(ResumeSchema, 'Published'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -417,10 +468,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(ResumeSchema, 'Unpublished (draft)'),
+      200: okWithEtag(ResumeSchema, 'Unpublished (draft)'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 
@@ -432,10 +483,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: versionBody,
     responses: {
-      200: ok(ResumeSchema, 'Draft restored from published snapshot'),
+      200: okWithEtag(ResumeSchema, 'Draft restored from published snapshot'),
       400: r400,
       409: r409,
-      ...adminAuth,
+      ...versionedAuth,
     },
   });
 

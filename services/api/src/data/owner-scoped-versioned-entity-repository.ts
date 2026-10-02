@@ -31,12 +31,7 @@ import {
 } from './cursor.js';
 import { throwCursorValidation } from './dynamo-errors.js';
 import { runDynamoWrite } from './dynamo-write.js';
-import {
-  ConflictError,
-  DataIntegrityError,
-  NotFoundError,
-  type ConflictCode,
-} from './errors.js';
+import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
   runVersionedWrite,
@@ -66,7 +61,7 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   }>;
   /** Indexes into the array returned by `buildItems` that are unique claims. */
   claimIndexes: readonly number[];
-  conflictCode: Exclude<ConflictCode, 'conflict'>;
+  conflictCode: 'slug_taken' | 'daily_taken';
   conflictMessage?: string;
   /**
    * When a unique claim conflicts during `createIdempotent`, resolve to the
@@ -401,6 +396,7 @@ export class OwnerScopedVersionedEntityRepository<
         if (claim) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} was deleted`,
+            { code: 'deleted' },
           );
         }
         throw new ConflictError(
@@ -412,7 +408,11 @@ export class OwnerScopedVersionedEntityRepository<
       if (this.config.isDeleted?.(existing)) {
         throw new ConflictError(
           `${this.config.conflictLabel} ${id} was deleted`,
-          { currentVersion: existing.version, current: existing },
+          {
+            code: 'deleted',
+            currentVersion: existing.version,
+            current: existing,
+          },
         );
       }
       const hashFn = this.config.sync?.createPayloadHash;
@@ -424,7 +424,11 @@ export class OwnerScopedVersionedEntityRepository<
         if (requestHash !== baseline) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
-            { currentVersion: existing.version, current: existing },
+            {
+              code: 'payload_mismatch',
+              currentVersion: existing.version,
+              current: existing,
+            },
           );
         }
       }

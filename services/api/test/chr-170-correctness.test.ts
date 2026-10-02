@@ -191,7 +191,7 @@ describe('CHR-170 correctness guards', () => {
       }),
     ).rejects.toMatchObject({
       name: 'ConflictError',
-      code: 'conflict',
+      code: 'version_conflict',
       currentVersion: 3,
       current: expect.objectContaining({ title: 'Server', version: 3 }),
     });

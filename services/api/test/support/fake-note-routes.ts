@@ -1,16 +1,16 @@
 /**
- * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162)
- * and owner scoping (CHR-169). Not registered in the prod route table.
+ * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162 / CHR-171).
+ * Not registered in the prod route table — uses src helpers (no copied logic).
  */
 import { z } from 'zod';
 import { UlidSchema } from '@gagnechris/shared';
-import {
-  mapVersionConflict,
-  resolveExpectedVersion,
-} from '../../src/data/concurrency.js';
-import { NotFoundError } from '../../src/data/errors.js';
-import { json, jsonWithEtag } from '../../src/http.js';
 import { defineRoute, type RouteDef } from '../../src/router.js';
+import {
+  jsonEntity,
+  requireExpectedVersion,
+  runVersionedMutation,
+  versionForWrite,
+} from '../../src/data/versioned-route.js';
 import {
   buildFakeNote,
   createFakeNotesRepo,
@@ -65,7 +65,7 @@ export function createFakeNoteRoutes(
         const note = await repo.createIdempotent(
           buildFakeNote(ctx.userId!, body.id, body, now),
         );
-        return jsonWithEtag(201, noteResponse(note), note.version);
+        return jsonEntity(201, note, noteResponse);
       },
     }),
     defineRoute({
@@ -75,11 +75,8 @@ export function createFakeNoteRoutes(
       metric: 'GetTestNote',
       params: IdParams,
       handler: async (ctx, { params }) => {
-        const note = await repo.get(ctx.userId!, params.id);
-        if (!note) {
-          throw new NotFoundError(`fake note ${params.id} not found`);
-        }
-        return jsonWithEtag(200, noteResponse(note), note.version);
+        const note = await repo.getOrThrow(ctx.userId!, params.id);
+        return jsonEntity(200, note, noteResponse);
       },
     }),
     defineRoute({
@@ -90,37 +87,21 @@ export function createFakeNoteRoutes(
       params: IdParams,
       body: UpdateBodySchema,
       handler: async (ctx, { params, body }) => {
-        const { expected, fromIfMatch } = resolveExpectedVersion(
-          ctx.event,
-          body,
-        );
-        if (expected === undefined) {
-          return json(400, {
-            error: 'bad_request',
-            message: 'Expected version required (If-Match or body.version)',
-          });
-        }
+        const resolved = requireExpectedVersion(ctx.event, body);
+        if (!resolved.ok) return resolved.response;
         const existing = await repo.getOrThrow(ctx.userId!, params.id);
-        const version =
-          expected === 'any' ? existing.version : (expected as number);
+        const version = versionForWrite(resolved.expected, existing.version);
         const now = new Date().toISOString();
-        try {
-          const next = await repo.updateIfVersion(
-            ctx.userId!,
-            params.id,
-            version,
-            {
-              ...existing,
-              title: body.title ?? existing.title,
-              body: body.body ?? existing.body,
-              version: existing.version + 1,
-              updatedAt: now,
-            },
-          );
-          return jsonWithEtag(200, noteResponse(next), next.version);
-        } catch (error) {
-          mapVersionConflict(error, fromIfMatch);
-        }
+        const next = await runVersionedMutation(resolved.fromIfMatch, () =>
+          repo.updateIfVersion(ctx.userId!, params.id, version, {
+            ...existing,
+            title: body.title ?? existing.title,
+            body: body.body ?? existing.body,
+            version: existing.version + 1,
+            updatedAt: now,
+          }),
+        );
+        return jsonEntity(200, next, noteResponse);
       },
     }),
     defineRoute({
@@ -131,36 +112,20 @@ export function createFakeNoteRoutes(
       params: IdParams,
       body: DeleteBodySchema,
       handler: async (ctx, { params, body }) => {
-        const { expected, fromIfMatch } = resolveExpectedVersion(
-          ctx.event,
-          body,
-        );
-        if (expected === undefined) {
-          return json(400, {
-            error: 'bad_request',
-            message: 'Expected version required (If-Match or body.version)',
-          });
-        }
+        const resolved = requireExpectedVersion(ctx.event, body);
+        if (!resolved.ok) return resolved.response;
         const existing = await repo.getOrThrow(ctx.userId!, params.id);
-        const version =
-          expected === 'any' ? existing.version : (expected as number);
+        const version = versionForWrite(resolved.expected, existing.version);
         const now = new Date().toISOString();
-        try {
-          const tombstone = await repo.softDelete(
-            ctx.userId!,
-            params.id,
-            version,
-            {
-              ...existing,
-              version: existing.version + 1,
-              updatedAt: now,
-              deleted: true,
-            },
-          );
-          return jsonWithEtag(200, noteResponse(tombstone), tombstone.version);
-        } catch (error) {
-          mapVersionConflict(error, fromIfMatch);
-        }
+        const tombstone = await runVersionedMutation(resolved.fromIfMatch, () =>
+          repo.softDelete(ctx.userId!, params.id, version, {
+            ...existing,
+            version: existing.version + 1,
+            updatedAt: now,
+            deleted: true,
+          }),
+        );
+        return jsonEntity(200, tombstone, noteResponse);
       },
     }),
   ];
