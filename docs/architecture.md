@@ -109,14 +109,17 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
-## Notebook sync contract (CHR-153)
+## Notebook sync contract (CHR-153 / CHR-162)
 
 `GET /api/notebook/sync/changes` is the generic change feed real Notebook entities will use:
 
-- **Client ULID** on create; retries with the same id + matching payload hash are idempotent (mismatch → 409).
-- **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days).
-- **`since` normalization + `nextSince` watermark** with a 5s overlap window so late-committed writes are delivered; clients dedupe by `(id, version)`.
-- **Optimistic concurrency**: responses include `ETag: "<version>"`. Mutations accept `If-Match` or body `version`; `If-Match` mismatch → **412**, body-only mismatch → **409**.
+- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`) are idempotent (mismatch → 409). A durable `CREATED#<TYPE>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge.
+- **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
+- **`since` normalization + `nextSince` watermark** with a `SYNC_OVERLAP_MS` (15s) overlap window (≥ API Lambda timeout) so late-committed writes are delivered; clients dedupe by `(id, version)`.
+- **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version`:
+  - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** with `currentVersion` + `current`
+  - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
+  - Body-only `version` mismatch → **409** with `currentVersion` + `current`
 
 Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (CHR-153). Details: [data-model.md](./data-model.md).
 

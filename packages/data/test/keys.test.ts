@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  fixturePk,
+  API_LAMBDA_TIMEOUT_MS,
   keys,
   parsePostMetaItem,
   postPk,
@@ -8,7 +8,10 @@ import {
   SK_PUBLISHED,
   slugify,
   statusGsi1Pk,
+  syncCreateClaimPk,
   syncSk,
+  SYNC_CREATE_CLAIM_TTL_DAYS,
+  SYNC_OVERLAP_MS,
   SYNC_TOMBSTONE_TTL_DAYS,
   ttlDaysFromNow,
 } from '../src/index.js';
@@ -41,27 +44,32 @@ describe('@gagnechris/data keys', () => {
     expect(() => parsePostMetaItem({ entityType: 'post' })).toThrow();
   });
 
-  it('builds fixture and sync GSI keys (CHR-141 / CHR-153)', () => {
-    expect(fixturePk('01ARZ3NDEKTSV4RRFFQ69G5FAV')).toBe(
-      'FIXTURE#01ARZ3NDEKTSV4RRFFQ69G5FAV',
-    );
-    expect(keys.fixture.meta('01ABC')).toEqual({
-      pk: 'FIXTURE#01ABC',
-      sk: SK_META,
-    });
-    expect(syncSk('2026-09-28T12:00:00.000Z', 'fixture', '01ABC')).toBe(
-      '2026-09-28T12:00:00.000Z#FIXTURE#01ABC',
+  it('builds sync GSI and create-claim keys (CHR-153 / CHR-162)', () => {
+    expect(syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
+      '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
     expect(keys.sync.sk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
       '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
     // Offset / no-ms normalize to the same UTC-ms key prefix.
-    expect(syncSk('2026-09-28T12:00:00Z', 'fixture', '01ABC')).toBe(
-      syncSk('2026-09-28T12:00:00.000Z', 'fixture', '01ABC'),
+    expect(syncSk('2026-09-28T12:00:00Z', 'note', 'n1')).toBe(
+      syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1'),
     );
-    expect(syncSk('2026-09-28T17:00:00.000+05:00', 'fixture', '01ABC')).toBe(
-      syncSk('2026-09-28T12:00:00.000Z', 'fixture', '01ABC'),
+    expect(syncSk('2026-09-28T17:00:00.000+05:00', 'note', 'n1')).toBe(
+      syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1'),
     );
+    expect(syncCreateClaimPk('fakeNote', '01ABC')).toBe(
+      'CREATED#FAKENOTE#01ABC',
+    );
+    expect(keys.sync.createClaim('fakeNote', '01ABC')).toEqual({
+      pk: 'CREATED#FAKENOTE#01ABC',
+      sk: SK_META,
+    });
+  });
+
+  it('sync overlap is at least the API Lambda timeout (CHR-162)', () => {
+    expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
+    expect(SYNC_CREATE_CLAIM_TTL_DAYS).toBeGreaterThan(SYNC_TOMBSTONE_TTL_DAYS);
   });
 
   it('ttlDaysFromNow defaults to SYNC_TOMBSTONE_TTL_DAYS', () => {
