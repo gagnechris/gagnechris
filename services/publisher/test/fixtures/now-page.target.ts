@@ -21,6 +21,8 @@ const NOW_HTML = `<!doctype html>
 
 const target: PublishTarget = {
   id: 'now-page',
+  optionBPaths: ['/now'],
+  adminMutationPrefixes: ['/api/admin/now'],
   matches(scope) {
     return (
       scope.touchedEntityTypes.has(NOW_ENTITY) || isFullRebuildScope(scope)

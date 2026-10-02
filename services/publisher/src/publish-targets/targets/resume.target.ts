@@ -5,6 +5,8 @@ import { CACHE_HTML } from '../types.js';
 
 const target: PublishTarget = {
   id: 'resume',
+  optionBPaths: ['/resume'],
+  adminMutationPrefixes: ['/api/admin/resume'],
   matches(scope) {
     return scope.resume;
   },

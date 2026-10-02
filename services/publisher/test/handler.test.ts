@@ -4,6 +4,9 @@ import {
   collectRebuildScope,
   streamNeedsRebuild,
 } from '../src/rebuild-scope.js';
+import { getPublishTargets } from '../src/publish-targets/registry.js';
+
+const prodTargets = getPublishTargets();
 
 function metaImage(fields: {
   slug: string;
@@ -71,7 +74,7 @@ describe('streamNeedsRebuild', () => {
         NewImage: metaImage({ slug: 'a', status: 'published' }),
       },
     };
-    expect(streamNeedsRebuild([publishedChange])).toBe(true);
+    expect(streamNeedsRebuild([publishedChange], prodTargets)).toBe(true);
   });
 
   it('ignores META draft edits', () => {
@@ -91,6 +94,6 @@ describe('streamNeedsRebuild', () => {
         NewImage: metaDraft({ slug: 'a', status: 'draft' }),
       },
     };
-    expect(streamNeedsRebuild([draftEdit])).toBe(false);
+    expect(streamNeedsRebuild([draftEdit], prodTargets)).toBe(false);
   });
 });

@@ -10,6 +10,8 @@ import { CACHE_HTML } from '../types.js';
 
 const target: PublishTarget = {
   id: 'home',
+  // Home is `/` (special-cased in viewer-request), not Option B.
+  adminMutationPrefixes: ['/api/admin/home'],
   matches(scope) {
     return scope.home;
   },

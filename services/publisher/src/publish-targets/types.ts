@@ -57,8 +57,38 @@ export type PublishTargetRunResult = {
   homeRestoredFromSnapshot?: boolean;
 };
 
+/** Boolean flags OR-merged across targets into {@link RebuildResult}. */
+export const PUBLISH_RESULT_BOOLEAN_FLAGS = [
+  'resumePublished',
+  'resumeUnpublished',
+  'resumePdfFailed',
+  'homePublished',
+  'homeRestoredFromSnapshot',
+] as const satisfies readonly (keyof PublishTargetRunResult)[];
+
+export type PublishResultBooleanFlag =
+  (typeof PUBLISH_RESULT_BOOLEAN_FLAGS)[number];
+
 export type PublishTarget = {
   id: string;
+  /**
+   * Public path prefixes served via CloudFront Option B `{path}/index.html`.
+   * e.g. `['/resume']` → `/resume`, `/resume/`, `/resume/...`.
+   * Omit for feed-only / orphan / home (home is `/` special-cased).
+   * Codegen folds these into the viewer-request allowlist (CHR-179).
+   */
+  optionBPaths?: readonly string[];
+  /**
+   * Local-dev admin path prefixes that mutate PUBLISHED for this entity.
+   * e.g. `['/api/admin/resume']` for POST …/publish|unpublish.
+   * Codegen folds these into `isPublishRelevantAdminMutation` (CHR-179).
+   */
+  adminMutationPrefixes?: readonly string[];
+  /**
+   * When true, DELETE under {@link adminMutationPrefixes} is publish-relevant
+   * (soft-delete removes the PUBLISHED snapshot). Used by posts.
+   */
+  adminSoftDelete?: boolean;
   matches(scope: RebuildScope): boolean;
   needsCatalog(scope: RebuildScope): boolean;
   needsShell(scope: RebuildScope): boolean;

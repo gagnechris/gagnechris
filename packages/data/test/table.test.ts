@@ -180,6 +180,9 @@ describe('isPublishRelevantAdminMutation', () => {
       isPublishRelevantAdminMutation('POST', '/api/admin/home/unpublish'),
     ).toBe(true);
     expect(
+      isPublishRelevantAdminMutation('POST', '/api/admin/resume/publish'),
+    ).toBe(true);
+    expect(
       isPublishRelevantAdminMutation('DELETE', '/api/admin/posts/abc'),
     ).toBe(true);
     expect(isPublishRelevantAdminMutation('GET', '/api/admin/posts')).toBe(
@@ -188,5 +191,9 @@ describe('isPublishRelevantAdminMutation', () => {
     expect(isPublishRelevantAdminMutation('PUT', '/api/admin/posts/abc')).toBe(
       false,
     );
+    // Soft-delete only for targets that set adminSoftDelete (posts).
+    expect(
+      isPublishRelevantAdminMutation('DELETE', '/api/admin/home'),
+    ).toBe(false);
   });
 });

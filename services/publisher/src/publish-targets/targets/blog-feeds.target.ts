@@ -9,6 +9,9 @@ import { CACHE_FEED, CACHE_HTML } from '../types.js';
 
 const target: PublishTarget = {
   id: 'blog-feeds',
+  optionBPaths: ['/blog'],
+  adminMutationPrefixes: ['/api/admin/posts'],
+  adminSoftDelete: true,
   matches(scope) {
     return scope.feeds;
   },

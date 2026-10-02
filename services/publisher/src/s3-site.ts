@@ -26,6 +26,7 @@ import { runPublishTargets } from './publish-targets/orchestrator.js';
 import type {
   PublishedLookup,
   PublishedPostsCatalog,
+  PublishTarget,
   RebuildSiteSources,
 } from './publish-targets/types.js';
 import { fullRebuildScope, type RebuildScope } from './rebuild-scope.js';
@@ -295,16 +296,20 @@ export async function rebuildPublishedSite(options?: {
   sources?: RebuildSiteSources;
   /** Unmarshalled PUBLISHED post NewImages from the triggering stream batch. */
   streamPublishedPosts?: readonly unknown[];
+  /** Override production registry (tests / AC demos). */
+  targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();
-  const tableName = requireEnv('DATA_TABLE_NAME');
   const storage = options?.storage ?? getSiteStorage();
   const streamPublishedPosts = options?.streamPublishedPosts ?? [];
-  const baseSources: RebuildSiteSources = options?.sources ?? {
-    listPublishedPosts: () => listPublishedPosts(tableName),
-    getPublishedResume: () => getPublishedResume(tableName),
-    getPublishedHome: () => getPublishedHome(tableName),
-  };
+  const baseSources: RebuildSiteSources = options?.sources ?? (() => {
+    const tableName = requireEnv('DATA_TABLE_NAME');
+    return {
+      listPublishedPosts: () => listPublishedPosts(tableName),
+      getPublishedResume: () => getPublishedResume(tableName),
+      getPublishedHome: () => getPublishedHome(tableName),
+    };
+  })();
   const sources: RebuildSiteSources =
     streamPublishedPosts.length === 0
       ? baseSources
@@ -321,5 +326,6 @@ export async function rebuildPublishedSite(options?: {
     scope,
     storage,
     sources,
+    targets: options?.targets,
   });
 }

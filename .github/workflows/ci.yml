@@ -37,6 +37,8 @@ jobs:
 
       - name: Design token CSS drift
         run: npm run tokens:check
+      - name: Publish surface drift
+        run: npm run publish-surface:check
 
       # Root scripts delegate into workspaces. The site lives in apps/web.
       - name: Lint
