@@ -38,6 +38,8 @@
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
     "tokens:generate": "npm run generate -w @gagnechris/tokens",
     "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
+    "publish-surface:generate": "npm run publish-surface:generate -w @gagnechris/publisher",
+    "publish-surface:check": "npm run publish-surface:generate && git diff --exit-code -- infra/lib/cloudfront/viewer-request-function.js packages/data/src/publish-admin-routes.generated.ts",
     "mobile": "npm start --prefix apps/mobile",
     "check:rn-bundles": "tsx scripts/check-rn-bundles.ts",
     "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs",

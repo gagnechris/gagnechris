@@ -1,10 +1,10 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON for posts.json, slugs.json, and last-published.json (CHR-166) 1`] = `"{"items":[{"id":"01TEST","slug":"hello-world","title":"Hello World","excerpt":"A short excerpt.","publishedAt":"2026-09-27T12:00:00.000Z","updatedAt":"2026-09-27T12:00:00.000Z","tags":["aws"],"coverImage":"/media/cover.jpg"}]}"`;
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON from real publish targets (CHR-179) 1`] = `"{"items":[{"id":"01TEST","slug":"hello-world","title":"Hello World","excerpt":"A short excerpt.","publishedAt":"2026-09-27T12:00:00.000Z","updatedAt":"2026-09-27T12:00:00.000Z","tags":["aws"],"coverImage":"/media/cover.jpg"}]}"`;
 
-exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON for posts.json, slugs.json, and last-published.json (CHR-166) 2`] = `"{"slugs":["hello-world"]}"`;
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON from real publish targets (CHR-179) 2`] = `"{"slugs":["hello-world"]}"`;
 
-exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON for posts.json, slugs.json, and last-published.json (CHR-166) 3`] = `"{"name":"Chris Gagne","title":"Engineering Leader","about":"I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.","seo":null,"publishedAt":null,"updatedAt":"2026-09-27T00:00:00.000Z"}"`;
+exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen JSON from real publish targets (CHR-179) 3`] = `"{"name":"Chris Gagne","title":"Engineering Leader","about":"I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.","seo":null,"publishedAt":null,"updatedAt":"2026-09-27T00:00:00.000Z"}"`;
 
 exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for home, blog index, resume, and post 1`] = `
 "<!doctype html>

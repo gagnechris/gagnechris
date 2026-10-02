@@ -181,13 +181,15 @@ export function collectStreamPublishedPostItems(
   return items;
 }
 
-export function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {
+/**
+ * True when any registered publish target matches the stream scope.
+ * Own-entity pages match via `touchedEntityTypes` in their `matches()` —
+ * no rebuild-scope boolean and no hard-coded entity allowlist (CHR-179).
+ */
+export function streamNeedsRebuild(
+  records: DynamoDBRecord[],
+  targets: readonly { matches(scope: RebuildScope): boolean }[],
+): boolean {
   const scope = collectRebuildScope(records);
-  return (
-    scope.home ||
-    scope.resume ||
-    scope.feeds ||
-    scope.postSlugs.size > 0 ||
-    scope.slugsToRemove.size > 0
-  );
+  return targets.some((t) => t.matches(scope));
 }

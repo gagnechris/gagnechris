@@ -31,6 +31,7 @@ type CfResponse =
 type HandlerApi = {
   handler: (event: { request: CfRequest }) => Promise<CfResponse>;
   setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
+  setOptionBPrefixesForTests: (prefixes: string[] | null) => void;
 };
 
 type FakeKvs = {
@@ -52,7 +53,7 @@ function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
     '__fakeKvsFactory',
     `var cf = { kvs: ${kvsFactory} };
      ${fnSource}
-     return { handler, setPublishedBlogSlugsForTests };`,
+     return { handler, setPublishedBlogSlugsForTests, setOptionBPrefixesForTests };`,
   )(
     typeof fakeKvs === 'function' ? undefined : fakeKvs,
     typeof fakeKvs === 'function' ? fakeKvs : undefined,
@@ -72,6 +73,7 @@ function locationOf(res: CfResponse): string {
 
 afterEach(() => {
   api.setPublishedBlogSlugsForTests(null);
+  api.setOptionBPrefixesForTests(null);
 });
 
 describe('viewer-request CloudFront Function', () => {
@@ -387,6 +389,34 @@ describe('viewer-request CloudFront Function', () => {
         })) as CfRequest
       ).uri,
     ).toBe('/dont-feed-the-bears/index.html');
+  });
+
+  it('serves /now via Option B when a target registers the path (CHR-179)', async () => {
+    // Production registry has no /now; a new page target adds optionBPaths: ['/now']
+    // and codegen updates OPTION_B_PREFIXES. Simulate that registration here.
+    api.setOptionBPrefixesForTests([
+      '/blog',
+      '/contact',
+      '/dont-feed-the-bears',
+      '/now',
+      '/resume',
+    ]);
+    expect(
+      (
+        (await runHandler({
+          uri: '/now',
+          headers: { host: { value: 'gagnechris.com' } },
+        })) as CfRequest
+      ).uri,
+    ).toBe('/now/index.html');
+    expect(
+      (
+        (await runHandler({
+          uri: '/now/',
+          headers: { host: { value: 'gagnechris.com' } },
+        })) as CfRequest
+      ).uri,
+    ).toBe('/now/index.html');
   });
 
   it('rewrites /admin and /auth to the neutral SPA shell', async () => {

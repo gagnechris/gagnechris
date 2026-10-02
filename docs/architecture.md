@@ -8,7 +8,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 2. **Viewer request** CloudFront Function:
    - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA+webauthn; CHR-177)
    - `/` → `/index.html` (prerendered home)
-   - `/resume`, `/blog`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`
+   - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`
    - `/blog/<slug>` → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
    - `/admin/*` and `/auth/*` → `/spa.html` (neutral SPA shell, not the home prerender)
    - Other extensionless paths → `/404.html`
@@ -65,11 +65,17 @@ invalidationPaths }`; the orchestrator writes, deletes, and invalidates.
 CloudFront KeyValueStore slug sync remains a post-step after invalidation
 (CHR-123 order).
 
-**Adding a page:** one new `*.target.ts` plus one registry entry. Prefer matching
-existing scope flags (`home`, `feeds`, …) or `touchedEntityTypes` for a page
-with its own Dynamo entity — no new `RebuildScope` boolean. `collectRebuildScope`
-records every PUBLISHED `entityType` in `touchedEntityTypes` (including types
-that are not yet known flags); unknown types still do not set home/resume/feeds
+**Adding a page:** one new `*.target.ts` plus one registry entry (CHR-179). Prefer
+matching existing scope flags (`home`, `feeds`, …) or `touchedEntityTypes` for a
+page with its own Dynamo entity — no new `RebuildScope` boolean.
+`streamNeedsRebuild` asks registered targets’ `matches()` (so an own-entity
+target wakes the real handler). Declare `optionBPaths` and
+`adminMutationPrefixes` on the target; `npm run publish-surface:generate` folds
+those into the CloudFront Option B allowlist and local-dev
+`isPublishRelevantAdminMutation` routes (`publish-surface:check` guards drift).
+Vite-only pages (`/contact`, `/dont-feed-the-bears`) stay in
+`STATIC_OPTION_B_PREFIXES`. `collectRebuildScope` still records every PUBLISHED
+`entityType` in `touchedEntityTypes`; unknown types do not set home/resume/feeds
 (CHR-128 / CHR-166).
 
 Invalidation is target-owned: a body-only post edit that does not change feed

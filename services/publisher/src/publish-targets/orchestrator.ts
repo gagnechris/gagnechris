@@ -12,8 +12,38 @@ import type {
   PublishArtifact,
   PublishTarget,
   PublishTargetContext,
+  PublishTargetRunResult,
   RebuildSiteSources,
 } from './types.js';
+import { PUBLISH_RESULT_BOOLEAN_FLAGS } from './types.js';
+
+type FlagAccumulator = {
+  removedSlugs: string[];
+} & Record<(typeof PUBLISH_RESULT_BOOLEAN_FLAGS)[number], boolean>;
+
+function emptyFlagAccumulator(): FlagAccumulator {
+  return {
+    removedSlugs: [],
+    resumePublished: false,
+    resumeUnpublished: false,
+    resumePdfFailed: false,
+    homePublished: false,
+    homeRestoredFromSnapshot: false,
+  };
+}
+
+/** OR-merge boolean flags; concat removedSlugs (CHR-179). */
+export function mergeTargetResultFlags(
+  acc: FlagAccumulator,
+  result: PublishTargetRunResult,
+): void {
+  if (result.removedSlugs?.length) {
+    acc.removedSlugs.push(...result.removedSlugs);
+  }
+  for (const key of PUBLISH_RESULT_BOOLEAN_FLAGS) {
+    if (result[key]) acc[key] = true;
+  }
+}
 
 function scopeNeedsCatalog(
   targets: readonly PublishTarget[],
@@ -106,25 +136,13 @@ export async function runPublishTargets(options: {
     corruptPostSlugs,
   };
 
-  let removedSlugs: string[] = [];
-  let resumePublished = false;
-  let resumeUnpublished = false;
-  let resumePdfFailed = false;
-  let homePublished = false;
-  let homeRestoredFromSnapshot = false;
+  const flags = emptyFlagAccumulator();
   const collectedPaths: string[] = [];
   let hadChanges = false;
 
   for (const target of activeTargets) {
     const result = await target.run(ctx);
-    if (result.removedSlugs?.length) {
-      removedSlugs = removedSlugs.concat(result.removedSlugs);
-    }
-    if (result.resumePublished) resumePublished = true;
-    if (result.resumeUnpublished) resumeUnpublished = true;
-    if (result.resumePdfFailed) resumePdfFailed = true;
-    if (result.homePublished) homePublished = true;
-    if (result.homeRestoredFromSnapshot) homeRestoredFromSnapshot = true;
+    mergeTargetResultFlags(flags, result);
 
     const written = result.artifacts?.length
       ? await writeArtifacts(storage, result.artifacts)
@@ -163,12 +181,12 @@ export async function runPublishTargets(options: {
 
   return {
     publishedCount: published.length,
-    removedSlugs,
-    resumePublished,
-    resumeUnpublished,
-    resumePdfFailed,
-    homePublished,
-    homeRestoredFromSnapshot,
+    removedSlugs: flags.removedSlugs,
+    resumePublished: flags.resumePublished,
+    resumeUnpublished: flags.resumeUnpublished,
+    resumePdfFailed: flags.resumePdfFailed,
+    homePublished: flags.homePublished,
+    homeRestoredFromSnapshot: flags.homeRestoredFromSnapshot,
     invalidated,
   };
 }

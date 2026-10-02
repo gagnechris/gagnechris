@@ -6,6 +6,10 @@ import {
   isFullRebuildScope,
   streamNeedsRebuild,
 } from '../src/rebuild-scope.js';
+import { getPublishTargets } from '../src/publish-targets/registry.js';
+import nowPageTarget from './fixtures/now-page.target.js';
+
+const prodTargets = getPublishTargets();
 
 function metaImage(fields: {
   entityType?: string;
@@ -62,7 +66,31 @@ describe('collectRebuildScope', () => {
     expect(scope.feeds).toBe(false);
     expect([...scope.postSlugs]).toEqual([]);
     expect([...scope.touchedEntityTypes]).toEqual(['note']);
-    expect(streamNeedsRebuild(records)).toBe(false);
+    // Unclaimed entity types still skip (no registered target matches).
+    expect(streamNeedsRebuild(records, prodTargets)).toBe(false);
+  });
+
+  it('rebuilds when a registered target claims the touched entity type (CHR-179)', () => {
+    const records: DynamoDBRecord[] = [
+      {
+        eventID: '1',
+        eventName: 'INSERT',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          NewImage: metaImage({
+            entityType: 'now',
+            status: 'published',
+            pk: 'NOW#current',
+          }),
+        },
+      },
+    ];
+    const scope = collectRebuildScope(records);
+    expect([...scope.touchedEntityTypes]).toEqual(['now']);
+    expect(streamNeedsRebuild(records, prodTargets)).toBe(false);
+    expect(streamNeedsRebuild(records, [...prodTargets, nowPageTarget])).toBe(
+      true,
+    );
   });
 
   it('does not treat missing entityType as a post unless pk is POST# (CHR-167)', () => {
@@ -82,7 +110,7 @@ describe('collectRebuildScope', () => {
       },
     ];
     expect(collectRebuildScope(nonPost).feeds).toBe(false);
-    expect(streamNeedsRebuild(nonPost)).toBe(false);
+    expect(streamNeedsRebuild(nonPost, prodTargets)).toBe(false);
 
     const legacyPost: DynamoDBRecord[] = [
       {
@@ -229,7 +257,7 @@ describe('collectRebuildScope', () => {
         },
       },
     ];
-    expect(streamNeedsRebuild(records)).toBe(false);
+    expect(streamNeedsRebuild(records, prodTargets)).toBe(false);
   });
 });
 

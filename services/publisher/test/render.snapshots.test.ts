@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
-import { homeToSnapshot } from '../src/home-publish.js';
-import { toListItem } from '../src/posts.js';
+import {
+  HOME_LAST_PUBLISHED_KEY,
+  homeToSnapshot,
+} from '../src/home-publish.js';
 import {
   buildRssXml,
   buildSitemapXml,
@@ -11,6 +13,10 @@ import {
   renderResumePage,
   renderResumeUnavailablePage,
 } from '../src/render.js';
+import blogFeedsTarget from '../src/publish-targets/targets/blog-feeds.target.js';
+import homeTarget from '../src/publish-targets/targets/home.target.js';
+import type { PublishTargetContext } from '../src/publish-targets/types.js';
+import type { SiteStorage } from '../src/storage.js';
 
 const samplePost = (): Post => ({
   id: '01TEST',
@@ -63,12 +69,81 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
     expect(buildSitemapXml([samplePost()])).toMatchSnapshot();
   });
 
-  it('matches frozen JSON for posts.json, slugs.json, and last-published.json (CHR-166)', () => {
+  it('matches frozen JSON from real publish targets (CHR-179)', async () => {
     const post = samplePost();
-    expect(
-      JSON.stringify({ items: [toListItem(post)] }, null, 0),
-    ).toMatchSnapshot();
-    expect(JSON.stringify({ slugs: [post.slug] }, null, 0)).toMatchSnapshot();
-    expect(JSON.stringify(homeToSnapshot(DEFAULT_HOME))).toMatchSnapshot();
+    const storage: SiteStorage = {
+      async readShell() {
+        return shell;
+      },
+      async read() {
+        return undefined;
+      },
+      async put() {
+        return true;
+      },
+      async delete() {
+        return false;
+      },
+      async list() {
+        return [];
+      },
+      async invalidate() {},
+    };
+    const baseCtx: Omit<PublishTargetContext, 'scope' | 'published'> = {
+      shell,
+      storage,
+      sources: {
+        listPublishedPosts: async () => ({
+          posts: [post],
+          corruptSlugs: [],
+        }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({
+          status: 'ok' as const,
+          entity: DEFAULT_HOME,
+        }),
+      },
+      corruptPostSlugs: new Set(),
+    };
+
+    const feeds = await blogFeedsTarget.run({
+      ...baseCtx,
+      published: [post],
+      scope: {
+        allPosts: false,
+        postSlugs: new Set(),
+        slugsToRemove: new Set(),
+        feeds: true,
+        home: false,
+        resume: false,
+        touchedEntityTypes: new Set(['post']),
+      },
+    });
+    const postsJson = feeds.artifacts?.find((a) => a.key === 'blog/posts.json');
+    const slugsJson = feeds.artifacts?.find((a) => a.key === 'blog/slugs.json');
+    expect(postsJson?.body).toMatchSnapshot();
+    expect(slugsJson?.body).toMatchSnapshot();
+
+    const home = await homeTarget.run({
+      ...baseCtx,
+      published: [],
+      scope: {
+        allPosts: false,
+        postSlugs: new Set(),
+        slugsToRemove: new Set(),
+        feeds: false,
+        home: true,
+        resume: false,
+        touchedEntityTypes: new Set(['home']),
+      },
+    });
+    const lastPublished = home.artifacts?.find(
+      (a) => a.key === HOME_LAST_PUBLISHED_KEY,
+    );
+    expect(lastPublished?.body).toMatchSnapshot();
+    // Sanity: still matches the snapshot helper shape.
+    expect(lastPublished?.body).toBe(
+      JSON.stringify(homeToSnapshot(DEFAULT_HOME)),
+    );
   });
 });
