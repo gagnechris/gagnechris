@@ -14,6 +14,22 @@ type NoteDraft = {
   pinned: boolean;
 };
 
+type StoredNote = {
+  id: string;
+  userId: string;
+  area: 'work';
+  type: 'daily';
+  date: string;
+  title: string;
+  bodyMarkdown: string;
+  tags: string[];
+  pinned: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  deleted: boolean;
+};
+
 const flush = async () => {
   await act(async () => {
     await Promise.resolve();
@@ -31,32 +47,21 @@ const waitUntil = async (predicate: () => boolean, label: string) => {
 
 describe('daily note first write (CHR-42 false conflict)', () => {
   test('typing during first upsert does not surface remote conflict', async () => {
-    let stored: null | {
-      id: string;
-      userId: string;
-      area: 'work';
-      type: 'daily';
-      date: string;
-      title: string;
-      bodyMarkdown: string;
-      tags: string[];
-      pinned: boolean;
-      version: number;
-      createdAt: string;
-      updatedAt: string;
-      deleted: boolean;
-    } = null;
+    // Object bag so nested mock assignments stay visible to tsc (let+closure → never).
+    const state: { note: StoredNote | null; saveCalls: number } = {
+      note: null,
+      saveCalls: 0,
+    };
 
     let releaseSave!: () => void;
     const saveGate = new Promise<void>((resolve) => {
       releaseSave = resolve;
     });
-    let saveCalls = 0;
 
     const client = {
       GET: vi.fn(async (path: string) => {
         if (path === '/api/notebook/notes/daily/{area}/{date}') {
-          if (!stored) {
+          if (!state.note) {
             return {
               data: {
                 exists: false as const,
@@ -75,27 +80,27 @@ describe('daily note first write (CHR-42 false conflict)', () => {
             };
           }
           return {
-            data: stored,
+            data: state.note,
             error: undefined,
             response: { status: 200 },
           };
         }
         return {
-          data: { items: stored ? [stored] : [] },
+          data: { items: state.note ? [state.note] : [] },
           error: undefined,
           response: { status: 200 },
         };
       }),
       PUT: vi.fn(
         async (_path: string, init?: { body?: Record<string, unknown> }) => {
-          saveCalls += 1;
+          state.saveCalls += 1;
           const body = init?.body ?? {};
           // Hold the first save so we can type mid-flight (bumpEdit clears 'saving').
-          if (saveCalls === 1) {
+          if (state.saveCalls === 1) {
             await saveGate;
           }
           const now = new Date().toISOString();
-          const prev = stored;
+          const prev = state.note;
           if (
             prev &&
             body.version !== undefined &&
@@ -107,7 +112,7 @@ describe('daily note first write (CHR-42 false conflict)', () => {
               response: { status: 409 },
             };
           }
-          stored = {
+          state.note = {
             id: String(body.id ?? prev?.id ?? '01TESTFIRSTWRITE00000000001'),
             userId: 'u1',
             area: 'work',
@@ -125,7 +130,7 @@ describe('daily note first write (CHR-42 false conflict)', () => {
             deleted: false,
           };
           return {
-            data: stored,
+            data: state.note,
             error: undefined,
             response: { status: 200 },
           };
@@ -209,7 +214,7 @@ describe('daily note first write (CHR-42 false conflict)', () => {
     });
 
     await waitUntil(
-      () => result.current.saveState === 'saving' || saveCalls === 1,
+      () => result.current.saveState === 'saving' || state.saveCalls === 1,
       'save in flight',
     );
 
@@ -233,7 +238,7 @@ describe('daily note first write (CHR-42 false conflict)', () => {
     // Allow follow-up save for the mid-flight edit to finish.
     await waitUntil(
       () =>
-        stored?.bodyMarkdown === 'first more' &&
+        state.note?.bodyMarkdown === 'first more' &&
         result.current.saveError === null &&
         !result.current.dirty,
       'second save clean',
@@ -241,9 +246,6 @@ describe('daily note first write (CHR-42 false conflict)', () => {
 
     expect(result.current.saveError).toBeNull();
     expect(result.current.entity?.version).toBeGreaterThan(0);
-    if (!stored) {
-      throw new Error('expected persisted daily note after first write');
-    }
-    expect(stored.version).toBeGreaterThan(0);
+    expect(state.note?.version).toBeGreaterThan(0);
   });
 });
