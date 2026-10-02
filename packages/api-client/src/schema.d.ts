@@ -3272,7 +3272,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            changes: {
+                            changes: ({
                                 /** @enum {string} */
                                 type: "fakeNote";
                                 id: string;
@@ -3295,7 +3295,65 @@ export interface paths {
                                     area?: "work" | "personal";
                                     noteDate?: string;
                                 };
-                            }[];
+                            } | {
+                                /** @enum {string} */
+                                type: "note";
+                                id: string;
+                                version: number;
+                                deleted: boolean;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                entity?: {
+                                    id: string;
+                                    userId: string;
+                                    /** @enum {string} */
+                                    area: "work" | "personal";
+                                    /** @enum {string} */
+                                    type: "daily" | "page";
+                                    date: string | null;
+                                    title: string;
+                                    bodyMarkdown: string;
+                                    tags: string[];
+                                    pinned: boolean;
+                                    version: number;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    deleted: boolean;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "task";
+                                id: string;
+                                version: number;
+                                deleted: boolean;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                entity?: {
+                                    id: string;
+                                    userId: string;
+                                    /** @enum {string} */
+                                    area: "work" | "personal";
+                                    title: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    priority: "low" | "med" | "high";
+                                    /** @enum {string} */
+                                    status: "todo" | "in_progress" | "done";
+                                    dueDate: string | null;
+                                    /** Format: date-time */
+                                    completedAt: string | null;
+                                    noteId: string | null;
+                                    tags: string[];
+                                    version: number;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    deleted: boolean;
+                                };
+                            })[];
                             nextCursor?: string;
                             /** Format: date-time */
                             nextSince: string;
@@ -3893,6 +3951,193 @@ export interface components {
             description?: string;
             ogImage?: string;
         };
+        Note: {
+            id: string;
+            userId: string;
+            /** @enum {string} */
+            area: "work" | "personal";
+            /** @enum {string} */
+            type: "daily" | "page";
+            date: string | null;
+            title: string;
+            bodyMarkdown: string;
+            tags: string[];
+            pinned: boolean;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            deleted: boolean;
+        };
+        NoteListResponse: {
+            items: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                /** @enum {string} */
+                type: "daily" | "page";
+                date: string | null;
+                title: string;
+                bodyMarkdown: string;
+                tags: string[];
+                pinned: boolean;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            }[];
+            nextCursor?: string;
+        };
+        CreateNoteRequest: {
+            id: string;
+            /** @enum {string} */
+            area: "work" | "personal";
+            /** @enum {string} */
+            type: "daily" | "page";
+            date?: string;
+            /** @default  */
+            title: string;
+            /** @default  */
+            bodyMarkdown: string;
+            /** @default [] */
+            tags: string[];
+            /** @default false */
+            pinned: boolean;
+        };
+        UpdateNoteRequest: {
+            version: number;
+            title?: string;
+            bodyMarkdown?: string;
+            tags?: string[];
+            pinned?: boolean;
+            /** @enum {string} */
+            area?: "work" | "personal";
+        };
+        ListNotesQuery: {
+            /**
+             * @description Filter by Work or Personal
+             * @enum {string}
+             */
+            area?: "work" | "personal";
+            /** @description Inclusive start date (yyyy-mm-dd) for calendar ranges */
+            from?: string;
+            /** @description Inclusive end date (yyyy-mm-dd) for calendar ranges */
+            to?: string;
+            /**
+             * @description Filter by daily or page notes
+             * @enum {string}
+             */
+            type?: "daily" | "page";
+            /** @description Opaque pagination cursor from a previous list response */
+            cursor?: string;
+            /** @description Page size (1-100) */
+            limit?: number;
+        };
+        Task: {
+            id: string;
+            userId: string;
+            /** @enum {string} */
+            area: "work" | "personal";
+            title: string;
+            description: string;
+            /** @enum {string} */
+            priority: "low" | "med" | "high";
+            /** @enum {string} */
+            status: "todo" | "in_progress" | "done";
+            dueDate: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            noteId: string | null;
+            tags: string[];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            deleted: boolean;
+        };
+        TaskListResponse: {
+            items: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                description: string;
+                /** @enum {string} */
+                priority: "low" | "med" | "high";
+                /** @enum {string} */
+                status: "todo" | "in_progress" | "done";
+                dueDate: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                noteId: string | null;
+                tags: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            }[];
+            nextCursor?: string;
+        };
+        CreateTaskRequest: {
+            id: string;
+            /** @enum {string} */
+            area: "work" | "personal";
+            title: string;
+            /** @default  */
+            description: string;
+            /**
+             * @default med
+             * @enum {string}
+             */
+            priority: "low" | "med" | "high";
+            /**
+             * @default todo
+             * @enum {string}
+             */
+            status: "todo" | "in_progress" | "done";
+            dueDate?: string | null;
+            noteId?: string | null;
+            /** @default [] */
+            tags: string[];
+        };
+        UpdateTaskRequest: {
+            version: number;
+            /** @enum {string} */
+            area?: "work" | "personal";
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            priority?: "low" | "med" | "high";
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done";
+            dueDate?: string | null;
+            noteId?: string | null;
+            tags?: string[];
+        };
+        ListTasksQuery: {
+            /** @enum {string} */
+            area?: "work" | "personal";
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done";
+            /** @enum {string} */
+            priority?: "low" | "med" | "high";
+            /** @description Tasks due on this date */
+            dueOn?: string;
+            /** @description Tasks due strictly before this date (overdue-style ranges) */
+            dueBefore?: string;
+            /** @description Tasks linked to a note */
+            noteId?: string;
+            cursor?: string;
+            limit?: number;
+        };
         FakeNoteEntity: {
             id: string;
             userId: string;
@@ -3932,6 +4177,66 @@ export interface components {
                 noteDate?: string;
             };
         };
+        NoteSyncChange: {
+            /** @enum {string} */
+            type: "note";
+            id: string;
+            version: number;
+            deleted: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            entity?: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                /** @enum {string} */
+                type: "daily" | "page";
+                date: string | null;
+                title: string;
+                bodyMarkdown: string;
+                tags: string[];
+                pinned: boolean;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            };
+        };
+        TaskSyncChange: {
+            /** @enum {string} */
+            type: "task";
+            id: string;
+            version: number;
+            deleted: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            entity?: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                description: string;
+                /** @enum {string} */
+                priority: "low" | "med" | "high";
+                /** @enum {string} */
+                status: "todo" | "in_progress" | "done";
+                dueDate: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                noteId: string | null;
+                tags: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            };
+        };
         SyncChange: {
             /** @enum {string} */
             type: "fakeNote";
@@ -3955,9 +4260,67 @@ export interface components {
                 area?: "work" | "personal";
                 noteDate?: string;
             };
+        } | {
+            /** @enum {string} */
+            type: "note";
+            id: string;
+            version: number;
+            deleted: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            entity?: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                /** @enum {string} */
+                type: "daily" | "page";
+                date: string | null;
+                title: string;
+                bodyMarkdown: string;
+                tags: string[];
+                pinned: boolean;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            };
+        } | {
+            /** @enum {string} */
+            type: "task";
+            id: string;
+            version: number;
+            deleted: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            entity?: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                description: string;
+                /** @enum {string} */
+                priority: "low" | "med" | "high";
+                /** @enum {string} */
+                status: "todo" | "in_progress" | "done";
+                dueDate: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                noteId: string | null;
+                tags: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            };
         };
         SyncChangesResponse: {
-            changes: {
+            changes: ({
                 /** @enum {string} */
                 type: "fakeNote";
                 id: string;
@@ -3980,7 +4343,65 @@ export interface components {
                     area?: "work" | "personal";
                     noteDate?: string;
                 };
-            }[];
+            } | {
+                /** @enum {string} */
+                type: "note";
+                id: string;
+                version: number;
+                deleted: boolean;
+                /** Format: date-time */
+                updatedAt: string;
+                entity?: {
+                    id: string;
+                    userId: string;
+                    /** @enum {string} */
+                    area: "work" | "personal";
+                    /** @enum {string} */
+                    type: "daily" | "page";
+                    date: string | null;
+                    title: string;
+                    bodyMarkdown: string;
+                    tags: string[];
+                    pinned: boolean;
+                    version: number;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    deleted: boolean;
+                };
+            } | {
+                /** @enum {string} */
+                type: "task";
+                id: string;
+                version: number;
+                deleted: boolean;
+                /** Format: date-time */
+                updatedAt: string;
+                entity?: {
+                    id: string;
+                    userId: string;
+                    /** @enum {string} */
+                    area: "work" | "personal";
+                    title: string;
+                    description: string;
+                    /** @enum {string} */
+                    priority: "low" | "med" | "high";
+                    /** @enum {string} */
+                    status: "todo" | "in_progress" | "done";
+                    dueDate: string | null;
+                    /** Format: date-time */
+                    completedAt: string | null;
+                    noteId: string | null;
+                    tags: string[];
+                    version: number;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    deleted: boolean;
+                };
+            })[];
             nextCursor?: string;
             /** Format: date-time */
             nextSince: string;

@@ -328,10 +328,224 @@ export const UlidSchema = z.preprocess(
   z.string().regex(new RegExp(ULID_PATTERN), 'Must be a ULID'),
 );
 
+/** Calendar day in the owner's local notebook sense (`yyyy-mm-dd`). */
+export const CALENDAR_DATE_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
+
+export const CalendarDateSchema = z
+  .string()
+  .regex(new RegExp(CALENDAR_DATE_PATTERN), 'Must be yyyy-mm-dd');
+
+export type CalendarDate = z.infer<typeof CalendarDateSchema>;
+
+export const NotebookAreaSchema = z.enum(['work', 'personal']);
+
+export type NotebookArea = z.infer<typeof NotebookAreaSchema>;
+
+export const NoteTypeSchema = z.enum(['daily', 'page']);
+
+export type NoteType = z.infer<typeof NoteTypeSchema>;
+
+export const TaskPrioritySchema = z.enum(['low', 'med', 'high']);
+
+export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
+
+export const TaskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
+
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+
 /**
- * Sync change wire types (CHR-172). Discriminated by `type` so generated
- * clients type `entity` per change type. `fakeNote` is the contract fixture
- * until real Notebook Note/Task entities ship (routes stay test-only).
+ * Notebook note API entity (CHR-39). Soft-deleted rows keep `deleted: true`
+ * for the sync tombstone window; list indexes omit them.
+ */
+export const NoteSchema = z
+  .object({
+    id: z.string().min(1),
+    userId: z.string().min(1),
+    area: NotebookAreaSchema,
+    type: NoteTypeSchema,
+    /** Required when `type` is `daily`; null for freeform pages. */
+    date: CalendarDateSchema.nullable(),
+    title: z.string(),
+    bodyMarkdown: z.string(),
+    tags: z.array(z.string()),
+    pinned: z.boolean(),
+    version: z.number().int().nonnegative(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+    deleted: z.boolean(),
+  })
+  .superRefine((note, ctx) => {
+    if (note.type === 'daily' && note.date === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Daily notes require date (yyyy-mm-dd)',
+        path: ['date'],
+      });
+    }
+    if (note.type === 'page' && note.date !== null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Page notes must not set date',
+        path: ['date'],
+      });
+    }
+  });
+
+export type Note = z.infer<typeof NoteSchema>;
+
+export const NoteListResponseSchema = z.object({
+  items: z.array(NoteSchema),
+  nextCursor: z.string().min(1).optional(),
+});
+
+export type NoteListResponse = z.infer<typeof NoteListResponseSchema>;
+
+export const CreateNoteRequestSchema = z
+  .object({
+    id: UlidSchema,
+    area: NotebookAreaSchema,
+    type: NoteTypeSchema,
+    date: CalendarDateSchema.optional(),
+    title: z.string().default(''),
+    bodyMarkdown: z.string().default(''),
+    tags: z.array(z.string()).default([]),
+    pinned: z.boolean().default(false),
+  })
+  .superRefine((body, ctx) => {
+    if (body.type === 'daily' && body.date === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Daily notes require date (yyyy-mm-dd)',
+        path: ['date'],
+      });
+    }
+    if (body.type === 'page' && body.date !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Page notes must not set date',
+        path: ['date'],
+      });
+    }
+  });
+
+export type CreateNoteRequest = z.infer<typeof CreateNoteRequestSchema>;
+
+export const UpdateNoteRequestSchema = z.object({
+  version: z.number().int().nonnegative(),
+  title: z.string().optional(),
+  bodyMarkdown: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  pinned: z.boolean().optional(),
+  area: NotebookAreaSchema.optional(),
+});
+
+export type UpdateNoteRequest = z.infer<typeof UpdateNoteRequestSchema>;
+
+/** Query params for `GET /notebook/notes` (CHR-40). */
+export const ListNotesQuerySchema = z.object({
+  area: NotebookAreaSchema.optional().describe('Filter by Work or Personal'),
+  from: CalendarDateSchema.optional().describe(
+    'Inclusive start date (yyyy-mm-dd) for calendar ranges',
+  ),
+  to: CalendarDateSchema.optional().describe(
+    'Inclusive end date (yyyy-mm-dd) for calendar ranges',
+  ),
+  type: NoteTypeSchema.optional().describe('Filter by daily or page notes'),
+  cursor: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('Opaque pagination cursor from a previous list response'),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .describe('Page size (1-100)'),
+});
+
+export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
+
+/**
+ * Notebook task API entity (CHR-39). `dueDate` is a calendar day; undated
+ * tasks sort separately from due/overdue ranges in Dynamo (UPDATED# prefix).
+ */
+export const TaskSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  title: z.string().min(1),
+  description: z.string(),
+  priority: TaskPrioritySchema,
+  status: TaskStatusSchema,
+  dueDate: CalendarDateSchema.nullable(),
+  completedAt: z.string().datetime({ offset: true }).nullable(),
+  noteId: z.string().min(1).nullable(),
+  tags: z.array(z.string()),
+  version: z.number().int().nonnegative(),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  deleted: z.boolean(),
+});
+
+export type Task = z.infer<typeof TaskSchema>;
+
+export const TaskListResponseSchema = z.object({
+  items: z.array(TaskSchema),
+  nextCursor: z.string().min(1).optional(),
+});
+
+export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
+
+export const CreateTaskRequestSchema = z.object({
+  id: UlidSchema,
+  area: NotebookAreaSchema,
+  title: z.string().min(1),
+  description: z.string().default(''),
+  priority: TaskPrioritySchema.default('med'),
+  status: TaskStatusSchema.default('todo'),
+  dueDate: CalendarDateSchema.nullable().optional(),
+  noteId: z.string().min(1).nullable().optional(),
+  tags: z.array(z.string()).default([]),
+});
+
+export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
+
+export const UpdateTaskRequestSchema = z.object({
+  version: z.number().int().nonnegative(),
+  area: NotebookAreaSchema.optional(),
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  priority: TaskPrioritySchema.optional(),
+  status: TaskStatusSchema.optional(),
+  dueDate: CalendarDateSchema.nullable().optional(),
+  noteId: z.string().min(1).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export type UpdateTaskRequest = z.infer<typeof UpdateTaskRequestSchema>;
+
+/** Query params for `GET /notebook/tasks` (CHR-43). */
+export const ListTasksQuerySchema = z.object({
+  area: NotebookAreaSchema.optional(),
+  status: TaskStatusSchema.optional(),
+  priority: TaskPrioritySchema.optional(),
+  dueOn: CalendarDateSchema.optional().describe('Tasks due on this date'),
+  dueBefore: CalendarDateSchema.optional().describe(
+    'Tasks due strictly before this date (overdue-style ranges)',
+  ),
+  noteId: z.string().min(1).optional().describe('Tasks linked to a note'),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
+
+/**
+ * Sync change wire types (CHR-172 / CHR-39). Discriminated by `type` so
+ * generated clients type `entity` per change type. `fakeNote` remains the
+ * contract fixture (test-only routes) alongside real `note` / `task`.
  */
 
 export const FakeNoteEntitySchema = z.object({
@@ -343,7 +557,7 @@ export const FakeNoteEntitySchema = z.object({
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   deleted: z.boolean(),
-  area: z.enum(['work', 'personal']).optional(),
+  area: NotebookAreaSchema.optional(),
   noteDate: z.string().optional(),
 });
 
@@ -361,9 +575,32 @@ export const FakeNoteSyncChangeSchema = z.object({
 
 export type FakeNoteSyncChange = z.infer<typeof FakeNoteSyncChangeSchema>;
 
-/** Discriminated union — add Note/Task variants here as they ship. */
+export const NoteSyncChangeSchema = z.object({
+  type: z.literal('note'),
+  id: z.string().min(1),
+  version: z.number().int().nonnegative(),
+  deleted: z.boolean(),
+  updatedAt: z.string().datetime({ offset: true }),
+  entity: NoteSchema.optional(),
+});
+
+export type NoteSyncChange = z.infer<typeof NoteSyncChangeSchema>;
+
+export const TaskSyncChangeSchema = z.object({
+  type: z.literal('task'),
+  id: z.string().min(1),
+  version: z.number().int().nonnegative(),
+  deleted: z.boolean(),
+  updatedAt: z.string().datetime({ offset: true }),
+  entity: TaskSchema.optional(),
+});
+
+export type TaskSyncChange = z.infer<typeof TaskSyncChangeSchema>;
+
 export const SyncChangeSchema = z.discriminatedUnion('type', [
   FakeNoteSyncChangeSchema,
+  NoteSyncChangeSchema,
+  TaskSyncChangeSchema,
 ]);
 
 export type SyncChange = z.infer<typeof SyncChangeSchema>;
