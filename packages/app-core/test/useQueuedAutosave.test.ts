@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
+import { mergeEditorSeo } from '../src/mergeEditorSeo.js';
 import {
-  mergeEditorSeo,
   useQueuedAutosave,
   type FlushResult,
 } from '../src/useQueuedAutosave.js';
@@ -356,7 +356,9 @@ test('slug_taken 409 shows slug-taken message, not conflictMessage (CHR-160)', a
       performSave,
       onSaved: () => {},
       conflictMessage: 'Conflict — Reload and try again.',
-      slugTakenMessage: 'That slug is already taken. Choose a different slug.',
+      conflictMessages: {
+        slug_taken: 'That slug is already taken. Choose a different slug.',
+      },
     });
   });
 

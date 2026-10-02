@@ -35,7 +35,8 @@ function errorCodeFromBody(body: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined;
 }
 
-const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
+/** Unwrap an OpenAPI client result or throw `ApiError` (exported for new resources). */
+export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
     throw new ApiError(
       `${label} (${result.response.status}).`,

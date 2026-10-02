@@ -34,7 +34,7 @@ Consequences:
 
 Root and `apps/mobile` are both on React **19.3.0**. React Native 0.86.3 declares `react: ^19.2.3`, so the root version satisfies it and there is no reason to split.
 
-The two lockfiles still produce two copies on disk, which is harmless at runtime (Metro's `nodeModulesPaths` puts `apps/mobile/node_modules` first) but not in tests: a bare `react` import from app-core resolves to the root copy, and two React instances break hooks. `apps/mobile/vitest.config.mts` sets `resolve.dedupe: ['react']`, and `src/app-core.test.ts` renders an app-core hook so the duplicate would fail the suite rather than surface as a confusing "invalid hook call".
+The two lockfiles still produce two copies on disk, which is harmless at runtime (Metro's `nodeModulesPaths` puts `apps/mobile/node_modules` first) but not in tests: a bare `react` or `@tanstack/react-query` import from app-core resolves to the root copy, and two instances break hooks. `apps/mobile/vitest.config.mts` sets `resolve.dedupe: ['react', '@tanstack/react-query']`, and `src/app-core.test.ts` renders an app-core autosave hook plus a versioned-resource query hook so the duplicate would fail the suite rather than surface as a confusing "invalid hook call" / "Cannot read properties of null (reading 'useContext')" (CHR-173).
 
 ## CI
 
@@ -44,7 +44,7 @@ The two lockfiles still produce two copies on disk, which is harmless at runtime
 2. Typecheck + test for `shared`, `api-client`, `tokens`, `app-core`, and mobile; lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
 4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, or if `zod/v4/` is absent (CHR-164).
-5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas and asserting Zod 4 APIs (`z.email`).
+5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas, asserting Zod 4 APIs (`z.email`), and resolving app-core `createVersionedResource` (including its `useQuery` hook) + `fetch` through Metro (CHR-173). Hook rendering under a single React / react-query instance is asserted in `src/app-core.test.ts`.
 
 Steps 4 and 5 exist because "Export succeeded (N modules)" is not evidence (CHR-150). The CHR-142 resolver remapped `.js` → `.d.ts` for every module including `node_modules`, so `zod/v4/classic/external.js` resolved to a type-only declaration. The export succeeded, and the app threw `TypeError: undefined is not a function` at module load on device. Reverting `metro.config.js` makes step 4 report the `.d.ts` sources and step 5 fail with `TypeError: _zod.z.literal is not a function`.
 

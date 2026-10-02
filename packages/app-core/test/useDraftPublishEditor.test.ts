@@ -2,12 +2,34 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   useDraftPublishEditor,
   type DraftPublishAutosave,
+  type DraftPublishHold,
 } from '../src/useDraftPublishEditor.js';
 import { useQueuedAutosave } from '../src/useQueuedAutosave.js';
 import { act, renderHook, useState } from './renderHook.js';
-import { useRef } from 'react';
+import { useCallback, useRef, useState as useReactState } from 'react';
 
 type Entity = { version: number; body: string };
+
+/** Minimal hold matching `useVersionedDocEditor.withHold` for unit tests. */
+function useTestHold(enabled = true): DraftPublishHold & { busy: boolean } {
+  const [busy, setBusy] = useReactState(false);
+  const busyRef = useRef(false);
+  const withHold = useCallback(
+    async (fn: () => Promise<void>) => {
+      if (!enabled || busyRef.current) return;
+      setBusy(true);
+      busyRef.current = true;
+      try {
+        await fn();
+      } finally {
+        setBusy(false);
+        busyRef.current = false;
+      }
+    },
+    [enabled],
+  );
+  return { withHold, isBusy: () => busyRef.current, busy };
+}
 
 describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
   test('edit → discard → publish leaves clean with no extra save', async () => {
@@ -31,6 +53,7 @@ describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
       const [draft, setDraft] = useState('server');
       const [dirty, setDirty] = useState(false);
       const versionRef = useRef(3);
+      const hold = useTestHold();
       const autosave = useQueuedAutosave({
         draft,
         dirty,
@@ -61,6 +84,7 @@ describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
         unpublishConfirm: 'unpublish?',
         discardConfirm: 'discard?',
         confirm,
+        hold,
       });
       return {
         ...autosave,
@@ -113,6 +137,13 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
     awaitInFlight: async () => 'clean',
   });
 
+  const stubHold = (): DraftPublishHold => ({
+    withHold: async (fn) => {
+      await fn();
+    },
+    isBusy: () => false,
+  });
+
   /** RN's `Alert` resolves on a later tick; a sync read would see a promise. */
   const deferredConfirm = (answer: boolean) =>
     vi.fn((_message: string) => Promise.resolve(answer));
@@ -145,6 +176,7 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
         unpublishConfirm: 'unpublish?',
         discardConfirm: 'discard?',
         confirm,
+        hold: stubHold(),
       });
     });
     return { result, unpublish, discard };

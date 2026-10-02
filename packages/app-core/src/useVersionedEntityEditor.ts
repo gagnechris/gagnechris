@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useGetApiClient } from './AppApiProvider.js';
+import { useCallback } from 'react';
 import type { ConfirmFn } from './platform.js';
-import { ApiError } from './query/api.js';
 import type { DraftPublishResource } from './query/createDraftPublishResource.js';
 import {
   useDraftPublishEditor,
   type DraftPublishDeleteOptions,
 } from './useDraftPublishEditor.js';
-import { useQueuedAutosave, type SaveState } from './useQueuedAutosave.js';
+import type { SaveState } from './useQueuedAutosave.js';
+import {
+  useVersionedDocEditor,
+  type VersionedDocEntity,
+} from './useVersionedDocEditor.js';
 
-export type VersionedEditorEntity = {
-  version: number;
+export type VersionedEditorEntity = VersionedDocEntity & {
   status: 'draft' | 'published' | 'deleted';
   hasUnpublishedChanges: boolean;
 };
@@ -30,7 +31,7 @@ export type VersionedEntityEditorOptions<
   getEntityId: (entity: TEntity) => string;
   toPayload: (draft: TDraft, entity: TEntity) => Record<string, unknown>;
   conflictMessage: string;
-  /** Shown on 409 `slug_taken` (posts). Defaults in useQueuedAutosave. */
+  /** Shown on 409 `slug_taken` (posts). */
   slugTakenMessage?: string;
   confirm: ConfirmFn;
   unpublishConfirm: string;
@@ -56,9 +57,9 @@ export type VersionedEntityActionBarProps = {
 };
 
 /**
- * Platform-neutral versioned draft editor: hydrate-once, version binding,
- * performSave, autosave, publish/unpublish/discard/delete with hold (CHR-158).
- * Web/RN shells add confirm, leave guards, and shortcuts around this hook.
+ * Draft/publish versioned editor for post / home / resume: layers publish
+ * lifecycle on `useVersionedDocEditor` (CHR-158 / CHR-173). Non-publishable
+ * entities should call `useVersionedDocEditor` directly.
  */
 export function useVersionedEntityEditor<
   TEntity extends VersionedEditorEntity,
@@ -81,203 +82,70 @@ export function useVersionedEntityEditor<
   delete: deleteOpts,
   onHydrate,
 }: VersionedEntityEditorOptions<TEntity, TDraft, TParams>) {
-  const getClient = useGetApiClient();
-  const query = resource.useQuery(params, enabled);
-  const setCache = resource.useSetCache();
   const {
     publish: publishRequest,
     unpublish: unpublishRequest,
     discard: discardRequest,
   } = resource.useLifecycleMutators(params);
 
-  const [draft, setDraft] = useState<TDraft>(initialDraft);
-  const [hydratedId, setHydratedId] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [boundVersion, setBoundVersion] = useState(0);
-  const versionRef = useRef(0);
-  const entityRef = useRef<TEntity | null>(null);
-  const onHydrateRef = useRef(onHydrate);
-  const toDraftRef = useRef(toDraft);
-  const getEntityIdRef = useRef(getEntityId);
+  const doc = useVersionedDocEditor({
+    resource,
+    params,
+    enabled,
+    initialDraft,
+    toDraft,
+    getEntityId,
+    toPayload,
+    conflictMessage,
+    conflictMessages: slugTakenMessage
+      ? { slug_taken: slugTakenMessage }
+      : undefined,
+    confirm,
+    loadErrorFallback,
+    delete: deleteOpts,
+    onHydrate,
+  });
 
-  useEffect(() => {
-    onHydrateRef.current = onHydrate;
-  }, [onHydrate]);
-  useEffect(() => {
-    toDraftRef.current = toDraft;
-  }, [toDraft]);
-  useEffect(() => {
-    getEntityIdRef.current = getEntityId;
-  }, [getEntityId]);
-
-  const entity = query.data;
-  const { error: queryError, isPending, isFetchedAfterMount } = query;
-
-  if (
-    entity &&
-    isFetchedAfterMount &&
-    getEntityIdRef.current(entity) !== hydratedId
-  ) {
-    setHydratedId(getEntityIdRef.current(entity));
-    setDraft(toDraftRef.current(entity));
-    setDirty(false);
-    setBoundVersion(entity.version);
-    onHydrateRef.current?.(entity);
-  }
-
-  if (
-    entity &&
-    hydratedId === getEntityIdRef.current(entity) &&
-    !dirty &&
-    entity.version > boundVersion
-  ) {
-    setDraft(toDraftRef.current(entity));
-    setBoundVersion(entity.version);
-  }
-
-  useEffect(() => {
-    entityRef.current = entity ?? null;
-  }, [entity]);
-
-  useEffect(() => {
-    versionRef.current = boundVersion;
-  }, [boundVersion]);
+  const publishMutate = useCallback(
+    () => publishRequest({ version: doc.versionRef.current }),
+    [publishRequest, doc.versionRef],
+  );
+  const unpublishMutate = useCallback(
+    () => unpublishRequest({ version: doc.versionRef.current }),
+    [unpublishRequest, doc.versionRef],
+  );
+  const discardMutate = useCallback(
+    () => discardRequest({ version: doc.versionRef.current }),
+    [discardRequest, doc.versionRef],
+  );
 
   const getVersion = useCallback((e: TEntity) => e.version, []);
 
-  const performSave = useCallback(
-    async (current: TDraft, version: number) => {
-      if (!enabled) return { ok: false as const, status: 0 };
-      try {
-        const currentEntity = entityRef.current;
-        if (!currentEntity) return { ok: false as const, status: 0 };
-        const entitySaved = await resource.update(getClient(), params, {
-          version,
-          ...toPayload(current, currentEntity),
-        });
-        return { ok: true as const, entity: entitySaved };
-      } catch (err) {
-        return {
-          ok: false as const,
-          status: err instanceof ApiError ? err.status : 0,
-          error: err instanceof ApiError ? err.error : undefined,
-        };
-      }
-    },
-    [enabled, getClient, params, resource, toPayload],
-  );
-
-  const onSaved = useCallback(
-    (saved: TEntity) => {
-      setCache(saved);
-      setBoundVersion(saved.version);
-    },
-    [setCache],
-  );
-
-  const onReplaceDraft = useCallback(
-    (saved: TEntity) => {
-      setCache(saved);
-      setDraft(toDraftRef.current(saved));
-      setBoundVersion(saved.version);
-    },
-    [setCache],
-  );
-
-  const autosave = useQueuedAutosave({
-    draft,
-    dirty,
-    setDirty,
-    enabled,
-    versionRef,
-    getVersion,
-    performSave,
-    onSaved,
-    conflictMessage,
-    slugTakenMessage,
-  });
-
-  const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;
-
-  const remoteConflict =
-    Boolean(entity) &&
-    hydratedId === getEntityIdRef.current(entity!) &&
-    dirty &&
-    entity!.version > boundVersion &&
-    // Ignore refetches that land while our own PUT is in flight — otherwise the
-    // conflict banner flashes until onSaved bumps boundVersion (CHR-165).
-    saveState !== 'saving';
-  const displayError = remoteConflict ? conflictMessage : saveError;
-
-  const publishMutate = useCallback(
-    () => publishRequest({ version: versionRef.current }),
-    [publishRequest],
-  );
-  const unpublishMutate = useCallback(
-    () => unpublishRequest({ version: versionRef.current }),
-    [unpublishRequest],
-  );
-  const discardMutate = useCallback(
-    () => discardRequest({ version: versionRef.current }),
-    [discardRequest],
-  );
-
-  const {
-    busy,
-    runPublish,
-    runUnpublish,
-    runDiscard,
-    runDelete,
-    saveRef,
-    publishRef,
-    suppressLeaveGuardRef,
-  } = useDraftPublishEditor({
-    autosave,
-    dirty,
-    setDirty,
-    versionRef,
-    getVersion,
-    onEntityMeta: onSaved,
-    onReplaceDraft,
-    publish: publishMutate,
-    unpublish: unpublishMutate,
-    discard: discardMutate,
-    unpublishConfirm,
-    discardConfirm,
-    enabled,
-    confirm,
-    delete: deleteOpts,
-  });
-
-  const updateDraft = useCallback(
-    (update: (prev: TDraft) => TDraft) => {
-      setDraft(update);
-      bumpEdit();
-      setDirty(true);
-    },
-    [bumpEdit],
-  );
-
-  const loadError =
-    queryError instanceof ApiError
-      ? queryError.message
-      : queryError
-        ? loadErrorFallback
-        : null;
-
-  const isLoading =
-    Boolean(enabled) &&
-    (isPending ||
-      !isFetchedAfterMount ||
-      !entity ||
-      hydratedId !== getEntityIdRef.current(entity));
+  const { runPublish, runUnpublish, runDiscard, publishRef } =
+    useDraftPublishEditor({
+      autosave: doc.autosave,
+      dirty: doc.dirty,
+      setDirty: doc.setDirty,
+      versionRef: doc.versionRef,
+      getVersion,
+      onEntityMeta: doc.onEntityMeta,
+      onReplaceDraft: doc.onReplaceDraft,
+      publish: publishMutate,
+      unpublish: unpublishMutate,
+      discard: discardMutate,
+      unpublishConfirm,
+      discardConfirm,
+      enabled,
+      confirm,
+      hold: { withHold: doc.withHold, isBusy: doc.isBusy },
+    });
 
   const actionBarProps: VersionedEntityActionBarProps = {
-    status: entity?.status ?? 'draft',
-    hasUnpublishedChanges: entity?.hasUnpublishedChanges ?? false,
-    saveState,
-    dirty,
-    busy,
+    status: doc.entity?.status ?? 'draft',
+    hasUnpublishedChanges: doc.entity?.hasUnpublishedChanges ?? false,
+    saveState: doc.saveState,
+    dirty: doc.dirty,
+    busy: doc.busy,
     onPublish: () => {
       void runPublish();
     },
@@ -288,33 +156,33 @@ export function useVersionedEntityEditor<
       void runDiscard();
     },
     onSave: () => {
-      void save();
+      void doc.save();
     },
   };
 
   return {
-    draft,
-    setDraft,
-    updateDraft,
-    entity: entity ?? null,
-    dirty,
-    setDirty,
-    busy,
-    save,
-    saveState,
-    saveError: displayError,
-    setSaveError,
-    loadError,
-    isLoading,
+    draft: doc.draft,
+    setDraft: doc.setDraft,
+    updateDraft: doc.updateDraft,
+    entity: doc.entity,
+    dirty: doc.dirty,
+    setDirty: doc.setDirty,
+    busy: doc.busy,
+    save: doc.save,
+    saveState: doc.saveState,
+    saveError: doc.saveError,
+    setSaveError: doc.setSaveError,
+    loadError: doc.loadError,
+    isLoading: doc.isLoading,
     actionBarProps,
     runPublish,
     runUnpublish,
     runDiscard,
-    runDelete,
-    saveRef,
+    runDelete: doc.runDelete,
+    saveRef: doc.saveRef,
     publishRef,
-    suppressLeaveGuardRef,
-    bumpEdit,
-    versionRef,
+    suppressLeaveGuardRef: doc.suppressLeaveGuardRef,
+    bumpEdit: doc.bumpEdit,
+    versionRef: doc.versionRef,
   };
 }
