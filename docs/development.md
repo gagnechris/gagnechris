@@ -53,6 +53,7 @@ npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
 npm run openapi:check # OpenAPI + generated client drift (CI)
 npm run tokens:check  # design token CSS drift (CI)
+npm run publish-surface:check # CloudFront Option B + local publish routes from publisher targets (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + Vite → apps/web/dist
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
