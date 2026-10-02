@@ -21,11 +21,7 @@ import {
   GSI1_CURSOR_KEYS,
 } from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
-import {
-  ConflictError,
-  DataIntegrityError,
-  NotFoundError,
-} from '../data/errors.js';
+import { DataIntegrityError, NotFoundError } from '../data/errors.js';
 import {
   PublishableRepository,
   assertExpectedVersion,
@@ -33,6 +29,10 @@ import {
   withUnpublishedFlag,
   type PersistPublishOptions,
 } from '../data/publishable-repository.js';
+import {
+  runVersionedWrite,
+  throwVersionConflict,
+} from '../data/version-condition.js';
 import { logger, metrics } from '../observability.js';
 import {
   buildMetaItem,
@@ -167,34 +167,18 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
       after,
       options,
     );
-    try {
-      await runDynamoWrite(
-        () =>
-          this.doc.send(
-            new TransactWriteCommand({ TransactItems: transactItems }),
-          ),
-        'Update conflict (version)',
-        {
-          slugClaimIndexes,
-          slugTakenMessage: `Slug "${after.slug}" is already taken`,
-        },
-      );
-    } catch (error) {
-      if (error instanceof ConflictError && error.code === 'slug_taken') {
-        throw error;
-      }
-      if (error instanceof ConflictError) {
-        const current = await this.getById(after.id);
-        throw new ConflictError(
-          `Version conflict: expected ${before.version}, current ${current?.version ?? 'unknown'}`,
-          {
-            currentVersion: current?.version,
-            current,
-          },
-        );
-      }
-      throw error;
-    }
+    await runVersionedWrite(
+      () =>
+        this.doc.send(
+          new TransactWriteCommand({ TransactItems: transactItems }),
+        ),
+      'Update conflict (version)',
+      () => throwVersionConflict(before.version, () => this.getById(after.id)),
+      {
+        slugClaimIndexes,
+        slugTakenMessage: `Slug "${after.slug}" is already taken`,
+      },
+    );
   }
 
   async getBySlug(slug: string): Promise<Post | undefined> {
@@ -214,7 +198,11 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
     status?: PostStatus,
     opts?: { cursor?: string; limit?: number },
   ): Promise<{ items: Post[]; nextCursor?: string }> {
-    const statuses: PostStatus[] = status ? [status] : ['draft', 'published'];
+    const statuses: PostStatus[] = status
+      ? [status]
+      : // Published first so admin "all" pages surface live posts before drafts
+        // (CHR-161). Status filter still queries a single GSI partition.
+        ['published', 'draft'];
     if (statuses.length === 1) {
       return this.listSingleStatus(statuses[0]!, opts);
     }

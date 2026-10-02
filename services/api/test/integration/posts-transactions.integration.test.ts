@@ -34,7 +34,7 @@ describe('posts transactions (DynamoDB Local)', () => {
     const draft = await makePost(ctx, { title: 'Integration Post' });
     expect(draft.status).toBe('draft');
 
-    const published = await ctx.posts.publish(draft.id);
+    const published = await ctx.posts.publish(draft.id, draft.version);
     expect(published.status).toBe('published');
     const publishedRow = await doc.send(
       new GetCommand({
@@ -78,7 +78,7 @@ describe('posts transactions (DynamoDB Local)', () => {
   it('moves slug claims on rename (including published)', async () => {
     const ctx = makeCtx(doc, tableName);
     const post = await makePost(ctx, { title: 'Original Slug Post' });
-    const published = await ctx.posts.publish(post.id);
+    const published = await ctx.posts.publish(post.id, post.version);
     const originalSlug = published.slug;
 
     const renamed = await ctx.posts.update(published.id, {

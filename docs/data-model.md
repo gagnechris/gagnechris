@@ -90,7 +90,7 @@ Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
 | Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                 |
-| List all (admin)        | Query GSI1 `STATUS#draft` and `STATUS#published` (META only), merge/sort            |
+| List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only), page in that order   |
 | List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`             |
 | List by tag (published) | See tag items below                                                                 |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                 |

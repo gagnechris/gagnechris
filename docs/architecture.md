@@ -33,7 +33,7 @@ API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild b
 API repositories share one layering:
 
 - `VersionedEntityRepository` — optimistic concurrency + cursor queries (no publish state; for Notebook notes/tasks).
-- `PublishableKeyedRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
+- `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
 - Posts keep slug claims and tag-index side effects in `posts/mutation-builders.ts`.
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.

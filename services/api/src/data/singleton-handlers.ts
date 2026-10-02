@@ -6,9 +6,9 @@ import { defineRoute, type RouteDef } from '../router.js';
 export type SingletonRepo<T, TUpdate> = {
   getOrCreate: () => Promise<T>;
   update: (input: TUpdate) => Promise<T>;
-  publish: (expectedVersion?: number) => Promise<T>;
-  unpublish: (expectedVersion?: number) => Promise<T>;
-  discard: (expectedVersion?: number) => Promise<T>;
+  publish: (expectedVersion: number) => Promise<T>;
+  unpublish: (expectedVersion: number) => Promise<T>;
+  discard: (expectedVersion: number) => Promise<T>;
 };
 
 export type SingletonRouteConfig<T, TUpdate> = {

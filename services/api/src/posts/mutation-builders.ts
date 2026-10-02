@@ -1,8 +1,9 @@
 /**
- * Transaction item builders for post draft mutations (CHR-129).
+ * Transaction item builders for post draft mutations (CHR-129 / CHR-161).
  * Keep slug/tag side-effects out of the generic Publishable layer.
  */
 import type { Post } from '@gagnechris/shared';
+import { VERSION_MATCH_CONDITION } from '../data/version-condition.js';
 import {
   buildMetaItem,
   buildPublishedItem,
@@ -46,7 +47,7 @@ export function buildMetaPut(
     Put: {
       TableName: tableName,
       Item: buildMetaItem(after),
-      ConditionExpression: 'attribute_not_exists(version) OR version = :v',
+      ConditionExpression: VERSION_MATCH_CONDITION,
       ExpressionAttributeValues: { ':v': before.version },
     },
   };

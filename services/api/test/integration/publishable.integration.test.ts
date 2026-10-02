@@ -33,7 +33,7 @@ describe('publishable singletons (DynamoDB Local)', () => {
     const seeded = await homeRepo.getOrCreate();
     expect(seeded.status).toBe('draft');
 
-    const published = await homeRepo.publish();
+    const published = await homeRepo.publish(seeded.version);
     expect(published.status).toBe('published');
     expect(published.publishedAt).toBeTruthy();
     const publishedRow = await doc.send(
@@ -71,7 +71,7 @@ describe('publishable singletons (DynamoDB Local)', () => {
     const seeded = await resumeRepo.getOrCreate();
     expect(seeded.status).toBe('draft');
 
-    const published = await resumeRepo.publish();
+    const published = await resumeRepo.publish(seeded.version);
     expect(published.status).toBe('published');
     const publishedRow = await doc.send(
       new GetCommand({
