@@ -3,12 +3,20 @@ import type { ApiClient, components } from '@gagnechris/api-client';
 export type Post = components['schemas']['Post'];
 export type Home = components['schemas']['Home'];
 export type Resume = components['schemas']['Resume'];
+export type Note = components['schemas']['Note'];
 export type CreatePostRequest = components['schemas']['CreatePostRequest'];
 export type UpdatePostRequest = components['schemas']['UpdatePostRequest'];
 export type UpdateHomeRequest = components['schemas']['UpdateHomeRequest'];
 export type UpdateResumeRequest = components['schemas']['UpdateResumeRequest'];
+export type CreateNoteRequest = components['schemas']['CreateNoteRequest'];
+export type UpdateNoteRequest = components['schemas']['UpdateNoteRequest'];
+export type UpsertDailyNoteRequest =
+  components['schemas']['UpsertDailyNoteRequest'];
+export type EmptyDailyNote = components['schemas']['EmptyDailyNote'];
 export type ExpectedVersionRequest =
   components['schemas']['ExpectedVersionRequest'];
+export type NotebookArea = Note['area'];
+export type NoteType = Note['type'];
 
 export class ApiError extends Error {
   readonly status: number;
@@ -252,4 +260,102 @@ export const discardResume = async (
 ): Promise<Resume> => {
   const result = await client.POST('/api/admin/resume/discard', { body });
   return unwrap(result, 'Discard failed');
+};
+
+export type NotesPage = {
+  items: Note[];
+  nextCursor?: string;
+};
+
+export type ListNotesQuery = {
+  area?: NotebookArea;
+  from?: string;
+  to?: string;
+  type?: NoteType;
+  cursor?: string;
+  limit?: number;
+};
+
+export const fetchNotesPage = async (
+  client: ApiClient,
+  query: ListNotesQuery = {},
+): Promise<NotesPage> => {
+  const result = await client.GET('/api/notebook/notes', {
+    params: { query },
+  });
+  const data = unwrap(result, 'Could not load notes');
+  return {
+    items: data.items.filter((n) => !n.deleted),
+    nextCursor: data.nextCursor,
+  };
+};
+
+export const fetchNote = async (
+  client: ApiClient,
+  id: string,
+): Promise<Note> => {
+  const result = await client.GET('/api/notebook/notes/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Could not load note');
+};
+
+export const createNote = async (
+  client: ApiClient,
+  body: CreateNoteRequest,
+): Promise<Note> => {
+  const result = await client.POST('/api/notebook/notes', { body });
+  return unwrap(result, 'Could not create note');
+};
+
+export const updateNote = async (
+  client: ApiClient,
+  id: string,
+  body: UpdateNoteRequest,
+): Promise<Note> => {
+  const result = await client.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not save note');
+};
+
+export const deleteNote = async (
+  client: ApiClient,
+  id: string,
+): Promise<Note> => {
+  const result = await client.DELETE('/api/notebook/notes/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Delete failed');
+};
+
+export type DailyNoteGetResponse = Note | EmptyDailyNote;
+
+export const isEmptyDailyNote = (
+  value: DailyNoteGetResponse,
+): value is EmptyDailyNote => 'exists' in value && value.exists === false;
+
+export const fetchDailyNote = async (
+  client: ApiClient,
+  area: NotebookArea,
+  date: string,
+): Promise<DailyNoteGetResponse> => {
+  const result = await client.GET('/api/notebook/notes/daily/{area}/{date}', {
+    params: { path: { area, date } },
+  });
+  return unwrap(result, 'Could not load daily note');
+};
+
+export const upsertDailyNote = async (
+  client: ApiClient,
+  area: NotebookArea,
+  date: string,
+  body: UpsertDailyNoteRequest,
+): Promise<Note> => {
+  const result = await client.PUT('/api/notebook/notes/daily/{area}/{date}', {
+    params: { path: { area, date } },
+    body,
+  });
+  return unwrap(result, 'Could not save daily note');
 };

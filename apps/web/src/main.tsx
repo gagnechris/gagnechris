@@ -86,19 +86,22 @@ const router = createBrowserRouter(
                   index: true,
                   element: <Navigate to="today" replace />,
                 },
-                // Section bodies: CHR-42 (notes UI), CHR-44 (tasks UI).
                 lazyRoute({
                   path: 'today',
-                  load: () => import('./admin/AdminNotebookPage.tsx'),
+                  load: () =>
+                    import('./admin/notebook/AdminNotebookTodayPage.tsx'),
                 }),
                 lazyRoute({
                   path: 'notes',
-                  load: () => import('./admin/AdminNotebookPage.tsx'),
+                  load: () =>
+                    import('./admin/notebook/AdminNotebookNotesPage.tsx'),
                 }),
                 lazyRoute({
                   path: 'notes/:id',
-                  load: () => import('./admin/AdminNotebookPage.tsx'),
+                  load: () =>
+                    import('./admin/notebook/AdminNotebookNotePage.tsx'),
                 }),
+                // Tasks body: CHR-44.
                 lazyRoute({
                   path: 'tasks',
                   load: () => import('./admin/AdminNotebookPage.tsx'),

@@ -14,4 +14,20 @@ export const queryKeys = {
   },
   home: () => ['admin', 'home'] as const,
   resume: () => ['admin', 'resume'] as const,
+  notes: {
+    all: ['admin', 'notebook', 'notes'] as const,
+    list: (filters?: {
+      area?: 'work' | 'personal';
+      type?: 'daily' | 'page';
+      from?: string;
+      to?: string;
+      q?: string;
+    }) =>
+      filters
+        ? ([...queryKeys.notes.all, 'list', filters] as const)
+        : ([...queryKeys.notes.all, 'list'] as const),
+    detail: (id: string) => [...queryKeys.notes.all, 'detail', id] as const,
+    daily: (area: 'work' | 'personal', date: string) =>
+      [...queryKeys.notes.all, 'daily', area, date] as const,
+  },
 };
