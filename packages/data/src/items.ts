@@ -42,7 +42,8 @@ export const PublishableMetaFieldsSchema = z.object({
   status: PostStatusSchema,
   publishedAt: z.string().nullable().optional(),
   updatedAt: z.string().min(1),
-  version: z.number().int().nonnegative().optional(),
+  /** Required (CHR-170). Missing-attribute writes still treated as 0 via VERSION_MATCH_CONDITION. */
+  version: z.number().int().nonnegative(),
 });
 
 export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
@@ -173,7 +174,7 @@ export function metaToPost(
     updatedAt: item.updatedAt,
     coverImage: item.coverImage ?? null,
     seo: item.seo ?? null,
-    version: item.version ?? 0,
+    version: item.version,
     hasUnpublishedChanges,
   };
 }
@@ -246,7 +247,7 @@ export function metaToHome(
     publishedAt: item.publishedAt ?? null,
     updatedAt: item.updatedAt,
     seo: item.seo ?? null,
-    version: item.version ?? 0,
+    version: item.version,
     hasUnpublishedChanges,
   };
 }
@@ -300,7 +301,7 @@ export function metaToResume(
     publishedAt: item.publishedAt ?? null,
     updatedAt: item.updatedAt,
     seo: item.seo ?? null,
-    version: item.version ?? 0,
+    version: item.version,
     hasUnpublishedChanges,
   };
 }

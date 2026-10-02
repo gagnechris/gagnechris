@@ -10,7 +10,6 @@ import {
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   isOptimisticLockConflict,
   syncCreateClaimPk,
@@ -22,15 +21,22 @@ import {
 } from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
-import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
+import { logCorruptStoredItem } from './corrupt-item.js';
+import {
+  assertCursorMatchesQuery,
+  decodeCursor,
+  encodeCursor,
+  PRIMARY_CURSOR_KEYS,
+} from './cursor.js';
+import { throwCursorValidation } from './dynamo-errors.js';
 import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
   runVersionedWrite,
   throwVersionConflict,
+  versionMatchValues,
 } from './version-condition.js';
-import { logger, metrics } from '../observability.js';
 
 export { VERSION_MATCH_CONDITION } from './version-condition.js';
 
@@ -192,6 +198,8 @@ export class VersionedEntityRepository<
       new GetCommand({
         TableName: this.tableName,
         Key: this.config.keyForId(id),
+        // Consistent so createHash is not dropped after a fresh create (CHR-170).
+        ConsistentRead: true,
       }),
     );
     return result.Item as Record<string, unknown> | undefined;
@@ -357,7 +365,7 @@ export class VersionedEntityRepository<
             TableName: this.tableName,
             Item: this.toStoredItem(next, { createHash }),
             ConditionExpression: VERSION_MATCH_CONDITION,
-            ExpressionAttributeValues: { ':v': expectedVersion },
+            ExpressionAttributeValues: versionMatchValues(expectedVersion),
           }),
         ),
       `Update conflict (${this.config.conflictLabel} version)`,
@@ -390,7 +398,7 @@ export class VersionedEntityRepository<
             TableName: this.tableName,
             Item: this.toStoredItem(tombstone, { ttl, createHash }),
             ConditionExpression: VERSION_MATCH_CONDITION,
-            ExpressionAttributeValues: { ':v': expectedVersion },
+            ExpressionAttributeValues: versionMatchValues(expectedVersion),
           }),
         ),
       `Delete conflict (${this.config.conflictLabel} version)`,
@@ -413,12 +421,18 @@ export class VersionedEntityRepository<
       limit?: number;
       /** Override cursor key set for this query (takes precedence). */
       cursorKeyNames?: readonly string[];
+      /** Bind cursor to the queried partition (CHR-170). */
+      cursorPartition?: { attr: string; value: string };
+      /** Bind cursor sort key to a range lower bound (CHR-170). */
+      cursorSortBound?: { attr: string; lowerBoundInclusive: string };
     },
   ): Promise<QueryPage<T>> {
     const {
       cursor,
       limit,
       cursorKeyNames: perQueryKeys,
+      cursorPartition,
+      cursorSortBound,
       ...queryInput
     } = input;
     const indexName =
@@ -431,14 +445,27 @@ export class VersionedEntityRepository<
       this.config.cursorKeyNames ??
       PRIMARY_CURSOR_KEYS;
     const exclusiveStartKey = decodeCursor(cursor, cursorKeys);
-    const result = await this.doc.send(
-      new QueryCommand({
-        ...queryInput,
-        TableName: this.tableName,
-        ExclusiveStartKey: exclusiveStartKey,
-        Limit: limit,
-      }),
-    );
+    if (cursorPartition) {
+      assertCursorMatchesQuery(exclusiveStartKey, {
+        partitionAttr: cursorPartition.attr,
+        partitionValue: cursorPartition.value,
+        sortAttr: cursorSortBound?.attr,
+        sortLowerBoundInclusive: cursorSortBound?.lowerBoundInclusive,
+      });
+    }
+    let result;
+    try {
+      result = await this.doc.send(
+        new QueryCommand({
+          ...queryInput,
+          TableName: this.tableName,
+          ExclusiveStartKey: exclusiveStartKey,
+          Limit: limit,
+        }),
+      );
+    } catch (error) {
+      throwCursorValidation(error);
+    }
     const items: T[] = [];
     for (const raw of result.Items ?? []) {
       try {
@@ -447,14 +474,7 @@ export class VersionedEntityRepository<
         items.push(entity);
       } catch (error) {
         if (error instanceof DataIntegrityError) {
-          logger.warn('Skipping corrupt stored item', {
-            pk: error.pk,
-            sk: error.sk,
-            errMessage: error.message,
-            causeMessage:
-              error.cause instanceof Error ? error.cause.message : undefined,
-          });
-          metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+          logCorruptStoredItem(error);
           continue;
         }
         throw error;

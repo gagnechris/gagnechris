@@ -58,3 +58,36 @@ export const GSI2_CURSOR_KEYS = ['pk', 'sk', 'gsi2pk', 'gsi2sk'] as const;
 
 /** GSI3 ExclusiveStartKey shape (sync feed). */
 export const GSI3_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
+
+/**
+ * Ensure a decoded ExclusiveStartKey belongs to the queried partition
+ * (and optional sort lower bound). Throws SyntaxError → HTTP 400 (CHR-170).
+ */
+export function assertCursorMatchesQuery(
+  key: Record<string, unknown> | undefined,
+  opts: {
+    partitionAttr: string;
+    partitionValue: string;
+    /** When set, the cursor sort key must be ≥ this bound (inclusive). */
+    sortAttr?: string;
+    sortLowerBoundInclusive?: string;
+  },
+): void {
+  if (!key) return;
+  if (key[opts.partitionAttr] !== opts.partitionValue) {
+    throw new SyntaxError('Invalid pagination cursor');
+  }
+  if (
+    opts.sortAttr &&
+    opts.sortLowerBoundInclusive !== undefined &&
+    opts.sortLowerBoundInclusive !== ''
+  ) {
+    const sortValue = key[opts.sortAttr];
+    if (
+      typeof sortValue !== 'string' ||
+      sortValue < opts.sortLowerBoundInclusive
+    ) {
+      throw new SyntaxError('Invalid pagination cursor');
+    }
+  }
+}

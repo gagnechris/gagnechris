@@ -17,6 +17,7 @@ import { getDocClient, requireTableName } from './client.js';
 import { ConflictError, NotFoundError } from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
+  versionMatchValues,
   runVersionedWrite,
   throwVersionConflict,
 } from './version-condition.js';
@@ -250,7 +251,9 @@ export class PublishableRepository<
                     TableName: this.tableName,
                     Item: this.publishConfig.toItem(after),
                     ConditionExpression: VERSION_MATCH_CONDITION,
-                    ExpressionAttributeValues: { ':v': before.version },
+                    ExpressionAttributeValues: versionMatchValues(
+                      before.version,
+                    ),
                   },
                 },
                 {
@@ -273,7 +276,9 @@ export class PublishableRepository<
                     TableName: this.tableName,
                     Item: this.publishConfig.toItem(after),
                     ConditionExpression: VERSION_MATCH_CONDITION,
-                    ExpressionAttributeValues: { ':v': before.version },
+                    ExpressionAttributeValues: versionMatchValues(
+                      before.version,
+                    ),
                   },
                 },
                 {
@@ -292,7 +297,7 @@ export class PublishableRepository<
             TableName: this.tableName,
             Item: this.publishConfig.toItem(after),
             ConditionExpression: VERSION_MATCH_CONDITION,
-            ExpressionAttributeValues: { ':v': before.version },
+            ExpressionAttributeValues: versionMatchValues(before.version),
           }),
         );
       },
@@ -313,7 +318,9 @@ export class PublishableRepository<
     expectedVersion: number,
     options?: { publishedAt?: string },
   ): Promise<T> {
-    const loaded = await this.loadDraftAndPublished(id);
+    const loaded = await this.loadDraftAndPublished(id, {
+      consistentRead: true,
+    });
     if (!loaded) {
       throw new NotFoundError(
         `${this.publishConfig.conflictLabel} ${id} not found`,
@@ -357,7 +364,9 @@ export class PublishableRepository<
   }
 
   async unpublish(id: string, expectedVersion: number): Promise<T> {
-    const loaded = await this.loadDraftAndPublished(id);
+    const loaded = await this.loadDraftAndPublished(id, {
+      consistentRead: true,
+    });
     if (!loaded) {
       throw new NotFoundError(
         `${this.publishConfig.conflictLabel} ${id} not found`,
@@ -392,7 +401,9 @@ export class PublishableRepository<
   }
 
   async discard(id: string, expectedVersion: number): Promise<T> {
-    const loaded = await this.loadDraftAndPublished(id);
+    const loaded = await this.loadDraftAndPublished(id, {
+      consistentRead: true,
+    });
     if (!loaded) {
       throw new NotFoundError(
         `${this.publishConfig.conflictLabel} ${id} not found`,
@@ -514,10 +525,14 @@ export class PublishableSingletonRepository<
 
   /** Load draft+published, seeding a draft row when missing. */
   private async loadOrCreate(): Promise<LoadedPair<T>> {
-    const loaded = await this.store.loadDraftAndPublished(this.singletonId);
+    const loaded = await this.store.loadDraftAndPublished(this.singletonId, {
+      consistentRead: true,
+    });
     if (loaded) return loaded;
     await this.getOrCreate();
-    const after = await this.store.loadDraftAndPublished(this.singletonId);
+    const after = await this.store.loadDraftAndPublished(this.singletonId, {
+      consistentRead: true,
+    });
     if (!after) {
       throw new NotFoundError(
         `${this.conflictLabel} ${this.singletonId} not found`,
@@ -527,7 +542,9 @@ export class PublishableSingletonRepository<
   }
 
   async update(input: TUpdate): Promise<T> {
-    const loaded = await this.store.loadDraftAndPublished(this.singletonId);
+    const loaded = await this.store.loadDraftAndPublished(this.singletonId, {
+      consistentRead: true,
+    });
     const existing = loaded
       ? withUnpublishedFlag(loaded.draft, loaded.published, this.contentEqual)
       : await this.getOrCreate();

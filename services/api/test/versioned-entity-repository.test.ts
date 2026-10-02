@@ -149,7 +149,7 @@ describe('VersionedEntityRepository (fake note)', () => {
       input: { ConditionExpression?: string };
     };
     expect(put.input.ConditionExpression).toBe(
-      'attribute_exists(pk) AND version = :v',
+      'attribute_exists(pk) AND (version = :v OR (attribute_not_exists(version) AND :v = :zero))',
     );
   });
 

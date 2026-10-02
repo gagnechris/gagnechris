@@ -22,10 +22,22 @@ function checkPutCondition(
     }
   } else if (cond?.includes('version = :v')) {
     const existing = store.get(k);
-    const expected = (
-      input.ExpressionAttributeValues as Record<string, unknown>
-    )?.[':v'];
-    if (!existing || existing.version !== expected) {
+    const values = (input.ExpressionAttributeValues ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const expected = values[':v'];
+    const currentVersion =
+      existing && typeof existing.version === 'number'
+        ? existing.version
+        : existing
+          ? 0
+          : undefined;
+    const versionOk =
+      existing !== undefined &&
+      (currentVersion === expected ||
+        (existing.version === undefined && expected === 0));
+    if (!existing || !versionOk) {
       throw { name: 'ConditionalCheckFailedException' };
     }
   }

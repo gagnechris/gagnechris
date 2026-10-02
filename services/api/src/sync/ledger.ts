@@ -14,7 +14,12 @@ import {
   normalizeSyncSince,
 } from '@gagnechris/data';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { decodeCursor, encodeCursor } from '../data/cursor.js';
+import {
+  assertCursorMatchesQuery,
+  decodeCursor,
+  encodeCursor,
+} from '../data/cursor.js';
+import { throwCursorValidation } from '../data/dynamo-errors.js';
 import { getSyncAdapter } from './registry.js';
 
 /** ExclusiveStartKey shape for the sync GSI (base keys + index keys). */
@@ -57,28 +62,40 @@ export class SyncLedger {
     const exclusiveStartKey = decodeCursor(cursor, SYNC_GSI_CURSOR_KEYS);
     const pk = syncPk(userId);
     const lowerBound = syncSinceLowerBound(since);
+    assertCursorMatchesQuery(exclusiveStartKey, {
+      partitionAttr: 'syncPk',
+      partitionValue: pk,
+      ...(lowerBound
+        ? { sortAttr: 'syncSk', sortLowerBoundInclusive: lowerBound }
+        : {}),
+    });
 
-    const result = await this.doc.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: GSI3_NAME,
-        KeyConditionExpression: lowerBound
-          ? 'syncPk = :pk AND syncSk >= :sinceSk'
-          : 'syncPk = :pk',
-        ExpressionAttributeValues: lowerBound
-          ? {
-              ':pk': pk,
-              // syncSk starts with ISO timestamp; compare against the lower-bound
-              // instant so any type/id suffix sorts after that prefix boundary.
-              ':sinceSk': lowerBound,
-            }
-          : {
-              ':pk': pk,
-            },
-        ExclusiveStartKey: exclusiveStartKey,
-        Limit: limit,
-      }),
-    );
+    let result;
+    try {
+      result = await this.doc.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: GSI3_NAME,
+          KeyConditionExpression: lowerBound
+            ? 'syncPk = :pk AND syncSk >= :sinceSk'
+            : 'syncPk = :pk',
+          ExpressionAttributeValues: lowerBound
+            ? {
+                ':pk': pk,
+                // syncSk starts with ISO timestamp; compare against the lower-bound
+                // instant so any type/id suffix sorts after that prefix boundary.
+                ':sinceSk': lowerBound,
+              }
+            : {
+                ':pk': pk,
+              },
+          ExclusiveStartKey: exclusiveStartKey,
+          Limit: limit,
+        }),
+      );
+    } catch (error) {
+      throwCursorValidation(error);
+    }
 
     const changes: SyncChange[] = [];
     for (const raw of result.Items ?? []) {
