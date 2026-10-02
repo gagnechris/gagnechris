@@ -101,8 +101,7 @@ export async function listPublishedPosts(
       }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
   } while (exclusiveStartKey);
 
   const uniqueIds = [...new Set(metaPostIds)];

@@ -273,9 +273,7 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
 
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
     const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0];
-    expect(desired).toEqual(
-      expect.arrayContaining([good.slug, corrupt.slug]),
-    );
+    expect(desired).toEqual(expect.arrayContaining([good.slug, corrupt.slug]));
 
     // HTML preserved (not orphan-deleted) and allowlisted.
     expect(await storage.read(`blog/${corrupt.slug}/index.html`)).toContain(
@@ -415,16 +413,12 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
     const { syncViewerRequestBlogSlugs } =
       await import('../src/viewer-request-slugs.js');
     const storage = memoryStorage();
-    storage.objects.set(
-      `blog/${liveSlug}/index.html`,
-      '<html>old live</html>',
-    );
+    storage.objects.set(`blog/${liveSlug}/index.html`, '<html>old live</html>');
 
     await rebuildPublishedSite({ scope: feedsScope(), storage });
 
     const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0] as
-      | string[]
-      | (() => Promise<string[]>);
+      string[] | (() => Promise<string[]>);
     const slugs = typeof desired === 'function' ? await desired() : desired;
     expect(slugs).not.toContain('pending-rename');
   });

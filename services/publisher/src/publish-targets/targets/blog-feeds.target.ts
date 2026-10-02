@@ -21,10 +21,7 @@ const target: PublishTarget = {
   async run(ctx) {
     const { shell, published, corruptPostSlugs } = ctx;
     const allowlistedSlugs = [
-      ...new Set([
-        ...published.map((p) => p.slug),
-        ...corruptPostSlugs,
-      ]),
+      ...new Set([...published.map((p) => p.slug), ...corruptPostSlugs]),
     ].filter(Boolean);
     return {
       artifacts: [

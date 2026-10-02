@@ -157,10 +157,7 @@ export async function runPublishTargets(options: {
   await storage.invalidate(invalidated);
 
   if (scope.feeds) {
-    const desiredSlugs = [
-      ...published.map((p) => p.slug),
-      ...corruptPostSlugs,
-    ];
+    const desiredSlugs = [...published.map((p) => p.slug), ...corruptPostSlugs];
     await syncViewerRequestBlogSlugs(desiredSlugs);
   }
 
