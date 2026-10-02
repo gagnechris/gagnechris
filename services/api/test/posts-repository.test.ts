@@ -418,7 +418,7 @@ describe('PostsRepository', () => {
     ).rejects.toMatchObject({
       name: 'ConflictError',
       currentVersion: 3,
-      code: 'conflict',
+      code: 'version_conflict',
     });
   });
 
