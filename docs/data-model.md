@@ -274,4 +274,3 @@ API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/
   where uniqueness matters.
 - Streams: publisher consumes `sk=PUBLISHED` modifications only (CHR-96). Draft
   META autosaves never rebuild the live site.
-
