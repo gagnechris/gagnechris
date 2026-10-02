@@ -64,8 +64,23 @@ export function createMemoryDoc(): {
         Put?: Record<string, unknown>;
       }>;
       // Validate all conditions first (transactional).
-      for (const entry of items) {
-        if (entry.Put) checkPutCondition(store, entry.Put);
+      const reasons: Array<{ Code?: string }> = items.map(() => ({}));
+      let failed = false;
+      for (let i = 0; i < items.length; i += 1) {
+        const entry = items[i]!;
+        if (!entry.Put) continue;
+        try {
+          checkPutCondition(store, entry.Put);
+        } catch {
+          reasons[i] = { Code: 'ConditionalCheckFailed' };
+          failed = true;
+        }
+      }
+      if (failed) {
+        throw {
+          name: 'TransactionCanceledException',
+          CancellationReasons: reasons,
+        };
       }
       for (const entry of items) {
         if (!entry.Put) continue;

@@ -1,6 +1,6 @@
 /**
- * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162).
- * Not registered in the prod route table — fixture-notes were removed in CHR-153.
+ * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162)
+ * and owner scoping (CHR-169). Not registered in the prod route table.
  */
 import { z } from 'zod';
 import { UlidSchema } from '@gagnechris/shared';
@@ -39,6 +39,8 @@ function noteResponse(note: FakeNote) {
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
     deleted: note.deleted,
+    area: note.area,
+    noteDate: note.noteDate,
   };
 }
 
@@ -55,6 +57,8 @@ export function createFakeNoteRoutes(
         id: UlidSchema,
         title: z.string().default(''),
         body: z.string().default(''),
+        area: z.enum(['work', 'personal']).optional(),
+        noteDate: z.string().optional(),
       }),
       handler: async (ctx, { body }) => {
         const now = new Date().toISOString();
@@ -70,8 +74,8 @@ export function createFakeNoteRoutes(
       auth: 'admin',
       metric: 'GetTestNote',
       params: IdParams,
-      handler: async (_ctx, { params }) => {
-        const note = await repo.get(params.id);
+      handler: async (ctx, { params }) => {
+        const note = await repo.get(ctx.userId!, params.id);
         if (!note) {
           throw new NotFoundError(`fake note ${params.id} not found`);
         }
@@ -96,18 +100,23 @@ export function createFakeNoteRoutes(
             message: 'Expected version required (If-Match or body.version)',
           });
         }
-        const existing = await repo.getOrThrow(params.id);
+        const existing = await repo.getOrThrow(ctx.userId!, params.id);
         const version =
           expected === 'any' ? existing.version : (expected as number);
         const now = new Date().toISOString();
         try {
-          const next = await repo.updateIfVersion(params.id, version, {
-            ...existing,
-            title: body.title ?? existing.title,
-            body: body.body ?? existing.body,
-            version: existing.version + 1,
-            updatedAt: now,
-          });
+          const next = await repo.updateIfVersion(
+            ctx.userId!,
+            params.id,
+            version,
+            {
+              ...existing,
+              title: body.title ?? existing.title,
+              body: body.body ?? existing.body,
+              version: existing.version + 1,
+              updatedAt: now,
+            },
+          );
           return jsonWithEtag(200, noteResponse(next), next.version);
         } catch (error) {
           mapVersionConflict(error, fromIfMatch);
@@ -132,17 +141,22 @@ export function createFakeNoteRoutes(
             message: 'Expected version required (If-Match or body.version)',
           });
         }
-        const existing = await repo.getOrThrow(params.id);
+        const existing = await repo.getOrThrow(ctx.userId!, params.id);
         const version =
           expected === 'any' ? existing.version : (expected as number);
         const now = new Date().toISOString();
         try {
-          const tombstone = await repo.softDelete(params.id, version, {
-            ...existing,
-            version: existing.version + 1,
-            updatedAt: now,
-            deleted: true,
-          });
+          const tombstone = await repo.softDelete(
+            ctx.userId!,
+            params.id,
+            version,
+            {
+              ...existing,
+              version: existing.version + 1,
+              updatedAt: now,
+              deleted: true,
+            },
+          );
           return jsonWithEtag(200, noteResponse(tombstone), tombstone.version);
         } catch (error) {
           mapVersionConflict(error, fromIfMatch);

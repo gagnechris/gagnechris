@@ -12,7 +12,7 @@ export const VERSION_MATCH_CONDITION =
 export async function throwVersionConflict<T extends { version: number }>(
   expectedVersion: number,
   getCurrent: () => Promise<T | undefined>,
-  opts?: { code?: 'conflict' | 'slug_taken' },
+  opts?: { code?: 'conflict' | 'slug_taken' | 'daily_taken' },
 ): Promise<never> {
   const current = await getCurrent();
   throw new ConflictError(
@@ -25,6 +25,8 @@ export async function throwVersionConflict<T extends { version: number }>(
   );
 }
 
+const UNIQUE_CLAIM_CODES = new Set(['slug_taken', 'daily_taken']);
+
 /**
  * Run a Dynamo write; on optimistic conflict, re-read current and throw
  * ConflictError with `current` / `currentVersion` (one shared re-read path).
@@ -36,12 +38,15 @@ export async function runVersionedWrite<TResult>(
   opts?: {
     slugClaimIndexes?: readonly number[];
     slugTakenMessage?: string;
+    uniqueClaimIndexes?: readonly number[];
+    uniqueClaimCode?: 'slug_taken' | 'daily_taken';
+    uniqueClaimMessage?: string;
   },
 ): Promise<TResult> {
   try {
     return await runDynamoWrite(write, conflictMessage, opts);
   } catch (error) {
-    if (error instanceof ConflictError && error.code === 'slug_taken') {
+    if (error instanceof ConflictError && UNIQUE_CLAIM_CODES.has(error.code)) {
       throw error;
     }
     if (error instanceof ConflictError || isOptimisticLockConflict(error)) {

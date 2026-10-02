@@ -64,7 +64,7 @@ describe('sync feed (DynamoDB Local, CHR-162)', () => {
         '2026-09-28T10:30:00.000Z',
       ),
     );
-    await repo.softDelete(NOTE_ID, 1, {
+    await repo.softDelete(USER, NOTE_ID, 1, {
       ...created,
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',

@@ -8,6 +8,8 @@ export const SK_PUBLISHED = 'PUBLISHED';
 export const SK_POST = 'POST';
 export const SK_REDIRECT = 'REDIRECT';
 export const SK_MSG = 'MSG';
+/** Daily-note claim sort key (Notebook). */
+export const SK_NOTE = 'NOTE';
 
 export const GSI1_NAME = 'gsi1';
 export const GSI2_NAME = 'gsi2';
@@ -16,6 +18,9 @@ export const GSI3_NAME = 'gsi3';
 
 export const HOME_ID = 'current';
 export const RESUME_ID = 'current';
+
+/** Notebook area partition values (CHR-39 / CHR-169). */
+export type NotebookArea = 'work' | 'personal';
 
 /** Post entity keys only — never NOTE# / TASK# (reserved for Notebook). */
 export function postPk(postId: string): string {
@@ -176,8 +181,115 @@ export function syncCreateClaimPk(
   return `CREATED#${changeType.toUpperCase()}#${entityId}`;
 }
 
+/**
+ * Owner-scoped create claim (CHR-169). Includes Cognito `sub` so two users
+ * never share a claim partition even if client ULIDs collide.
+ */
+export function ownerSyncCreateClaimPk(
+  userId: string,
+  changeType: string,
+  entityId: string,
+): string {
+  return `CREATED#${changeType.toUpperCase()}#USER#${userId}#${entityId}`;
+}
+
 export function syncCreateClaimSk(): string {
   return SK_META;
+}
+
+// --- Notebook owner-scoped keys (CHR-39 / CHR-169) ---
+
+/** Note META partition: `USER#<sub>#NOTE#<id>`. */
+export function notePk(userId: string, noteId: string): string {
+  return `USER#${userId}#NOTE#${noteId}`;
+}
+
+export function noteMetaSk(): string {
+  return SK_META;
+}
+
+/**
+ * Daily-note uniqueness claim: one note per `(user, area, date)`.
+ * Item stores `noteId` so a losing create can resolve to the winner.
+ */
+export function dailyNoteClaimPk(
+  userId: string,
+  area: NotebookArea | string,
+  date: string,
+): string {
+  return `USER#${userId}#DAILY#${area}#${date}`;
+}
+
+export function dailyNoteClaimSk(): string {
+  return SK_NOTE;
+}
+
+/** Task META partition: `USER#<sub>#TASK#<id>`. */
+export function taskPk(userId: string, taskId: string): string {
+  return `USER#${userId}#TASK#${taskId}`;
+}
+
+export function taskMetaSk(): string {
+  return SK_META;
+}
+
+/**
+ * GSI1 partition for notes by area (calendar / list). Namespaced by user so
+ * Notebook never shares post `STATUS#*` partitions.
+ */
+export function notebookAreaGsi1Pk(
+  userId: string,
+  area: NotebookArea | string,
+): string {
+  return `USER#${userId}#AREA#${area}`;
+}
+
+/**
+ * Note GSI1 sort key by note date (calendar dots / date-range queries).
+ * Example: `DATE#2026-10-02#NOTE#01ABC…`
+ */
+export function noteDateGsi1Sk(noteDate: string, noteId: string): string {
+  return `DATE#${noteDate}#NOTE#${noteId}`;
+}
+
+/**
+ * GSI1 partition for tasks by area + status.
+ * Example: `USER#<sub>#AREA#work#STATUS#todo`
+ */
+export function taskAreaStatusGsi1Pk(
+  userId: string,
+  area: NotebookArea | string,
+  status: string,
+): string {
+  return `USER#${userId}#AREA#${area}#STATUS#${status}`;
+}
+
+/**
+ * Task GSI1 sort key by due date (due / overdue range queries).
+ * Undated tasks must not use this prefix — see {@link taskUpdatedGsi1Sk}.
+ */
+export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
+  return `DUE#${dueDate}#TASK#${taskId}`;
+}
+
+/**
+ * Task GSI1 sort key when there is no due date (keeps undated tasks out of
+ * due/overdue ranges).
+ */
+export function taskUpdatedGsi1Sk(updatedAt: string, taskId: string): string {
+  return `UPDATED#${updatedAt}#TASK#${taskId}`;
+}
+
+/**
+ * GSI2 partition for tasks linked to a note.
+ * Example: `USER#<sub>#NOTE#<noteId>#TASKS`
+ */
+export function noteTasksGsi2Pk(userId: string, noteId: string): string {
+  return `USER#${userId}#NOTE#${noteId}#TASKS`;
+}
+
+export function noteTasksGsi2Sk(taskId: string): string {
+  return `TASK#${taskId}`;
 }
 
 /**
@@ -266,6 +378,41 @@ export const keys = {
       pk: syncCreateClaimPk(changeType, id),
       sk: syncCreateClaimSk(),
     }),
+    ownerCreateClaim: (userId: string, changeType: string, id: string) => ({
+      pk: ownerSyncCreateClaimPk(userId, changeType, id),
+      sk: syncCreateClaimSk(),
+    }),
+  },
+  notebook: {
+    note: {
+      meta: (userId: string, id: string) => ({
+        pk: notePk(userId, id),
+        sk: noteMetaSk(),
+      }),
+    },
+    dailyClaim: (userId: string, area: string, date: string) => ({
+      pk: dailyNoteClaimPk(userId, area, date),
+      sk: dailyNoteClaimSk(),
+    }),
+    task: {
+      meta: (userId: string, id: string) => ({
+        pk: taskPk(userId, id),
+        sk: taskMetaSk(),
+      }),
+    },
+    areaGsi1: (userId: string, area: string) =>
+      notebookAreaGsi1Pk(userId, area),
+    noteDateSk: (noteDate: string, noteId: string) =>
+      noteDateGsi1Sk(noteDate, noteId),
+    taskAreaStatusGsi1: (userId: string, area: string, status: string) =>
+      taskAreaStatusGsi1Pk(userId, area, status),
+    taskDueSk: (dueDate: string, taskId: string) =>
+      taskDueGsi1Sk(dueDate, taskId),
+    taskUpdatedSk: (updatedAt: string, taskId: string) =>
+      taskUpdatedGsi1Sk(updatedAt, taskId),
+    noteTasksGsi2: (userId: string, noteId: string) =>
+      noteTasksGsi2Pk(userId, noteId),
+    noteTasksSk: (taskId: string) => noteTasksGsi2Sk(taskId),
   },
   status: (status: string) => statusGsi1Pk(status),
 } as const;

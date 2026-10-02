@@ -248,18 +248,22 @@ Clients:
 - Poll or page the change feed with `since` / `nextSince` + opaque `cursor`.
 - Send **`If-Match: "<version>"`**, **`If-Match: W/"<version>"`**, or **`If-Match: *`** (or body `version`) on update/delete; treat **412** vs **409** as documented in [architecture.md](./architecture.md).
 
-## Notebook (reserved key space)
+## Notebook (owner-scoped key space, CHR-169)
 
-Production Notebook notes/tasks (CHR-39) will use the keys below. Access patterns: daily note by `(area, date)`, notes by area/updated, tasks by area/status/due.
+Production Notebook notes/tasks (CHR-39) use **owner-scoped** keys so a second Cognito user (or recreated pool `sub`) cannot read, mutate, or collide with another user's rows. Access patterns: daily note by `(user, area, date)`, notes by area/date (calendar), tasks by area/status/due, tasks linked to a note.
 
-| Entity               | `pk`                        | `sk`   | GSI1                                                                                     |
-| -------------------- | --------------------------- | ------ | ---------------------------------------------------------------------------------------- |
-| Note                 | `NOTE#<noteId>`             | `META` | `AREA#<work\|personal>` / `TS#<updatedAt>#NOTE#<id>`                                     |
-| Daily note claim     | `DAILY#<area>#<yyyy-mm-dd>` | `NOTE` | — (one daily note per area per day)                                                      |
-| Task                 | `TASK#<taskId>`             | `META` | `AREA#<work\|personal>#STATUS#<todo\|in_progress\|done>` / `TS#<dueOrUpdated>#TASK#<id>` |
-| Note slug (optional) | `NSLUG#<slug>`              | `NOTE` | —                                                                                        |
+| Entity           | `pk`                                   | `sk`   | GSI1 / GSI2                                                                                                                       |
+| ---------------- | -------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Note             | `USER#<sub>#NOTE#<noteId>`             | `META` | GSI1: `USER#<sub>#AREA#<work\|personal>` / `DATE#<yyyy-mm-dd>#NOTE#<id>` (calendar / date range)                                  |
+| Daily note claim | `USER#<sub>#DAILY#<area>#<yyyy-mm-dd>` | `NOTE` | — (one daily note per user/area/day; item stores `noteId`)                                                                        |
+| Task             | `USER#<sub>#TASK#<taskId>`             | `META` | GSI1: `USER#<sub>#AREA#<area>#STATUS#<todo\|in_progress\|done>` / `DUE#<date>#TASK#<id>` or `UPDATED#<ts>#TASK#<id>` when undated |
+| Tasks for a note | (task META)                            | `META` | GSI2: `USER#<sub>#NOTE#<noteId>#TASKS` / `TASK#<taskId>`                                                                          |
 
-Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Use `AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions.
+Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
+
+**Daily-note race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser resolves the claim's `noteId` and returns that existing note (idempotent at the day grain). Documented in `OwnerScopedVersionedEntityRepository` + DynamoDB Local tests.
+
+API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/update/delete; posts remain on id-only `VersionedEntityRepository` / `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions.
 
 ## Conventions
 

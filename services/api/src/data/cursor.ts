@@ -52,3 +52,9 @@ export const PRIMARY_CURSOR_KEYS = ['pk', 'sk'] as const;
 
 /** GSI1 ExclusiveStartKey shape (base table keys + index keys). */
 export const GSI1_CURSOR_KEYS = ['pk', 'sk', 'gsi1pk', 'gsi1sk'] as const;
+
+/** GSI2 ExclusiveStartKey shape (base table keys + index keys). */
+export const GSI2_CURSOR_KEYS = ['pk', 'sk', 'gsi2pk', 'gsi2sk'] as const;
+
+/** GSI3 ExclusiveStartKey shape (sync feed). */
+export const GSI3_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
