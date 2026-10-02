@@ -3,7 +3,10 @@
  * Keep slug/tag side-effects out of the generic Publishable layer.
  */
 import type { Post } from '@gagnechris/shared';
-import { VERSION_MATCH_CONDITION } from '../data/version-condition.js';
+import {
+  VERSION_MATCH_CONDITION,
+  versionMatchValues,
+} from '../data/version-condition.js';
 import {
   buildMetaItem,
   buildPublishedItem,
@@ -48,7 +51,7 @@ export function buildMetaPut(
       TableName: tableName,
       Item: buildMetaItem(after),
       ConditionExpression: VERSION_MATCH_CONDITION,
-      ExpressionAttributeValues: { ':v': before.version },
+      ExpressionAttributeValues: versionMatchValues(before.version),
     },
   };
 }

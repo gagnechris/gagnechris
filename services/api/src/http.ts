@@ -11,6 +11,7 @@ import {
   PreconditionFailedError,
   ServiceUnavailableError,
 } from './data/errors.js';
+import { isExclusiveStartKeyValidationError } from './data/dynamo-errors.js';
 import { RateLimitExceededError } from './contact/rateLimit.js';
 import { logger, metrics } from './observability.js';
 
@@ -96,6 +97,14 @@ export function mapRouteError(
 ): APIGatewayProxyStructuredResultV2 | undefined {
   if (error instanceof SyntaxError) {
     return json(400, { error: 'bad_request', message: error.message });
+  }
+  // Belt-and-suspenders: ExclusiveStartKey ValidationException → 400 (CHR-170).
+  // Prefer throwing SyntaxError at the query site via throwCursorValidation.
+  if (isExclusiveStartKeyValidationError(error)) {
+    return json(400, {
+      error: 'bad_request',
+      message: 'Invalid pagination cursor',
+    });
   }
   if (error instanceof NotFoundError) {
     return json(404, { error: 'not_found', message: error.message });

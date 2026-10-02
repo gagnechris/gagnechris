@@ -5,7 +5,6 @@ import {
   TransactWriteCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type {
   CreatePostRequest,
   Post,
@@ -21,6 +20,7 @@ import {
   GSI1_CURSOR_KEYS,
 } from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
+import { logCorruptStoredItem } from '../data/corrupt-item.js';
 import { DataIntegrityError, NotFoundError } from '../data/errors.js';
 import {
   PublishableRepository,
@@ -33,7 +33,6 @@ import {
   runVersionedWrite,
   throwVersionConflict,
 } from '../data/version-condition.js';
-import { logger, metrics } from '../observability.js';
 import {
   buildMetaItem,
   buildPublishedItem,
@@ -112,14 +111,7 @@ function assertGsi1CursorForStatus(
 }
 
 function logCorruptItem(error: DataIntegrityError): void {
-  logger.warn('Skipping corrupt stored item', {
-    pk: error.pk,
-    sk: error.sk,
-    errMessage: error.message,
-    causeMessage:
-      error.cause instanceof Error ? error.cause.message : undefined,
-  });
-  metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+  logCorruptStoredItem(error);
 }
 
 export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
@@ -197,6 +189,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
       {
         slugClaimIndexes,
         slugTakenMessage: `Slug "${after.slug}" is already taken`,
+        versionItemIndex: 0,
       },
     );
   }
@@ -263,6 +256,9 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
     opts: { cursor?: string; limit?: number },
   ): Promise<{ items: Post[]; nextCursor?: string }> {
     let state = decodeMultiStatusCursor(opts.cursor);
+    if (state.i >= statuses.length) {
+      throw new SyntaxError('Invalid pagination cursor');
+    }
     const limit = opts.limit;
     const collected: Post[] = [];
 
@@ -447,7 +443,9 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   }
 
   async update(postId: string, input: UpdatePostRequest): Promise<Post> {
-    const loaded = await this.loadDraftAndPublished(postId);
+    const loaded = await this.loadDraftAndPublished(postId, {
+      consistentRead: true,
+    });
     if (!loaded) {
       throw new NotFoundError(`Post ${postId} not found`);
     }
@@ -481,7 +479,9 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   }
 
   async softDelete(postId: string, expectedVersion: number): Promise<Post> {
-    const loaded = await this.loadDraftAndPublished(postId);
+    const loaded = await this.loadDraftAndPublished(postId, {
+      consistentRead: true,
+    });
     if (!loaded) {
       throw new NotFoundError(`Post ${postId} not found`);
     }

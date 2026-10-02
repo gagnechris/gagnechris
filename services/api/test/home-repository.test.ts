@@ -81,7 +81,10 @@ describe('HomeRepository', () => {
     const put = send.mock.calls.find(
       (c) => c[0]!.constructor.name === 'PutCommand',
     )![0]!;
-    expect(put.input.ExpressionAttributeValues).toEqual({ ':v': 3 });
+    expect(put.input.ExpressionAttributeValues).toEqual({
+      ':v': 3,
+      ':zero': 0,
+    });
     expect((put.input.Item as { sk: string }).sk).toBe('META');
   });
 

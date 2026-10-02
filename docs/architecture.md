@@ -46,7 +46,9 @@ Integrity notes (CHR-160 / CHR-167):
 - Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post (CHR-167).
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
-- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition.
+- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400** (CHR-170).
+- Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current` (CHR-170).
+- Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken` (CHR-170).
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
 
 Observability (CHR-168): handled API 500s emit EMF `HandlerError` (Lambda `Errors` stays quiet). Alarms on the Guardrails SNS topic cover API `HandlerError` / `DataIntegrityError`, publisher `DataIntegrityError`, API Gateway `5xx`, and DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Response-schema Zod failures are 500s; request Zod stays 400.

@@ -53,6 +53,9 @@ export function isSlugClaimCancellation(
  * When `uniqueClaimIndexes` / `slugClaimIndexes` matches a
  * ConditionalCheckFailed cancellation, throws ConflictError with the
  * configured claim code (`slug_taken` by default for slug indexes).
+ *
+ * If `versionItemIndex` also failed, prefer a plain version conflict so
+ * callers can attach `current` (CHR-170).
  */
 export async function runDynamoWrite<T>(
   write: () => Promise<T>,
@@ -63,6 +66,7 @@ export async function runDynamoWrite<T>(
     uniqueClaimIndexes?: readonly number[];
     uniqueClaimCode?: 'slug_taken' | 'daily_taken';
     uniqueClaimMessage?: string;
+    versionItemIndex?: number;
   },
 ): Promise<T> {
   try {
@@ -72,10 +76,13 @@ export async function runDynamoWrite<T>(
     if (kind === 'conflict') {
       const claimIndexes =
         opts?.uniqueClaimIndexes ?? opts?.slugClaimIndexes ?? [];
-      if (
+      const claimFailed =
         claimIndexes.length > 0 &&
-        isUniqueClaimCancellation(error, claimIndexes)
-      ) {
+        isUniqueClaimCancellation(error, claimIndexes);
+      const versionAlsoFailed =
+        opts?.versionItemIndex !== undefined &&
+        isUniqueClaimCancellation(error, [opts.versionItemIndex]);
+      if (claimFailed && !versionAlsoFailed) {
         throw new ConflictError(
           opts?.uniqueClaimMessage ?? opts?.slugTakenMessage ?? conflictMessage,
           { code: opts?.uniqueClaimCode ?? 'slug_taken' },
