@@ -128,6 +128,8 @@ describe('VersionedEntityRepository (fake note)', () => {
 
   it('refuses to recreate a hard-deleted item (CHR-161)', async () => {
     send
+      // getRawItem (preserve createHash) — item already gone
+      .mockResolvedValueOnce({})
       .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
       .mockResolvedValueOnce({}); // GetItem: gone
 
@@ -143,7 +145,7 @@ describe('VersionedEntityRepository (fake note)', () => {
       message: expect.stringContaining('current unknown'),
     });
 
-    const put = send.mock.calls[0]![0] as {
+    const put = send.mock.calls[1]![0] as {
       input: { ConditionExpression?: string };
     };
     expect(put.input.ConditionExpression).toBe(
