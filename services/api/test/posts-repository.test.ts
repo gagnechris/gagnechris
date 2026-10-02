@@ -506,12 +506,13 @@ describe('PostsRepository cursor + published integrity (CHR-160)', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
+    // Admin "all" lists published then draft (CHR-161); i:0 must be STATUS#published.
     const bad = encodeCursor({
       i: 0,
       lek: {
         pk: 'POST#1',
         sk: 'META',
-        gsi1pk: 'STATUS#published',
+        gsi1pk: 'STATUS#draft',
         gsi1sk: 'x',
       },
     } as unknown as Record<string, unknown>);
