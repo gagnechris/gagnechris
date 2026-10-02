@@ -113,9 +113,8 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
   it('softDelete extends create-claim TTL from delete time (CHR-172)', async () => {
     const createAt = new Date('2026-01-01T00:00:00.000Z');
     const deleteAt = new Date('2026-09-28T11:00:00.000Z');
-    const repo = createFakeNotesRepo(doc, tableName, () =>
-      createAt.toISOString(),
-    );
+    let clock = createAt;
+    const repo = createFakeNotesRepo(doc, tableName, () => clock.toISOString());
     const created = await repo.createIdempotent(
       buildFakeNote(
         USER,
@@ -139,6 +138,7 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
       ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, createAt),
     );
 
+    clock = deleteAt;
     await repo.softDelete(USER, NOTE_ID, 1, {
       ...created,
       version: 2,

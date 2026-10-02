@@ -294,7 +294,10 @@ export class VersionedEntityRepository<
                     entityId: id,
                     createHash,
                     createdAt: entity.updatedAt,
-                    ttl: ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS),
+                    ttl: ttlDaysFromNow(
+                      SYNC_CREATE_CLAIM_TTL_DAYS,
+                      new Date(this.now()),
+                    ),
                   },
                   ConditionExpression: 'attribute_not_exists(pk)',
                 },
@@ -411,12 +414,13 @@ export class VersionedEntityRepository<
     tombstone: T,
   ): Promise<T> {
     const sync = this.config.sync;
-    const ttl = sync ? ttlDaysFromNow() : undefined;
+    const clock = new Date(this.now());
+    const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
     const raw = await this.getRawItem(id);
     const createHash =
       typeof raw?.createHash === 'string' ? raw.createHash : undefined;
     const claimTtl = sync
-      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS)
+      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock)
       : undefined;
     await runVersionedWrite(
       () =>

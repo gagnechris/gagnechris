@@ -317,7 +317,10 @@ export class OwnerScopedVersionedEntityRepository<
             userId,
             createHash,
             createdAt: entity.updatedAt,
-            ttl: ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS),
+            ttl: ttlDaysFromNow(
+              SYNC_CREATE_CLAIM_TTL_DAYS,
+              new Date(this.now()),
+            ),
           },
           ConditionExpression: 'attribute_not_exists(pk)',
         },
@@ -488,7 +491,8 @@ export class OwnerScopedVersionedEntityRepository<
   ): Promise<T> {
     this.assertOwner(userId, tombstone);
     const sync = this.config.sync;
-    const ttl = sync ? ttlDaysFromNow() : undefined;
+    const clock = new Date(this.now());
+    const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
     const raw = await this.getRawItem(userId, id);
     if (!raw) {
       throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
@@ -498,7 +502,7 @@ export class OwnerScopedVersionedEntityRepository<
     const createHash =
       typeof raw.createHash === 'string' ? raw.createHash : undefined;
     const claimTtl = sync
-      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS)
+      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock)
       : undefined;
     await runVersionedWrite(
       () =>
