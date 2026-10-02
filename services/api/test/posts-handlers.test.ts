@@ -6,6 +6,7 @@ import {
   NotFoundError,
   PostsRepository,
 } from '../src/posts/repository.js';
+import { DataIntegrityError } from '../src/data/errors.js';
 import { dispatchRoutes } from '../src/router.js';
 import { makeEvent } from './support/make-event.js';
 
@@ -68,6 +69,20 @@ describe('posts HTTP handlers', () => {
       body: { title: 'Hello' },
     });
     expect(result.statusCode).toBe(201);
+  });
+
+  it('returns 500 data_integrity for corrupt PUBLISHED (CHR-160)', async () => {
+    vi.mocked(repo.getById).mockRejectedValue(
+      new DataIntegrityError('Corrupt stored Post', {
+        pk: `POST#${samplePost.id}`,
+        sk: 'PUBLISHED',
+      }),
+    );
+    const result = await dispatch('GET', `/api/admin/posts/${samplePost.id}`);
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body as string)).toMatchObject({
+      error: 'data_integrity',
+    });
   });
 
   it('returns 409 on conflict', async () => {

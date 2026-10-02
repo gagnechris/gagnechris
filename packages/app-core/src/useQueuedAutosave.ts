@@ -4,7 +4,7 @@ import { defaultTimers, type Timers } from './platform.js';
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type AutosaveResult<TEntity> =
-  { ok: true; entity: TEntity } | { ok: false; status: number };
+  { ok: true; entity: TEntity } | { ok: false; status: number; error?: string };
 
 /** Outcome of an explicit `save()` flush (CHR-124). */
 export type FlushResult = 'clean' | 'pending' | 'error';
@@ -25,6 +25,8 @@ type Options<TDraft, TEntity> = {
   /** Update entity metadata (version, updatedAt, status, seo). Do not replace the draft here. */
   onSaved: (entity: TEntity) => void;
   conflictMessage: string;
+  /** Shown when the API returns 409 with `error: slug_taken` (CHR-160). */
+  slugTakenMessage?: string;
   /** Defaults to `globalThis` timers (no `window`). */
   timers?: Timers;
 };
@@ -52,6 +54,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   performSave,
   onSaved,
   conflictMessage,
+  slugTakenMessage = 'That slug is already taken. Choose a different slug.',
   timers = defaultTimers,
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -146,7 +149,9 @@ export function useQueuedAutosave<TDraft, TEntity>({
             setSaveState('error');
             setSaveError(
               result.status === 409
-                ? conflictMessage
+                ? result.error === 'slug_taken'
+                  ? slugTakenMessage
+                  : conflictMessage
                 : `Save failed (${result.status}).`,
             );
             outcome = 'error';
@@ -190,7 +195,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     })();
 
     return promise;
-  }, [conflictMessage, enabled, versionRef]);
+  }, [conflictMessage, enabled, slugTakenMessage, versionRef]);
 
   useEffect(() => {
     if (!enabled || !dirty || held) return;

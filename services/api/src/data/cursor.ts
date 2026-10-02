@@ -1,5 +1,5 @@
 /**
- * Opaque pagination cursor helpers (CHR-129 / CHR-152).
+ * Opaque pagination cursor helpers (CHR-129 / CHR-152 / CHR-160).
  * Cursor is base64url(JSON of DynamoDB LastEvaluatedKey).
  */
 
@@ -15,8 +15,8 @@ export function encodeCursor(
 }
 
 /**
- * Decode an opaque cursor. When `requiredKeys` is set, every key must be
- * present. Throws SyntaxError → HTTP 400.
+ * Decode an opaque cursor. When `requiredKeys` is set, the key set must match
+ * exactly and every value must be a string. Throws SyntaxError → HTTP 400.
  */
 export function decodeCursor(
   cursor: string | undefined,
@@ -31,9 +31,13 @@ export function decodeCursor(
     }
     const key = parsed as Record<string, unknown>;
     if (requiredKeys && requiredKeys.length > 0) {
+      const names = Object.keys(key);
+      if (names.length !== requiredKeys.length) {
+        throw new Error('key set mismatch');
+      }
       for (const name of requiredKeys) {
-        if (!(name in key)) {
-          throw new Error(`missing key ${name}`);
+        if (!(name in key) || typeof key[name] !== 'string') {
+          throw new Error(`invalid key ${name}`);
         }
       }
     }

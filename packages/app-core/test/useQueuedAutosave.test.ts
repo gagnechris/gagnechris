@@ -335,3 +335,36 @@ describe('useQueuedAutosave', () => {
     expect(result.current.saveState).toBe('saved');
   });
 });
+
+test('slug_taken 409 shows slug-taken message, not conflictMessage (CHR-160)', async () => {
+  const performSave = vi.fn(async () => ({
+    ok: false as const,
+    status: 409,
+    error: 'slug_taken',
+  }));
+  const versionRef = { current: 1 };
+  const { result } = renderHook(() => {
+    const [draft] = useState('Hello');
+    const [dirty, setDirty] = useState(true);
+    return useQueuedAutosave({
+      draft,
+      dirty,
+      setDirty,
+      debounceMs: 10_000,
+      versionRef,
+      getVersion: (e: { version: number }) => e.version,
+      performSave,
+      onSaved: () => {},
+      conflictMessage: 'Conflict — Reload and try again.',
+      slugTakenMessage: 'That slug is already taken. Choose a different slug.',
+    });
+  });
+
+  await act(async () => {
+    await result.current.save();
+  });
+  expect(result.current.saveError).toBe(
+    'That slug is already taken. Choose a different slug.',
+  );
+  expect(result.current.saveError).not.toContain('Reload');
+});

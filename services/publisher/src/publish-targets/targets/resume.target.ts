@@ -16,8 +16,13 @@ const target: PublishTarget = {
   },
   async run(ctx) {
     const { shell, sources } = ctx;
-    const resume = await sources.getPublishedResume();
-    if (resume) {
+    const lookup = await sources.getPublishedResume();
+    if (lookup.status === 'corrupt') {
+      // Preserve live HTML + PDF; do not treat as unpublished (CHR-160).
+      return {};
+    }
+    if (lookup.status === 'ok') {
+      const resume = lookup.entity;
       const artifacts: PublishArtifact[] = [
         {
           key: 'resume/index.html',

@@ -125,7 +125,9 @@ export function mapRouteError(
     logger.error('Data integrity error', {
       pk: error.pk,
       sk: error.sk,
-      message: error.message,
+      errMessage: error.message,
+      causeMessage:
+        error.cause instanceof Error ? error.cause.message : undefined,
     });
     metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
     return json(500, {

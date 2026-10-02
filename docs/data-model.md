@@ -237,7 +237,7 @@ Create also writes a durable claim row (not on GSI3):
 - Normalizes `since` with `Date.parse` → `toISOString()` so missing milliseconds or offsets match UTC-ms keys.
 - Re-queries an overlap window (`SYNC_OVERLAP_MS`, 15s ≥ `API_LAMBDA_TIMEOUT_MS`) below `since` so late-committed writes are not skipped; clients dedupe by `(id, version)`.
 - Returns opaque `nextSince` (server watermark at query start) for the next poll.
-- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`).
+- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition).
 - Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
 
 Adding a synced entity is **config on `VersionedEntityRepository`** (`sync: { changeType, userIdOf, createPayloadHash }`) plus `registerSyncEntity` for the feed adapter — no edits to the ledger/feed modules.

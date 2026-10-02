@@ -210,6 +210,27 @@ describe('cursor helpers', () => {
       decodeCursor(cursor, ['pk', 'sk', 'gsi1pk', 'gsi1sk']),
     ).toThrow(SyntaxError);
   });
+
+  it('rejects cursor with extra keys', () => {
+    const cursor = encodeCursor({
+      pk: 'POST#1',
+      sk: 'META',
+      gsi1pk: 'STATUS#draft',
+      gsi1sk: 'x',
+      extra: 'nope',
+    });
+    expect(() =>
+      decodeCursor(cursor, ['pk', 'sk', 'gsi1pk', 'gsi1sk']),
+    ).toThrow(SyntaxError);
+  });
+
+  it('rejects cursor with non-string values', () => {
+    const cursor = Buffer.from(
+      JSON.stringify({ pk: 1, sk: 'META' }),
+      'utf8',
+    ).toString('base64url');
+    expect(() => decodeCursor(cursor, ['pk', 'sk'])).toThrow(SyntaxError);
+  });
 });
 
 describe('VersionedEntityRepository queryPage tombstones', () => {
@@ -269,6 +290,75 @@ describe('VersionedEntityRepository queryPage tombstones', () => {
           deleted: n.deleted,
         }),
         isDeleted: (n: { deleted?: boolean }) => n.deleted === true,
+      },
+      { send } as never,
+      'test-table',
+    );
+    const page = await repo.queryPage({
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': 'NOTE#n1' },
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]!.title).toBe('Alive');
+  });
+});
+
+describe('VersionedEntityRepository queryPage corrupt rows (CHR-160)', () => {
+  it('skips corrupt rows in queryPage (Zod → DataIntegrityError)', async () => {
+    const send = vi.fn().mockResolvedValueOnce({
+      Items: [
+        {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          version: 1,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+        {
+          pk: 'NOTE#n2',
+          sk: 'META',
+          id: 'n2',
+          title: 'Alive',
+          version: 1,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      ],
+    });
+    const { ZodError } = await import('zod');
+    const repo = new VersionedEntityRepository(
+      {
+        conflictLabel: 'note',
+        keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+        idOf: (n: { id: string }) => n.id,
+        toEntity: (item: {
+          id: string;
+          title?: string;
+          version: number;
+          updatedAt: string;
+        }) => {
+          if (typeof item.title !== 'string') {
+            throw new ZodError([]);
+          }
+          return {
+            id: item.id,
+            title: item.title,
+            version: item.version,
+            updatedAt: item.updatedAt,
+          };
+        },
+        toItem: (n: {
+          id: string;
+          title: string;
+          version: number;
+          updatedAt: string;
+        }) => ({
+          pk: `NOTE#${n.id}`,
+          sk: 'META',
+          id: n.id,
+          title: n.title,
+          version: n.version,
+          updatedAt: n.updatedAt,
+        }),
       },
       { send } as never,
       'test-table',

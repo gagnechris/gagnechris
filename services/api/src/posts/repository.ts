@@ -84,8 +84,13 @@ function decodeMultiStatusCursor(
     if (!lek || typeof lek !== 'object' || Array.isArray(lek)) {
       throw new SyntaxError('Invalid pagination cursor');
     }
+    const lekObj = lek as Record<string, unknown>;
+    const names = Object.keys(lekObj);
+    if (names.length !== GSI1_CURSOR_KEYS.length) {
+      throw new SyntaxError('Invalid pagination cursor');
+    }
     for (const name of GSI1_CURSOR_KEYS) {
-      if (!(name in (lek as Record<string, unknown>))) {
+      if (typeof lekObj[name] !== 'string') {
         throw new SyntaxError('Invalid pagination cursor');
       }
     }
@@ -96,11 +101,23 @@ function decodeMultiStatusCursor(
   };
 }
 
+function assertGsi1CursorForStatus(
+  key: Record<string, unknown> | undefined,
+  status: PostStatus,
+): void {
+  if (!key) return;
+  if (key.gsi1pk !== statusGsi1Pk(status)) {
+    throw new SyntaxError('Invalid pagination cursor');
+  }
+}
+
 function logCorruptItem(error: DataIntegrityError): void {
   logger.warn('Skipping corrupt stored item', {
     pk: error.pk,
     sk: error.sk,
-    message: error.message,
+    errMessage: error.message,
+    causeMessage:
+      error.cause instanceof Error ? error.cause.message : undefined,
   });
   metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
 }
@@ -173,7 +190,10 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
           new TransactWriteCommand({ TransactItems: transactItems }),
         ),
       'Update conflict (version)',
-      () => throwVersionConflict(before.version, () => this.getById(after.id)),
+      () =>
+        throwVersionConflict(before.version, () =>
+          this.getById(after.id, { consistentRead: true }),
+        ),
       {
         slugClaimIndexes,
         slugTakenMessage: `Slug "${after.slug}" is already taken`,
@@ -217,6 +237,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
     opts?: { cursor?: string; limit?: number },
   ): Promise<{ items: Post[]; nextCursor?: string }> {
     const exclusiveStartKey = decodeCursor(opts?.cursor, GSI1_CURSOR_KEYS);
+    assertGsi1CursorForStatus(exclusiveStartKey, status);
     const result = await this.doc.send(
       new QueryCommand({
         TableName: this.tableName,
@@ -247,6 +268,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
 
     while (state.i < statuses.length) {
       const status = statuses[state.i]!;
+      assertGsi1CursorForStatus(state.lek, status);
       const remaining =
         limit !== undefined ? Math.max(limit - collected.length, 1) : undefined;
       const result = await this.doc.send(

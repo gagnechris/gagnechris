@@ -88,7 +88,11 @@ export async function runPublishTargets(options: {
   const needsShell = scopeNeedsShell(targets, scope);
 
   const shell = needsShell ? await storage.readShell() : '';
-  const published = needsCatalog ? await sources.listPublishedPosts() : [];
+  const catalog = needsCatalog
+    ? await sources.listPublishedPosts()
+    : { posts: [], corruptSlugs: [] as string[] };
+  const published = catalog.posts;
+  const corruptPostSlugs = new Set(catalog.corruptSlugs);
 
   const ctx: PublishTargetContext = {
     scope,
@@ -96,6 +100,7 @@ export async function runPublishTargets(options: {
     storage,
     sources,
     published,
+    corruptPostSlugs,
   };
 
   let removedSlugs: string[] = [];
@@ -148,7 +153,9 @@ export async function runPublishTargets(options: {
 
   if (scope.feeds) {
     await syncViewerRequestBlogSlugs(() =>
-      sources.listPublishedPosts().then((posts) => posts.map((p) => p.slug)),
+      sources
+        .listPublishedPosts()
+        .then((result) => result.posts.map((p) => p.slug)),
     );
   }
 

@@ -30,6 +30,8 @@ export type VersionedEntityEditorOptions<
   getEntityId: (entity: TEntity) => string;
   toPayload: (draft: TDraft, entity: TEntity) => Record<string, unknown>;
   conflictMessage: string;
+  /** Shown on 409 `slug_taken` (posts). Defaults in useQueuedAutosave. */
+  slugTakenMessage?: string;
   confirm: ConfirmFn;
   unpublishConfirm: string;
   discardConfirm: string;
@@ -71,6 +73,7 @@ export function useVersionedEntityEditor<
   getEntityId,
   toPayload,
   conflictMessage,
+  slugTakenMessage,
   confirm,
   unpublishConfirm,
   discardConfirm,
@@ -157,6 +160,7 @@ export function useVersionedEntityEditor<
         return {
           ok: false as const,
           status: err instanceof ApiError ? err.status : 0,
+          error: err instanceof ApiError ? err.error : undefined,
         };
       }
     },
@@ -190,6 +194,7 @@ export function useVersionedEntityEditor<
     performSave,
     onSaved,
     conflictMessage,
+    slugTakenMessage,
   });
 
   const { save, saveState, saveError, setSaveError, bumpEdit } = autosave;

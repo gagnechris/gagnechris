@@ -447,3 +447,103 @@ describe('PostsRepository', () => {
     });
   });
 });
+
+describe('PostsRepository cursor + published integrity (CHR-160)', () => {
+  it('rejects non-string pk in GSI cursor', async () => {
+    const repo = new PostsRepository(
+      mockDocClient(async () => ({ Items: [] })),
+      'gagnechris-test',
+    );
+    const bad = Buffer.from(
+      JSON.stringify({
+        pk: 1,
+        sk: 'META',
+        gsi1pk: 'STATUS#draft',
+        gsi1sk: 'x',
+      }),
+      'utf8',
+    ).toString('base64url');
+    await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+  });
+
+  it('rejects gsi1pk from another status partition', async () => {
+    const repo = new PostsRepository(
+      mockDocClient(async () => ({ Items: [] })),
+      'gagnechris-test',
+    );
+    const bad = encodeCursor({
+      pk: 'POST#1',
+      sk: 'META',
+      gsi1pk: 'STATUS#published',
+      gsi1sk: 'x',
+    });
+    await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+  });
+
+  it('rejects cursor with extra keys', async () => {
+    const repo = new PostsRepository(
+      mockDocClient(async () => ({ Items: [] })),
+      'gagnechris-test',
+    );
+    const bad = encodeCursor({
+      pk: 'POST#1',
+      sk: 'META',
+      gsi1pk: 'STATUS#draft',
+      gsi1sk: 'x',
+      extra: 'nope',
+    });
+    await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+  });
+
+  it('rejects multi-status lek from the wrong status', async () => {
+    const repo = new PostsRepository(
+      mockDocClient(async () => ({ Items: [] })),
+      'gagnechris-test',
+    );
+    // Admin "all" lists published then draft (CHR-161); i:0 must be STATUS#published.
+    const bad = encodeCursor({
+      i: 0,
+      lek: {
+        pk: 'POST#1',
+        sk: 'META',
+        gsi1pk: 'STATUS#draft',
+        gsi1sk: 'x',
+      },
+    } as unknown as Record<string, unknown>);
+    await expect(repo.list(undefined, { cursor: bad })).rejects.toBeInstanceOf(
+      SyntaxError,
+    );
+  });
+
+  it('corrupt PUBLISHED row returns DataIntegrityError via getById', async () => {
+    const doc = mockDocClient(async (command) => {
+      if (command.constructor.name === 'BatchGetCommand') {
+        return {
+          Responses: {
+            'gagnechris-test': [
+              buildMetaItem(draft),
+              {
+                pk: postPk(draft.id),
+                sk: postPublishedSk(),
+                entityType: 'post',
+                // missing required fields → parse fails
+              },
+            ],
+          },
+        };
+      }
+      return {};
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const { DataIntegrityError } = await import('../src/data/errors.js');
+    await expect(repo.getById(draft.id)).rejects.toBeInstanceOf(
+      DataIntegrityError,
+    );
+  });
+});

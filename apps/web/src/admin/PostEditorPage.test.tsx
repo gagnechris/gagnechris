@@ -463,4 +463,30 @@ describe('PostEditorPage delete (CHR-158)', () => {
     await screen.findByText('Posts list');
     confirmSpy.mockRestore();
   });
+
+  test('slug collision shows slug-taken message, not Reload (CHR-160)', async () => {
+    const user = userEvent.setup();
+    put.mockResolvedValue({
+      data: undefined,
+      error: { error: 'slug_taken', message: 'Slug taken' },
+      response: { status: 409 },
+    });
+
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    const slug = screen.getByLabelText('Slug');
+    await user.clear(slug);
+    await user.type(slug, 'taken-slug');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'That slug is already taken. Choose a different slug.',
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Reload and try again/i)).not.toBeInTheDocument();
+  });
 });

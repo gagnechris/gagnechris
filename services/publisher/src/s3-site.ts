@@ -3,6 +3,7 @@ import {
   GetCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   GSI1_NAME,
   SK_META,
@@ -18,12 +19,15 @@ import {
   type PostMetaItem,
 } from '@gagnechris/data';
 import { batchGetAllWithDocClient } from '@gagnechris/data';
-import { Logger } from '@aws-lambda-powertools/logger';
 import type { Home, Post, Resume } from '@gagnechris/shared';
-import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
+import { logger, metrics } from './observability.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';
-import type { RebuildSiteSources } from './publish-targets/types.js';
+import type {
+  PublishedLookup,
+  PublishedPostsCatalog,
+  RebuildSiteSources,
+} from './publish-targets/types.js';
 import { fullRebuildScope, type RebuildScope } from './rebuild-scope.js';
 import type { RebuildResult } from './rebuild-result.js';
 import { createFilesystemSiteStorage } from './storage-fs.js';
@@ -31,7 +35,6 @@ import { createS3SiteStorage } from './storage-s3.js';
 import type { SiteStorage } from './storage.js';
 
 const ddb = getDocClient();
-const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 export type { HomePublishSnapshot } from './home-publish.js';
 export {
@@ -56,9 +59,27 @@ export function getSiteStorage(): SiteStorage {
     : createS3SiteStorage();
 }
 
-export async function listPublishedPosts(tableName: string): Promise<Post[]> {
+function logCorruptPublished(opts: {
+  label: string;
+  pk?: string;
+  sk?: string;
+  err: unknown;
+}): void {
+  logger.warn(`Skipping corrupt published ${opts.label} item`, {
+    pk: opts.pk,
+    sk: opts.sk,
+    errMessage: opts.err instanceof Error ? opts.err.message : String(opts.err),
+  });
+  metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+}
+
+export async function listPublishedPosts(
+  tableName: string,
+): Promise<PublishedPostsCatalog> {
   const posts: Post[] = [];
+  const corruptSlugs: string[] = [];
   const metaPostIds: string[] = [];
+  const metaSlugById = new Map<string, string>();
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
   do {
@@ -78,6 +99,9 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       // META drafts; load PUBLISHED snapshots via BatchGet (CHR-117).
       if (item.sk === SK_META && typeof item.postId === 'string') {
         metaPostIds.push(item.postId);
+        if (typeof item.slug === 'string' && item.slug) {
+          metaSlugById.set(item.postId, item.slug);
+        }
       }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
@@ -86,6 +110,7 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
 
   const uniqueIds = [...new Set(metaPostIds)];
   const publishedById = new Map<string, PostMetaItem>();
+  const corruptPostIds = new Set<string>();
   for (let i = 0; i < uniqueIds.length; i += 100) {
     const chunk = uniqueIds.slice(i, i + 100);
     const responses = await batchGetAllWithDocClient(
@@ -93,19 +118,38 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
       {
         [tableName]: {
           Keys: chunk.map((postId) => keys.post.published(postId)),
+          ConsistentRead: true,
         },
       },
     );
     for (const item of responses[tableName] ?? []) {
+      const pk =
+        typeof (item as { pk?: unknown }).pk === 'string'
+          ? (item as { pk: string }).pk
+          : undefined;
+      const sk =
+        typeof (item as { sk?: unknown }).sk === 'string'
+          ? (item as { sk: string }).sk
+          : undefined;
+      const postId =
+        typeof (item as { postId?: unknown }).postId === 'string'
+          ? (item as { postId: string }).postId
+          : pk?.startsWith('POST#')
+            ? pk.slice('POST#'.length)
+            : undefined;
       try {
         const record = parsePostMetaItem(item);
         publishedById.set(record.postId, record);
       } catch (error) {
-        logger.warn('Skipping corrupt published post item', {
-          pk: (item as { pk?: string }).pk,
-          sk: (item as { sk?: string }).sk,
-          err: error instanceof Error ? error.message : String(error),
-        });
+        logCorruptPublished({ label: 'post', pk, sk, err: error });
+        if (postId) corruptPostIds.add(postId);
+        const slug =
+          typeof (item as { slug?: unknown }).slug === 'string'
+            ? (item as { slug: string }).slug
+            : postId
+              ? metaSlugById.get(postId)
+              : undefined;
+        if (slug) corruptSlugs.push(slug);
       }
     }
   }
@@ -113,58 +157,73 @@ export async function listPublishedPosts(tableName: string): Promise<Post[]> {
   for (const postId of uniqueIds) {
     const publishedItem = publishedById.get(postId);
     // Skip META-only rows: never synthesize PUBLISHED from a stale META read (CHR-146).
+    // Corrupt PUBLISHED rows are tracked separately so orphans are not deleted (CHR-160).
     if (!publishedItem) continue;
+    if (corruptPostIds.has(postId)) continue;
     posts.push(metaToPost(publishedItem));
   }
 
-  return posts.sort((a, b) => {
-    const aTs = a.publishedAt ?? a.updatedAt;
-    const bTs = b.publishedAt ?? b.updatedAt;
-    return bTs.localeCompare(aTs);
-  });
+  return {
+    posts: posts.sort((a, b) => {
+      const aTs = a.publishedAt ?? a.updatedAt;
+      const bTs = b.publishedAt ?? b.updatedAt;
+      return bTs.localeCompare(aTs);
+    }),
+    corruptSlugs: [...new Set(corruptSlugs)],
+  };
 }
 
 export async function getPublishedResume(
   tableName: string,
-): Promise<Resume | undefined> {
+): Promise<PublishedLookup<Resume>> {
+  const key = keys.singleton.resume.published();
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: keys.singleton.resume.published(),
+      Key: key,
+      ConsistentRead: true,
     }),
   );
-  if (!result.Item) return undefined;
+  if (!result.Item) return { status: 'missing' };
   try {
     const item = parseResumeMetaItem(result.Item);
-    if (item.status !== 'published') return undefined;
-    return metaToResume(item);
+    if (item.status !== 'published') return { status: 'missing' };
+    return { status: 'ok', entity: metaToResume(item) };
   } catch (error) {
-    logger.warn('Skipping corrupt published resume item', {
-      err: error instanceof Error ? error.message : String(error),
+    logCorruptPublished({
+      label: 'resume',
+      pk: typeof result.Item.pk === 'string' ? result.Item.pk : key.pk,
+      sk: typeof result.Item.sk === 'string' ? result.Item.sk : key.sk,
+      err: error,
     });
-    return undefined;
+    return { status: 'corrupt' };
   }
 }
 
 export async function getPublishedHome(
   tableName: string,
-): Promise<Home | undefined> {
+): Promise<PublishedLookup<Home>> {
+  const key = keys.singleton.home.published();
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: keys.singleton.home.published(),
+      Key: key,
+      ConsistentRead: true,
     }),
   );
-  if (!result.Item) return undefined;
+  if (!result.Item) return { status: 'missing' };
   try {
     const item = parseHomeMetaItem(result.Item);
-    if (item.status !== 'published') return undefined;
-    return metaToHome(item);
+    if (item.status !== 'published') return { status: 'missing' };
+    return { status: 'ok', entity: metaToHome(item) };
   } catch (error) {
-    logger.warn('Skipping corrupt published home item', {
-      err: error instanceof Error ? error.message : String(error),
+    logCorruptPublished({
+      label: 'home',
+      pk: typeof result.Item.pk === 'string' ? result.Item.pk : key.pk,
+      sk: typeof result.Item.sk === 'string' ? result.Item.sk : key.sk,
+      err: error,
     });
-    return undefined;
+    return { status: 'corrupt' };
   }
 }
 
@@ -178,6 +237,7 @@ export type { RebuildSiteSources } from './publish-targets/types.js';
  *
  * - Unpublished Resume: replace `resume/index.html` with a placeholder and
  *   delete `resume.pdf` (CHR-103).
+ * - Corrupt Resume/Post PUBLISHED rows: preserve live artifacts (CHR-160).
  * - Unpublished Home: re-render `index.html` from `home/last-published.json` so
  *   the last published copy survives web deploys (CHR-103).
  * - Shell is always the pristine `_shell.html` template (CHR-104).

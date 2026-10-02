@@ -18,7 +18,7 @@ const target: PublishTarget = {
     return false;
   },
   async run(ctx) {
-    const { scope, storage, published } = ctx;
+    const { scope, storage, published, corruptPostSlugs } = ctx;
     const publishedSlugs = new Set(published.map((p) => p.slug));
 
     let candidates: Iterable<string>;
@@ -32,7 +32,9 @@ const target: PublishTarget = {
     const removedSlugs: string[] = [];
     const deleteKeys: string[] = [];
     for (const slug of candidates) {
-      if (!slug || publishedSlugs.has(slug)) continue;
+      if (!slug || publishedSlugs.has(slug) || corruptPostSlugs.has(slug)) {
+        continue;
+      }
       deleteKeys.push(`blog/${slug}/index.html`);
       removedSlugs.push(slug);
     }

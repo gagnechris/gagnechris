@@ -1,11 +1,7 @@
 import type { Context, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
-import { Logger } from '@aws-lambda-powertools/logger';
-import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
-import {
-  POWERTOOLS_METRICS_NAMESPACE,
-  PUBLISHER_SERVICE_NAME,
-} from '@gagnechris/shared';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { handlerSuccessFromRebuild } from './handler-result.js';
+import { logger, metrics } from './observability.js';
 import { rebuildPublishedSite } from './s3-site.js';
 import {
   collectRebuildScope,
@@ -13,12 +9,6 @@ import {
   streamNeedsRebuild,
 } from './rebuild-scope.js';
 import { KvsSyncError } from './viewer-request-slugs.js';
-
-const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
-const metrics = new Metrics({
-  namespace: POWERTOOLS_METRICS_NAMESPACE,
-  serviceName: PUBLISHER_SERVICE_NAME,
-});
 
 export type RepublishAllEvent = {
   action: 'republishAll';

@@ -2,10 +2,20 @@ import type { Home, Post, Resume } from '@gagnechris/shared';
 import type { RebuildScope } from '../rebuild-scope.js';
 import type { SiteStorage } from '../storage.js';
 
+/** Discriminated lookup so corrupt rows are not treated as unpublished (CHR-160). */
+export type PublishedLookup<T> =
+  { status: 'ok'; entity: T } | { status: 'missing' } | { status: 'corrupt' };
+
+export type PublishedPostsCatalog = {
+  posts: Post[];
+  /** Slugs whose PUBLISHED rows failed validation — preserve live pages. */
+  corruptSlugs: string[];
+};
+
 export type RebuildSiteSources = {
-  listPublishedPosts: () => Promise<Post[]>;
-  getPublishedResume: () => Promise<Resume | undefined>;
-  getPublishedHome: () => Promise<Home | undefined>;
+  listPublishedPosts: () => Promise<PublishedPostsCatalog>;
+  getPublishedResume: () => Promise<PublishedLookup<Resume>>;
+  getPublishedHome: () => Promise<PublishedLookup<Home>>;
 };
 
 export const CACHE_HTML = 'public,max-age=0,must-revalidate';
@@ -30,6 +40,8 @@ export type PublishTargetContext = {
   sources: RebuildSiteSources;
   /** Published posts (loaded once per rebuild when catalog is needed). */
   published: Post[];
+  /** Corrupt PUBLISHED post slugs — must not be deleted as orphans (CHR-160). */
+  corruptPostSlugs: ReadonlySet<string>;
 };
 
 export type PublishTargetRunResult = {
