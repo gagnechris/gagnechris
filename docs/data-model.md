@@ -1,6 +1,6 @@
 # Data model (single-table DynamoDB)
 
-Shared table for Blog CMS posts and (later) Notebook entities. Table name:
+Shared table for Blog CMS posts and Notebook entities. Table name:
 `gagnechris-<env>` (prod: `gagnechris-prod`).
 
 Attribute names are lowercase. Keys use string partition/sort values with `#`
@@ -18,7 +18,7 @@ code.
 | `pk`                | Partition key                                                                               |
 | `sk`                | Sort key                                                                                    |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                           |
-| `gsi2pk` / `gsi2sk` | GSI2 — **reserved** (tag rows mirror pk/sk today; Notebook may adopt this index)            |
+| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk |
 | `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity; CHR-153)                  |
 | `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
 
@@ -102,9 +102,9 @@ Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
 For each tag on a **published** post, maintain:
 
 `TAG#<tag>` / `TS#<publishedAt>#POST#<postId>` with `gsi2pk`/`gsi2sk` mirroring
-pk/sk so items remain GSI-projectable. **No application query uses GSI2 yet**
-(list-by-tag uses the table primary key). GSI2 is reserved for a future Notebook
-access pattern; do not repurpose without a migration plan.
+pk/sk so items remain GSI-projectable. List-by-tag still uses the table primary
+key. Notebook tasks linked to a note also use GSI2 with owner-scoped partitions
+(`USER#<sub>#NOTE#<id>#TASKS`); those keys never collide with `TAG#…` partitions.
 
 Pattern used here:
 
@@ -250,13 +250,57 @@ Clients:
 - Poll or page the change feed with `since` / `nextSince` + opaque `cursor`.
 - Send **`If-Match: "<version>"`**, **`If-Match: W/"<version>"`**, or **`If-Match: *`** (or body `version`) on update/delete; treat **412** vs **409** as documented in [architecture.md](./architecture.md).
 
-## Notebook (owner-scoped key space, CHR-169)
+## Notebook (owner-scoped key space, CHR-169 / CHR-39)
 
-Production Notebook notes/tasks (CHR-39) use **owner-scoped** keys so a second Cognito user (or recreated pool `sub`) cannot read, mutate, or collide with another user's rows. Access patterns: daily note by `(user, area, date)`, notes by area/date (calendar), tasks by area/status/due, tasks linked to a note.
+Production Notebook notes/tasks use **owner-scoped** keys so a second Cognito user
+(or recreated pool `sub`) cannot read, mutate, or collide with another user's rows.
+Access patterns: daily note by `(user, area, date)`, notes by area/date (calendar),
+tasks by area/status/due, tasks linked to a note.
+
+Wire types live in `@gagnechris/shared` (`NoteSchema`, `TaskSchema`, sync variants).
+Dynamo item schemas and mappers live in `@gagnechris/data`
+(`NoteMetaItemSchema`, `TaskMetaItemSchema`, `DailyNoteClaimItemSchema`,
+`buildNoteMetaItem`, `buildTaskMetaItem`, `buildDailyNoteClaimItem`).
+
+### Note fields
+
+| Attr           | Notes                                                                  |
+| -------------- | ---------------------------------------------------------------------- |
+| `id`           | Client ULID                                                            |
+| `userId`       | Cognito `sub`                                                          |
+| `area`         | `work` \| `personal`                                                   |
+| `type`         | `daily` \| `page`                                                      |
+| `date`         | `yyyy-mm-dd` when `type=daily`; `null` for pages                       |
+| `title`        | String (may be empty)                                                  |
+| `bodyMarkdown` | Markdown body                                                          |
+| `tags`         | `string[]` (normalized on write)                                       |
+| `pinned`       | Boolean                                                                |
+| `version`      | Optimistic concurrency                                                 |
+| `createdAt` / `updatedAt` | ISO-8601 UTC ms                                               |
+| `deleted`      | Soft-delete flag (tombstone window on GSI3)                            |
+
+### Task fields
+
+| Attr           | Notes                                                                  |
+| -------------- | ---------------------------------------------------------------------- |
+| `id`           | Client ULID                                                            |
+| `userId`       | Cognito `sub`                                                          |
+| `area`         | `work` \| `personal`                                                   |
+| `title`        | Required non-empty                                                     |
+| `description`  | Markdown (may be empty)                                                |
+| `priority`     | `low` \| `med` \| `high`                                               |
+| `status`       | `todo` \| `in_progress` \| `done`                                      |
+| `dueDate`      | Optional `yyyy-mm-dd`; `null` when undated                             |
+| `completedAt`  | ISO-8601 when done; otherwise `null`                                   |
+| `noteId`       | Optional link to a note                                                |
+| `tags`         | `string[]`                                                             |
+| `version` / timestamps / `deleted` | Same concurrency model as notes                     |
+
+### Keys
 
 | Entity           | `pk`                                   | `sk`   | GSI1 / GSI2                                                                                                                       |
 | ---------------- | -------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Note             | `USER#<sub>#NOTE#<noteId>`             | `META` | GSI1: `USER#<sub>#AREA#<work\|personal>` / `DATE#<yyyy-mm-dd>#NOTE#<id>` (calendar / date range)                                  |
+| Note             | `USER#<sub>#NOTE#<noteId>`             | `META` | GSI1: `USER#<sub>#AREA#<work\|personal>` / `DATE#<yyyy-mm-dd>#NOTE#<id>` (daily) or `PAGE#<updatedAt>#NOTE#<id>` (pages)          |
 | Daily note claim | `USER#<sub>#DAILY#<area>#<yyyy-mm-dd>` | `NOTE` | — (one daily note per user/area/day; item stores `noteId`)                                                                        |
 | Task             | `USER#<sub>#TASK#<taskId>`             | `META` | GSI1: `USER#<sub>#AREA#<area>#STATUS#<todo\|in_progress\|done>` / `DUE#<date>#TASK#<id>` or `UPDATED#<ts>#TASK#<id>` when undated |
 | Tasks for a note | (task META)                            | `META` | GSI2: `USER#<sub>#NOTE#<noteId>#TASKS` / `TASK#<taskId>`                                                                          |
@@ -265,7 +309,9 @@ Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHa
 
 **Daily-note race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser resolves the claim's `noteId` and returns that existing note (idempotent at the day grain). Documented in `OwnerScopedVersionedEntityRepository` + DynamoDB Local tests.
 
-API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/update/delete; posts remain on id-only `VersionedEntityRepository` / `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions.
+**No new GSIs** for Notes/Tasks core — GSI1–3 are already deployed.
+
+API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/update/delete; posts remain on id-only `VersionedEntityRepository` / `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
 
 ## Conventions
 

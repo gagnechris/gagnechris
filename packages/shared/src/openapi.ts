@@ -32,11 +32,23 @@ import {
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
+  CreateNoteRequestSchema,
+  CreateTaskRequestSchema,
   FakeNoteEntitySchema,
   FakeNoteSyncChangeSchema,
+  ListNotesQuerySchema,
+  ListTasksQuerySchema,
+  NoteListResponseSchema,
+  NoteSchema,
+  NoteSyncChangeSchema,
   SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
+  TaskListResponseSchema,
+  TaskSchema,
+  TaskSyncChangeSchema,
+  UpdateNoteRequestSchema,
+  UpdateTaskRequestSchema,
 } from './schemas.js';
 
 const PostIdParamsSchema = z.object({
@@ -167,8 +179,20 @@ export function buildOpenApiDocument() {
   registry.register('ResumeEducation', ResumeEducationSchema);
   registry.register('ResumeExperience', ResumeExperienceSchema);
   registry.register('PostSeo', PostSeoSchema);
+  registry.register('Note', NoteSchema);
+  registry.register('NoteListResponse', NoteListResponseSchema);
+  registry.register('CreateNoteRequest', CreateNoteRequestSchema);
+  registry.register('UpdateNoteRequest', UpdateNoteRequestSchema);
+  registry.register('ListNotesQuery', ListNotesQuerySchema);
+  registry.register('Task', TaskSchema);
+  registry.register('TaskListResponse', TaskListResponseSchema);
+  registry.register('CreateTaskRequest', CreateTaskRequestSchema);
+  registry.register('UpdateTaskRequest', UpdateTaskRequestSchema);
+  registry.register('ListTasksQuery', ListTasksQuerySchema);
   registry.register('FakeNoteEntity', FakeNoteEntitySchema);
   registry.register('FakeNoteSyncChange', FakeNoteSyncChangeSchema);
+  registry.register('NoteSyncChange', NoteSyncChangeSchema);
+  registry.register('TaskSyncChange', TaskSyncChangeSchema);
   registry.register('SyncChange', SyncChangeSchema);
   registry.register('SyncChangesResponse', SyncChangesResponseSchema);
 

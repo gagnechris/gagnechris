@@ -138,7 +138,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, includes `userId`) are idempotent (mismatch → 409). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge. Soft-delete **extends** the claim TTL from delete time. Rows without `createHash` cannot prove create-time identity and return **409** `payload_mismatch`.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
 - **Adapters** come from `config.sync.toChange` (registered when the repository is constructed). Missing adapters log + emit `SyncAdapterMissing`; a unit test fails if a synced fixture has no adapter.
-- **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (today: `fakeNote` fixture; Note/Task variants land with those entities).
+- **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (`note`, `task`, plus the `fakeNote` test fixture).
 - **`since` / `nextSince`**: `nextSince` is an ISO-8601 server watermark (treat as opaque; echo as `since`). Overlap window `SYNC_OVERLAP_MS` (15s ≥ API Lambda timeout); clients dedupe by `(id, version)`. **`since` older than `now − SYNC_TOMBSTONE_TTL_DAYS − SYNC_RESYNC_MARGIN_MS` → 410 `resync_required`** (full resync). Omit `since` for a full feed.
 - **Paging**: default `limit` is 50 (max 100). No batch mutate endpoint — clients apply changes one-by-one.
 - **`updatedAt` is server-stamped**; clients must not rely on client clocks for ordering.
@@ -157,7 +157,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - A future `X-Client-Version` / minimum-client gate may return **426**; until then there is no min-client header.
 - On **410 `resync_required`**, discard tombstone-dependent local state and re-fetch with no `since`.
 
-Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union as the typed contract fixture until Note/Task ship. Details: [data-model.md](./data-model.md).
+Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union alongside `note` / `task` (CHR-39). HTTP routes for real notes/tasks ship in CHR-40 / CHR-43. Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 
