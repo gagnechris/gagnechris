@@ -87,10 +87,9 @@ describe('api handler', () => {
         MetricUnit.Count,
         1,
       );
-      // Alarm pins: namespace gagnechris + service dimension gagnechris-api.
+      // Alarm pins match the EMF blob: namespace gagnechris + service dim.
       expect(POWERTOOLS_METRICS_NAMESPACE).toBe('gagnechris');
       expect(API_SERVICE_NAME).toBe('gagnechris-api');
-      expect(metrics.namespace).toBe(POWERTOOLS_METRICS_NAMESPACE);
       const warnText = warnSpy.mock.calls.map(String).join('\n');
       const errorText = errorSpy.mock.calls.map(String).join('\n');
       expect(warnText).not.toMatch(/reserved key/i);

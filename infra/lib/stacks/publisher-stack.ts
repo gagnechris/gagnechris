@@ -12,6 +12,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
+import type { Construct } from 'constructs';
 import { PUBLISH_STREAM_SK } from '@gagnechris/data';
 import {
   PUBLISHER_SERVICE_NAME,

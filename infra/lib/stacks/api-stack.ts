@@ -25,6 +25,7 @@ import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
+import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
