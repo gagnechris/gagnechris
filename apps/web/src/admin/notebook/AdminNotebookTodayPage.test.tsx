@@ -83,6 +83,13 @@ vi.mock('../../api/client', () => ({
           response: { status: 200 },
         };
       }
+      if (path === '/api/notebook/tasks') {
+        return {
+          data: { items: [] },
+          error: undefined,
+          response: { status: 200 },
+        };
+      }
       return {
         data: undefined,
         error: { error: 'not_found' },
