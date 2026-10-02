@@ -1,6 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import {
+  Navigate,
+  createBrowserRouter,
+  RouterProvider,
+} from 'react-router-dom';
 import './index.css';
 import App from './App.tsx';
 import Resume from './pages/Resume.tsx';
@@ -78,13 +82,17 @@ const router = createBrowserRouter(
               path: 'notebook',
               load: () => import('./admin/AdminNotebookLayout.tsx'),
               children: [
-                lazyRoute({
+                {
                   index: true,
-                  load: () => import('./admin/AdminNotebookPage.tsx'),
-                }),
-                // Nested placeholders for CHR-41 / CHR-42 (today, notes, tasks).
+                  element: <Navigate to="today" replace />,
+                },
+                // Section bodies: CHR-42 (notes UI), CHR-44 (tasks UI).
                 lazyRoute({
                   path: 'today',
+                  load: () => import('./admin/AdminNotebookPage.tsx'),
+                }),
+                lazyRoute({
+                  path: 'notes',
                   load: () => import('./admin/AdminNotebookPage.tsx'),
                 }),
                 lazyRoute({
