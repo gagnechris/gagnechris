@@ -131,11 +131,14 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
-## Admin Notebook shell (CHR-41)
+## Admin Notebook shell (CHR-41 / CHR-42)
 
 - Lazy `/admin/notebook/*` under the admin layout: section routes `today`, `notes`, `notes/:id`, `tasks` (index redirects to `today`).
 - Layout chrome: Work / Personal / **All** area filter (UI-only; `'all'` omits `area` on list APIs) plus Today / Notes / Tasks nav. Area preference persists in `localStorage` (`gagnechris.notebook.areaFilter`).
-- Child pages read the filter via React Router outlet context. Notes/tasks bodies land in later tickets (CHR-42 / CHR-44).
+- Child pages read the filter via React Router outlet context.
+- **Today (CHR-42):** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict.
+- **Pages (CHR-42):** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
+- Tasks body: CHR-44.
 
 ## Notebook sync contract (CHR-153 / CHR-162 / CHR-172)
 
