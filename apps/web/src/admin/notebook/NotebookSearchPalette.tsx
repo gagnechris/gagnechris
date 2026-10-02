@@ -64,18 +64,15 @@ export default function NotebookSearchPalette({
   }, [search.data]);
 
   const [active, setActive] = useState(0);
+  // Clamp selection when the result list shrinks (no effect / setState).
+  const safeActive =
+    flat.length === 0 ? 0 : Math.min(active, flat.length - 1);
 
   useEffect(() => {
     if (!open) return;
-    setQ('');
-    setActive(0);
     const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [open]);
-
-  useEffect(() => {
-    setActive(0);
-  }, [q, search.data]);
 
   useEffect(() => {
     if (!open) return;
@@ -117,19 +114,24 @@ export default function NotebookSearchPalette({
             type="search"
             placeholder="Search notes and tasks…"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setActive(0);
+            }}
             aria-controls={listId}
             aria-autocomplete="list"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setActive((i) => Math.min(i + 1, Math.max(flat.length - 1, 0)));
+                setActive((i) =>
+                  Math.min(i + 1, Math.max(flat.length - 1, 0)),
+                );
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 setActive((i) => Math.max(i - 1, 0));
-              } else if (e.key === 'Enter' && flat[active]) {
+              } else if (e.key === 'Enter' && flat[safeActive]) {
                 e.preventDefault();
-                go(flat[active]!.href);
+                go(flat[safeActive]!.href);
               }
             }}
           />
@@ -172,9 +174,9 @@ export default function NotebookSearchPalette({
                         <button
                           type="button"
                           role="option"
-                          aria-selected={index === active}
+                          aria-selected={index === safeActive}
                           className={
-                            index === active
+                            index === safeActive
                               ? 'notebook-search__hit notebook-search__hit--active'
                               : 'notebook-search__hit'
                           }
