@@ -103,7 +103,11 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       status: 'draft',
       hasUnpublishedChanges: false,
     };
-    const cached = queryClient.getQueryData<FakeEntity>(['admin', 'fake', 'f1']);
+    const cached = queryClient.getQueryData<FakeEntity>([
+      'admin',
+      'fake',
+      'f1',
+    ]);
     expect(preferNewerByVersion(cached, staleFetch)).toEqual(updated);
 
     const wrapper = ({ children }: { children: ReactNode }) =>

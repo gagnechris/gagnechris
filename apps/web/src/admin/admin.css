@@ -200,9 +200,7 @@
 /* Sticky status + actions bar for editors (CHR-108). */
 .admin-action-bar {
   position: sticky;
-  top: calc(
-    env(safe-area-inset-top, 0px) + var(--vv-offset-top, 0px)
-  );
+  top: calc(env(safe-area-inset-top, 0px) + var(--vv-offset-top, 0px));
   z-index: 20;
   display: flex;
   flex-wrap: wrap;
@@ -470,8 +468,7 @@
       4.5rem + env(safe-area-inset-top, 0px) + var(--vv-offset-top, 0px)
     );
     max-height: calc(
-      100vh - 5.5rem - env(safe-area-inset-top, 0px) -
-        var(--vv-offset-top, 0px)
+      100vh - 5.5rem - env(safe-area-inset-top, 0px) - var(--vv-offset-top, 0px)
     );
     max-height: calc(
       100dvh - 5.5rem - env(safe-area-inset-top, 0px) -

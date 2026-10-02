@@ -74,7 +74,10 @@ const baseOptions = {
   conflictMessage: 'conflict',
   unpublishConfirm: 'unpublish?',
   discardConfirm: 'discard?',
-} satisfies Omit<VersionedEntityEditorOptions<Entity, Draft, Params>, 'confirm'>;
+} satisfies Omit<
+  VersionedEntityEditorOptions<Entity, Draft, Params>,
+  'confirm'
+>;
 
 describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
   beforeEach(() => {

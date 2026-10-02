@@ -233,14 +233,16 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
       error: undefined,
       response: { status: 200 },
     });
-    put.mockImplementation(async (_path: unknown, init?: { body?: { version?: number } }) => {
-      const version = init?.body?.version ?? 1;
-      return {
-        data: { ...basePost, version: version + 1 },
-        error: undefined,
-        response: { status: 200 },
-      };
-    });
+    put.mockImplementation(
+      async (_path: unknown, init?: { body?: { version?: number } }) => {
+        const version = init?.body?.version ?? 1;
+        return {
+          data: { ...basePost, version: version + 1 },
+          error: undefined,
+          response: { status: 200 },
+        };
+      },
+    );
 
     renderEditor(queryClient);
     await screen.findByDisplayValue('Hello');
@@ -312,9 +314,9 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     );
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(queryKeys.posts.detail(basePost.id))).toEqual(
-        expect.objectContaining({ version: 2 }),
-      );
+      expect(
+        queryClient.getQueryData(queryKeys.posts.detail(basePost.id)),
+      ).toEqual(expect.objectContaining({ version: 2 }));
     });
     expect(screen.getByLabelText('Markdown')).toHaveValue('line one x');
   });

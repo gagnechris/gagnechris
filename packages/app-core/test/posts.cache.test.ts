@@ -55,9 +55,9 @@ describe('post cache helpers (CHR-131)', () => {
       version: 3,
     });
     expect(listItems(queryClient)).toEqual([]);
-    expect(
-      queryClient.getQueryData(queryKeys.posts.detail('01POST')),
-    ).toEqual(expect.objectContaining({ status: 'deleted', version: 3 }));
+    expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
+      expect.objectContaining({ status: 'deleted', version: 3 }),
+    );
   });
 
   test('setCachedPost keeps a newer version when a stale write arrives (CHR-147)', () => {

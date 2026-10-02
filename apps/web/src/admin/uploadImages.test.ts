@@ -18,9 +18,7 @@ describe('uploadImages', () => {
   test('rejects unsupported MIME types', async () => {
     const { uploadImages } = await import('./uploadImages');
     await expect(
-      uploadImages(client, [
-        new File(['x'], 'a.txt', { type: 'text/plain' }),
-      ]),
+      uploadImages(client, [new File(['x'], 'a.txt', { type: 'text/plain' })]),
     ).rejects.toThrow(/Unsupported image type/);
     expect(post).not.toHaveBeenCalled();
   });
