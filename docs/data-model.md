@@ -327,9 +327,9 @@ API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/
 
 ### Search HTTP API (CHR-46)
 
-| Method | Path | Notes |
-| ------ | ---- | ----- |
-| `GET` | `/api/notebook/search` | Query: `q` (required), optional `area`, `limit` (max 50). Scans the caller's notes and tasks (capped) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
+| Method | Path                   | Notes                                                                                                                                                                                           |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/notebook/search` | Query: `q` (required), optional `area`, `limit` (max 50). Scans the caller's notes and tasks (capped) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
 
 ## Conventions
 

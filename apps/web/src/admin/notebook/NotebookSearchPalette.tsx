@@ -65,8 +65,7 @@ export default function NotebookSearchPalette({
 
   const [active, setActive] = useState(0);
   // Clamp selection when the result list shrinks (no effect / setState).
-  const safeActive =
-    flat.length === 0 ? 0 : Math.min(active, flat.length - 1);
+  const safeActive = flat.length === 0 ? 0 : Math.min(active, flat.length - 1);
 
   useEffect(() => {
     if (!open) return;
@@ -123,9 +122,7 @@ export default function NotebookSearchPalette({
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setActive((i) =>
-                  Math.min(i + 1, Math.max(flat.length - 1, 0)),
-                );
+                setActive((i) => Math.min(i + 1, Math.max(flat.length - 1, 0)));
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 setActive((i) => Math.max(i - 1, 0));
