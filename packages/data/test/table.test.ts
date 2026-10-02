@@ -192,8 +192,8 @@ describe('isPublishRelevantAdminMutation', () => {
       false,
     );
     // Soft-delete only for targets that set adminSoftDelete (posts).
-    expect(
-      isPublishRelevantAdminMutation('DELETE', '/api/admin/home'),
-    ).toBe(false);
+    expect(isPublishRelevantAdminMutation('DELETE', '/api/admin/home')).toBe(
+      false,
+    );
   });
 });

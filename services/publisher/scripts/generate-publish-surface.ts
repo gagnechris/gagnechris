@@ -27,19 +27,19 @@ const END = '/* PUBLISH_SURFACE_END */';
 
 function formatJsStringArray(values: readonly string[]): string {
   if (values.length === 0) return '[]';
+  if (values.length === 1) return `['${values[0]}']`;
   return `[\n${values.map((v) => `  '${v}',`).join('\n')}\n]`;
 }
 
 function formatTsStringArray(values: readonly string[]): string {
   if (values.length === 0) return '[] as const';
+  // Match Prettier: single-element arrays stay on one line.
+  if (values.length === 1) return `['${values[0]}'] as const`;
   return `[\n${values.map((v) => `  '${v}',`).join('\n')}\n] as const`;
 }
 
 function updateViewerRequestFunction(): void {
-  const path = join(
-    root,
-    'infra/lib/cloudfront/viewer-request-function.js',
-  );
+  const path = join(root, 'infra/lib/cloudfront/viewer-request-function.js');
   const source = readFileSync(path, 'utf8');
   const beginIdx = source.indexOf(BEGIN);
   const endIdx = source.indexOf(END);

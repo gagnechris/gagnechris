@@ -6,9 +6,7 @@ import {
 } from '../src/handler-result.js';
 import type { RebuildResult } from '../src/rebuild-result.js';
 
-function baseResult(
-  overrides: Partial<RebuildResult> = {},
-): RebuildResult {
+function baseResult(overrides: Partial<RebuildResult> = {}): RebuildResult {
   return {
     publishedCount: 1,
     removedSlugs: [],

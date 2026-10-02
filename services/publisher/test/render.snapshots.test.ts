@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
-import { HOME_LAST_PUBLISHED_KEY, homeToSnapshot } from '../src/home-publish.js';
+import {
+  HOME_LAST_PUBLISHED_KEY,
+  homeToSnapshot,
+} from '../src/home-publish.js';
 import {
   buildRssXml,
   buildSitemapXml,
@@ -139,6 +142,8 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
     );
     expect(lastPublished?.body).toMatchSnapshot();
     // Sanity: still matches the snapshot helper shape.
-    expect(lastPublished?.body).toBe(JSON.stringify(homeToSnapshot(DEFAULT_HOME)));
+    expect(lastPublished?.body).toBe(
+      JSON.stringify(homeToSnapshot(DEFAULT_HOME)),
+    );
   });
 });

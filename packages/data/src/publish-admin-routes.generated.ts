@@ -8,6 +8,4 @@ export const PUBLISH_ADMIN_MUTATION_PREFIXES = [
   '/api/admin/resume',
 ] as const;
 
-export const PUBLISH_ADMIN_SOFT_DELETE_PREFIXES = [
-  '/api/admin/posts',
-] as const;
+export const PUBLISH_ADMIN_SOFT_DELETE_PREFIXES = ['/api/admin/posts'] as const;

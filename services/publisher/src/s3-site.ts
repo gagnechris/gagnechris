@@ -302,14 +302,16 @@ export async function rebuildPublishedSite(options?: {
   const scope = options?.scope ?? fullRebuildScope();
   const storage = options?.storage ?? getSiteStorage();
   const streamPublishedPosts = options?.streamPublishedPosts ?? [];
-  const baseSources: RebuildSiteSources = options?.sources ?? (() => {
-    const tableName = requireEnv('DATA_TABLE_NAME');
-    return {
-      listPublishedPosts: () => listPublishedPosts(tableName),
-      getPublishedResume: () => getPublishedResume(tableName),
-      getPublishedHome: () => getPublishedHome(tableName),
-    };
-  })();
+  const baseSources: RebuildSiteSources =
+    options?.sources ??
+    (() => {
+      const tableName = requireEnv('DATA_TABLE_NAME');
+      return {
+        listPublishedPosts: () => listPublishedPosts(tableName),
+        getPublishedResume: () => getPublishedResume(tableName),
+        getPublishedHome: () => getPublishedHome(tableName),
+      };
+    })();
   const sources: RebuildSiteSources =
     streamPublishedPosts.length === 0
       ? baseSources

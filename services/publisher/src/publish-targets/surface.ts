@@ -55,9 +55,6 @@ export function allOptionBPrefixes(
   targets: readonly PublishTarget[],
 ): string[] {
   return [
-    ...new Set([
-      ...collectOptionBPaths(targets),
-      ...STATIC_OPTION_B_PREFIXES,
-    ]),
+    ...new Set([...collectOptionBPaths(targets), ...STATIC_OPTION_B_PREFIXES]),
   ].sort();
 }

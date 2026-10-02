@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AttributeValue, Context, DynamoDBRecord } from 'aws-lambda';
-import {
-  handler,
-  setPublisherHandlerDepsForTests,
-} from '../src/handler.js';
+import { handler, setPublisherHandlerDepsForTests } from '../src/handler.js';
 import { publishTargets } from '../src/publish-targets/registry.js';
 import type { SiteStorage } from '../src/storage.js';
 import nowPageTarget from './fixtures/now-page.target.js';

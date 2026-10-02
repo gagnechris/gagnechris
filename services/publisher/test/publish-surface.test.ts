@@ -26,11 +26,7 @@ describe('publish surface collectors (CHR-179)', () => {
 
   it('includes /now when the now-page fixture is registered', () => {
     const targets = [...publishTargets, nowPageTarget];
-    expect(collectOptionBPaths(targets)).toEqual([
-      '/blog',
-      '/now',
-      '/resume',
-    ]);
+    expect(collectOptionBPaths(targets)).toEqual(['/blog', '/now', '/resume']);
     expect(allOptionBPrefixes(targets)).toContain('/now');
     expect(collectAdminMutationPrefixes(targets)).toEqual([
       '/api/admin/home',
