@@ -580,6 +580,41 @@ export const ListTasksQuerySchema = z.object({
 
 export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
 
+/** Query params for `GET /notebook/search` (CHR-46). */
+export const NotebookSearchQuerySchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  area: NotebookAreaSchema.optional(),
+  limit: z.coerce.number().int().positive().max(50).optional(),
+});
+
+export type NotebookSearchQuery = z.infer<typeof NotebookSearchQuerySchema>;
+
+export const NotebookSearchHitSchema = z.object({
+  type: z.enum(['note', 'task']),
+  id: z.string().min(1),
+  area: NotebookAreaSchema,
+  title: z.string(),
+  snippet: z.string(),
+  /** Character ranges into `snippet` for client highlighting. */
+  matches: z.array(
+    z.object({
+      start: z.number().int().nonnegative(),
+      end: z.number().int().nonnegative(),
+    }),
+  ),
+});
+
+export type NotebookSearchHit = z.infer<typeof NotebookSearchHitSchema>;
+
+export const NotebookSearchResponseSchema = z.object({
+  notes: z.array(NotebookSearchHitSchema),
+  tasks: z.array(NotebookSearchHitSchema),
+});
+
+export type NotebookSearchResponse = z.infer<
+  typeof NotebookSearchResponseSchema
+>;
+
 /**
  * Sync change wire types (CHR-172 / CHR-39). Discriminated by `type` so
  * generated clients type `entity` per change type. `fakeNote` remains the

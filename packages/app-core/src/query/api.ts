@@ -5,6 +5,8 @@ export type Home = components['schemas']['Home'];
 export type Resume = components['schemas']['Resume'];
 export type Note = components['schemas']['Note'];
 export type Task = components['schemas']['Task'];
+export type NotebookSearchResponse =
+  components['schemas']['NotebookSearchResponse'];
 export type CreatePostRequest = components['schemas']['CreatePostRequest'];
 export type UpdatePostRequest = components['schemas']['UpdatePostRequest'];
 export type UpdateHomeRequest = components['schemas']['UpdateHomeRequest'];
@@ -457,4 +459,20 @@ export const reopenTask = async (
     body,
   });
   return unwrap(result, 'Could not reopen task');
+};
+
+export type NotebookSearchQuery = {
+  q: string;
+  area?: NotebookArea;
+  limit?: number;
+};
+
+export const searchNotebook = async (
+  client: ApiClient,
+  query: NotebookSearchQuery,
+): Promise<NotebookSearchResponse> => {
+  const result = await client.GET('/api/notebook/search', {
+    params: { query },
+  });
+  return unwrap(result, 'Search failed');
 };

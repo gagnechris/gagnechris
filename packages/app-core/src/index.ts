@@ -56,6 +56,7 @@ export {
   publishPost,
   publishResume,
   reopenTask,
+  searchNotebook,
   unpublishHome,
   unpublishPost,
   unpublishResume,
@@ -78,6 +79,8 @@ export {
   type MutateResult,
   type Note,
   type NotebookArea,
+  type NotebookSearchQuery,
+  type NotebookSearchResponse,
   type NoteType,
   type NotesPage,
   type Post,
@@ -161,3 +164,4 @@ export {
   type TaskResourceParams,
   type TaskVersionVars,
 } from './query/tasks.js';
+export { useNotebookSearchQuery } from './query/search.js';

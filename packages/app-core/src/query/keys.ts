@@ -52,4 +52,9 @@ export const queryKeys = {
         : ([...queryKeys.tasks.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.tasks.all, 'detail', id] as const,
   },
+  search: (filters: {
+    q: string;
+    area?: 'work' | 'personal';
+    limit?: number;
+  }) => ['admin', 'notebook', 'search', filters] as const,
 };

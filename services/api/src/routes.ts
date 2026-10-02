@@ -17,6 +17,7 @@ import { noteRoutes } from './notes/handlers.js';
 import { createPostRoutes } from './posts/handlers.js';
 import { resumeRoutes } from './resume/handlers.js';
 import { defineRoute, type RouteDef } from './router.js';
+import { searchRoutes } from './search/handlers.js';
 import { syncRoutes } from './sync/handlers.js';
 import { taskRoutes } from './tasks/handlers.js';
 
@@ -61,5 +62,6 @@ export const routes: RouteDef[] = [
   ...mediaRoutes,
   ...noteRoutes,
   ...taskRoutes,
+  ...searchRoutes,
   ...syncRoutes,
 ];

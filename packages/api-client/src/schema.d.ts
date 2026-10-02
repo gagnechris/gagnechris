@@ -5407,6 +5407,133 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search notes and tasks for the authenticated user */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    area?: "work" | "personal";
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Grouped search hits */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            notes: {
+                                /** @enum {string} */
+                                type: "note" | "task";
+                                id: string;
+                                /** @enum {string} */
+                                area: "work" | "personal";
+                                title: string;
+                                snippet: string;
+                                matches: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                            }[];
+                            tasks: {
+                                /** @enum {string} */
+                                type: "note" | "task";
+                                id: string;
+                                /** @enum {string} */
+                                area: "work" | "personal";
+                                title: string;
+                                snippet: string;
+                                matches: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/sync/changes": {
         parameters: {
             query?: never;
@@ -6368,6 +6495,40 @@ export interface components {
             noteId?: string;
             cursor?: string;
             limit?: number;
+        };
+        NotebookSearchQuery: {
+            q: string;
+            /** @enum {string} */
+            area?: "work" | "personal";
+            limit?: number;
+        };
+        NotebookSearchResponse: {
+            notes: {
+                /** @enum {string} */
+                type: "note" | "task";
+                id: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                snippet: string;
+                matches: {
+                    start: number;
+                    end: number;
+                }[];
+            }[];
+            tasks: {
+                /** @enum {string} */
+                type: "note" | "task";
+                id: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                snippet: string;
+                matches: {
+                    start: number;
+                    end: number;
+                }[];
+            }[];
         };
         FakeNoteEntity: {
             id: string;

@@ -188,6 +188,105 @@
   color: var(--neutral-600);
 }
 
+.notebook-search__kbd {
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+}
+
+.notebook-search {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: start center;
+  padding: 10vh var(--space-4) var(--space-4);
+}
+
+.notebook-search__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: color-mix(in srgb, black 35%, transparent);
+  cursor: default;
+}
+
+.notebook-search__panel {
+  position: relative;
+  width: min(36rem, 100%);
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: 0 12px 40px color-mix(in srgb, black 18%, transparent);
+}
+
+.notebook-search__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.notebook-search__input {
+  flex: 1 1 12rem;
+}
+
+.notebook-search__group h3 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--neutral-600);
+}
+
+.notebook-search__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notebook-search__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notebook-search__hit--active,
+.notebook-search__hit:hover {
+  background: color-mix(in srgb, var(--neutral-200) 70%, white);
+}
+
+.notebook-search__hit-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+.notebook-search__hit-snippet {
+  font-size: var(--font-size-sm);
+  color: var(--neutral-700);
+}
+
+.notebook-search__hit-snippet mark {
+  background: color-mix(in srgb, gold 55%, white);
+  color: inherit;
+  padding: 0 0.1em;
+}
+
 .notebook-today__day-nav {
   display: flex;
   flex-wrap: wrap;
