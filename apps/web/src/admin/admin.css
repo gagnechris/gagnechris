@@ -112,6 +112,30 @@
   padding: var(--space-6) 0 var(--space-8);
 }
 
+/* Notebook shell (CHR-41): area filter + section nav above page body. */
+.admin-notebook {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.admin-notebook__chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.admin-notebook__areas,
+.admin-notebook__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .admin-panel h1 {
   margin: 0 0 var(--space-2);
   font-size: var(--text-3xl);
