@@ -144,20 +144,17 @@ export function ttlEndOfUtcDay(at: Date = new Date()): number {
 /** Tombstone TTL for soft-deleted sync entities (CHR-141), default 30 days. */
 export const SYNC_TOMBSTONE_TTL_DAYS = 30;
 
+/**
+ * Create-claim TTL (CHR-162). Longer than tombstone TTL so a purged META row
+ * cannot be resurrected by an offline create replay.
+ */
+export const SYNC_CREATE_CLAIM_TTL_DAYS = 365;
+
 export function ttlDaysFromNow(
   days: number = SYNC_TOMBSTONE_TTL_DAYS,
   at: Date = new Date(),
 ): number {
   return Math.floor(at.getTime() / 1000) + days * 86_400;
-}
-
-/** Fixture entity for sync-pattern spike (CHR-141) — not Notebook NOTE#. */
-export function fixturePk(fixtureId: string): string {
-  return `FIXTURE#${fixtureId}`;
-}
-
-export function fixtureMetaSk(): string {
-  return SK_META;
 }
 
 /**
@@ -166,6 +163,21 @@ export function fixtureMetaSk(): string {
  */
 export function syncPk(userId: string): string {
   return `SYNC#${userId}`;
+}
+
+/**
+ * Durable create claim so client-ULID ids cannot resurrect after tombstone TTL
+ * (CHR-162). Not projected on the sync GSI.
+ */
+export function syncCreateClaimPk(
+  changeType: string,
+  entityId: string,
+): string {
+  return `CREATED#${changeType.toUpperCase()}#${entityId}`;
+}
+
+export function syncCreateClaimSk(): string {
+  return SK_META;
 }
 
 /**
@@ -180,12 +192,21 @@ export function normalizeSyncSince(since: string): string {
   return new Date(ms).toISOString();
 }
 
-/** Overlap window re-queried on each poll so late-committed writes are not skipped. */
-export const SYNC_OVERLAP_MS = 5_000;
+/**
+ * API Lambda timeout (CHR-162). Shared with the sync overlap window so a write
+ * that commits near the end of an invocation is still covered by the next poll.
+ */
+export const API_LAMBDA_TIMEOUT_MS = 10_000;
+
+/**
+ * Overlap window re-queried on each poll so late-committed writes are not skipped.
+ * Must be ≥ {@link API_LAMBDA_TIMEOUT_MS} (enforced in tests).
+ */
+export const SYNC_OVERLAP_MS = 15_000;
 
 /**
  * Sync GSI sort key — lexicographic order ≈ time order when `updatedAt` is ISO-8601.
- * Example: `2026-09-28T22:00:00.000Z#FIXTURE#01ABC…`
+ * Example: `2026-09-28T22:00:00.000Z#NOTE#01ABC…`
  */
 export function syncSk(
   updatedAt: string,
@@ -237,13 +258,14 @@ export const keys = {
       published: () => ({ pk: resumePk(), sk: resumePublishedSk() }),
     },
   },
-  fixture: {
-    meta: (id: string) => ({ pk: fixturePk(id), sk: fixtureMetaSk() }),
-  },
   sync: {
     pk: (userId: string) => syncPk(userId),
     sk: (updatedAt: string, entityType: string, entityId: string) =>
       syncSk(updatedAt, entityType, entityId),
+    createClaim: (changeType: string, id: string) => ({
+      pk: syncCreateClaimPk(changeType, id),
+      sk: syncCreateClaimSk(),
+    }),
   },
   status: (status: string) => statusGsi1Pk(status),
 } as const;

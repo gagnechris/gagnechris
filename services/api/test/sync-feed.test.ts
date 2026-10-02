@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { API_LAMBDA_TIMEOUT_MS, SYNC_OVERLAP_MS } from '@gagnechris/data';
 import { SyncLedger } from '../src/sync/ledger.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
@@ -11,6 +12,8 @@ import {
   FAKE_NOTE_CHANGE_TYPE,
   registerFakeNoteSync,
 } from './support/fake-note.js';
+import { createFakeNoteRoutes } from './support/fake-note-routes.js';
+import { fixtureKeys } from './support/fixture-keys.js';
 
 const TABLE = 'gagnechris-test';
 const USER = 'user-1';
@@ -33,11 +36,15 @@ function adminEvent(
   });
 }
 
-describe('sync feed (CHR-153)', () => {
+describe('sync feed (CHR-153 / CHR-162)', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
     registerFakeNoteSync();
+  });
+
+  it('overlap is at least the API Lambda timeout', () => {
+    expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
   });
 
   it('since without ms or with offset returns the same changes as UTC-ms', async () => {
@@ -86,28 +93,53 @@ describe('sync feed (CHR-153)', () => {
     expect(first.nextSince).toBe('2026-09-28T22:00:02.000Z');
 
     // Write stamped at t=100 (before watermark) commits after the poll.
+    // 6s lag used to miss with 5s overlap; 15s overlap covers Lambda timeout.
     const repo = createFakeNotesRepo(
       doc,
       TABLE,
-      () => '2026-09-28T22:00:00.100Z',
+      () => '2026-09-28T21:59:56.000Z',
     );
     await repo.createIdempotent(
       buildFakeNote(
         USER,
         NOTE_ID,
         { title: 'late' },
-        '2026-09-28T22:00:00.100Z',
+        '2026-09-28T21:59:56.000Z',
       ),
     );
 
-    // Second poll with since=nextSince: overlap (5s) still finds the write.
     now = '2026-09-28T22:00:03.000Z';
     const second = await ledger.queryChangesSince(USER, {
       since: first.nextSince,
     });
     expect(second.changes).toHaveLength(1);
     expect(second.changes[0]!.id).toBe(NOTE_ID);
-    expect(second.changes[0]!.updatedAt).toBe('2026-09-28T22:00:00.100Z');
+    expect(second.changes[0]!.updatedAt).toBe('2026-09-28T21:59:56.000Z');
+  });
+
+  it('stamps entityType even when toItem omits it', async () => {
+    const { doc, store } = createMemoryDoc();
+    const repo = createFakeNotesRepo(
+      doc,
+      TABLE,
+      () => '2026-09-28T10:00:00.000Z',
+    );
+    await repo.createIdempotent(
+      buildFakeNote(
+        USER,
+        NOTE_ID,
+        { title: 'no-entity-type' },
+        '2026-09-28T10:00:00.000Z',
+      ),
+    );
+
+    const meta = store.get(`${fixtureKeys.meta(NOTE_ID).pk}\0META`);
+    expect(meta?.entityType).toBe(FAKE_NOTE_CHANGE_TYPE);
+
+    const ledger = new SyncLedger(doc, TABLE, () => '2026-09-28T11:00:00.000Z');
+    const feed = await ledger.queryChangesSince(USER, {});
+    expect(feed.changes).toHaveLength(1);
+    expect(feed.changes[0]!.type).toBe(FAKE_NOTE_CHANGE_TYPE);
   });
 
   it('one feed row per entity with latest state; tombstones until TTL', async () => {
@@ -143,7 +175,7 @@ describe('sync feed (CHR-153)', () => {
       deleted: true,
     });
 
-    // One META row (not three ledger rows).
+    // One META row (not three ledger rows) + durable create claim.
     const metaRows = [...store.values()].filter(
       (item) => item.entityType === FAKE_NOTE_CHANGE_TYPE,
     );
@@ -152,6 +184,9 @@ describe('sync feed (CHR-153)', () => {
     expect(metaRows[0]!.deleted).toBe(true);
     expect(metaRows[0]!.ttl).toEqual(expect.any(Number));
     expect(metaRows[0]!.syncPk).toBe(`SYNC#${USER}`);
+    expect(
+      [...store.values()].some((i) => i.entityType === 'syncCreateClaim'),
+    ).toBe(true);
 
     const feed = await ledger.queryChangesSince(USER, {});
     expect(feed.changes).toHaveLength(1);
@@ -162,6 +197,42 @@ describe('sync feed (CHR-153)', () => {
       deleted: true,
     });
     expect(feed.changes[0]!.entity).toBeUndefined();
+  });
+
+  it('post-TTL create replay does not resurrect a deleted entity', async () => {
+    const { doc, store } = createMemoryDoc();
+    const repo = createFakeNotesRepo(
+      doc,
+      TABLE,
+      () => '2026-09-28T10:00:00.000Z',
+    );
+    const created = await repo.createIdempotent(
+      buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
+    );
+    await repo.softDelete(NOTE_ID, 1, {
+      ...created,
+      version: 2,
+      updatedAt: '2026-09-28T11:00:00.000Z',
+      deleted: true,
+    });
+
+    // Simulate DynamoDB TTL purge of the META tombstone (claim remains).
+    store.delete(`${fixtureKeys.meta(NOTE_ID).pk}\0META`);
+
+    await expect(
+      repo.createIdempotent(
+        buildFakeNote(
+          USER,
+          NOTE_ID,
+          { title: 'A' },
+          '2026-10-30T10:00:00.000Z',
+        ),
+      ),
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      message: expect.stringContaining('was deleted'),
+    });
+    expect(store.has(`${fixtureKeys.meta(NOTE_ID).pk}\0META`)).toBe(false);
   });
 
   it('pages with real ExclusiveStartKey across multiple entities', async () => {
@@ -196,7 +267,6 @@ describe('sync feed (CHR-153)', () => {
   });
 
   it('adding a synced entity is config on the base (no ledger/feed edits)', async () => {
-    // registerFakeNoteSync + createFakeNotesRepo.sync is the only wiring.
     const { doc } = createMemoryDoc();
     const repo = createFakeNotesRepo(
       doc,
@@ -257,6 +327,148 @@ describe('sync feed (CHR-153)', () => {
         ),
       ),
     ).rejects.toMatchObject({ name: 'ConflictError' });
+  });
+
+  it('create retry after a legitimate update still matches createHash', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createFakeNotesRepo(
+      doc,
+      TABLE,
+      () => '2026-09-28T10:00:00.000Z',
+    );
+    const created = await repo.createIdempotent(
+      buildFakeNote(
+        USER,
+        NOTE_ID,
+        { title: 'A', body: 'one' },
+        '2026-09-28T10:00:00.000Z',
+      ),
+    );
+    await repo.updateIfVersion(NOTE_ID, 1, {
+      ...created,
+      title: 'B',
+      body: 'two',
+      version: 2,
+      updatedAt: '2026-09-28T11:00:00.000Z',
+    });
+
+    // Delayed identical create retry uses stored createHash, not current fields.
+    const retried = await repo.createIdempotent(
+      buildFakeNote(
+        USER,
+        NOTE_ID,
+        { title: 'A', body: 'one' },
+        '2026-09-28T10:00:00.000Z',
+      ),
+    );
+    expect(retried.version).toBe(2);
+    expect(retried.title).toBe('B');
+  });
+});
+
+describe('If-Match / ETag routes (CHR-162)', () => {
+  beforeEach(() => {
+    process.env.DATA_TABLE_NAME = TABLE;
+    clearSyncEntities();
+    registerFakeNoteSync();
+  });
+
+  it('If-Match: W/"3" with a stale version returns 412 with current', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createFakeNotesRepo(
+      doc,
+      TABLE,
+      () => '2026-09-28T10:00:00.000Z',
+    );
+    let note = await repo.createIdempotent(
+      buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
+    );
+    note = await repo.updateIfVersion(NOTE_ID, 1, {
+      ...note,
+      title: 'B',
+      version: 2,
+      updatedAt: '2026-09-28T11:00:00.000Z',
+    });
+    note = await repo.updateIfVersion(NOTE_ID, 2, {
+      ...note,
+      title: 'C',
+      version: 3,
+      updatedAt: '2026-09-28T12:00:00.000Z',
+    });
+    await repo.updateIfVersion(NOTE_ID, 3, {
+      ...note,
+      title: 'D',
+      version: 4,
+      updatedAt: '2026-09-28T13:00:00.000Z',
+    });
+    // Server is at version 4; client sends weak ETag for stale version 3.
+    const routes = createFakeNoteRoutes(repo);
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/test-notes/${NOTE_ID}`,
+        { title: 'stale' },
+        { 'If-Match': 'W/"3"' },
+      ),
+      'PUT',
+      `/api/notebook/test-notes/${NOTE_ID}`,
+    );
+    expect(res?.statusCode).toBe(412);
+    const body = JSON.parse(res!.body as string);
+    expect(body.error).toBe('precondition_failed');
+    expect(body.currentVersion).toBe(4);
+    expect(body.current).toMatchObject({
+      id: NOTE_ID,
+      title: 'D',
+      version: 4,
+    });
+  });
+
+  it('If-Match: * updates when the resource exists', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createFakeNotesRepo(
+      doc,
+      TABLE,
+      () => '2026-09-28T10:00:00.000Z',
+    );
+    await repo.createIdempotent(
+      buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
+    );
+    const routes = createFakeNoteRoutes(repo);
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/test-notes/${NOTE_ID}`,
+        { title: 'star' },
+        { 'If-Match': '*' },
+      ),
+      'PUT',
+      `/api/notebook/test-notes/${NOTE_ID}`,
+    );
+    expect(res?.statusCode).toBe(200);
+    expect(res?.headers?.ETag).toBe('"2"');
+    const body = JSON.parse(res!.body as string);
+    expect(body).toMatchObject({ title: 'star', version: 2 });
+  });
+
+  it('If-Match: * on a missing resource returns 404', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createFakeNotesRepo(doc, TABLE);
+    const routes = createFakeNoteRoutes(repo);
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/test-notes/${NOTE_ID}`,
+        { title: 'nope' },
+        { 'If-Match': '*' },
+      ),
+      'PUT',
+      `/api/notebook/test-notes/${NOTE_ID}`,
+    );
+    expect(res?.statusCode).toBe(404);
   });
 });
 

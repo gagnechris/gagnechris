@@ -89,6 +89,17 @@ describe('VersionedEntityRepository (fake note)', () => {
 
   it('updateIfVersion returns conflict with current entity', async () => {
     send
+      // getRawItem (preserve createHash)
+      .mockResolvedValueOnce({
+        Item: {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'Old',
+          version: 2,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      })
       .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
       .mockResolvedValueOnce({
         Item: {
@@ -117,6 +128,8 @@ describe('VersionedEntityRepository (fake note)', () => {
 
   it('refuses to recreate a hard-deleted item (CHR-161)', async () => {
     send
+      // getRawItem (preserve createHash) — item already gone
+      .mockResolvedValueOnce({})
       .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
       .mockResolvedValueOnce({}); // GetItem: gone
 
@@ -132,7 +145,7 @@ describe('VersionedEntityRepository (fake note)', () => {
       message: expect.stringContaining('current unknown'),
     });
 
-    const put = send.mock.calls[0]![0] as {
+    const put = send.mock.calls[1]![0] as {
       input: { ConditionExpression?: string };
     };
     expect(put.input.ConditionExpression).toBe(

@@ -209,6 +209,17 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 **CHR-153 / CHR-163:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` includes `gsi1`/`gsi2`/`gsi3` in lockstep with `APP_TABLE`.
 
+**CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
+
+```bash
+# Inspect only (readonly). Adjust filter as needed; do not run deletes without review.
+AWS_PROFILE=gagnechris-readonly aws dynamodb scan \
+  --table-name gagnechris-prod --region us-east-1 \
+  --filter-expression 'begins_with(pk, :sync) OR begins_with(pk, :fix)' \
+  --expression-attribute-values '{":sync":{"S":"SYNC#"},":fix":{"S":"FIXTURE#"}}' \
+  --max-items 25
+```
+
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
 Legacy post import (CHR-36): `docs/migrate-posts.md` (`npm run migrate:posts`).

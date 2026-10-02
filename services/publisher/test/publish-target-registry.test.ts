@@ -86,7 +86,7 @@ describe('publish target registry', () => {
 
   it('builds and invalidates a new page from one target file + one registry entry', async () => {
     const storage = memoryStorage();
-    // One array entry — no rebuild-scope.ts edits; target owns /now*.
+    // Own entity in touchedEntityTypes — no rebuild-scope.ts boolean; target owns /now*.
     const targets = [...publishTargets, nowPageTarget];
 
     const result = await runPublishTargets({
@@ -96,8 +96,9 @@ describe('publish target registry', () => {
         postSlugs: new Set(),
         slugsToRemove: new Set(),
         feeds: false,
-        home: true,
+        home: false,
         resume: false,
+        touchedEntityTypes: new Set(['now']),
       },
       storage,
       sources: {
@@ -117,11 +118,9 @@ describe('publish target registry', () => {
       },
     });
 
-    expect(storage.puts).toContain('now/index.html');
-    expect(result.invalidated).toEqual(
-      expect.arrayContaining(['/now*', '/', '/index.html']),
-    );
-    expect(storage.invalidations[0]).toEqual(expect.arrayContaining(['/now*']));
+    expect(storage.puts).toEqual(['now/index.html']);
+    expect(result.invalidated).toEqual(['/now*']);
+    expect(storage.invalidations[0]).toEqual(['/now*']);
   });
 });
 
@@ -142,6 +141,7 @@ describe('finalizeInvalidationPaths', () => {
           feeds: true,
           home: false,
           resume: false,
+          touchedEntityTypes: new Set(),
         },
         ['/blog*'],
         false,
@@ -159,6 +159,7 @@ describe('finalizeInvalidationPaths', () => {
           feeds: false,
           home: true,
           resume: false,
+          touchedEntityTypes: new Set(),
         },
         ['/', '/index.html', '/'],
         true,
