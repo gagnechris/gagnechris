@@ -16,8 +16,7 @@ import {
   ObjectOwnership,
   StorageClass,
 } from 'aws-cdk-lib/aws-s3';
-import { Topic } from 'aws-cdk-lib/aws-sns';
-import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
+import { Topic, CfnSubscription } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
   AwsCustomResource,
@@ -54,7 +53,14 @@ export class GuardrailsStack extends Stack {
       displayName: `gagnechris-${config.name}-alerts`,
       enforceSSL: true,
     });
-    this.alertsTopic.addSubscription(new EmailSubscription(email));
+    // Explicit CfnSubscription (new logical id) recreates the SNS subscription
+    // after it was deleted outside CloudFormation while CFN still tracked the
+    // old EmailSubscription resource (CHR-159). Confirm the SNS email after deploy.
+    new CfnSubscription(this, 'AlertsEmailV2', {
+      topicArn: this.alertsTopic.topicArn,
+      protocol: 'email',
+      endpoint: email,
+    });
 
     this.alertsTopic.addToResourcePolicy(
       new PolicyStatement({

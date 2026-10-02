@@ -662,17 +662,15 @@ describe('ApiStack', () => {
         MaxAge: 86400,
       },
     });
-    // Access-log DestinationArn must be the log-group ARN without `:*` (CHR-149).
+    // Access-log DestinationArn must be the log-group ARN without `:*` (CHR-159).
+    // formatArn(COLON_RESOURCE_NAME) — not AttrArn, which always ends in `:*`.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
-    const destArn = stage?.Properties?.AccessLogSettings?.DestinationArn as
-      { 'Fn::GetAtt'?: string[] } | string | undefined;
-    expect(destArn).toEqual(
-      expect.objectContaining({
-        'Fn::GetAtt': expect.arrayContaining([expect.any(String), 'Arn']),
-      }),
-    );
+    const destArn = stage?.Properties?.AccessLogSettings?.DestinationArn;
+    expect(destArn).toBeDefined();
+    expect(JSON.stringify(destArn)).toContain('log-group');
     expect(JSON.stringify(destArn)).not.toContain(':*');
+    expect(JSON.stringify(destArn)).not.toContain('"Arn"');
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
       AuthorizerType: 'JWT',
     });

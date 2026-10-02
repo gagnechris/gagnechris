@@ -1,4 +1,10 @@
-import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  ArnFormat,
+  CfnOutput,
+  Duration,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { AccessLogFormat } from 'aws-cdk-lib/aws-apigateway';
 import {
   CfnStage,
@@ -16,7 +22,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
-import { CfnLogGroup, LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
@@ -169,13 +175,17 @@ export class ApiStack extends Stack {
         format: AccessLogFormat.jsonWithStandardFields(),
       },
     });
-    // API Gateway stores DestinationArn without the `:*` suffix. Pin to
-    // AttrArn (no `:*`) so nightly drift stays quiet (CHR-149).
+    // API Gateway stores DestinationArn without the `:*` suffix. LogGroup
+    // AttrArn always ends in `:*`, so build the ARN without it (CHR-159).
     const cfnStage = defaultStage.node.defaultChild as CfnStage;
-    const cfnLogGroup = accessLogGroup.node.defaultChild as CfnLogGroup;
     cfnStage.addPropertyOverride(
       'AccessLogSettings.DestinationArn',
-      cfnLogGroup.attrArn,
+      Stack.of(this).formatArn({
+        service: 'logs',
+        resource: 'log-group',
+        resourceName: accessLogGroup.logGroupName,
+        arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      }),
     );
 
     const healthRoutes = this.httpApi.addRoutes({
