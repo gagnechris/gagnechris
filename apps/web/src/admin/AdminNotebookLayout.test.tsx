@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClientTestProvider } from '../test-utils';
 import AdminNotebookLayout from './AdminNotebookLayout';
 import AdminNotebookPage from './AdminNotebookPage';
 import {
@@ -11,16 +12,18 @@ import {
 
 function renderNotebook(initialPath = '/admin/notebook/today') {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route path="/admin/notebook" element={<AdminNotebookLayout />}>
-          <Route path="today" element={<AdminNotebookPage />} />
-          <Route path="notes" element={<AdminNotebookPage />} />
-          <Route path="notes/:id" element={<AdminNotebookPage />} />
-          <Route path="tasks" element={<AdminNotebookPage />} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientTestProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="/admin/notebook" element={<AdminNotebookLayout />}>
+            <Route path="today" element={<AdminNotebookPage />} />
+            <Route path="notes" element={<AdminNotebookPage />} />
+            <Route path="notes/:id" element={<AdminNotebookPage />} />
+            <Route path="tasks" element={<AdminNotebookPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientTestProvider>,
   );
 }
 
@@ -68,6 +71,8 @@ describe('AdminNotebookLayout', () => {
       'href',
       '/admin/notebook/tasks',
     );
+    expect(screen.getByRole('button', { name: /Search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
     expect(screen.getByText(/Work · today UI/i)).toBeInTheDocument();
   });

@@ -269,6 +269,22 @@ aws dynamodb delete-table --table-name "$TARGET" --region "$REGION"
 
 **Production cut-over (disaster only — stop and ask Chris first):** restore to a new name, pause writers (API/publisher), verify counts/sample keys, then swap by updating SSM / redeploying consumers to the restored table name, or rename via a planned dual-write window. Document the chosen name in the incident notes. Do not `delete-table` on `gagnechris-prod` while cut-over is incomplete.
 
+### Notebook human export (CHR-47)
+
+Distinct from PITR / AWS Backup: the admin Notebook chrome **Export** button downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` while signed in.
+
+Archive layout:
+
+- `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`)
+- `tasks.json` — all non-deleted tasks
+- `README.md` — short description of the archive
+
+**Use this for:** personal backup, migration into another markdown editor, offline reading.
+
+**Do not use this for:** restoring the DynamoDB table. There is no import-from-export path that rebuilds `gagnechris-prod`. Table recovery remains PITR restore + cut-over (or AWS Backup restore) above.
+
+Optional later (not required for core Notebook): scheduled weekly markdown/JSON dump to a versioned S3 prefix under the reserved `notebook/*` site-bucket exclude.
+
 #### Restore rehearsal log
 
 | Date (UTC) | Operator | Source count | Restored table                         | Restored count | Duration | Notes                                                                                        |

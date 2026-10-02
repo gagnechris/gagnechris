@@ -1,0 +1,174 @@
+import type { Note, Task } from '@gagnechris/app-core';
+
+/** Minimal ZIP (store / no compression) for browser downloads. */
+export function buildZip(files: Record<string, string | Uint8Array>): Blob {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+
+  const u16 = (n: number) => {
+    const b = new Uint8Array(2);
+    new DataView(b.buffer).setUint16(0, n, true);
+    return b;
+  };
+  const u32 = (n: number) => {
+    const b = new Uint8Array(4);
+    new DataView(b.buffer).setUint32(0, n, true);
+    return b;
+  };
+  const concat = (chunks: Uint8Array[]) => {
+    const len = chunks.reduce((a, c) => a + c.length, 0);
+    const out = new Uint8Array(len);
+    let o = 0;
+    for (const c of chunks) {
+      out.set(c, o);
+      o += c.length;
+    }
+    return out;
+  };
+  const crc32 = (data: Uint8Array) => {
+    let c = ~0;
+    for (let i = 0; i < data.length; i += 1) {
+      c ^= data[i]!;
+      for (let k = 0; k < 8; k += 1) {
+        c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1;
+      }
+    }
+    return ~c >>> 0;
+  };
+
+  for (const [name, content] of Object.entries(files)) {
+    const nameBytes = encoder.encode(name);
+    const data =
+      typeof content === 'string' ? encoder.encode(content) : content;
+    const crc = crc32(data);
+    const local = concat([
+      u32(0x04034b50),
+      u16(20),
+      u16(0),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(crc),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      nameBytes,
+      data,
+    ]);
+    parts.push(local);
+    const centralHeader = concat([
+      u32(0x02014b50),
+      u16(20),
+      u16(20),
+      u16(0),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(crc),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(0),
+      u32(offset),
+      nameBytes,
+    ]);
+    central.push(centralHeader);
+    offset += local.length;
+  }
+
+  const centralDir = concat(central);
+  const end = concat([
+    u32(0x06054b50),
+    u16(0),
+    u16(0),
+    u16(Object.keys(files).length),
+    u16(Object.keys(files).length),
+    u32(centralDir.length),
+    u32(offset),
+    u16(0),
+  ]);
+  return new Blob([concat([...parts, centralDir, end])], {
+    type: 'application/zip',
+  });
+}
+
+function yamlEscape(value: string): string {
+  if (/[:#\n"'\\]/.test(value) || value.trim() !== value) {
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+export function noteToMarkdown(note: Note): string {
+  const tags =
+    note.tags.length > 0
+      ? `\ntags: [${note.tags.map((t) => JSON.stringify(t)).join(', ')}]`
+      : '';
+  const dateLine = note.date ? `\ndate: ${note.date}` : '';
+  const frontmatter = `---
+id: ${note.id}
+area: ${note.area}
+type: ${note.type}${dateLine}
+title: ${yamlEscape(note.title)}
+pinned: ${note.pinned}${tags}
+updatedAt: ${note.updatedAt}
+---
+
+`;
+  return `${frontmatter}${note.bodyMarkdown.trimEnd()}\n`;
+}
+
+export function noteExportPath(note: Note): string {
+  const safe = (note.title.trim() || 'untitled')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+  const folder = note.type === 'daily' ? 'daily' : 'pages';
+  const stamp = note.date ?? note.id.slice(0, 8);
+  return `notes/${folder}/${stamp}-${safe || 'note'}-${note.id.slice(-6)}.md`;
+}
+
+export function buildNotebookExportZip(
+  notes: Note[],
+  tasks: Task[],
+): { blob: Blob; fileCount: number } {
+  const files: Record<string, string> = {};
+  for (const note of notes.filter((n) => !n.deleted)) {
+    files[noteExportPath(note)] = noteToMarkdown(note);
+  }
+  files['tasks.json'] = `${JSON.stringify(
+    tasks.filter((t) => !t.deleted),
+    null,
+    2,
+  )}\n`;
+  files['README.md'] = `# Notebook export
+
+Generated for personal backup / migration.
+
+- \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter)
+- \`tasks.json\` — all non-deleted tasks
+
+This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).
+`;
+  return { blob: buildZip(files), fileCount: Object.keys(files).length };
+}
+
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
