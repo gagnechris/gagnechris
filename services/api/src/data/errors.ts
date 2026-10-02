@@ -14,18 +14,21 @@ export class PreconditionFailedError extends Error {
   }
 }
 
+/** Machine-readable conflict codes returned on 409 bodies. */
+export type ConflictCode = 'conflict' | 'slug_taken' | 'daily_taken';
+
 export class ConflictError extends Error {
   readonly currentVersion?: number;
   readonly current?: unknown;
-  /** Distinguishes slug collisions from stale-version conflicts (CHR-152). */
-  readonly code: 'conflict' | 'slug_taken';
+  /** Distinguishes unique-claim collisions from stale-version conflicts. */
+  readonly code: ConflictCode;
 
   constructor(
     message: string,
     opts?: {
       currentVersion?: number;
       current?: unknown;
-      code?: 'conflict' | 'slug_taken';
+      code?: ConflictCode;
     },
   ) {
     super(message);

@@ -67,6 +67,39 @@ describe('@gagnechris/data keys', () => {
     });
   });
 
+  it('builds owner-scoped Notebook keys (CHR-169)', () => {
+    expect(keys.notebook.note.meta('sub-1', '01ABC')).toEqual({
+      pk: 'USER#sub-1#NOTE#01ABC',
+      sk: SK_META,
+    });
+    expect(keys.notebook.dailyClaim('sub-1', 'work', '2026-10-02')).toEqual({
+      pk: 'USER#sub-1#DAILY#work#2026-10-02',
+      sk: 'NOTE',
+    });
+    expect(keys.notebook.areaGsi1('sub-1', 'personal')).toBe(
+      'USER#sub-1#AREA#personal',
+    );
+    expect(keys.notebook.noteDateSk('2026-10-02', '01ABC')).toBe(
+      'DATE#2026-10-02#NOTE#01ABC',
+    );
+    expect(keys.notebook.taskAreaStatusGsi1('sub-1', 'work', 'todo')).toBe(
+      'USER#sub-1#AREA#work#STATUS#todo',
+    );
+    expect(keys.notebook.taskDueSk('2026-10-03', '01T')).toBe(
+      'DUE#2026-10-03#TASK#01T',
+    );
+    expect(keys.notebook.taskUpdatedSk('2026-10-02T12:00:00.000Z', '01T')).toBe(
+      'UPDATED#2026-10-02T12:00:00.000Z#TASK#01T',
+    );
+    expect(keys.notebook.noteTasksGsi2('sub-1', '01N')).toBe(
+      'USER#sub-1#NOTE#01N#TASKS',
+    );
+    expect(keys.sync.ownerCreateClaim('sub-1', 'fakeNote', '01ABC')).toEqual({
+      pk: 'CREATED#FAKENOTE#USER#sub-1#01ABC',
+      sk: SK_META,
+    });
+  });
+
   it('sync overlap is at least the API Lambda timeout (CHR-162)', () => {
     expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
     expect(SYNC_CREATE_CLAIM_TTL_DAYS).toBeGreaterThan(SYNC_TOMBSTONE_TTL_DAYS);

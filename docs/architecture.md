@@ -32,7 +32,8 @@ API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild b
 
 API repositories share one layering:
 
-- `VersionedEntityRepository` — optimistic concurrency + cursor queries (no publish state; for Notebook notes/tasks).
+- `VersionedEntityRepository` — optimistic concurrency + cursor queries (id-keyed; used by publishable posts/home/resume).
+- `OwnerScopedVersionedEntityRepository` — same concurrency model with `(userId, id)` keys, owner checks, per-index cursors, optional unique claims (daily notes), and GSI stripping on tombstones (CHR-169; Notebook notes/tasks).
 - `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
 - Posts keep slug claims and tag-index side effects in `posts/mutation-builders.ts`.
 
@@ -125,7 +126,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 
 `GET /api/notebook/sync/changes` is the generic change feed real Notebook entities will use:
 
-- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`) are idempotent (mismatch → 409). A durable `CREATED#<TYPE>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge.
+- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, includes `userId`) are idempotent (mismatch → 409). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
 - **`since` normalization + `nextSince` watermark** with a `SYNC_OVERLAP_MS` (15s) overlap window (≥ API Lambda timeout) so late-committed writes are delivered; clients dedupe by `(id, version)`.
 - **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version`:

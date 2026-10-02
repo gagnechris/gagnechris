@@ -1,6 +1,7 @@
 /**
- * Generic optimistic-concurrency entity store (CHR-129 / CHR-153 / CHR-161 / CHR-162).
- * Optional sync config writes sparse GSI keys on META (one row per entity).
+ * Owner-scoped optimistic-concurrency store (CHR-169).
+ * All reads/writes take `(userId, id)`; keys and create claims include the owner.
+ * Posts stay on {@link VersionedEntityRepository} (id-only keys).
  */
 import {
   GetCommand,
@@ -13,7 +14,7 @@ import {
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   isOptimisticLockConflict,
-  syncCreateClaimPk,
+  ownerSyncCreateClaimPk,
   syncCreateClaimSk,
   syncPk,
   syncSk,
@@ -24,72 +25,89 @@ import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
 import { runDynamoWrite } from './dynamo-write.js';
-import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
+import {
+  ConflictError,
+  DataIntegrityError,
+  NotFoundError,
+  type ConflictCode,
+} from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
   runVersionedWrite,
   throwVersionConflict,
 } from './version-condition.js';
+import {
+  type QueryPage,
+  type SyncEntityConfig,
+  type VersionedEntity,
+} from './versioned-entity-repository.js';
 import { logger, metrics } from '../observability.js';
 
-export { VERSION_MATCH_CONDITION } from './version-condition.js';
+export type OwnerScopedSyncConfig<T extends VersionedEntity> =
+  SyncEntityConfig<T>;
 
-export type VersionedEntity = {
-  version: number;
-  updatedAt: string;
-};
-
-export type SyncEntityConfig<T extends VersionedEntity> = {
-  /** Stable change-feed type (e.g. `fakeNote`). Stored as `entityType` on META. */
-  changeType: string;
-  userIdOf: (entity: T) => string;
+export type UniqueClaimHook<T extends VersionedEntity> = {
   /**
-   * Hash of create payload fields. Stored as `createHash` on create.
-   * Retries with the same id but a different hash throw ConflictError (409);
-   * matching hash is idempotent. Required when sync is configured (CHR-162).
+   * Extra TransactWrite Put items after META (+ owner create claim when sync
+   * is configured). Each item should use `attribute_not_exists(pk)` when it is
+   * a uniqueness claim.
    */
-  createPayloadHash: (entity: T) => string;
+  buildItems: (entity: T) => Array<{
+    Put: {
+      Item: Record<string, unknown>;
+      ConditionExpression?: string;
+    };
+  }>;
+  /** Indexes into the array returned by `buildItems` that are unique claims. */
+  claimIndexes: readonly number[];
+  conflictCode: Exclude<ConflictCode, 'conflict'>;
+  conflictMessage?: string;
+  /**
+   * When a unique claim conflicts during `createIdempotent`, resolve to the
+   * existing winner (daily-note first-writer-wins). Return `undefined` to throw.
+   */
+  resolveConflict?: (entity: T) => Promise<T | undefined>;
 };
 
-export type VersionedEntityConfig<
+export type OwnerScopedVersionedEntityConfig<
   T extends VersionedEntity,
   TItem extends Record<string, unknown>,
 > = {
   conflictLabel: string;
-  /** Primary key for a single entity. */
-  keyForId: (id: string) => { pk: string; sk: string };
-  /** Extract domain id from an entity (for create Put). */
+  /** Primary key for a single entity owned by `userId`. */
+  keyForId: (userId: string, id: string) => { pk: string; sk: string };
   idOf: (entity: T) => string;
+  userIdOf: (entity: T) => string;
   toEntity: (item: TItem) => T;
   toItem: (entity: T) => TItem;
-  /** True when the entity should be treated as soft-deleted / missing. */
   isDeleted?: (entity: T) => boolean;
   nowIso?: () => string;
-  /** Required cursor key names for queryPage (defaults to primary keys). */
   cursorKeyNames?: readonly string[];
-  /**
-   * Per-index cursor key sets (CHR-169). Used when `queryPage` omits
-   * `cursorKeyNames` but sets `IndexName`.
-   */
   cursorKeysByIndex?: Readonly<Record<string, readonly string[]>>;
-  /**
-   * When set, every write stamps `entityType` + `syncPk` / `syncSk` on the META
-   * item so the sparse sync GSI returns one latest row per entity (CHR-153).
-   */
-  sync?: SyncEntityConfig<T>;
+  sync?: OwnerScopedSyncConfig<T>;
+  /** Extra unique claims on create (e.g. daily note per area/date). */
+  uniqueClaim?: UniqueClaimHook<T>;
 };
 
-export type QueryPage<T> = {
-  items: T[];
-  nextCursor?: string;
-};
+/** GSI attribute names stripped from tombstones so list indexes stay clean. */
+const GSI_LIST_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
 
-export class VersionedEntityRepository<
+function stripListGsiKeys<TItem extends Record<string, unknown>>(
+  item: TItem,
+): TItem {
+  const next = { ...item };
+  for (const key of GSI_LIST_KEYS) {
+    delete next[key];
+  }
+  return next;
+}
+
+export class OwnerScopedVersionedEntityRepository<
   T extends VersionedEntity,
   TItem extends Record<string, unknown>,
 > {
   constructor(
-    protected readonly config: VersionedEntityConfig<T, TItem>,
+    protected readonly config: OwnerScopedVersionedEntityConfig<T, TItem>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
   ) {}
@@ -118,16 +136,23 @@ export class VersionedEntityRepository<
     }
   }
 
-  /**
-   * Attach sparse sync GSI keys + entityType when sync is configured.
-   * `entityType` is always stamped from `sync.changeType` so feed adapters work
-   * even when `toItem` omits it (CHR-162).
-   */
+  /** Reject cross-owner access even if a key collision somehow returned a row. */
+  protected assertOwner(userId: string, entity: T): void {
+    if (this.config.userIdOf(entity) !== userId) {
+      throw new NotFoundError(
+        `${this.config.conflictLabel} ${this.config.idOf(entity)} not found`,
+      );
+    }
+  }
+
   protected toStoredItem(
     entity: T,
     opts?: { ttl?: number; createHash?: string },
   ): TItem {
-    const base = this.config.toItem(entity);
+    let base = this.config.toItem(entity);
+    if (this.config.isDeleted?.(entity)) {
+      base = stripListGsiKeys(base);
+    }
     const sync = this.config.sync;
     if (!sync) {
       return {
@@ -153,51 +178,57 @@ export class VersionedEntityRepository<
   }
 
   async get(
+    userId: string,
     id: string,
     opts?: { consistentRead?: boolean },
   ): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: this.config.keyForId(id),
+        Key: this.config.keyForId(userId, id),
         ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
       }),
     );
     if (!result.Item) return undefined;
     const entity = this.mapItem(result.Item);
+    if (this.config.userIdOf(entity) !== userId) return undefined;
     if (this.config.isDeleted?.(entity)) return undefined;
     return entity;
   }
 
-  /** Like get, but returns soft-deleted entities (for idempotent-create / conflicts). */
   async getIncludingDeleted(
+    userId: string,
     id: string,
     opts?: { consistentRead?: boolean },
   ): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: this.config.keyForId(id),
+        Key: this.config.keyForId(userId, id),
         ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
       }),
     );
     if (!result.Item) return undefined;
-    return this.mapItem(result.Item);
+    const entity = this.mapItem(result.Item);
+    if (this.config.userIdOf(entity) !== userId) return undefined;
+    return entity;
   }
 
   protected async getRawItem(
+    userId: string,
     id: string,
   ): Promise<Record<string, unknown> | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: this.config.keyForId(id),
+        Key: this.config.keyForId(userId, id),
       }),
     );
     return result.Item as Record<string, unknown> | undefined;
   }
 
   protected async getCreateClaim(
+    userId: string,
     id: string,
   ): Promise<Record<string, unknown> | undefined> {
     const sync = this.config.sync;
@@ -206,7 +237,7 @@ export class VersionedEntityRepository<
       new GetCommand({
         TableName: this.tableName,
         Key: {
-          pk: syncCreateClaimPk(sync.changeType, id),
+          pk: ownerSyncCreateClaimPk(userId, sync.changeType, id),
           sk: syncCreateClaimSk(),
         },
       }),
@@ -214,8 +245,8 @@ export class VersionedEntityRepository<
     return result.Item as Record<string, unknown> | undefined;
   }
 
-  async getOrThrow(id: string): Promise<T> {
-    const entity = await this.get(id);
+  async getOrThrow(userId: string, id: string): Promise<T> {
+    const entity = await this.get(userId, id);
     if (!entity) {
       throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
     }
@@ -223,13 +254,14 @@ export class VersionedEntityRepository<
   }
 
   async create(entity: T): Promise<T> {
+    const userId = this.config.userIdOf(entity);
     const sync = this.config.sync;
     const createHash = sync?.createPayloadHash(entity);
-    const item = this.toStoredItem(entity, {
-      createHash,
-    });
+    const item = this.toStoredItem(entity, { createHash });
+    const unique = this.config.uniqueClaim;
+    const extraPuts = unique?.buildItems(entity) ?? [];
 
-    if (!sync) {
+    if (!sync && extraPuts.length === 0) {
       await runDynamoWrite(
         () =>
           this.doc.send(
@@ -245,64 +277,120 @@ export class VersionedEntityRepository<
     }
 
     const id = this.config.idOf(entity);
-    const claimKey = {
-      pk: syncCreateClaimPk(sync.changeType, id),
-      sk: syncCreateClaimSk(),
-    };
+    const transactItems: Array<{
+      Put: {
+        TableName: string;
+        Item: Record<string, unknown>;
+        ConditionExpression?: string;
+      };
+    }> = [
+      {
+        Put: {
+          TableName: this.tableName,
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(pk)',
+        },
+      },
+    ];
+
+    if (sync) {
+      transactItems.push({
+        Put: {
+          TableName: this.tableName,
+          Item: {
+            pk: ownerSyncCreateClaimPk(userId, sync.changeType, id),
+            sk: syncCreateClaimSk(),
+            entityType: 'syncCreateClaim',
+            changeType: sync.changeType,
+            entityId: id,
+            userId,
+            createHash,
+            createdAt: entity.updatedAt,
+            ttl: ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS),
+          },
+          ConditionExpression: 'attribute_not_exists(pk)',
+        },
+      });
+    }
+
+    const extraStartIndex = transactItems.length;
+    for (const put of extraPuts) {
+      transactItems.push({
+        Put: {
+          TableName: this.tableName,
+          Item: put.Put.Item,
+          ConditionExpression:
+            put.Put.ConditionExpression ?? 'attribute_not_exists(pk)',
+        },
+      });
+    }
+
+    const uniqueClaimIndexes =
+      unique && extraPuts.length > 0
+        ? unique.claimIndexes
+            .filter((i) => i >= 0 && i < extraPuts.length)
+            .map((i) => extraStartIndex + i)
+        : undefined;
+
     await runDynamoWrite(
       () =>
         this.doc.send(
           new TransactWriteCommand({
-            TransactItems: [
-              {
-                Put: {
-                  TableName: this.tableName,
-                  Item: item,
-                  ConditionExpression: 'attribute_not_exists(pk)',
-                },
-              },
-              {
-                Put: {
-                  TableName: this.tableName,
-                  Item: {
-                    ...claimKey,
-                    entityType: 'syncCreateClaim',
-                    changeType: sync.changeType,
-                    entityId: id,
-                    createHash,
-                    createdAt: entity.updatedAt,
-                    ttl: ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS),
-                  },
-                  ConditionExpression: 'attribute_not_exists(pk)',
-                },
-              },
-            ],
+            TransactItems: transactItems,
           }),
         ),
       `Create conflict (${this.config.conflictLabel})`,
+      uniqueClaimIndexes
+        ? {
+            uniqueClaimIndexes,
+            uniqueClaimCode: unique!.conflictCode,
+            uniqueClaimMessage:
+              unique!.conflictMessage ??
+              `Create conflict (${this.config.conflictLabel})`,
+          }
+        : undefined,
     );
     return entity;
   }
 
   /**
-   * Client-ULID create: retries with the same id are idempotent when the
-   * stored createHash matches; mismatch, tombstone, or create-claim after
-   * META TTL purge → ConflictError (CHR-162).
+   * Client-ULID create with owner + optional unique-claim resolution.
+   * Daily-note races: first claim wins; loser returns the existing winner
+   * when `uniqueClaim.resolveConflict` is configured (CHR-169).
    */
   async createIdempotent(entity: T): Promise<T> {
+    const userId = this.config.userIdOf(entity);
     const id = this.config.idOf(entity);
     try {
       return await this.create(entity);
     } catch (error) {
+      if (
+        error instanceof ConflictError &&
+        error.code !== 'conflict' &&
+        this.config.uniqueClaim?.resolveConflict
+      ) {
+        const resolved = await this.config.uniqueClaim.resolveConflict(entity);
+        // Different ULID lost the daily claim → return the first writer.
+        // Same ULID falls through to createHash idempotency below.
+        if (resolved && this.config.idOf(resolved) !== id) {
+          this.assertOwner(userId, resolved);
+          return resolved;
+        }
+        if (!resolved) {
+          throw error;
+        }
+      } else if (error instanceof ConflictError && error.code !== 'conflict') {
+        throw error;
+      }
       if (
         !(error instanceof ConflictError) &&
         !isOptimisticLockConflict(error)
       ) {
         throw error;
       }
-      const raw = await this.getRawItem(id);
+      const raw = await this.getRawItem(userId, id);
       if (!raw) {
-        const claim = await this.getCreateClaim(id);
+        const claim = await this.getCreateClaim(userId, id);
         if (claim) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} was deleted`,
@@ -313,6 +401,7 @@ export class VersionedEntityRepository<
         );
       }
       const existing = this.mapItem(raw);
+      this.assertOwner(userId, existing);
       if (this.config.isDeleted?.(existing)) {
         throw new ConflictError(
           `${this.config.conflictLabel} ${id} was deleted`,
@@ -324,8 +413,6 @@ export class VersionedEntityRepository<
         const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        // Prefer the create-time hash so a later legitimate update does not
-        // 409 a delayed identical create retry (CHR-162).
         const baseline = storedHash ?? hashFn(existing);
         if (requestHash !== baseline) {
           throw new ConflictError(
@@ -338,18 +425,21 @@ export class VersionedEntityRepository<
     }
   }
 
-  /**
-   * Replace the item when `expectedVersion` matches. Throws ConflictError with
-   * `current` / `currentVersion` when the condition fails.
-   */
   async updateIfVersion(
+    userId: string,
     id: string,
     expectedVersion: number,
     next: T,
   ): Promise<T> {
-    const raw = await this.getRawItem(id);
+    this.assertOwner(userId, next);
+    const raw = await this.getRawItem(userId, id);
+    if (!raw) {
+      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
+    }
+    const existing = this.mapItem(raw);
+    this.assertOwner(userId, existing);
     const createHash =
-      typeof raw?.createHash === 'string' ? raw.createHash : undefined;
+      typeof raw.createHash === 'string' ? raw.createHash : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
@@ -363,26 +453,28 @@ export class VersionedEntityRepository<
       `Update conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(id, { consistentRead: true }),
+          this.getIncludingDeleted(userId, id, { consistentRead: true }),
         ),
     );
     return next;
   }
 
-  /**
-   * Soft-delete via caller-supplied tombstone entity (must bump version).
-   * Sets DynamoDB TTL when sync is configured so the GSI row expires with META.
-   * The create claim outlives the tombstone (CHR-162).
-   */
   async softDelete(
+    userId: string,
     id: string,
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
+    this.assertOwner(userId, tombstone);
     const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
-    const raw = await this.getRawItem(id);
+    const raw = await this.getRawItem(userId, id);
+    if (!raw) {
+      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
+    }
+    const existing = this.mapItem(raw);
+    this.assertOwner(userId, existing);
     const createHash =
-      typeof raw?.createHash === 'string' ? raw.createHash : undefined;
+      typeof raw.createHash === 'string' ? raw.createHash : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
@@ -396,22 +488,16 @@ export class VersionedEntityRepository<
       `Delete conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(id, { consistentRead: true }),
+          this.getIncludingDeleted(userId, id, { consistentRead: true }),
         ),
     );
     return tombstone;
   }
 
-  /**
-   * Query with opaque cursor pagination (follows LastEvaluatedKey).
-   * Prefer per-call `cursorKeyNames` (or `cursorKeysByIndex[IndexName]`) when
-   * a repository queries more than one index (CHR-169).
-   */
   async queryPage(
     input: Omit<QueryCommandInput, 'TableName' | 'ExclusiveStartKey'> & {
       cursor?: string;
       limit?: number;
-      /** Override cursor key set for this query (takes precedence). */
       cursorKeyNames?: readonly string[];
     },
   ): Promise<QueryPage<T>> {

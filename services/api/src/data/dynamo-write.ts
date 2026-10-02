@@ -23,27 +23,36 @@ function cancellationCodes(error: unknown): Array<string | undefined> {
 }
 
 /**
- * True when a TransactWrite cancellation failed on a slug-claim Put
+ * True when a TransactWrite cancellation failed on a unique-claim Put
  * (ConditionalCheckFailed at one of the given item indexes).
  */
+export function isUniqueClaimCancellation(
+  error: unknown,
+  claimIndexes: readonly number[],
+): boolean {
+  if (claimIndexes.length === 0) return false;
+  const codes = cancellationCodes(error);
+  if (codes.length === 0) return false;
+  return claimIndexes.some(
+    (index) => codes[index] === 'ConditionalCheckFailed',
+  );
+}
+
+/** @deprecated Prefer {@link isUniqueClaimCancellation}. */
 export function isSlugClaimCancellation(
   error: unknown,
   slugClaimIndexes: readonly number[],
 ): boolean {
-  if (slugClaimIndexes.length === 0) return false;
-  const codes = cancellationCodes(error);
-  if (codes.length === 0) return false;
-  return slugClaimIndexes.some(
-    (index) => codes[index] === 'ConditionalCheckFailed',
-  );
+  return isUniqueClaimCancellation(error, slugClaimIndexes);
 }
 
 /**
  * Run a DynamoDB write once; map conflict → ConflictError (409),
  * throttling → ServiceUnavailableError (503), other → rethrow.
  *
- * When `slugClaimIndexes` matches a ConditionalCheckFailed cancellation,
- * throws ConflictError with code `slug_taken`.
+ * When `uniqueClaimIndexes` / `slugClaimIndexes` matches a
+ * ConditionalCheckFailed cancellation, throws ConflictError with the
+ * configured claim code (`slug_taken` by default for slug indexes).
  */
 export async function runDynamoWrite<T>(
   write: () => Promise<T>,
@@ -51,6 +60,9 @@ export async function runDynamoWrite<T>(
   opts?: {
     slugClaimIndexes?: readonly number[];
     slugTakenMessage?: string;
+    uniqueClaimIndexes?: readonly number[];
+    uniqueClaimCode?: 'slug_taken' | 'daily_taken';
+    uniqueClaimMessage?: string;
   },
 ): Promise<T> {
   try {
@@ -58,13 +70,16 @@ export async function runDynamoWrite<T>(
   } catch (error) {
     const kind = classifyDynamoWriteError(error);
     if (kind === 'conflict') {
+      const claimIndexes =
+        opts?.uniqueClaimIndexes ?? opts?.slugClaimIndexes ?? [];
       if (
-        opts?.slugClaimIndexes &&
-        isSlugClaimCancellation(error, opts.slugClaimIndexes)
+        claimIndexes.length > 0 &&
+        isUniqueClaimCancellation(error, claimIndexes)
       ) {
-        throw new ConflictError(opts.slugTakenMessage ?? conflictMessage, {
-          code: 'slug_taken',
-        });
+        throw new ConflictError(
+          opts?.uniqueClaimMessage ?? opts?.slugTakenMessage ?? conflictMessage,
+          { code: opts?.uniqueClaimCode ?? 'slug_taken' },
+        );
       }
       throw new ConflictError(conflictMessage);
     }

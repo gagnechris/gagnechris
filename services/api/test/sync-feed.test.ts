@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { API_LAMBDA_TIMEOUT_MS, SYNC_OVERLAP_MS } from '@gagnechris/data';
+import { API_LAMBDA_TIMEOUT_MS, keys, SYNC_OVERLAP_MS } from '@gagnechris/data';
 import { SyncLedger } from '../src/sync/ledger.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
@@ -13,7 +13,6 @@ import {
   registerFakeNoteSync,
 } from './support/fake-note.js';
 import { createFakeNoteRoutes } from './support/fake-note-routes.js';
-import { fixtureKeys } from './support/fixture-keys.js';
 
 const TABLE = 'gagnechris-test';
 const USER = 'user-1';
@@ -133,7 +132,9 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
       ),
     );
 
-    const meta = store.get(`${fixtureKeys.meta(NOTE_ID).pk}\0META`);
+    const meta = store.get(
+      `${keys.notebook.note.meta(USER, NOTE_ID).pk}\0META`,
+    );
     expect(meta?.entityType).toBe(FAKE_NOTE_CHANGE_TYPE);
 
     const ledger = new SyncLedger(doc, TABLE, () => '2026-09-28T11:00:00.000Z');
@@ -160,14 +161,14 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
     );
     expect(created.version).toBe(1);
 
-    await repo.updateIfVersion(NOTE_ID, 1, {
+    await repo.updateIfVersion(USER, NOTE_ID, 1, {
       ...created,
       title: 'B',
       version: 2,
       updatedAt: times[1]!,
     });
 
-    await repo.softDelete(NOTE_ID, 2, {
+    await repo.softDelete(USER, NOTE_ID, 2, {
       ...created,
       title: 'B',
       version: 3,
@@ -209,7 +210,7 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
     const created = await repo.createIdempotent(
       buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
     );
-    await repo.softDelete(NOTE_ID, 1, {
+    await repo.softDelete(USER, NOTE_ID, 1, {
       ...created,
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
@@ -217,7 +218,7 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
     });
 
     // Simulate DynamoDB TTL purge of the META tombstone (claim remains).
-    store.delete(`${fixtureKeys.meta(NOTE_ID).pk}\0META`);
+    store.delete(`${keys.notebook.note.meta(USER, NOTE_ID).pk}\0META`);
 
     await expect(
       repo.createIdempotent(
@@ -232,7 +233,9 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
       name: 'ConflictError',
       message: expect.stringContaining('was deleted'),
     });
-    expect(store.has(`${fixtureKeys.meta(NOTE_ID).pk}\0META`)).toBe(false);
+    expect(
+      store.has(`${keys.notebook.note.meta(USER, NOTE_ID).pk}\0META`),
+    ).toBe(false);
   });
 
   it('pages with real ExclusiveStartKey across multiple entities', async () => {
@@ -344,7 +347,7 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
         '2026-09-28T10:00:00.000Z',
       ),
     );
-    await repo.updateIfVersion(NOTE_ID, 1, {
+    await repo.updateIfVersion(USER, NOTE_ID, 1, {
       ...created,
       title: 'B',
       body: 'two',
@@ -383,19 +386,19 @@ describe('If-Match / ETag routes (CHR-162)', () => {
     let note = await repo.createIdempotent(
       buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
     );
-    note = await repo.updateIfVersion(NOTE_ID, 1, {
+    note = await repo.updateIfVersion(USER, NOTE_ID, 1, {
       ...note,
       title: 'B',
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
     });
-    note = await repo.updateIfVersion(NOTE_ID, 2, {
+    note = await repo.updateIfVersion(USER, NOTE_ID, 2, {
       ...note,
       title: 'C',
       version: 3,
       updatedAt: '2026-09-28T12:00:00.000Z',
     });
-    await repo.updateIfVersion(NOTE_ID, 3, {
+    await repo.updateIfVersion(USER, NOTE_ID, 3, {
       ...note,
       title: 'D',
       version: 4,
