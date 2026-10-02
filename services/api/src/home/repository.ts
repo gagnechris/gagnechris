@@ -17,7 +17,7 @@ import {
   metaToHome,
   parseHomeMetaItem,
   type HomeMetaItem,
-} from './keys.js';
+} from '@gagnechris/data';
 
 export class HomeRepository extends PublishableSingletonRepository<
   Home,

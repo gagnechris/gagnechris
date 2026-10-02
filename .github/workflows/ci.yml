@@ -52,6 +52,8 @@ jobs:
 
       - name: Platform-neutral lint bans
         run: npm run check:platform-neutral-lint
+      - name: TypeScript project coverage
+        run: npm run check:tsconfig-coverage
 
       - name: Typecheck
         run: npm run typecheck

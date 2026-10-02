@@ -540,6 +540,26 @@ describe('SiteStack', () => {
     expect(JSON.stringify(bucketPolicies)).toContain('s3:ListBucket');
 
     template.resourceCountIs('AWS::CloudWatch::Alarm', 1);
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-cloudfront-5xx',
+      Threshold: 5,
+      EvaluationPeriods: 2,
+      DatapointsToAlarm: 2,
+      AlarmActions: Match.anyValue(),
+    });
+    // Viewer-request function is associated with the blog-slugs KeyValueStore (CHR-115 / CHR-180).
+    const cfFunctions = template.findResources('AWS::CloudFront::Function');
+    const viewerRequest = Object.values(cfFunctions).find((resource) => {
+      const name = (resource.Properties as { Name?: string } | undefined)?.Name;
+      return typeof name === 'string' && name.includes('viewer-request');
+    });
+    expect(viewerRequest).toBeDefined();
+    const kvsAssociations = (
+      viewerRequest?.Properties as {
+        FunctionConfig?: { KeyValueStoreAssociations?: unknown[] };
+      }
+    )?.FunctionConfig?.KeyValueStoreAssociations;
+    expect(kvsAssociations?.length).toBe(1);
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/site-bucket-name',
       Type: 'String',
@@ -798,6 +818,34 @@ describe('ApiStack', () => {
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
     });
+
+    // IAM scoping (CHR-180): DynamoDB + S3 media put are resource-scoped, not *.
+    const apiPolicies = Object.values(
+      template.findResources('AWS::IAM::Policy'),
+    );
+    const apiPolicyJson = JSON.stringify(apiPolicies);
+    expect(apiPolicyJson).toContain('dynamodb:PutItem');
+    expect(apiPolicyJson).toContain('s3:PutObject');
+    expect(apiPolicyJson).toContain('/media/*');
+    const starDynamo = apiPolicies.some((policy) => {
+      const statements = (policy.Properties?.PolicyDocument?.Statement ??
+        []) as Array<{
+        Action?: string | string[];
+        Resource?: string | string[];
+        Effect?: string;
+      }>;
+      return statements.some((s) => {
+        if (s.Effect === 'Deny') return false;
+        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const resources = Array.isArray(s.Resource) ? s.Resource : [s.Resource];
+        return (
+          actions.some(
+            (a) => typeof a === 'string' && a.startsWith('dynamodb:'),
+          ) && resources.includes('*')
+        );
+      });
+    });
+    expect(starDynamo).toBe(false);
   });
 });
 
@@ -904,5 +952,41 @@ describe('PublisherStack', () => {
     const onFailureDest = esm?.Properties?.DestinationConfig?.OnFailure
       ?.Destination as { 'Fn::GetAtt'?: string[] } | undefined;
     expect(onFailureDest?.['Fn::GetAtt']?.[0]).toBe(queueLogicalId);
+
+    // IAM scoping (CHR-180): table/stream/S3/CF grants are present and scoped.
+    // (CDK stream ListStreams may use Resource *; table CRUD must not.)
+    const publisherPolicies = Object.values(
+      template.findResources('AWS::IAM::Policy'),
+    );
+    const publisherPolicyJson = JSON.stringify(publisherPolicies);
+    expect(publisherPolicyJson).toContain('dynamodb:GetRecords');
+    expect(publisherPolicyJson).toContain('dynamodb:PutItem');
+    expect(publisherPolicyJson).toContain('s3:PutObject');
+    expect(publisherPolicyJson).toContain('cloudfront:CreateInvalidation');
+    expect(publisherPolicyJson).toContain('CloudFrontInvalidate');
+    expect(publisherPolicyJson).toContain('CloudFrontBlogSlugsKvs');
+    const starTableCrud = publisherPolicies.some((policy) => {
+      const statements = (policy.Properties?.PolicyDocument?.Statement ??
+        []) as Array<{
+        Action?: string | string[];
+        Resource?: string | string[];
+        Effect?: string;
+      }>;
+      return statements.some((s) => {
+        if (s.Effect === 'Deny') return false;
+        const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+        const resources = Array.isArray(s.Resource) ? s.Resource : [s.Resource];
+        const hasTableCrud = actions.some(
+          (a) =>
+            a === 'dynamodb:PutItem' ||
+            a === 'dynamodb:UpdateItem' ||
+            a === 'dynamodb:DeleteItem' ||
+            a === 'dynamodb:GetItem' ||
+            a === 'dynamodb:Query',
+        );
+        return hasTableCrud && resources.includes('*');
+      });
+    });
+    expect(starTableCrud).toBe(false);
   });
 });

@@ -17,7 +17,7 @@ import {
   slugRedirectSk,
   tagPk,
   tagSk,
-} from './keys.js';
+} from '@gagnechris/data';
 
 export type TransactItem = {
   Put?: {

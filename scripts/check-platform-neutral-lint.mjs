@@ -1,6 +1,6 @@
 /**
- * Acceptance check (CHR-156 / CHR-164): banned imports and Node/DOM globals
- * into RN-facing packages fail lint.
+ * Acceptance check (CHR-156 / CHR-164 / CHR-180): banned imports and Node/DOM
+ * globals into RN-facing packages fail lint.
  * Run: `npm run check:platform-neutral-lint`
  */
 import { rmSync, writeFileSync } from 'node:fs';
@@ -18,6 +18,18 @@ const fixtures = [
     rule: 'no-restricted-imports',
   },
   {
+    dir: 'packages/app-core/src',
+    source: `import fs from 'fs';\nexport const x = fs;\n`,
+    expect: 'fs',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `export async function x() { return import('node:fs'); }\n`,
+    expect: 'node:',
+    rule: 'no-restricted-syntax',
+  },
+  {
     dir: 'packages/api-client/src',
     source: `import { DynamoDBClient } from '@aws-sdk/client-dynamodb';\nexport const x = DynamoDBClient;\n`,
     expect: '@aws-sdk',
@@ -30,10 +42,28 @@ const fixtures = [
     rule: 'no-restricted-imports',
   },
   {
+    dir: 'packages/app-core/src',
+    source: `import { marked } from 'marked';\nexport const x = marked;\n`,
+    expect: 'marked',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `import { SK_META } from '@gagnechris/data';\nexport const x = SK_META;\n`,
+    expect: '@gagnechris/data',
+    rule: 'no-restricted-imports',
+  },
+  {
     // New shared domain file (not a hardcoded allowlist name) must still ban node:*.
     dir: 'packages/shared/src',
     source: `import fs from 'node:fs';\nexport const x = fs;\n`,
     expect: 'node:',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/shared/src',
+    source: `import { renderMarkdownToHtml } from './render.js';\nexport const x = renderMarkdownToHtml;\n`,
+    expect: 'render',
     rule: 'no-restricted-imports',
   },
   {
@@ -44,14 +74,44 @@ const fixtures = [
   },
   {
     dir: 'packages/app-core/src',
+    source: `import { DEFAULT_HOME } from '../shared/src/index.js';\nexport const x = DEFAULT_HOME;\n`,
+    expect: '../shared',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/app-core/src',
     source: `export const x = process.env.NODE_ENV;\n`,
     expect: 'process',
     rule: 'no-restricted-globals',
   },
   {
+    dir: 'packages/app-core/src',
+    source: `export const x = globalThis.process?.env?.NODE_ENV;\n`,
+    expect: 'globalThis.process',
+    rule: 'no-restricted-syntax',
+  },
+  {
     dir: 'packages/shared/src',
     source: `export const x = typeof window !== 'undefined' ? window.location : null;\n`,
     expect: 'window',
+    rule: 'no-restricted-globals',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `export const x = typeof navigator !== 'undefined' ? navigator.userAgent : '';\n`,
+    expect: 'navigator',
+    rule: 'no-restricted-globals',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `export const x = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('k') : null;\n`,
+    expect: 'sessionStorage',
+    rule: 'no-restricted-globals',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `export const x = typeof location !== 'undefined' ? location.href : '';\n`,
+    expect: 'location',
     rule: 'no-restricted-globals',
   },
 ];

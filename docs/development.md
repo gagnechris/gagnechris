@@ -46,7 +46,7 @@ Prefer `local:dev` unless you intentionally need the production API.
 ## Quality gates
 
 ```bash
-npm test              # web + shared + infra + api + publisher (unit; no Docker)
+npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, api unit, publisher, infra); mobile: npm test --prefix apps/mobile
 npm run test:integration -w @gagnechris/api   # DynamoDB Local transaction paths (Docker)
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace

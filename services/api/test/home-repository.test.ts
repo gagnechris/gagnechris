@@ -5,7 +5,7 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
 import { ConflictError } from '../src/data/errors.js';
-import { buildHomeMetaItem, buildHomePublishedItem } from '../src/home/keys.js';
+import { buildHomeMetaItem, buildHomePublishedItem } from '@gagnechris/data';
 import { HomeRepository } from '../src/home/repository.js';
 import { mockDoc, mockPair } from './support/mock-doc.js';
 

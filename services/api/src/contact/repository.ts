@@ -10,7 +10,7 @@ import {
   contactPk,
   type ContactEmailStatus,
   type ContactMsgItem,
-} from './keys.js';
+} from '@gagnechris/data';
 
 export type SaveContactInput = {
   name: string;

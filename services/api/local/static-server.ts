@@ -4,6 +4,7 @@
  * viewer-response 404 handling for missing Option B objects (CHR-102).
  */
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -15,13 +16,32 @@ if (!root) {
   throw new Error('SITE_BUCKET_NAME (local site root) is required');
 }
 
+/** Walk up from this file to the monorepo root (has package.json + infra/). */
+function findRepoRoot(startDir: string): string {
+  let dir = startDir;
+  for (;;) {
+    if (
+      existsSync(join(dir, 'package.json')) &&
+      existsSync(join(dir, 'infra'))
+    ) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error('Could not find monorepo root from static-server');
+    }
+    dir = parent;
+  }
+}
+
+const repoRoot = process.env.REPO_ROOT?.trim() || findRepoRoot(__dirname);
 const viewerRequestPath = join(
-  __dirname,
-  '../../../infra/lib/cloudfront/viewer-request-function.js',
+  repoRoot,
+  'infra/lib/cloudfront/viewer-request-function.js',
 );
 const viewerResponsePath = join(
-  __dirname,
-  '../../../infra/lib/cloudfront/viewer-response-function.js',
+  repoRoot,
+  'infra/lib/cloudfront/viewer-response-function.js',
 );
 
 type CfRequest = {

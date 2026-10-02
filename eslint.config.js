@@ -32,16 +32,43 @@ const crossWorkspaceRelativePatterns = [
   },
 ];
 
+/** Sibling package folders under packages/ (relative cross-package; CHR-180). */
+const siblingPackageRelativePatterns = [
+  {
+    group: [
+      '../shared',
+      '../shared/**',
+      '../data',
+      '../data/**',
+      '../api-client',
+      '../api-client/**',
+      '../app-core',
+      '../app-core/**',
+      '../tokens',
+      '../tokens/**',
+      '../../shared/**',
+      '../../data/**',
+      '../../api-client/**',
+      '../../app-core/**',
+      '../../tokens/**',
+    ],
+    message:
+      'Import workspace packages by name (e.g. @gagnechris/shared), not via relative sibling paths (CHR-180).',
+  },
+];
+
 const noCrossWorkspaceRelativeImports = {
   'no-restricted-imports': [
     'error',
     {
+      // Sibling bans (`../data`, …) apply only to packages/* (platform-neutral
+      // block) — services/api has a local src/data/ folder (CHR-180).
       patterns: crossWorkspaceRelativePatterns,
     },
   ],
 };
 
-/** Platform-neutral RN-facing packages must not pull Node / web / AWS SDKs (CHR-156). */
+/** Platform-neutral RN-facing packages must not pull Node / web / AWS SDKs (CHR-156 / CHR-180). */
 const platformNeutralRestrictedImports = {
   'no-restricted-imports': [
     'error',
@@ -57,9 +84,45 @@ const platformNeutralRestrictedImports = {
           message:
             'Platform-neutral packages must not import aws-amplify (CHR-156).',
         },
+        {
+          name: 'marked',
+          message:
+            'Platform-neutral packages must not import marked (CHR-180). Use shared/render at the app boundary.',
+        },
+        {
+          name: '@gagnechris/data',
+          message:
+            'Platform-neutral packages must not import @gagnechris/data (CHR-180).',
+        },
+        {
+          name: 'fs',
+          message:
+            'Platform-neutral packages must not import Node builtins (CHR-180).',
+        },
+        {
+          name: 'crypto',
+          message:
+            'Platform-neutral packages must not import Node builtins (CHR-180).',
+        },
+        {
+          name: 'path',
+          message:
+            'Platform-neutral packages must not import Node builtins (CHR-180).',
+        },
+        {
+          name: 'os',
+          message:
+            'Platform-neutral packages must not import Node builtins (CHR-180).',
+        },
+        {
+          name: 'child_process',
+          message:
+            'Platform-neutral packages must not import Node builtins (CHR-180).',
+        },
       ],
       patterns: [
         ...crossWorkspaceRelativePatterns,
+        ...siblingPackageRelativePatterns,
         {
           group: ['node:*'],
           message:
@@ -90,12 +153,33 @@ const platformNeutralRestrictedImports = {
           message:
             'RN-facing packages must import @gagnechris/shared (domain root) only — not /render or /openapi (CHR-164).',
         },
+        {
+          group: ['@gagnechris/data/*'],
+          message:
+            'Platform-neutral packages must not import @gagnechris/data (CHR-180).',
+        },
+        {
+          group: [
+            './render.js',
+            './render',
+            './html.js',
+            './html',
+            './markdown.js',
+            './markdown',
+            './home-html.js',
+            './home-html',
+            './resume-html.js',
+            './resume-html',
+          ],
+          message:
+            'Shared domain must not import render/html/markdown helpers (CHR-180). Keep them in the render entry.',
+        },
       ],
     },
   ],
 };
 
-/** Node / DOM globals that must not sneak into platform-neutral packages (CHR-164). */
+/** Node / DOM globals that must not sneak into platform-neutral packages (CHR-164 / CHR-180). */
 const platformNeutralRestrictedGlobals = {
   'no-restricted-globals': [
     'error',
@@ -122,6 +206,45 @@ const platformNeutralRestrictedGlobals = {
       name: 'localStorage',
       message:
         'Platform-neutral packages must not use localStorage (CHR-164). Inject storage.',
+    },
+    {
+      name: 'sessionStorage',
+      message:
+        'Platform-neutral packages must not use sessionStorage (CHR-180). Inject storage.',
+    },
+    {
+      name: 'navigator',
+      message:
+        'Platform-neutral packages must not use navigator (CHR-180). Inject platform APIs.',
+    },
+    {
+      name: 'location',
+      message:
+        'Platform-neutral packages must not use location (CHR-180). Inject platform APIs.',
+    },
+  ],
+};
+
+/** Extra syntax bans for platform-neutral packages (CHR-180). */
+const platformNeutralRestrictedSyntax = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: 'ImportExpression[source.value=/^node:/]',
+      message:
+        'Platform-neutral packages must not dynamically import node:* (CHR-180).',
+    },
+    {
+      selector:
+        "MemberExpression[object.name='globalThis'][property.name='process']",
+      message:
+        'Platform-neutral packages must not use globalThis.process (CHR-180).',
+    },
+    {
+      selector:
+        "MemberExpression[object.name='globalThis'][property.name='window']",
+      message:
+        'Platform-neutral packages must not use globalThis.window (CHR-180).',
     },
   ],
 };
@@ -195,6 +318,7 @@ export default tseslint.config(
     rules: {
       ...platformNeutralRestrictedImports,
       ...platformNeutralRestrictedGlobals,
+      ...platformNeutralRestrictedSyntax,
     },
   },
   {

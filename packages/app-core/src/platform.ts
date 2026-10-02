@@ -17,7 +17,9 @@ type GlobalTimers = {
 const globalTimers = globalThis as typeof globalThis & GlobalTimers;
 
 export const defaultTimers: Timers = {
-  setTimeout: (handler, timeout) => globalTimers.setTimeout(handler, timeout),
+  // Cast: Node typings (via vitest.config) return Timeout; browsers return number.
+  setTimeout: (handler, timeout) =>
+    globalTimers.setTimeout(handler, timeout) as unknown as TimerHandle,
   clearTimeout: (handle) => globalTimers.clearTimeout(handle),
 };
 

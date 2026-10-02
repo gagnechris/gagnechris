@@ -13,7 +13,7 @@ import {
   rateHourSk,
   rateResumeIpPk,
   rateSesGlobalPk,
-} from '../src/contact/keys.js';
+} from '@gagnechris/data';
 import { mockDocClient } from './support/mock-doc.js';
 
 describe('tryIncrementCounter', () => {

@@ -7,7 +7,7 @@ import {
   postMetaSk,
   postPk,
   postPublishedSk,
-} from '../src/posts/keys.js';
+} from '@gagnechris/data';
 import type { Post } from '@gagnechris/shared';
 import { encodeCursor } from '../src/data/cursor.js';
 import { mockDocClient } from './support/mock-doc.js';

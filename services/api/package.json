@@ -21,12 +21,12 @@
     "@aws-sdk/lib-dynamodb": "^3.1141.0",
     "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@gagnechris/data": "*",
-    "@gagnechris/publisher": "*",
     "@gagnechris/shared": "*",
     "ulid": "^3.0.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@gagnechris/publisher": "*",
     "@types/aws-lambda": "^8.10.152",
     "@types/node": "^22.13.0",
     "tsx": "^4.23.15",

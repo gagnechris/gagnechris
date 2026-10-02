@@ -17,7 +17,7 @@ import {
   resumePublishedSk,
   RESUME_ID,
   type ResumeMetaItem,
-} from './keys.js';
+} from '@gagnechris/data';
 
 export class ResumeRepository extends PublishableSingletonRepository<
   Resume,

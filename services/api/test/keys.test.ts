@@ -5,7 +5,7 @@ import {
   slugify,
   slugPk,
   statusGsi1Pk,
-} from '../src/posts/keys.js';
+} from '@gagnechris/data';
 
 describe('post keys (single-table prefixes)', () => {
   it('uses POST# / SLUG# / STATUS# prefixes only', () => {
