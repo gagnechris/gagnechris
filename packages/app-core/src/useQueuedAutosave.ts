@@ -25,8 +25,12 @@ type Options<TDraft, TEntity> = {
   /** Update entity metadata (version, updatedAt, status, seo). Do not replace the draft here. */
   onSaved: (entity: TEntity) => void;
   conflictMessage: string;
-  /** Shown when the API returns 409 with `error: slug_taken` (CHR-160). */
-  slugTakenMessage?: string;
+  /**
+   * Optional 409 `error` code → message map. Callers that care about a specific
+   * conflict (e.g. posts and `slug_taken`) pass the message; the generic hook
+   * has no post-specific defaults (CHR-173).
+   */
+  conflictMessages?: Record<string, string>;
   /** Defaults to `globalThis` timers (no `window`). */
   timers?: Timers;
 };
@@ -54,7 +58,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   performSave,
   onSaved,
   conflictMessage,
-  slugTakenMessage = 'That slug is already taken. Choose a different slug.',
+  conflictMessages,
   timers = defaultTimers,
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -147,11 +151,13 @@ export function useQueuedAutosave<TDraft, TEntity>({
           );
           if (!result.ok) {
             setSaveState('error');
+            const codeMessage =
+              result.error && conflictMessages
+                ? conflictMessages[result.error]
+                : undefined;
             setSaveError(
               result.status === 409
-                ? result.error === 'slug_taken'
-                  ? slugTakenMessage
-                  : conflictMessage
+                ? (codeMessage ?? conflictMessage)
                 : `Save failed (${result.status}).`,
             );
             outcome = 'error';
@@ -195,7 +201,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     })();
 
     return promise;
-  }, [conflictMessage, enabled, slugTakenMessage, versionRef]);
+  }, [conflictMessage, conflictMessages, enabled, versionRef]);
 
   useEffect(() => {
     if (!enabled || !dirty || held) return;
@@ -236,24 +242,5 @@ export function useQueuedAutosave<TDraft, TEntity>({
       setDirtyRef.current(false);
       setSaveState('saved');
     },
-  };
-}
-
-/** Merge editor SEO title/description with fields the form does not edit (e.g. ogImage). */
-export function mergeEditorSeo(
-  existing:
-    | { title?: string; description?: string; ogImage?: string }
-    | null
-    | undefined,
-  draft: { seoTitle: string; seoDescription: string },
-): { title?: string; description?: string; ogImage?: string } | null {
-  const title = draft.seoTitle.trim();
-  const description = draft.seoDescription.trim();
-  const ogImage = existing?.ogImage;
-  if (!title && !description && !ogImage) return null;
-  return {
-    ...(title ? { title } : {}),
-    ...(description ? { description } : {}),
-    ...(ogImage ? { ogImage } : {}),
   };
 }

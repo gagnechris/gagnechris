@@ -91,8 +91,8 @@ The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not
 Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/react-query`). Public pages stay outside Query so the public bundle stays lean.
 
 - Query-key factories, API helpers, and TanStack Query hooks live in `@gagnechris/app-core` (re-exported from `apps/web/src/admin/query/` for the admin SPA).
-- `createDraftPublishResource` builds query + lifecycle mutators from config (post / home / resume; a new entity is config only).
-- `useVersionedEntityEditor` owns hydrate-once, version binding, performSave, autosave, and publish/unpublish/discard/delete-with-hold (no DOM). The web shell adds confirm / leave-guards / shortcuts.
+- `createVersionedResource` builds query + setCache + update (+ optional delete) from config. Publishable entities layer `createDraftPublishResource` for publish / unpublish / discard (post / home / resume). Non-publishable entities (e.g. Notebook notes) use the versioned resource alone — not “config only” on the draft/publish factory.
+- `useVersionedDocEditor` owns hydrate-once, version binding, performSave, autosave, remote-conflict detection, and delete-with-hold (no DOM, no `status`). `useVersionedEntityEditor` layers draft/publish lifecycle on top for post / home / resume. The web shell (`useVersionedDocShell`) adds confirm / leave-guards / ⌘S, with ⌘⏎ optional via `publishRef`.
 - List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
 - Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
 - Optimistic update + rollback: `optimisticMutationHandlers` supports one key or `targets[]` for multi-key snapshot/rollback (Notebook Today + Tasks).
@@ -102,11 +102,12 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 
 ## Admin editor foundation
 
-Post, Home, and Resume containers are mostly field layout; shared wiring lives in app-core:
+Post, Home, and Resume containers are mostly field layout; shared wiring lives in app-core. Notebook notes (and other non-publishable docs) use the versioned-doc path without a publish layer:
 
-- `createDraftPublishResource` + `useVersionedEntityEditor` (hydrate, version, autosave, lifecycle, delete hold)
-- `useQueuedAutosave` + `useDraftPublishEditor` (hold → busy → try/finally via `withHold`; delete awaits in-flight PUT)
-- Web shell `apps/web/src/admin/useVersionedEntityEditor.ts` adds confirm, leave guards, and ⌘S / ⌘⏎ shortcuts
+- `createVersionedResource` + `useVersionedDocEditor` (hydrate, version, autosave, conflict, delete-with-hold)
+- `createDraftPublishResource` + `useVersionedEntityEditor` (layers publish / unpublish / discard on the doc editor)
+- `useQueuedAutosave` + shared `withHold` from the doc editor (`useDraftPublishEditor` consumes it for lifecycle actions)
+- Web shell `apps/web/src/admin/useVersionedDocShell.ts` adds leave guards and ⌘S; `useVersionedEntityEditor.ts` injects confirm and optional ⌘⏎ via `publishRef`
 - UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates + reorder focus), `navLinkClass`
 - Post editor splits container (`PostEditorPage`, keyed by `postId`) from presentational sections; `uploadImages(client, files)` takes the AppApiProvider client
 

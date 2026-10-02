@@ -1,7 +1,7 @@
 export { AppApiProvider, useGetApiClient } from './AppApiProvider.js';
 export { defaultTimers, type ConfirmFn, type Timers } from './platform.js';
+export { mergeEditorSeo } from './mergeEditorSeo.js';
 export {
-  mergeEditorSeo,
   useQueuedAutosave,
   type AutosaveResult,
   type FlushResult,
@@ -12,7 +12,14 @@ export {
   type DraftPublishAutosave,
   type DraftPublishDeleteOptions,
   type DraftPublishEditorOptions,
+  type DraftPublishHold,
 } from './useDraftPublishEditor.js';
+export {
+  useVersionedDocEditor,
+  type VersionedDocDeleteOptions,
+  type VersionedDocEditorOptions,
+  type VersionedDocEntity,
+} from './useVersionedDocEditor.js';
 export {
   useVersionedEntityEditor,
   type VersionedEditorEntity,
@@ -40,6 +47,7 @@ export {
   unpublishHome,
   unpublishPost,
   unpublishResume,
+  unwrap,
   updateHome,
   updatePost,
   updateResume,
@@ -60,11 +68,16 @@ export {
   setCachedResume,
 } from './query/cache.js';
 export {
+  createVersionedResource,
+  type VersionedEntity,
+  type VersionedResource,
+  type VersionedResourceConfig,
+} from './query/createVersionedResource.js';
+export {
   createDraftPublishResource,
   type DraftPublishLifecycleMutators,
   type DraftPublishResource,
   type DraftPublishResourceConfig,
-  type VersionedEntity,
 } from './query/createDraftPublishResource.js';
 export {
   optimisticMutationHandlers,

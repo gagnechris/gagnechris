@@ -3,9 +3,17 @@
  * real Metro resolver. Bundling alone proved nothing in CHR-142 — the crash was
  * a type-only `.d.ts` standing in for `zod`'s runtime, which only shows up when
  * a schema is actually evaluated (CHR-150). CHR-164 also asserts Zod 4 so Expo
- * CLI's transitive zod 3 cannot silently win resolution.
+ * CLI's transitive zod 3 cannot silently win resolution. CHR-173 also pulls
+ * app-core (including `createVersionedResource.useQuery`) through Metro.
+ *
+ * Hook rendering is covered by `src/app-core.test.ts` under vitest (where
+ * `act` / dual-package dedupe work). The iOS Metro react build used here does
+ * not export `act`, so smoke asserts the resource + query hook are resolvable
+ * and that `fetch` runs.
  */
 import { z } from 'zod';
+import type { ApiClient } from '@gagnechris/api-client';
+import { createVersionedResource } from '@gagnechris/app-core';
 import { HealthResponseSchema, PostSchema, slugify } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 
@@ -37,4 +45,38 @@ if (typeof tokens.space[4] !== 'number') {
   throw new Error('space tokens must be px numbers for React Native');
 }
 
-console.log('bundle smoke ok: zod v4 parsed, schema rejected, tokens numeric');
+type SmokeNote = { id: string; body: string; version: number };
+
+const smokeResource = createVersionedResource<SmokeNote, { id: string }>({
+  queryKey: ({ id }) => ['smoke', 'note', id] as const,
+  fetch: async () => ({ id: 's1', body: 'ok', version: 1 }),
+  update: async (_c, _p, body) => ({
+    id: 's1',
+    body: String(body.body ?? ''),
+    version: Number(body.version) + 1,
+  }),
+  setCache: (qc, entity) => {
+    qc.setQueryData(['smoke', 'note', entity.id], entity);
+  },
+});
+
+if (typeof smokeResource.useQuery !== 'function') {
+  throw new Error('createVersionedResource.useQuery missing from app-core');
+}
+
+void smokeResource
+  .fetch({} as ApiClient, { id: 's1' })
+  .then((note) => {
+    if (note.body !== 'ok' || note.version !== 1) {
+      throw new Error(
+        'app-core versioned resource fetch returned unexpected data',
+      );
+    }
+    console.log(
+      'bundle smoke ok: zod v4 parsed, schema rejected, tokens numeric, app-core query',
+    );
+  })
+  .catch((err: unknown) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
