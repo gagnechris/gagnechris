@@ -13,9 +13,10 @@ import {
   type PutKeyRequestListItem,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
 import { Logger } from '@aws-lambda-powertools/logger';
+import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { isLocalCloudFront } from './config.js';
 
-const logger = new Logger({ serviceName: 'gagnechris-publisher' });
+const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 /** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
 export const BLOG_SLUG_SYNCED_KEY = '__synced__';

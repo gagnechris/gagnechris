@@ -14,6 +14,22 @@ import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
+/** Default CDK bootstrap qualifier (`cdk bootstrap` without --qualifier). */
+export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
+
+/** Actions denied so PR/diff/drift (and the CDK lookup role) cannot read CMS data. */
+export const PRIVATE_DATA_READ_DENY_ACTIONS = [
+  'dynamodb:GetItem',
+  'dynamodb:BatchGetItem',
+  'dynamodb:Query',
+  'dynamodb:Scan',
+  'dynamodb:GetRecords',
+  'dynamodb:PartiQLSelect',
+  's3:GetObject',
+  's3:GetObjectVersion',
+  's3:GetObject*',
+] as const;
+
 export interface CiDeployRoleStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   /** Guardrails alerts topic — drift role may publish failure notices. */
@@ -22,6 +38,15 @@ export interface CiDeployRoleStackProps extends StackProps {
   readonly githubOwner?: string;
   /** GitHub repository name (default gagnechris). */
   readonly githubRepo?: string;
+}
+
+function denyPrivateDataReadsStatement(): PolicyStatement {
+  return new PolicyStatement({
+    sid: 'DenyPrivateDataReads',
+    effect: Effect.DENY,
+    actions: [...PRIVATE_DATA_READ_DENY_ACTIONS],
+    resources: ['*'],
+  });
 }
 
 /**
@@ -84,24 +109,7 @@ export class CiDeployRoleStack extends Stack {
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
     );
     // Deny item/object reads so PR diffs cannot pull future private Notebook data.
-
-    this.diffRole.addToPolicy(
-      new PolicyStatement({
-        sid: 'DenyPrivateDataReads',
-        effect: Effect.DENY,
-        actions: [
-          'dynamodb:GetItem',
-          'dynamodb:BatchGetItem',
-          'dynamodb:Query',
-          'dynamodb:Scan',
-          'dynamodb:GetRecords',
-          's3:GetObject',
-          's3:GetObjectVersion',
-          's3:GetObject*',
-        ],
-        resources: ['*'],
-      }),
-    );
+    this.diffRole.addToPolicy(denyPrivateDataReadsStatement());
     // cdk diff needs the bootstrap lookup role only — never deploy/cfn-exec
     // (those trust the whole account; AssumeRole * would escalate to admin).
     this.diffRole.addToPolicy(
@@ -131,23 +139,7 @@ export class CiDeployRoleStack extends Stack {
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
     );
 
-    this.driftRole.addToPolicy(
-      new PolicyStatement({
-        sid: 'DenyPrivateDataReads',
-        effect: Effect.DENY,
-        actions: [
-          'dynamodb:GetItem',
-          'dynamodb:BatchGetItem',
-          'dynamodb:Query',
-          'dynamodb:Scan',
-          'dynamodb:GetRecords',
-          's3:GetObject',
-          's3:GetObjectVersion',
-          's3:GetObject*',
-        ],
-        resources: ['*'],
-      }),
-    );
+    this.driftRole.addToPolicy(denyPrivateDataReadsStatement());
     this.driftRole.addToPolicy(
       new PolicyStatement({
         sid: 'CloudFormationDetectDrift',
@@ -172,6 +164,31 @@ export class CiDeployRoleStack extends Stack {
       }),
     );
     props.alertsTopic.grantPublish(this.driftRole);
+
+    // Close the lookup-role hop: bootstrap lookup roles ship ReadOnlyAccess
+    // without DenyPrivateDataReads. Attach the same Deny to the default
+    // qualifier lookup role so assuming it cannot read CMS data either.
+    const lookupRoleArn = `arn:aws:iam::${props.config.account}:role/cdk-${CDK_DEFAULT_BOOTSTRAP_QUALIFIER}-lookup-role-${props.config.account}-${props.config.region}`;
+    const bootstrapLookupRole = Role.fromRoleArn(
+      this,
+      'BootstrapLookupRole',
+      lookupRoleArn,
+      { mutable: true },
+    );
+    bootstrapLookupRole.addToPrincipalPolicy(denyPrivateDataReadsStatement());
+
+    NagSuppressions.addResourceSuppressions(
+      bootstrapLookupRole,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            'DenyPrivateDataReads on the CDK bootstrap lookup role uses Resource * / s3:GetObject* so assuming the lookup role cannot read private CMS data (CHR-163).',
+          appliesTo: ['Resource::*', 'Action::s3:GetObject*'],
+        },
+      ],
+      true,
+    );
 
     this.suppressRoleNags(
       this.deployRole,
