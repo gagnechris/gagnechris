@@ -6,7 +6,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
-   - `/api/*` and `/media/*` → pass through (API Gateway / media origin)
+   - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA+webauthn; CHR-177)
    - `/` → `/index.html` (prerendered home)
    - `/resume`, `/blog`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`
    - `/blog/<slug>` → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).

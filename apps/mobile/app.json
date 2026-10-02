@@ -6,9 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "gagnechris",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gagnechris.mobile"
+      "bundleIdentifier": "com.gagnechris.mobile",
+      "associatedDomains": [
+        "applinks:gagnechris.com",
+        "webcredentials:gagnechris.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {

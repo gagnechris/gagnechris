@@ -95,6 +95,20 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
 
+# Extensionless Apple / WebAuthn association files need application/json (CHR-177).
+# S3 content-type guessing often picks binary/octet-stream without an extension.
+if [ -d "${DIST}/.well-known" ]; then
+  while IFS= read -r -d '' well_known; do
+    key=".well-known/${well_known#"${DIST}/.well-known/"}"
+    echo "Uploading ${key} as application/json"
+    aws s3 cp "${well_known}" "s3://${BUCKET}/${key}" \
+      --region "${AWS_REGION}" \
+      --content-type "application/json" \
+      --cache-control "public,max-age=0,must-revalidate" \
+      --metadata-directive REPLACE
+  done < <(find "${DIST}/.well-known" -type f -print0)
+fi
+
 aws cloudfront create-invalidation \
   --distribution-id "${DISTRIBUTION_ID}" \
   --paths "/*" \

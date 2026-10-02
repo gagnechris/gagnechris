@@ -36,12 +36,16 @@ export const getAuthUser = async (): Promise<AuthUser | null> => {
 };
 
 /** ID token for API Gateway JWT authorizer (`aud` = web client id). */
-export const getIdToken = async (): Promise<string | null> => {
+export const getIdToken = async (options?: {
+  forceRefresh?: boolean;
+}): Promise<string | null> => {
   if (isLocalAuth()) {
     return 'local-dev-token';
   }
   ensureAmplifyConfigured();
-  const session = await fetchAuthSession();
+  const session = await fetchAuthSession({
+    forceRefresh: options?.forceRefresh === true,
+  });
   return session.tokens?.idToken?.toString() ?? null;
 };
 

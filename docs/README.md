@@ -67,14 +67,16 @@ docs/                  Architecture, development, data model, E2E
 
 ## Docs index
 
-| Doc                                        | What it’s for                                              |
-| ------------------------------------------ | ---------------------------------------------------------- |
-| [architecture.md](./architecture.md)       | Request flow, draft/published model, publisher, 404s, auth |
-| [development.md](./development.md)         | Setup, local stack, tests, env vars, troubleshooting       |
-| [data-model.md](./data-model.md)           | Single-table DynamoDB keys and entities                    |
-| [local-e2e.md](./local-e2e.md)             | Local DynamoDB + API + publisher smoke / day-to-day admin  |
-| [migrate-posts.md](./migrate-posts.md)     | One-shot migration of posts into DynamoDB                  |
-| [../infra/RUNBOOK.md](../infra/RUNBOOK.md) | Production AWS operations                                  |
+| Doc                                                      | What it’s for                                              |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| [architecture.md](./architecture.md)                     | Request flow, draft/published model, publisher, 404s, auth |
+| [development.md](./development.md)                       | Setup, local stack, tests, env vars, troubleshooting       |
+| [data-model.md](./data-model.md)                         | Single-table DynamoDB keys and entities                    |
+| [local-e2e.md](./local-e2e.md)                           | Local DynamoDB + API + publisher smoke / day-to-day admin  |
+| [migrate-posts.md](./migrate-posts.md)                   | One-shot migration of posts into DynamoDB                  |
+| [mobile.md](./mobile.md)                                 | Expo spike, auth/offline decisions (CHR-177)               |
+| [adr/0001-passkey-rp-id.md](./adr/0001-passkey-rp-id.md) | Passkey RP ID stays `auth.gagnechris.com`                  |
+| [../infra/RUNBOOK.md](../infra/RUNBOOK.md)               | Production AWS operations                                  |
 
 ## Contributions
 
