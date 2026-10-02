@@ -1,5 +1,5 @@
 /**
- * Generic optimistic-concurrency entity store (CHR-129 / CHR-153).
+ * Generic optimistic-concurrency entity store (CHR-129 / CHR-153 / CHR-161).
  * Optional sync config writes sparse GSI keys on META (one row per entity).
  */
 import {
@@ -9,17 +9,19 @@ import {
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import {
-  isOptimisticLockConflict,
-  syncPk,
-  syncSk,
-  ttlDaysFromNow,
-} from '@gagnechris/data';
+import { syncPk, syncSk, ttlDaysFromNow } from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
 import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
+import {
+  VERSION_MATCH_CONDITION,
+  runVersionedWrite,
+  throwVersionConflict,
+} from './version-condition.js';
+
+export { VERSION_MATCH_CONDITION } from './version-condition.js';
 
 export type VersionedEntity = {
   version: number;
@@ -175,10 +177,7 @@ export class VersionedEntityRepository<
     try {
       return await this.create(entity);
     } catch (error) {
-      if (
-        !(error instanceof ConflictError) &&
-        !isOptimisticLockConflict(error)
-      ) {
+      if (!(error instanceof ConflictError)) {
         throw error;
       }
       const existing = await this.getIncludingDeleted(id);
@@ -213,34 +212,23 @@ export class VersionedEntityRepository<
     expectedVersion: number,
     next: T,
   ): Promise<T> {
-    try {
-      await runDynamoWrite(
-        () =>
-          this.doc.send(
-            new PutCommand({
-              TableName: this.tableName,
-              Item: this.toStoredItem(next),
-              ConditionExpression: 'attribute_exists(pk) AND version = :v',
-              ExpressionAttributeValues: { ':v': expectedVersion },
-            }),
-          ),
-        `Update conflict (${this.config.conflictLabel} version)`,
-      );
-      return next;
-    } catch (error) {
-      if (error instanceof ConflictError || isOptimisticLockConflict(error)) {
-        const current = await this.getIncludingDeleted(id);
-        throw new ConflictError(
-          `Version conflict: expected ${expectedVersion}, current ${current?.version ?? 'unknown'}`,
-          {
-            currentVersion: current?.version,
-            current,
-            code: error instanceof ConflictError ? error.code : 'conflict',
-          },
-        );
-      }
-      throw error;
-    }
+    await runVersionedWrite(
+      () =>
+        this.doc.send(
+          new PutCommand({
+            TableName: this.tableName,
+            Item: this.toStoredItem(next),
+            ConditionExpression: VERSION_MATCH_CONDITION,
+            ExpressionAttributeValues: { ':v': expectedVersion },
+          }),
+        ),
+      `Update conflict (${this.config.conflictLabel} version)`,
+      () =>
+        throwVersionConflict(expectedVersion, () =>
+          this.getIncludingDeleted(id),
+        ),
+    );
+    return next;
   }
 
   /**
@@ -253,34 +241,23 @@ export class VersionedEntityRepository<
     tombstone: T,
   ): Promise<T> {
     const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
-    try {
-      await runDynamoWrite(
-        () =>
-          this.doc.send(
-            new PutCommand({
-              TableName: this.tableName,
-              Item: this.toStoredItem(tombstone, { ttl }),
-              ConditionExpression: 'attribute_exists(pk) AND version = :v',
-              ExpressionAttributeValues: { ':v': expectedVersion },
-            }),
-          ),
-        `Delete conflict (${this.config.conflictLabel} version)`,
-      );
-      return tombstone;
-    } catch (error) {
-      if (error instanceof ConflictError || isOptimisticLockConflict(error)) {
-        const current = await this.getIncludingDeleted(id);
-        throw new ConflictError(
-          `Version conflict: expected ${expectedVersion}, current ${current?.version ?? 'unknown'}`,
-          {
-            currentVersion: current?.version,
-            current,
-            code: error instanceof ConflictError ? error.code : 'conflict',
-          },
-        );
-      }
-      throw error;
-    }
+    await runVersionedWrite(
+      () =>
+        this.doc.send(
+          new PutCommand({
+            TableName: this.tableName,
+            Item: this.toStoredItem(tombstone, { ttl }),
+            ConditionExpression: VERSION_MATCH_CONDITION,
+            ExpressionAttributeValues: { ':v': expectedVersion },
+          }),
+        ),
+      `Delete conflict (${this.config.conflictLabel} version)`,
+      () =>
+        throwVersionConflict(expectedVersion, () =>
+          this.getIncludingDeleted(id),
+        ),
+    );
+    return tombstone;
   }
 
   /**

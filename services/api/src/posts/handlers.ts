@@ -90,9 +90,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       params: IdParams,
       body: ExpectedVersionRequestSchema,
       handler: async (_ctx, { params, body }) => {
-        const post = await posts().publish(params.id, {
-          version: body.version,
-        });
+        const post = await posts().publish(params.id, body.version);
         return json(200, PostSchema.parse(post));
       },
     }),

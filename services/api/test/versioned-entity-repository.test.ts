@@ -115,6 +115,31 @@ describe('VersionedEntityRepository (fake note)', () => {
     } satisfies Partial<ConflictError>);
   });
 
+  it('refuses to recreate a hard-deleted item (CHR-161)', async () => {
+    send
+      .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
+      .mockResolvedValueOnce({}); // GetItem: gone
+
+    await expect(
+      repo.updateIfVersion('n1', 1, {
+        id: 'n1',
+        title: 'Resurrected',
+        version: 2,
+        updatedAt: '2026-09-28T00:00:01.000Z',
+      }),
+    ).rejects.toMatchObject({
+      name: 'ConflictError',
+      message: expect.stringContaining('current unknown'),
+    });
+
+    const put = send.mock.calls[0]![0] as {
+      input: { ConditionExpression?: string };
+    };
+    expect(put.input.ConditionExpression).toBe(
+      'attribute_exists(pk) AND version = :v',
+    );
+  });
+
   it('queryPage follows LastEvaluatedKey via opaque cursor', async () => {
     send.mockResolvedValueOnce({
       Items: [

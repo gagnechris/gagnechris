@@ -11,6 +11,7 @@ import {
   EMPTY_SLUG_FALLBACK,
   slugify as sharedSlugify,
 } from '@gagnechris/shared';
+import { deepEqual } from './deep-equal.js';
 import {
   HOME_ID,
   homeMetaSk,
@@ -36,7 +37,15 @@ export function slugify(input: string): string {
   return sharedSlugify(input) || EMPTY_SLUG_FALLBACK;
 }
 
-export const PostMetaItemSchema = z.object({
+/** Shared publishable META fields (status / publishedAt / updatedAt / version). */
+export const PublishableMetaFieldsSchema = z.object({
+  status: PostStatusSchema,
+  publishedAt: z.string().nullable().optional(),
+  updatedAt: z.string().min(1),
+  version: z.number().int().nonnegative().optional(),
+});
+
+export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
   sk: z.string().min(1),
   entityType: z.literal('post'),
@@ -46,19 +55,15 @@ export const PostMetaItemSchema = z.object({
   excerpt: z.string(),
   bodyMarkdown: z.string(),
   tags: z.array(z.string()),
-  status: PostStatusSchema,
-  publishedAt: z.string().nullable().optional(),
-  updatedAt: z.string().min(1),
   coverImage: z.string().nullable().optional(),
   seo: PostSeoSchema.nullable().optional(),
-  version: z.number().int().nonnegative().optional(),
   gsi1pk: z.string().min(1).optional(),
   gsi1sk: z.string().min(1).optional(),
 });
 
 export type PostMetaItem = z.infer<typeof PostMetaItemSchema>;
 
-export const HomeMetaItemSchema = z.object({
+export const HomeMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
   sk: z.string().min(1),
   entityType: z.literal('home'),
@@ -66,16 +71,12 @@ export const HomeMetaItemSchema = z.object({
   name: z.string().min(1),
   title: z.string(),
   about: z.string(),
-  status: PostStatusSchema,
-  publishedAt: z.string().nullable().optional(),
-  updatedAt: z.string().min(1),
   seo: PostSeoSchema.nullable().optional(),
-  version: z.number().int().nonnegative().optional(),
 });
 
 export type HomeMetaItem = z.infer<typeof HomeMetaItemSchema>;
 
-export const ResumeMetaItemSchema = z.object({
+export const ResumeMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
   sk: z.string().min(1),
   entityType: z.literal('resume'),
@@ -83,11 +84,7 @@ export const ResumeMetaItemSchema = z.object({
   name: z.string().min(1),
   pdfPath: z.string().min(1),
   content: ResumeContentSchema,
-  status: PostStatusSchema,
-  publishedAt: z.string().nullable().optional(),
-  updatedAt: z.string().min(1),
   seo: PostSeoSchema.nullable().optional(),
-  version: z.number().int().nonnegative().optional(),
 });
 
 export type ResumeMetaItem = z.infer<typeof ResumeMetaItemSchema>;
@@ -154,9 +151,9 @@ export function postContentEqual(
     a.title === b.title &&
     a.excerpt === b.excerpt &&
     a.bodyMarkdown === b.bodyMarkdown &&
-    JSON.stringify(a.tags) === JSON.stringify(b.tags) &&
+    deepEqual(a.tags, b.tags) &&
     a.coverImage === b.coverImage &&
-    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+    deepEqual(a.seo ?? null, b.seo ?? null)
   );
 }
 
@@ -233,7 +230,7 @@ export function homeContentEqual(
     a.name === b.name &&
     a.title === b.title &&
     a.about === b.about &&
-    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+    deepEqual(a.seo ?? null, b.seo ?? null)
   );
 }
 
@@ -286,8 +283,8 @@ export function resumeContentEqual(
   return (
     a.name === b.name &&
     a.pdfPath === b.pdfPath &&
-    JSON.stringify(a.content) === JSON.stringify(b.content) &&
-    JSON.stringify(a.seo ?? null) === JSON.stringify(b.seo ?? null)
+    deepEqual(a.content, b.content) &&
+    deepEqual(a.seo ?? null, b.seo ?? null)
   );
 }
 

@@ -145,7 +145,7 @@ describe('HomeRepository', () => {
       ),
     );
     await expect(
-      new HomeRepository(doc, 'gagnechris-test').publish(),
+      new HomeRepository(doc, 'gagnechris-test').publish(draft.version),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
@@ -175,7 +175,7 @@ describe('HomeRepository', () => {
       ),
     );
     await expect(
-      new HomeRepository(doc, 'gagnechris-test').publish(),
+      new HomeRepository(doc, 'gagnechris-test').publish(draft.version),
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
@@ -229,7 +229,7 @@ describe('HomeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildHomeMetaItem(draft), buildHomePublishedItem(stored)),
     );
-    const home = await new HomeRepository(doc, 'gagnechris-test').publish();
+    const home = await new HomeRepository(doc, 'gagnechris-test').publish(draft.version);
     expect(home.status).toBe('published');
     expect(home.about).toBe('Edited about');
     expect(home.hasUnpublishedChanges).toBe(false);
@@ -250,7 +250,7 @@ describe('HomeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
     );
-    const home = await new HomeRepository(doc, 'gagnechris-test').publish();
+    const home = await new HomeRepository(doc, 'gagnechris-test').publish(stored.version);
     expect(home.version).toBe(3);
     expect(home.hasUnpublishedChanges).toBe(false);
     expect(
@@ -264,7 +264,7 @@ describe('HomeRepository', () => {
     const { doc, send } = mockDoc(
       mockPair(buildHomeMetaItem(stored), buildHomePublishedItem(stored)),
     );
-    const home = await new HomeRepository(doc, 'gagnechris-test').unpublish();
+    const home = await new HomeRepository(doc, 'gagnechris-test').unpublish(stored.version);
     expect(home.status).toBe('draft');
     expect(home.publishedAt).toBe(stored.publishedAt);
     expect(home.version).toBe(4);
@@ -280,7 +280,7 @@ describe('HomeRepository', () => {
     const { doc } = mockDoc(
       mockPair(buildHomeMetaItem(draft), buildHomePublishedItem(stored)),
     );
-    const home = await new HomeRepository(doc, 'gagnechris-test').discard();
+    const home = await new HomeRepository(doc, 'gagnechris-test').discard(draft.version);
     expect(home.about).toBe(stored.about);
     expect(home.hasUnpublishedChanges).toBe(false);
     expect(home.version).toBe(6);

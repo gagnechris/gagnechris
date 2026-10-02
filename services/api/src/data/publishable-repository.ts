@@ -1,5 +1,5 @@
 /**
- * Publishable layer on VersionedEntityRepository (CHR-129 / CHR-152).
+ * Publishable layer on VersionedEntityRepository (CHR-129 / CHR-152 / CHR-161).
  * One publish/unpublish/discard implementation for keyed + singleton entities.
  */
 import {
@@ -14,8 +14,12 @@ import {
   isOptimisticLockConflict,
 } from '@gagnechris/data';
 import { getDocClient, requireTableName } from './client.js';
-import { runDynamoWrite } from './dynamo-write.js';
 import { ConflictError, NotFoundError } from './errors.js';
+import {
+  VERSION_MATCH_CONDITION,
+  runVersionedWrite,
+  throwVersionConflict,
+} from './version-condition.js';
 import {
   VersionedEntityRepository,
   type VersionedEntityConfig,
@@ -229,97 +233,76 @@ export class PublishableRepository<
   ): Promise<void> {
     const id = this.publishConfig.idOf(after);
     const keys = this.publishConfig.keysFor(id);
-    try {
-      if (options.syncPublished) {
-        await runDynamoWrite(
-          () =>
-            this.doc.send(
-              new TransactWriteCommand({
-                TransactItems: [
-                  {
-                    Put: {
-                      TableName: this.tableName,
-                      Item: this.publishConfig.toItem(after),
-                      ConditionExpression:
-                        'attribute_not_exists(version) OR version = :v',
-                      ExpressionAttributeValues: { ':v': before.version },
-                    },
+    await runVersionedWrite(
+      async () => {
+        if (options.syncPublished) {
+          await this.doc.send(
+            new TransactWriteCommand({
+              TransactItems: [
+                {
+                  Put: {
+                    TableName: this.tableName,
+                    Item: this.publishConfig.toItem(after),
+                    ConditionExpression: VERSION_MATCH_CONDITION,
+                    ExpressionAttributeValues: { ':v': before.version },
                   },
-                  {
-                    Put: {
-                      TableName: this.tableName,
-                      Item: this.publishConfig.toPublishedItem(after),
-                    },
+                },
+                {
+                  Put: {
+                    TableName: this.tableName,
+                    Item: this.publishConfig.toPublishedItem(after),
                   },
-                ],
-              }),
-            ),
-          `Publish conflict (${this.publishConfig.conflictLabel} version)`,
-        );
-        return;
-      }
-      if (options.deletePublished) {
-        await runDynamoWrite(
-          () =>
-            this.doc.send(
-              new TransactWriteCommand({
-                TransactItems: [
-                  {
-                    Put: {
-                      TableName: this.tableName,
-                      Item: this.publishConfig.toItem(after),
-                      ConditionExpression:
-                        'attribute_not_exists(version) OR version = :v',
-                      ExpressionAttributeValues: { ':v': before.version },
-                    },
-                  },
-                  {
-                    Delete: {
-                      TableName: this.tableName,
-                      Key: { pk: keys.pk, sk: keys.publishedSk },
-                    },
-                  },
-                ],
-              }),
-            ),
-          `Unpublish conflict (${this.publishConfig.conflictLabel} version)`,
-        );
-        return;
-      }
-      await runDynamoWrite(
-        () =>
-          this.doc.send(
-            new PutCommand({
-              TableName: this.tableName,
-              Item: this.publishConfig.toItem(after),
-              ConditionExpression:
-                'attribute_not_exists(version) OR version = :v',
-              ExpressionAttributeValues: { ':v': before.version },
+                },
+              ],
             }),
-          ),
-        `Update conflict (${this.publishConfig.conflictLabel} version)`,
-      );
-    } catch (error) {
-      if (error instanceof ConflictError || isOptimisticLockConflict(error)) {
-        if (error instanceof ConflictError && error.code === 'slug_taken') {
-          throw error;
+          );
+          return;
         }
-        const current = await this.getById(id);
-        throw new ConflictError(
-          `Version conflict: expected ${before.version}, current ${current?.version ?? 'unknown'}`,
-          {
-            currentVersion: current?.version,
-            current,
-          },
+        if (options.deletePublished) {
+          await this.doc.send(
+            new TransactWriteCommand({
+              TransactItems: [
+                {
+                  Put: {
+                    TableName: this.tableName,
+                    Item: this.publishConfig.toItem(after),
+                    ConditionExpression: VERSION_MATCH_CONDITION,
+                    ExpressionAttributeValues: { ':v': before.version },
+                  },
+                },
+                {
+                  Delete: {
+                    TableName: this.tableName,
+                    Key: { pk: keys.pk, sk: keys.publishedSk },
+                  },
+                },
+              ],
+            }),
+          );
+          return;
+        }
+        await this.doc.send(
+          new PutCommand({
+            TableName: this.tableName,
+            Item: this.publishConfig.toItem(after),
+            ConditionExpression: VERSION_MATCH_CONDITION,
+            ExpressionAttributeValues: { ':v': before.version },
+          }),
         );
-      }
-      throw error;
-    }
+      },
+      options.syncPublished
+        ? `Publish conflict (${this.publishConfig.conflictLabel} version)`
+        : options.deletePublished
+          ? `Unpublish conflict (${this.publishConfig.conflictLabel} version)`
+          : `Update conflict (${this.publishConfig.conflictLabel} version)`,
+      () => throwVersionConflict(before.version, () => this.getById(id)),
+    );
   }
 
   async publish(
     id: string,
-    options?: { publishedAt?: string; version?: number },
+    expectedVersion: number,
+    options?: { publishedAt?: string },
   ): Promise<T> {
     const loaded = await this.loadDraftAndPublished(id);
     if (!loaded) {
@@ -327,14 +310,21 @@ export class PublishableRepository<
         `${this.publishConfig.conflictLabel} ${id} not found`,
       );
     }
+    return this.publishLoaded(loaded, expectedVersion, options);
+  }
+
+  /** Publish from an already-loaded draft/published pair (avoids a second read). */
+  async publishLoaded(
+    loaded: LoadedPair<T>,
+    expectedVersion: number,
+    options?: { publishedAt?: string },
+  ): Promise<T> {
     const existing = withUnpublishedFlag(
       loaded.draft,
       loaded.published,
       this.publishConfig.contentEqual,
     );
-    if (options?.version !== undefined) {
-      assertExpectedVersion(existing, options.version);
-    }
+    assertExpectedVersion(existing, expectedVersion);
     const published = loaded.published;
     if (
       existing.status === 'published' &&
@@ -357,21 +347,26 @@ export class PublishableRepository<
     return withUnpublishedFlag(next, next, this.publishConfig.contentEqual);
   }
 
-  async unpublish(id: string, expectedVersion?: number): Promise<T> {
+  async unpublish(id: string, expectedVersion: number): Promise<T> {
     const loaded = await this.loadDraftAndPublished(id);
     if (!loaded) {
       throw new NotFoundError(
         `${this.publishConfig.conflictLabel} ${id} not found`,
       );
     }
+    return this.unpublishLoaded(loaded, expectedVersion);
+  }
+
+  async unpublishLoaded(
+    loaded: LoadedPair<T>,
+    expectedVersion: number,
+  ): Promise<T> {
     const existing = withUnpublishedFlag(
       loaded.draft,
       loaded.published,
       this.publishConfig.contentEqual,
     );
-    if (expectedVersion !== undefined) {
-      assertExpectedVersion(existing, expectedVersion);
-    }
+    assertExpectedVersion(existing, expectedVersion);
     if (existing.status !== 'published') {
       return withUnpublishedFlag(
         existing,
@@ -387,21 +382,26 @@ export class PublishableRepository<
     return next;
   }
 
-  async discard(id: string, expectedVersion?: number): Promise<T> {
+  async discard(id: string, expectedVersion: number): Promise<T> {
     const loaded = await this.loadDraftAndPublished(id);
     if (!loaded) {
       throw new NotFoundError(
         `${this.publishConfig.conflictLabel} ${id} not found`,
       );
     }
+    return this.discardLoaded(loaded, expectedVersion);
+  }
+
+  async discardLoaded(
+    loaded: LoadedPair<T>,
+    expectedVersion: number,
+  ): Promise<T> {
     const existing = withUnpublishedFlag(
       loaded.draft,
       loaded.published,
       this.publishConfig.contentEqual,
     );
-    if (expectedVersion !== undefined) {
-      assertExpectedVersion(existing, expectedVersion);
-    }
+    assertExpectedVersion(existing, expectedVersion);
     const published = loaded.published;
     if (!published) {
       return withUnpublishedFlag(
@@ -445,6 +445,7 @@ export class PublishableSingletonRepository<
 > {
   protected readonly store: PublishableRepository<T, TItem>;
   private readonly singletonId: string;
+  private readonly conflictLabel: string;
   private readonly defaultEntity: T;
   private readonly mergeUpdateFn: (existing: T, input: TUpdate) => T;
   private readonly contentEqual: (a: T, b: T) => boolean;
@@ -459,16 +460,13 @@ export class PublishableSingletonRepository<
   ) {
     this.store = new PublishableRepository(config, doc, tableName);
     this.singletonId = config.singletonId;
+    this.conflictLabel = config.conflictLabel;
     this.defaultEntity = config.defaultEntity;
     this.mergeUpdateFn = config.mergeUpdate;
     this.contentEqual = config.contentEqual;
     this.toItem = config.toItem;
     this.doc = doc;
     this.tableName = tableName;
-  }
-
-  async getPublished(): Promise<T | undefined> {
-    return this.store.getPublished(this.singletonId);
   }
 
   async get(): Promise<T | undefined> {
@@ -505,6 +503,20 @@ export class PublishableSingletonRepository<
     return seeded;
   }
 
+  /** Load draft+published, seeding a draft row when missing. */
+  private async loadOrCreate(): Promise<LoadedPair<T>> {
+    const loaded = await this.store.loadDraftAndPublished(this.singletonId);
+    if (loaded) return loaded;
+    await this.getOrCreate();
+    const after = await this.store.loadDraftAndPublished(this.singletonId);
+    if (!after) {
+      throw new NotFoundError(
+        `${this.conflictLabel} ${this.singletonId} not found`,
+      );
+    }
+    return after;
+  }
+
   async update(input: TUpdate): Promise<T> {
     const loaded = await this.store.loadDraftAndPublished(this.singletonId);
     const existing = loaded
@@ -521,25 +533,21 @@ export class PublishableSingletonRepository<
     return withUnpublishedFlag(next, loaded?.published, this.contentEqual);
   }
 
-  async publish(expectedVersion?: number): Promise<T> {
-    await this.getOrCreate();
-    return this.store.publish(this.singletonId, { version: expectedVersion });
+  async publish(
+    expectedVersion: number,
+    options?: { publishedAt?: string },
+  ): Promise<T> {
+    const loaded = await this.loadOrCreate();
+    return this.store.publishLoaded(loaded, expectedVersion, options);
   }
 
-  async unpublish(expectedVersion?: number): Promise<T> {
-    await this.getOrCreate();
-    return this.store.unpublish(this.singletonId, expectedVersion);
+  async unpublish(expectedVersion: number): Promise<T> {
+    const loaded = await this.loadOrCreate();
+    return this.store.unpublishLoaded(loaded, expectedVersion);
   }
 
-  async discard(expectedVersion?: number): Promise<T> {
-    await this.getOrCreate();
-    return this.store.discard(this.singletonId, expectedVersion);
+  async discard(expectedVersion: number): Promise<T> {
+    const loaded = await this.loadOrCreate();
+    return this.store.discardLoaded(loaded, expectedVersion);
   }
 }
-
-/** @deprecated Use PublishableSingletonConfig */
-export type PublishableRepositoryConfig<
-  T extends PublishableEntity,
-  TItem extends Record<string, unknown>,
-  TUpdate extends { version: number },
-> = PublishableSingletonConfig<T, TItem, TUpdate>;

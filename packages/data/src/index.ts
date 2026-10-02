@@ -88,11 +88,14 @@ export {
   type DynamoStreamKeyImage,
 } from './publish-relevance.js';
 
+export { deepEqual } from './deep-equal.js';
+
 export {
   ContactEmailStatusSchema,
   ContactMsgItemSchema,
   HomeMetaItemSchema,
   PostMetaItemSchema,
+  PublishableMetaFieldsSchema,
   ResumeMetaItemSchema,
   buildHomeMetaItem,
   buildHomePublishedItem,

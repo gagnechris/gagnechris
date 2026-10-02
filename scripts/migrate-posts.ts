@@ -135,7 +135,7 @@ async function main(): Promise<void> {
     console.log(`create slug=${slug} id=${draft.id}`);
 
     if (target.status === 'published') {
-      const live = await repo.publish(draft.id, {
+      const live = await repo.publish(draft.id, draft.version, {
         publishedAt: parsed.publishedAt ?? undefined,
       });
       published += 1;

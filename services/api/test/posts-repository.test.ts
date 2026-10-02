@@ -129,7 +129,7 @@ describe('PostsRepository', () => {
       return {};
     });
     const repo = new PostsRepository(doc, 'gagnechris-test');
-    const published = await repo.publish(draft.id);
+    const published = await repo.publish(draft.id, draft.version);
     expect(published.status).toBe('published');
     expect(published.publishedAt).toBeTruthy();
     expect(published.version).toBe(2);
@@ -147,7 +147,7 @@ describe('PostsRepository', () => {
       return {};
     });
     const repo = new PostsRepository(doc, 'gagnechris-test');
-    const published = await repo.publish(draft.id, {
+    const published = await repo.publish(draft.id, draft.version, {
       publishedAt: '2026-02-01T00:00:00.000Z',
     });
     expect(published.publishedAt).toBe('2026-02-01T00:00:00.000Z');
@@ -240,7 +240,7 @@ describe('PostsRepository', () => {
     );
     const doc = { send } as unknown as DynamoDBDocumentClient;
     const repo = new PostsRepository(doc, 'gagnechris-test');
-    const next = await repo.publish(published.id);
+    const next = await repo.publish(published.id, published.version);
     expect(next.title).toBe('Draft title');
     expect(next.hasUnpublishedChanges).toBe(false);
     const tx = send.mock.calls.find(
@@ -257,7 +257,7 @@ describe('PostsRepository', () => {
     expect(sks.sort()).toEqual(['META', 'PUBLISHED']);
   });
 
-  it('multi-status list follows LastEvaluatedKey on every status (CHR-152)', async () => {
+  it('multi-status list pages published then draft with no drops/duplicates (CHR-161)', async () => {
     const draftA = buildMetaItem(draft);
     const publishedPost: Post = {
       ...draft,
@@ -314,24 +314,32 @@ describe('PostsRepository', () => {
     });
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const first = await repo.list(undefined, { limit: 1 });
-    expect(first.items).toHaveLength(1);
+    expect(first.items.map((p) => p.id)).toEqual([publishedPost.id]);
     expect(first.nextCursor).toBeTruthy();
+
     const second = await repo.list(undefined, {
       cursor: first.nextCursor,
       limit: 1,
     });
-    expect(second.items.length).toBeGreaterThanOrEqual(0);
+    expect(second.items.map((p) => p.id)).toEqual([draft.id]);
     expect(second.nextCursor).toBeTruthy();
+
     const third = await repo.list(undefined, {
       cursor: second.nextCursor,
       limit: 1,
     });
-    // After draft LEK then published LEK, eventual exhaustion
-    expect(draftCalls).toBeGreaterThanOrEqual(1);
-    expect(publishedCalls).toBeGreaterThanOrEqual(1);
-    expect(
-      third.items.length + second.items.length + first.items.length,
-    ).toBeGreaterThan(0);
+    expect(third.items).toEqual([]);
+    expect(third.nextCursor).toBeUndefined();
+
+    const allIds = [
+      ...first.items,
+      ...second.items,
+      ...third.items,
+    ].map((p) => p.id);
+    expect(allIds).toEqual([publishedPost.id, draft.id]);
+    expect(new Set(allIds).size).toBe(allIds.length);
+    expect(publishedCalls).toBe(2);
+    expect(draftCalls).toBe(2);
   });
 
   it('rejects a tampered GSI cursor with SyntaxError (400)', async () => {
