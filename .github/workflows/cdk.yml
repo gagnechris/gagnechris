@@ -58,6 +58,11 @@ jobs:
       - name: CDK synth
         run: npm run cdk -- synth --quiet
 
+      # Live GSI guard: Compare APP_TABLE to DescribeTable so bumping
+      # LAST_DEPLOYED_GSIS in the same PR cannot hide a multi-GSI change (CHR-174).
+      - name: Assert GSI update vs deployed table
+        run: npm run check:deployed-gsi
+
       - name: CDK diff
         id: cdk_diff
         run: |

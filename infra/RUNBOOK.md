@@ -205,9 +205,24 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
 
-**GSI updates:** CloudFormation allows at most one GSI create or delete per table update. `assertSafeGsiUpdate` / `LAST_DEPLOYED_GSIS` in `@gagnechris/data` fail CI if a PR adds/removes more than one index, or changes an existing index key schema, vs the last deployed set. After a successful single-GSI deploy, bump `LAST_DEPLOYED_GSIS` to match `APP_TABLE` (names **and** key attributes).
+**GSI updates (one index per deploy):** CloudFormation allows at most one GSI create or delete per table update. Key-schema or projection changes count as delete + create and must be split across deploys.
 
-**CHR-153 / CHR-163:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` includes `gsi1`/`gsi2`/`gsi3` in lockstep with `APP_TABLE`.
+CI enforces this two ways (CHR-174):
+
+1. **Offline:** `assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)` runs in DataStack synth and in `@gagnechris/data` unit tests. `LAST_DEPLOYED_GSIS` is **independent** of `APP_TABLE` — a PR may add one GSI to `APP_TABLE` without bumping the baseline.
+2. **Live (PR CDK diff):** `npm run check:deployed-gsi` `DescribeTable`s `gagnechris-prod` and compares to `APP_TABLE`, so bumping `LAST_DEPLOYED_GSIS` in the same PR cannot hide a multi-GSI change.
+
+### Notebook / multi-index rollout
+
+When Notebook (or any feature) needs several new indexes:
+
+1. Add **one** GSI to `APP_TABLE` (and attribute defs / local bootstrap follow automatically).
+2. Open a PR. Unit tests + `check:deployed-gsi` must pass (exactly one create vs deployed).
+3. Merge; wait for `Data-prod` deploy to finish.
+4. Bump `LAST_DEPLOYED_GSIS` in `@gagnechris/data` to match `APP_TABLE` (names, key attributes, **and** projection) in a follow-up commit/PR (or the next index PR).
+5. Repeat for each additional index. Never add two GSIs (or delete one and create another) in the same deploy.
+
+**CHR-153 / CHR-163 / CHR-174:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` currently matches that set and lags `APP_TABLE` by at most one intentional create.
 
 **CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
 

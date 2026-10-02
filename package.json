@@ -40,7 +40,8 @@
     "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
     "mobile": "npm start --prefix apps/mobile",
     "check:rn-bundles": "tsx scripts/check-rn-bundles.ts",
-    "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs"
+    "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs",
+    "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts"
   },
   "engines": {
     "node": "^22.12.0"

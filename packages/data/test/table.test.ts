@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   APP_TABLE,
-  LAST_DEPLOYED_GSI_NAMES,
   LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
   appTableName,
+  assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
+  tableIndexesFromDescribeTable,
   type TableIndexDefinition,
 } from '../src/table.js';
 import {
@@ -13,6 +14,20 @@ import {
   isPublishRelevantAdminMutation,
   PUBLISH_STREAM_SK,
 } from '../src/publish-relevance.js';
+
+const gsi4: TableIndexDefinition = {
+  indexName: 'gsi4',
+  partitionKey: { name: 'gsi4pk', type: 'S' },
+  sortKey: { name: 'gsi4sk', type: 'S' },
+  projectionType: 'ALL',
+};
+
+const gsi5: TableIndexDefinition = {
+  indexName: 'gsi5',
+  partitionKey: { name: 'gsi5pk', type: 'S' },
+  sortKey: { name: 'gsi5sk', type: 'S' },
+  projectionType: 'ALL',
+};
 
 describe('APP_TABLE', () => {
   it('names env tables consistently', () => {
@@ -39,21 +54,15 @@ describe('APP_TABLE', () => {
     ]);
   });
 
-  it('keeps LAST_DEPLOYED_GSIS in strict equality with APP_TABLE (CHR-163)', () => {
-    expect(LAST_DEPLOYED_GSI_NAMES).toEqual(
-      APP_TABLE.globalSecondaryIndexes.map((g) => g.indexName),
-    );
-    assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, APP_TABLE.globalSecondaryIndexes);
-    expect(LAST_DEPLOYED_GSIS).toEqual(APP_TABLE.globalSecondaryIndexes);
+  it('keeps APP_TABLE within one GSI step of LAST_DEPLOYED_GSIS (CHR-174)', () => {
+    // LAST_DEPLOYED stays independent of APP_TABLE — do not require equality.
+    // A PR may add one index; bump LAST_DEPLOYED only after that deploy.
+    expect(() => assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)).not.toThrow();
   });
+});
 
+describe('assertSafeGsiUpdate (CHR-174)', () => {
   it('allows a single GSI create vs last deployed', () => {
-    const gsi4: TableIndexDefinition = {
-      indexName: 'gsi4',
-      partitionKey: { name: 'gsi4pk', type: 'S' },
-      sortKey: { name: 'gsi4sk', type: 'S' },
-      projectionType: 'ALL',
-    };
     expect(() =>
       assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [
         ...APP_TABLE.globalSecondaryIndexes,
@@ -62,22 +71,26 @@ describe('APP_TABLE', () => {
     ).not.toThrow();
   });
 
-  it('fails when removing gsi3 and adding gsi4 in one update (CHR-163)', () => {
+  it('fails when two GSIs are created in one update', () => {
+    expect(() =>
+      assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [
+        ...APP_TABLE.globalSecondaryIndexes,
+        gsi4,
+        gsi5,
+      ]),
+    ).toThrow(/at most one GSI create or delete/);
+  });
+
+  it('fails when removing gsi3 and adding gsi4 in one update', () => {
     const withoutGsi3 = APP_TABLE.globalSecondaryIndexes.filter(
       (g) => g.indexName !== 'gsi3',
     );
-    const gsi4: TableIndexDefinition = {
-      indexName: 'gsi4',
-      partitionKey: { name: 'gsi4pk', type: 'S' },
-      sortKey: { name: 'gsi4sk', type: 'S' },
-      projectionType: 'ALL',
-    };
     expect(() =>
       assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [...withoutGsi3, gsi4]),
     ).toThrow(/at most one GSI create or delete/);
   });
 
-  it('fails when an existing GSI key schema changes (CHR-163)', () => {
+  it('fails when an existing GSI key schema changes', () => {
     const next = APP_TABLE.globalSecondaryIndexes.map((g) =>
       g.indexName === 'gsi3'
         ? {
@@ -88,8 +101,64 @@ describe('APP_TABLE', () => {
         : g,
     );
     expect(() => assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, next)).toThrow(
-      /key schema/,
+      /key schema or projection/,
     );
+  });
+
+  it('fails when an existing GSI projection changes', () => {
+    const next = APP_TABLE.globalSecondaryIndexes.map((g) =>
+      g.indexName === 'gsi3'
+        ? { ...g, projectionType: 'KEYS_ONLY' as const }
+        : g,
+    );
+    expect(() => assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, next)).toThrow(
+      /key schema or projection/,
+    );
+  });
+});
+
+describe('tableIndexesFromDescribeTable (CHR-174)', () => {
+  it('maps DescribeTable GSIs into TableIndexDefinition', () => {
+    const indexes = tableIndexesFromDescribeTable({
+      AttributeDefinitions: [
+        { AttributeName: 'gsi1pk', AttributeType: 'S' },
+        { AttributeName: 'gsi1sk', AttributeType: 'S' },
+        { AttributeName: 'syncPk', AttributeType: 'S' },
+        { AttributeName: 'syncSk', AttributeType: 'S' },
+      ],
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'gsi1',
+          KeySchema: [
+            { AttributeName: 'gsi1pk', KeyType: 'HASH' },
+            { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+        {
+          IndexName: 'gsi3',
+          KeySchema: [
+            { AttributeName: 'syncPk', KeyType: 'HASH' },
+            { AttributeName: 'syncSk', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'KEYS_ONLY' },
+        },
+      ],
+    });
+    expect(indexes).toEqual([
+      {
+        indexName: 'gsi1',
+        partitionKey: { name: 'gsi1pk', type: 'S' },
+        sortKey: { name: 'gsi1sk', type: 'S' },
+        projectionType: 'ALL',
+      },
+      {
+        indexName: 'gsi3',
+        partitionKey: { name: 'syncPk', type: 'S' },
+        sortKey: { name: 'syncSk', type: 'S' },
+        projectionType: 'KEYS_ONLY',
+      },
+    ]);
   });
 });
 
