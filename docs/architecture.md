@@ -182,6 +182,20 @@ DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
 CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`) in the iOS export sourcemap (CHR-164).
 
+## Notebook attachments + deploy excludes (CHR-175)
+
+**Public blog media (`/media/*`)** stays on the site bucket and CloudFront with long cache (CHR-31). It is the wrong place for Notebook attachments (private notes/tasks).
+
+**Decision — private Notebook attachments:**
+
+- Store objects in a **separate private S3 bucket** (or a non-CloudFront prefix that is never published as a public behavior). Not under `/media/*` on the site bucket.
+- API issues **short-lived presigned GET/PUT** URLs after auth (`/api/notebook/...`). No public CloudFront cache for note attachments.
+- Bucket encryption + block public access; optional KMS CMK later with the Backup vault CMK follow-up.
+
+**`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Current excludes include `blog/*`, `resume/*`, `home/*`, `media/*`, **`notebook/*`** (reserved for any future site-bucket notebook exports), `sitemap.xml`, `rss.xml`. When CHR-42 adds attachments, put bytes in the private bucket above — do not rely on `/media/*`.
+
+**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are; treat Backup + rehearsed PITR restore as required before storing irreplaceable notes.
+
 ## Related
 
 - CDK / ops: [../infra/RUNBOOK.md](../infra/RUNBOOK.md)

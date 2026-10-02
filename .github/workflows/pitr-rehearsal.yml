@@ -1,0 +1,51 @@
+# Manual PITR restore rehearsal into a scratch table (CHR-175).
+# Does not rename or delete gagnechris-prod.
+name: PITR restore rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep_target:
+        description: 'Leave the restored scratch table (1) or delete it (0)'
+        type: choice
+        options:
+          - '0'
+          - '1'
+        default: '0'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  rehearse:
+    name: Restore scratch table and compare counts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials (deploy role)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rehearse PITR restore
+        env:
+          KEEP_TARGET: ${{ inputs.keep_target }}
+        run: |
+          chmod +x scripts/rehearse-pitr-restore.sh
+          scripts/rehearse-pitr-restore.sh | tee pitr-rehearsal.log
+
+      - name: Upload rehearsal log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pitr-rehearsal-log
+          path: pitr-rehearsal.log

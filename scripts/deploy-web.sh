@@ -2,7 +2,8 @@
 # Build apps/web and sync to the prod Site bucket, then invalidate CloudFront.
 # Bucket / distribution IDs come from SSM (written by Site-prod) — nothing hard-coded.
 #
-# Publisher-owned paths are never deleted: /blog/*, /resume/*, /home/*, /media/*, sitemap.xml, rss.xml
+# Publisher-owned paths are never deleted: /blog/*, /resume/*, /home/*, /media/*,
+# /notebook/* (reserved; CHR-175), sitemap.xml, rss.xml
 set -euo pipefail
 
 ENV_NAME="${ENV_NAME:-prod}"
@@ -88,6 +89,7 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --exclude "resume.pdf" \
   --exclude "home/*" \
   --exclude "media/*" \
+  --exclude "notebook/*" \
   --exclude "sitemap.xml" \
   --exclude "rss.xml" \
   --cache-control "public,max-age=0,must-revalidate" \
