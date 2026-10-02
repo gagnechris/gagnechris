@@ -13,6 +13,7 @@ import { createContactRoutes } from './contact/handlers.js';
 import { homeRoutes } from './home/handlers.js';
 import { json } from './http.js';
 import { mediaRoutes } from './media/handlers.js';
+import { noteRoutes } from './notes/handlers.js';
 import { createPostRoutes } from './posts/handlers.js';
 import { resumeRoutes } from './resume/handlers.js';
 import { defineRoute, type RouteDef } from './router.js';
@@ -57,5 +58,6 @@ export const routes: RouteDef[] = [
   ...homeRoutes,
   ...resumeRoutes,
   ...mediaRoutes,
+  ...noteRoutes,
   ...syncRoutes,
 ];

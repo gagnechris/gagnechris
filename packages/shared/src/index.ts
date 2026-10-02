@@ -24,6 +24,8 @@ export {
   CreateNoteRequestSchema,
   CreatePostRequestSchema,
   CreateTaskRequestSchema,
+  DailyNoteGetResponseSchema,
+  EmptyDailyNoteSchema,
   ErrorResponseSchema,
   ExpectedVersionRequestSchema,
   ListNotesQuerySchema,
@@ -71,6 +73,7 @@ export {
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
   UpdateTaskRequestSchema,
+  UpsertDailyNoteRequestSchema,
   type AdminMeResponse,
   type CalendarDate,
   type ConflictErrorResponse,
@@ -79,6 +82,8 @@ export {
   type CreateNoteRequest,
   type CreatePostRequest,
   type CreateTaskRequest,
+  type DailyNoteGetResponse,
+  type EmptyDailyNote,
   type ErrorResponse,
   type ExpectedVersionRequest,
   type ListNotesQuery,
@@ -120,6 +125,7 @@ export {
   type UpdatePostRequest,
   type UpdateResumeRequest,
   type UpdateTaskRequest,
+  type UpsertDailyNoteRequest,
 } from './schemas.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';

@@ -32,12 +32,16 @@ import {
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
   UpdateResumeRequestSchema,
+  CalendarDateSchema,
   CreateNoteRequestSchema,
   CreateTaskRequestSchema,
+  DailyNoteGetResponseSchema,
+  EmptyDailyNoteSchema,
   FakeNoteEntitySchema,
   FakeNoteSyncChangeSchema,
   ListNotesQuerySchema,
   ListTasksQuerySchema,
+  NotebookAreaSchema,
   NoteListResponseSchema,
   NoteSchema,
   NoteSyncChangeSchema,
@@ -49,6 +53,7 @@ import {
   TaskSyncChangeSchema,
   UpdateNoteRequestSchema,
   UpdateTaskRequestSchema,
+  UpsertDailyNoteRequestSchema,
 } from './schemas.js';
 
 const PostIdParamsSchema = z.object({
@@ -63,6 +68,19 @@ const MediaObjectKeyParamsSchema = z.object({
   key: z.string().min(1).openapi({
     description: 'Object key under media/ (may include slashes)',
   }),
+});
+
+const NoteIdParamsSchema = z.object({
+  id: UlidSchema.openapi({
+    description: 'Note id (ULID)',
+    type: 'string',
+    pattern: ULID_PATTERN,
+  }),
+});
+
+const DailyNoteParamsSchema = z.object({
+  area: NotebookAreaSchema,
+  date: CalendarDateSchema,
 });
 
 /** Optional If-Match on versioned mutations (CHR-171). */
@@ -184,6 +202,9 @@ export function buildOpenApiDocument() {
   registry.register('CreateNoteRequest', CreateNoteRequestSchema);
   registry.register('UpdateNoteRequest', UpdateNoteRequestSchema);
   registry.register('ListNotesQuery', ListNotesQuerySchema);
+  registry.register('EmptyDailyNote', EmptyDailyNoteSchema);
+  registry.register('DailyNoteGetResponse', DailyNoteGetResponseSchema);
+  registry.register('UpsertDailyNoteRequest', UpsertDailyNoteRequestSchema);
   registry.register('Task', TaskSchema);
   registry.register('TaskListResponse', TaskListResponseSchema);
   registry.register('CreateTaskRequest', CreateTaskRequestSchema);
@@ -554,6 +575,137 @@ export function buildOpenApiDocument() {
       400: r400,
       404: err('Not available outside filesystem mode'),
       ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/notebook/notes',
+    summary: 'List notes for the authenticated user',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { query: ListNotesQuerySchema },
+    responses: {
+      200: ok(NoteListResponseSchema, 'Note page'),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/notebook/notes',
+    summary: 'Create a note (client ULID; idempotent)',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: CreateNoteRequestSchema },
+        },
+      },
+    },
+    responses: {
+      201: okWithEtag(NoteSchema, 'Created'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/notebook/notes/daily/{area}/{date}',
+    summary: 'Get daily note or empty draft placeholder',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { params: DailyNoteParamsSchema },
+    responses: {
+      200: ok(DailyNoteGetResponseSchema, 'Daily note or empty draft'),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/notebook/notes/daily/{area}/{date}',
+    summary: 'Create or update the daily note for an area/date',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: DailyNoteParamsSchema,
+      headers: IfMatchHeadersSchema,
+      body: {
+        content: {
+          'application/json': { schema: UpsertDailyNoteRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: okWithEtag(NoteSchema, 'Upserted daily note'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/notebook/notes/{id}',
+    summary: 'Get a note by id',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { params: NoteIdParamsSchema },
+    responses: {
+      200: okWithEtag(NoteSchema, 'Note'),
+      400: r400,
+      404: r404,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/notebook/notes/{id}',
+    summary: 'Update a note',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: NoteIdParamsSchema,
+      headers: IfMatchHeadersSchema,
+      body: {
+        content: {
+          'application/json': { schema: UpdateNoteRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: okWithEtag(NoteSchema, 'Updated'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path: '/api/notebook/notes/{id}',
+    summary: 'Soft-delete a note',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: NoteIdParamsSchema,
+      ...versionBody,
+    },
+    responses: {
+      200: okWithEtag(NoteSchema, 'Soft-deleted'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
     },
   });
 

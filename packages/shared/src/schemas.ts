@@ -467,6 +467,44 @@ export const ListNotesQuerySchema = z.object({
 
 export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
 
+/** Empty daily-note placeholder when no claim exists yet (CHR-40 GET daily). */
+export const EmptyDailyNoteSchema = z.object({
+  exists: z.literal(false),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  type: z.literal('daily'),
+  date: CalendarDateSchema,
+  title: z.literal(''),
+  bodyMarkdown: z.literal(''),
+  tags: z.array(z.string()).length(0),
+  pinned: z.literal(false),
+  version: z.literal(0),
+});
+
+export type EmptyDailyNote = z.infer<typeof EmptyDailyNoteSchema>;
+
+/** GET daily: persisted Note or empty draft placeholder. */
+export const DailyNoteGetResponseSchema = z.union([
+  NoteSchema,
+  EmptyDailyNoteSchema,
+]);
+
+export type DailyNoteGetResponse = z.infer<typeof DailyNoteGetResponseSchema>;
+
+/** PUT /notebook/notes/daily/{area}/{date} body (CHR-40). */
+export const UpsertDailyNoteRequestSchema = z.object({
+  id: UlidSchema.describe('Client ULID used when creating the daily note'),
+  version: z.number().int().nonnegative().optional(),
+  title: z.string().optional(),
+  bodyMarkdown: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  pinned: z.boolean().optional(),
+});
+
+export type UpsertDailyNoteRequest = z.infer<
+  typeof UpsertDailyNoteRequestSchema
+>;
+
 /**
  * Notebook task API entity (CHR-39). `dueDate` is a calendar day; undated
  * tasks sort separately from due/overdue ranges in Dynamo (UPDATED# prefix).
