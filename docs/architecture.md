@@ -157,7 +157,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - A future `X-Client-Version` / minimum-client gate may return **426**; until then there is no min-client header.
 - On **410 `resync_required`**, discard tombstone-dependent local state and re-fetch with no `since`.
 
-Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union alongside `note` / `task` (CHR-39). HTTP routes for real notes/tasks ship in CHR-40 / CHR-43. Details: [data-model.md](./data-model.md).
+Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union alongside `note` / `task`. Real notes HTTP routes live under `/api/notebook/notes*` (CHR-40); tasks ship in CHR-43. Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 
