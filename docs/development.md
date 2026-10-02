@@ -32,6 +32,8 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 
 Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/blog` / `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
 
+**Admin PWA (CHR-48):** production `/spa.html` (CloudFront `/admin/*`) ships `manifest.json` + `/icons/*` for iPhone Add to Home Screen (`display: standalone`, start at `/admin/notebook`). Vite serves the same files from `apps/web/public/` in local dev; offline caching is optional and not enabled yet.
+
 More detail: [local-e2e.md](./local-e2e.md).
 
 ## Vite-only

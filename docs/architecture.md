@@ -141,6 +141,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Tasks (CHR-44):** list with quick-add (`!high` / `today` / `tomorrow`), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
 - **Search (CHR-46):** `GET /api/notebook/search?q=` scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets.
 - **Export (CHR-47):** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup stay in `infra/RUNBOOK.md`.
+- **PWA (CHR-48):** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. Offline read-only cache is optional and not required for installability.
 
 ## Notebook sync contract (CHR-153 / CHR-162 / CHR-172)
 
