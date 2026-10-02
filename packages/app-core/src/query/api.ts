@@ -4,12 +4,15 @@ export type Post = components['schemas']['Post'];
 export type Home = components['schemas']['Home'];
 export type Resume = components['schemas']['Resume'];
 export type Note = components['schemas']['Note'];
+export type Task = components['schemas']['Task'];
 export type CreatePostRequest = components['schemas']['CreatePostRequest'];
 export type UpdatePostRequest = components['schemas']['UpdatePostRequest'];
 export type UpdateHomeRequest = components['schemas']['UpdateHomeRequest'];
 export type UpdateResumeRequest = components['schemas']['UpdateResumeRequest'];
 export type CreateNoteRequest = components['schemas']['CreateNoteRequest'];
 export type UpdateNoteRequest = components['schemas']['UpdateNoteRequest'];
+export type CreateTaskRequest = components['schemas']['CreateTaskRequest'];
+export type UpdateTaskRequest = components['schemas']['UpdateTaskRequest'];
 export type UpsertDailyNoteRequest =
   components['schemas']['UpsertDailyNoteRequest'];
 export type EmptyDailyNote = components['schemas']['EmptyDailyNote'];
@@ -17,6 +20,8 @@ export type ExpectedVersionRequest =
   components['schemas']['ExpectedVersionRequest'];
 export type NotebookArea = Note['area'];
 export type NoteType = Note['type'];
+export type TaskStatus = Task['status'];
+export type TaskPriority = Task['priority'];
 
 export class ApiError extends Error {
   readonly status: number;
@@ -358,4 +363,98 @@ export const upsertDailyNote = async (
     body,
   });
   return unwrap(result, 'Could not save daily note');
+};
+
+export type TasksPage = {
+  items: Task[];
+  nextCursor?: string;
+};
+
+export type ListTasksQuery = {
+  area?: NotebookArea;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueOn?: string;
+  dueBefore?: string;
+  noteId?: string;
+  cursor?: string;
+  limit?: number;
+};
+
+export const fetchTasksPage = async (
+  client: ApiClient,
+  query: ListTasksQuery = {},
+): Promise<TasksPage> => {
+  const result = await client.GET('/api/notebook/tasks', {
+    params: { query },
+  });
+  const data = unwrap(result, 'Could not load tasks');
+  return {
+    items: data.items.filter((t) => !t.deleted),
+    nextCursor: data.nextCursor,
+  };
+};
+
+export const fetchTask = async (
+  client: ApiClient,
+  id: string,
+): Promise<Task> => {
+  const result = await client.GET('/api/notebook/tasks/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Could not load task');
+};
+
+export const createTask = async (
+  client: ApiClient,
+  body: CreateTaskRequest,
+): Promise<Task> => {
+  const result = await client.POST('/api/notebook/tasks', { body });
+  return unwrap(result, 'Could not create task');
+};
+
+export const updateTask = async (
+  client: ApiClient,
+  id: string,
+  body: UpdateTaskRequest,
+): Promise<Task> => {
+  const result = await client.PUT('/api/notebook/tasks/{id}', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not save task');
+};
+
+export const deleteTask = async (
+  client: ApiClient,
+  id: string,
+): Promise<Task> => {
+  const result = await client.DELETE('/api/notebook/tasks/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Delete failed');
+};
+
+export const completeTask = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Task> => {
+  const result = await client.POST('/api/notebook/tasks/{id}/complete', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not complete task');
+};
+
+export const reopenTask = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Task> => {
+  const result = await client.POST('/api/notebook/tasks/{id}/reopen', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not reopen task');
 };

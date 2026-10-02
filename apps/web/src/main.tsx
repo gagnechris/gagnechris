@@ -101,10 +101,15 @@ const router = createBrowserRouter(
                   load: () =>
                     import('./admin/notebook/AdminNotebookNotePage.tsx'),
                 }),
-                // Tasks body: CHR-44.
                 lazyRoute({
                   path: 'tasks',
-                  load: () => import('./admin/AdminNotebookPage.tsx'),
+                  load: () =>
+                    import('./admin/notebook/AdminNotebookTasksPage.tsx'),
+                }),
+                lazyRoute({
+                  path: 'tasks/:id',
+                  load: () =>
+                    import('./admin/notebook/AdminNotebookTaskPage.tsx'),
                 }),
               ],
             }),

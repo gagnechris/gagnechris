@@ -138,7 +138,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Child pages read the filter via React Router outlet context.
 - **Today (CHR-42):** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict.
 - **Pages (CHR-42):** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
-- Tasks body: CHR-44.
+- **Tasks (CHR-44):** list with quick-add (`!high` / `today` / `tomorrow`), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
 
 ## Notebook sync contract (CHR-153 / CHR-162 / CHR-172)
 

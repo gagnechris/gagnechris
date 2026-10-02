@@ -16,8 +16,8 @@ function sectionFromPath(pathname: string): string {
 }
 
 /**
- * Placeholder body for notebook sections until CHR-42 (notes) / CHR-44 (tasks).
- * Reads the persisted area filter from the layout outlet context.
+ * Lightweight placeholder used by layout unit tests (real Today/Notes/Tasks
+ * pages are wired in `main.tsx`).
  */
 export default function AdminNotebookPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
