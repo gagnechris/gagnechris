@@ -75,9 +75,12 @@ describe('resume target PDF failure (CHR-166)', () => {
       },
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => publishedResume,
-        getPublishedHome: async () => undefined,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({
+          status: 'ok' as const,
+          entity: publishedResume,
+        }),
+        getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
 
