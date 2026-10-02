@@ -401,6 +401,7 @@ export class OwnerScopedVersionedEntityRepository<
         if (claim) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} was deleted`,
+            { code: 'deleted' },
           );
         }
         throw new ConflictError(
@@ -412,7 +413,11 @@ export class OwnerScopedVersionedEntityRepository<
       if (this.config.isDeleted?.(existing)) {
         throw new ConflictError(
           `${this.config.conflictLabel} ${id} was deleted`,
-          { currentVersion: existing.version, current: existing },
+          {
+            code: 'deleted',
+            currentVersion: existing.version,
+            current: existing,
+          },
         );
       }
       const hashFn = this.config.sync?.createPayloadHash;
@@ -424,7 +429,11 @@ export class OwnerScopedVersionedEntityRepository<
         if (requestHash !== baseline) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
-            { currentVersion: existing.version, current: existing },
+            {
+              code: 'payload_mismatch',
+              currentVersion: existing.version,
+              current: existing,
+            },
           );
         }
       }

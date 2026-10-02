@@ -14,8 +14,14 @@ export class PreconditionFailedError extends Error {
   }
 }
 
-/** Machine-readable conflict codes returned on 409 bodies. */
-export type ConflictCode = 'conflict' | 'slug_taken' | 'daily_taken';
+/** Machine-readable conflict codes returned on 409 bodies (CHR-171). */
+export type ConflictCode =
+  | 'conflict'
+  | 'version_conflict'
+  | 'deleted'
+  | 'payload_mismatch'
+  | 'slug_taken'
+  | 'daily_taken';
 
 export class ConflictError extends Error {
   readonly currentVersion?: number;

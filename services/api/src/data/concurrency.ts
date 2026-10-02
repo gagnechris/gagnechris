@@ -1,5 +1,5 @@
 /**
- * If-Match / ETag helpers for Notebook optimistic concurrency (CHR-141 / CHR-162).
+ * If-Match / ETag helpers for Notebook optimistic concurrency (CHR-141 / CHR-162 / CHR-171).
  */
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ConflictError, PreconditionFailedError } from './errors.js';
@@ -25,6 +25,7 @@ function headerValue(
 /**
  * Parse `If-Match` as a versioned entity expectation.
  * Accepts `"3"`, `W/"3"`, and `*` (resource must exist; any version).
+ * Absent / empty → `undefined`. Present but malformed → {@link SyntaxError} (HTTP 400).
  */
 export function parseIfMatch(
   headers: Record<string, string | undefined> | undefined,
@@ -33,10 +34,19 @@ export function parseIfMatch(
   if (raw == null || raw === '') return undefined;
   const trimmed = raw.trim();
   if (trimmed === '*') return { kind: 'any' };
+  // Multi-etag lists are not supported for versioned entities.
+  if (trimmed.includes(',')) {
+    throw new SyntaxError('Invalid If-Match header');
+  }
   // Strip optional weak validator prefix then surrounding quotes.
   const stripped = trimmed.replace(/^W\//i, '').replace(/^"|"$/g, '');
+  if (!/^\d+$/.test(stripped)) {
+    throw new SyntaxError('Invalid If-Match header');
+  }
   const n = Number(stripped);
-  if (!Number.isInteger(n) || n < 0) return undefined;
+  if (!Number.isSafeInteger(n) || n < 0) {
+    throw new SyntaxError('Invalid If-Match header');
+  }
   return { kind: 'version', version: n };
 }
 
@@ -56,6 +66,7 @@ export type ExpectedVersionResolution = {
 
 /**
  * Prefer `If-Match` over body `version`. Used by Notebook mutation routes.
+ * Propagates {@link SyntaxError} from malformed If-Match.
  */
 export function resolveExpectedVersion(
   event: APIGatewayProxyEventV2,

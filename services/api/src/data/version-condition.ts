@@ -4,7 +4,7 @@
  * Missing `version` is treated as 0 so legacy rows remain updatable (CHR-170).
  */
 import { isOptimisticLockConflict } from '@gagnechris/data';
-import { ConflictError } from './errors.js';
+import { ConflictError, type ConflictCode } from './errors.js';
 import { runDynamoWrite } from './dynamo-write.js';
 
 export const VERSION_MATCH_CONDITION =
@@ -20,7 +20,7 @@ export function versionMatchValues(
 export async function throwVersionConflict<T extends { version: number }>(
   expectedVersion: number,
   getCurrent: () => Promise<T | undefined>,
-  opts?: { code?: 'conflict' | 'slug_taken' | 'daily_taken' },
+  opts?: { code?: ConflictCode },
 ): Promise<never> {
   const current = await getCurrent();
   throw new ConflictError(
@@ -28,7 +28,7 @@ export async function throwVersionConflict<T extends { version: number }>(
     {
       currentVersion: current?.version,
       current,
-      ...(opts?.code ? { code: opts.code } : {}),
+      code: opts?.code ?? 'version_conflict',
     },
   );
 }

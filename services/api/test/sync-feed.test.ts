@@ -473,6 +473,31 @@ describe('If-Match / ETag routes (CHR-162)', () => {
     );
     expect(res?.statusCode).toBe(404);
   });
+
+  it('malformed If-Match returns 400 (CHR-171)', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createFakeNotesRepo(doc, TABLE);
+    await repo.createIdempotent(
+      buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
+    );
+    const routes = createFakeNoteRoutes(repo);
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/test-notes/${NOTE_ID}`,
+        { title: 'x' },
+        { 'If-Match': 'abc' },
+      ),
+      'PUT',
+      `/api/notebook/test-notes/${NOTE_ID}`,
+    );
+    expect(res?.statusCode).toBe(400);
+    expect(JSON.parse(res!.body as string)).toMatchObject({
+      error: 'bad_request',
+      message: 'Invalid If-Match header',
+    });
+  });
 });
 
 describe('prod routes exclude fixture notes (CHR-153)', () => {

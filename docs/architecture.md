@@ -131,10 +131,12 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, includes `userId`) are idempotent (mismatch → 409). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
 - **`since` normalization + `nextSince` watermark** with a `SYNC_OVERLAP_MS` (15s) overlap window (≥ API Lambda timeout) so late-committed writes are delivered; clients dedupe by `(id, version)`.
-- **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version`:
-  - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** with `currentVersion` + `current`
+- **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version` (helpers in `services/api/src/data/versioned-route.ts` / `concurrency.ts`):
+  - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
-  - Body-only `version` mismatch → **409** with `currentVersion` + `current`
+  - Malformed `If-Match` → **400**
+  - Body-only `version` mismatch → **409** (`version_conflict`) with `currentVersion` + `current`
+- **409 `error` codes** (machine-readable): `version_conflict`, `deleted`, `payload_mismatch`, `slug_taken`, `daily_taken` (plus legacy `conflict`).
 
 Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (CHR-153). Details: [data-model.md](./data-model.md).
 
@@ -148,8 +150,8 @@ Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (
 6. Per-route CloudWatch metrics use the route `metric` name (no redundant `route` dimension).
 7. Keep these three places in sync (CI/tests assert agreement):
    - **Route table** `auth: 'admin'` patterns must live under `/admin` or `/notebook` (`API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
-   - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`) — no extra JWT paths. Each `auth: 'public'` route also needs its own `addRoutes` entry (method + `/api…` path); there is no `$default` catch-all.
-   - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec.
+   - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`) — asserted on the **synthesized** template (not source text): exactly those JWT `RouteKey`s, and no unauthenticated route under `/api/admin` or `/api/notebook`. Each `auth: 'public'` route needs its own `addRoutes` entry (method + `/api…` path); there is no `$default` catch-all.
+   - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec. Versioned mutations document `If-Match` / `ETag` / **412** with `current`.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 
 ## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)

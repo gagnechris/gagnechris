@@ -148,7 +148,7 @@ export class ApiStack extends Stack {
       corsPreflight: {
         // API Gateway stores AllowHeaders lowercase; keep template aligned
         // to avoid nightly drift (CHR-149).
-        allowHeaders: ['authorization', 'content-type'],
+        allowHeaders: ['authorization', 'content-type', 'if-match'],
         allowMethods: [
           CorsHttpMethod.GET,
           CorsHttpMethod.POST,
@@ -158,6 +158,8 @@ export class ApiStack extends Stack {
           CorsHttpMethod.OPTIONS,
         ],
         allowOrigins: siteOrigins(config.domainName),
+        // Lowercase to match AllowHeaders storage (CHR-171).
+        exposeHeaders: ['etag'],
         maxAge: Duration.days(1),
       },
       createDefaultStage: false,
