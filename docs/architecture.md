@@ -136,7 +136,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Lazy `/admin/notebook/*` under the admin layout: section routes `today`, `notes`, `notes/:id`, `tasks` (index redirects to `today`).
 - Layout chrome: Work / Personal / **All** area filter (UI-only; `'all'` omits `area` on list APIs) plus Today / Notes / Tasks nav. Area preference persists in `localStorage` (`gagnechris.notebook.areaFilter`).
 - Child pages read the filter via React Router outlet context.
-- **Today (CHR-42):** calendar (dots from daily list), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert.
+- **Today (CHR-42):** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict.
 - **Pages (CHR-42):** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
 - Tasks body: CHR-44.
 

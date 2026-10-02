@@ -157,12 +157,22 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
       queryKeys.notes.daily(note.area, note.date),
       (prev) => preferNewerByVersion(prev, note),
     );
+    // Calendar dots use Set<string> under daily-dates — keep them in sync.
+    for (const [key, data] of queryClient.getQueriesData<Set<string>>({
+      queryKey: [...queryKeys.notes.all, 'daily-dates'],
+    })) {
+      if (!(data instanceof Set)) continue;
+      const next = new Set(data);
+      if (note.deleted) next.delete(note.date);
+      else next.add(note.date);
+      queryClient.setQueryData(key, next);
+    }
   }
-  // Update every notes list query currently in cache.
-  for (const query of queryClient.getQueriesData<NotesListData>({
+  // Update infinite notes list queries only (not daily-dates Sets).
+  for (const [key, data] of queryClient.getQueriesData<NotesListData>({
     queryKey: [...queryKeys.notes.all, 'list'],
   })) {
-    const [key, data] = query;
+    if (!data || !Array.isArray(data.pages)) continue;
     queryClient.setQueryData<NotesListData>(key, upsertNoteInPages(data, note));
   }
 };

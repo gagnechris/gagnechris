@@ -29,5 +29,12 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.notes.all, 'detail', id] as const,
     daily: (area: 'work' | 'personal', date: string) =>
       [...queryKeys.notes.all, 'daily', area, date] as const,
+    /** Calendar dots — `Set<string>` of dates, not infinite list pages. */
+    dailyDates: (
+      area: 'work' | 'personal' | undefined,
+      from: string,
+      to: string,
+    ) =>
+      [...queryKeys.notes.all, 'daily-dates', area ?? 'all', from, to] as const,
   },
 };

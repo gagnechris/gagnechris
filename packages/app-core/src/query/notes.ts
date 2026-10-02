@@ -136,12 +136,7 @@ export const useDailyNoteDatesQuery = (
 ) => {
   const getClient = useGetApiClient();
   return useQuery({
-    queryKey: queryKeys.notes.list({
-      area,
-      type: 'daily',
-      from,
-      to,
-    }),
+    queryKey: queryKeys.notes.dailyDates(area, from, to),
     queryFn: async () => {
       const dates = new Set<string>();
       let cursor: string | undefined;
