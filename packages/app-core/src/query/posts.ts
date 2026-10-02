@@ -14,7 +14,6 @@ import {
   unpublishPost,
   updatePost,
   type CreatePostRequest,
-  type ExpectedVersionRequest,
   type Post,
   type UpdatePostRequest,
 } from './api.js';
@@ -48,26 +47,11 @@ export const usePostsQuery = () => {
   });
 };
 
-export const usePostQuery = (id: string | undefined) =>
-  postResource.useQuery({ id: id ?? '' }, Boolean(id));
-
 export const useCreatePostMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body?: CreatePostRequest) => createPost(getClient(), body),
-    onSuccess: (post) => {
-      setCachedPost(queryClient, post);
-    },
-  });
-};
-
-export const useUpdatePostMutation = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UpdatePostRequest }) =>
-      updatePost(getClient(), id, body),
     onSuccess: (post) => {
       setCachedPost(queryClient, post);
     },
@@ -91,43 +75,3 @@ export const useDeletePostMutation = () => {
     },
   });
 };
-
-export const usePublishPostMutation = (id: string) => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: ExpectedVersionRequest) =>
-      publishPost(getClient(), id, body),
-    onSuccess: (post) => {
-      setCachedPost(queryClient, post);
-    },
-  });
-};
-
-export const useUnpublishPostMutation = (id: string) => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: ExpectedVersionRequest) =>
-      unpublishPost(getClient(), id, body),
-    onSuccess: (post) => {
-      setCachedPost(queryClient, post);
-    },
-  });
-};
-
-export const useDiscardPostMutation = (id: string) => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: ExpectedVersionRequest) =>
-      discardPost(getClient(), id, body),
-    onSuccess: (post) => {
-      setCachedPost(queryClient, post);
-    },
-  });
-};
-
-/** MutateResult adapters for useDraftPublishEditor / useVersionedEntityEditor. */
-export const usePostLifecycleMutators = (id: string | undefined) =>
-  postResource.useLifecycleMutators({ id: id ?? '' });

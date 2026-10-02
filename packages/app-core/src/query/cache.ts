@@ -79,25 +79,6 @@ export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   );
 };
 
-export const removeCachedPost = (
-  queryClient: QueryClient,
-  postId: string,
-): void => {
-  queryClient.removeQueries({ queryKey: queryKeys.posts.detail(postId) });
-  queryClient.setQueryData<PostsListData>(queryKeys.posts.list(), (prev) => {
-    if (!prev) {
-      return prev;
-    }
-    return {
-      ...prev,
-      pages: prev.pages.map((page) => ({
-        ...page,
-        items: page.items.filter((p) => p.id !== postId),
-      })),
-    };
-  });
-};
-
 export const setCachedHome = (queryClient: QueryClient, home: Home): void => {
   queryClient.setQueryData<Home>(queryKeys.home(), (prev) =>
     preferNewerByVersion(prev, home),

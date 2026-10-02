@@ -61,6 +61,7 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         createItem={emptyExperience}
         addLabel="Add role"
         removeLabel="Remove role"
+        reorderable
         renderItem={(item, { update }) => (
           <>
             <Field label="Title">
@@ -101,6 +102,7 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         createItem={emptyEducation}
         addLabel="Add entry"
         removeLabel="Remove entry"
+        reorderable
         renderItem={(item, { update }) => (
           <>
             {(

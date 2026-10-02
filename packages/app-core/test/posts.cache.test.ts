@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import type { Post, PostsPage } from '../src/query/api.js';
 import {
-  removeCachedPost,
   setCachedHome,
   setCachedPost,
   setCachedResume,
@@ -34,7 +33,7 @@ const listItems = (queryClient: QueryClient): Post[] => {
 };
 
 describe('post cache helpers (CHR-131)', () => {
-  test('setCachedPost upserts list + detail; removeCachedPost clears both', () => {
+  test('setCachedPost upserts list + detail; deleted status drops from list', () => {
     const queryClient = new QueryClient();
     setCachedPost(queryClient, draftPost);
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
@@ -50,11 +49,15 @@ describe('post cache helpers (CHR-131)', () => {
     setCachedPost(queryClient, published);
     expect(listItems(queryClient)).toEqual([published]);
 
-    removeCachedPost(queryClient, '01POST');
-    expect(
-      queryClient.getQueryData(queryKeys.posts.detail('01POST')),
-    ).toBeUndefined();
+    setCachedPost(queryClient, {
+      ...published,
+      status: 'deleted',
+      version: 3,
+    });
     expect(listItems(queryClient)).toEqual([]);
+    expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
+      expect.objectContaining({ status: 'deleted', version: 3 }),
+    );
   });
 
   test('setCachedPost keeps a newer version when a stale write arrives (CHR-147)', () => {
