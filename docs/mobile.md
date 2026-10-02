@@ -1,6 +1,14 @@
-# Mobile (Expo) notes — CHR-142, CHR-150, CHR-164
+# Mobile (Expo) notes — CHR-142, CHR-150, CHR-164, CHR-177
 
 Spike findings for React Native / Expo in this monorepo.
+
+## Auth and associated domains (CHR-177)
+
+- Expo `scheme` is `gagnechris` so Cognito can return to `gagnechris://auth/callback` (already on the iOS app client).
+- Apex hosts `/.well-known/apple-app-site-association` and `/.well-known/webauthn` (CloudFront passes `/.well-known/*` through; deploy forces `Content-Type: application/json`). Replace `APPLE_TEAM_ID` before shipping Associated Domains.
+- **Passkey RP ID** stays `auth.gagnechris.com` — see [ADR 0001](./adr/0001-passkey-rp-id.md). iOS sign-in should use managed login in `ASWebAuthenticationSession`, not native `ASAuthorization` against the apex.
+- Cognito refresh tokens last **30 days**. Acceptable for v1: after a month offline the user signs in again. No silent refresh beyond Cognito’s refresh token lifetime.
+- `TokenProvider` in `@gagnechris/api-client` accepts `{ forceRefresh?: boolean }` and retries once on HTTP 401.
 
 ## What works
 
@@ -41,7 +49,7 @@ The two lockfiles still produce two copies on disk, which is harmless at runtime
 `.github/workflows/mobile.yml` is path-filtered and uses no AWS credentials. It runs:
 
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
-2. Typecheck + test for `shared`, `api-client`, `tokens`, `app-core`, and mobile; lint for mobile.
+2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
 4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, or if `zod/v4/` is absent (CHR-164).
 5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas, asserting Zod 4 APIs (`z.email`), and resolving app-core `createVersionedResource` (including its `useQuery` hook) + `fetch` through Metro (CHR-173). Hook rendering under a single React / react-query instance is asserted in `src/app-core.test.ts`.
@@ -55,6 +63,18 @@ A later failure mode (CHR-164): Expo CLI's transitive `zod@3` was hoisted into `
 ## Design tokens
 
 `tokens.text`, `tokens.space`, and `tokens.radius` are **px numbers**, so RN uses them directly (`padding: tokens.space[4]`). The generator converts them to `rem` for CSS and derives the `/* 16px */` comments from the values. Colors, shadows, transitions, and fonts stay CSS-ready strings.
+
+## Offline architecture decision (CHR-177)
+
+Notebook will be offline-capable; the spike has no local store yet. Decisions that shape shared contracts **before** Notebook web hooks land:
+
+| Concern                                 | Decision                                                                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Where outbox + conflict logic lives** | **`@gagnechris/app-core`** — platform-neutral queue, retry, and version/If-Match conflict helpers. Web and mobile call the same API; UI adapters stay in each app.                                  |
+| **Local persistence (mobile)**          | **Not chosen yet** (SQLite / MMKV / AsyncStorage). Persist behind a small storage interface in the mobile app so app-core stays free of RN modules. Pick when CHR-51 / Notebook mobile work starts. |
+| **TanStack Query**                      | Wire `focusManager` / `onlineManager` to AppState + NetInfo in the mobile app (not in app-core). Optional persister is app-local.                                                                   |
+| **Client IDs**                          | Use `@gagnechris/shared` `createUlid()` (injectable `crypto.getRandomValues`; polyfill with `expo-crypto` on Hermes if needed).                                                                     |
+| **Sync**                                | Server remains source of truth via the CHR-172 sync contract; outbox drains with If-Match / 409 handling from app-core.                                                                             |
 
 ## Local stack
 

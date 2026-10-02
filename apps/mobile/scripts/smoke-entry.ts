@@ -14,7 +14,13 @@
 import { z } from 'zod';
 import type { ApiClient } from '@gagnechris/api-client';
 import { createVersionedResource } from '@gagnechris/app-core';
-import { HealthResponseSchema, PostSchema, slugify } from '@gagnechris/shared';
+import {
+  HealthResponseSchema,
+  PostSchema,
+  UlidSchema,
+  createUlid,
+  slugify,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 
 // Zod 4 exposes top-level helpers like z.email; Zod 3 does not.
@@ -43,6 +49,11 @@ if (slugify('Hello There') !== 'hello-there') {
 
 if (typeof tokens.space[4] !== 'number') {
   throw new Error('space tokens must be px numbers for React Native');
+}
+
+const smokeUlid = createUlid();
+if (UlidSchema.safeParse(smokeUlid).success !== true) {
+  throw new Error(`createUlid produced invalid ULID: ${smokeUlid}`);
 }
 
 type SmokeNote = { id: string; body: string; version: number };

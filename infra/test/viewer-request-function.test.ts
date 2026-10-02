@@ -467,6 +467,25 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/media/photo.png');
   });
 
+  it('passes through /.well-known/* (AASA / webauthn; CHR-177)', async () => {
+    expect(
+      (
+        (await runHandler({
+          uri: '/.well-known/apple-app-site-association',
+          headers: { host: { value: 'gagnechris.com' } },
+        })) as CfRequest
+      ).uri,
+    ).toBe('/.well-known/apple-app-site-association');
+    expect(
+      (
+        (await runHandler({
+          uri: '/.well-known/webauthn',
+          headers: { host: { value: 'gagnechris.com' } },
+        })) as CfRequest
+      ).uri,
+    ).toBe('/.well-known/webauthn');
+  });
+
   it('passes through paths with a file extension', async () => {
     const req = (await runHandler({
       uri: '/assets/app.js',

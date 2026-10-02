@@ -2,7 +2,7 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
- * - Skip rewrite for /api/* and /media/*
+ * - Skip rewrite for /api/*, /media/*, and /.well-known/* (AASA / webauthn; CHR-177)
  * - /blog, /resume, /contact, /dont-feed-the-bears -> Option B {path}/index.html
  * - /blog/<slug> -> Option B only when slug is in the associated KeyValueStore
  *   (CHR-115); unknown slugs -> /404.html (avoids raw S3 XML)
@@ -66,7 +66,9 @@ async function handler(event) {
     uri === '/api' ||
     uri.indexOf('/api/') === 0 ||
     uri === '/media' ||
-    uri.indexOf('/media/') === 0
+    uri.indexOf('/media/') === 0 ||
+    uri === '/.well-known' ||
+    uri.indexOf('/.well-known/') === 0
   ) {
     return request;
   }
