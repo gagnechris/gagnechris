@@ -183,10 +183,25 @@ export class DataStack extends Stack {
         }),
       ],
     });
-    backupPlan.addSelection('AppTableSelection', {
+    const backupSelection = backupPlan.addSelection('AppTableSelection', {
       resources: [BackupResource.fromDynamoDbTable(this.table)],
       allowRestores: true,
     });
+    NagSuppressions.addResourceSuppressions(
+      backupSelection,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason:
+            'AWS Backup selection uses the AWS-managed Backup/Restore service-role policies required by the Backup service; custom least-privilege replicas drift from AWS updates (CHR-175).',
+          appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores',
+          ],
+        },
+      ],
+      true,
+    );
 
     metricAlarm(this, 'AppTableSystemErrors', {
       alarmName: `gagnechris-${config.name}-dynamodb-system-errors`,
