@@ -72,6 +72,16 @@ describe('filesystem site storage', () => {
     expect(await storage.readShell()).toBe('<html>pristine</html>');
   });
 
+  it('delete returns false when the key is already absent (CHR-167)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
+    const storage = createFilesystemSiteStorage(root);
+    expect(await storage.delete('resume.pdf')).toBe(false);
+    await storage.put('resume.pdf', new Uint8Array([1]), 'application/pdf', '');
+    expect(await storage.delete('resume.pdf')).toBe(true);
+    expect(await storage.delete('resume.pdf')).toBe(false);
+  });
+
   it('skips put when bytes are unchanged', async () => {
     const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');

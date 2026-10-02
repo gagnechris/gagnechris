@@ -51,10 +51,13 @@ async function deleteKeys(
   storage: SiteStorage,
   keys: string[],
 ): Promise<string[]> {
+  const deleted: string[] = [];
   for (const key of keys) {
-    await storage.delete(key);
+    if (await storage.delete(key)) {
+      deleted.push(key);
+    }
   }
-  return keys;
+  return deleted;
 }
 
 /**
@@ -149,14 +152,13 @@ export async function runPublishTargets(options: {
   );
 
   // Invalidate before KVS sync so a sync failure still clears cache (CHR-123).
+  // Desired allowlist is the in-memory catalog (posts ∪ corrupt) — list once
+  // per rebuild so corrupt slugs stay reachable and reads cannot diverge (CHR-167).
   await storage.invalidate(invalidated);
 
   if (scope.feeds) {
-    await syncViewerRequestBlogSlugs(() =>
-      sources
-        .listPublishedPosts()
-        .then((result) => result.posts.map((p) => p.slug)),
-    );
+    const desiredSlugs = [...published.map((p) => p.slug), ...corruptPostSlugs];
+    await syncViewerRequestBlogSlugs(desiredSlugs);
   }
 
   return {

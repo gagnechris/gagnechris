@@ -203,8 +203,16 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
   return html;
 };
 
-export const buildSitemapXml = (posts: Post[]): string => {
+export const buildSitemapXml = (
+  posts: Post[],
+  /**
+   * Extra blog slugs to keep in the sitemap when their PUBLISHED rows are
+   * corrupt (CHR-167). HTML is preserved; the slug must stay discoverable.
+   */
+  extraSlugs: readonly string[] = [],
+): string => {
   const staticPaths = ['/', '/blog', '/resume', '/contact'];
+  const seen = new Set(posts.map((p) => p.slug));
   const urls = [
     ...staticPaths.map((path) => ({
       loc: `https://${APEX}${path === '/' ? '/' : path}`,
@@ -214,6 +222,12 @@ export const buildSitemapXml = (posts: Post[]): string => {
       loc: postCanonicalUrl(p.slug),
       lastmod: (p.updatedAt || p.publishedAt || '').slice(0, 10) || undefined,
     })),
+    ...extraSlugs
+      .filter((slug) => slug && !seen.has(slug))
+      .map((slug) => ({
+        loc: postCanonicalUrl(slug),
+        lastmod: undefined as string | undefined,
+      })),
   ];
   const body = urls
     .map((u) => {

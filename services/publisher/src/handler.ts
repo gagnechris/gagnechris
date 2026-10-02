@@ -5,6 +5,7 @@ import { logger, metrics } from './observability.js';
 import { rebuildPublishedSite } from './s3-site.js';
 import {
   collectRebuildScope,
+  collectStreamPublishedPostItems,
   fullRebuildScope,
   streamNeedsRebuild,
 } from './rebuild-scope.js';
@@ -61,6 +62,9 @@ export const handler = async (
         return { ok: true, publishedCount: 0, removedSlugs: [] };
       }
       const scope = collectRebuildScope(event.Records);
+      const streamPublishedPosts = collectStreamPublishedPostItems(
+        event.Records,
+      );
       logger.info('Rebuilding from stream', {
         recordCount: event.Records.length,
         allPosts: scope.allPosts,
@@ -69,8 +73,12 @@ export const handler = async (
         feeds: scope.feeds,
         home: scope.home,
         resume: scope.resume,
+        streamPublishedPosts: streamPublishedPosts.length,
       });
-      const result = await rebuildPublishedSite({ scope });
+      const result = await rebuildPublishedSite({
+        scope,
+        streamPublishedPosts,
+      });
       return handlerSuccessFromRebuild(logger, metrics, result);
     }
 

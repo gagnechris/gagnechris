@@ -28,6 +28,7 @@ export type RebuildScope = {
 };
 
 export type StreamMeta = {
+  pk?: string;
   sk?: string;
   entityType?: string;
   slug?: string;
@@ -36,6 +37,22 @@ export type StreamMeta = {
 
 /** Known PUBLISHED entity types the publisher understands (CHR-128). */
 const KNOWN_ENTITY_TYPES = new Set(['post', 'home', 'resume']);
+
+function isLegacyPostPk(pk: string | undefined): boolean {
+  return typeof pk === 'string' && pk.startsWith('POST#');
+}
+
+/**
+ * Whether a PUBLISHED stream image is a post (including legacy rows that omit
+ * `entityType` but use a `POST#…` pk). Missing entityType on other pks is not
+ * treated as a post (CHR-167).
+ */
+export function isStreamPostEntity(meta: StreamMeta | undefined): boolean {
+  if (!meta) return false;
+  if (meta.entityType === 'post') return true;
+  if (meta.entityType == null && isLegacyPostPk(meta.pk)) return true;
+  return false;
+}
 
 export function imageToStreamMeta(
   image: Record<string, AttributeValue> | undefined,
@@ -107,8 +124,10 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       continue;
     }
 
-    // Posts only (entityType post or legacy missing type on post snapshots).
-    if (entity != null && entity !== 'post') continue;
+    // Posts only: entityType post, or legacy POST# pk with missing type (CHR-167).
+    if (!isStreamPostEntity(newMeta) && !isStreamPostEntity(oldMeta)) {
+      continue;
+    }
 
     const touchedPublished =
       newMeta?.status === 'published' || oldMeta?.status === 'published';
@@ -138,6 +157,28 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     resume,
     touchedEntityTypes,
   };
+}
+
+/**
+ * Unmarshalled PUBLISHED post NewImages from a stream batch. Used to merge
+ * just-published posts into the catalog when GSI1 has not caught up (CHR-167).
+ */
+export function collectStreamPublishedPostItems(
+  records: DynamoDBRecord[],
+): unknown[] {
+  const items: unknown[] = [];
+  for (const record of records) {
+    const image = record.dynamodb?.NewImage;
+    if (!image) continue;
+    const item = unmarshall(
+      image as Parameters<typeof unmarshall>[0],
+    ) as StreamMeta & Record<string, unknown>;
+    if (item.sk !== SK_PUBLISHED) continue;
+    if (item.status !== 'published') continue;
+    if (!isStreamPostEntity(item)) continue;
+    items.push(item);
+  }
+  return items;
 }
 
 export function streamNeedsRebuild(records: DynamoDBRecord[]): boolean {

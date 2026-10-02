@@ -98,8 +98,20 @@ export function createS3SiteStorage(): SiteStorage {
       return true;
     },
 
-    async delete(key: string): Promise<void> {
+    async delete(key: string): Promise<boolean> {
+      try {
+        await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      } catch (err) {
+        const name = (err as { name?: string }).name;
+        const status = (err as { $metadata?: { httpStatusCode?: number } })
+          .$metadata?.httpStatusCode;
+        if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) {
+          return false;
+        }
+        throw err;
+      }
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      return true;
     },
 
     async list(prefix: string): Promise<string[]> {
