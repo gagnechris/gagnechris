@@ -88,31 +88,102 @@ export function appTableName(envName: string): string {
 }
 
 /**
- * GSI index names last verified deployed in production.
+ * GSI definitions last verified deployed in production (names + key schema).
  * After a successful single-GSI create/delete deploy, bump this list to match
  * APP_TABLE (see infra/RUNBOOK.md). CloudFormation allows at most one GSI
  * create or delete per table update — enforced by assertSafeGsiUpdate.
  */
-export const LAST_DEPLOYED_GSI_NAMES = ['gsi1', 'gsi2'] as const;
+export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
+  {
+    indexName: 'gsi1',
+    partitionKey: { name: 'gsi1pk', type: 'S' },
+    sortKey: { name: 'gsi1sk', type: 'S' },
+    projectionType: 'ALL',
+  },
+  {
+    indexName: 'gsi2',
+    partitionKey: { name: 'gsi2pk', type: 'S' },
+    sortKey: { name: 'gsi2sk', type: 'S' },
+    projectionType: 'ALL',
+  },
+  {
+    indexName: 'gsi3',
+    partitionKey: { name: 'syncPk', type: 'S' },
+    sortKey: { name: 'syncSk', type: 'S' },
+    projectionType: 'ALL',
+  },
+];
+
+/** @deprecated Prefer LAST_DEPLOYED_GSIS; kept for call sites that only need names. */
+export const LAST_DEPLOYED_GSI_NAMES = LAST_DEPLOYED_GSIS.map(
+  (g) => g.indexName,
+) as readonly string[];
+
+function keyAttrEqual(a: TableKeyAttribute, b: TableKeyAttribute): boolean {
+  return a.name === b.name && a.type === b.type;
+}
+
+function gsiKeySchemaEqual(
+  a: TableIndexDefinition,
+  b: TableIndexDefinition,
+): boolean {
+  return (
+    keyAttrEqual(a.partitionKey, b.partitionKey) &&
+    keyAttrEqual(a.sortKey, b.sortKey)
+  );
+}
 
 /**
  * Guard for Notebook / schema PRs: CloudFormation rejects updates that
  * create or delete more than one GSI on the same table in one deploy.
+ * Key-schema changes on an existing index count as delete + create.
  */
 export function assertSafeGsiUpdate(
-  previousNames: readonly string[],
+  previous: readonly TableIndexDefinition[],
   next: readonly TableIndexDefinition[],
 ): void {
-  const prev = new Set(previousNames);
-  const nextNames = next.map((g) => g.indexName);
-  const nextSet = new Set(nextNames);
-  const added = nextNames.filter((n) => !prev.has(n));
-  const removed = [...prev].filter((n) => !nextSet.has(n));
-  const changeCount = added.length + removed.length;
+  const prevByName = new Map(previous.map((g) => [g.indexName, g]));
+  const nextByName = new Map(next.map((g) => [g.indexName, g]));
+
+  const added: string[] = [];
+  const removed: string[] = [];
+  const keySchemaChanged: string[] = [];
+
+  for (const [name, nextGsi] of nextByName) {
+    const prevGsi = prevByName.get(name);
+    if (!prevGsi) {
+      added.push(name);
+      continue;
+    }
+    if (!gsiKeySchemaEqual(prevGsi, nextGsi)) {
+      keySchemaChanged.push(name);
+    }
+  }
+  for (const name of prevByName.keys()) {
+    if (!nextByName.has(name)) {
+      removed.push(name);
+    }
+  }
+
+  // A key-schema change requires delete + recreate (two GSI ops).
+  const changeCount =
+    added.length + removed.length + keySchemaChanged.length * 2;
+
   if (changeCount > 1) {
+    const parts: string[] = [];
+    if (added.length || removed.length) {
+      parts.push(
+        `adds [${added.join(', ') || 'none'}] and removes [${removed.join(', ') || 'none'}]`,
+      );
+    }
+    if (keySchemaChanged.length) {
+      parts.push(
+        `changes key schema on [${keySchemaChanged.join(', ')}] (counts as delete+create)`,
+      );
+    }
     throw new Error(
       `CloudFormation allows at most one GSI create or delete per table update; ` +
-        `this change adds [${added.join(', ') || 'none'}] and removes [${removed.join(', ') || 'none'}]. ` +
+        `this change ${parts.join('; ')}. ` +
         `Split into separate deploys (see infra/RUNBOOK.md).`,
     );
   }

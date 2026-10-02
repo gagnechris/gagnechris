@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   APP_TABLE,
   LAST_DEPLOYED_GSI_NAMES,
+  LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
   appTableName,
   assertSafeGsiUpdate,
+  type TableIndexDefinition,
 } from '../src/table.js';
 import {
   isPublishRelevant,
@@ -37,47 +39,57 @@ describe('APP_TABLE', () => {
     ]);
   });
 
-  it('allows at most one GSI create or delete vs last deployed (CHR-155)', () => {
-    // APP_TABLE may be exactly one GSI ahead of LAST_DEPLOYED while a create
-    // is pending deploy; bump LAST_DEPLOYED after that deploy succeeds.
-    assertSafeGsiUpdate(
-      LAST_DEPLOYED_GSI_NAMES,
-      APP_TABLE.globalSecondaryIndexes,
+  it('keeps LAST_DEPLOYED_GSIS in strict equality with APP_TABLE (CHR-163)', () => {
+    expect(LAST_DEPLOYED_GSI_NAMES).toEqual(
+      APP_TABLE.globalSecondaryIndexes.map((g) => g.indexName),
     );
-    const current = APP_TABLE.globalSecondaryIndexes.map((g) => g.indexName);
-    const prev = new Set<string>(LAST_DEPLOYED_GSI_NAMES);
-    const added = current.filter((n) => !prev.has(n));
-    const removed = [...prev].filter((n) => !current.includes(n));
-    expect(added.length + removed.length).toBeLessThanOrEqual(1);
+    assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, APP_TABLE.globalSecondaryIndexes);
+    expect(LAST_DEPLOYED_GSIS).toEqual(APP_TABLE.globalSecondaryIndexes);
+  });
 
-    const gsi4 = {
+  it('allows a single GSI create vs last deployed', () => {
+    const gsi4: TableIndexDefinition = {
       indexName: 'gsi4',
-      partitionKey: { name: 'gsi4pk', type: 'S' as const },
-      sortKey: { name: 'gsi4sk', type: 'S' as const },
-      projectionType: 'ALL' as const,
+      partitionKey: { name: 'gsi4pk', type: 'S' },
+      sortKey: { name: 'gsi4sk', type: 'S' },
+      projectionType: 'ALL',
     };
-    const gsi5 = {
-      indexName: 'gsi5',
-      partitionKey: { name: 'gsi5pk', type: 'S' as const },
-      sortKey: { name: 'gsi5sk', type: 'S' as const },
-      projectionType: 'ALL' as const,
-    };
-    // One additional create beyond current APP_TABLE is still safe vs last deployed
-    // only when APP_TABLE is already in sync — here APP_TABLE is one ahead, so
-    // adding another must fail.
-    if (added.length === 0) {
-      assertSafeGsiUpdate(LAST_DEPLOYED_GSI_NAMES, [
-        ...APP_TABLE.globalSecondaryIndexes,
-        gsi4,
-      ]);
-    }
     expect(() =>
-      assertSafeGsiUpdate(LAST_DEPLOYED_GSI_NAMES, [
+      assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [
         ...APP_TABLE.globalSecondaryIndexes,
         gsi4,
-        gsi5,
       ]),
+    ).not.toThrow();
+  });
+
+  it('fails when removing gsi3 and adding gsi4 in one update (CHR-163)', () => {
+    const withoutGsi3 = APP_TABLE.globalSecondaryIndexes.filter(
+      (g) => g.indexName !== 'gsi3',
+    );
+    const gsi4: TableIndexDefinition = {
+      indexName: 'gsi4',
+      partitionKey: { name: 'gsi4pk', type: 'S' },
+      sortKey: { name: 'gsi4sk', type: 'S' },
+      projectionType: 'ALL',
+    };
+    expect(() =>
+      assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [...withoutGsi3, gsi4]),
     ).toThrow(/at most one GSI create or delete/);
+  });
+
+  it('fails when an existing GSI key schema changes (CHR-163)', () => {
+    const next = APP_TABLE.globalSecondaryIndexes.map((g) =>
+      g.indexName === 'gsi3'
+        ? {
+            ...g,
+            partitionKey: { name: 'syncPk2', type: 'S' as const },
+            sortKey: { name: 'syncSk2', type: 'S' as const },
+          }
+        : g,
+    );
+    expect(() => assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, next)).toThrow(
+      /key schema/,
+    );
   });
 });
 

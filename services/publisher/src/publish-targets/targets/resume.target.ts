@@ -1,4 +1,5 @@
 import { Logger } from '@aws-lambda-powertools/logger';
+import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { renderResumePage, renderResumeUnavailablePage } from '../../render.js';
 import {
   renderResumePdf,
@@ -8,7 +9,7 @@ import {
 import type { PublishArtifact, PublishTarget } from '../types.js';
 import { CACHE_HTML } from '../types.js';
 
-const logger = new Logger({ serviceName: 'gagnechris-publisher' });
+const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 const target: PublishTarget = {
   id: 'resume',

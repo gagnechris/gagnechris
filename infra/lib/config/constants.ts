@@ -45,5 +45,6 @@ export type SsmParamKey = keyof typeof SSM_PARAM_KEYS;
 
 /** Full SSM parameter path, e.g. `/gagnechris/prod/http-api-id`. */
 export function ssmParameterName(envName: string, key: SsmParamKey): string {
-  return `/gagnechris/${envName}/${SSM_PARAM_KEYS[key]}`;
+  const prefix = ssmParams.prefixTemplate.replaceAll('${ENV_NAME}', envName);
+  return `${prefix}/${SSM_PARAM_KEYS[key]}`;
 }

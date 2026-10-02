@@ -20,6 +20,7 @@ import {
 import { batchGetAllWithDocClient } from '@gagnechris/data';
 import { Logger } from '@aws-lambda-powertools/logger';
 import type { Home, Post, Resume } from '@gagnechris/shared';
+import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';
 import type { RebuildSiteSources } from './publish-targets/types.js';
@@ -30,7 +31,7 @@ import { createS3SiteStorage } from './storage-s3.js';
 import type { SiteStorage } from './storage.js';
 
 const ddb = getDocClient();
-const logger = new Logger({ serviceName: 'gagnechris-publisher' });
+const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 export type { HomePublishSnapshot } from './home-publish.js';
 export {
