@@ -1,15 +1,7 @@
-import { Logger } from '@aws-lambda-powertools/logger';
-import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { renderResumePage, renderResumeUnavailablePage } from '../../render.js';
-import {
-  renderResumePdf,
-  RESUME_PDF_CONTENT_DISPOSITION,
-  RESUME_PDF_KEY,
-} from '../../resume-pdf.js';
+import { buildResumePdfArtifact, RESUME_PDF_KEY } from '../../resume-pdf.js';
 import type { PublishArtifact, PublishTarget } from '../types.js';
 import { CACHE_HTML } from '../types.js';
-
-const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 const target: PublishTarget = {
   id: 'resume',
@@ -34,21 +26,11 @@ const target: PublishTarget = {
           cacheControl: CACHE_HTML,
         },
       ];
+      const pdf = await buildResumePdfArtifact(resume);
       let resumePdfFailed = false;
-      try {
-        const pdfBytes = await renderResumePdf(resume);
-        artifacts.push({
-          key: RESUME_PDF_KEY,
-          body: pdfBytes,
-          contentType: 'application/pdf',
-          cacheControl: CACHE_HTML,
-          contentDisposition: RESUME_PDF_CONTENT_DISPOSITION,
-        });
-      } catch (error) {
-        logger.error(
-          'Resume PDF generation failed; keeping previous resume.pdf',
-          { error },
-        );
+      if (pdf.ok) {
+        artifacts.push(pdf.artifact);
+      } else {
         resumePdfFailed = true;
       }
       return {

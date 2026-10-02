@@ -351,6 +351,30 @@ describe('PostsRepository', () => {
     );
   });
 
+  it('list does not flag unpublished when META is published but snapshot is missing (CHR-146)', async () => {
+    const publishedMeta: Post = {
+      ...draft,
+      status: 'published',
+      publishedAt: '2026-09-27T02:00:00.000Z',
+      version: 2,
+    };
+    const doc = mockDocClient(async (command) => {
+      if (command.constructor.name === 'QueryCommand') {
+        return { Items: [buildMetaItem(publishedMeta)] };
+      }
+      if (command.constructor.name === 'BatchGetCommand') {
+        // No PUBLISHED snapshot — stale META after unpublish must not look dirty.
+        return { Responses: { 'gagnechris-test': [] } };
+      }
+      return {};
+    });
+    const repo = new PostsRepository(doc, 'gagnechris-test');
+    const page = await repo.list('published');
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]!.status).toBe('published');
+    expect(page.items[0]!.hasUnpublishedChanges).toBe(false);
+  });
+
   it('skips corrupt items in list instead of failing', async () => {
     const doc = mockDocClient(async () => ({
       Items: [

@@ -141,16 +141,23 @@ export function isJwtProtectedPath(path: string): boolean {
 /**
  * Whether any route matching this path declares `auth: 'admin'` (for local
  * claim injection — mirrors JWT gate without duplicating prefixes).
+ * Malformed `%` escapes are treated as non-matches so the handler can return
+ * 400 (CHR-166); do not throw here.
  */
 export function pathRequiresAdminAuth(
   routes: readonly RouteDef[],
   rawPath: string,
 ): boolean {
   const path = canonicalPath(rawPath);
-  return routes.some(
-    (route) =>
-      route.auth === 'admin' && matchPattern(route.pattern, path) != null,
-  );
+  for (const route of routes) {
+    if (route.auth !== 'admin') continue;
+    try {
+      if (matchPattern(route.pattern, path) != null) return true;
+    } catch (error) {
+      if (!(error instanceof MalformedPathError)) throw error;
+    }
+  }
+  return false;
 }
 
 export function claimsFromEvent(

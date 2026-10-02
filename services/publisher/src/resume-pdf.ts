@@ -3,7 +3,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import type { Resume } from '@gagnechris/shared';
+import { Logger } from '@aws-lambda-powertools/logger';
+import { PUBLISHER_SERVICE_NAME, type Resume } from '@gagnechris/shared';
 
 const PAGE_WIDTH = 612; // US Letter
 const PAGE_HEIGHT = 792;
@@ -294,4 +295,49 @@ export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
   }
 
   return doc.save();
+}
+
+const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
+
+const RESUME_PDF_CACHE_CONTROL = 'public,max-age=0,must-revalidate';
+
+export type ResumePdfArtifactResult =
+  | {
+      ok: true;
+      artifact: {
+        key: string;
+        body: Uint8Array;
+        contentType: string;
+        cacheControl: string;
+        contentDisposition: string;
+      };
+    }
+  | { ok: false };
+
+/**
+ * Build the resume.pdf publish artifact. On failure, log and return `{ ok: false }`
+ * so the caller can keep any existing S3 object and set `resumePdfFailed`.
+ */
+export async function buildResumePdfArtifact(
+  resume: Resume,
+  render: typeof renderResumePdf = renderResumePdf,
+): Promise<ResumePdfArtifactResult> {
+  try {
+    const pdfBytes = await render(resume);
+    return {
+      ok: true,
+      artifact: {
+        key: RESUME_PDF_KEY,
+        body: pdfBytes,
+        contentType: 'application/pdf',
+        cacheControl: RESUME_PDF_CACHE_CONTROL,
+        contentDisposition: RESUME_PDF_CONTENT_DISPOSITION,
+      },
+    };
+  } catch (error) {
+    logger.error('Resume PDF generation failed; keeping previous resume.pdf', {
+      error,
+    });
+    return { ok: false };
+  }
 }
