@@ -1,9 +1,11 @@
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { markdown } from '@codemirror/lang-markdown';
-import type { Extension } from '@codemirror/state';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { Prec, type Extension } from '@codemirror/state';
 import {
   EditorView,
+  highlightActiveLine,
   keymap as cmKeymap,
+  lineNumbers as lineNumbersExt,
   type KeyBinding,
 } from '@codemirror/view';
 import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
@@ -107,7 +109,30 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
     }));
 
     const extensions = useMemo(() => {
-      const base: Extension[] = [markdown(), EditorView.lineWrapping];
+      // Plaintext CodeMirror (no @codemirror/lang-markdown / @lezer/markdown —
+      // that package alone is ~550 kB minified). Preview pane still renders
+      // markdown; keeping the shared editor chunk under 500 kB (CHR-178).
+      const base: Extension[] = [
+        history(),
+        EditorView.lineWrapping,
+        highlightActiveLine(),
+        cmKeymap.of([...defaultKeymap, ...historyKeymap]),
+        // Accessible name on the real textbox (.cm-content), not only the wrapper.
+        EditorView.contentAttributes.of({ 'aria-label': label }),
+        // ⌘⏎ / Ctrl+Enter: no-op in the body (shell skips publish; consume so
+        // CodeMirror's insertBlankLine does not add a newline) — CHR-178.
+        Prec.highest(
+          cmKeymap.of([
+            {
+              key: 'Mod-Enter',
+              run: () => true,
+            },
+          ]),
+        ),
+      ];
+      if (lineNumbers) {
+        base.push(lineNumbersExt());
+      }
       if (extraKeymap && extraKeymap.length > 0) {
         base.push(cmKeymap.of(extraKeymap));
       }
@@ -147,10 +172,17 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         },
       });
       return [...base, handlers];
-    }, [extraExtensions, extraKeymap, onUploadImages, readOnly]);
+    }, [
+      extraExtensions,
+      extraKeymap,
+      label,
+      lineNumbers,
+      onUploadImages,
+      readOnly,
+    ]);
 
     return (
-      <div className="markdown-editor" aria-label={label}>
+      <div className="markdown-editor">
         <CodeMirror
           ref={cmRef}
           value={value}
@@ -160,11 +192,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
           onBlur={onBlur}
           placeholder={placeholder}
           readOnly={readOnly}
-          basicSetup={{
-            lineNumbers,
-            foldGutter: false,
-            highlightActiveLine: true,
-          }}
+          basicSetup={false}
         />
       </div>
     );

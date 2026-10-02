@@ -78,6 +78,27 @@ export default defineConfig(({ mode, command }) => {
     server: {
       proxy,
     },
+    build: {
+      // Keep admin/editor chunks under the AC budget (CHR-178).
+      chunkSizeWarningLimit: 500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Shared lazy MarkdownEditor + CodeMirror core (CHR-178).
+            if (
+              id.includes('@codemirror/') ||
+              id.includes('@lezer/') ||
+              id.includes('@uiw/react-codemirror') ||
+              id.includes('@uiw/codemirror') ||
+              id.includes('/components/markdown/MarkdownEditor')
+            ) {
+              return 'markdown-editor';
+            }
+            return undefined;
+          },
+        },
+      },
+    },
     test: {
       environment: 'jsdom',
       globals: true,

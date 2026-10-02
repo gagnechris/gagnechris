@@ -1,9 +1,19 @@
-import { useEffect, type FormEvent, type RefObject } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  type FormEvent,
+  type RefObject,
+} from 'react';
 import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
-import MarkdownEditor from '../components/markdown/MarkdownEditor';
 import MarkdownPreview from '../components/markdown/MarkdownPreview';
 import { Field, TextArea, TextInput } from '../ui/Field';
 import '../components/markdown/markdown.css';
+
+/** Shared lazy chunk for CodeMirror (Post + future Notebook) — CHR-178. */
+const MarkdownEditor = lazy(
+  () => import('../components/markdown/MarkdownEditor'),
+);
 
 export type PostDraftFields = {
   title: string;
@@ -117,17 +127,19 @@ export function PostEditorBody({
           </button>
         </div>
         <div className="markdown-split" data-pane={mobilePane}>
-          <MarkdownEditor
-            value={draft.bodyMarkdown}
-            onChange={(value) => setField('bodyMarkdown', value)}
-            onUploadImages={onUploadImages}
-          />
+          <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
+            <MarkdownEditor
+              value={draft.bodyMarkdown}
+              onChange={(value) => setField('bodyMarkdown', value)}
+              onUploadImages={onUploadImages}
+            />
+          </Suspense>
           <MarkdownPreview markdown={draft.bodyMarkdown} />
         </div>
       </div>
       <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (does nothing in the body
-        editor) · paste or drop images into the editor
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (in the body editor: no
+        publish and no blank line) · paste or drop images into the editor
       </p>
     </>
   );

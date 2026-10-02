@@ -9,7 +9,12 @@ type Props = {
 /** Autosave status text (`admin-save-indicator`). */
 export function SaveIndicator({ saveState, dirty }: Props) {
   return (
-    <span className="admin-save-indicator" data-state={saveState}>
+    <span
+      className="admin-save-indicator"
+      data-state={saveState}
+      role="status"
+      aria-live="polite"
+    >
       {saveLabel(saveState, dirty)}
     </span>
   );

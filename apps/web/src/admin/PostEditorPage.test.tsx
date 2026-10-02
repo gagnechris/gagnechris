@@ -302,16 +302,16 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(put).toHaveBeenCalled());
 
-    // Simulate a late GET that returns the pre-PUT entity.
-    queryClient.setQueryData(
-      queryKeys.posts.detail(basePost.id),
-      (prev: typeof basePost | undefined) => {
-        const stale = { ...basePost, version: 1, bodyMarkdown: 'line one' };
-        // Prefer newer — same rule as resource queryFn / setCachedPost.
-        if (prev && prev.version > stale.version) return prev;
-        return stale;
-      },
-    );
+    // Late GET via the mounted resource queryFn (preferNewerByVersion).
+    // An inline setQueryData that reimplements the rule would hide regressions (CHR-178).
+    get.mockResolvedValueOnce({
+      data: { ...basePost, version: 1, bodyMarkdown: 'line one' },
+      error: undefined,
+      response: { status: 200 },
+    });
+    await queryClient.refetchQueries({
+      queryKey: queryKeys.posts.detail(basePost.id),
+    });
 
     await waitFor(() => {
       expect(

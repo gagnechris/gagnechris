@@ -209,3 +209,82 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
     expect(discard).not.toHaveBeenCalled();
   });
 });
+
+describe('useDraftPublishEditor discard awaits in-flight PUT (CHR-178)', () => {
+  test('awaitInFlight resolves before discard mutate', async () => {
+    const order: string[] = [];
+    let releaseInFlight!: (value: 'clean') => void;
+    const inFlight = new Promise<'clean'>((resolve) => {
+      releaseInFlight = resolve;
+    });
+    const awaitInFlight = vi.fn(async () => {
+      order.push('await');
+      return inFlight;
+    });
+    const discard = vi.fn(async () => {
+      order.push('discard');
+      return {
+        data: { version: 2, body: 'restored' } satisfies Entity,
+        response: { status: 200 },
+      };
+    });
+
+    const { result } = renderHook(() => {
+      const versionRef = useRef(1);
+      return useDraftPublishEditor({
+        autosave: {
+          save: async () => 'clean',
+          setSaveState: () => {},
+          setSaveError: () => {},
+          getEditGen: () => 0,
+          getLastSavedGen: () => 0,
+          markClean: () => {},
+          setAutosaveHeld: () => {},
+          awaitInFlight,
+        },
+        dirty: false,
+        setDirty: () => {},
+        versionRef,
+        getVersion: (e: Entity) => e.version,
+        onEntityMeta: () => {},
+        onReplaceDraft: () => {},
+        publish: async () => ({
+          data: { version: 1, body: 'x' },
+          response: { status: 200 },
+        }),
+        unpublish: async () => ({
+          data: { version: 1, body: 'x' },
+          response: { status: 200 },
+        }),
+        discard,
+        unpublishConfirm: 'u?',
+        discardConfirm: 'd?',
+        confirm: async () => true,
+        hold: {
+          withHold: async (fn) => {
+            await fn();
+          },
+          isBusy: () => false,
+        },
+      });
+    });
+
+    let discardDone = false;
+    const p = result.current.runDiscard().then(() => {
+      discardDone = true;
+    });
+    // Confirm + withHold are async; flush to the awaitInFlight gate.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(awaitInFlight).toHaveBeenCalled();
+    expect(discard).not.toHaveBeenCalled();
+    await act(async () => {
+      releaseInFlight('clean');
+      await p;
+    });
+    expect(discardDone).toBe(true);
+    expect(order).toEqual(['await', 'discard']);
+  });
+});
