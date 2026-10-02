@@ -149,9 +149,9 @@ bash scripts/apply-branch-protection.sh
    - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs; includes `apps/web/**` and `packages/**`). Shared setup via `.github/actions/setup` (Node from `.nvmrc`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit (CHR-149).
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR:** `cdk synth` + `cdk diff` (diff role); sticky PR comment
-     - **main deploy:** runs only after CI succeeds (`workflow_run`). Path filters use SSM `/gagnechris/prod/deployed-sha` (last SHA that finished CDK and/or web deploy) as the base — not `HEAD~1` — so a cancelled CI followed by a docs-only push still deploys the skipped infra/web changes. Missing/unknown base → deploy everything. After a successful deploy, CI writes `deployed-sha`. Docs-only merges that change nothing since that SHA skip deploy. Deploy role + `prod` environment; concurrency does not cancel in-flight deploys.
+     - **main deploy:** runs only after CI succeeds (`workflow_run`). Path filters use SSM `deployed-sha` (via `scripts/ssm-param-name.sh`) as the base — not `HEAD~1` — so a cancelled CI followed by a docs-only push still deploys the skipped infra/web changes. Missing/unknown base → deploy everything. Refuses deploy when `head_sha` is not a descendant of `deployed-sha` (CHR-176). Third-party path filters run under the diff role **before** the AdministratorAccess deploy role is loaded. After a successful deploy, writes `deployed-sha`. Docs-only merges that change nothing since that SHA skip deploy. Deploy role + `prod` environment; concurrency group `cdk-prod` does not cancel in-flight deploys.
      - **CHR-149 dry-run note (2026-10, no live cancel required):** path-filter base is resolved from SSM `deployed-sha` in `.github/workflows/cdk.yml` (`Resolve path-filter base`). A cancelled infra build therefore cannot strand changes behind a later docs-only commit — the next successful CI still diffs against the last deployed SHA. Live cancel→docs-only exercise left as optional ops confirmation.
-     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; SNS alert on failure uses SSM `/gagnechris/prod/alerts-topic-arn`
+     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift` (separate from deploy, CHR-176); SNS alert on failure uses SSM `alerts-topic-arn`
 
 Prod only — there is no staging environment.
 
@@ -271,9 +271,9 @@ aws dynamodb delete-table --table-name "$TARGET" --region "$REGION"
 
 #### Restore rehearsal log
 
-| Date (UTC)                                         | Operator | Source count | Restored table | Restored count | Duration | Notes |
-| -------------------------------------------------- | -------- | ------------ | -------------- | -------------- | -------- | ----- |
-| _(pending first CI rehearsal after Backup deploy)_ |          |              |                |                |          |       |
+| Date (UTC) | Operator | Source count | Restored table                         | Restored count | Duration | Notes                                                                                        |
+| ---------- | -------- | ------------ | -------------------------------------- | -------------- | -------- | -------------------------------------------------------------------------------------------- |
+| 2026-10-02 | CI       | 14           | gagnechris-prod-restore-20261002130416 | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085) |
 
 **CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
 

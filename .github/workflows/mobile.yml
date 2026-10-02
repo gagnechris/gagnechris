@@ -9,6 +9,8 @@ on:
       - 'packages/api-client/**'
       - 'packages/tokens/**'
       - 'packages/app-core/**'
+      - 'eslint.config.js'
+      - 'tsconfig.base.json'
       - '.github/workflows/mobile.yml'
       - 'package-lock.json'
   pull_request:
@@ -19,8 +21,13 @@ on:
       - 'packages/api-client/**'
       - 'packages/tokens/**'
       - 'packages/app-core/**'
+      - 'eslint.config.js'
+      - 'tsconfig.base.json'
       - '.github/workflows/mobile.yml'
       - 'package-lock.json'
+
+permissions:
+  contents: read
 
 concurrency:
   group: mobile-${{ github.workflow }}-${{ github.ref }}
