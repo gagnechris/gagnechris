@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  QueryCommand,
+  TransactWriteCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { GSI1_NAME, GSI2_NAME, keys } from '@gagnechris/data';
 import { OwnerScopedVersionedEntityRepository } from '../src/data/owner-scoped-versioned-entity-repository.js';
 import { NotFoundError } from '../src/data/errors.js';
@@ -127,9 +131,12 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
       deleted: true,
     });
 
-    const put = send.mock.calls[1]![0] as PutCommand;
-    expect(put).toBeInstanceOf(PutCommand);
-    const item = put.input.Item as Record<string, unknown>;
+    const cmd = send.mock.calls[1]![0] as TransactWriteCommand;
+    expect(cmd).toBeInstanceOf(TransactWriteCommand);
+    const item = cmd.input.TransactItems?.[0]?.Put?.Item as Record<
+      string,
+      unknown
+    >;
     expect(item.deleted).toBe(true);
     expect(item.gsi1pk).toBeUndefined();
     expect(item.gsi1sk).toBeUndefined();

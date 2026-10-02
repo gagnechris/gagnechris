@@ -52,6 +52,14 @@ export class NotFoundError extends Error {
   }
 }
 
+/** Client sync watermark is older than the tombstone retention horizon (CHR-172). */
+export class ResyncRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ResyncRequiredError';
+  }
+}
+
 /** DynamoDB throttling exhausted retries (CHR-120). */
 export class ServiceUnavailableError extends Error {
   constructor(message: string) {

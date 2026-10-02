@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { API_LAMBDA_TIMEOUT_MS, keys, SYNC_OVERLAP_MS } from '@gagnechris/data';
+import {
+  API_LAMBDA_TIMEOUT_MS,
+  keys,
+  SYNC_OVERLAP_MS,
+  SYNC_TOMBSTONE_TTL_DAYS,
+  syncResyncHorizonIso,
+} from '@gagnechris/data';
 import { SyncLedger } from '../src/sync/ledger.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
@@ -35,7 +41,7 @@ function adminEvent(
   });
 }
 
-describe('sync feed (CHR-153 / CHR-162)', () => {
+describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -44,6 +50,31 @@ describe('sync feed (CHR-153 / CHR-162)', () => {
 
   it('overlap is at least the API Lambda timeout', () => {
     expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
+  });
+
+  it('stale since returns 410 resync_required (CHR-172)', async () => {
+    const now = '2026-10-02T12:00:00.000Z';
+    const { doc } = createMemoryDoc();
+    const ledger = new SyncLedger(doc, TABLE, () => now);
+    const routes = createSyncRoutes(ledger);
+    const stale = new Date(
+      Date.parse(now) - (SYNC_TOMBSTONE_TTL_DAYS + 2) * 86_400_000,
+    ).toISOString();
+    expect(Date.parse(stale)).toBeLessThan(
+      Date.parse(syncResyncHorizonIso(new Date(now))),
+    );
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent('GET', '/api/notebook/sync/changes', undefined, undefined, {
+        since: stale,
+      }),
+      'GET',
+      '/api/notebook/sync/changes',
+    );
+    expect(res?.statusCode).toBe(410);
+    expect(JSON.parse(res!.body as string)).toMatchObject({
+      error: 'resync_required',
+    });
   });
 
   it('since without ms or with offset returns the same changes as UTC-ms', async () => {

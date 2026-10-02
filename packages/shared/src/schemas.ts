@@ -329,30 +329,59 @@ export const UlidSchema = z.preprocess(
 );
 
 /**
- * Sync-pattern fixture entity schemas lived here for CHR-141; removed from the
- * public package surface in CHR-153 (test-only fake entities cover the patterns).
+ * Sync change wire types (CHR-172). Discriminated by `type` so generated
+ * clients type `entity` per change type. `fakeNote` is the contract fixture
+ * until real Notebook Note/Task entities ship (routes stay test-only).
  */
 
-export const SyncChangeSchema = z.object({
-  type: z.string().min(1),
+export const FakeNoteEntitySchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  title: z.string(),
+  body: z.string(),
+  version: z.number().int().nonnegative(),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  deleted: z.boolean(),
+  area: z.enum(['work', 'personal']).optional(),
+  noteDate: z.string().optional(),
+});
+
+export type FakeNoteEntity = z.infer<typeof FakeNoteEntitySchema>;
+
+export const FakeNoteSyncChangeSchema = z.object({
+  type: z.literal('fakeNote'),
   id: z.string().min(1),
   version: z.number().int().nonnegative(),
   deleted: z.boolean(),
   updatedAt: z.string().datetime({ offset: true }),
   /** Present when not deleted (full entity for convenience). */
-  entity: z.record(z.string(), z.unknown()).optional(),
+  entity: FakeNoteEntitySchema.optional(),
 });
+
+export type FakeNoteSyncChange = z.infer<typeof FakeNoteSyncChangeSchema>;
+
+/** Discriminated union — add Note/Task variants here as they ship. */
+export const SyncChangeSchema = z.discriminatedUnion('type', [
+  FakeNoteSyncChangeSchema,
+]);
 
 export type SyncChange = z.infer<typeof SyncChangeSchema>;
 
 export const SyncChangesResponseSchema = z.object({
   changes: z.array(SyncChangeSchema),
   nextCursor: z.string().min(1).optional(),
-  /** Opaque server watermark; clients pass this back as `since`. */
+  /**
+   * Server watermark (ISO-8601). Opaque to clients except that it must be
+   * echoed as `since` on the next poll (CHR-172).
+   */
   nextSince: z.string().datetime({ offset: true }),
 });
 
 export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
+
+/** Default page size when `limit` is omitted (avoids ~1 MB Dynamo pages). */
+export const SYNC_DEFAULT_PAGE_LIMIT = 50;
 
 export const SyncChangesQuerySchema = z.object({
   since: z
@@ -360,7 +389,7 @@ export const SyncChangesQuerySchema = z.object({
     .datetime({ offset: true })
     .optional()
     .describe(
-      'ISO-8601 watermark; omit for the beginning of the user sync stream',
+      'ISO-8601 watermark from a prior nextSince; omit for a full resync. Older than the tombstone horizon → 410 resync_required',
     ),
   cursor: z
     .string()
@@ -373,7 +402,7 @@ export const SyncChangesQuerySchema = z.object({
     .positive()
     .max(100)
     .optional()
-    .describe('Page size (1-100)'),
+    .describe(`Page size (1-100; default ${SYNC_DEFAULT_PAGE_LIMIT})`),
 });
 
 export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;

@@ -155,6 +155,20 @@ export const SYNC_TOMBSTONE_TTL_DAYS = 30;
  */
 export const SYNC_CREATE_CLAIM_TTL_DAYS = 365;
 
+/**
+ * Extra margin below the tombstone TTL for the sync `since` horizon (CHR-172).
+ * Clients with `since` older than `now − tombstoneTTL − margin` get 410
+ * `resync_required` (deletes may have been purged).
+ */
+export const SYNC_RESYNC_MARGIN_MS = 24 * 60 * 60 * 1000;
+
+/** ISO watermark: `since` older than this requires a full resync (CHR-172). */
+export function syncResyncHorizonIso(at: Date = new Date()): string {
+  const ms =
+    at.getTime() - SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 - SYNC_RESYNC_MARGIN_MS;
+  return new Date(ms).toISOString();
+}
+
 export function ttlDaysFromNow(
   days: number = SYNC_TOMBSTONE_TTL_DAYS,
   at: Date = new Date(),

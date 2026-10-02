@@ -736,6 +736,20 @@ describe('ApiStack', () => {
     }
     expect(jwtRouteKeys.sort()).toEqual([...expectedJwtRouteKeys].sort());
     expect(publicRouteKeys.sort()).toEqual([...expectedPublicRouteKeys].sort());
+
+    // Notebook route throttle overrides (CHR-172).
+    const stageResources = template.findResources('AWS::ApiGatewayV2::Stage');
+    const stageProps = Object.values(stageResources)[0]?.Properties as {
+      RouteSettings?: Record<string, { ThrottlingRateLimit?: number }>;
+    };
+    expect(
+      stageProps?.RouteSettings?.['ANY /api/notebook/{proxy+}']
+        ?.ThrottlingRateLimit,
+    ).toBe(50);
+    expect(
+      stageProps?.RouteSettings?.['POST /api/contact']?.ThrottlingRateLimit,
+    ).toBe(5);
+
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
