@@ -150,6 +150,27 @@ export function createMemoryDoc(): {
         rows.sort((a, b) =>
           String(a.gsi1sk ?? '').localeCompare(String(b.gsi1sk ?? '')),
         );
+      } else if (indexName === 'gsi2') {
+        rows = rows.filter((item) => item.gsi2pk === pk);
+        if (keyCond.includes('BETWEEN') && values[':from'] && values[':to']) {
+          const from = values[':from'];
+          const to = values[':to'];
+          rows = rows.filter((item) => {
+            const sk = item.gsi2sk as string;
+            return sk >= from && sk <= to;
+          });
+        } else if (
+          keyCond.includes('begins_with') &&
+          typeof values[':prefix'] === 'string'
+        ) {
+          const prefix = values[':prefix'];
+          rows = rows.filter((item) =>
+            String(item.gsi2sk ?? '').startsWith(prefix),
+          );
+        }
+        rows.sort((a, b) =>
+          String(a.gsi2sk ?? '').localeCompare(String(b.gsi2sk ?? '')),
+        );
       } else {
         rows = rows.filter((item) => item.pk === pk);
         if (sinceSk) {
@@ -166,6 +187,9 @@ export function createMemoryDoc(): {
       } else if (startKey && indexName === 'gsi1') {
         const startSk = startKey.gsi1sk as string;
         rows = rows.filter((item) => (item.gsi1sk as string) > startSk);
+      } else if (startKey && indexName === 'gsi2') {
+        const startSk = startKey.gsi2sk as string;
+        rows = rows.filter((item) => (item.gsi2sk as string) > startSk);
       } else if (startKey) {
         const startSk = startKey.sk as string;
         rows = rows.filter((item) => (item.sk as string) > startSk);
@@ -185,6 +209,8 @@ export function createMemoryDoc(): {
               syncSk: last.syncSk,
               gsi1pk: last.gsi1pk,
               gsi1sk: last.gsi1sk,
+              gsi2pk: last.gsi2pk,
+              gsi2sk: last.gsi2sk,
             }
           : undefined,
       };
