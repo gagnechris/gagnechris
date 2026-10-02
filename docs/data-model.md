@@ -13,14 +13,14 @@ code.
 
 ## Keys
 
-| Attribute           | Role                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `pk`                | Partition key                                                                               |
-| `sk`                | Sort key                                                                                    |
-| `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                           |
+| Attribute           | Role                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `pk`                | Partition key                                                                                     |
+| `sk`                | Sort key                                                                                          |
+| `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                                 |
 | `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk |
-| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity; CHR-153)                  |
-| `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …) |
+| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity; CHR-153)                        |
+| `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …)       |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -264,37 +264,37 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 ### Note fields
 
-| Attr           | Notes                                                                  |
-| -------------- | ---------------------------------------------------------------------- |
-| `id`           | Client ULID                                                            |
-| `userId`       | Cognito `sub`                                                          |
-| `area`         | `work` \| `personal`                                                   |
-| `type`         | `daily` \| `page`                                                      |
-| `date`         | `yyyy-mm-dd` when `type=daily`; `null` for pages                       |
-| `title`        | String (may be empty)                                                  |
-| `bodyMarkdown` | Markdown body                                                          |
-| `tags`         | `string[]` (normalized on write)                                       |
-| `pinned`       | Boolean                                                                |
-| `version`      | Optimistic concurrency                                                 |
-| `createdAt` / `updatedAt` | ISO-8601 UTC ms                                               |
-| `deleted`      | Soft-delete flag (tombstone window on GSI3)                            |
+| Attr                      | Notes                                            |
+| ------------------------- | ------------------------------------------------ |
+| `id`                      | Client ULID                                      |
+| `userId`                  | Cognito `sub`                                    |
+| `area`                    | `work` \| `personal`                             |
+| `type`                    | `daily` \| `page`                                |
+| `date`                    | `yyyy-mm-dd` when `type=daily`; `null` for pages |
+| `title`                   | String (may be empty)                            |
+| `bodyMarkdown`            | Markdown body                                    |
+| `tags`                    | `string[]` (normalized on write)                 |
+| `pinned`                  | Boolean                                          |
+| `version`                 | Optimistic concurrency                           |
+| `createdAt` / `updatedAt` | ISO-8601 UTC ms                                  |
+| `deleted`                 | Soft-delete flag (tombstone window on GSI3)      |
 
 ### Task fields
 
-| Attr           | Notes                                                                  |
-| -------------- | ---------------------------------------------------------------------- |
-| `id`           | Client ULID                                                            |
-| `userId`       | Cognito `sub`                                                          |
-| `area`         | `work` \| `personal`                                                   |
-| `title`        | Required non-empty                                                     |
-| `description`  | Markdown (may be empty)                                                |
-| `priority`     | `low` \| `med` \| `high`                                               |
-| `status`       | `todo` \| `in_progress` \| `done`                                      |
-| `dueDate`      | Optional `yyyy-mm-dd`; `null` when undated                             |
-| `completedAt`  | ISO-8601 when done; otherwise `null`                                   |
-| `noteId`       | Optional link to a note                                                |
-| `tags`         | `string[]`                                                             |
-| `version` / timestamps / `deleted` | Same concurrency model as notes                     |
+| Attr                               | Notes                                      |
+| ---------------------------------- | ------------------------------------------ |
+| `id`                               | Client ULID                                |
+| `userId`                           | Cognito `sub`                              |
+| `area`                             | `work` \| `personal`                       |
+| `title`                            | Required non-empty                         |
+| `description`                      | Markdown (may be empty)                    |
+| `priority`                         | `low` \| `med` \| `high`                   |
+| `status`                           | `todo` \| `in_progress` \| `done`          |
+| `dueDate`                          | Optional `yyyy-mm-dd`; `null` when undated |
+| `completedAt`                      | ISO-8601 when done; otherwise `null`       |
+| `noteId`                           | Optional link to a note                    |
+| `tags`                             | `string[]`                                 |
+| `version` / timestamps / `deleted` | Same concurrency model as notes            |
 
 ### Keys
 
