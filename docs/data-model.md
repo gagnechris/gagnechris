@@ -325,6 +325,12 @@ API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/
 
 `dueBefore` / `dueOn` key conditions use the `DUE#` prefix only (undated `UPDATED#…` rows are excluded). List sort is applied **on the server**: overdue (`dueDate` &lt; UTC today), then earlier due dates, then priority, then id.
 
+### Search HTTP API (CHR-46)
+
+| Method | Path | Notes |
+| ------ | ---- | ----- |
+| `GET` | `/api/notebook/search` | Query: `q` (required), optional `area`, `limit` (max 50). Scans the caller's notes and tasks (capped) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
+
 ## Conventions
 
 - Timestamps: UTC ISO-8601 with millisecond precision.

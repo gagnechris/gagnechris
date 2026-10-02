@@ -42,6 +42,8 @@ import {
   ListNotesQuerySchema,
   ListTasksQuerySchema,
   NotebookAreaSchema,
+  NotebookSearchQuerySchema,
+  NotebookSearchResponseSchema,
   NoteListResponseSchema,
   NoteSchema,
   NoteSyncChangeSchema,
@@ -218,6 +220,8 @@ export function buildOpenApiDocument() {
   registry.register('CreateTaskRequest', CreateTaskRequestSchema);
   registry.register('UpdateTaskRequest', UpdateTaskRequestSchema);
   registry.register('ListTasksQuery', ListTasksQuerySchema);
+  registry.register('NotebookSearchQuery', NotebookSearchQuerySchema);
+  registry.register('NotebookSearchResponse', NotebookSearchResponseSchema);
   registry.register('FakeNoteEntity', FakeNoteEntitySchema);
   registry.register('FakeNoteSyncChange', FakeNoteSyncChangeSchema);
   registry.register('NoteSyncChange', NoteSyncChangeSchema);
@@ -846,6 +850,20 @@ export function buildOpenApiDocument() {
       404: r404,
       409: r409,
       ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/notebook/search',
+    summary: 'Search notes and tasks for the authenticated user',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { query: NotebookSearchQuerySchema },
+    responses: {
+      200: ok(NotebookSearchResponseSchema, 'Grouped search hits'),
+      400: r400,
+      ...adminAuth,
     },
   });
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { navLinkClass } from '../ui/navLinkClass';
 import {
@@ -7,6 +7,7 @@ import {
   writeNotebookAreaFilter,
   type NotebookAreaFilter,
 } from './notebook/notebookAreaPreference';
+import NotebookSearchPalette from './notebook/NotebookSearchPalette';
 
 export type NotebookOutletContext = {
   areaFilter: NotebookAreaFilter;
@@ -33,11 +34,23 @@ export default function AdminNotebookLayout() {
   const [areaFilter, setAreaFilterState] = useState<NotebookAreaFilter>(() =>
     readNotebookAreaFilter(),
   );
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const setAreaFilter = (next: NotebookAreaFilter) => {
     setAreaFilterState(next);
     writeNotebookAreaFilter(next);
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const outletContext: NotebookOutletContext = {
     areaFilter,
@@ -78,9 +91,24 @@ export default function AdminNotebookLayout() {
           <NavLink to="tasks" className={navLinkClass}>
             Tasks
           </NavLink>
+          <button
+            type="button"
+            className="admin-nav__link admin-nav__button"
+            onClick={() => setSearchOpen(true)}
+          >
+            Search
+            <kbd className="notebook-search__kbd">⌘K</kbd>
+          </button>
         </nav>
       </div>
       <Outlet context={outletContext} />
+      {searchOpen ? (
+        <NotebookSearchPalette
+          open
+          onClose={() => setSearchOpen(false)}
+          areaFilter={areaFilter}
+        />
+      ) : null}
     </div>
   );
 }
