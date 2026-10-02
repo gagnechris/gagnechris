@@ -5,6 +5,7 @@ import { useEffect } from 'react';
  * so sticky bars and editor panes can clear the on-screen keyboard (CHR-148).
  *
  * - `--vv-height`: layout viewport height accounting for the keyboard
+ * - `--vv-offset-top`: visualViewport.offsetTop (URL bar / scroll offset)
  * - `--keyboard-inset-bottom`: overlap of the keyboard with the layout viewport
  */
 export function useVisualViewportCssVars(): void {

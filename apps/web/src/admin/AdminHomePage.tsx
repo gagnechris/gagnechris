@@ -164,8 +164,7 @@ const AdminHomePage = () => {
         </div>
       </div>
       <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (does nothing while
-        focused in the body editor)
+        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
       </p>
     </section>
   );

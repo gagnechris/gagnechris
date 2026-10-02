@@ -95,20 +95,15 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
     expect(updated).toMatchObject({ title: 'Updated', version: 2 });
     fakeResource.setCache(queryClient, updated);
 
-    // Same preferNewerByVersion path the resource queryFn uses (CHR-165).
-    const staleFetch: FakeEntity = {
+    // Prefer-newer must run inside queryFn — calling preferNewerByVersion
+    // directly would leave the suite green if queryFn returned fetched (CHR-178).
+    store.set('f1', {
       id: 'f1',
       title: 'Stale',
       version: 1,
       status: 'draft',
       hasUnpublishedChanges: false,
-    };
-    const cached = queryClient.getQueryData<FakeEntity>([
-      'admin',
-      'fake',
-      'f1',
-    ]);
-    expect(preferNewerByVersion(cached, staleFetch)).toEqual(updated);
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(AppApiProvider, {
@@ -118,6 +113,16 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
           children,
         }),
       });
+
+    const { result: queryResult } = renderHook(
+      () => fakeResource.useQuery({ id: 'f1' }),
+      { wrapper },
+    );
+    await act(async () => {
+      await queryResult.current.refetch();
+    });
+    expect(queryResult.current.data).toEqual(updated);
+    expect(preferNewerByVersion(updated, store.get('f1')!)).toEqual(updated);
 
     const { result } = renderHook(
       () => fakeResource.useLifecycleMutators({ id: 'f1' }),

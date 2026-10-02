@@ -63,6 +63,7 @@ export function Repeater<T extends RepeaterItem>({
                 <Button
                   // Keep focus on the field so stable keys preserve caret (CHR-165).
                   onMouseDown={(e) => e.preventDefault()}
+                  aria-label={`Move up row ${item.id}`}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -79,6 +80,7 @@ export function Repeater<T extends RepeaterItem>({
                 </Button>
                 <Button
                   onMouseDown={(e) => e.preventDefault()}
+                  aria-label={`Move down row ${item.id}`}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -95,7 +97,11 @@ export function Repeater<T extends RepeaterItem>({
                 </Button>
               </>
             ) : null}
-            <Button variant="danger" onClick={() => removeItem(item.id)}>
+            <Button
+              variant="danger"
+              aria-label={`${removeLabel} row ${item.id}`}
+              onClick={() => removeItem(item.id)}
+            >
               {removeLabel}
             </Button>
           </div>

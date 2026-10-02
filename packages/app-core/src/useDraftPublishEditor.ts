@@ -91,6 +91,7 @@ export function useDraftPublishEditor<TEntity>({
     getEditGen,
     getLastSavedGen,
     markClean,
+    awaitInFlight,
   } = autosave;
   const { withHold, isBusy } = hold;
 
@@ -180,6 +181,9 @@ export function useDraftPublishEditor<TEntity>({
     if (!enabled || isBusy()) return;
     if (!(await confirm(discardConfirm))) return;
     await withHold(async () => {
+      // Discard reads server draft — wait out any in-flight autosave PUT first
+      // so we do not race a 409 / false conflict banner (CHR-178).
+      await awaitInFlight();
       const { data, error, response } = await discard();
       if (error || !data) {
         setSaveError(`Discard failed (${response.status}).`);
@@ -190,6 +194,7 @@ export function useDraftPublishEditor<TEntity>({
       markClean();
     });
   }, [
+    awaitInFlight,
     confirm,
     discard,
     discardConfirm,

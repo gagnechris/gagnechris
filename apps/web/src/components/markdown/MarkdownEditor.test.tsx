@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
@@ -198,19 +198,58 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
       expect(container.querySelector('.cm-editor')).toBeTruthy();
     });
 
-    const cm = container.querySelector('.cm-content') as HTMLElement;
-    // Place caret inside [ ] and type Space — without taskListToggle this
-    // must not flip the box to [x].
-    cm.dispatchEvent(
+    // Drive CodeMirror view directly (same as the toggle-on test) so a
+    // caret-at-0 Space cannot falsely pass (CHR-178).
+    const cmView = EditorView.findFromDOM(
+      container.querySelector('.cm-content')!,
+    );
+    expect(cmView).toBeTruthy();
+    cmView!.dispatch({ selection: EditorSelection.cursor(3) });
+    typeSpace(cmView!);
+    expect(cmView!.state.doc.toString()).toBe('- [ ] buy milk');
+    expect(onChange.mock.calls.some(([v]) => String(v).includes('- [x]'))).toBe(
+      false,
+    );
+  });
+
+  test('⌘⏎ does not insert a blank line (CHR-178)', async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <MarkdownEditor value="hello" onChange={onChange} />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector('.cm-content')).toBeTruthy();
+    });
+    const cmView = EditorView.findFromDOM(
+      container.querySelector('.cm-content')!,
+    )!;
+    cmView.focus();
+    cmView.contentDOM.dispatchEvent(
       new KeyboardEvent('keydown', {
-        key: ' ',
-        code: 'Space',
+        key: 'Enter',
+        code: 'Enter',
+        metaKey: true,
         bubbles: true,
         cancelable: true,
       }),
     );
-    expect(onChange.mock.calls.some(([v]) => String(v).includes('- [x]'))).toBe(
-      false,
+    expect(cmView.state.doc.toString()).toBe('hello');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('textbox has an accessible name via contentAttributes (CHR-178)', async () => {
+    const { container } = render(
+      <MarkdownEditor value="x" onChange={() => {}} label="Post body" />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: 'Post body' }),
+      ).toBeInTheDocument();
+    });
+    // Wrapper must not be the only named node — the role=textbox is .cm-content.
+    expect(container.querySelector('.cm-content')).toHaveAttribute(
+      'aria-label',
+      'Post body',
     );
   });
 

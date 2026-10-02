@@ -128,7 +128,7 @@ describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
     cm.remove();
   });
 
-  test('⌘⏎ in the editor does not also insert a newline (handler skips preventDefault)', () => {
+  test('⌘⏎ in the editor does not publish (shell skips; CM owns the key)', () => {
     const cm = document.createElement('div');
     cm.className = 'cm-editor';
     const inner = document.createElement('div');
@@ -145,7 +145,7 @@ describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
     });
     inner.dispatchEvent(event);
     expect(publishMock).not.toHaveBeenCalled();
-    // Live shell must not steal the keystroke from CodeMirror.
+    // Shell must not preventDefault — MarkdownEditor consumes Mod-Enter (CHR-178).
     expect(event.defaultPrevented).toBe(false);
     cm.remove();
   });
