@@ -1,14 +1,17 @@
 import { MEDIA_CONTENT_TYPES, type MediaContentType } from '@gagnechris/shared';
-import { createApiClient } from '../api/client';
+import type { ApiClient } from '@gagnechris/api-client';
 
 const allowed = new Set<string>(MEDIA_CONTENT_TYPES);
 
 /**
  * Request a signed upload URL per file, PUT the bytes, return public paths.
- * Uses shared `MEDIA_CONTENT_TYPES` (CHR-132).
+ * Uses shared `MEDIA_CONTENT_TYPES` (CHR-132). Caller supplies the API client
+ * from `useGetApiClient()` so uploads go through AppApiProvider (CHR-165).
  */
-export async function uploadImages(files: File[]): Promise<string[]> {
-  const client = createApiClient();
+export async function uploadImages(
+  client: ApiClient,
+  files: File[],
+): Promise<string[]> {
   const paths: string[] = [];
 
   for (const file of files) {

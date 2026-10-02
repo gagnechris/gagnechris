@@ -76,9 +76,8 @@ describe('Repeater', () => {
       'aria-label',
       'Title b',
     );
-    // Button click moves focus; stable keys mean the same input remounts in
-    // place and can take focus again after reorder.
-    moved.focus();
+    // mousedown preventDefault on reorder buttons keeps focus on the field
+    // (stable keys). Do not call focus() here — that would hide a regression.
     expect(moved).toHaveFocus();
   });
 });

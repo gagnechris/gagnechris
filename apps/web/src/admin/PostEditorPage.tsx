@@ -1,7 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
-import { postResource, useDeletePostMutation } from '@gagnechris/app-core';
+import {
+  postResource,
+  useDeletePostMutation,
+  useGetApiClient,
+} from '@gagnechris/app-core';
 import { Button } from '../ui/Button';
 import { EditorActionBar } from '../ui/EditorActionBar';
 import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';
@@ -14,9 +18,25 @@ import {
 import { uploadImages } from './uploadImages';
 import { useVersionedEntityEditor } from './useVersionedEntityEditor';
 
+/** Outer shell keys the editor by postId so A→B navigation drops pending debounce. */
 export default function PostEditorPage() {
   const { postId } = useParams<{ postId: string }>();
+  if (!postId) {
+    return (
+      <section className="admin-panel">
+        <p className="admin-panel__error" role="alert">
+          Missing post id.
+        </p>
+        <Link to="/admin">← Back to posts</Link>
+      </section>
+    );
+  }
+  return <PostEditorPageInner key={postId} postId={postId} />;
+}
+
+function PostEditorPageInner({ postId }: { postId: string }) {
   const navigate = useNavigate();
+  const getClient = useGetApiClient();
   const deleteMutation = useDeletePostMutation();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [slugManual, setSlugManual] = useState(false);
@@ -36,8 +56,8 @@ export default function PostEditorPage() {
     runDelete,
   } = useVersionedEntityEditor({
     resource: postResource,
-    params: { id: postId ?? '' },
-    enabled: Boolean(postId),
+    params: { id: postId },
+    enabled: true,
     initialDraft: emptyPostDraft(),
     toDraft: postDraftFromPost,
     getEntityId: (entity) => entity.id,
@@ -56,18 +76,15 @@ export default function PostEditorPage() {
     discardConfirm:
       'Discard unpublished edits and restore the last published post?',
     onHydrate: () => setSlugManual(true),
-    delete: postId
-      ? {
-          confirm:
-            'Soft-delete this post? You can recover it later via the API.',
-          mutate: async () => {
-            await deleteMutation.mutateAsync(postId);
-          },
-          onDeleted: () => {
-            void navigate('/admin');
-          },
-        }
-      : undefined,
+    delete: {
+      confirm: 'Soft-delete this post? You can recover it later via the API.',
+      mutate: async () => {
+        await deleteMutation.mutateAsync(postId);
+      },
+      onDeleted: () => {
+        void navigate('/admin');
+      },
+    },
   });
 
   const setField = <K extends keyof PostDraftFields>(
@@ -87,7 +104,7 @@ export default function PostEditorPage() {
     async (files: File[]) => {
       try {
         setSaveError(null);
-        return await uploadImages(files);
+        return await uploadImages(getClient(), files);
       } catch (err) {
         setSaveError(
           err instanceof Error ? err.message : 'Image upload failed',
@@ -95,7 +112,7 @@ export default function PostEditorPage() {
         return [];
       }
     },
-    [setSaveError],
+    [getClient, setSaveError],
   );
 
   if (loadError) {
