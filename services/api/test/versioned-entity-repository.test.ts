@@ -89,6 +89,17 @@ describe('VersionedEntityRepository (fake note)', () => {
 
   it('updateIfVersion returns conflict with current entity', async () => {
     send
+      // getRawItem (preserve createHash)
+      .mockResolvedValueOnce({
+        Item: {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'Old',
+          version: 2,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      })
       .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
       .mockResolvedValueOnce({
         Item: {

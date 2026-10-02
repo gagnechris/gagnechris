@@ -25,7 +25,7 @@ export function json(
   };
 }
 
-/** JSON response with weak ETag quoting the entity `version` (CHR-141). */
+/** JSON response with strong ETag quoting the entity `version` (CHR-141 / CHR-162). */
 export function jsonWithEtag(
   statusCode: number,
   body: unknown,
@@ -41,24 +41,14 @@ export function jsonWithEtag(
   };
 }
 
-/** Parse `If-Match` as an integer entity version (strips surrounding quotes). */
-export function parseIfMatchVersion(
-  headers: Record<string, string | undefined> | undefined,
-): number | undefined {
-  const raw =
-    headers?.['if-match'] ??
-    headers?.['If-Match'] ??
-    (headers
-      ? Object.entries(headers).find(
-          ([k]) => k.toLowerCase() === 'if-match',
-        )?.[1]
-      : undefined);
-  if (raw == null || raw === '') return undefined;
-  const stripped = raw.trim().replace(/^"|"$/g, '');
-  const n = Number(stripped);
-  if (!Number.isInteger(n) || n < 0) return undefined;
-  return n;
-}
+export {
+  parseIfMatch,
+  parseIfMatchVersion,
+  resolveExpectedVersion,
+  mapVersionConflict,
+  type IfMatchExpectation,
+  type ExpectedVersionResolution,
+} from './data/concurrency.js';
 
 export function parseBody(event: APIGatewayProxyEventV2): unknown {
   if (!event.body) return {};
@@ -118,6 +108,7 @@ export function mapRouteError(
       ...(error.currentVersion !== undefined
         ? { currentVersion: error.currentVersion }
         : {}),
+      ...(error.current !== undefined ? { current: error.current } : {}),
     });
   }
   if (error instanceof ConflictError) {

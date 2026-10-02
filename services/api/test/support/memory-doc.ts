@@ -1,11 +1,34 @@
 /**
- * In-memory DynamoDBDocumentClient for sync GSI unit tests (CHR-153).
+ * In-memory DynamoDBDocumentClient for sync GSI unit tests (CHR-153 / CHR-162).
  */
 import { vi } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 function itemKey(item: { pk: string; sk: string }): string {
   return `${item.pk}\0${item.sk}`;
+}
+
+function checkPutCondition(
+  store: Map<string, Record<string, unknown>>,
+  input: Record<string, unknown>,
+): void {
+  const item = input.Item as Record<string, unknown>;
+  const key = { pk: item.pk as string, sk: item.sk as string };
+  const k = itemKey(key);
+  const cond = input.ConditionExpression as string | undefined;
+  if (cond === 'attribute_not_exists(pk)') {
+    if (store.has(k)) {
+      throw { name: 'ConditionalCheckFailedException' };
+    }
+  } else if (cond?.includes('version = :v')) {
+    const existing = store.get(k);
+    const expected = (
+      input.ExpressionAttributeValues as Record<string, unknown>
+    )?.[':v'];
+    if (!existing || existing.version !== expected) {
+      throw { name: 'ConditionalCheckFailedException' };
+    }
+  }
 }
 
 export function createMemoryDoc(): {
@@ -28,24 +51,35 @@ export function createMemoryDoc(): {
     }
 
     if (name === 'PutCommand') {
+      checkPutCondition(store, cmd.input);
       const item = cmd.input.Item as Record<string, unknown>;
-      const key = { pk: item.pk as string, sk: item.sk as string };
-      const k = itemKey(key);
-      const cond = cmd.input.ConditionExpression as string | undefined;
-      if (cond === 'attribute_not_exists(pk)') {
-        if (store.has(k)) {
-          throw { name: 'ConditionalCheckFailedException' };
-        }
-      } else if (cond?.includes('version = :v')) {
-        const existing = store.get(k);
-        const expected = (
-          cmd.input.ExpressionAttributeValues as Record<string, unknown>
-        )?.[':v'];
-        if (!existing || existing.version !== expected) {
-          throw { name: 'ConditionalCheckFailedException' };
-        }
+      store.set(itemKey({ pk: item.pk as string, sk: item.sk as string }), {
+        ...item,
+      });
+      return {};
+    }
+
+    if (name === 'TransactWriteCommand') {
+      const items = cmd.input.TransactItems as Array<{
+        Put?: Record<string, unknown>;
+      }>;
+      // Validate all conditions first (transactional).
+      for (const entry of items) {
+        if (entry.Put) checkPutCondition(store, entry.Put);
       }
-      store.set(k, { ...item });
+      for (const entry of items) {
+        if (!entry.Put) continue;
+        const item = entry.Put.Item as Record<string, unknown>;
+        store.set(itemKey({ pk: item.pk as string, sk: item.sk as string }), {
+          ...item,
+        });
+      }
+      return {};
+    }
+
+    if (name === 'DeleteCommand') {
+      const key = cmd.input.Key as { pk: string; sk: string };
+      store.delete(itemKey(key));
       return {};
     }
 

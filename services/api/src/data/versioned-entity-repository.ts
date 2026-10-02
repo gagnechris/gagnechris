@@ -1,15 +1,24 @@
 /**
- * Generic optimistic-concurrency entity store (CHR-129 / CHR-153 / CHR-161).
+ * Generic optimistic-concurrency entity store (CHR-129 / CHR-153 / CHR-161 / CHR-162).
  * Optional sync config writes sparse GSI keys on META (one row per entity).
  */
 import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  TransactWriteCommand,
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { syncPk, syncSk, ttlDaysFromNow } from '@gagnechris/data';
+import {
+  isOptimisticLockConflict,
+  syncCreateClaimPk,
+  syncCreateClaimSk,
+  syncPk,
+  syncSk,
+  SYNC_CREATE_CLAIM_TTL_DAYS,
+  ttlDaysFromNow,
+} from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { decodeCursor, encodeCursor, PRIMARY_CURSOR_KEYS } from './cursor.js';
@@ -29,14 +38,15 @@ export type VersionedEntity = {
 };
 
 export type SyncEntityConfig<T extends VersionedEntity> = {
-  /** Stable change-feed type (e.g. `fakeNote`). Stored as `entityType` when writing sync keys. */
+  /** Stable change-feed type (e.g. `fakeNote`). Stored as `entityType` on META. */
   changeType: string;
   userIdOf: (entity: T) => string;
   /**
-   * Hash of create payload fields. Retries with the same id but a different
-   * hash throw ConflictError (409); matching hash is idempotent.
+   * Hash of create payload fields. Stored as `createHash` on create.
+   * Retries with the same id but a different hash throw ConflictError (409);
+   * matching hash is idempotent. Required when sync is configured (CHR-162).
    */
-  createPayloadHash?: (entity: T) => string;
+  createPayloadHash: (entity: T) => string;
 };
 
 export type VersionedEntityConfig<
@@ -56,8 +66,8 @@ export type VersionedEntityConfig<
   /** Required cursor key names for queryPage (defaults to primary keys). */
   cursorKeyNames?: readonly string[];
   /**
-   * When set, every write stamps `syncPk` / `syncSk` on the META item so the
-   * sparse sync GSI returns one latest row per entity (CHR-153).
+   * When set, every write stamps `entityType` + `syncPk` / `syncSk` on the META
+   * item so the sparse sync GSI returns one latest row per entity (CHR-153).
    */
   sync?: SyncEntityConfig<T>;
 };
@@ -101,22 +111,37 @@ export class VersionedEntityRepository<
     }
   }
 
-  /** Attach sparse sync GSI keys when sync is configured. */
-  protected toStoredItem(entity: T, opts?: { ttl?: number }): TItem {
+  /**
+   * Attach sparse sync GSI keys + entityType when sync is configured.
+   * `entityType` is always stamped from `sync.changeType` so feed adapters work
+   * even when `toItem` omits it (CHR-162).
+   */
+  protected toStoredItem(
+    entity: T,
+    opts?: { ttl?: number; createHash?: string },
+  ): TItem {
     const base = this.config.toItem(entity);
     const sync = this.config.sync;
     if (!sync) {
-      return opts?.ttl !== undefined
-        ? ({ ...base, ttl: opts.ttl } as TItem)
-        : base;
+      return {
+        ...base,
+        ...(opts?.ttl !== undefined ? { ttl: opts.ttl } : {}),
+        ...(opts?.createHash !== undefined
+          ? { createHash: opts.createHash }
+          : {}),
+      } as TItem;
     }
     const userId = sync.userIdOf(entity);
     const id = this.config.idOf(entity);
     return {
       ...base,
+      entityType: sync.changeType,
       syncPk: syncPk(userId),
       syncSk: syncSk(entity.updatedAt, sync.changeType, id),
       ...(opts?.ttl !== undefined ? { ttl: opts.ttl } : {}),
+      ...(opts?.createHash !== undefined
+        ? { createHash: opts.createHash }
+        : {}),
     } as TItem;
   }
 
@@ -145,6 +170,35 @@ export class VersionedEntityRepository<
     return this.mapItem(result.Item);
   }
 
+  protected async getRawItem(
+    id: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const result = await this.doc.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: this.config.keyForId(id),
+      }),
+    );
+    return result.Item as Record<string, unknown> | undefined;
+  }
+
+  protected async getCreateClaim(
+    id: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const sync = this.config.sync;
+    if (!sync) return undefined;
+    const result = await this.doc.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: {
+          pk: syncCreateClaimPk(sync.changeType, id),
+          sk: syncCreateClaimSk(),
+        },
+      }),
+    );
+    return result.Item as Record<string, unknown> | undefined;
+  }
+
   async getOrThrow(id: string): Promise<T> {
     const entity = await this.get(id);
     if (!entity) {
@@ -154,13 +208,60 @@ export class VersionedEntityRepository<
   }
 
   async create(entity: T): Promise<T> {
+    const sync = this.config.sync;
+    const createHash = sync?.createPayloadHash(entity);
+    const item = this.toStoredItem(entity, {
+      createHash,
+    });
+
+    if (!sync) {
+      await runDynamoWrite(
+        () =>
+          this.doc.send(
+            new PutCommand({
+              TableName: this.tableName,
+              Item: item,
+              ConditionExpression: 'attribute_not_exists(pk)',
+            }),
+          ),
+        `Create conflict (${this.config.conflictLabel})`,
+      );
+      return entity;
+    }
+
+    const id = this.config.idOf(entity);
+    const claimKey = {
+      pk: syncCreateClaimPk(sync.changeType, id),
+      sk: syncCreateClaimSk(),
+    };
     await runDynamoWrite(
       () =>
         this.doc.send(
-          new PutCommand({
-            TableName: this.tableName,
-            Item: this.toStoredItem(entity),
-            ConditionExpression: 'attribute_not_exists(pk)',
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: item,
+                  ConditionExpression: 'attribute_not_exists(pk)',
+                },
+              },
+              {
+                Put: {
+                  TableName: this.tableName,
+                  Item: {
+                    ...claimKey,
+                    entityType: 'syncCreateClaim',
+                    changeType: sync.changeType,
+                    entityId: id,
+                    createHash,
+                    createdAt: entity.updatedAt,
+                    ttl: ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS),
+                  },
+                  ConditionExpression: 'attribute_not_exists(pk)',
+                },
+              },
+            ],
           }),
         ),
       `Create conflict (${this.config.conflictLabel})`,
@@ -170,22 +271,33 @@ export class VersionedEntityRepository<
 
   /**
    * Client-ULID create: retries with the same id are idempotent when the
-   * optional payload hash matches; mismatch or tombstone → ConflictError.
+   * stored createHash matches; mismatch, tombstone, or create-claim after
+   * META TTL purge → ConflictError (CHR-162).
    */
   async createIdempotent(entity: T): Promise<T> {
     const id = this.config.idOf(entity);
     try {
       return await this.create(entity);
     } catch (error) {
-      if (!(error instanceof ConflictError)) {
+      if (
+        !(error instanceof ConflictError) &&
+        !isOptimisticLockConflict(error)
+      ) {
         throw error;
       }
-      const existing = await this.getIncludingDeleted(id);
-      if (!existing) {
+      const raw = await this.getRawItem(id);
+      if (!raw) {
+        const claim = await this.getCreateClaim(id);
+        if (claim) {
+          throw new ConflictError(
+            `${this.config.conflictLabel} ${id} was deleted`,
+          );
+        }
         throw new ConflictError(
           `Create conflict (${this.config.conflictLabel})`,
         );
       }
+      const existing = this.mapItem(raw);
       if (this.config.isDeleted?.(existing)) {
         throw new ConflictError(
           `${this.config.conflictLabel} ${id} was deleted`,
@@ -193,11 +305,19 @@ export class VersionedEntityRepository<
         );
       }
       const hashFn = this.config.sync?.createPayloadHash;
-      if (hashFn && hashFn(entity) !== hashFn(existing)) {
-        throw new ConflictError(
-          `${this.config.conflictLabel} ${id} already exists with a different payload`,
-          { currentVersion: existing.version, current: existing },
-        );
+      if (hashFn) {
+        const requestHash = hashFn(entity);
+        const storedHash =
+          typeof raw.createHash === 'string' ? raw.createHash : undefined;
+        // Prefer the create-time hash so a later legitimate update does not
+        // 409 a delayed identical create retry (CHR-162).
+        const baseline = storedHash ?? hashFn(existing);
+        if (requestHash !== baseline) {
+          throw new ConflictError(
+            `${this.config.conflictLabel} ${id} already exists with a different payload`,
+            { currentVersion: existing.version, current: existing },
+          );
+        }
       }
       return existing;
     }
@@ -212,12 +332,15 @@ export class VersionedEntityRepository<
     expectedVersion: number,
     next: T,
   ): Promise<T> {
+    const raw = await this.getRawItem(id);
+    const createHash =
+      typeof raw?.createHash === 'string' ? raw.createHash : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
           new PutCommand({
             TableName: this.tableName,
-            Item: this.toStoredItem(next),
+            Item: this.toStoredItem(next, { createHash }),
             ConditionExpression: VERSION_MATCH_CONDITION,
             ExpressionAttributeValues: { ':v': expectedVersion },
           }),
@@ -234,6 +357,7 @@ export class VersionedEntityRepository<
   /**
    * Soft-delete via caller-supplied tombstone entity (must bump version).
    * Sets DynamoDB TTL when sync is configured so the GSI row expires with META.
+   * The create claim outlives the tombstone (CHR-162).
    */
   async softDelete(
     id: string,
@@ -241,12 +365,15 @@ export class VersionedEntityRepository<
     tombstone: T,
   ): Promise<T> {
     const ttl = this.config.sync ? ttlDaysFromNow() : undefined;
+    const raw = await this.getRawItem(id);
+    const createHash =
+      typeof raw?.createHash === 'string' ? raw.createHash : undefined;
     await runVersionedWrite(
       () =>
         this.doc.send(
           new PutCommand({
             TableName: this.tableName,
-            Item: this.toStoredItem(tombstone, { ttl }),
+            Item: this.toStoredItem(tombstone, { ttl, createHash }),
             ConditionExpression: VERSION_MATCH_CONDITION,
             ExpressionAttributeValues: { ':v': expectedVersion },
           }),

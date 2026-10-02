@@ -1,14 +1,14 @@
 /**
  * Test-only synced entity used to prove VersionedEntityRepository.sync
- * config is enough to appear in the change feed (CHR-153 AC).
+ * config is enough to appear in the change feed (CHR-153 / CHR-162).
  */
-import { keys } from '@gagnechris/data';
 import type { SyncChange } from '@gagnechris/shared';
 import {
   VersionedEntityRepository,
   type VersionedEntity,
 } from '../../src/data/versioned-entity-repository.js';
 import { registerSyncEntity } from '../../src/sync/registry.js';
+import { fixtureKeys } from './fixture-keys.js';
 
 export const FAKE_NOTE_CHANGE_TYPE = 'fakeNote';
 
@@ -24,7 +24,7 @@ export type FakeNote = VersionedEntity & {
 export type FakeNoteItem = {
   pk: string;
   sk: string;
-  entityType: typeof FAKE_NOTE_CHANGE_TYPE;
+  entityType?: typeof FAKE_NOTE_CHANGE_TYPE;
   id: string;
   userId: string;
   title: string;
@@ -33,6 +33,7 @@ export type FakeNoteItem = {
   createdAt: string;
   updatedAt: string;
   deleted: boolean;
+  createHash?: string;
   syncPk?: string;
   syncSk?: string;
   ttl?: number;
@@ -57,12 +58,15 @@ export function toFakeNoteEntity(item: FakeNoteItem): FakeNote {
   };
 }
 
+/**
+ * Deliberately omits `entityType` — the base `toStoredItem` must stamp it from
+ * sync.changeType so the feed still sees the row (CHR-162 AC).
+ */
 export function toFakeNoteItem(entity: FakeNote): FakeNoteItem {
-  const { pk, sk } = keys.fixture.meta(entity.id);
+  const { pk, sk } = fixtureKeys.meta(entity.id);
   return {
     pk,
     sk,
-    entityType: FAKE_NOTE_CHANGE_TYPE,
     id: entity.id,
     userId: entity.userId,
     title: entity.title,
@@ -108,7 +112,7 @@ export function createFakeNotesRepo(
   return new VersionedEntityRepository<FakeNote, FakeNoteItem>(
     {
       conflictLabel: 'fake note',
-      keyForId: (id) => keys.fixture.meta(id),
+      keyForId: (id) => fixtureKeys.meta(id),
       idOf: (n) => n.id,
       toEntity: toFakeNoteEntity,
       toItem: toFakeNoteItem,
