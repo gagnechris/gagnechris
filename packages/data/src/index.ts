@@ -91,13 +91,15 @@ export {
 
 export {
   APP_TABLE,
-  LAST_DEPLOYED_GSI_NAMES,
   LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
   appTableName,
+  assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
+  tableIndexesFromDescribeTable,
   type AppTableDefinition,
   type DynamoAttributeTypeCode,
+  type DynamoProjectionType,
   type TableIndexDefinition,
   type TableKeyAttribute,
 } from './table.js';

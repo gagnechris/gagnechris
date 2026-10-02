@@ -18,7 +18,9 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { Construct } from 'constructs';
 import {
   APP_TABLE,
+  LAST_DEPLOYED_GSIS,
   appTableName,
+  assertAppTableGsiUpdateSafe,
   type DynamoAttributeTypeCode,
 } from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
@@ -94,6 +96,10 @@ export class DataStack extends Stack {
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
+
+    // Offline guard at synth time (CHR-174). PR CDK also runs
+    // `npm run check:deployed-gsi` against the live table.
+    assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS);
 
     const { config, alertsTopic } = props;
     const def = APP_TABLE;

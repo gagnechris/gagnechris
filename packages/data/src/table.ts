@@ -7,6 +7,8 @@ import { GSI1_NAME, GSI2_NAME, GSI3_NAME } from './keys.js';
 
 export type DynamoAttributeTypeCode = 'S' | 'N' | 'B';
 
+export type DynamoProjectionType = 'ALL' | 'KEYS_ONLY' | 'INCLUDE';
+
 export interface TableKeyAttribute {
   readonly name: string;
   readonly type: DynamoAttributeTypeCode;
@@ -16,8 +18,7 @@ export interface TableIndexDefinition {
   readonly indexName: string;
   readonly partitionKey: TableKeyAttribute;
   readonly sortKey: TableKeyAttribute;
-  /** DynamoDB projection; local + CDK use ALL. */
-  readonly projectionType: 'ALL';
+  readonly projectionType: DynamoProjectionType;
 }
 
 export interface AppTableDefinition {
@@ -88,10 +89,12 @@ export function appTableName(envName: string): string {
 }
 
 /**
- * GSI definitions last verified deployed in production (names + key schema).
- * After a successful single-GSI create/delete deploy, bump this list to match
- * APP_TABLE (see infra/RUNBOOK.md). CloudFormation allows at most one GSI
- * create or delete per table update — enforced by assertSafeGsiUpdate.
+ * Offline baseline of GSIs last verified in production (names + key schema +
+ * projection). Keep this independent of `APP_TABLE` so a PR can add one GSI
+ * without bumping the baseline in the same change. After a successful
+ * single-GSI deploy, bump this list to match `APP_TABLE` (see
+ * `infra/RUNBOOK.md`). CI also compares `APP_TABLE` to the live table via
+ * `scripts/check-deployed-gsi.ts` (CHR-174).
  */
 export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
   {
@@ -114,29 +117,26 @@ export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
   },
 ];
 
-/** @deprecated Prefer LAST_DEPLOYED_GSIS; kept for call sites that only need names. */
-export const LAST_DEPLOYED_GSI_NAMES = LAST_DEPLOYED_GSIS.map(
-  (g) => g.indexName,
-) as readonly string[];
-
 function keyAttrEqual(a: TableKeyAttribute, b: TableKeyAttribute): boolean {
   return a.name === b.name && a.type === b.type;
 }
 
-function gsiKeySchemaEqual(
+function gsiDefinitionEqual(
   a: TableIndexDefinition,
   b: TableIndexDefinition,
 ): boolean {
   return (
     keyAttrEqual(a.partitionKey, b.partitionKey) &&
-    keyAttrEqual(a.sortKey, b.sortKey)
+    keyAttrEqual(a.sortKey, b.sortKey) &&
+    a.projectionType === b.projectionType
   );
 }
 
 /**
  * Guard for Notebook / schema PRs: CloudFormation rejects updates that
  * create or delete more than one GSI on the same table in one deploy.
- * Key-schema changes on an existing index count as delete + create.
+ * Key-schema or projection changes on an existing index count as delete +
+ * create (two ops) and therefore always fail this check.
  */
 export function assertSafeGsiUpdate(
   previous: readonly TableIndexDefinition[],
@@ -147,7 +147,7 @@ export function assertSafeGsiUpdate(
 
   const added: string[] = [];
   const removed: string[] = [];
-  const keySchemaChanged: string[] = [];
+  const redefined: string[] = [];
 
   for (const [name, nextGsi] of nextByName) {
     const prevGsi = prevByName.get(name);
@@ -155,8 +155,8 @@ export function assertSafeGsiUpdate(
       added.push(name);
       continue;
     }
-    if (!gsiKeySchemaEqual(prevGsi, nextGsi)) {
-      keySchemaChanged.push(name);
+    if (!gsiDefinitionEqual(prevGsi, nextGsi)) {
+      redefined.push(name);
     }
   }
   for (const name of prevByName.keys()) {
@@ -165,9 +165,8 @@ export function assertSafeGsiUpdate(
     }
   }
 
-  // A key-schema change requires delete + recreate (two GSI ops).
-  const changeCount =
-    added.length + removed.length + keySchemaChanged.length * 2;
+  // A key-schema / projection change requires delete + recreate (two GSI ops).
+  const changeCount = added.length + removed.length + redefined.length * 2;
 
   if (changeCount > 1) {
     const parts: string[] = [];
@@ -176,9 +175,9 @@ export function assertSafeGsiUpdate(
         `adds [${added.join(', ') || 'none'}] and removes [${removed.join(', ') || 'none'}]`,
       );
     }
-    if (keySchemaChanged.length) {
+    if (redefined.length) {
       parts.push(
-        `changes key schema on [${keySchemaChanged.join(', ')}] (counts as delete+create)`,
+        `changes key schema or projection on [${redefined.join(', ')}] (counts as delete+create)`,
       );
     }
     throw new Error(
@@ -187,4 +186,83 @@ export function assertSafeGsiUpdate(
         `Split into separate deploys (see infra/RUNBOOK.md).`,
     );
   }
+}
+
+/** Assert `APP_TABLE` is a safe single step from a previous GSI set. */
+export function assertAppTableGsiUpdateSafe(
+  previous: readonly TableIndexDefinition[],
+): void {
+  assertSafeGsiUpdate(previous, APP_TABLE.globalSecondaryIndexes);
+}
+
+type DescribeKeySchemaElement = {
+  AttributeName?: string;
+  KeyType?: string;
+};
+
+type DescribeAttributeDefinition = {
+  AttributeName?: string;
+  AttributeType?: string;
+};
+
+type DescribeGlobalSecondaryIndex = {
+  IndexName?: string;
+  KeySchema?: DescribeKeySchemaElement[];
+  Projection?: { ProjectionType?: string };
+};
+
+/**
+ * Map a `DescribeTable` (or equivalent) response into `TableIndexDefinition`s
+ * for `assertSafeGsiUpdate`.
+ */
+export function tableIndexesFromDescribeTable(input: {
+  GlobalSecondaryIndexes?: DescribeGlobalSecondaryIndex[];
+  AttributeDefinitions?: DescribeAttributeDefinition[];
+}): TableIndexDefinition[] {
+  const attrTypes = new Map<string, DynamoAttributeTypeCode>();
+  for (const def of input.AttributeDefinitions ?? []) {
+    const name = def.AttributeName;
+    const type = def.AttributeType;
+    if (!name || (type !== 'S' && type !== 'N' && type !== 'B')) continue;
+    attrTypes.set(name, type);
+  }
+
+  const indexes: TableIndexDefinition[] = [];
+  for (const gsi of input.GlobalSecondaryIndexes ?? []) {
+    const indexName = gsi.IndexName;
+    if (!indexName) {
+      throw new Error('DescribeTable GSI missing IndexName');
+    }
+    const hash = gsi.KeySchema?.find((k) => k.KeyType === 'HASH');
+    const range = gsi.KeySchema?.find((k) => k.KeyType === 'RANGE');
+    const pkName = hash?.AttributeName;
+    const skName = range?.AttributeName;
+    if (!pkName || !skName) {
+      throw new Error(`DescribeTable GSI ${indexName} missing HASH/RANGE keys`);
+    }
+    const pkType = attrTypes.get(pkName);
+    const skType = attrTypes.get(skName);
+    if (!pkType || !skType) {
+      throw new Error(
+        `DescribeTable GSI ${indexName} key attributes missing from AttributeDefinitions`,
+      );
+    }
+    const projection = gsi.Projection?.ProjectionType;
+    if (
+      projection !== 'ALL' &&
+      projection !== 'KEYS_ONLY' &&
+      projection !== 'INCLUDE'
+    ) {
+      throw new Error(
+        `DescribeTable GSI ${indexName} has unsupported ProjectionType ${String(projection)}`,
+      );
+    }
+    indexes.push({
+      indexName,
+      partitionKey: { name: pkName, type: pkType },
+      sortKey: { name: skName, type: skType },
+      projectionType: projection,
+    });
+  }
+  return indexes;
 }
