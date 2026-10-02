@@ -138,8 +138,8 @@ export class TasksRepository {
   >;
 
   constructor(
-    private readonly doc: DynamoDBDocumentClient = getDocClient(),
-    private readonly tableName: string = requireTableName(),
+    doc: DynamoDBDocumentClient = getDocClient(),
+    tableName: string = requireTableName(),
     private readonly nowIso: () => string = () => new Date().toISOString(),
   ) {
     this.base = new OwnerScopedVersionedEntityRepository<Task, TaskMetaItem>(
