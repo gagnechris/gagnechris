@@ -21,6 +21,7 @@ import {
   noteDraftFromNote,
   notePayloadFromDraft,
 } from './noteDraft';
+import TodayTasksPanel from './TodayTasksPanel';
 
 function resolveDate(param: string | null): string {
   if (param && parseLocalDate(param)) return param;
@@ -178,6 +179,7 @@ export default function AdminNotebookTodayPage() {
             </>
           )}
         </div>
+        <TodayTasksPanel area={writingArea ?? undefined} />
       </div>
     </section>
   );

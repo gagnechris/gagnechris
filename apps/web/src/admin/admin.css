@@ -148,6 +148,46 @@
   }
 }
 
+@media (min-width: 1100px) {
+  .notebook-today {
+    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr) minmax(
+        16rem,
+        22rem
+      );
+  }
+}
+
+.notebook-today__tasks-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.notebook-today__progress {
+  height: 0.35rem;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+
+.notebook-today__progress-bar {
+  height: 100%;
+  background: var(--accent, var(--neutral-800));
+  transition: width 160ms ease;
+}
+
+.notebook-today__task-section {
+  margin-top: var(--space-4);
+}
+
+.notebook-today__task-section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--neutral-600);
+}
+
 .notebook-today__day-nav {
   display: flex;
   flex-wrap: wrap;
