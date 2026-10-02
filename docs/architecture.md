@@ -126,13 +126,14 @@ Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (
 
 ## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)
 
-| Import                       | Contents                                                                                       |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| `@gagnechris/shared`         | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
-| `@gagnechris/shared/render`  | Markdown + HTML prerender helpers (web / publisher); re-exports former `/html` helpers         |
-| `@gagnechris/shared/openapi` | OpenAPI document builder (build-time only)                                                     |
+| Import                       | Contents                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `@gagnechris/shared`         | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo)                           |
+| `@gagnechris/shared/render`  | Markdown + HTML prerender helpers (web / publisher); also re-exports `/html` helpers                                     |
+| `@gagnechris/shared/html`    | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
+| `@gagnechris/shared/openapi` | OpenAPI document builder (build-time only)                                                                               |
 
-`marked` remains a runtime dependency of the shared package because `/render` lives in the same package; the domain entry does not import it (enforced by `check:rn-bundles`). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
+`marked` remains a runtime dependency of the shared package because `/render` lives in the same package; the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 

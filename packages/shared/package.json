@@ -17,6 +17,11 @@
       "import": "./src/render.ts",
       "default": "./src/render.ts"
     },
+    "./html": {
+      "types": "./src/html.ts",
+      "import": "./src/html.ts",
+      "default": "./src/html.ts"
+    },
     "./openapi": {
       "types": "./src/openapi.ts",
       "import": "./src/openapi.ts",
