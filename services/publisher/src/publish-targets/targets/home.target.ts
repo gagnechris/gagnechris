@@ -21,8 +21,9 @@ const target: PublishTarget = {
   },
   async run(ctx) {
     const { shell, storage, sources } = ctx;
-    const home = await sources.getPublishedHome();
-    if (home) {
+    const lookup = await sources.getPublishedHome();
+    if (lookup.status === 'ok') {
+      const home = lookup.entity;
       return {
         artifacts: [
           {
@@ -42,6 +43,7 @@ const target: PublishTarget = {
         homePublished: true,
       };
     }
+    // missing or corrupt: restore last published snapshot when present (CHR-103 / CHR-160).
     const snapshot = await readHomePublishSnapshot(storage);
     if (snapshot) {
       return {

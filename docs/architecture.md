@@ -38,6 +38,14 @@ API repositories share one layering:
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
+Integrity notes (CHR-160):
+
+- Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
+- Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
+- Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
+- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition.
+- Admin autosave branches on `error === 'slug_taken'` vs version conflict.
+
 Details: [data-model.md](./data-model.md).
 
 ## Publisher outputs

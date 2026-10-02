@@ -169,10 +169,14 @@ export class PublishableRepository<
       }),
     );
     if (!result.Item) return undefined;
-    return this.publishConfig.toEntity(result.Item as TItem, false);
+    // Parse through mapItem so Zod failures become DataIntegrityError (500), not 400.
+    return this.mapItem(result.Item);
   }
 
-  async loadDraftAndPublished(id: string): Promise<LoadedPair<T> | undefined> {
+  async loadDraftAndPublished(
+    id: string,
+    opts?: { consistentRead?: boolean },
+  ): Promise<LoadedPair<T> | undefined> {
     const keys = this.publishConfig.keysFor(id);
     const responses = await batchGetAllWithDocClient(
       async (RequestItems) =>
@@ -183,6 +187,7 @@ export class PublishableRepository<
             { pk: keys.pk, sk: keys.metaSk },
             { pk: keys.pk, sk: keys.publishedSk },
           ],
+          ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
         },
       },
     );
@@ -199,15 +204,16 @@ export class PublishableRepository<
     const draft = this.mapItem(draftItem);
     if (this.publishConfig.isDeleted?.(draft)) return undefined;
 
-    const published = publishedItem
-      ? this.publishConfig.toEntity(publishedItem, false)
-      : undefined;
+    const published = publishedItem ? this.mapItem(publishedItem) : undefined;
 
     return { draft, published };
   }
 
-  async getById(id: string): Promise<T | undefined> {
-    const loaded = await this.loadDraftAndPublished(id);
+  async getById(
+    id: string,
+    opts?: { consistentRead?: boolean },
+  ): Promise<T | undefined> {
+    const loaded = await this.loadDraftAndPublished(id, opts);
     if (!loaded) return undefined;
     return withUnpublishedFlag(
       loaded.draft,
@@ -295,7 +301,7 @@ export class PublishableRepository<
         : options.deletePublished
           ? `Unpublish conflict (${this.publishConfig.conflictLabel} version)`
           : `Update conflict (${this.publishConfig.conflictLabel} version)`,
-      () => throwVersionConflict(before.version, () => this.getById(id)),
+      () => throwVersionConflict(before.version, () => this.getById(id, { consistentRead: true })),
     );
   }
 

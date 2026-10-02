@@ -70,9 +70,12 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     await rebuildPublishedSite({
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => resume,
-        getPublishedHome: async () => undefined,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({
+          status: 'ok' as const,
+          entity: resume,
+        }),
+        getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
 
@@ -88,9 +91,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     const result = await rebuildPublishedSite({
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => undefined,
-        getPublishedHome: async () => undefined,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
 
@@ -116,9 +119,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     const published = await rebuildPublishedSite({
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => undefined,
-        getPublishedHome: async () => home,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({ status: 'ok' as const, entity: home }),
       },
     });
     expect(published.homePublished).toBe(true);
@@ -149,9 +152,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     const restored = await rebuildPublishedSite({
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => undefined,
-        getPublishedHome: async () => undefined,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
 
@@ -175,9 +178,9 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     const result = await rebuildPublishedSite({
       storage,
       sources: {
-        listPublishedPosts: async () => [],
-        getPublishedResume: async () => undefined,
-        getPublishedHome: async () => undefined,
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
 

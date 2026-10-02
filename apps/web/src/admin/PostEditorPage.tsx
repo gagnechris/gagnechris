@@ -71,6 +71,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     }),
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
+    slugTakenMessage: 'That slug is already taken. Choose a different slug.',
     loadErrorFallback: 'Could not load post.',
     unpublishConfirm: 'Unpublish this post? It will leave the public blog.',
     discardConfirm:

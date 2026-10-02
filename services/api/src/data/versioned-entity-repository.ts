@@ -10,6 +10,7 @@ import {
   type DynamoDBDocumentClient,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   isOptimisticLockConflict,
   syncCreateClaimPk,
@@ -29,6 +30,7 @@ import {
   runVersionedWrite,
   throwVersionConflict,
 } from './version-condition.js';
+import { logger, metrics } from '../observability.js';
 
 export { VERSION_MATCH_CONDITION } from './version-condition.js';
 
@@ -145,11 +147,15 @@ export class VersionedEntityRepository<
     } as TItem;
   }
 
-  async get(id: string): Promise<T | undefined> {
+  async get(
+    id: string,
+    opts?: { consistentRead?: boolean },
+  ): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
         Key: this.config.keyForId(id),
+        ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
       }),
     );
     if (!result.Item) return undefined;
@@ -159,11 +165,15 @@ export class VersionedEntityRepository<
   }
 
   /** Like get, but returns soft-deleted entities (for idempotent-create / conflicts). */
-  async getIncludingDeleted(id: string): Promise<T | undefined> {
+  async getIncludingDeleted(
+    id: string,
+    opts?: { consistentRead?: boolean },
+  ): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
         Key: this.config.keyForId(id),
+        ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
       }),
     );
     if (!result.Item) return undefined;
@@ -348,7 +358,7 @@ export class VersionedEntityRepository<
       `Update conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(id),
+          this.getIncludingDeleted(id, { consistentRead: true }),
         ),
     );
     return next;
@@ -381,7 +391,7 @@ export class VersionedEntityRepository<
       `Delete conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(id),
+          this.getIncludingDeleted(id, { consistentRead: true }),
         ),
     );
     return tombstone;
@@ -413,7 +423,17 @@ export class VersionedEntityRepository<
         if (this.config.isDeleted?.(entity)) continue;
         items.push(entity);
       } catch (error) {
-        if (error instanceof DataIntegrityError) continue;
+        if (error instanceof DataIntegrityError) {
+          logger.warn('Skipping corrupt stored item', {
+            pk: error.pk,
+            sk: error.sk,
+            errMessage: error.message,
+            causeMessage:
+              error.cause instanceof Error ? error.cause.message : undefined,
+          });
+          metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
+          continue;
+        }
         throw error;
       }
     }

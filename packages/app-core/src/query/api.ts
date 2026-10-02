@@ -12,11 +12,14 @@ export type ExpectedVersionRequest =
 
 export class ApiError extends Error {
   readonly status: number;
+  /** Machine-readable error code from the API body (e.g. `slug_taken`). */
+  readonly error?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, error?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.error = error;
   }
 }
 
@@ -26,11 +29,18 @@ type OpenApiResult<T> = {
   response: { status: number };
 };
 
+function errorCodeFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const code = (body as { error?: unknown }).error;
+  return typeof code === 'string' ? code : undefined;
+}
+
 const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
     throw new ApiError(
       `${label} (${result.response.status}).`,
       result.response.status,
+      errorCodeFromBody(result.error),
     );
   }
   return result.data;
