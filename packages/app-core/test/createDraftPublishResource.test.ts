@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import type { ApiClient } from '@gagnechris/api-client';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement, type ReactNode } from 'react';
 import { createDraftPublishResource } from '../src/query/createDraftPublishResource.js';
+import { AppApiProvider } from '../src/AppApiProvider.js';
+import { preferNewerByVersion } from '../src/query/cache.js';
+import { act, renderHook } from './renderHook.js';
 
 type FakeEntity = {
   id: string;
@@ -14,10 +18,11 @@ type FakeEntity = {
 type FakeParams = { id: string };
 
 /**
- * CHR-158: a new draft/publish entity is config only — no bespoke query module.
+ * CHR-158 / CHR-165: config alone is not enough — exercise update/setCache,
+ * preferNewerByVersion on stale fetch, and lifecycle mutators.
  */
 describe('createDraftPublishResource fake-entity (CHR-158)', () => {
-  test('config alone supplies queryKey, fetch, update, and setCache', async () => {
+  test('update, setCache, stale fetch, and lifecycle mutators stay coherent', async () => {
     const store = new Map<string, FakeEntity>([
       [
         'f1',
@@ -31,7 +36,9 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       ],
     ]);
     const client = {} as ApiClient;
-    const queryClient = new QueryClient();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
 
     const fakeResource = createDraftPublishResource<FakeEntity, FakeParams>({
       queryKey: ({ id }) => ['admin', 'fake', id] as const,
@@ -79,10 +86,6 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       'fake',
       'f1',
     ]);
-    expect(await fakeResource.fetch(client, { id: 'f1' })).toMatchObject({
-      title: 'Hello',
-      version: 1,
-    });
 
     const updated = await fakeResource.update(
       client,
@@ -90,8 +93,40 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       { version: 1, title: 'Updated' },
     );
     expect(updated).toMatchObject({ title: 'Updated', version: 2 });
-
     fakeResource.setCache(queryClient, updated);
-    expect(queryClient.getQueryData(['admin', 'fake', 'f1'])).toEqual(updated);
+
+    // Same preferNewerByVersion path the resource queryFn uses (CHR-165).
+    const staleFetch: FakeEntity = {
+      id: 'f1',
+      title: 'Stale',
+      version: 1,
+      status: 'draft',
+      hasUnpublishedChanges: false,
+    };
+    const cached = queryClient.getQueryData<FakeEntity>(['admin', 'fake', 'f1']);
+    expect(preferNewerByVersion(cached, staleFetch)).toEqual(updated);
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(AppApiProvider, {
+        getClient: () => client,
+        children: createElement(QueryClientProvider, {
+          client: queryClient,
+          children,
+        }),
+      });
+
+    const { result } = renderHook(
+      () => fakeResource.useLifecycleMutators({ id: 'f1' }),
+      { wrapper },
+    );
+
+    let published!: Awaited<ReturnType<typeof result.current.publish>>;
+    await act(async () => {
+      published = await result.current.publish({ version: 2 });
+    });
+    expect(published.data).toMatchObject({ status: 'published', version: 3 });
+    expect(queryClient.getQueryData(['admin', 'fake', 'f1'])).toEqual(
+      expect.objectContaining({ status: 'published', version: 3 }),
+    );
   });
 });

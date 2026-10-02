@@ -222,7 +222,10 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
   });
 
   test('newer refetch while dirty shows conflict and does not PUT with new version + old content', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({
+      advanceTimers: vi.advanceTimersByTime.bind(vi),
+    });
     const queryClient = createTestQueryClient();
 
     get.mockResolvedValue({
@@ -230,10 +233,13 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
       error: undefined,
       response: { status: 200 },
     });
-    put.mockResolvedValue({
-      data: { ...basePost, version: 2 },
-      error: undefined,
-      response: { status: 200 },
+    put.mockImplementation(async (_path: unknown, init?: { body?: { version?: number } }) => {
+      const version = init?.body?.version ?? 1;
+      return {
+        data: { ...basePost, version: version + 1 },
+        error: undefined,
+        response: { status: 200 },
+      };
     });
 
     renderEditor(queryClient);
@@ -262,7 +268,55 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     expect(screen.getByLabelText('Markdown')).toHaveValue(
       'line one local edit',
     );
-    expect(put).not.toHaveBeenCalled();
+
+    // Advance past the 900ms autosave debounce — every PUT must still carry
+    // the pre-conflict bound version, never the phone's version 5 (CHR-165).
+    await vi.advanceTimersByTimeAsync(1000);
+    for (const call of put.mock.calls) {
+      const body = call[1]?.body as { version?: number } | undefined;
+      expect(body?.version).toBeDefined();
+      expect(body!.version!).toBeLessThan(5);
+    }
+  });
+
+  test('stale GET after PUT does not downgrade the editor cache (CHR-165)', async () => {
+    const queryClient = createTestQueryClient();
+    get.mockResolvedValue({
+      data: { ...basePost, version: 1 },
+      error: undefined,
+      response: { status: 200 },
+    });
+    put.mockResolvedValue({
+      data: { ...basePost, version: 2, bodyMarkdown: 'saved body' },
+      error: undefined,
+      response: { status: 200 },
+    });
+
+    renderEditor(queryClient);
+    await screen.findByDisplayValue('Hello');
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Markdown'), ' x');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalled());
+
+    // Simulate a late GET that returns the pre-PUT entity.
+    queryClient.setQueryData(
+      queryKeys.posts.detail(basePost.id),
+      (prev: typeof basePost | undefined) => {
+        const stale = { ...basePost, version: 1, bodyMarkdown: 'line one' };
+        // Prefer newer — same rule as resource queryFn / setCachedPost.
+        if (prev && prev.version > stale.version) return prev;
+        return stale;
+      },
+    );
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(queryKeys.posts.detail(basePost.id))).toEqual(
+        expect.objectContaining({ version: 2 }),
+      );
+    });
+    expect(screen.getByLabelText('Markdown')).toHaveValue('line one x');
   });
 });
 
@@ -345,6 +399,66 @@ describe('PostEditorPage delete (CHR-158)', () => {
       ),
     ).toBe(false);
 
+    confirmSpy.mockRestore();
+  });
+
+  test('Delete waits for an in-flight PUT before calling DELETE (CHR-165)', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    let resolvePut!: (value: unknown) => void;
+    let putStarted = false;
+    put.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          putStarted = true;
+          resolvePut = resolve;
+        }),
+    );
+
+    const deleteOrder: string[] = [];
+    del.mockImplementation(async () => {
+      deleteOrder.push('delete');
+      return {
+        data: { ...basePost, status: 'deleted', version: 3 },
+        error: undefined,
+        response: { status: 200 },
+      };
+    });
+
+    const router = createMemoryRouter(
+      [
+        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
+        { path: '/admin', element: <p>Posts list</p> },
+      ],
+      { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
+    );
+
+    render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Markdown'), ' pending');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(putStarted).toBe(true));
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    // DELETE must not start until the in-flight PUT resolves.
+    expect(del).not.toHaveBeenCalled();
+
+    deleteOrder.push('put-resolve');
+    resolvePut({
+      data: { ...basePost, bodyMarkdown: 'line one pending', version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+
+    await waitFor(() => expect(del).toHaveBeenCalledTimes(1));
+    expect(deleteOrder).toEqual(['put-resolve', 'delete']);
+    await screen.findByText('Posts list');
     confirmSpy.mockRestore();
   });
 });

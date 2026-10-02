@@ -1,14 +1,12 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-
-const post = vi.fn();
-
-vi.mock('../api/client', () => ({
-  createApiClient: () => ({
-    POST: (...args: unknown[]) => post(...args),
-  }),
-}));
+import type { ApiClient } from '@gagnechris/api-client';
 
 describe('uploadImages', () => {
+  const post = vi.fn();
+  const client = {
+    POST: (...args: unknown[]) => post(...args),
+  } as unknown as ApiClient;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal(
@@ -20,7 +18,9 @@ describe('uploadImages', () => {
   test('rejects unsupported MIME types', async () => {
     const { uploadImages } = await import('./uploadImages');
     await expect(
-      uploadImages([new File(['x'], 'a.txt', { type: 'text/plain' })]),
+      uploadImages(client, [
+        new File(['x'], 'a.txt', { type: 'text/plain' }),
+      ]),
     ).rejects.toThrow(/Unsupported image type/);
     expect(post).not.toHaveBeenCalled();
   });
@@ -36,7 +36,7 @@ describe('uploadImages', () => {
       response: { status: 200 },
     });
     const { uploadImages } = await import('./uploadImages');
-    const paths = await uploadImages([
+    const paths = await uploadImages(client, [
       new File(['png'], 'shot.png', { type: 'image/png' }),
     ]);
     expect(paths).toEqual(['/media/abc.png']);

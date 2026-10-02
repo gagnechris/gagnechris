@@ -198,7 +198,10 @@ export function useVersionedEntityEditor<
     Boolean(entity) &&
     hydratedId === getEntityIdRef.current(entity!) &&
     dirty &&
-    entity!.version > boundVersion;
+    entity!.version > boundVersion &&
+    // Ignore refetches that land while our own PUT is in flight — otherwise the
+    // conflict banner flashes until onSaved bumps boundVersion (CHR-165).
+    saveState !== 'saving';
   const displayError = remoteConflict ? conflictMessage : saveError;
 
   const publishMutate = useCallback(

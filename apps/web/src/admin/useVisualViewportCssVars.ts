@@ -15,10 +15,12 @@ export function useVisualViewportCssVars(): void {
       const vv = window.visualViewport;
       if (!vv) {
         root.style.setProperty('--vv-height', `${window.innerHeight}px`);
+        root.style.setProperty('--vv-offset-top', '0px');
         root.style.setProperty('--keyboard-inset-bottom', '0px');
         return;
       }
       root.style.setProperty('--vv-height', `${vv.height}px`);
+      root.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
       const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       root.style.setProperty('--keyboard-inset-bottom', `${inset}px`);
     };

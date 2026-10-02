@@ -18,6 +18,8 @@ export type DraftPublishAutosave = {
   /** Align lastSavedGen after Discard so Publish does not look falsely dirty. */
   markClean: () => void;
   setAutosaveHeld: (held: boolean) => void;
+  /** Wait for an in-flight PUT chain (no-op when idle). */
+  awaitInFlight: () => Promise<FlushResult>;
 };
 
 export type DraftPublishDeleteOptions = {
@@ -81,6 +83,7 @@ export function useDraftPublishEditor<TEntity>({
     getLastSavedGen,
     markClean,
     setAutosaveHeld,
+    awaitInFlight,
   } = autosave;
 
   const [busy, setBusy] = useState(false);
@@ -220,6 +223,9 @@ export function useDraftPublishEditor<TEntity>({
     if (!deleteOpts || !enabled || busyRef.current) return;
     if (!(await confirm(deleteOpts.confirm))) return;
     await withHold(async () => {
+      // DELETE carries no version — wait out any in-flight autosave PUT first
+      // so the two cannot race (CHR-165).
+      await awaitInFlight();
       try {
         await deleteOpts.mutate();
         // Clear dirty before navigation so leave-guards do not prompt (CHR-158).
@@ -230,7 +236,15 @@ export function useDraftPublishEditor<TEntity>({
         setSaveError(err instanceof Error ? err.message : 'Delete failed.');
       }
     });
-  }, [confirm, deleteOpts, enabled, markClean, setSaveError, withHold]);
+  }, [
+    awaitInFlight,
+    confirm,
+    deleteOpts,
+    enabled,
+    markClean,
+    setSaveError,
+    withHold,
+  ]);
 
   return {
     busy,

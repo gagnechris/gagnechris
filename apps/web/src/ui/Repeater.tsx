@@ -40,6 +40,9 @@ export function Repeater<T extends RepeaterItem>({
     onChange(fn);
   };
 
+  const removeItem = (id: string) =>
+    apply((rows) => rows.filter((row) => row.id !== id));
+
   return (
     <fieldset className="admin-repeat">
       <legend>{legend}</legend>
@@ -52,13 +55,14 @@ export function Repeater<T extends RepeaterItem>({
                   row.id === item.id ? { ...row, ...patch } : row,
                 ),
               ),
-            remove: () =>
-              apply((rows) => rows.filter((row) => row.id !== item.id)),
+            remove: () => removeItem(item.id),
           })}
           <div className="admin-repeat__actions">
             {reorderable ? (
               <>
                 <Button
+                  // Keep focus on the field so stable keys preserve caret (CHR-165).
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -74,6 +78,7 @@ export function Repeater<T extends RepeaterItem>({
                   Move up
                 </Button>
                 <Button
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -90,12 +95,7 @@ export function Repeater<T extends RepeaterItem>({
                 </Button>
               </>
             ) : null}
-            <Button
-              variant="danger"
-              onClick={() =>
-                apply((rows) => rows.filter((row) => row.id !== item.id))
-              }
-            >
+            <Button variant="danger" onClick={() => removeItem(item.id)}>
               {removeLabel}
             </Button>
           </div>
