@@ -79,7 +79,6 @@ export async function listPublishedPosts(
   const posts: Post[] = [];
   const corruptSlugs: string[] = [];
   const metaPostIds: string[] = [];
-  const metaSlugById = new Map<string, string>();
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
   do {
@@ -99,13 +98,11 @@ export async function listPublishedPosts(
       // META drafts; load PUBLISHED snapshots via BatchGet (CHR-117).
       if (item.sk === SK_META && typeof item.postId === 'string') {
         metaPostIds.push(item.postId);
-        if (typeof item.slug === 'string' && item.slug) {
-          metaSlugById.set(item.postId, item.slug);
-        }
       }
     }
     exclusiveStartKey = page.LastEvaluatedKey as
-      Record<string, unknown> | undefined;
+      | Record<string, unknown>
+      | undefined;
   } while (exclusiveStartKey);
 
   const uniqueIds = [...new Set(metaPostIds)];
@@ -143,12 +140,13 @@ export async function listPublishedPosts(
       } catch (error) {
         logCorruptPublished({ label: 'post', pk, sk, err: error });
         if (postId) corruptPostIds.add(postId);
+        // Only trust the PUBLISHED row's own slug. META may already hold a
+        // draft rename, which would protect the wrong path (CHR-167).
         const slug =
-          typeof (item as { slug?: unknown }).slug === 'string'
+          typeof (item as { slug?: unknown }).slug === 'string' &&
+          (item as { slug: string }).slug
             ? (item as { slug: string }).slug
-            : postId
-              ? metaSlugById.get(postId)
-              : undefined;
+            : undefined;
         if (slug) corruptSlugs.push(slug);
       }
     }
@@ -170,6 +168,54 @@ export async function listPublishedPosts(
       return bTs.localeCompare(aTs);
     }),
     corruptSlugs: [...new Set(corruptSlugs)],
+  };
+}
+
+/**
+ * Merge stream NewImage PUBLISHED posts into a GSI-backed catalog so a
+ * just-published post is still rendered when GSI1 has not caught up (CHR-167).
+ */
+export function mergeStreamPublishedPosts(
+  catalog: PublishedPostsCatalog,
+  streamItems: readonly unknown[],
+): PublishedPostsCatalog {
+  if (streamItems.length === 0) return catalog;
+
+  const byId = new Map(catalog.posts.map((p) => [p.id, p]));
+  const corruptSlugs = new Set(catalog.corruptSlugs);
+
+  for (const item of streamItems) {
+    const pk =
+      typeof (item as { pk?: unknown }).pk === 'string'
+        ? (item as { pk: string }).pk
+        : undefined;
+    const sk =
+      typeof (item as { sk?: unknown }).sk === 'string'
+        ? (item as { sk: string }).sk
+        : undefined;
+    try {
+      const record = parsePostMetaItem(item);
+      if (record.status !== 'published') continue;
+      byId.set(record.postId, metaToPost(record));
+      corruptSlugs.delete(record.slug);
+    } catch (error) {
+      logCorruptPublished({ label: 'post', pk, sk, err: error });
+      const slug =
+        typeof (item as { slug?: unknown }).slug === 'string' &&
+        (item as { slug: string }).slug
+          ? (item as { slug: string }).slug
+          : undefined;
+      if (slug) corruptSlugs.add(slug);
+    }
+  }
+
+  return {
+    posts: [...byId.values()].sort((a, b) => {
+      const aTs = a.publishedAt ?? a.updatedAt;
+      const bTs = b.publishedAt ?? b.updatedAt;
+      return bTs.localeCompare(aTs);
+    }),
+    corruptSlugs: [...corruptSlugs],
   };
 }
 
@@ -241,20 +287,36 @@ export type { RebuildSiteSources } from './publish-targets/types.js';
  * - Unpublished Home: re-render `index.html` from `home/last-published.json` so
  *   the last published copy survives web deploys (CHR-103).
  * - Shell is always the pristine `_shell.html` template (CHR-104).
+ * - Stream NewImages are merged into the catalog so GSI lag cannot drop a
+ *   just-published post (CHR-167).
  */
 export async function rebuildPublishedSite(options?: {
   scope?: RebuildScope;
   storage?: SiteStorage;
   sources?: RebuildSiteSources;
+  /** Unmarshalled PUBLISHED post NewImages from the triggering stream batch. */
+  streamPublishedPosts?: readonly unknown[];
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();
   const tableName = requireEnv('DATA_TABLE_NAME');
   const storage = options?.storage ?? getSiteStorage();
-  const sources: RebuildSiteSources = options?.sources ?? {
+  const streamPublishedPosts = options?.streamPublishedPosts ?? [];
+  const baseSources: RebuildSiteSources = options?.sources ?? {
     listPublishedPosts: () => listPublishedPosts(tableName),
     getPublishedResume: () => getPublishedResume(tableName),
     getPublishedHome: () => getPublishedHome(tableName),
   };
+  const sources: RebuildSiteSources =
+    streamPublishedPosts.length === 0
+      ? baseSources
+      : {
+          ...baseSources,
+          listPublishedPosts: async () =>
+            mergeStreamPublishedPosts(
+              await baseSources.listPublishedPosts(),
+              streamPublishedPosts,
+            ),
+        };
 
   return runPublishTargets({
     scope,

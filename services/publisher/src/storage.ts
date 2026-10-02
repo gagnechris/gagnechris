@@ -22,7 +22,12 @@ export type SiteStorage = {
     cacheControl: string,
     contentDisposition?: string,
   ): Promise<boolean>;
-  delete(key: string): Promise<void>;
+  /**
+   * Delete an object. Returns `true` when an object was removed, `false` when
+   * the key was already absent (CHR-167: idempotent deletes must not count as
+   * changes that force CloudFront invalidation).
+   */
+  delete(key: string): Promise<boolean>;
   /** Object keys under prefix (no leading slash). */
   list(prefix: string): Promise<string[]>;
   invalidate(paths: string[]): Promise<void>;

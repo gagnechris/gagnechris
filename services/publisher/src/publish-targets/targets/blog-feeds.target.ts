@@ -19,7 +19,13 @@ const target: PublishTarget = {
     return scope.feeds;
   },
   async run(ctx) {
-    const { shell, published } = ctx;
+    const { shell, published, corruptPostSlugs } = ctx;
+    const allowlistedSlugs = [
+      ...new Set([
+        ...published.map((p) => p.slug),
+        ...corruptPostSlugs,
+      ]),
+    ].filter(Boolean);
     return {
       artifacts: [
         {
@@ -36,17 +42,13 @@ const target: PublishTarget = {
         },
         {
           key: 'blog/slugs.json',
-          body: JSON.stringify(
-            { slugs: published.map((p) => p.slug) },
-            null,
-            0,
-          ),
+          body: JSON.stringify({ slugs: allowlistedSlugs }, null, 0),
           contentType: 'application/json; charset=utf-8',
           cacheControl: CACHE_HTML,
         },
         {
           key: 'sitemap.xml',
-          body: buildSitemapXml(published),
+          body: buildSitemapXml(published, [...corruptPostSlugs]),
           contentType: 'application/xml; charset=utf-8',
           cacheControl: CACHE_FEED,
         },

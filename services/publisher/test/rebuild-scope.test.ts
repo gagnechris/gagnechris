@@ -65,6 +65,50 @@ describe('collectRebuildScope', () => {
     expect(streamNeedsRebuild(records)).toBe(false);
   });
 
+  it('does not treat missing entityType as a post unless pk is POST# (CHR-167)', () => {
+    const nonPost: DynamoDBRecord[] = [
+      {
+        eventID: '1',
+        eventName: 'INSERT',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          NewImage: {
+            pk: { S: 'HOME#current' },
+            sk: { S: 'PUBLISHED' },
+            status: { S: 'published' },
+            updatedAt: { S: '2026-09-27T12:00:00.000Z' },
+          },
+        },
+      },
+    ];
+    expect(collectRebuildScope(nonPost).feeds).toBe(false);
+    expect(streamNeedsRebuild(nonPost)).toBe(false);
+
+    const legacyPost: DynamoDBRecord[] = [
+      {
+        eventID: '2',
+        eventName: 'INSERT',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          NewImage: {
+            pk: { S: 'POST#legacy' },
+            sk: { S: 'PUBLISHED' },
+            status: { S: 'published' },
+            slug: { S: 'legacy-post' },
+            postId: { S: 'legacy' },
+            title: { S: 'T' },
+            excerpt: { S: '' },
+            bodyMarkdown: { S: '' },
+            updatedAt: { S: '2026-09-27T12:00:00.000Z' },
+          },
+        },
+      },
+    ];
+    const scope = collectRebuildScope(legacyPost);
+    expect(scope.feeds).toBe(true);
+    expect([...scope.postSlugs]).toEqual(['legacy-post']);
+  });
+
   it('scopes a single post publish to that slug + feeds only', () => {
     const records: DynamoDBRecord[] = [
       {

@@ -1,4 +1,11 @@
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { requireEnv } from './config.js';
 import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
@@ -76,8 +83,16 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
       return true;
     },
 
-    async delete(key: string): Promise<void> {
-      await rm(join(root, key), { force: true });
+    async delete(key: string): Promise<boolean> {
+      const path = join(root, key);
+      try {
+        await access(path);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+        throw err;
+      }
+      await rm(path, { force: true });
+      return true;
     },
 
     async list(prefix: string): Promise<string[]> {

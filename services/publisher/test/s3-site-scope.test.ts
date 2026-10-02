@@ -130,8 +130,10 @@ function memoryStorage(): SiteStorage & {
       return true;
     },
     async delete(key) {
+      if (!objects.has(key)) return false;
       objects.delete(key);
       deletes.push(key);
+      return true;
     },
     async list(prefix) {
       return [...objects.keys()].filter((k) => k.startsWith(prefix));
