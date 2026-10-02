@@ -137,18 +137,20 @@ Fixture-note spike routes were removed from the prod Lambda and public OpenAPI (
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 
-## `@gagnechris/shared` entry points (CHR-139 / CHR-156)
+## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)
 
-| Import                            | Contents                                                                                       |
-| --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `@gagnechris/shared`              | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo) |
-| `@gagnechris/shared/render`       | Markdown + HTML prerender helpers (web / publisher)                                            |
-| `@gagnechris/shared/openapi`      | OpenAPI document builder (build-time only)                                                     |
-| `@gagnechris/shared/openapi.json` | Generated OpenAPI document (api-client `generate`)                                             |
+| Import                       | Contents                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `@gagnechris/shared`         | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo)                           |
+| `@gagnechris/shared/render`  | Markdown + HTML prerender helpers (web / publisher); also re-exports `/html` helpers                                     |
+| `@gagnechris/shared/html`    | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
+| `@gagnechris/shared/openapi` | OpenAPI document builder (build-time only)                                                                               |
+
+`marked` remains a runtime dependency of the shared package because `/render` lives in the same package; the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
-CI runs `npm run check:rn-bundles` (esbuild metafile + explicit ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` bans. Metro import is verified by the Expo spike (CHR-142).
+CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`) in the iOS export sourcemap (CHR-164).
 
 ## Related
 

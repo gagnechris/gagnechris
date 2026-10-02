@@ -1,15 +1,24 @@
-/** Injectable timers so hooks never touch `window` (CHR-140). */
+/**
+ * Injectable timers so hooks never touch `window` (CHR-140).
+ * Timer handle types are local so app-core needs no DOM lib (CHR-164).
+ */
+export type TimerHandle = number;
+
 export type Timers = {
-  setTimeout: (
-    handler: () => void,
-    timeout?: number,
-  ) => ReturnType<typeof setTimeout>;
-  clearTimeout: (handle: ReturnType<typeof setTimeout>) => void;
+  setTimeout: (handler: () => void, timeout?: number) => TimerHandle;
+  clearTimeout: (handle: TimerHandle) => void;
 };
 
+type GlobalTimers = {
+  setTimeout: (handler: () => void, timeout?: number) => TimerHandle;
+  clearTimeout: (handle: TimerHandle) => void;
+};
+
+const globalTimers = globalThis as typeof globalThis & GlobalTimers;
+
 export const defaultTimers: Timers = {
-  setTimeout: (handler, timeout) => globalThis.setTimeout(handler, timeout),
-  clearTimeout: (handle) => globalThis.clearTimeout(handle),
+  setTimeout: (handler, timeout) => globalTimers.setTimeout(handler, timeout),
+  clearTimeout: (handle) => globalTimers.clearTimeout(handle),
 };
 
 /**

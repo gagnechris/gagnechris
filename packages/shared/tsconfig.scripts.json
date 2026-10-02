@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "types": ["node"],
+    "lib": ["ES2022"]
+  },
+  "include": [
+    "src/generate-openapi.ts",
+    "src/openapi.ts",
+    "src/openapi-extend.ts",
+    "src/schemas.ts",
+    "src/constants.ts",
+    "src/site-config.ts"
+  ]
+}

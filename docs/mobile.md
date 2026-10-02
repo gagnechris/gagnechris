@@ -1,4 +1,4 @@
-# Mobile (Expo) notes — CHR-142, CHR-150
+# Mobile (Expo) notes — CHR-142, CHR-150, CHR-164
 
 Spike findings for React Native / Expo in this monorepo.
 
@@ -43,12 +43,12 @@ The two lockfiles still produce two copies on disk, which is harmless at runtime
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
 2. Typecheck + test for `shared`, `api-client`, `tokens`, `app-core`, and mobile; lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
-4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, or if the zod runtime is missing from the bundle.
-5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas.
+4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, or if `zod/v4/` is absent (CHR-164).
+5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas and asserting Zod 4 APIs (`z.email`).
 
 Steps 4 and 5 exist because "Export succeeded (N modules)" is not evidence (CHR-150). The CHR-142 resolver remapped `.js` → `.d.ts` for every module including `node_modules`, so `zod/v4/classic/external.js` resolved to a type-only declaration. The export succeeded, and the app threw `TypeError: undefined is not a function` at module load on device. Reverting `metro.config.js` makes step 4 report the `.d.ts` sources and step 5 fail with `TypeError: _zod.z.literal is not a function`.
 
-The remap is now scoped to **relative specifiers from first-party files** (`apps/mobile` and `packages/`), and the `.d.ts` candidate is gone.
+A later failure mode (CHR-164): Expo CLI's transitive `zod@3` was hoisted into `apps/mobile/node_modules/zod` while shared typechecks against zod 4. With `disableHierarchicalLookup`, Metro resolved shared's `import 'zod'` to v3. Pin `"zod": "^4.6.5"` on `apps/mobile` so the app's copy wins; step 4 rejects v3 paths.
 
 `tokens:check` in the main CI workflow regenerates `packages/tokens/src/variables.css` and fails on drift, the same way `openapi:check` guards the API contract.
 

@@ -26,12 +26,11 @@
       "types": "./src/openapi.ts",
       "import": "./src/openapi.ts",
       "default": "./src/openapi.ts"
-    },
-    "./openapi.json": "./openapi/openapi.json"
+    }
   },
   "scripts": {
     "openapi": "tsx src/generate-openapi.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
     "test": "vitest run",
     "check:domain-bundle": "tsx ../../scripts/check-rn-bundles.ts"

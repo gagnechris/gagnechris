@@ -1,9 +1,13 @@
 /**
- * Guard the exported iOS bundle against type-only modules (CHR-150).
+ * Guard the exported iOS bundle against type-only modules and zod major
+ * mismatches (CHR-150 / CHR-164).
  *
  * `zod` ships `external.js` next to `external.d.ts`; a resolver that remaps
  * `.js` → `.d.ts` bundles the declaration, which has no runtime. The export
  * still succeeds, so the sourcemap is the only place the mistake is visible.
+ *
+ * Shared is typechecked against zod ^4, but Metro can still resolve Expo CLI's
+ * transitive zod 3 — require `zod/v4/` paths and reject `zod/v3/`.
  *
  * Usage: node scripts/check-bundle-sources.mjs <export-dir>
  */
@@ -34,22 +38,32 @@ const failures = [];
 for (const map of maps) {
   const { sources = [] } = JSON.parse(readFileSync(map, 'utf8'));
   const declarations = sources.filter((source) => source.endsWith('.d.ts'));
-  // A bundle without zod at all would pass the declaration check vacuously.
-  const hasZodRuntime = sources.some((source) =>
-    /node_modules\/zod\/.*\.js$/.test(source),
+  const zodSources = sources.filter((source) =>
+    /node_modules\/zod\//.test(source),
   );
+  const hasZodV4 = zodSources.some((source) => /\/zod\/v4\//.test(source));
+  const hasZodV3 = zodSources.some((source) => /\/zod\/v3\//.test(source));
 
   if (declarations.length > 0) {
     failures.push(
       `${map}: ${declarations.length} type-only source(s)\n  ${declarations.join('\n  ')}`,
     );
   }
-  if (!hasZodRuntime) {
+  if (zodSources.length === 0) {
     failures.push(`${map}: no zod runtime module in ${sources.length} sources`);
+  } else if (!hasZodV4) {
+    failures.push(
+      `${map}: zod sources present but none under zod/v4/ (got:\n  ${zodSources.join('\n  ')})`,
+    );
   }
-  if (declarations.length === 0 && hasZodRuntime) {
+  if (hasZodV3) {
+    failures.push(
+      `${map}: zod/v3/ sources must not ship (shared targets zod 4):\n  ${zodSources.filter((s) => /\/zod\/v3\//.test(s)).join('\n  ')}`,
+    );
+  }
+  if (declarations.length === 0 && hasZodV4 && !hasZodV3) {
     console.log(
-      `${map}: ${sources.length} sources, no .d.ts, zod runtime present`,
+      `${map}: ${sources.length} sources, no .d.ts, zod/v4 runtime present`,
     );
   }
 }

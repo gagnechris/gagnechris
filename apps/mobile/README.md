@@ -38,8 +38,8 @@ EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 
 ```bash
 npm run export:ios      # expo export --platform ios --source-maps
-npm run check:bundle    # no .d.ts sources; zod runtime present
-npm run smoke:bundle    # build with the real metro.config.js and run it in Node
+npm run check:bundle    # no .d.ts; zod/v4 present; no zod/v3
+npm run smoke:bundle    # Metro bundle + zod v4 smoke in Node
 ```
 
 `expo export` succeeding is not evidence on its own: the original resolver

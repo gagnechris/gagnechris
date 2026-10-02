@@ -1,5 +1,6 @@
 /**
- * Acceptance check (CHR-156): banned imports into RN-facing packages fail lint.
+ * Acceptance check (CHR-156 / CHR-164): banned imports and Node/DOM globals
+ * into RN-facing packages fail lint.
  * Run: `npm run check:platform-neutral-lint`
  */
 import { rmSync, writeFileSync } from 'node:fs';
@@ -14,22 +15,44 @@ const fixtures = [
     dir: 'packages/app-core/src',
     source: `import fs from 'node:fs';\nexport const x = fs;\n`,
     expect: 'node:',
+    rule: 'no-restricted-imports',
   },
   {
     dir: 'packages/api-client/src',
     source: `import { DynamoDBClient } from '@aws-sdk/client-dynamodb';\nexport const x = DynamoDBClient;\n`,
     expect: '@aws-sdk',
+    rule: 'no-restricted-imports',
   },
   {
     dir: 'packages/tokens/src',
     source: `import { createRoot } from 'react-dom/client';\nexport const x = createRoot;\n`,
     expect: 'react-dom',
+    rule: 'no-restricted-imports',
+  },
+  {
+    // New shared domain file (not a hardcoded allowlist name) must still ban node:*.
+    dir: 'packages/shared/src',
+    source: `import fs from 'node:fs';\nexport const x = fs;\n`,
+    expect: 'node:',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `import { renderMarkdownToHtml } from '@gagnechris/shared/render';\nexport const x = renderMarkdownToHtml;\n`,
+    expect: '@gagnechris/shared',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'packages/app-core/src',
+    source: `export const x = process.env.NODE_ENV;\n`,
+    expect: 'process',
+    rule: 'no-restricted-globals',
   },
   {
     dir: 'packages/shared/src',
-    file: 'excerpt.platform-neutral-lint-fixture.ts',
-    source: `import path from 'node:path';\nexport const x = path;\n`,
-    expect: 'node:',
+    source: `export const x = typeof window !== 'undefined' ? window.location : null;\n`,
+    expect: 'window',
+    rule: 'no-restricted-globals',
   },
 ];
 
@@ -38,9 +61,7 @@ const created = [];
 
 try {
   for (const fixture of fixtures) {
-    const fileName =
-      fixture.file ??
-      `_platform-neutral-lint-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`;
+    const fileName = `_platform-neutral-lint-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`;
     const filePath = join(repoRoot, fixture.dir, fileName);
     writeFileSync(filePath, fixture.source);
     created.push(filePath);
@@ -54,13 +75,12 @@ try {
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
     const lintFailed = result.status !== 0;
     const mentionsRule =
-      output.includes('no-restricted-imports') ||
-      output.includes(fixture.expect);
+      output.includes(fixture.rule) || output.includes(fixture.expect);
 
     if (!lintFailed || !mentionsRule) {
       failed = true;
       console.error(
-        `Expected ESLint no-restricted-imports failure for ${fixture.dir} (${fixture.expect}).`,
+        `Expected ESLint ${fixture.rule} failure for ${fixture.dir} (${fixture.expect}).`,
       );
       console.error(`exit=${result.status}`);
       console.error(output || '(no output)');
