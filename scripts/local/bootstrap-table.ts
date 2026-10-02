@@ -66,12 +66,7 @@ function createTableInput() {
 
 async function ensureTtl() {
   const def = APP_TABLE;
-  if (endpoint.includes('127.0.0.1') || endpoint.includes('localhost')) {
-    console.log(
-      `TTL attribute for writers: ${def.timeToLiveAttribute} (DynamoDB Local; no UpdateTimeToLive)`,
-    );
-    return;
-  }
+  // DynamoDB Local 2.5.2+ accepts UpdateTimeToLive (CHR-180).
   const { UpdateTimeToLiveCommand } = await import('@aws-sdk/client-dynamodb');
   await client.send(
     new UpdateTimeToLiveCommand({

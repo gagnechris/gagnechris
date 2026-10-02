@@ -48,7 +48,7 @@ import {
   slugPostSk,
   statusGsi1Pk,
   type PostMetaItem,
-} from './keys.js';
+} from '@gagnechris/data';
 import { buildDraftMutationItems } from './mutation-builders.js';
 
 export { ConflictError, NotFoundError } from '../data/errors.js';

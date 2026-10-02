@@ -101,7 +101,44 @@ const exactExternalPlugin: Plugin = {
   },
 };
 
+/** Negative fixture: a temp entry that must fail the ban (CHR-180). */
+async function assertNegativeFixtureFails(): Promise<boolean> {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'rn-bundle-neg-'));
+  const entryPath = join(dir, 'bad-entry.ts');
+  writeFileSync(
+    entryPath,
+    `import { marked } from 'marked';\nexport const x = marked;\n`,
+  );
+  try {
+    await build({
+      entryPoints: [entryPath],
+      bundle: true,
+      write: false,
+      platform: 'neutral',
+      format: 'esm',
+      metafile: true,
+      logLevel: 'silent',
+      plugins: [banImportsPlugin, exactExternalPlugin],
+    });
+    console.error(
+      'Negative fixture: expected banned marked import to fail, but bundle succeeded.',
+    );
+    return false;
+  } catch {
+    console.log('Negative fixture: OK (marked import rejected).');
+    return true;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 let failed = false;
+
+if (!(await assertNegativeFixtureFails())) {
+  failed = true;
+}
 
 for (const entry of entries) {
   let result;

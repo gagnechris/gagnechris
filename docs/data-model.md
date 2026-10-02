@@ -182,8 +182,8 @@ footer year is fixed at publish time; the SPA uses the live year.
 ## Contact messages (CHR-98)
 
 Public contact form submissions are persisted before SES notification so a
-failed send never loses the message. Sort key is `MSG` (not `META`) so the
-publisher stream filter ignores these writes.
+failed send never loses the message. Sort key is `MSG` (not `PUBLISHED`), so
+the publisher stream filter (`sk = PUBLISHED`) ignores these writes.
 
 Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
 client-controlled** (CHR-114 / CHR-122): a bot can omit or inflate the value.
@@ -205,7 +205,8 @@ signed server-issued token would make timing authoritative if spam warrants it.
 ### Rate-limit counters (TTL)
 
 Attribute `ttl` (epoch seconds) is enabled on the table for auto-expiry.
-Counters use non-`META` sort keys so streams ignore them.
+Counters use non-`PUBLISHED` sort keys, so the publisher stream filter ignores
+them (same as draft `META` rows).
 
 | Purpose               | `pk`                   | `sk`                   | Limit      |
 | --------------------- | ---------------------- | ---------------------- | ---------- |

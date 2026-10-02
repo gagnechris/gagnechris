@@ -151,7 +151,7 @@ bash scripts/apply-branch-protection.sh
      - **PR:** `cdk synth` + `cdk diff` (diff role); sticky PR comment
      - **main deploy:** runs only after CI succeeds (`workflow_run`). Path filters use SSM `deployed-sha` (via `scripts/ssm-param-name.sh`) as the base — not `HEAD~1` — so a cancelled CI followed by a docs-only push still deploys the skipped infra/web changes. Missing/unknown base → deploy everything. Refuses deploy when `head_sha` is not a descendant of `deployed-sha` (CHR-176). Third-party path filters run under the drift (ReadOnly) role **before** the AdministratorAccess deploy role is loaded. After a successful deploy, writes `deployed-sha`. Docs-only merges that change nothing since that SHA skip deploy. Deploy role + `prod` environment; concurrency group `cdk-prod` does not cancel in-flight deploys.
      - **CHR-149 dry-run note (2026-10, no live cancel required):** path-filter base is resolved from SSM `deployed-sha` in `.github/workflows/cdk.yml` (`Resolve path-filter base`). A cancelled infra build therefore cannot strand changes behind a later docs-only commit — the next successful CI still diffs against the last deployed SHA. Live cancel→docs-only exercise left as optional ops confirmation.
-     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift` (separate from deploy, CHR-176); SNS alert on failure uses SSM `alerts-topic-arn`
+     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift` (separate from deploy, CHR-176); SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
 Prod only — there is no staging environment.
 
@@ -393,6 +393,17 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
 SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-auth-domain`.
+
+### Orphan / leftover user pools (CHR-180)
+
+Out-of-IaC Cognito pools may exist from earlier experiments (for example a
+deletion-protected `gagnechris-prod` pool created minutes before the live
+stack pool, or a 2019 `notes-user-pool`). **Do not delete or import them
+without asking Chris first.** Inventory with the readonly profile only:
+
+```bash
+aws cognito-idp list-user-pools --max-results 20 --profile gagnechris-readonly --region us-east-1
+```
 
 Deploy (after Certificate has the `auth` SAN):
 

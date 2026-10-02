@@ -64,8 +64,6 @@ export class LambdaFailureDestination extends Construct {
   readonly queue: Queue;
   readonly streamDestination: SqsDlq;
   readonly asyncDestination: SqsDestination;
-  /** @deprecated Prefer {@link streamDestination}. */
-  readonly destination: SqsDlq;
   readonly depthAlarm: Alarm;
 
   constructor(
@@ -83,7 +81,6 @@ export class LambdaFailureDestination extends Construct {
     });
 
     this.streamDestination = new SqsDlq(this.queue);
-    this.destination = this.streamDestination;
     this.asyncDestination = new SqsDestination(this.queue);
 
     this.depthAlarm = new Alarm(this, 'DepthAlarm', {

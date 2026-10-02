@@ -8,7 +8,7 @@ import { ConflictError } from '../src/data/errors.js';
 import {
   buildResumeMetaItem,
   buildResumePublishedItem,
-} from '../src/resume/keys.js';
+} from '@gagnechris/data';
 import { ResumeRepository } from '../src/resume/repository.js';
 import { mockDoc, mockPair } from './support/mock-doc.js';
 

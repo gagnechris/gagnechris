@@ -12,7 +12,7 @@ import {
   rateSesGlobalPk,
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
-} from './keys.js';
+} from '@gagnechris/data';
 
 /** Contact form: max posts per source IP per UTC hour. */
 export const CONTACT_PER_IP_PER_HOUR = 3;
