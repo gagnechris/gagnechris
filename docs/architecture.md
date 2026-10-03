@@ -6,6 +6,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
+   - First segment a case or percent-encoding variant of `admin` / `auth` (`/ADMIN/notebook`, `/%61dmin`) → 301 to the lowercase segment, rest of path and query kept. Only that segment changes.
    - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA + webauthn)
    - `/blog` and `/blog/*` → 301 to the same path under `/posts`
    - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
@@ -204,6 +205,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 - CloudFront has two response-header policies in the Site stack:
   - Public pages: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap.
   - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
+- CloudFront path patterns are case-sensitive, so `/ADMIN/notebook` would land on the default behaviour (public CSP, GA). The viewer-request function 301s such variants to lowercase, the React Router `admin` and `auth/callback` routes are `caseSensitive` (a variant renders `NotFound`), and `isPrivatePath` is case- and encoding-insensitive.
 - A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
 
 ## Privacy: logs, caching and IAM

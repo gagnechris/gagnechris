@@ -52,6 +52,20 @@ async function handler(event) {
   }
 
   var uri = request.uri;
+  // The strict /admin* and /auth* behaviours match case-sensitively.
+  var privateUri = canonicalPrivateUri(uri);
+  if (privateUri !== null) {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        location: {
+          value: privateUri + serializeQueryString(request.querystring),
+        },
+      },
+    };
+  }
+
   if (isLegacyResumePdfUri(uri)) {
     return {
       statusCode: 301,
@@ -162,6 +176,25 @@ function swapPathPrefix(uri, from, to) {
     return to + uri.substring(from.length);
   }
   return null;
+}
+
+/** Lowercased URI when the first segment is a case or encoding variant of admin/auth. */
+function canonicalPrivateUri(uri) {
+  var slash = uri.indexOf('/', 1);
+  var segment = slash === -1 ? uri.substring(1) : uri.substring(1, slash);
+  if (segment === 'admin' || segment === 'auth') {
+    return null;
+  }
+  var decoded;
+  try {
+    decoded = decodeURIComponent(segment).toLowerCase();
+  } catch (e) {
+    return null;
+  }
+  if (decoded !== 'admin' && decoded !== 'auth') {
+    return null;
+  }
+  return '/' + decoded + (slash === -1 ? '' : uri.substring(slash));
 }
 
 function isSpaShellPath(uri) {

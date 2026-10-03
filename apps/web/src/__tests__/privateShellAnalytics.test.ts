@@ -35,6 +35,8 @@ describe('analytics stay off private shells', () => {
   it('dev server strips GA on /admin and /auth only', () => {
     expect(transform('/admin/notebook/today?date=2026-10-03')).not.toMatch(GA);
     expect(transform('/auth/callback?code=x')).not.toMatch(GA);
+    expect(transform('/ADMIN/notebook')).not.toMatch(GA);
+    expect(transform('/Auth/callback')).not.toMatch(GA);
     expect(transform('/posts/hello')).toMatch(GA);
   });
 });

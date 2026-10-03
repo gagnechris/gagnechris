@@ -464,6 +464,71 @@ describe('viewer-request CloudFront Function', () => {
     }
   });
 
+  it('301s case and encoding variants of /admin and /auth to lowercase', async () => {
+    const cases: Array<[CfRequest, string]> = [
+      [
+        {
+          uri: '/ADMIN/notebook',
+          querystring: { x: { value: '1' } },
+          headers: { host: { value: 'gagnechris.com' } },
+        },
+        '/admin/notebook?x=1',
+      ],
+      [
+        { uri: '/Admin', headers: { host: { value: 'gagnechris.com' } } },
+        '/admin',
+      ],
+      [
+        {
+          uri: '/AUTH/callback',
+          headers: { host: { value: 'gagnechris.com' } },
+        },
+        '/auth/callback',
+      ],
+      [
+        {
+          uri: '/aDmIn/notes/01J9ZX',
+          headers: { host: { value: 'gagnechris.com' } },
+        },
+        '/admin/notes/01J9ZX',
+      ],
+      [
+        {
+          uri: '/Admin/Notebook/Notes/AbC',
+          headers: { host: { value: 'gagnechris.com' } },
+        },
+        '/admin/Notebook/Notes/AbC',
+      ],
+      [
+        { uri: '/%61dmin/', headers: { host: { value: 'gagnechris.com' } } },
+        '/admin/',
+      ],
+    ];
+    for (const [request, location] of cases) {
+      const res = await runHandler(request);
+      expect(res).toMatchObject({ statusCode: 301 });
+      expect(locationOf(res)).toBe(location);
+    }
+  });
+
+  it('leaves lowercase /admin and other mixed-case paths alone', async () => {
+    const admin = (await runHandler({
+      uri: '/admin/notebook/notes/01J9ZX',
+      querystring: { date: { value: '2026-10-03' } },
+      headers: { host: { value: 'gagnechris.com' } },
+    })) as CfRequest;
+    expect(admin.uri).toBe('/spa.html');
+
+    api.setPublishedBlogSlugsForTests({});
+    for (const uri of ['/posts/Some-Slug', '/Resume', '/Administrator']) {
+      const res = await runHandler({
+        uri,
+        headers: { host: { value: 'gagnechris.com' } },
+      });
+      expect(res).not.toHaveProperty('statusCode');
+    }
+  });
+
   it('rewrites trailing-slash SPA paths to the SPA shell', async () => {
     const req = (await runHandler({
       uri: '/admin/',
