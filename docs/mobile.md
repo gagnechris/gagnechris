@@ -46,7 +46,7 @@ The two lockfiles still produce two copies on disk, which is harmless at runtime
 
 ## CI
 
-`.github/workflows/mobile.yml` is path-filtered and uses no AWS credentials. It runs:
+`.github/workflows/mobile.yml` uses no AWS credentials. It runs on every PR and push to `main` so the required check **Mobile typecheck, lint, test, bundle** always reports; an in-job `dorny/paths-filter` step skips the steps below (the job still passes) unless mobile, the client packages, the root lockfile or the workflow changed (CHR-199). When it applies, it runs:
 
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
 2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.

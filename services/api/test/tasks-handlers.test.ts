@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
 import { dispatchRoutes } from '../src/router.js';
+import { registerProductionSyncAdapters } from '../src/sync/adapters.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
 import { SyncLedger } from '../src/sync/ledger.js';
@@ -88,6 +89,7 @@ describe('tasks handlers (CHR-43)', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
+    registerProductionSyncAdapters();
   });
 
   it('creates, gets, updates with If-Match, completes, reopens, and lists', async () => {

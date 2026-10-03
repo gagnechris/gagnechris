@@ -11,6 +11,23 @@ export const CI_COMPOSE_FILES = [
   'docker-compose.ci.yml',
 ] as const;
 
+/** Host port `docker-compose.ci.yml` publishes; local dev keeps 8000 (CHR-199). */
+export const INTEGRATION_DYNAMODB_HOST_PORT = 8001;
+
+/**
+ * DynamoDB Local endpoint for integration tests. Deliberately ignores an
+ * inherited AWS_ENDPOINT_URL_DYNAMODB (env.sh points that at local dev on
+ * 8000); override with INTEGRATION_DYNAMODB_ENDPOINT.
+ */
+export function integrationDynamoEndpoint(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return (
+    env.INTEGRATION_DYNAMODB_ENDPOINT ??
+    `http://127.0.0.1:${INTEGRATION_DYNAMODB_HOST_PORT}`
+  );
+}
+
 export function ciComposeFileArgs(): string {
   return CI_COMPOSE_FILES.map((f) => `-f ${f}`).join(' ');
 }

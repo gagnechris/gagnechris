@@ -6,10 +6,8 @@ import {
   QueryCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
   SYNC_DEFAULT_PAGE_LIMIT,
-  type SyncChange,
   type SyncChangesQuery,
 } from '@gagnechris/shared';
 import {
@@ -26,15 +24,35 @@ import {
   encodeCursor,
 } from '../data/cursor.js';
 import { throwCursorValidation } from '../data/dynamo-errors.js';
-import { ResyncRequiredError } from '../data/errors.js';
-import { logger, metrics } from '../observability.js';
-import { getSyncAdapter } from './registry.js';
+import {
+  ResyncRequiredError,
+  SyncAdapterMissingError,
+} from '../data/errors.js';
+import { getSyncAdapter, type SyncFeedChange } from './registry.js';
 
 /** ExclusiveStartKey shape for the sync GSI (base keys + index keys). */
 export const SYNC_GSI_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
 
+/**
+ * Cursor attribute binding it to the query's `since` lower bound (empty when
+ * the cursor was minted without `since`); stripped before Dynamo (CHR-202).
+ */
+const SYNC_CURSOR_SINCE_ATTR = 'boundSince';
+
+const SYNC_CURSOR_KEYS = [
+  ...SYNC_GSI_CURSOR_KEYS,
+  SYNC_CURSOR_SINCE_ATTR,
+] as const;
+
+/**
+ * Upper bound on Dynamo queries per page when rows are skipped (corrupt rows
+ * whose adapter returns undefined), so `limit` counts returned changes
+ * without letting a bad partition run the Lambda to its timeout (CHR-202).
+ */
+export const SYNC_MAX_QUERIES_PER_PAGE = 5;
+
 export type SyncChangesPage = {
-  changes: SyncChange[];
+  changes: SyncFeedChange[];
   nextCursor?: string;
   /** Opaque server watermark; pass back as `since` on the next poll. */
   nextSince: string;
@@ -73,65 +91,86 @@ export class SyncLedger {
         );
       }
     }
-    const exclusiveStartKey = decodeCursor(cursor, SYNC_GSI_CURSOR_KEYS);
     const pk = syncPk(userId);
     const lowerBound = syncSinceLowerBound(since);
-    assertCursorMatchesQuery(exclusiveStartKey, {
+    const boundSince = lowerBound ?? '';
+    const decoded = decodeCursor(cursor, SYNC_CURSOR_KEYS);
+    assertCursorMatchesQuery(decoded, {
       partitionAttr: 'syncPk',
       partitionValue: pk,
       ...(lowerBound
         ? { sortAttr: 'syncSk', sortLowerBoundInclusive: lowerBound }
         : {}),
+      binding: { attr: SYNC_CURSOR_SINCE_ATTR, value: boundSince },
     });
-
-    let result;
-    try {
-      result = await this.doc.send(
-        new QueryCommand({
-          TableName: this.tableName,
-          IndexName: GSI3_NAME,
-          KeyConditionExpression: lowerBound
-            ? 'syncPk = :pk AND syncSk >= :sinceSk'
-            : 'syncPk = :pk',
-          ExpressionAttributeValues: lowerBound
-            ? {
-                ':pk': pk,
-                // syncSk starts with ISO timestamp; compare against the lower-bound
-                // instant so any type/id suffix sorts after that prefix boundary.
-                ':sinceSk': lowerBound,
-              }
-            : {
-                ':pk': pk,
-              },
-          ExclusiveStartKey: exclusiveStartKey,
-          Limit: limit ?? SYNC_DEFAULT_PAGE_LIMIT,
-        }),
-      );
-    } catch (error) {
-      throwCursorValidation(error);
+    let startKey: Record<string, unknown> | undefined;
+    if (decoded) {
+      const { [SYNC_CURSOR_SINCE_ATTR]: _bound, ...key } = decoded;
+      startKey = key;
     }
 
-    const changes: SyncChange[] = [];
-    for (const raw of result.Items ?? []) {
-      const item = raw as Record<string, unknown>;
-      const changeType = itemChangeType(item);
-      if (!changeType) continue;
-      const adapter = getSyncAdapter(changeType);
-      if (!adapter) {
-        logger.warn('Skipping sync row with no registered adapter', {
-          changeType,
-        });
-        metrics.addMetric('SyncAdapterMissing', MetricUnit.Count, 1);
-        continue;
+    const pageLimit = limit ?? SYNC_DEFAULT_PAGE_LIMIT;
+    const changes: SyncFeedChange[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+    // `limit` counts returned changes, not evaluated rows: keep reading while
+    // skipped rows leave the page short (bounded by SYNC_MAX_QUERIES_PER_PAGE).
+    for (let round = 1; ; round += 1) {
+      let result;
+      try {
+        result = await this.doc.send(
+          new QueryCommand({
+            TableName: this.tableName,
+            IndexName: GSI3_NAME,
+            KeyConditionExpression: lowerBound
+              ? 'syncPk = :pk AND syncSk >= :sinceSk'
+              : 'syncPk = :pk',
+            ExpressionAttributeValues: lowerBound
+              ? {
+                  ':pk': pk,
+                  // syncSk starts with ISO timestamp; compare against the lower-bound
+                  // instant so any type/id suffix sorts after that prefix boundary.
+                  ':sinceSk': lowerBound,
+                }
+              : {
+                  ':pk': pk,
+                },
+            ExclusiveStartKey: startKey,
+            Limit: pageLimit - changes.length,
+          }),
+        );
+      } catch (error) {
+        throwCursorValidation(error);
       }
-      const change = adapter.toChange(item);
-      if (change) changes.push(change);
+
+      for (const raw of result.Items ?? []) {
+        const item = raw as Record<string, unknown>;
+        const changeType = itemChangeType(item);
+        if (!changeType) continue;
+        const adapter = getSyncAdapter(changeType);
+        // Fail the page (500 + SyncAdapterMissing alarm) instead of skipping:
+        // the client would advance past `nextSince` and never see the row.
+        if (!adapter) throw new SyncAdapterMissingError(changeType);
+        const change = adapter.toChange(item);
+        if (change) changes.push(change);
+      }
+
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+      if (
+        !lastKey ||
+        changes.length >= pageLimit ||
+        round >= SYNC_MAX_QUERIES_PER_PAGE
+      ) {
+        break;
+      }
+      startKey = lastKey;
     }
 
     return {
       changes,
       nextCursor: encodeCursor(
-        result.LastEvaluatedKey as Record<string, unknown> | undefined,
+        lastKey
+          ? { ...lastKey, [SYNC_CURSOR_SINCE_ATTR]: boundSince }
+          : undefined,
       ),
       nextSince: watermarkAt,
     };

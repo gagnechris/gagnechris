@@ -71,6 +71,32 @@ export class ResyncRequiredError extends Error {
   }
 }
 
+/** Client build is older than the sync contract's minimum (HTTP 426, CHR-202). */
+export class UpgradeRequiredError extends Error {
+  readonly minClientVersion: string;
+
+  constructor(message: string, minClientVersion: string) {
+    super(message);
+    this.name = 'UpgradeRequiredError';
+    this.minClientVersion = minClientVersion;
+  }
+}
+
+/**
+ * A sync GSI row has a `changeType` with no registered adapter (CHR-202).
+ * Maps to HTTP 500 + `SyncAdapterMissing` metric: skipping the row while
+ * advancing `nextSince` would make clients miss it permanently.
+ */
+export class SyncAdapterMissingError extends Error {
+  readonly changeType: string;
+
+  constructor(changeType: string) {
+    super(`No sync adapter registered for change type ${changeType}`);
+    this.name = 'SyncAdapterMissingError';
+    this.changeType = changeType;
+  }
+}
+
 /** DynamoDB throttling exhausted retries (CHR-120). */
 export class ServiceUnavailableError extends Error {
   constructor(message: string) {

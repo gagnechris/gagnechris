@@ -227,5 +227,8 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
   ];
 }
 
-/** Prod route table export (eager repo construct registers sync adapter). */
+/**
+ * Prod route table export. Repositories are built lazily per request; sync
+ * adapters are registered by `sync/adapters.ts` via routes.ts (CHR-202).
+ */
 export const noteRoutes: RouteDef[] = createNoteRoutes();
