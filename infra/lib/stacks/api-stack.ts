@@ -42,7 +42,6 @@ export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly userPool: IUserPool;
   readonly webClient: IUserPoolClient;
-  readonly iosClient?: IUserPoolClient;
   readonly alertsTopic: ITopic;
   readonly dataTable: ITable;
   readonly emailIdentity: IEmailIdentity;
@@ -114,10 +113,9 @@ export class ApiStack extends Stack {
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
 
+    // Web client only. The iOS client (custom-scheme callback) stays out of the
+    // API audience until the app ships with universal links (CHR-240, CHR-205).
     const audiences = [webClient.userPoolClientId];
-    if (props.iosClient) {
-      audiences.push(props.iosClient.userPoolClientId);
-    }
 
     const jwtAuthorizer = new HttpJwtAuthorizer(
       'CognitoJwt',

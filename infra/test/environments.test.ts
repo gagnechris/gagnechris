@@ -735,7 +735,6 @@ describe('ApiStack', () => {
       config,
       userPool: auth.userPool,
       webClient: auth.webClient,
-      iosClient: auth.iosClient,
       alertsTopic,
       dataTable: data.table,
       emailIdentity: email.emailIdentity,
@@ -767,8 +766,9 @@ describe('ApiStack', () => {
           .Properties.JwtConfiguration.Audience,
     );
     expect(audiences).toHaveLength(1);
-    expect(audiences[0]).toHaveLength(2);
-    expect(JSON.stringify(audiences[0])).not.toMatch(/DevClient/);
+    expect(audiences[0]).toHaveLength(1);
+    expect(JSON.stringify(audiences[0])).toMatch(/WebClient/);
+    expect(JSON.stringify(audiences[0])).not.toMatch(/DevClient|IosClient/);
     // API Gateway stores DestinationArn without `:*`; anything else drifts.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
