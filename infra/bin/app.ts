@@ -80,7 +80,6 @@ const api = new ApiStack(app, `Api-${config.name}`, {
   config,
   userPool: auth.userPool,
   webClient: auth.webClient,
-  iosClient: auth.iosClient,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
   emailIdentity: email.emailIdentity,
