@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -488,5 +488,152 @@ describe('PostEditorPage delete (CHR-158)', () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByText(/Reload and try again/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('PostEditorPage navigation (CHR-178)', () => {
+  const otherPost = {
+    ...basePost,
+    id: '01OTHERPOSTID0000000000000',
+    slug: 'other',
+    title: 'Other post',
+    bodyMarkdown: 'other body',
+  };
+
+  function renderWithRoutes() {
+    const router = createMemoryRouter(
+      [
+        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
+        { path: '/admin', element: <p>Posts list</p> },
+      ],
+      { initialEntries: [`/admin/posts/${basePost.id}`] },
+    );
+    render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+    return router;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockImplementation(
+      async (
+        _path: unknown,
+        init?: { params?: { path?: { id?: string } } },
+      ) => ({
+        data:
+          init?.params?.path?.id === otherPost.id
+            ? { ...otherPost }
+            : { ...basePost },
+        error: undefined,
+        response: { status: 200 },
+      }),
+    );
+    put.mockResolvedValue({
+      data: { ...basePost, bodyMarkdown: 'line one dirty', version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  test('leave guard saves dirty edits before navigating away', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const router = renderWithRoutes();
+
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Markdown'), ' dirty');
+
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+
+    let resolvePut!: (value: unknown) => void;
+    put.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePut = resolve;
+        }),
+    );
+
+    await act(async () => {
+      void router.navigate('/admin');
+    });
+
+    // Blocked until the save lands.
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(put.mock.calls[0]?.[1]?.body).toMatchObject({
+      bodyMarkdown: 'line one dirty',
+    });
+    expect(router.state.location.pathname).toBe(`/admin/posts/${basePost.id}`);
+
+    resolvePut({
+      data: { ...basePost, bodyMarkdown: 'line one dirty', version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+    await screen.findByText('Posts list');
+    // Save landed, so there was nothing to ask about.
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  test('leave guard asks when the save fails and stays on cancel', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    put.mockResolvedValue({
+      data: undefined,
+      error: { error: 'internal', message: 'Boom' },
+      response: { status: 500 },
+    });
+    const router = renderWithRoutes();
+
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Markdown'), ' dirty');
+
+    await act(async () => {
+      await router.navigate('/admin');
+    });
+
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Your changes could not be saved. Leave without saving?',
+      ),
+    );
+    expect(router.state.location.pathname).toBe(`/admin/posts/${basePost.id}`);
+    expect(screen.queryByText('Posts list')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Markdown')).toHaveValue('line one dirty');
+    confirmSpy.mockRestore();
+  });
+
+  test('switching posts remounts the editor so A state does not leak into B', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    put.mockResolvedValue({
+      data: undefined,
+      error: { error: 'conflict', message: 'Conflict' },
+      response: { status: 409 },
+    });
+    const router = renderWithRoutes();
+
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Markdown'), ' dirty');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(
+      'Conflict — another save updated this post. Reload and try again.',
+    );
+
+    // Leave A (save fails → confirm "leave anyway") and open B.
+    await act(async () => {
+      await router.navigate(`/admin/posts/${otherPost.id}`);
+    });
+    await screen.findByDisplayValue('Other post');
+    expect(screen.getByLabelText('Markdown')).toHaveValue('other body');
+    // A's conflict banner must not carry over to B.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Reload and try again/)).not.toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 });
