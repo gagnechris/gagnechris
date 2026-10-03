@@ -17,6 +17,7 @@ import {
   type CopyBackEntry,
   type CopyBackOptions,
 } from '../../src/restore/copy-back.js';
+import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { SyncLedger } from '../../src/sync/ledger.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { createTasksRepository } from '../../src/tasks/repository.js';
@@ -60,6 +61,7 @@ describe('restore copy-back (DynamoDB Local, CHR-198)', () => {
     await truncateTable(doc, live);
     await truncateTable(doc, scratch);
     clearSyncEntities();
+    registerProductionSyncAdapters();
     clock = '2026-10-01T10:00:00.000Z';
   });
 
