@@ -45,14 +45,18 @@ export function metricAlarm(
     readonly alarmDescription: string;
     readonly metric: IMetric;
     readonly alertsTopic: ITopic;
+    /** Defaults to 1 (any occurrence). */
+    readonly threshold?: number;
+    /** Defaults to 1 period. */
+    readonly evaluationPeriods?: number;
   },
 ): Alarm {
   const alarm = new Alarm(scope, id, {
     alarmName: props.alarmName,
     alarmDescription: props.alarmDescription,
     metric: props.metric,
-    threshold: 1,
-    evaluationPeriods: 1,
+    threshold: props.threshold ?? 1,
+    evaluationPeriods: props.evaluationPeriods ?? 1,
     comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
     treatMissingData: TreatMissingData.NOT_BREACHING,
   });
