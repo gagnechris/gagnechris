@@ -272,14 +272,7 @@ export type NotesPage = {
   nextCursor?: string;
 };
 
-export type ListNotesQuery = {
-  area?: NotebookArea;
-  from?: string;
-  to?: string;
-  type?: NoteType;
-  cursor?: string;
-  limit?: number;
-};
+export type ListNotesQuery = components['schemas']['ListNotesQuery'];
 
 export const fetchNotesPage = async (
   client: ApiClient,
@@ -372,19 +365,12 @@ export type TasksPage = {
   nextCursor?: string;
 };
 
-export type ListTasksQuery = {
-  area?: NotebookArea;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  dueOn?: string;
-  dueBefore?: string;
-  noteId?: string;
-  /** Ignored when `status` is set. */
+/** `open` is a boolean here; {@link fetchTasksPage} sends the wire string. */
+export type ListTasksQuery = Omit<
+  components['schemas']['ListTasksQuery'],
+  'open'
+> & {
   open?: boolean;
-  /** Caller's local day, so overdue ranking follows their timezone. */
-  today?: string;
-  cursor?: string;
-  limit?: number;
 };
 
 export const fetchTasksPage = async (
@@ -483,7 +469,6 @@ export const searchNotebook = async (
   client: ApiClient,
   query: NotebookSearchQuery,
 ): Promise<NotebookSearchResponse> => {
-  // POST body, not a query string: search terms stay out of URLs and access logs.
   const result = await client.POST('/api/notebook/search', {
     body: query,
   });

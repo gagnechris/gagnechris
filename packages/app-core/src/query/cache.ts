@@ -1,21 +1,7 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import type {
-  Home,
-  Note,
-  NotesPage,
-  Post,
-  PostsPage,
-  Resume,
-  Task,
-  TasksPage,
-} from './api.js';
+import type { Home, Note, Post, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
 
-type PostsListData = InfiniteData<PostsPage, string | undefined>;
-type NotesListData = InfiniteData<NotesPage, string | undefined>;
-type TasksListData = InfiniteData<TasksPage, string | undefined>;
-
-/** A stale GET can race a mutation, so keep the higher version. */
 export const preferNewerByVersion = <T extends { version: number }>(
   prev: T | undefined,
   next: T,
@@ -26,10 +12,6 @@ export const preferNewerByVersion = <T extends { version: number }>(
 
 type Paged<T> = InfiniteData<{ items: T[] }, string | undefined>;
 
-/**
- * `undefined` when the filters cannot be evaluated client-side: update rows
- * already there, never insert.
- */
 type ListMatch = boolean | undefined;
 
 const upsertInPages = <T extends { id: string; version: number }>(
@@ -101,31 +83,50 @@ const postMatches = (
   return true;
 };
 
+/** `seedUnfiltered` writes the unfiltered list even before its first fetch, so a create shows up immediately. */
+const upsertIntoListCaches = <T extends { id: string; version: number }>(
+  queryClient: QueryClient,
+  listKey: readonly unknown[],
+  entity: T,
+  {
+    removed,
+    matches,
+    seedUnfiltered = false,
+  }: {
+    removed: boolean;
+    matches: (entity: T, filters: Record<string, unknown>) => ListMatch;
+    seedUnfiltered?: boolean;
+  },
+): void => {
+  if (seedUnfiltered) {
+    queryClient.setQueryData<Paged<T>>(listKey, (prev) =>
+      upsertInPages(prev, entity, { removed, matches: matches(entity, {}) }),
+    );
+  }
+  for (const [key, data] of queryClient.getQueriesData<Paged<T>>({
+    queryKey: listKey,
+  })) {
+    if (seedUnfiltered && key.length === listKey.length) continue;
+    if (!isInfinite(data)) continue;
+    queryClient.setQueryData<Paged<T>>(
+      key,
+      upsertInPages(data, entity, {
+        removed,
+        matches: matches(entity, listFilters(key)),
+      }),
+    );
+  }
+};
+
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
     preferNewerByVersion(prev, post),
   );
-  // Seeded even before first fetch so the create flow shows the new post.
-  queryClient.setQueryData<PostsListData>(queryKeys.posts.list(), (prev) =>
-    upsertInPages(prev, post, {
-      removed: post.status === 'deleted',
-      matches: true,
-    }),
-  );
-  for (const [key, data] of queryClient.getQueriesData<PostsListData>({
-    queryKey: [...queryKeys.posts.all, 'list'],
-  })) {
-    if (key.length === queryKeys.posts.list().length || !isInfinite(data)) {
-      continue;
-    }
-    queryClient.setQueryData<PostsListData>(
-      key,
-      upsertInPages(data, post, {
-        removed: post.status === 'deleted',
-        matches: postMatches(post, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.posts.list(), post, {
+    removed: post.status === 'deleted',
+    matches: postMatches,
+    seedUnfiltered: true,
+  });
 };
 
 export const setCachedHome = (queryClient: QueryClient, home: Home): void => {
@@ -150,7 +151,6 @@ const noteMatches = (
   if (filters.q) return undefined;
   if (filters.area !== undefined && filters.area !== note.area) return false;
   if (filters.type !== undefined && filters.type !== note.type) return false;
-  // Mirrors the API: date ranges only list daily notes (`DATE#` keys).
   const from = typeof filters.from === 'string' ? filters.from : undefined;
   const to = typeof filters.to === 'string' ? filters.to : undefined;
   if (from !== undefined || to !== undefined) {
@@ -183,18 +183,10 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
       queryClient.setQueryData(key, next);
     }
   }
-  for (const [key, data] of queryClient.getQueriesData<NotesListData>({
-    queryKey: [...queryKeys.notes.all, 'list'],
-  })) {
-    if (!isInfinite(data)) continue;
-    queryClient.setQueryData<NotesListData>(
-      key,
-      upsertInPages(data, note, {
-        removed: note.deleted,
-        matches: noteMatches(note, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.notes.list(), note, {
+    removed: note.deleted,
+    matches: noteMatches,
+  });
 };
 
 const taskMatches = (
@@ -231,16 +223,8 @@ export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
   queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>
     preferNewerByVersion(prev, task),
   );
-  for (const [key, data] of queryClient.getQueriesData<TasksListData>({
-    queryKey: [...queryKeys.tasks.all, 'list'],
-  })) {
-    if (!isInfinite(data)) continue;
-    queryClient.setQueryData<TasksListData>(
-      key,
-      upsertInPages(data, task, {
-        removed: task.deleted,
-        matches: taskMatches(task, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.tasks.list(), task, {
+    removed: task.deleted,
+    matches: taskMatches,
+  });
 };

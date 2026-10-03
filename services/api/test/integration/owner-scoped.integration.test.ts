@@ -89,12 +89,12 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
       ),
     );
 
-    expect(await repo.get(USER_B, NOTE_A)).toBeUndefined();
-    await expect(repo.getOrThrow(USER_B, NOTE_A)).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
+    expect(await repo.get({ userId: USER_B, id: NOTE_A })).toBeUndefined();
     await expect(
-      repo.updateIfVersion(USER_B, NOTE_A, 1, {
+      repo.getOrThrow({ userId: USER_B, id: NOTE_A }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(
+      repo.updateIfVersion({ userId: USER_B, id: NOTE_A }, 1, {
         ...aNote,
         userId: USER_B,
         title: 'hijack',
@@ -103,7 +103,7 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
     await expect(
-      repo.softDelete(USER_B, NOTE_A, 1, {
+      repo.softDelete({ userId: USER_B, id: NOTE_A }, 1, {
         ...aNote,
         userId: USER_B,
         version: 2,
@@ -113,7 +113,7 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
     ).rejects.toBeInstanceOf(NotFoundError);
 
     // Cross-user get by A's id under B's key space is a miss (different pk).
-    expect(await repo.get(USER_A, NOTE_B)).toBeUndefined();
+    expect(await repo.get({ userId: USER_A, id: NOTE_B })).toBeUndefined();
 
     const aList = await repo.queryPage({
       IndexName: GSI1_NAME,
@@ -167,8 +167,10 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
       code: 'daily_taken',
       current: { id: first.id, title: 'device-1' },
     });
-    expect(await repo.get(USER_A, DAILY_ULID_2)).toBeUndefined();
-    expect(await repo.get(USER_A, DAILY_ULID_1)).toMatchObject({
+    expect(
+      await repo.get({ userId: USER_A, id: DAILY_ULID_2 }),
+    ).toBeUndefined();
+    expect(await repo.get({ userId: USER_A, id: DAILY_ULID_1 })).toMatchObject({
       title: 'device-1',
       area: 'personal',
       noteDate: '2026-10-02',
@@ -257,7 +259,7 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
 
     // Soft-delete drops list GSI keys so area lists no longer return the row.
     const live = gsi1Page1.items[0]!;
-    await repo.softDelete(USER_A, live.id, live.version, {
+    await repo.softDelete({ userId: USER_A, id: live.id }, live.version, {
       ...live,
       version: live.version + 1,
       updatedAt: '2026-10-02T11:00:00.000Z',

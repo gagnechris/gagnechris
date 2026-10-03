@@ -23,7 +23,6 @@
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "@gagnechris/shared": "*",
     "openapi-typescript": "^7.13.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.2"

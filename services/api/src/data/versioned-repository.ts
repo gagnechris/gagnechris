@@ -1,3 +1,8 @@
+/**
+ * Optimistic-concurrency entity store. Keying and row visibility come from an
+ * {@link EntityScope}: {@link unscoped} (id keys) or {@link ownerScoped}
+ * (`{ userId, id }` keys).
+ */
 import {
   GetCommand,
   PutCommand,
@@ -9,6 +14,7 @@ import {
 import {
   isOptimisticLockConflict,
   ownerSyncCreateClaimPk,
+  syncCreateClaimPk,
   syncCreateClaimSk,
   syncPk,
   syncSk,
@@ -18,6 +24,7 @@ import {
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { logCorruptStoredItem } from './corrupt-item.js';
+import { createHashMatches } from './create-hash.js';
 import {
   assertCursorMatchesQuery,
   decodeCursor,
@@ -33,15 +40,84 @@ import {
   throwVersionConflict,
   versionMatchValues,
 } from './version-condition.js';
-import { createHashMatches } from './create-hash.js';
-import {
-  type QueryPage,
-  type SyncEntityConfig,
-  type VersionedEntity,
-} from './versioned-entity-repository.js';
 
-export type OwnerScopedSyncConfig<T extends VersionedEntity> =
-  SyncEntityConfig<T>;
+export type VersionedEntity = {
+  version: number;
+  updatedAt: string;
+};
+
+export type ItemKey = { pk: string; sk: string };
+
+export type OwnerKey = { userId: string; id: string };
+
+export type EntityScope<T, TKey> = {
+  idOf: (entity: T) => string;
+  keyOf: (entity: T) => TKey;
+  idOfKey: (key: TKey) => string;
+  itemKey: (key: TKey) => ItemKey;
+  /** False makes the row read as missing for this key. */
+  owns: (key: TKey, entity: T) => boolean;
+  createClaim: (
+    changeType: string,
+    key: TKey,
+  ) => ItemKey & Record<string, unknown>;
+  /** Attributes removed from tombstones so list indexes drop the row. */
+  tombstoneOmits: readonly string[];
+};
+
+export function unscoped<T>(opts: {
+  keyForId: (id: string) => ItemKey;
+  idOf: (entity: T) => string;
+}): EntityScope<T, string> {
+  return {
+    idOf: opts.idOf,
+    keyOf: opts.idOf,
+    idOfKey: (id) => id,
+    itemKey: opts.keyForId,
+    owns: () => true,
+    createClaim: (changeType, id) => ({
+      pk: syncCreateClaimPk(changeType, id),
+      sk: syncCreateClaimSk(),
+    }),
+    tombstoneOmits: [],
+  };
+}
+
+const LIST_GSI_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
+
+/** Another owner's rows read as missing; tombstones drop list GSI keys so lists skip them. */
+export function ownerScoped<T>(opts: {
+  keyForId: (userId: string, id: string) => ItemKey;
+  idOf: (entity: T) => string;
+  userIdOf: (entity: T) => string;
+}): EntityScope<T, OwnerKey> {
+  return {
+    idOf: opts.idOf,
+    keyOf: (entity) => ({
+      userId: opts.userIdOf(entity),
+      id: opts.idOf(entity),
+    }),
+    idOfKey: (key) => key.id,
+    itemKey: (key) => opts.keyForId(key.userId, key.id),
+    owns: (key, entity) => opts.userIdOf(entity) === key.userId,
+    createClaim: (changeType, key) => ({
+      pk: ownerSyncCreateClaimPk(key.userId, changeType, key.id),
+      sk: syncCreateClaimSk(),
+      userId: key.userId,
+    }),
+    tombstoneOmits: LIST_GSI_KEYS,
+  };
+}
+
+export type SyncEntityConfig<T extends VersionedEntity> = {
+  changeType: string;
+  userIdOf: (entity: T) => string;
+  /**
+   * `hashCreateFields` digest (never the raw fields). A create retry with the
+   * same id but a different hash is a 409 `payload_mismatch`.
+   */
+  createPayloadHash: (entity: T) => string;
+};
 
 export type UniqueClaimHook<T extends VersionedEntity> = {
   buildItems: (entity: T) => Array<{
@@ -53,9 +129,9 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   claimIndexes: readonly number[];
   conflictCode: 'slug_taken' | 'daily_taken';
   conflictMessage?: string;
-  /** Return `undefined` to rethrow the original conflict. */
+  /** Holder of a conflicting claim; `undefined` rethrows the conflict. */
   resolveConflict?: (entity: T) => Promise<T | undefined>;
-  /** Each should only remove a claim that still points at `entity`. */
+  /** Deletes that free the claim on soft delete; condition them on the claim still pointing at `entity`. */
   releaseItems?: (entity: T) => Array<{
     Delete: {
       Key: Record<string, unknown>;
@@ -64,53 +140,57 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
       ExpressionAttributeValues?: Record<string, unknown>;
     };
   }>;
-  /** Frees a claim still held by a tombstone (rows deleted before claims were released on delete). */
+  /** Frees a claim still held by a tombstone; the create is then retried once. */
   releaseStale?: (holder: T) => Promise<void>;
 };
 
-export type OwnerScopedVersionedEntityConfig<
+export type VersionedRepositoryConfig<
   T extends VersionedEntity,
   TItem extends Record<string, unknown>,
+  TKey,
 > = {
   conflictLabel: string;
-  keyForId: (userId: string, id: string) => { pk: string; sk: string };
-  idOf: (entity: T) => string;
-  userIdOf: (entity: T) => string;
+  scope: EntityScope<T, TKey>;
   toEntity: (item: TItem) => T;
   toItem: (entity: T) => TItem;
   isDeleted?: (entity: T) => boolean;
   nowIso?: () => string;
   cursorKeyNames?: readonly string[];
   cursorKeysByIndex?: Readonly<Record<string, readonly string[]>>;
-  sync?: OwnerScopedSyncConfig<T>;
+  sync?: SyncEntityConfig<T>;
   uniqueClaim?: UniqueClaimHook<T>;
 };
 
-/** Stripped from tombstones so list indexes stay clean. */
-const GSI_LIST_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
+export type QueryPage<T> = {
+  items: T[];
+  nextCursor?: string;
+};
 
-function stripListGsiKeys<TItem extends Record<string, unknown>>(
-  item: TItem,
-): TItem {
-  const next = { ...item };
-  for (const key of GSI_LIST_KEYS) {
-    delete next[key];
-  }
-  return next;
-}
+type ReadOpts = { consistentRead?: boolean };
 
-export class OwnerScopedVersionedEntityRepository<
+export class VersionedRepository<
   T extends VersionedEntity,
   TItem extends Record<string, unknown>,
+  TKey,
 > {
   constructor(
-    protected readonly config: OwnerScopedVersionedEntityConfig<T, TItem>,
+    protected readonly config: VersionedRepositoryConfig<T, TItem, TKey>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
   ) {}
 
+  protected get scope(): EntityScope<T, TKey> {
+    return this.config.scope;
+  }
+
   protected now(): string {
     return this.config.nowIso?.() ?? new Date().toISOString();
+  }
+
+  protected notFound(key: TKey): NotFoundError {
+    return new NotFoundError(
+      `${this.config.conflictLabel} ${this.scope.idOfKey(key)} not found`,
+    );
   }
 
   protected mapItem(raw: unknown): T {
@@ -133,40 +213,38 @@ export class OwnerScopedVersionedEntityRepository<
     }
   }
 
-  /** Reject cross-owner access even if a key collision somehow returned a row. */
-  protected assertOwner(userId: string, entity: T): void {
-    if (this.config.userIdOf(entity) !== userId) {
+  protected assertOwns(key: TKey, entity: T): void {
+    if (!this.scope.owns(key, entity)) {
       throw new NotFoundError(
-        `${this.config.conflictLabel} ${this.config.idOf(entity)} not found`,
+        `${this.config.conflictLabel} ${this.scope.idOf(entity)} not found`,
       );
     }
   }
 
+  /** `entityType` is stamped here so feed adapters work even when `toItem` omits it. */
   protected toStoredItem(
     entity: T,
     opts?: { ttl?: number; createHash?: string },
   ): TItem {
-    let base = this.config.toItem(entity);
+    const base: Record<string, unknown> = { ...this.config.toItem(entity) };
     if (this.config.isDeleted?.(entity)) {
-      base = stripListGsiKeys(base);
+      for (const attr of this.scope.tombstoneOmits) delete base[attr];
     }
     const sync = this.config.sync;
-    if (!sync) {
-      return {
-        ...base,
-        ...(opts?.ttl !== undefined ? { ttl: opts.ttl } : {}),
-        ...(opts?.createHash !== undefined
-          ? { createHash: opts.createHash }
-          : {}),
-      } as TItem;
-    }
-    const userId = sync.userIdOf(entity);
-    const id = this.config.idOf(entity);
+    const syncAttrs = sync
+      ? {
+          entityType: sync.changeType,
+          syncPk: syncPk(sync.userIdOf(entity)),
+          syncSk: syncSk(
+            entity.updatedAt,
+            sync.changeType,
+            this.scope.idOf(entity),
+          ),
+        }
+      : {};
     return {
       ...base,
-      entityType: sync.changeType,
-      syncPk: syncPk(userId),
-      syncSk: syncSk(entity.updatedAt, sync.changeType, id),
+      ...syncAttrs,
       ...(opts?.ttl !== undefined ? { ttl: opts.ttl } : {}),
       ...(opts?.createHash !== undefined
         ? { createHash: opts.createHash }
@@ -174,51 +252,44 @@ export class OwnerScopedVersionedEntityRepository<
     } as TItem;
   }
 
-  async get(
-    userId: string,
-    id: string,
-    opts?: { consistentRead?: boolean },
-  ): Promise<T | undefined> {
+  private async readItem(key: TKey, opts?: ReadOpts): Promise<T | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: this.config.keyForId(userId, id),
+        Key: this.scope.itemKey(key),
         ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
       }),
     );
     if (!result.Item) return undefined;
     const entity = this.mapItem(result.Item);
-    if (this.config.userIdOf(entity) !== userId) return undefined;
-    if (this.config.isDeleted?.(entity)) return undefined;
+    if (!this.scope.owns(key, entity)) return undefined;
     return entity;
   }
 
-  async getIncludingDeleted(
-    userId: string,
-    id: string,
-    opts?: { consistentRead?: boolean },
-  ): Promise<T | undefined> {
-    const result = await this.doc.send(
-      new GetCommand({
-        TableName: this.tableName,
-        Key: this.config.keyForId(userId, id),
-        ...(opts?.consistentRead ? { ConsistentRead: true } : {}),
-      }),
-    );
-    if (!result.Item) return undefined;
-    const entity = this.mapItem(result.Item);
-    if (this.config.userIdOf(entity) !== userId) return undefined;
+  async get(key: TKey, opts?: ReadOpts): Promise<T | undefined> {
+    const entity = await this.readItem(key, opts);
+    if (!entity || this.config.isDeleted?.(entity)) return undefined;
+    return entity;
+  }
+
+  getIncludingDeleted(key: TKey, opts?: ReadOpts): Promise<T | undefined> {
+    return this.readItem(key, opts);
+  }
+
+  async getOrThrow(key: TKey): Promise<T> {
+    const entity = await this.get(key);
+    if (!entity) throw this.notFound(key);
     return entity;
   }
 
   protected async getRawItem(
-    userId: string,
-    id: string,
+    key: TKey,
   ): Promise<Record<string, unknown> | undefined> {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: this.config.keyForId(userId, id),
+        Key: this.scope.itemKey(key),
+        // Consistent so createHash is not dropped after a fresh create.
         ConsistentRead: true,
       }),
     );
@@ -226,38 +297,40 @@ export class OwnerScopedVersionedEntityRepository<
   }
 
   protected async getCreateClaim(
-    userId: string,
-    id: string,
+    key: TKey,
   ): Promise<Record<string, unknown> | undefined> {
     const sync = this.config.sync;
     if (!sync) return undefined;
+    const { pk, sk } = this.scope.createClaim(sync.changeType, key);
     const result = await this.doc.send(
-      new GetCommand({
-        TableName: this.tableName,
-        Key: {
-          pk: ownerSyncCreateClaimPk(userId, sync.changeType, id),
-          sk: syncCreateClaimSk(),
-        },
-      }),
+      new GetCommand({ TableName: this.tableName, Key: { pk, sk } }),
     );
     return result.Item as Record<string, unknown> | undefined;
   }
 
-  async getOrThrow(userId: string, id: string): Promise<T> {
-    const entity = await this.get(userId, id);
-    if (!entity) {
-      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
-    }
-    return entity;
+  private createClaimItem(
+    sync: SyncEntityConfig<T>,
+    key: TKey,
+    createdAt: string,
+    ttl: number,
+  ): Record<string, unknown> {
+    return {
+      ...this.scope.createClaim(sync.changeType, key),
+      entityType: 'syncCreateClaim',
+      changeType: sync.changeType,
+      entityId: this.scope.idOfKey(key),
+      createdAt,
+      ttl,
+    };
   }
 
   async create(entity: T): Promise<T> {
-    const userId = this.config.userIdOf(entity);
     const sync = this.config.sync;
     const createHash = sync?.createPayloadHash(entity);
     const item = this.toStoredItem(entity, { createHash });
     const unique = this.config.uniqueClaim;
     const extraPuts = unique?.buildItems(entity) ?? [];
+    const conflictMessage = `Create conflict (${this.config.conflictLabel})`;
 
     if (!sync && extraPuts.length === 0) {
       await runDynamoWrite(
@@ -269,59 +342,32 @@ export class OwnerScopedVersionedEntityRepository<
               ConditionExpression: 'attribute_not_exists(pk)',
             }),
           ),
-        `Create conflict (${this.config.conflictLabel})`,
+        conflictMessage,
       );
       return entity;
     }
 
-    const id = this.config.idOf(entity);
-    const transactItems: Array<{
-      Put: {
-        TableName: string;
-        Item: Record<string, unknown>;
-        ConditionExpression?: string;
-      };
-    }> = [
-      {
-        Put: {
-          TableName: this.tableName,
-          Item: item,
-          ConditionExpression: 'attribute_not_exists(pk)',
-        },
-      },
-    ];
-
+    const puts: Array<{
+      Item: Record<string, unknown>;
+      ConditionExpression: string;
+    }> = [{ Item: item, ConditionExpression: 'attribute_not_exists(pk)' }];
     if (sync) {
-      transactItems.push({
-        Put: {
-          TableName: this.tableName,
-          Item: {
-            pk: ownerSyncCreateClaimPk(userId, sync.changeType, id),
-            sk: syncCreateClaimSk(),
-            entityType: 'syncCreateClaim',
-            changeType: sync.changeType,
-            entityId: id,
-            userId,
-            createdAt: entity.updatedAt,
-            ttl: ttlDaysFromNow(
-              SYNC_CREATE_CLAIM_TTL_DAYS,
-              new Date(this.now()),
-            ),
-          },
-          ConditionExpression: 'attribute_not_exists(pk)',
-        },
+      puts.push({
+        Item: this.createClaimItem(
+          sync,
+          this.scope.keyOf(entity),
+          entity.updatedAt,
+          ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, new Date(this.now())),
+        ),
+        ConditionExpression: 'attribute_not_exists(pk)',
       });
     }
-
-    const extraStartIndex = transactItems.length;
+    const extraStartIndex = puts.length;
     for (const put of extraPuts) {
-      transactItems.push({
-        Put: {
-          TableName: this.tableName,
-          Item: put.Put.Item,
-          ConditionExpression:
-            put.Put.ConditionExpression ?? 'attribute_not_exists(pk)',
-        },
+      puts.push({
+        Item: put.Put.Item,
+        ConditionExpression:
+          put.Put.ConditionExpression ?? 'attribute_not_exists(pk)',
       });
     }
 
@@ -336,26 +382,32 @@ export class OwnerScopedVersionedEntityRepository<
       () =>
         this.doc.send(
           new TransactWriteCommand({
-            TransactItems: transactItems,
+            TransactItems: puts.map((put) => ({
+              Put: { TableName: this.tableName, ...put },
+            })),
           }),
         ),
-      `Create conflict (${this.config.conflictLabel})`,
-      uniqueClaimIndexes
+      conflictMessage,
+      unique && uniqueClaimIndexes
         ? {
             uniqueClaimIndexes,
-            uniqueClaimCode: unique!.conflictCode,
-            uniqueClaimMessage:
-              unique!.conflictMessage ??
-              `Create conflict (${this.config.conflictLabel})`,
+            uniqueClaimCode: unique.conflictCode,
+            uniqueClaimMessage: unique.conflictMessage ?? conflictMessage,
           }
         : undefined,
     );
     return entity;
   }
 
+  /**
+   * Client-ULID create. A retry with the same id and createHash returns the
+   * stored entity; the create claim keeps a deleted id from being reused
+   * after the META row's TTL purge.
+   */
   async createIdempotent(entity: T, retried = false): Promise<T> {
-    const userId = this.config.userIdOf(entity);
-    const id = this.config.idOf(entity);
+    const key = this.scope.keyOf(entity);
+    const id = this.scope.idOf(entity);
+    const label = this.config.conflictLabel;
     try {
       return await this.create(entity);
     } catch (error) {
@@ -366,8 +418,8 @@ export class OwnerScopedVersionedEntityRepository<
         unique?.resolveConflict
       ) {
         const resolved = await unique.resolveConflict(entity);
-        if (resolved && this.config.idOf(resolved) !== id) {
-          this.assertOwner(userId, resolved);
+        if (resolved && this.scope.idOf(resolved) !== id) {
+          this.assertOwns(key, resolved);
           // A tombstone still holding the claim: free it and retry once.
           if (
             this.config.isDeleted?.(resolved) &&
@@ -377,11 +429,9 @@ export class OwnerScopedVersionedEntityRepository<
             await unique.releaseStale(resolved);
             return this.createIdempotent(entity, true);
           }
-          // Different ULID lost the claim: tell the client who won so it can
-          // merge instead of silently dropping its write.
+          // Return the winner so the client can merge rather than drop its write.
           throw new ConflictError(
-            unique.conflictMessage ??
-              `Create conflict (${this.config.conflictLabel})`,
+            unique.conflictMessage ?? `Create conflict (${label})`,
             {
               code: unique.conflictCode,
               currentVersion: resolved.version,
@@ -402,14 +452,13 @@ export class OwnerScopedVersionedEntityRepository<
       ) {
         throw error;
       }
-      const raw = await this.getRawItem(userId, id);
+      const raw = await this.getRawItem(key);
       if (!raw) {
-        const claim = await this.getCreateClaim(userId, id);
+        const claim = await this.getCreateClaim(key);
         if (claim) {
-          throw new ConflictError(
-            `${this.config.conflictLabel} ${id} was deleted`,
-            { code: 'deleted' },
-          );
+          throw new ConflictError(`${label} ${id} was deleted`, {
+            code: 'deleted',
+          });
         }
         // A transaction conflict with a concurrent create (not a failed
         // condition) leaves nothing to compare against: retry once, which
@@ -421,32 +470,26 @@ export class OwnerScopedVersionedEntityRepository<
         ) {
           return this.createIdempotent(entity, true);
         }
-        throw new ConflictError(
-          `Create conflict (${this.config.conflictLabel})`,
-        );
+        throw new ConflictError(`Create conflict (${label})`);
       }
       const existing = this.mapItem(raw);
-      this.assertOwner(userId, existing);
+      this.assertOwns(key, existing);
       if (this.config.isDeleted?.(existing)) {
-        throw new ConflictError(
-          `${this.config.conflictLabel} ${id} was deleted`,
-          {
-            code: 'deleted',
-            currentVersion: existing.version,
-            current: existing,
-          },
-        );
+        throw new ConflictError(`${label} ${id} was deleted`, {
+          code: 'deleted',
+          currentVersion: existing.version,
+          current: existing,
+        });
       }
       const hashFn = this.config.sync?.createPayloadHash;
       if (hashFn) {
-        const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        // Rows without createHash cannot prove create-time identity
+        // Legacy rows without createHash cannot prove create-time identity
         // (hashing current state is unsafe after updates).
-        if (!createHashMatches(storedHash, requestHash)) {
+        if (!createHashMatches(storedHash, hashFn(entity))) {
           throw new ConflictError(
-            `${this.config.conflictLabel} ${id} already exists with a different payload`,
+            `${label} ${id} already exists with a different payload`,
             {
               code: 'payload_mismatch',
               currentVersion: existing.version,
@@ -459,82 +502,76 @@ export class OwnerScopedVersionedEntityRepository<
     }
   }
 
-  /** Returns the stored row too so `createHash` is preserved. */
+  /** Raw row is returned too so `createHash` survives the rewrite. */
   protected async readForWrite(
-    userId: string,
-    id: string,
+    key: TKey,
+    opts: { allowDeleted: boolean },
   ): Promise<{ raw: Record<string, unknown>; existing: T }> {
-    const raw = await this.getRawItem(userId, id);
-    if (!raw) {
-      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
-    }
+    const raw = await this.getRawItem(key);
+    if (!raw) throw this.notFound(key);
     const existing = this.mapItem(raw);
-    this.assertOwner(userId, existing);
-    if (this.config.isDeleted?.(existing)) {
-      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
+    this.assertOwns(key, existing);
+    if (!opts.allowDeleted && this.config.isDeleted?.(existing)) {
+      throw this.notFound(key);
     }
     return { raw, existing };
   }
 
   /**
-   * `build` receives a strongly consistent read, so fields the caller did not
-   * change can never revert to a stale replica's values. The written version is
-   * always `expected + 1`, so no two contents share a version.
+   * `build` gets a strongly consistent read so untouched fields cannot revert
+   * to a stale replica's values. The written version is always
+   * `expected + 1` so no two contents share a version; `'any'` (If-Match `*`)
+   * means the version just read.
    */
   async mutateIfVersion(
-    userId: string,
-    id: string,
+    key: TKey,
     expected: number | 'any',
     build: (existing: T, now: string) => T,
   ): Promise<T> {
-    const { raw, existing } = await this.readForWrite(userId, id);
+    const { raw, existing } = await this.readForWrite(key, {
+      allowDeleted: false,
+    });
     const expectedVersion = expected === 'any' ? existing.version : expected;
     const next = {
       ...build(existing, this.now()),
       version: expectedVersion + 1,
     };
-    return this.putIfVersion(userId, id, expectedVersion, next, raw);
+    return this.putIfVersion(key, expectedVersion, next, raw);
   }
 
   async softDeleteIfVersion(
-    userId: string,
-    id: string,
+    key: TKey,
     expected: number | 'any',
     build: (existing: T, now: string) => T,
   ): Promise<T> {
-    const { existing } = await this.readForWrite(userId, id);
+    const { existing } = await this.readForWrite(key, {
+      allowDeleted: false,
+    });
     const expectedVersion = expected === 'any' ? existing.version : expected;
     const tombstone = {
       ...build(existing, this.now()),
       version: expectedVersion + 1,
     };
-    return this.softDelete(userId, id, expectedVersion, tombstone);
+    return this.softDelete(key, expectedVersion, tombstone);
   }
 
   /** Prefer {@link mutateIfVersion}, which builds `next` from a consistent read. */
   async updateIfVersion(
-    userId: string,
-    id: string,
+    key: TKey,
     expectedVersion: number,
     next: T,
   ): Promise<T> {
-    const raw = await this.getRawItem(userId, id);
-    if (!raw) {
-      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
-    }
-    return this.putIfVersion(userId, id, expectedVersion, next, raw);
+    const { raw } = await this.readForWrite(key, { allowDeleted: true });
+    return this.putIfVersion(key, expectedVersion, next, raw);
   }
 
   private async putIfVersion(
-    userId: string,
-    id: string,
+    key: TKey,
     expectedVersion: number,
     next: T,
     raw: Record<string, unknown>,
   ): Promise<T> {
-    this.assertOwner(userId, next);
-    const existing = this.mapItem(raw);
-    this.assertOwner(userId, existing);
+    this.assertOwns(key, next);
     const createHash =
       typeof raw.createHash === 'string' ? raw.createHash : undefined;
     await runVersionedWrite(
@@ -550,31 +587,23 @@ export class OwnerScopedVersionedEntityRepository<
       `Update conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(userId, id, { consistentRead: true }),
+          this.getIncludingDeleted(key, { consistentRead: true }),
         ),
     );
     return next;
   }
 
+  /** Prefer {@link softDeleteIfVersion}. With sync, the tombstone gets a TTL. */
   async softDelete(
-    userId: string,
-    id: string,
+    key: TKey,
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
-    this.assertOwner(userId, tombstone);
+    this.assertOwns(key, tombstone);
     const sync = this.config.sync;
     const clock = new Date(this.now());
     const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
-    const raw = await this.getRawItem(userId, id);
-    if (!raw) {
-      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
-    }
-    const existing = this.mapItem(raw);
-    this.assertOwner(userId, existing);
-    const claimTtl = sync
-      ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock)
-      : undefined;
+    const { existing } = await this.readForWrite(key, { allowDeleted: true });
     await runVersionedWrite(
       () =>
         this.doc.send(
@@ -593,25 +622,17 @@ export class OwnerScopedVersionedEntityRepository<
               },
               // Extend create-claim TTL from delete time so it always outlives
               // the tombstone.
-              ...(sync && claimTtl !== undefined
+              ...(sync
                 ? [
                     {
                       Put: {
                         TableName: this.tableName,
-                        Item: {
-                          pk: ownerSyncCreateClaimPk(
-                            userId,
-                            sync.changeType,
-                            id,
-                          ),
-                          sk: syncCreateClaimSk(),
-                          entityType: 'syncCreateClaim',
-                          changeType: sync.changeType,
-                          entityId: id,
-                          userId,
-                          createdAt: tombstone.updatedAt,
-                          ttl: claimTtl,
-                        },
+                        Item: this.createClaimItem(
+                          sync,
+                          key,
+                          tombstone.updatedAt,
+                          ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock),
+                        ),
                       },
                     },
                   ]
@@ -627,7 +648,7 @@ export class OwnerScopedVersionedEntityRepository<
       `Delete conflict (${this.config.conflictLabel} version)`,
       () =>
         throwVersionConflict(expectedVersion, () =>
-          this.getIncludingDeleted(userId, id, { consistentRead: true }),
+          this.getIncludingDeleted(key, { consistentRead: true }),
         ),
     );
     return tombstone;
@@ -638,7 +659,9 @@ export class OwnerScopedVersionedEntityRepository<
       cursor?: string;
       limit?: number;
       cursorKeyNames?: readonly string[];
+      /** Rejects cursors from another partition. */
       cursorPartition?: { attr: string; value: string };
+      /** Rejects cursors below the range's lower bound. */
       cursorSortBound?: { attr: string; lowerBoundInclusive: string };
     },
   ): Promise<QueryPage<T>> {

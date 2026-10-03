@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import {
-  VersionedEntityRepository,
+  VersionedRepository,
+  unscoped,
   type VersionedEntity,
-} from '../src/data/versioned-entity-repository.js';
+} from '../src/data/versioned-repository.js';
 import { assertCursorMatchesQuery, encodeCursor } from '../src/data/cursor.js';
 import { mapRouteError } from '../src/http.js';
 import { DataIntegrityError } from '../src/data/errors.js';
@@ -80,11 +81,13 @@ describe('correctness guards', () => {
       })
       .mockResolvedValueOnce({});
 
-    const repo = new VersionedEntityRepository<Note, NoteItem>(
+    const repo = new VersionedRepository<Note, NoteItem, string>(
       {
         conflictLabel: 'note',
-        keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
-        idOf: (n) => n.id,
+        scope: unscoped({
+          keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+          idOf: (n) => n.id,
+        }),
         toEntity: (item) => ({
           id: item.id,
           title: item.title,
