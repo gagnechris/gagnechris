@@ -141,6 +141,47 @@ describe('GitHub Actions supply chain', () => {
   });
 });
 
+describe('non-strict branch protection', () => {
+  const ruleset = JSON.parse(
+    readFileSync(join(ROOT, 'scripts', 'main-branch-ruleset.json'), 'utf8'),
+  ) as {
+    rules: {
+      type: string;
+      parameters?: { strict_required_status_checks_policy?: boolean };
+    }[];
+  };
+  const alert = loadYaml<
+    Workflow & {
+      on: { workflow_run: { workflows: string[]; types: string[] } };
+    }
+  >(join(WORKFLOWS_DIR, 'main-ci-alert.yml'));
+
+  it('alerts on a red main because PRs needn’t be up to date', () => {
+    const checks = ruleset.rules.find(
+      (r) => r.type === 'required_status_checks',
+    );
+    expect(checks?.parameters?.strict_required_status_checks_policy).toBe(
+      false,
+    );
+    expect(alert.on.workflow_run.workflows.sort()).toEqual(['CI', 'Mobile']);
+    expect(alert.on.workflow_run.types).toEqual(['completed']);
+    const job = alert.jobs.alert! as Job & { if?: string };
+    expect(job.if).toContain("head_branch == 'main'");
+    expect(job.if).toContain("event == 'push'");
+    expect(job.if).toContain('"failure"');
+    const steps = job.steps ?? [];
+    expect(steps.some((s) => s.run?.includes('aws sns publish'))).toBe(true);
+    for (const step of steps) {
+      if (step.uses) {
+        expect(step.uses).toMatch(
+          /^(actions\/checkout|aws-actions\/configure-aws-credentials)@[0-9a-f]{40}$/,
+        );
+      }
+      expect(step.run ?? '').not.toMatch(/\b(npm|npx)\b/);
+    }
+  });
+});
+
 describe('deploy job guards', () => {
   const deploy = cdk.jobs.deploy!;
 
