@@ -6,12 +6,9 @@ import { registerProductionSyncAdapters } from '../src/sync/adapters.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
 import { SyncLedger } from '../src/sync/ledger.js';
-import {
-  createTasksRepository,
-  sortTasksForList,
-} from '../src/tasks/repository.js';
+import { TasksRepository, sortTasksForList } from '../src/tasks/repository.js';
 import { createTaskRoutes } from '../src/tasks/handlers.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
 import type { Task } from '@gagnechris/shared';
 
@@ -94,7 +91,7 @@ describe('tasks handlers', () => {
 
   it('creates, gets, updates with If-Match, completes, reopens, and lists', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
@@ -225,12 +222,12 @@ describe('tasks handlers', () => {
 
   it('lists tasks for a note via GSI2; cross-user GET is 404; sync typed task', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
-    const notes = createNotesRepository(doc, TABLE);
+    const notes = new NotesRepository(doc, TABLE);
     const routes = [
       ...createTaskRoutes(repo, notes),
       ...createNoteRoutes(notes),
@@ -325,12 +322,12 @@ describe('tasks handlers', () => {
 
   it('accepts If-Match alone on PUT and DELETE; stale If-Match is 412', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
-    const routes = createTaskRoutes(repo, createNotesRepository(doc, TABLE));
+    const routes = createTaskRoutes(repo, new NotesRepository(doc, TABLE));
     await dispatchRoutes(
       routes,
       adminEvent('POST', '/api/notebook/tasks', {
@@ -392,12 +389,12 @@ describe('tasks handlers', () => {
 
   it('rejects a noteId that is not a live note owned by the caller', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
-    const notes = createNotesRepository(doc, TABLE);
+    const notes = new NotesRepository(doc, TABLE);
     const routes = [
       ...createTaskRoutes(repo, notes),
       ...createNoteRoutes(notes),

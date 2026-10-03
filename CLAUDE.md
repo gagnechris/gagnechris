@@ -18,7 +18,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `scripts/` — local stack, web deploy, branch protection
-- `docs/` — architecture, development, data model, local E2E
+- `docs/` — architecture, development, data model, adding a Notebook entity (`docs/adding-an-entity.md`), local E2E
 
 ## Commands
 

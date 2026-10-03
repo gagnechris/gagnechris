@@ -73,22 +73,6 @@ const MediaObjectKeyParamsSchema = z.object({
   }),
 });
 
-const NoteIdParamsSchema = z.object({
-  id: UlidSchema.openapi({
-    description: 'Note id (ULID)',
-    type: 'string',
-    pattern: ULID_PATTERN,
-  }),
-});
-
-const TaskIdParamsSchema = z.object({
-  id: UlidSchema.openapi({
-    description: 'Task id (ULID)',
-    type: 'string',
-    pattern: ULID_PATTERN,
-  }),
-});
-
 const DailyNoteParamsSchema = z.object({
   area: NotebookAreaSchema,
   date: CalendarDateSchema,
@@ -172,6 +156,118 @@ const versionedAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
 
 const adminAuth = { 401: r401, 500: r500, 503: r503 };
 const publicBase = { 500: r500, 503: r503 };
+
+type NotebookEntityPathsConfig = {
+  path: string;
+  noun: string;
+  listSummary?: string;
+  entity: z.ZodType;
+  listQuery: z.ZodObject;
+  listResponse: z.ZodType;
+  createRequest: z.ZodType;
+  updateRequest: z.ZodType;
+  /**
+   * Entity-specific paths, registered between the collection and `{id}`
+   * paths because registration order is the order in openapi.json.
+   */
+  extraPaths?: (idParams: z.ZodObject) => void;
+};
+
+/** List / create / get / update / soft-delete paths of a versioned Notebook entity. */
+function registerNotebookEntityPaths(
+  registry: OpenAPIRegistry,
+  config: NotebookEntityPathsConfig,
+) {
+  const { path, noun, entity } = config;
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
+  const idParams = z.object({
+    id: UlidSchema.openapi({
+      description: `${Noun} id (ULID)`,
+      type: 'string',
+      pattern: ULID_PATTERN,
+    }),
+  });
+  const base = { tags: ['Notebook'], security: [{ bearerAuth: [] }] };
+
+  registry.registerPath({
+    method: 'get',
+    path,
+    summary: config.listSummary ?? `List ${noun}s for the authenticated user`,
+    ...base,
+    request: { query: config.listQuery },
+    responses: {
+      200: ok(config.listResponse, `${Noun} page`),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path,
+    summary: `Create a ${noun} (client ULID; idempotent)`,
+    ...base,
+    request: { body: jsonBody(config.createRequest) },
+    responses: {
+      201: okWithEtag(entity, 'Created'),
+      400: r400,
+      413: r413,
+      409: r409,
+      ...adminAuth,
+    },
+  });
+
+  config.extraPaths?.(idParams);
+
+  registry.registerPath({
+    method: 'get',
+    path: `${path}/{id}`,
+    summary: `Get a ${noun} by id`,
+    ...base,
+    request: { params: idParams },
+    responses: {
+      200: okWithEtag(entity, Noun),
+      400: r400,
+      404: r404,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: `${path}/{id}`,
+    summary: `Update a ${noun}`,
+    ...base,
+    request: {
+      params: idParams,
+      headers: IfMatchHeadersSchema,
+      body: jsonBody(config.updateRequest),
+    },
+    responses: {
+      200: okWithEtag(entity, 'Updated'),
+      400: r400,
+      413: r413,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path: `${path}/{id}`,
+    summary: `Soft-delete a ${noun}`,
+    ...base,
+    request: { params: idParams, ...versionBody },
+    responses: {
+      200: okWithEtag(entity, 'Soft-deleted'),
+      400: r400,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+}
 
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();
@@ -594,274 +690,107 @@ export function buildOpenApiDocument() {
     },
   });
 
-  registry.registerPath({
-    method: 'get',
+  registerNotebookEntityPaths(registry, {
     path: '/api/notebook/notes',
-    summary: 'List notes for the authenticated user',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { query: ListNotesQuerySchema },
-    responses: {
-      200: ok(NoteListResponseSchema, 'Note page'),
-      400: r400,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/notebook/notes',
-    summary: 'Create a note (client ULID; idempotent)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: CreateNoteRequestSchema },
+    noun: 'note',
+    entity: NoteSchema,
+    listQuery: ListNotesQuerySchema,
+    listResponse: NoteListResponseSchema,
+    createRequest: CreateNoteRequestSchema,
+    updateRequest: UpdateNoteRequestSchema,
+    extraPaths: () => {
+      registry.registerPath({
+        method: 'get',
+        path: '/api/notebook/notes/daily/{area}/{date}',
+        summary: 'Get daily note or empty draft placeholder',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: { params: DailyNoteParamsSchema },
+        responses: {
+          200: okWithEtag(
+            DailyNoteGetResponseSchema,
+            'Daily note (with ETag) or empty draft (no ETag)',
+          ),
+          400: r400,
+          ...adminAuth,
         },
-      },
-    },
-    responses: {
-      201: okWithEtag(NoteSchema, 'Created'),
-      400: r400,
-      413: r413,
-      409: r409,
-      ...adminAuth,
-    },
-  });
+      });
 
-  registry.registerPath({
-    method: 'get',
-    path: '/api/notebook/notes/daily/{area}/{date}',
-    summary: 'Get daily note or empty draft placeholder',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { params: DailyNoteParamsSchema },
-    responses: {
-      200: okWithEtag(
-        DailyNoteGetResponseSchema,
-        'Daily note (with ETag) or empty draft (no ETag)',
-      ),
-      400: r400,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'put',
-    path: '/api/notebook/notes/daily/{area}/{date}',
-    summary: 'Create or update the daily note for an area/date',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: DailyNoteParamsSchema,
-      headers: IfMatchHeadersSchema,
-      body: {
-        content: {
-          'application/json': { schema: UpsertDailyNoteRequestSchema },
+      registry.registerPath({
+        method: 'put',
+        path: '/api/notebook/notes/daily/{area}/{date}',
+        summary: 'Create or update the daily note for an area/date',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          params: DailyNoteParamsSchema,
+          headers: IfMatchHeadersSchema,
+          body: {
+            content: {
+              'application/json': { schema: UpsertDailyNoteRequestSchema },
+            },
+          },
         },
-      },
-    },
-    responses: {
-      200: okWithEtag(NoteSchema, 'Upserted daily note'),
-      400: r400,
-      413: r413,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/api/notebook/notes/{id}',
-    summary: 'Get a note by id',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { params: NoteIdParamsSchema },
-    responses: {
-      200: okWithEtag(NoteSchema, 'Note'),
-      400: r400,
-      404: r404,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'put',
-    path: '/api/notebook/notes/{id}',
-    summary: 'Update a note',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: NoteIdParamsSchema,
-      headers: IfMatchHeadersSchema,
-      body: {
-        content: {
-          'application/json': { schema: UpdateNoteRequestSchema },
+        responses: {
+          200: okWithEtag(NoteSchema, 'Upserted daily note'),
+          400: r400,
+          413: r413,
+          404: r404,
+          409: r409,
+          ...versionedAuth,
         },
-      },
-    },
-    responses: {
-      200: okWithEtag(NoteSchema, 'Updated'),
-      400: r400,
-      413: r413,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
+      });
     },
   });
 
-  registry.registerPath({
-    method: 'delete',
-    path: '/api/notebook/notes/{id}',
-    summary: 'Soft-delete a note',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: NoteIdParamsSchema,
-      ...versionBody,
-    },
-    responses: {
-      200: okWithEtag(NoteSchema, 'Soft-deleted'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
+  registerNotebookEntityPaths(registry, {
     path: '/api/notebook/tasks',
-    summary:
+    noun: 'task',
+    listSummary:
       'List tasks for the authenticated user (server-sorted: overdue, due date, priority)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { query: ListTasksQuerySchema },
-    responses: {
-      200: ok(TaskListResponseSchema, 'Task page'),
-      400: r400,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/notebook/tasks',
-    summary: 'Create a task (client ULID; idempotent)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: CreateTaskRequestSchema },
+    entity: TaskSchema,
+    listQuery: ListTasksQuerySchema,
+    listResponse: TaskListResponseSchema,
+    createRequest: CreateTaskRequestSchema,
+    updateRequest: UpdateTaskRequestSchema,
+    extraPaths: (idParams) => {
+      registry.registerPath({
+        method: 'post',
+        path: '/api/notebook/tasks/{id}/complete',
+        summary: 'Mark a task done (sets completedAt)',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          params: idParams,
+          ...versionBody,
         },
-      },
-    },
-    responses: {
-      201: okWithEtag(TaskSchema, 'Created'),
-      400: r400,
-      413: r413,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/notebook/tasks/{id}/complete',
-    summary: 'Mark a task done (sets completedAt)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: TaskIdParamsSchema,
-      ...versionBody,
-    },
-    responses: {
-      200: okWithEtag(TaskSchema, 'Completed'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/notebook/tasks/{id}/reopen',
-    summary: 'Reopen a task (status todo; clears completedAt)',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: TaskIdParamsSchema,
-      ...versionBody,
-    },
-    responses: {
-      200: okWithEtag(TaskSchema, 'Reopened'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/api/notebook/tasks/{id}',
-    summary: 'Get a task by id',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: { params: TaskIdParamsSchema },
-    responses: {
-      200: okWithEtag(TaskSchema, 'Task'),
-      400: r400,
-      404: r404,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'put',
-    path: '/api/notebook/tasks/{id}',
-    summary: 'Update a task',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: TaskIdParamsSchema,
-      headers: IfMatchHeadersSchema,
-      body: {
-        content: {
-          'application/json': { schema: UpdateTaskRequestSchema },
+        responses: {
+          200: okWithEtag(TaskSchema, 'Completed'),
+          400: r400,
+          404: r404,
+          409: r409,
+          ...versionedAuth,
         },
-      },
-    },
-    responses: {
-      200: okWithEtag(TaskSchema, 'Updated'),
-      400: r400,
-      413: r413,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
-    },
-  });
+      });
 
-  registry.registerPath({
-    method: 'delete',
-    path: '/api/notebook/tasks/{id}',
-    summary: 'Soft-delete a task',
-    tags: ['Notebook'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: TaskIdParamsSchema,
-      ...versionBody,
-    },
-    responses: {
-      200: okWithEtag(TaskSchema, 'Soft-deleted'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...versionedAuth,
+      registry.registerPath({
+        method: 'post',
+        path: '/api/notebook/tasks/{id}/reopen',
+        summary: 'Reopen a task (status todo; clears completedAt)',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          params: idParams,
+          ...versionBody,
+        },
+        responses: {
+          200: okWithEtag(TaskSchema, 'Reopened'),
+          400: r400,
+          404: r404,
+          409: r409,
+          ...versionedAuth,
+        },
+      });
     },
   });
 

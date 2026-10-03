@@ -1,14 +1,56 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useOutletContext,
+  useParams,
+} from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
-import AdminNotebookLayout from './AdminNotebookLayout';
-import AdminNotebookPage from './AdminNotebookPage';
+import AdminNotebookLayout, {
+  type NotebookOutletContext,
+} from './AdminNotebookLayout';
 import {
   NOTEBOOK_AREA_STORAGE_KEY,
   writeNotebookAreaFilter,
+  type NotebookAreaFilter,
 } from './notebook/notebookAreaPreference';
+
+const AREA_LABELS: Record<NotebookAreaFilter, string> = {
+  work: 'Work',
+  personal: 'Personal',
+  all: 'All areas',
+};
+
+function sectionFromPath(pathname: string): string {
+  if (pathname.includes('/notebook/tasks')) return 'Tasks';
+  if (pathname.includes('/notebook/notes')) return 'Notes';
+  if (pathname.includes('/notebook/today')) return 'Today';
+  return 'Notebook';
+}
+
+/** Echoes the outlet context so tests can assert what the layout provides. */
+const NotebookOutletProbe = () => {
+  const { areaFilter } = useOutletContext<NotebookOutletContext>();
+  const { id } = useParams<{ id?: string }>();
+  const { pathname } = useLocation();
+  const section = sectionFromPath(pathname);
+  const areaLabel = AREA_LABELS[areaFilter];
+
+  return (
+    <section className="admin-panel">
+      <h1>{section}</h1>
+      <p className="admin-panel__lede">
+        {id
+          ? `${areaLabel} · note ${id} (editor arrives in a later ticket).`
+          : `${areaLabel} · ${section.toLowerCase()} UI arrives in a later ticket.`}
+      </p>
+    </section>
+  );
+};
 
 function renderNotebook(initialPath = '/admin/notebook/today') {
   return render(
@@ -16,10 +58,10 @@ function renderNotebook(initialPath = '/admin/notebook/today') {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/admin/notebook" element={<AdminNotebookLayout />}>
-            <Route path="today" element={<AdminNotebookPage />} />
-            <Route path="notes" element={<AdminNotebookPage />} />
-            <Route path="notes/:id" element={<AdminNotebookPage />} />
-            <Route path="tasks" element={<AdminNotebookPage />} />
+            <Route path="today" element={<NotebookOutletProbe />} />
+            <Route path="notes" element={<NotebookOutletProbe />} />
+            <Route path="notes/:id" element={<NotebookOutletProbe />} />
+            <Route path="tasks" element={<NotebookOutletProbe />} />
           </Route>
         </Routes>
       </MemoryRouter>

@@ -235,7 +235,7 @@ Create also writes a durable claim row (not on GSI3):
 - Cursors are bound to the queried partition and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400**. `ValidationException` on ExclusiveStartKey is also mapped to 400.
 - Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
 
-Adding a synced entity: **config on the repository** (`sync: { changeType, userIdOf, createPayloadHash }`, which stamps `entityType` / `syncPk` / `syncSk`), one entry in `services/api/src/sync/adapters.ts` (the feed adapter; the repository does not register it), and its variant in `SyncChangeSchema` — no edits to the ledger/feed modules. A test fails until the adapter list and the schema agree; a row with no adapter returns 500.
+Adding a synced entity: **`sync` config on its `VersionedRepository`** (`sync: { changeType, userIdOf, createPayloadHash }`, which stamps `entityType` / `syncPk` / `syncSk`; see [adding-an-entity.md](./adding-an-entity.md)), one entry in `services/api/src/sync/adapters.ts` (the feed adapter; the repository does not register it), and its variant in `SyncChangeSchema` — no edits to the ledger/feed modules. A test fails until the adapter list and the schema agree; a row with no adapter returns 500.
 
 Clients:
 
@@ -312,7 +312,7 @@ Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHa
 
 Notes and tasks use only GSI1–3; they need no further indexes.
 
-API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/update/delete; posts remain on id-only `VersionedEntityRepository` / `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
+API surface: Notebook repositories use `VersionedRepository` with the `ownerScoped` strategy, whose get/mutate/delete take a `{ userId, id }` key; posts use the `unscoped` (id-only) strategy through `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
 
 **List paging:** `GET /api/notebook/notes` without `area` walks the Work then Personal partitions with a composite `mp.` cursor instead of merging one page per area. Pages are grouped by partition, not globally sorted; clients that need a global order sort after loading. A single-partition cursor is the raw DynamoDB key. A malformed or foreign cursor → **400**.
 

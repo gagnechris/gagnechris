@@ -1,11 +1,12 @@
+/**
+ * Not registered in the prod route table.
+ */
 import { z } from 'zod';
 import { UlidSchema } from '@gagnechris/shared';
 import { defineRoute, type RouteDef } from '../../src/router.js';
 import {
   jsonEntity,
-  requireExpectedVersion,
-  runVersionedMutation,
-  versionForWrite,
+  versionedMutationRoute,
 } from '../../src/data/versioned-route.js';
 import {
   buildFakeNote,
@@ -42,6 +43,7 @@ function noteResponse(note: FakeNote) {
 
 export function createFakeNoteRoutes(
   repo: ReturnType<typeof createFakeNotesRepo>,
+  now: () => string = () => new Date().toISOString(),
 ): RouteDef[] {
   return [
     defineRoute({
@@ -57,9 +59,8 @@ export function createFakeNoteRoutes(
         noteDate: z.string().optional(),
       }),
       handler: async (ctx, { body }) => {
-        const now = new Date().toISOString();
         const note = await repo.createIdempotent(
-          buildFakeNote(ctx.userId!, body.id, body, now),
+          buildFakeNote(ctx.userId!, body.id, body, now()),
         );
         return jsonEntity(201, note, noteResponse);
       },
@@ -71,58 +72,45 @@ export function createFakeNoteRoutes(
       metric: 'GetTestNote',
       params: IdParams,
       handler: async (ctx, { params }) => {
-        const note = await repo.getOrThrow(ctx.userId!, params.id);
+        const note = await repo.getOrThrow({
+          userId: ctx.userId!,
+          id: params.id,
+        });
         return jsonEntity(200, note, noteResponse);
       },
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'PUT',
       pattern: '/notebook/test-notes/:id',
-      auth: 'admin',
       metric: 'UpdateTestNote',
       params: IdParams,
       body: UpdateBodySchema,
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const existing = await repo.getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
-        const now = new Date().toISOString();
-        const next = await runVersionedMutation(resolved.fromIfMatch, () =>
-          repo.updateIfVersion(ctx.userId!, params.id, version, {
+      mutate: (ctx, { params, body, expected }) =>
+        repo.mutateIfVersion(
+          { userId: ctx.userId!, id: params.id },
+          expected,
+          (existing, updatedAt) => ({
             ...existing,
             title: body.title ?? existing.title,
             body: body.body ?? existing.body,
-            version: existing.version + 1,
-            updatedAt: now,
+            updatedAt,
           }),
-        );
-        return jsonEntity(200, next, noteResponse);
-      },
+        ),
+      respond: noteResponse,
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'DELETE',
       pattern: '/notebook/test-notes/:id',
-      auth: 'admin',
       metric: 'DeleteTestNote',
       params: IdParams,
       body: DeleteBodySchema,
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const existing = await repo.getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
-        const now = new Date().toISOString();
-        const tombstone = await runVersionedMutation(resolved.fromIfMatch, () =>
-          repo.softDelete(ctx.userId!, params.id, version, {
-            ...existing,
-            version: existing.version + 1,
-            updatedAt: now,
-            deleted: true,
-          }),
-        );
-        return jsonEntity(200, tombstone, noteResponse);
-      },
+      mutate: (ctx, { params, expected }) =>
+        repo.softDeleteIfVersion(
+          { userId: ctx.userId!, id: params.id },
+          expected,
+          (existing, updatedAt) => ({ ...existing, updatedAt, deleted: true }),
+        ),
+      respond: noteResponse,
     }),
   ];
 }

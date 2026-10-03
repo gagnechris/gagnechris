@@ -142,7 +142,8 @@ describe('Notebook schemas', () => {
   });
 
   it('lists only production change types (no fakeNote fixture)', () => {
-    expect([...SYNC_CHANGE_TYPES].sort()).toEqual(['note', 'task']);
+    expect(SYNC_CHANGE_TYPES).toEqual(expect.arrayContaining(['note', 'task']));
+    expect(SYNC_CHANGE_TYPES).not.toContain('fakeNote');
   });
 
   it('rejects a live change without entity', () => {

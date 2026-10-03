@@ -4,7 +4,7 @@ import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
 import { dispatchRoutes, type RouteDef } from '../src/router.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
 
 const TABLE = 'gagnechris-daily-claim-test';
@@ -18,7 +18,7 @@ const PAGE = '01ARZ3NDEKTSV4RRFFQ48JMD04';
 
 function setup() {
   const { doc, store } = createMemoryDoc();
-  const repo = createNotesRepository(
+  const repo = new NotesRepository(
     doc,
     TABLE,
     () => '2026-10-04T09:00:00.000Z',
