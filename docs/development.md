@@ -69,16 +69,16 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 ### Vite (`apps/web`)
 
-| Variable                     | Notes                                                               |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                |
-| `VITE_COGNITO_WEB_CLIENT_ID` | Required for real Cognito admin auth                                |
-| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                 |
-| `VITE_API_BASE_URL`          | Optional; default same-origin                                       |
-| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                  |
-| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)          |
-| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)    |
-| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds** |
+| Variable                     | Notes                                                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                                                                         |
+| `VITE_COGNITO_WEB_CLIENT_ID` | Real Cognito auth; locally the `dev-local` client (SSM `cognito-dev-client-id`), whose tokens the prod API rejects (CHR-195) |
+| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                                                                          |
+| `VITE_API_BASE_URL`          | Optional; default same-origin                                                                                                |
+| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                                                                           |
+| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)                                                                   |
+| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                             |
+| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                          |
 
 ### Local stack (`scripts/local/env.sh`)
 

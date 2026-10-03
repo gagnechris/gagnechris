@@ -19,8 +19,10 @@ export type CreateApiClientOptions = {
   /** When omitted, no Authorization header is set (public routes). */
   getToken?: TokenProvider;
   /**
-   * When true (default if `getToken` is set), a single 401 response triggers
-   * `getToken({ forceRefresh: true })` and one retry of the same request.
+   * When true (default if `getToken` is set), a single 401 or 403 response
+   * triggers `getToken({ forceRefresh: true })` and one retry of the same
+   * request. 403 covers a token minted before the user joined the admin
+   * group (CHR-195): a refreshed token carries the new `cognito:groups`.
    */
   retryOnUnauthorized?: boolean;
 };
@@ -60,7 +62,7 @@ export const createApiClient = ({
       clones.delete(id);
       if (
         !retryOnUnauthorized ||
-        response.status !== 401 ||
+        (response.status !== 401 && response.status !== 403) ||
         request.headers.get(RETRIED_HEADER) === '1' ||
         !clone
       ) {

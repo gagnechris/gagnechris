@@ -4,6 +4,11 @@ export type MakeEventOptions = {
   body?: unknown;
   query?: Record<string, string>;
   jwtClaims?: Record<string, string>;
+  /**
+   * Add `cognito:groups: [admin]` to `jwtClaims` like API Gateway passes it
+   * (CHR-195). Default true; set false to test a non-admin token.
+   */
+  adminGroup?: boolean;
   headers?: Record<string, string>;
 };
 
@@ -14,6 +19,10 @@ export function makeEvent(
   opts?: MakeEventOptions,
 ): APIGatewayProxyEventV2 {
   const query = opts?.query;
+  const claims =
+    opts?.jwtClaims && opts.adminGroup !== false
+      ? { 'cognito:groups': '[admin]', ...opts.jwtClaims }
+      : opts?.jwtClaims;
   return {
     version: '2.0',
     routeKey: `${method} ${path}`,
@@ -40,9 +49,7 @@ export function makeEvent(
       stage: '$default',
       time: 'now',
       timeEpoch: Date.now(),
-      authorizer: opts?.jwtClaims
-        ? { jwt: { claims: opts.jwtClaims, scopes: [] } }
-        : undefined,
+      authorizer: claims ? { jwt: { claims, scopes: [] } } : undefined,
     },
   } as APIGatewayProxyEventV2;
 }

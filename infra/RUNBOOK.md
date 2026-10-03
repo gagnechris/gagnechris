@@ -256,8 +256,9 @@ aws backup start-restore-job --region us-east-1 \
   --iam-role-arn "<AppTableSelection role ARN>" \
   --metadata TargetTableName=gagnechris-prod-backup-restore-$(date -u +%Y%m%d)
 aws backup describe-restore-job --restore-job-id <id> --region us-east-1
-aws dynamodb describe-table --table-name gagnechris-prod-backup-restore-<date> \
-  --query 'Table.ItemCount'
+# ItemCount lags by hours; count with a scan and compare to the live table
+aws dynamodb scan --table-name gagnechris-prod-backup-restore-<date> --select COUNT
+aws dynamodb scan --table-name gagnechris-prod --select COUNT
 aws dynamodb delete-table --table-name gagnechris-prod-backup-restore-<date>
 ```
 
@@ -318,9 +319,10 @@ Optional later (not required for core Notebook): scheduled weekly markdown/JSON 
 
 #### Restore rehearsal log
 
-| Date (UTC) | Operator | Source count | Restored table                         | Restored count | Duration | Notes                                                                                        |
-| ---------- | -------- | ------------ | -------------------------------------- | -------------- | -------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-02 | CI       | 14           | gagnechris-prod-restore-20261002130416 | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085) |
+| Date (UTC) | Operator       | Source count | Restored table                          | Restored count | Duration | Notes                                                                                         |
+| ---------- | -------------- | ------------ | --------------------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------- |
+| 2026-10-02 | CI             | 14           | gagnechris-prod-restore-20261002130416  | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085)  |
+| 2026-10-03 | Chris (Claude) | 17           | gagnechris-prod-backup-restore-20261003 | 17             | 338s     | AWS Backup, restore job 74890aff-107b-4a9d-aa1b-c9d519afa04f; scratch table deleted (CHR-197) |
 
 **CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
 
@@ -449,7 +451,14 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
-SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-auth-domain`.
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
+
+### Admin group and clients (CHR-195)
+
+- `/api/admin/*` and `/api/notebook/*` require the `admin` group in `cognito:groups`; any other pool user gets 403. CDK creates the group and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to it. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced.
+- After the first deploy, an ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
+- Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). Prod CORS (API + site bucket) has no localhost origins.
+- `dev-local` client: localhost:5173 callbacks only, for exercising managed login from local Vite. The API authorizer doesn't list it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools (CHR-180)
 

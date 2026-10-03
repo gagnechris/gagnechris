@@ -21,16 +21,19 @@ export {
 /** Cognito managed-login hostname. */
 export const AUTH_DOMAIN = `auth.${APEX_DOMAIN}` as const;
 
-/** Local Vite (and optional CRA) origins for CORS / Cognito callbacks. */
-export const DEV_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-] as const;
+/**
+ * Local Vite origin. Only the dev Cognito client trusts it; prod clients and
+ * prod CORS never do (CHR-195).
+ */
+export const DEV_ORIGIN = 'http://localhost:5173' as const;
 
 /** Production browser origins (apex only; www redirects to apex). */
 export function siteOrigins(apexDomain: string = APEX_DOMAIN): string[] {
-  return [`https://${apexDomain}`, ...DEV_ORIGINS];
+  return [`https://${apexDomain}`];
 }
+
+/** Cognito group required on /api/admin/* and /api/notebook/* (CHR-195). */
+export const ADMIN_GROUP = 'admin' as const;
 
 export const GITHUB_OWNER = 'gagnechris' as const;
 export const GITHUB_REPO = 'gagnechris' as const;
