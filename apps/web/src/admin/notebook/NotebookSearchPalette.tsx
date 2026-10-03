@@ -40,6 +40,7 @@ export default function NotebookSearchPalette({
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
+  const optionId = (index: number) => `${listId}-option-${index}`;
   const [q, setQ] = useState('');
   const [areaOnly, setAreaOnly] = useState(true);
   const area = areaOnly ? areaQueryParam(areaFilter) : undefined;
@@ -111,13 +112,19 @@ export default function NotebookSearchPalette({
             ref={inputRef}
             className="admin-input notebook-search__input"
             type="search"
+            role="combobox"
+            aria-label="Search notes and tasks"
             placeholder="Search notes and tasks…"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
               setActive(0);
             }}
-            aria-controls={listId}
+            aria-expanded={flat.length > 0}
+            aria-controls={flat.length > 0 ? listId : undefined}
+            aria-activedescendant={
+              flat[safeActive] ? optionId(safeActive) : undefined
+            }
             aria-autocomplete="list"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
@@ -143,59 +150,80 @@ export default function NotebookSearchPalette({
           </label>
         </div>
 
-        <div id={listId} className="notebook-search__results" role="listbox">
+        <div className="notebook-search__status" aria-live="polite">
           {!q.trim() ? (
             <p className="admin-hint">Type to search. Esc to close.</p>
           ) : null}
           {search.isFetching ? <p className="admin-hint">Searching…</p> : null}
-          {search.isError ? (
-            <p className="admin-panel__error" role="alert">
-              Search failed.
-            </p>
-          ) : null}
           {q.trim() && !search.isFetching && flat.length === 0 ? (
             <p className="admin-hint">No matches.</p>
           ) : null}
+        </div>
+        {search.isError ? (
+          <p className="admin-panel__error" role="alert">
+            Search failed.
+          </p>
+        ) : null}
 
-          {(['Notes', 'Tasks'] as const).map((group) => {
-            const items = flat.filter((h) => h.group === group);
-            if (items.length === 0) return null;
-            return (
-              <section key={group} className="notebook-search__group">
-                <h3>{group}</h3>
-                <ul>
+        {flat.length > 0 ? (
+          <div
+            id={listId}
+            className="notebook-search__results"
+            role="listbox"
+            aria-label="Results"
+          >
+            {(['Notes', 'Tasks'] as const).map((group) => {
+              const items = flat.filter((h) => h.group === group);
+              if (items.length === 0) return null;
+              const labelId = `${listId}-${group}`;
+              return (
+                <div
+                  key={group}
+                  role="group"
+                  aria-labelledby={labelId}
+                  className="notebook-search__group"
+                >
+                  <div
+                    id={labelId}
+                    role="presentation"
+                    className="notebook-search__group-label"
+                  >
+                    {group}
+                  </div>
                   {items.map((hit) => {
                     const index = flat.indexOf(hit);
                     return (
-                      <li key={`${hit.type}-${hit.id}`}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={index === safeActive}
-                          className={
-                            index === safeActive
-                              ? 'notebook-search__hit notebook-search__hit--active'
-                              : 'notebook-search__hit'
-                          }
-                          onMouseEnter={() => setActive(index)}
-                          onClick={() => go(hit.href)}
-                        >
-                          <span className="notebook-search__hit-title">
-                            {hit.title}
-                            <span className="admin-badge">{hit.area}</span>
-                          </span>
-                          <span className="notebook-search__hit-snippet">
-                            {highlight(hit.snippet, hit.matches)}
-                          </span>
-                        </button>
-                      </li>
+                      // Focus stays in the combobox (aria-activedescendant);
+                      // options are pointer targets only.
+                      <div
+                        key={`${hit.type}-${hit.id}`}
+                        id={optionId(index)}
+                        role="option"
+                        aria-selected={index === safeActive}
+                        className={
+                          index === safeActive
+                            ? 'notebook-search__hit notebook-search__hit--active'
+                            : 'notebook-search__hit'
+                        }
+                        onMouseEnter={() => setActive(index)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => go(hit.href)}
+                      >
+                        <span className="notebook-search__hit-title">
+                          {hit.title}
+                          <span className="admin-badge">{hit.area}</span>
+                        </span>
+                        <span className="notebook-search__hit-snippet">
+                          {highlight(hit.snippet, hit.matches)}
+                        </span>
+                      </div>
                     );
                   })}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </div>
   );

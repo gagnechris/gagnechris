@@ -79,3 +79,31 @@ describe('setCachedNote with calendar dates', () => {
     expect(data?.pages[0]?.items[0]?.id).toBe('01TESTCACHEDNOTE00000000001');
   });
 });
+
+describe('setCachedNote with a deleted daily note', () => {
+  test('drops the day key instead of caching the tombstone there', () => {
+    const queryClient = new QueryClient();
+    const dailyKey = queryKeys.notes.daily('work', '2026-10-09');
+    setCachedNote(queryClient, baseNote());
+    expect(queryClient.getQueryData<Note>(dailyKey)?.version).toBe(1);
+
+    const tombstone = baseNote({ deleted: true, version: 2 });
+    setCachedNote(queryClient, tombstone);
+
+    expect(queryClient.getQueryData(dailyKey)).toBeUndefined();
+    expect(
+      queryClient.getQueryData<Note>(queryKeys.notes.detail(tombstone.id)),
+    ).toMatchObject({ deleted: true, version: 2 });
+  });
+
+  test('leaves the day key alone when it holds a different note', () => {
+    const queryClient = new QueryClient();
+    const dailyKey = queryKeys.notes.daily('work', '2026-10-09');
+    const current = baseNote({ id: '01TESTCACHEDNOTE00000000002' });
+    setCachedNote(queryClient, current);
+
+    setCachedNote(queryClient, baseNote({ deleted: true, version: 2 }));
+
+    expect(queryClient.getQueryData<Note>(dailyKey)?.id).toBe(current.id);
+  });
+});
