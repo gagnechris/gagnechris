@@ -1,46 +1,32 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import {
-  clearSyncEntities,
-  getSyncAdapter,
-  listSyncChangeTypes,
-} from '../src/sync/registry.js';
-import {
-  createFakeNotesRepo,
-  FAKE_NOTE_CHANGE_TYPE,
-  registerFakeNoteSync,
-} from './support/fake-note.js';
-import { createMemoryDoc } from './support/memory-doc.js';
+import { describe, expect, it, vi } from 'vitest';
+import { SYNC_CHANGE_TYPES } from '@gagnechris/shared';
 
-describe('sync adapter registration (CHR-172)', () => {
-  beforeEach(() => {
-    clearSyncEntities();
-  });
+describe('sync adapter registration (CHR-172 / CHR-202)', () => {
+  it('a cold import of the production route table registers every SyncChangeSchema type', async () => {
+    // Fresh module graph: no repository constructed, no test setup registered.
+    vi.resetModules();
+    const registry = await import('../src/sync/registry.js');
+    expect(registry.listSyncChangeTypes()).toEqual([]);
 
-  it('registers adapters from repository sync.toChange on construct', () => {
-    expect(getSyncAdapter(FAKE_NOTE_CHANGE_TYPE)).toBeUndefined();
-    const { doc } = createMemoryDoc();
-    createFakeNotesRepo(doc, 'gagnechris-test');
-    expect(getSyncAdapter(FAKE_NOTE_CHANGE_TYPE)?.changeType).toBe(
-      FAKE_NOTE_CHANGE_TYPE,
+    await import('../src/routes.js');
+
+    expect([...registry.listSyncChangeTypes()].sort()).toEqual(
+      [...SYNC_CHANGE_TYPES].sort(),
     );
-    expect(listSyncChangeTypes()).toContain(FAKE_NOTE_CHANGE_TYPE);
+    for (const changeType of SYNC_CHANGE_TYPES) {
+      expect(registry.getSyncAdapter(changeType)?.changeType).toBe(changeType);
+    }
   });
 
-  it('fails when a synced change type has no registered adapter', () => {
-    const expected = [FAKE_NOTE_CHANGE_TYPE] as const;
-    // Simulate forgetting registerSyncEntity / sync.toChange.
-    clearSyncEntities();
-    expect(() => {
-      for (const changeType of expected) {
-        if (!getSyncAdapter(changeType)) {
-          throw new Error(`missing sync adapter: ${changeType}`);
-        }
-      }
-    }).toThrow(/missing sync adapter: fakeNote/);
-
-    registerFakeNoteSync();
-    for (const changeType of expected) {
-      expect(getSyncAdapter(changeType)).toBeDefined();
-    }
+  it('constructing a repository does not register adapters', async () => {
+    vi.resetModules();
+    const registry = await import('../src/sync/registry.js');
+    const { NotesRepository } = await import('../src/notes/repository.js');
+    const { TasksRepository } = await import('../src/tasks/repository.js');
+    const { createMemoryDoc } = await import('./support/memory-doc.js');
+    const { doc } = createMemoryDoc();
+    new NotesRepository(doc, 'gagnechris-test');
+    new TasksRepository(doc, 'gagnechris-test');
+    expect(registry.listSyncChangeTypes()).toEqual([]);
   });
 });

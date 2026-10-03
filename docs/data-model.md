@@ -238,11 +238,11 @@ Create also writes a durable claim row (not on GSI3):
 - Normalizes `since` with `Date.parse` → `toISOString()` so missing milliseconds or offsets match UTC-ms keys.
 - Re-queries an overlap window (`SYNC_OVERLAP_MS`, 15s ≥ `API_LAMBDA_TIMEOUT_MS`) below `since` so late-committed writes are not skipped; clients dedupe by `(id, version)`.
 - Returns opaque `nextSince` (server watermark at query start) for the next poll.
-- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition).
-- Cursors are bound to the queried partition (and sync `since` lower bound); foreign / wrong-`since` cursors → **400** (CHR-170). `ValidationException` on ExclusiveStartKey is also mapped to 400.
+- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition). `limit` counts returned changes, not skipped corrupt rows (CHR-202).
+- Cursors are bound to the queried partition and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400** (CHR-170 / CHR-202). `ValidationException` on ExclusiveStartKey is also mapped to 400.
 - Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
 
-Adding a synced entity is **config on `VersionedEntityRepository`** (`sync: { changeType, userIdOf, createPayloadHash }`) plus `registerSyncEntity` for the feed adapter — no edits to the ledger/feed modules.
+Adding a synced entity: **config on the repository** (`sync: { changeType, userIdOf, createPayloadHash }`, which stamps `entityType` / `syncPk` / `syncSk`), one entry in `services/api/src/sync/adapters.ts` (the feed adapter; the repository does not register it), and its variant in `SyncChangeSchema` — no edits to the ledger/feed modules. A test fails until the adapter list and the schema agree; a row with no adapter returns 500 (CHR-202).
 
 Clients:
 

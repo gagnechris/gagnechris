@@ -679,67 +679,50 @@ export type NotebookSearchResponse = z.infer<
 >;
 
 /**
- * Sync change wire types (CHR-172 / CHR-39). Discriminated by `type` so
- * generated clients type `entity` per change type. `fakeNote` remains the
- * contract fixture (test-only routes) alongside real `note` / `task`.
+ * Sync change wire types (CHR-172 / CHR-39 / CHR-202). Discriminated by `type`
+ * so generated clients type `entity` per change type, then by `deleted`: a
+ * live change (`deleted: false`) always carries `entity`; a tombstone does not.
+ * Test-only change types (e.g. the `fakeNote` fixture) build their schema with
+ * {@link syncChangeSchemaFor} in test support and never join this union.
  */
+export function syncChangeSchemaFor<T extends string, E extends z.ZodType>(
+  type: T,
+  entity: E,
+) {
+  const meta = {
+    type: z.literal(type),
+    id: z.string().min(1),
+    version: z.number().int().nonnegative(),
+    updatedAt: z.string().datetime({ offset: true }),
+  };
+  return z.discriminatedUnion('deleted', [
+    z.object({ ...meta, deleted: z.literal(false), entity }),
+    z.object({ ...meta, deleted: z.literal(true) }),
+  ]);
+}
 
-export const FakeNoteEntitySchema = z.object({
-  id: z.string().min(1),
-  userId: z.string().min(1),
-  title: z.string(),
-  body: z.string(),
-  version: z.number().int().nonnegative(),
-  createdAt: z.string().datetime({ offset: true }),
-  updatedAt: z.string().datetime({ offset: true }),
-  deleted: z.boolean(),
-  area: NotebookAreaSchema.optional(),
-  noteDate: z.string().optional(),
-});
-
-export type FakeNoteEntity = z.infer<typeof FakeNoteEntitySchema>;
-
-export const FakeNoteSyncChangeSchema = z.object({
-  type: z.literal('fakeNote'),
-  id: z.string().min(1),
-  version: z.number().int().nonnegative(),
-  deleted: z.boolean(),
-  updatedAt: z.string().datetime({ offset: true }),
-  /** Present when not deleted (full entity for convenience). */
-  entity: FakeNoteEntitySchema.optional(),
-});
-
-export type FakeNoteSyncChange = z.infer<typeof FakeNoteSyncChangeSchema>;
-
-export const NoteSyncChangeSchema = z.object({
-  type: z.literal('note'),
-  id: z.string().min(1),
-  version: z.number().int().nonnegative(),
-  deleted: z.boolean(),
-  updatedAt: z.string().datetime({ offset: true }),
-  entity: NoteSchema.optional(),
-});
+export const NoteSyncChangeSchema = syncChangeSchemaFor('note', NoteSchema);
 
 export type NoteSyncChange = z.infer<typeof NoteSyncChangeSchema>;
 
-export const TaskSyncChangeSchema = z.object({
-  type: z.literal('task'),
-  id: z.string().min(1),
-  version: z.number().int().nonnegative(),
-  deleted: z.boolean(),
-  updatedAt: z.string().datetime({ offset: true }),
-  entity: TaskSchema.optional(),
-});
+export const TaskSyncChangeSchema = syncChangeSchemaFor('task', TaskSchema);
 
 export type TaskSyncChange = z.infer<typeof TaskSyncChangeSchema>;
 
 export const SyncChangeSchema = z.discriminatedUnion('type', [
-  FakeNoteSyncChangeSchema,
   NoteSyncChangeSchema,
   TaskSyncChangeSchema,
 ]);
 
 export type SyncChange = z.infer<typeof SyncChangeSchema>;
+
+export type SyncChangeType = SyncChange['type'];
+
+/** Every production sync change type (the `SyncChangeSchema` discriminator). */
+export const SYNC_CHANGE_TYPES: readonly SyncChangeType[] =
+  SyncChangeSchema.options.map(
+    (variant) => variant.options[0].shape.type.value,
+  );
 
 export const SyncChangesResponseSchema = z.object({
   changes: z.array(SyncChangeSchema),
@@ -752,6 +735,42 @@ export const SyncChangesResponseSchema = z.object({
 });
 
 export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
+
+export type DecodedSyncChangesPage = SyncChangesResponse & {
+  /** `type` of each change skipped because this client does not know it. */
+  skippedTypes: string[];
+};
+
+/**
+ * Lenient client decoder for a sync page (CHR-202). Changes whose `type` this
+ * build does not know (added by a newer server) are skipped and reported in
+ * `skippedTypes` instead of failing the whole page; known types and the page
+ * envelope are still validated strictly (throws ZodError).
+ */
+export function decodeSyncChangesResponse(
+  input: unknown,
+): DecodedSyncChangesPage {
+  const envelope = SyncChangesResponseSchema.extend({
+    changes: z.array(z.unknown()),
+  }).parse(input);
+  const known = new Set<string>(SYNC_CHANGE_TYPES);
+  const skippedTypes: string[] = [];
+  const changes = envelope.changes.filter((change) => {
+    const type =
+      change && typeof change === 'object' && 'type' in change
+        ? change.type
+        : undefined;
+    if (typeof type === 'string' && !known.has(type)) {
+      skippedTypes.push(type);
+      return false;
+    }
+    return true;
+  });
+  return {
+    ...SyncChangesResponseSchema.parse({ ...envelope, changes }),
+    skippedTypes,
+  };
+}
 
 /** Default page size when `limit` is omitted (avoids ~1 MB Dynamo pages). */
 export const SYNC_DEFAULT_PAGE_LIMIT = 50;
@@ -779,3 +798,58 @@ export const SyncChangesQuerySchema = z.object({
 });
 
 export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;
+
+/**
+ * Client build version header on sync requests (CHR-202), `MAJOR.MINOR.PATCH`.
+ * Absent → allowed (web / existing clients); below
+ * {@link SYNC_MIN_CLIENT_VERSION} → 426 `upgrade_required`.
+ */
+export const CLIENT_VERSION_HEADER = 'x-gagnechris-client-version';
+
+/**
+ * Oldest client build the sync contract still serves. Raise it (and deploy)
+ * to force upgrades / kill-switch a broken client release.
+ */
+export const SYNC_MIN_CLIENT_VERSION = '0.0.0';
+
+const CLIENT_VERSION_RE = /^(\d{1,9})\.(\d{1,9})\.(\d{1,9})$/;
+
+/** Parse `MAJOR.MINOR.PATCH` (no pre-release/build suffix); undefined if malformed. */
+export function parseClientVersion(
+  raw: string,
+): [number, number, number] | undefined {
+  const m = CLIENT_VERSION_RE.exec(raw.trim());
+  if (!m) return undefined;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+/** True when `version` is at or above `minimum` (both `MAJOR.MINOR.PATCH`). */
+export function isClientVersionSupported(
+  version: [number, number, number],
+  minimum: [number, number, number],
+): boolean {
+  for (let i = 0; i < 3; i += 1) {
+    if (version[i]! !== minimum[i]!) return version[i]! > minimum[i]!;
+  }
+  return true;
+}
+
+export const ClientVersionHeadersSchema = z.object({
+  [CLIENT_VERSION_HEADER]: z
+    .string()
+    .regex(CLIENT_VERSION_RE)
+    .optional()
+    .describe(
+      'Client build version (`MAJOR.MINOR.PATCH`). Omit from web; below the server minimum → 426 `upgrade_required`',
+    ),
+});
+
+/** 426 body when the client build is older than the server minimum (CHR-202). */
+export const UpgradeRequiredErrorResponseSchema = ErrorResponseSchema.extend({
+  error: z.literal('upgrade_required'),
+  minClientVersion: z.string(),
+});
+
+export type UpgradeRequiredErrorResponse = z.infer<
+  typeof UpgradeRequiredErrorResponseSchema
+>;

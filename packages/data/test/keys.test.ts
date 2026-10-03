@@ -107,13 +107,19 @@ describe('@gagnechris/data keys', () => {
     expect(SYNC_CREATE_CLAIM_TTL_DAYS).toBeGreaterThan(SYNC_TOMBSTONE_TTL_DAYS);
   });
 
-  it('syncResyncHorizonIso is tombstone TTL plus margin before now (CHR-172)', () => {
+  it('syncResyncHorizonIso is TTL minus margin and overlap before now (CHR-202)', () => {
     const at = new Date('2026-10-02T12:00:00.000Z');
     const horizon = syncResyncHorizonIso(at);
     expect(Date.parse(horizon)).toBe(
       at.getTime() -
-        SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 -
-        SYNC_RESYNC_MARGIN_MS,
+        SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 +
+        SYNC_RESYNC_MARGIN_MS +
+        SYNC_OVERLAP_MS,
+    );
+    // Every row the client still needs (since − overlap) is younger than a
+    // tombstone that could have been purged (now − TTL), with margin to spare.
+    expect(Date.parse(horizon) - SYNC_OVERLAP_MS).toBeGreaterThan(
+      at.getTime() - SYNC_TOMBSTONE_TTL_DAYS * 86_400_000,
     );
   });
 

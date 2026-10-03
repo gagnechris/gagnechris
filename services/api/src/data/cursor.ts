@@ -71,10 +71,18 @@ export function assertCursorMatchesQuery(
     /** When set, the cursor sort key must be ≥ this bound (inclusive). */
     sortAttr?: string;
     sortLowerBoundInclusive?: string;
+    /**
+     * Query parameter the cursor was minted for (CHR-202); the cursor must
+     * carry the same value, so it cannot be replayed under a different query.
+     */
+    binding?: { attr: string; value: string };
   },
 ): void {
   if (!key) return;
   if (key[opts.partitionAttr] !== opts.partitionValue) {
+    throw new SyntaxError('Invalid pagination cursor');
+  }
+  if (opts.binding && key[opts.binding.attr] !== opts.binding.value) {
     throw new SyntaxError('Invalid pagination cursor');
   }
   if (
