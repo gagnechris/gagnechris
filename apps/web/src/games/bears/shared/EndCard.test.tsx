@@ -54,6 +54,14 @@ describe('EndCard', () => {
     ).toHaveAttribute('href', '/dont-feed-the-bears/wild?from=contact');
   });
 
+  test('links back to the landing page, keeping ?from=', () => {
+    renderCard();
+
+    expect(
+      screen.getByRole('link', { name: 'Back to Don’t Feed the Bears' }),
+    ).toHaveAttribute('href', '/dont-feed-the-bears?from=contact');
+  });
+
   test('the bear side links back to the camper', () => {
     renderCard({ game: 'wild', from: 'direct' });
 

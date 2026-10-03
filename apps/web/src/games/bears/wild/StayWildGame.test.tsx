@@ -93,6 +93,23 @@ describe('StayWildGame', () => {
     );
   });
 
+  test('eating shows a +% pill with the food and flashes the fat bar', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(1_400);
+    key('ArrowRight', 'keyUp');
+
+    expect(screen.getByText('+1.5% wetland greens')).toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Winter fat' })).toHaveClass(
+      'wild-hud__bar--flash',
+    );
+
+    advance(1_500);
+    expect(screen.queryByText('+1.5% wetland greens')).not.toBeInTheDocument();
+  });
+
   test('S sniffs and Escape pauses and resumes', () => {
     renderGame();
     start();
@@ -103,6 +120,9 @@ describe('StayWildGame', () => {
 
     key('Escape');
     expect(screen.getByRole('heading', { name: 'Paused' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Quit to Don’t Feed the Bears' }),
+    ).toHaveAttribute('href', '/dont-feed-the-bears?from=contact');
     key('Escape');
     expect(
       screen.queryByRole('heading', { name: 'Paused' }),

@@ -129,7 +129,15 @@ describe('food', () => {
     const { state, events } = run(s0, 120, RIGHT);
     expect(state.fat).toBe(START_FAT + FOOD_GAIN.berries);
     expect(state.naturalEaten).toBe(1);
-    expect(events.filter((e) => e.type === 'eat')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'eat')).toEqual([
+      {
+        type: 'eat',
+        kind: 'berries',
+        gain: FOOD_GAIN.berries,
+        x: 328,
+        y: GROUND_Y - 20,
+      },
+    ]);
   });
 
   test('hidden insects can only be eaten while Sniff reveals them', () => {
@@ -169,6 +177,8 @@ describe('campsite food', () => {
       type: 'campSnack',
       kind: 'trash',
       comfy: 1,
+      x: 300 + 26,
+      y: GROUND_Y - 31,
     });
     expect(wildPaws(state)).toBe(2);
   });

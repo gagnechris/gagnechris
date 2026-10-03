@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -8,14 +9,17 @@ import { usePrefersReducedMotion } from '../camp/usePrefersReducedMotion';
 import { BEAR_FACTS } from '../facts';
 import EndCard from '../shared/EndCard';
 import { readHighScore, writeHighScore } from '../shared/highScore';
+import { BEARS_LANDING_PATH, withFrom } from '../shared/routes';
 import { playFailSound, playSecureSound, playSuccessSound } from '../sound';
 import {
   CAMP_FOOD_LABEL,
   FOOD_LABEL,
+  type NaturalFoodKind,
   WILD_LEVELS,
   WORLD_HEIGHT,
 } from './wildLevels';
 import {
+  CAMP_FOOD_GAIN,
   COMFY_LIMIT,
   NO_INPUT,
   STEP_MS,
@@ -32,12 +36,35 @@ import {
   type WildInput,
   type WildState,
 } from './wildLogic';
-import { cameraTarget, renderWild } from './wildRender';
+import {
+  CRUMBS_MS,
+  MUNCH_MS,
+  POPUP_MS,
+  cameraTarget,
+  renderWild,
+  type Effects,
+} from './wildRender';
 import WildEndScene from './WildEndScene';
 import './StayWildGame.css';
 
 const GAME = 'wild';
 const MAX_FRAME_MS = 250;
+const EAT_TOAST_MS = 1_400;
+
+const CRUMB_COLOR: Readonly<Record<NaturalFoodKind, string>> = {
+  greens: '#4f8a3a',
+  insects: '#2b2018',
+  roots: '#c9a27a',
+  berries: '#6b2a4a',
+  beechnuts: '#8a5a35',
+  acorns: '#a8552a',
+  apples: '#c2552d',
+};
+
+type EatToast = { id: number; text: string; tone: 'good' | 'bad' };
+
+const formatGain = (gain: number) =>
+  Number.isInteger(gain) ? String(gain) : gain.toFixed(1);
 
 type Screen = 'ready' | 'playing' | 'paused' | 'over';
 
@@ -83,6 +110,9 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const [message, setMessage] = useState('');
   const [touch, setTouch] = useState(false);
   const [highScore, setHighScore] = useState(() => readHighScore(GAME));
+  const [eatToast, setEatToast] = useState<EatToast | null>(null);
+  const [fatFlash, setFatFlash] = useState(0);
+  const effectsRef = useRef<Effects>({ popups: [], crumbs: [], munchUntil: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -122,11 +152,15 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
       : target;
     const scale = canvas.height / WORLD_HEIGHT;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    const fx = effectsRef.current;
+    fx.popups = fx.popups.filter((p) => time - p.bornAt < POPUP_MS);
+    fx.crumbs = fx.crumbs.filter((c) => time - c.bornAt < CRUMBS_MS);
     renderWild(ctx, s, {
       viewWidth: W,
       cameraX: cameraRef.current,
       time,
       reducedMotion: reducedRef.current,
+      effects: fx,
     });
   }, []);
 
@@ -156,6 +190,36 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
       for (const event of events) {
         const text = announce(event, s);
         if (text) setMessage(text);
+        if (event.type === 'eat' || event.type === 'campSnack') {
+          const now = performance.now();
+          const fx = effectsRef.current;
+          const good = event.type === 'eat';
+          const gainText = good
+            ? formatGain(event.gain)
+            : String(CAMP_FOOD_GAIN);
+          fx.popups.push({
+            text: `+${gainText}%`,
+            x: event.x,
+            y: Math.min(event.y, s.maple.y) - 28,
+            bornAt: now,
+            tone: good ? 'good' : 'bad',
+          });
+          fx.crumbs.push({
+            x: event.x,
+            y: event.y,
+            bornAt: now,
+            color: good ? CRUMB_COLOR[event.kind] : '#f4b942',
+          });
+          fx.munchUntil = now + MUNCH_MS;
+          setEatToast({
+            id: now,
+            tone: good ? 'good' : 'bad',
+            text: good
+              ? `+${gainText}% ${FOOD_LABEL[event.kind]}`
+              : `+${gainText}% fat… but people noticed Maple (${event.comfy} of ${COMFY_LIMIT})`,
+          });
+          setFatFlash((n) => n + 1);
+        }
         if (soundOnRef.current) {
           if (event.type === 'eat') playSecureSound();
           if (
@@ -228,6 +292,8 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
     stateRef.current = fresh;
     cameraRef.current = 0;
     inputRef.current = { ...NO_INPUT };
+    effectsRef.current = { popups: [], crumbs: [], munchUntil: 0 };
+    setEatToast(null);
     setState(fresh);
     setMessage(
       `${WILD_LEVELS[0]!.title}, level 1 of ${WILD_LEVELS.length}: ${WILD_LEVELS[0]!.goal}.`,
@@ -236,6 +302,12 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
     trackBearsGameStart(GAME, from);
     stageRef.current?.focus();
   };
+
+  useEffect(() => {
+    if (!eatToast) return;
+    const id = window.setTimeout(() => setEatToast(null), EAT_TOAST_MS);
+    return () => window.clearTimeout(id);
+  }, [eatToast]);
 
   const togglePause = useCallback(() => {
     const cur = screenRef.current;
@@ -318,7 +390,12 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
               <span className="wild-hud__label">{fat}%</span>
             </span>
             <span
-              className="wild-hud__bar"
+              key={fatFlash}
+              className={
+                fatFlash
+                  ? 'wild-hud__bar wild-hud__bar--flash'
+                  : 'wild-hud__bar'
+              }
               role="meter"
               aria-label="Winter fat"
               aria-valuemin={0}
@@ -374,6 +451,16 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
             {screen === 'paused' ? '▶' : 'Ⅱ'}
           </button>
         </div>
+
+        {eatToast && screen === 'playing' ? (
+          <span
+            key={eatToast.id}
+            className={`wild-eat-toast wild-eat-toast--${eatToast.tone}`}
+            aria-hidden="true"
+          >
+            {eatToast.text}
+          </span>
+        ) : null}
 
         {touch && screen === 'playing' ? (
           <div className="wild-touch">
@@ -452,6 +539,12 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
               >
                 Resume
               </button>
+              <Link
+                to={withFrom(BEARS_LANDING_PATH, from)}
+                className="bears-btn bears-btn--ghost"
+              >
+                Quit to Don’t Feed the Bears
+              </Link>
             </section>
           </div>
         ) : null}

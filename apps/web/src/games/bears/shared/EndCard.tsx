@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import type { BearsGame } from '../../../utils/analytics';
 import type { BearTip } from '../tips';
 import Paws from './Paws';
-import { BEARS_GAME_PATHS, otherGame, withFrom } from './routes';
+import {
+  BEARS_GAME_PATHS,
+  BEARS_LANDING_PATH,
+  otherGame,
+  withFrom,
+} from './routes';
 
 export type EndStat = {
   label: string;
@@ -101,6 +106,12 @@ const EndCard = ({
         </Link>
         {extraActions}
       </div>
+      <Link to={withFrom(BEARS_LANDING_PATH, from)} className="bears-end__back">
+        <span aria-hidden="true" className="bears-arrow">
+          ←
+        </span>
+        Back to Don’t Feed the Bears
+      </Link>
     </section>
   );
 };
