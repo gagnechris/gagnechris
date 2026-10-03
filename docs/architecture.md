@@ -201,6 +201,11 @@ Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChang
   - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
 - A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
 
+## Analytics stay off /admin and /auth (CHR-194)
+
+- GA4 loads only in the public shells. `spa.html` (served for `/admin*` and `/auth*`) is built without it, and the Vite dev server strips it for those paths too (`devSpaShellPlugin`), so dev matches prod.
+- `apps/web/src/utils/analytics.ts` never sends page views or events for a private path (`isPrivatePath` in `utils/privatePaths.ts`). `RouteTracker` also sets gtag's `ga-disable-<id>` flag while a private route is showing, which stops gtag's own enhanced-measurement hits if gtag is already loaded from an in-app navigation.
+
 ## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)
 
 | Import                       | Contents                                                                                                                 |

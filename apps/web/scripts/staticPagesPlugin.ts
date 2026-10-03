@@ -8,7 +8,9 @@ import {
   applySpaShellMeta,
   applyStaticPageMeta,
   outputRelativePath,
+  removeAnalytics,
 } from './staticPageMeta.ts';
+import { isPrivatePath } from '../src/utils/privatePaths.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -54,6 +56,21 @@ export function staticPagesPlugin(): Plugin {
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, html);
       }
+    },
+  };
+}
+
+/**
+ * Dev server parity with CloudFront: /admin and /auth get the shell without
+ * GA4, like prod's /spa.html (CHR-194).
+ */
+export function devSpaShellPlugin(): Plugin {
+  return {
+    name: 'dev-spa-shell',
+    apply: 'serve',
+    transformIndexHtml(html, ctx) {
+      const url = ctx.originalUrl ?? ctx.path;
+      return isPrivatePath(url) ? removeAnalytics(html) : html;
     },
   };
 }
