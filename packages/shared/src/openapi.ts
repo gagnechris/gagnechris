@@ -42,7 +42,7 @@ import {
   ListNotesQuerySchema,
   ListTasksQuerySchema,
   NotebookAreaSchema,
-  NotebookSearchQuerySchema,
+  NotebookSearchRequestSchema,
   NotebookSearchResponseSchema,
   NoteListResponseSchema,
   NoteSchema,
@@ -223,7 +223,7 @@ export function buildOpenApiDocument() {
   registry.register('CreateTaskRequest', CreateTaskRequestSchema);
   registry.register('UpdateTaskRequest', UpdateTaskRequestSchema);
   registry.register('ListTasksQuery', ListTasksQuerySchema);
-  registry.register('NotebookSearchQuery', NotebookSearchQuerySchema);
+  registry.register('NotebookSearchRequest', NotebookSearchRequestSchema);
   registry.register('NotebookSearchResponse', NotebookSearchResponseSchema);
   registry.register('FakeNoteEntity', FakeNoteEntitySchema);
   registry.register('FakeNoteSyncChange', FakeNoteSyncChangeSchema);
@@ -865,12 +865,20 @@ export function buildOpenApiDocument() {
   });
 
   registry.registerPath({
-    method: 'get',
+    method: 'post',
     path: '/api/notebook/search',
     summary: 'Search notes and tasks for the authenticated user',
+    description:
+      'Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs (CHR-196).',
     tags: ['Notebook'],
     security: [{ bearerAuth: [] }],
-    request: { query: NotebookSearchQuerySchema },
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: NotebookSearchRequestSchema },
+        },
+      },
+    },
     responses: {
       200: ok(NotebookSearchResponseSchema, 'Grouped search hits'),
       400: r400,

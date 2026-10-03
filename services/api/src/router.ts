@@ -17,6 +17,7 @@ import {
   json,
   mapRouteError,
   parseBody,
+  withApiResponseHeaders,
   zodBadRequest,
   zodPayloadTooLarge,
 } from './http.js';
@@ -366,12 +367,37 @@ export function routePatternToOpenApiPath(pattern: string): string {
  * Dispatch a request against a route table.
  * Known path + wrong method → 405 (with `Allow`); unknown path → 404.
  * When multiple patterns match, prefer more literal segments (CHR-154).
+ * Every response gets `nosniff`; non-public routes and errors (including the
+ * router's own 401/403/404/405) also get `Cache-Control: no-store` (CHR-196).
  */
 export async function dispatchRoutes(
   routes: readonly RouteDef[],
   event: APIGatewayProxyEventV2,
   method: string,
   rawPath: string,
+): Promise<APIGatewayProxyStructuredResultV2> {
+  let matched: RouteDef | undefined;
+  const response = await dispatchMatched(
+    routes,
+    event,
+    method,
+    rawPath,
+    (route) => {
+      matched = route;
+    },
+  );
+  const status = response.statusCode ?? 200;
+  return withApiResponseHeaders(response, {
+    noStore: matched?.auth !== 'public' || status >= 400,
+  });
+}
+
+async function dispatchMatched(
+  routes: readonly RouteDef[],
+  event: APIGatewayProxyEventV2,
+  method: string,
+  rawPath: string,
+  onMatch: (route: RouteDef) => void,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const path = canonicalPath(rawPath);
   const methodUpper = method.toUpperCase();
@@ -428,6 +454,7 @@ export async function dispatchRoutes(
       patternSpecificity(b.route.pattern) - patternSpecificity(a.route.pattern),
   );
   const { route, params } = methodMatches[0]!;
+  onMatch(route);
   // Per-route metric name only (no redundant `route` dimension) — CHR-154.
   defaultMetrics.addMetric(metricName(route), MetricUnit.Count, 1);
 

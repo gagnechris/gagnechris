@@ -5504,19 +5504,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search notes and tasks for the authenticated user */
-        get: {
+        get?: never;
+        put?: never;
+        /**
+         * Search notes and tasks for the authenticated user
+         * @description Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs (CHR-196).
+         */
+        post: {
             parameters: {
-                query: {
-                    q: string;
-                    area?: "work" | "personal";
-                    limit?: number;
-                };
+                query?: never;
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        q: string;
+                        /** @enum {string} */
+                        area?: "work" | "personal";
+                        limit?: number;
+                    };
+                };
+            };
             responses: {
                 /** @description Grouped search hits */
                 200: {
@@ -5616,8 +5626,6 @@ export interface paths {
                 };
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6602,7 +6610,7 @@ export interface components {
             cursor?: string;
             limit?: number;
         };
-        NotebookSearchQuery: {
+        NotebookSearchRequest: {
             q: string;
             /** @enum {string} */
             area?: "work" | "personal";

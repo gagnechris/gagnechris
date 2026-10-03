@@ -337,9 +337,9 @@ API surface: `OwnerScopedVersionedEntityRepository` takes `(userId, id)` on get/
 
 ### Search HTTP API (CHR-46)
 
-| Method | Path                   | Notes                                                                                                                                                                                                                                                |
-| ------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/notebook/search` | Query: `q` (required), optional `area`, `limit` (max 50). Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas since CHR-185) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
+| Method | Path                   | Notes                                                                                                                                                                                                                                                                                                                                           |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/notebook/search` | JSON body: `q` (required), optional `area`, `limit` (max 50). POST so search terms never appear in a URL or access log (CHR-196); `GET` returns 405. Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas since CHR-185) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
 
 ### Human export (CHR-47)
 

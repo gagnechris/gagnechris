@@ -2063,7 +2063,7 @@
           }
         }
       },
-      "NotebookSearchQuery": {
+      "NotebookSearchRequest": {
         "type": "object",
         "properties": {
           "q": {
@@ -15011,8 +15011,9 @@
       }
     },
     "/api/notebook/search": {
-      "get": {
+      "post": {
         "summary": "Search notes and tasks for the authenticated user",
+        "description": "Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs (CHR-196).",
         "tags": [
           "Notebook"
         ],
@@ -15021,41 +15022,39 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 200
-            },
-            "required": true,
-            "name": "q",
-            "in": "query"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "q": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "area": {
+                    "type": "string",
+                    "enum": [
+                      "work",
+                      "personal"
+                    ]
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 50
+                  }
+                },
+                "required": [
+                  "q"
+                ]
+              }
+            }
           },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
-            },
-            "required": false,
-            "name": "area",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true,
-              "maximum": 50
-            },
-            "required": false,
-            "name": "limit",
-            "in": "query"
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Grouped search hits",

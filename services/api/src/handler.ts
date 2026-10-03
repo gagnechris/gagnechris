@@ -6,7 +6,7 @@ import type {
 } from 'aws-lambda';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { Tracer } from '@aws-lambda-powertools/tracer';
-import { json } from './http.js';
+import { json, withApiResponseHeaders } from './http.js';
 import { logger, metrics } from './observability.js';
 import { dispatchRoutes, normalizePath } from './router.js';
 import { routes } from './routes.js';
@@ -43,7 +43,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (
       stack: error instanceof Error ? error.stack : undefined,
     });
     metrics.addMetric('HandlerError', MetricUnit.Count, 1);
-    return json(500, { error: 'internal_error' });
+    return withApiResponseHeaders(json(500, { error: 'internal_error' }), {
+      noStore: true,
+    });
   } finally {
     metrics.publishStoredMetrics();
     subsegment?.close();
