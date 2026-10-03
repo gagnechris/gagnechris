@@ -138,7 +138,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API authorizer validates Cognito JWTs (web client audience only; the iOS client is excluded until the app ships with universal-link callbacks, CHR-240/CHR-205) for `/api/admin/*` and `/api/notebook/*` routes; the router then requires the `admin` group in `cognito:groups` (403 otherwise).
+- API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts the `admin-web` client, `/api/notebook/*` the `notebook-web` client, and both accept the legacy `web` client while `LEGACY_WEB_AUTH` is on. The iOS client is in neither audience until the app ships with universal-link callbacks; the router then requires the `admin` group in `cognito:groups` (403 otherwise).
 - Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
@@ -202,9 +202,10 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 ## Security headers and rendered HTML
 
 - `renderMarkdownToHtml` (`@gagnechris/shared/render`) runs `marked` output through `sanitize-html` with an allowlist: no scripts, iframes, forms, event handlers, inline styles, or `javascript:` / `data:` URLs. The admin previews and the publisher both use it, so pasted HTML is inert in the editor and on published pages.
-- CloudFront has two response-header policies in the Site stack:
+- The public distribution has two page response-header policies in the Site stack:
   - Public pages: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap.
   - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
+- `admin.gagnechris.com` and `notebook.gagnechris.com` are separate distributions (`AppHost` in the Site stack), each with one strict policy on every page path: `script-src 'self'`, `img-src 'self' data:`, `connect-src` `'self'` + Cognito (+ the site bucket's regional host on admin only), no Google hosts. A host-wide policy means path case can't change it, so their viewer-request function only does the SPA fallback. See `infra/RUNBOOK.md` (App hosts).
 - CloudFront path patterns are case-sensitive, so `/ADMIN/notebook` would land on the default behaviour (public CSP, GA). The viewer-request function 301s such variants to lowercase, the React Router `admin` and `auth/callback` routes are `caseSensitive` (a variant renders `NotFound`), and `isPrivatePath` is case- and encoding-insensitive.
 - A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
 

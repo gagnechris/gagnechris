@@ -352,6 +352,8 @@ describe('DnsStack and CertificateStack', () => {
       env: { account: config.account, region: config.region },
       config,
       distribution,
+      adminDistribution: distribution,
+      notebookDistribution: distribution,
       hostedZone: HostedZone.fromHostedZoneAttributes(app, 'Zone', {
         hostedZoneId: 'ZXXXXXXXXXXXX',
         zoneName: 'gagnechris.com',
@@ -410,7 +412,7 @@ describe('DnsStack and CertificateStack', () => {
       DomainName: 'auth.gagnechris.com',
       ValidationMethod: 'DNS',
     });
-    certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 2);
+    certTemplate.resourceCountIs('AWS::CertificateManager::Certificate', 3);
     const siteCerts = Object.values(
       certTemplate.findResources('AWS::CertificateManager::Certificate'),
     ).filter((r) => r.Properties?.DomainName === 'gagnechris.com');
@@ -491,7 +493,7 @@ describe('AuthStack', () => {
       ManagedLoginVersion: 2,
     });
 
-    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 3);
+    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 5);
 
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'web',
@@ -507,8 +509,16 @@ describe('AuthStack', () => {
     });
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'dev-local',
-      CallbackURLs: ['http://localhost:5173/auth/callback'],
-      LogoutURLs: ['http://localhost:5173/'],
+      CallbackURLs: [
+        'http://localhost:5173/auth/callback',
+        'http://localhost:5174/auth/callback',
+        'http://localhost:5175/auth/callback',
+      ],
+      LogoutURLs: [
+        'http://localhost:5173/',
+        'http://localhost:5174/',
+        'http://localhost:5175/',
+      ],
     });
     expect(JSON.stringify(template.toJSON())).not.toContain('localhost:3000');
 
@@ -551,6 +561,7 @@ describe('SiteStack', () => {
       env: { account: config.account, region: config.region },
       config,
       certificate,
+      appHostsCertificate: certificate,
       alertsTopic,
     });
     applyStandardTags(site, config);
@@ -559,7 +570,7 @@ describe('SiteStack', () => {
     const template = Template.fromStack(site);
     const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
-    template.resourceCountIs('AWS::S3::Bucket', 2);
+    template.resourceCountIs('AWS::S3::Bucket', 4);
     template.hasResourceProperties('AWS::S3::Bucket', {
       VersioningConfiguration: { Status: 'Enabled' },
       PublicAccessBlockConfiguration: {
@@ -570,11 +581,11 @@ describe('SiteStack', () => {
       },
     });
 
-    template.resourceCountIs('AWS::CloudFront::Distribution', 1);
-    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
-    template.resourceCountIs('AWS::CloudFront::Function', 2);
+    template.resourceCountIs('AWS::CloudFront::Distribution', 3);
+    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 3);
+    template.resourceCountIs('AWS::CloudFront::Function', 3);
     template.resourceCountIs('AWS::CloudFront::KeyValueStore', 1);
-    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 3);
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 5);
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
@@ -593,7 +604,7 @@ describe('SiteStack', () => {
     );
     expect(JSON.stringify(bucketPolicies)).toContain('s3:ListBucket');
 
-    template.resourceCountIs('AWS::CloudWatch::Alarm', 1);
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 3);
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-cloudfront-5xx',
       Threshold: 5,
@@ -760,15 +771,8 @@ describe('ApiStack', () => {
     });
 
     const authorizers = template.findResources('AWS::ApiGatewayV2::Authorizer');
-    const audiences = Object.values(authorizers).map(
-      (r) =>
-        (r as { Properties: { JwtConfiguration: { Audience: unknown[] } } })
-          .Properties.JwtConfiguration.Audience,
-    );
-    expect(audiences).toHaveLength(1);
-    expect(audiences[0]).toHaveLength(1);
-    expect(JSON.stringify(audiences[0])).toMatch(/WebClient/);
-    expect(JSON.stringify(audiences[0])).not.toMatch(/DevClient|IosClient/);
+    expect(Object.keys(authorizers)).toHaveLength(2);
+    expect(JSON.stringify(authorizers)).not.toMatch(/DevClient|IosClient/);
     // API Gateway stores DestinationArn without `:*`; anything else drifts.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
