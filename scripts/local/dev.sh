@@ -150,7 +150,7 @@ npx tsx scripts/local/rebuild-site.ts
 echo ""
 echo "Local admin ready:"
 echo "  Vite     → http://localhost:5173/admin"
-echo "  /__site  → proxied to :${LOCAL_SITE_PORT} (publisher HTML, /writing/*)"
+echo "  /__site  → proxied to :${LOCAL_SITE_PORT} (publisher HTML, /posts/*)"
 echo "  API      → http://127.0.0.1:${LOCAL_API_PORT}"
 echo "  Auth     → VITE_AUTH_MODE=local (no Cognito)"
 echo "Ctrl+C stops Vite and processes this script started."

@@ -12,7 +12,7 @@ I build healthy teams that own their work and can operate independently. I also 
 
 ### Links
 
-🌐 [gagnechris.com](https://gagnechris.com) · ✍️ [Writing](https://gagnechris.com/writing) · 📄 [Resume](https://gagnechris.com/resume) · 💼 [LinkedIn](https://www.linkedin.com/in/christophergagne/) · [RSS](https://gagnechris.com/rss.xml)
+🌐 [gagnechris.com](https://gagnechris.com) · ✍️ [Posts](https://gagnechris.com/posts) · 📄 [Resume](https://gagnechris.com/resume) · 💼 [LinkedIn](https://www.linkedin.com/in/christophergagne/) · [RSS](https://gagnechris.com/rss.xml)
 
 ---
 

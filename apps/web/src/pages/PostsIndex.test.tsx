@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import WritingIndex from './WritingIndex';
+import PostsIndex from './PostsIndex';
 
-describe('WritingIndex', () => {
+describe('PostsIndex', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -34,19 +34,19 @@ describe('WritingIndex', () => {
 
     render(
       <MemoryRouter>
-        <WritingIndex />
+        <PostsIndex />
       </MemoryRouter>,
     );
 
     expect(
       await screen.findByRole('link', { name: /Hello World/ }),
-    ).toHaveAttribute('href', '/writing/hello');
+    ).toHaveAttribute('href', '/posts/hello');
     expect(screen.getByText('An excerpt')).toBeInTheDocument();
     const time = screen.getByText('February 1, 2026');
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(fetch).toHaveBeenCalledWith(
-      '/writing/posts.json',
+      '/posts/posts.json',
       expect.objectContaining({ headers: { Accept: 'application/json' } }),
     );
   });
@@ -63,7 +63,7 @@ describe('WritingIndex', () => {
 
     render(
       <MemoryRouter>
-        <WritingIndex />
+        <PostsIndex />
       </MemoryRouter>,
     );
 

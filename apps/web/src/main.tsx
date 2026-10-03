@@ -8,8 +8,8 @@ import {
 import './index.css';
 import App from './App.tsx';
 import Resume from './pages/Resume.tsx';
-import WritingIndex from './pages/WritingIndex.tsx';
-import WritingPost from './pages/WritingPost.tsx';
+import PostsIndex from './pages/PostsIndex.tsx';
+import PostPage from './pages/PostPage.tsx';
 import Contact from './pages/Contact.tsx';
 import NotFound from './pages/NotFound.tsx';
 import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
@@ -36,17 +36,17 @@ const router = createBrowserRouter(
           element: <Resume />,
         },
         {
-          path: 'writing',
-          element: <WritingIndex />,
+          path: 'posts',
+          element: <PostsIndex />,
         },
         {
-          path: 'writing/:slug',
-          element: <WritingPost />,
+          path: 'posts/:slug',
+          element: <PostPage />,
         },
         // CloudFront 301s /blog in prod; this covers local dev (CHR-206).
         {
           path: 'blog',
-          element: <Navigate to="/writing" replace />,
+          element: <Navigate to="/posts" replace />,
         },
         {
           path: 'blog/:slug',

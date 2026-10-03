@@ -13,14 +13,14 @@ describe('publishedPosts', () => {
 
   test('publishedPostsUrl uses /__site when local site origin is set', () => {
     vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', 'http://127.0.0.1:4177');
-    expect(publishedPostsUrl()).toBe('/__site/writing/posts.json');
-    expect(publishedPostPageUrl('hello')).toBe('/__site/writing/hello/');
+    expect(publishedPostsUrl()).toBe('/__site/posts/posts.json');
+    expect(publishedPostPageUrl('hello')).toBe('/__site/posts/hello/');
   });
 
   test('publishedPostsUrl is same-origin without local site origin', () => {
     vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
-    expect(publishedPostsUrl()).toBe('/writing/posts.json');
-    expect(publishedPostPageUrl('hello')).toBe('/writing/hello/');
+    expect(publishedPostsUrl()).toBe('/posts/posts.json');
+    expect(publishedPostPageUrl('hello')).toBe('/posts/hello/');
   });
 
   test('fetchPublishedPosts filters empty slugs and returns items', async () => {

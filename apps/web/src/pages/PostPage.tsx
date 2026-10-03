@@ -1,10 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
-import { publishedPostPageUrl } from '../writing/publishedPosts';
+import { publishedPostPageUrl } from '../posts/publishedPosts';
 import PublicNav from '../components/PublicNav';
 import NotFound from './NotFound';
-import './WritingPost.css';
+import './PostPage.css';
 
 interface PostData {
   title: string;
@@ -46,7 +46,7 @@ async function loadPublishedPost(slug: string): Promise<PostData | null> {
   };
 }
 
-function WritingPost() {
+function PostPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,12 +86,12 @@ function WritingPost() {
 
   if (loading) {
     return (
-      <div className="writing-post">
+      <div className="post-page">
         <header>
-          <Link to="/writing" className="back-link">
-            ← Back to Writing
+          <Link to="/posts" className="back-link">
+            ← Back to Posts
           </Link>
-          <PublicNav current="/writing" />
+          <PublicNav current="/posts" />
         </header>
         <main>
           <p>Loading post...</p>
@@ -108,9 +108,9 @@ function WritingPost() {
   const dateAttr = postDateAttribute(post.date);
 
   return (
-    <div className="writing-post">
+    <div className="post-page">
       <title>{`${post.title} - Chris Gagne`}</title>
-      <link rel="canonical" href={`https://gagnechris.com/writing/${slug}`} />
+      <link rel="canonical" href={`https://gagnechris.com/posts/${slug}`} />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -118,10 +118,10 @@ function WritingPost() {
         href="/rss.xml"
       />
       <header>
-        <Link to="/writing" className="back-link">
-          ← Back to Writing
+        <Link to="/posts" className="back-link">
+          ← Back to Posts
         </Link>
-        <PublicNav current="/writing" />
+        <PublicNav current="/posts" />
       </header>
       <article>
         <h1>{post.title}</h1>
@@ -136,12 +136,12 @@ function WritingPost() {
         />
       </article>
       <footer>
-        <Link to="/writing" className="back-link-footer">
-          ← Back to Writing
+        <Link to="/posts" className="back-link-footer">
+          ← Back to Posts
         </Link>
       </footer>
     </div>
   );
 }
 
-export default WritingPost;
+export default PostPage;

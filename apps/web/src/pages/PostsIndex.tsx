@@ -4,11 +4,11 @@ import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import {
   fetchPublishedPosts,
   type PublishedPostListItem,
-} from '../writing/publishedPosts';
+} from '../posts/publishedPosts';
 import PublicNav from '../components/PublicNav';
-import './WritingIndex.css';
+import './PostsIndex.css';
 
-function WritingIndex() {
+function PostsIndex() {
   const [posts, setPosts] = useState<PublishedPostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +42,8 @@ function WritingIndex() {
 
   if (loading) {
     return (
-      <div className="writing-index">
-        <title>Writing - Chris Gagne</title>
+      <div className="posts-index">
+        <title>Posts - Chris Gagne</title>
         <link
           rel="alternate"
           type="application/rss+xml"
@@ -51,8 +51,8 @@ function WritingIndex() {
           href="/rss.xml"
         />
         <header>
-          <h1>Writing</h1>
-          <PublicNav current="/writing" />
+          <h1>Posts</h1>
+          <PublicNav current="/posts" />
         </header>
         <main>
           <p>Loading posts...</p>
@@ -62,9 +62,9 @@ function WritingIndex() {
   }
 
   return (
-    <div className="writing-index">
-      <title>Writing - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/writing" />
+    <div className="posts-index">
+      <title>Posts - Chris Gagne</title>
+      <link rel="canonical" href="https://gagnechris.com/posts" />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -72,8 +72,8 @@ function WritingIndex() {
         href="/rss.xml"
       />
       <header>
-        <h1>Writing</h1>
-        <PublicNav current="/writing" />
+        <h1>Posts</h1>
+        <PublicNav current="/posts" />
       </header>
       <main>
         {error ? <p>{error}</p> : null}
@@ -88,7 +88,7 @@ function WritingIndex() {
               return (
                 <article key={post.id || post.slug} className="post-preview">
                   <Link
-                    to={`/writing/${post.slug}`}
+                    to={`/posts/${post.slug}`}
                     className="post-preview__link"
                   >
                     <h2>{post.title}</h2>
@@ -115,4 +115,4 @@ function WritingIndex() {
   );
 }
 
-export default WritingIndex;
+export default PostsIndex;

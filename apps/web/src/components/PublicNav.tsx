@@ -2,13 +2,13 @@ import { Link } from 'react-router-dom';
 
 const LINKS = [
   { to: '/', label: 'Home' },
-  { to: '/writing', label: 'Writing' },
+  { to: '/posts', label: 'Posts' },
   { to: '/resume', label: 'Resume' },
   { to: '/contact', label: 'Contact' },
 ] as const;
 
 type PublicNavProps = {
-  /** Path segment to mark as current (e.g. "/writing"). */
+  /** Path segment to mark as current (e.g. "/posts"). */
   current?: string;
 };
 

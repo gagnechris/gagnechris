@@ -77,7 +77,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `VITE_API_BASE_URL`          | Optional; default same-origin                                       |
 | `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                  |
 | `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)          |
-| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/writing` posts)  |
+| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)    |
 | `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds** |
 
 ### Local stack (`scripts/local/env.sh`)
@@ -124,7 +124,7 @@ GitHub Actions API integration uses Compose project `gagnechris-ci` on host port
 
 Ensure `npm run local:dev` (or export `VITE_AUTH_MODE=local`). A plain `npm run dev` without local env will expect real Cognito config.
 
-### Publish succeeds but `/writing/<slug>` looks stale
+### Publish succeeds but `/posts/<slug>` looks stale
 
 Locally, confirm the static origin on `:4177` was rebuilt (API wrapper triggers publisher). Hard-refresh Vite; post HTML is loaded from `/__site/...`, not only the SPA bundle.
 

@@ -23,7 +23,7 @@ exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for h
     <link rel="canonical" href="https://gagnechris.com" />
   </head>
   <body>
-    <div id="root"><!--prerender:start--><article class="home-page home-page-prerender" data-name="Chris Gagne" data-title="Engineering Leader"><header class="home-header"><img src="/profile.jpg" class="profile" alt="Photo of Chris Gagne" width="96" height="96" /><h1>Chris Gagne</h1><p>Engineering Leader</p></header><main><section id="about"><h2>About Me</h2><div class="about-body"><p>I&#39;m an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.</p></div></section><section id="quick-links"><h2>Quick Links</h2><ul><li><a href="/resume">Resume</a></li><li><a href="/writing">Writing</a></li><li><a href="/contact">Contact</a></li><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li></ul></section></main><footer class="site-footer"><p class="site-footer__copy">© 2026 Chris Gagne</p><ul class="site-footer__links"><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=footer" class="site-footer__bear" aria-label="Don&#39;t Feed the Bears — Vermont camp mini-game" title="Don&#39;t Feed the Bears">🐻 Don&#39;t Feed the Bears</a></li></ul></footer></article><!--prerender:end--></div>
+    <div id="root"><!--prerender:start--><article class="home-page home-page-prerender" data-name="Chris Gagne" data-title="Engineering Leader"><header class="home-header"><img src="/profile.jpg" class="profile" alt="Photo of Chris Gagne" width="96" height="96" /><h1>Chris Gagne</h1><p>Engineering Leader</p></header><main><section id="about"><h2>About Me</h2><div class="about-body"><p>I&#39;m an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.</p></div></section><section id="quick-links"><h2>Quick Links</h2><ul><li><a href="/resume">Resume</a></li><li><a href="/posts">Posts</a></li><li><a href="/contact">Contact</a></li><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li></ul></section></main><footer class="site-footer"><p class="site-footer__copy">© 2026 Chris Gagne</p><ul class="site-footer__links"><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=footer" class="site-footer__bear" aria-label="Don&#39;t Feed the Bears — Vermont camp mini-game" title="Don&#39;t Feed the Bears">🐻 Don&#39;t Feed the Bears</a></li></ul></footer></article><!--prerender:end--></div>
     <script type="module" src="/assets/index.js"></script>
   </body>
 </html>"
@@ -33,22 +33,22 @@ exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for h
 "<!doctype html>
 <html lang="en">
   <head>
-    <title>Writing - Chris Gagne</title>
-    <meta name="description" content="Writing by Chris Gagne." />
-    <meta property="og:title" content="Writing - Chris Gagne" />
-    <meta property="og:description" content="Writing by Chris Gagne." />
+    <title>Posts - Chris Gagne</title>
+    <meta name="description" content="Posts by Chris Gagne." />
+    <meta property="og:title" content="Posts - Chris Gagne" />
+    <meta property="og:description" content="Posts by Chris Gagne." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://gagnechris.com/writing" />
+    <meta property="og:url" content="https://gagnechris.com/posts" />
     <meta property="og:image" content="https://gagnechris.com/og-image.jpg" />
-    <meta name="twitter:title" content="Writing - Chris Gagne" />
-    <meta name="twitter:description" content="Writing by Chris Gagne." />
+    <meta name="twitter:title" content="Posts - Chris Gagne" />
+    <meta name="twitter:description" content="Posts by Chris Gagne." />
     <meta name="twitter:image" content="https://gagnechris.com/og-image.jpg" />
-    <link rel="canonical" href="https://gagnechris.com/writing" />
+    <link rel="canonical" href="https://gagnechris.com/posts" />
   </head>
   <body>
     <div id="root"><!--prerender:start--><section class="blog-index-prerender">
-  <h1>Writing</h1>
-  <ul><li><a href="/writing/hello-world">Hello World</a></li></ul>
+  <h1>Posts</h1>
+  <ul><li><a href="/posts/hello-world">Hello World</a></li></ul>
 </section><!--prerender:end--></div>
     <script type="module" src="/assets/index.js"></script>
   </body>
@@ -87,14 +87,14 @@ exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for h
     <meta property="og:title" content="Hello World - Chris Gagne" />
     <meta property="og:description" content="A short excerpt." />
     <meta property="og:type" content="article" />
-    <meta property="og:url" content="https://gagnechris.com/writing/hello-world" />
+    <meta property="og:url" content="https://gagnechris.com/posts/hello-world" />
     <meta property="og:image" content="https://gagnechris.com/media/cover.jpg" />
     <meta name="twitter:title" content="Hello World - Chris Gagne" />
     <meta name="twitter:description" content="A short excerpt." />
     <meta name="twitter:image" content="https://gagnechris.com/media/cover.jpg" />
-    <link rel="canonical" href="https://gagnechris.com/writing/hello-world" />
+    <link rel="canonical" href="https://gagnechris.com/posts/hello-world" />
   <meta property="article:published_time" content="2026-09-27T12:00:00.000Z" />
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Hello World","description":"A short excerpt.","datePublished":"2026-09-27T12:00:00.000Z","dateModified":"2026-09-27T12:00:00.000Z","image":"https://gagnechris.com/media/cover.jpg","mainEntityOfPage":"https://gagnechris.com/writing/hello-world","author":{"@type":"Person","name":"Chris Gagne","url":"https://gagnechris.com/"}}</script></head>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Hello World","description":"A short excerpt.","datePublished":"2026-09-27T12:00:00.000Z","dateModified":"2026-09-27T12:00:00.000Z","image":"https://gagnechris.com/media/cover.jpg","mainEntityOfPage":"https://gagnechris.com/posts/hello-world","author":{"@type":"Person","name":"Chris Gagne","url":"https://gagnechris.com/"}}</script></head>
   <body>
     <div id="root"><!--prerender:start--><article class="blog-post-prerender" data-slug="hello-world">
   <header>
@@ -135,12 +135,12 @@ exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for r
 
 exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for resume-unavailable, RSS, and sitemap 2`] = `
 "<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://gagnechris.com/writing</link><atom:link href="https://gagnechris.com/rss.xml" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description><item><title>Hello World</title><link>https://gagnechris.com/writing/hello-world</link><guid>https://gagnechris.com/blog/hello-world</guid><description>A short excerpt.</description><pubDate>Sun, 27 Sep 2026 12:00:00 GMT</pubDate></item></channel></rss>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://gagnechris.com/posts</link><atom:link href="https://gagnechris.com/rss.xml" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description><item><title>Hello World</title><link>https://gagnechris.com/posts/hello-world</link><guid>https://gagnechris.com/blog/hello-world</guid><description>A short excerpt.</description><pubDate>Sun, 27 Sep 2026 12:00:00 GMT</pubDate></item></channel></rss>
 "
 `;
 
 exports[`render HTML snapshots (CHR-143 / CHR-157) > matches frozen output for resume-unavailable, RSS, and sitemap 3`] = `
 "<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gagnechris.com/</loc></url><url><loc>https://gagnechris.com/writing</loc></url><url><loc>https://gagnechris.com/resume</loc></url><url><loc>https://gagnechris.com/contact</loc></url><url><loc>https://gagnechris.com/writing/hello-world</loc><lastmod>2026-09-27</lastmod></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gagnechris.com/</loc></url><url><loc>https://gagnechris.com/posts</loc></url><url><loc>https://gagnechris.com/resume</loc></url><url><loc>https://gagnechris.com/contact</loc></url><url><loc>https://gagnechris.com/posts/hello-world</loc><lastmod>2026-09-27</lastmod></url></urlset>
 "
 `;

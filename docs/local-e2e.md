@@ -22,7 +22,7 @@ This script:
 4. Seeds `.local-site/` from that build (publisher shell)
 5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
 6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
-7. Asserts `/writing/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
+7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
 
 ## Day-to-day local admin
 
@@ -34,7 +34,7 @@ npm run local:dev
 
 This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API and `/blog` → static origin (same as prod CloudFront Option B).
 
-Open `http://localhost:5173/admin`. After publish, **View live** / `/writing/<slug>` uses the Vite SPA (with HMR). `WritingPost` loads publisher HTML via `/__site/writing/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
+Open `http://localhost:5173/admin`. After publish, **View live** / `/posts/<slug>` uses the Vite SPA (with HMR). `PostPage` loads publisher HTML via `/__site/posts/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
 Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
 
@@ -61,7 +61,7 @@ Quick Links and footer links come from shared `HOME_QUICK_LINKS` /
 
 The publisher reads a pristine `_shell.html` template (never the home
 prerender in `index.html`) when building other pages. `npm run e2e:local`
-asserts both halves: `/` has the home prerender and `/writing/<slug>` does not.
+asserts both halves: `/` has the home prerender and `/posts/<slug>` does not.
 
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
 

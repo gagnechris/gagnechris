@@ -75,7 +75,7 @@ var NOT_FOUND_HTML =
   '<p><a href="/">Back to Home</a></p>' +
   '<ul>' +
   '<li><a href="/">Home</a></li>' +
-  '<li><a href="/writing">Writing</a></li>' +
+  '<li><a href="/posts">Posts</a></li>' +
   '<li><a href="/resume">Resume</a></li>' +
   '<li><a href="/contact">Contact</a></li>' +
   '</ul></main></body></html>';

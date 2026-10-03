@@ -38,7 +38,7 @@ const injectPrerender = (shellHtml: string, body: string): string => {
 };
 
 /** Public posts path; S3 keys stay under `blog/` (CHR-206). */
-export const POSTS_PATH = '/writing';
+export const POSTS_PATH = '/posts';
 
 export const postCanonicalUrl = (slug: string): string =>
   `https://${APEX}${POSTS_PATH}/${slug}`;
@@ -114,12 +114,12 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   return html;
 };
 
-export const renderWritingIndexPage = (
+export const renderPostsIndexPage = (
   shellHtml: string,
   posts: Post[],
 ): string => {
-  const title = 'Writing - Chris Gagne';
-  const description = 'Writing by Chris Gagne.';
+  const title = 'Posts - Chris Gagne';
+  const description = 'Posts by Chris Gagne.';
   const url = `https://${APEX}${POSTS_PATH}`;
   const list = posts
     .map(
@@ -129,7 +129,7 @@ export const renderWritingIndexPage = (
     .join('\n');
   const body = `
 <section class="blog-index-prerender">
-  <h1>Writing</h1>
+  <h1>Posts</h1>
   <ul>${list || '<li>No published posts yet.</li>'}</ul>
 </section>`.trim();
 

@@ -30,7 +30,7 @@ export type SiteChromeLink = {
 
 export const HOME_QUICK_LINKS: readonly SiteChromeLink[] = [
   { label: 'Resume', href: '/resume', kind: 'spa' },
-  { label: 'Writing', href: '/writing', kind: 'spa' },
+  { label: 'Posts', href: '/posts', kind: 'spa' },
   { label: 'Contact', href: '/contact', kind: 'spa' },
   {
     label: 'LinkedIn',

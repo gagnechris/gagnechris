@@ -269,7 +269,7 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
     );
 
     const sitemap = (await storage.read('sitemap.xml')) ?? '';
-    expect(sitemap).toContain(`/writing/${corrupt.slug}`);
+    expect(sitemap).toContain(`/posts/${corrupt.slug}`);
 
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
     const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0];
@@ -493,6 +493,6 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
     ) as { slugs: string[] };
     expect(slugsJson.slugs).toContain('keep-me');
     const sitemap = await readFile(join(root, 'sitemap.xml'), 'utf-8');
-    expect(sitemap).toContain('/writing/keep-me');
+    expect(sitemap).toContain('/posts/keep-me');
   });
 });

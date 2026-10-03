@@ -47,5 +47,5 @@ export LOCAL_API_PORT="${LOCAL_API_PORT:-8787}"
 export LOCAL_SITE_PORT="${LOCAL_SITE_PORT:-4177}"
 export VITE_AUTH_MODE=local
 export VITE_LOCAL_API_ORIGIN="http://127.0.0.1:${LOCAL_API_PORT}"
-# Vite proxies /__site (/writing posts) → local static origin (publisher output), matching prod CF.
+# Vite proxies /__site (/posts posts) → local static origin (publisher output), matching prod CF.
 export VITE_LOCAL_SITE_ORIGIN="http://127.0.0.1:${LOCAL_SITE_PORT}"

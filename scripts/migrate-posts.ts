@@ -152,7 +152,7 @@ async function main(): Promise<void> {
     await rebuildPublishedSite();
   } else if (published > 0) {
     console.log(
-      'Publisher will rebuild via DynamoDB Streams (prod). Allow ~30s then check /writing/welcome.',
+      'Publisher will rebuild via DynamoDB Streams (prod). Allow ~30s then check /posts/welcome.',
     );
   }
 

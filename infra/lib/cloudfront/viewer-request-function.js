@@ -2,13 +2,13 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
- * - Legacy /blog and /blog/* -> /writing equivalent 301 (CHR-206)
- * - Public /writing and /writing/* -> /blog storage prefix in S3 (CHR-206);
+ * - Legacy /blog and /blog/* -> /posts equivalent 301 (CHR-206)
+ * - Public /posts and /posts/* -> /blog storage prefix in S3 (CHR-206);
  *   the publisher still writes blog/<slug>/index.html, posts.json, slugs.json
  * - Skip rewrite for /api/*, /media/*, and /.well-known/* (AASA / webauthn; CHR-177)
  * - Option B prefixes (generated from publisher targets + Vite static pages)
  *   -> {path}/index.html (CHR-179)
- * - /blog/<slug> (after the /writing rewrite) -> Option B only when slug is
+ * - /blog/<slug> (after the /posts rewrite) -> Option B only when slug is
  *   in the associated KeyValueStore
  *   (CHR-115); unknown slugs -> /404.html (avoids raw S3 XML)
  * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
@@ -46,7 +46,7 @@ var OPTION_B_PREFIXES = [
 /* PUBLISH_SURFACE_END */
 
 /** Public URL prefix for posts; S3 keys stay under the storage prefix (CHR-206). */
-var PUBLIC_POSTS_PREFIX = '/writing';
+var PUBLIC_POSTS_PREFIX = '/posts';
 var STORAGE_POSTS_PREFIX = '/blog';
 
 /** Pre-CMS resume PDF object name (spaces may arrive encoded or decoded). */

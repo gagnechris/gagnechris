@@ -74,7 +74,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     slugTakenMessage: 'That slug is already taken. Choose a different slug.',
     loadErrorFallback: 'Could not load post.',
     unpublishConfirm:
-      'Unpublish this post? It will leave the public Writing page.',
+      'Unpublish this post? It will leave the public Posts page.',
     discardConfirm:
       'Discard unpublished edits and restore the last published post?',
     onHydrate: () => setSlugManual(true),
@@ -146,7 +146,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         }
         {...actionBarProps}
         viewLiveHref={
-          post.status === 'published' ? `/writing/${post.slug}` : null
+          post.status === 'published' ? `/posts/${post.slug}` : null
         }
         extraActions={
           <Button
