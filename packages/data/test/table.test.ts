@@ -6,6 +6,7 @@ import {
   appTableName,
   assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
+  gsiProjection,
   tableIndexesFromDescribeTable,
   type TableIndexDefinition,
 } from '../src/table.js';
@@ -117,6 +118,76 @@ describe('assertSafeGsiUpdate (CHR-174)', () => {
   });
 });
 
+describe('gsiProjection (CHR-200)', () => {
+  it('returns ALL / KEYS_ONLY without NonKeyAttributes', () => {
+    expect(gsiProjection(gsi4)).toEqual({ ProjectionType: 'ALL' });
+    expect(gsiProjection({ ...gsi4, projectionType: 'KEYS_ONLY' })).toEqual({
+      ProjectionType: 'KEYS_ONLY',
+    });
+  });
+
+  it('passes INCLUDE nonKeyAttributes through', () => {
+    expect(
+      gsiProjection({
+        ...gsi4,
+        projectionType: 'INCLUDE',
+        nonKeyAttributes: ['title', 'updatedAt'],
+      }),
+    ).toEqual({
+      ProjectionType: 'INCLUDE',
+      NonKeyAttributes: ['title', 'updatedAt'],
+    });
+  });
+
+  it('rejects INCLUDE without attributes and attributes without INCLUDE', () => {
+    expect(() => gsiProjection({ ...gsi4, projectionType: 'INCLUDE' })).toThrow(
+      /no nonKeyAttributes/,
+    );
+    expect(() =>
+      gsiProjection({
+        ...gsi4,
+        projectionType: 'INCLUDE',
+        nonKeyAttributes: [],
+      }),
+    ).toThrow(/no nonKeyAttributes/);
+    expect(() =>
+      gsiProjection({ ...gsi4, nonKeyAttributes: ['title'] }),
+    ).toThrow(/only INCLUDE/);
+  });
+
+  it('keeps every APP_TABLE GSI projection valid', () => {
+    for (const gsi of APP_TABLE.globalSecondaryIndexes) {
+      expect(() => gsiProjection(gsi)).not.toThrow();
+    }
+  });
+});
+
+describe('INCLUDE nonKeyAttributes changes (CHR-200)', () => {
+  const included: TableIndexDefinition = {
+    ...gsi4,
+    projectionType: 'INCLUDE',
+    nonKeyAttributes: ['title', 'updatedAt'],
+  };
+
+  it('ignores attribute order', () => {
+    expect(() =>
+      assertSafeGsiUpdate(
+        [included],
+        [{ ...included, nonKeyAttributes: ['updatedAt', 'title'] }],
+      ),
+    ).not.toThrow();
+  });
+
+  it('counts a nonKeyAttributes change as delete+create', () => {
+    expect(() =>
+      assertSafeGsiUpdate(
+        [included],
+        [{ ...included, nonKeyAttributes: ['title'] }],
+      ),
+    ).toThrow(/key schema or projection/);
+  });
+});
+
 describe('tableIndexesFromDescribeTable (CHR-174)', () => {
   it('maps DescribeTable GSIs into TableIndexDefinition', () => {
     const indexes = tableIndexesFromDescribeTable({
@@ -159,6 +230,58 @@ describe('tableIndexesFromDescribeTable (CHR-174)', () => {
         projectionType: 'KEYS_ONLY',
       },
     ]);
+  });
+
+  it('maps INCLUDE NonKeyAttributes', () => {
+    const [index] = tableIndexesFromDescribeTable({
+      AttributeDefinitions: [
+        { AttributeName: 'gsi4pk', AttributeType: 'S' },
+        { AttributeName: 'gsi4sk', AttributeType: 'S' },
+      ],
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'gsi4',
+          KeySchema: [
+            { AttributeName: 'gsi4pk', KeyType: 'HASH' },
+            { AttributeName: 'gsi4sk', KeyType: 'RANGE' },
+          ],
+          Projection: {
+            ProjectionType: 'INCLUDE',
+            NonKeyAttributes: ['title'],
+          },
+        },
+      ],
+    });
+    expect(index).toEqual({
+      ...gsi4,
+      projectionType: 'INCLUDE',
+      nonKeyAttributes: ['title'],
+    });
+  });
+
+  // What `check:deployed-gsi` does in the deploy job (CHR-200): a live table
+  // two GSIs behind APP_TABLE must fail even if LAST_DEPLOYED_GSIS was bumped.
+  it('refuses APP_TABLE when the live table is two GSIs behind', () => {
+    const [first] = APP_TABLE.globalSecondaryIndexes;
+    const keys = (g: TableIndexDefinition) => [
+      { AttributeName: g.partitionKey.name, KeyType: 'HASH' },
+      { AttributeName: g.sortKey.name, KeyType: 'RANGE' },
+    ];
+    const deployed = tableIndexesFromDescribeTable({
+      AttributeDefinitions: appTableAttributeDefinitions().map((a) => ({
+        ...a,
+      })),
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: first!.indexName,
+          KeySchema: keys(first!),
+          Projection: { ProjectionType: first!.projectionType },
+        },
+      ],
+    });
+    expect(() => assertAppTableGsiUpdateSafe(deployed)).toThrow(
+      /at most one GSI create or delete/,
+    );
   });
 });
 
