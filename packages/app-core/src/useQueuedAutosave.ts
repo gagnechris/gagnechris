@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  NOTEBOOK_TAGS_MAX,
+  NOTEBOOK_TEXT_MAX_BYTES,
+  NOTEBOOK_TITLE_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { defaultTimers, type RetrySignals, type Timers } from './platform.js';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -41,6 +46,9 @@ type Options<TDraft, TEntity> = {
   /** Backoff schedule for retryable failures; last entry repeats. */
   retryDelaysMs?: readonly number[];
 };
+
+/** 413 from a notebook write: a field is over its limit (CHR-192). */
+export const TOO_LARGE_MESSAGE = `Too large to save: notes and descriptions are limited to ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB, titles to ${NOTEBOOK_TITLE_MAX_LENGTH} characters and tags to ${NOTEBOOK_TAGS_MAX}.`;
 
 const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 
@@ -178,7 +186,9 @@ export function useQueuedAutosave<TDraft, TEntity>({
             setSaveError(
               result.status === 409
                 ? (codeMessage ?? conflictMessage)
-                : `Save failed (${result.status}).`,
+                : result.status === 413
+                  ? TOO_LARGE_MESSAGE
+                  : `Save failed (${result.status}).`,
             );
             outcome = 'error';
             break;

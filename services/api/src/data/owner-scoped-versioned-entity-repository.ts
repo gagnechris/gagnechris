@@ -39,6 +39,7 @@ import {
   versionMatchValues,
 } from './version-condition.js';
 import { registerSyncEntity } from '../sync/registry.js';
+import { createHashMatches } from './create-hash.js';
 import {
   type QueryPage,
   type SyncEntityConfig,
@@ -335,7 +336,6 @@ export class OwnerScopedVersionedEntityRepository<
             changeType: sync.changeType,
             entityId: id,
             userId,
-            createHash,
             createdAt: entity.updatedAt,
             ttl: ttlDaysFromNow(
               SYNC_CREATE_CLAIM_TTL_DAYS,
@@ -483,7 +483,7 @@ export class OwnerScopedVersionedEntityRepository<
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
         // Legacy rows without createHash cannot prove create-time identity
         // (hashing current state is unsafe after updates) — CHR-172.
-        if (storedHash === undefined || requestHash !== storedHash) {
+        if (!createHashMatches(storedHash, requestHash)) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
             {
@@ -621,8 +621,6 @@ export class OwnerScopedVersionedEntityRepository<
     }
     const existing = this.mapItem(raw);
     this.assertOwner(userId, existing);
-    const createHash =
-      typeof raw.createHash === 'string' ? raw.createHash : undefined;
     const claimTtl = sync
       ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock)
       : undefined;
@@ -634,7 +632,9 @@ export class OwnerScopedVersionedEntityRepository<
               {
                 Put: {
                   TableName: this.tableName,
-                  Item: this.toStoredItem(tombstone, { ttl, createHash }),
+                  // No createHash on tombstones: a deleted id never replays
+                  // (CHR-192), so its content fingerprint isn't kept.
+                  Item: this.toStoredItem(tombstone, { ttl }),
                   ConditionExpression: VERSION_MATCH_CONDITION,
                   ExpressionAttributeValues:
                     versionMatchValues(expectedVersion),
@@ -658,7 +658,6 @@ export class OwnerScopedVersionedEntityRepository<
                           changeType: sync.changeType,
                           entityId: id,
                           userId,
-                          ...(createHash !== undefined ? { createHash } : {}),
                           createdAt: tombstone.updatedAt,
                           ttl: claimTtl,
                         },

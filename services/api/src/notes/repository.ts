@@ -36,6 +36,7 @@ import {
   type UniqueClaimHook,
 } from '../data/owner-scoped-versioned-entity-repository.js';
 import { registerSyncEntity } from '../sync/registry.js';
+import { hashCreateFields } from '../data/create-hash.js';
 
 export const NOTE_CHANGE_TYPE = 'note';
 
@@ -71,7 +72,7 @@ export function noteCreatePayloadHash(
     | 'pinned'
   >,
 ): string {
-  return [
+  return hashCreateFields([
     n.userId,
     n.area,
     n.type,
@@ -80,7 +81,7 @@ export function noteCreatePayloadHash(
     n.bodyMarkdown,
     n.tags.join(','),
     n.pinned ? '1' : '0',
-  ].join('\0');
+  ]);
 }
 
 export function noteToChange(

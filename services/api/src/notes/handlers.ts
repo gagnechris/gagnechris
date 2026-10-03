@@ -91,6 +91,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
       pattern: '/notebook/notes',
       auth: 'admin',
       metric: 'CreateNote',
+      oversizedBody413: true,
       body: CreateNoteRequestSchema,
       handler: async (ctx, { body }) => {
         const note = await notes().createFromRequest(ctx.userId!, body);
@@ -121,6 +122,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
       pattern: '/notebook/notes/daily/:area/:date',
       auth: 'admin',
       metric: 'UpsertDailyNote',
+      oversizedBody413: true,
       params: DailyParams,
       body: UpsertDailyNoteRequestSchema,
       handler: async (ctx, { params, body }) => {
@@ -189,6 +191,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
       pattern: '/notebook/notes/:id',
       auth: 'admin',
       metric: 'UpdateNote',
+      oversizedBody413: true,
       params: IdParams,
       body: UpdateNoteRequestSchema,
       handler: async (ctx, { params, body }) => {

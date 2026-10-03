@@ -31,6 +31,7 @@ import {
   GSI2_CURSOR_KEYS,
   PRIMARY_CURSOR_KEYS,
 } from '../../src/data/cursor.js';
+import { hashCreateFields } from '../../src/data/create-hash.js';
 
 export const FAKE_NOTE_CHANGE_TYPE = 'fakeNote';
 
@@ -73,7 +74,13 @@ export type FakeNoteItem = {
 export function fakeNotePayloadHash(
   n: Pick<FakeNote, 'userId' | 'title' | 'body' | 'area' | 'noteDate'>,
 ): string {
-  return [n.userId, n.title, n.body, n.area ?? '', n.noteDate ?? ''].join('\0');
+  return hashCreateFields([
+    n.userId,
+    n.title,
+    n.body,
+    n.area ?? '',
+    n.noteDate ?? '',
+  ]);
 }
 
 export function toFakeNoteEntity(item: FakeNoteItem): FakeNote {

@@ -13,10 +13,12 @@ import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type { z, ZodType } from 'zod';
 import {
   isZodError,
+  isZodTooLarge,
   json,
   mapRouteError,
   parseBody,
   zodBadRequest,
+  zodPayloadTooLarge,
 } from './http.js';
 import {
   logger as defaultLogger,
@@ -68,6 +70,11 @@ export type RouteDef = {
   body?: ZodType;
   /** When true, skip JSON body parse (binary PUT). */
   rawBody?: boolean;
+  /**
+   * Body fields over their max return 413 `payload_too_large` instead of 400
+   * (CHR-192). Set on notebook writes, whose limits guard the item size.
+   */
+  oversizedBody413?: boolean;
   handler: RouteHandler;
 };
 
@@ -94,6 +101,7 @@ export function defineRoute<
   query?: TQuery;
   body?: TBody;
   rawBody?: boolean;
+  oversizedBody413?: boolean;
   handler: RouteHandler<
     InferOrDefault<TParams, Record<string, string>>,
     InferOrDefault<TQuery, Record<string, string | undefined>>,
@@ -286,6 +294,9 @@ async function invokeRoute(
       body = route.body.parse(parseBody(ctx.event));
     } catch (error) {
       if (isZodError(error)) {
+        if (route.oversizedBody413 && isZodTooLarge(error)) {
+          return zodPayloadTooLarge(error);
+        }
         return zodBadRequest(error, 'Invalid request body');
       }
       throw error;
