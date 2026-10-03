@@ -2,13 +2,13 @@ import { toListItem } from '../../posts.js';
 import {
   buildRssXml,
   buildSitemapXml,
-  renderBlogIndexPage,
+  renderPostsIndexPage,
 } from '../../render.js';
 import type { PublishTarget } from '../types.js';
 import { CACHE_FEED, CACHE_HTML } from '../types.js';
 
 const target: PublishTarget = {
-  id: 'blog-feeds',
+  id: 'posts-feeds',
   optionBPaths: ['/blog'],
   adminMutationPrefixes: ['/api/admin/posts'],
   adminSoftDelete: true,
@@ -30,7 +30,7 @@ const target: PublishTarget = {
       artifacts: [
         {
           key: 'blog/index.html',
-          body: renderBlogIndexPage(shell, published),
+          body: renderPostsIndexPage(shell, published),
           contentType: 'text/html; charset=utf-8',
           cacheControl: CACHE_HTML,
         },

@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import BlogPost from './BlogPost';
+import PostPage from './PostPage';
 
-describe('BlogPost', () => {
+describe('PostPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -28,9 +28,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/cms-post']}>
+      <MemoryRouter initialEntries={['/posts/cms-post']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/posts/:slug" element={<PostPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -44,7 +44,7 @@ describe('BlogPost', () => {
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(document.title).toBe('CMS Title - Chris Gagne');
     expect(fetch).toHaveBeenCalledWith(
-      '/blog/cms-post/',
+      '/posts/cms-post/',
       expect.objectContaining({ headers: { Accept: 'text/html' } }),
     );
   });
@@ -68,9 +68,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/welcome']}>
+      <MemoryRouter initialEntries={['/posts/welcome']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/posts/:slug" element={<PostPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -91,9 +91,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/missing']}>
+      <MemoryRouter initialEntries={['/posts/missing']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/posts/:slug" element={<PostPage />} />
         </Routes>
       </MemoryRouter>,
     );

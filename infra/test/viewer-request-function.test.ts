@@ -79,29 +79,29 @@ afterEach(() => {
 describe('viewer-request CloudFront Function', () => {
   it('redirects www to apex without a query string', async () => {
     const res = await runHandler({
-      uri: '/blog',
+      uri: '/posts',
       headers: { host: { value: 'www.gagnechris.com' } },
     });
     expect(res).toMatchObject({
       statusCode: 301,
-      headers: { location: { value: 'https://gagnechris.com/blog' } },
+      headers: { location: { value: 'https://gagnechris.com/posts' } },
     });
   });
 
   it('preserves a single query parameter on www redirect', async () => {
     const res = await runHandler({
-      uri: '/blog',
+      uri: '/posts',
       querystring: { utm_source: { value: 'linkedin' } },
       headers: { host: { value: 'www.gagnechris.com' } },
     });
     expect(locationOf(res)).toBe(
-      'https://gagnechris.com/blog?utm_source=linkedin',
+      'https://gagnechris.com/posts?utm_source=linkedin',
     );
   });
 
   it('preserves multiple query parameters on www redirect', async () => {
     const res = await runHandler({
-      uri: '/blog',
+      uri: '/posts',
       querystring: {
         utm_source: { value: 'x' },
         a: { value: '1' },
@@ -109,13 +109,13 @@ describe('viewer-request CloudFront Function', () => {
       headers: { host: { value: 'WWW.gagnechris.com' } },
     });
     expect(locationOf(res)).toBe(
-      'https://gagnechris.com/blog?utm_source=x&a=1',
+      'https://gagnechris.com/posts?utm_source=x&a=1',
     );
   });
 
   it('passes through already-encoded query values (no double-encoding)', async () => {
     const res = await runHandler({
-      uri: '/blog',
+      uri: '/posts',
       querystring: {
         q: { value: 'a%20b' },
         x: { value: '%2Fpath%3Fz%26y' },
@@ -123,7 +123,7 @@ describe('viewer-request CloudFront Function', () => {
       headers: { host: { value: 'www.gagnechris.com' } },
     });
     expect(locationOf(res)).toBe(
-      'https://gagnechris.com/blog?q=a%20b&x=%2Fpath%3Fz%26y',
+      'https://gagnechris.com/posts?q=a%20b&x=%2Fpath%3Fz%26y',
     );
   });
 
@@ -140,11 +140,47 @@ describe('viewer-request CloudFront Function', () => {
     expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
   });
 
-  it('rewrites /blog index to Option B index.html', async () => {
+  it('redirects legacy /blog URLs to /posts with the query string (CHR-206)', async () => {
+    const cases: Array<[string, string]> = [
+      ['/blog', '/posts'],
+      ['/blog/', '/posts/'],
+      ['/blog/welcome', '/posts/welcome'],
+      ['/blog/posts.json', '/posts/posts.json'],
+    ];
+    for (const [uri, location] of cases) {
+      const res = await runHandler({
+        uri,
+        headers: { host: { value: 'gagnechris.com' } },
+      });
+      expect((res as { statusCode: number }).statusCode).toBe(301);
+      expect(locationOf(res)).toBe(location);
+    }
+    const withQuery = await runHandler({
+      uri: '/blog/welcome',
+      querystring: { utm_source: { value: 'rss' } },
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    expect(locationOf(withQuery)).toBe('/posts/welcome?utm_source=rss');
+  });
+
+  it('does not treat paths that merely start with /blog or /posts as posts', async () => {
+    for (const uri of ['/blogroll', '/postscript']) {
+      expect(
+        (
+          (await runHandler({
+            uri,
+            headers: { host: { value: 'gagnechris.com' } },
+          })) as CfRequest
+        ).uri,
+      ).toBe('/404.html');
+    }
+  });
+
+  it('rewrites /posts index to Option B index.html', async () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog',
+          uri: '/posts',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -152,19 +188,19 @@ describe('viewer-request CloudFront Function', () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog/',
+          uri: '/posts/',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
     ).toBe('/blog/index.html');
   });
 
-  it('rewrites known blog slugs to Option B and unknown slugs to /404.html', async () => {
+  it('rewrites known /posts slugs to blog/ storage and unknown slugs to /404.html', async () => {
     api.setPublishedBlogSlugsForTests({ welcome: 1 });
     expect(
       (
         (await runHandler({
-          uri: '/blog/welcome',
+          uri: '/posts/welcome',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -172,7 +208,7 @@ describe('viewer-request CloudFront Function', () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog/welcome/',
+          uri: '/posts/welcome/',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -180,7 +216,7 @@ describe('viewer-request CloudFront Function', () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog/typo',
+          uri: '/posts/typo',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -188,7 +224,7 @@ describe('viewer-request CloudFront Function', () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog/posts.json',
+          uri: '/posts/posts.json',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -200,7 +236,7 @@ describe('viewer-request CloudFront Function', () => {
     expect(
       (
         (await runHandler({
-          uri: '/blog/anything',
+          uri: '/posts/anything',
           headers: { host: { value: 'gagnechris.com' } },
         })) as CfRequest
       ).uri,
@@ -241,7 +277,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: '/blog/welcome',
+              uri: '/posts/welcome',
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -261,7 +297,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: '/blog/typo',
+              uri: '/posts/typo',
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -281,7 +317,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: '/blog/welcome',
+              uri: '/posts/welcome',
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -298,7 +334,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: '/blog/anything',
+              uri: '/posts/anything',
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -319,7 +355,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: '/blog/__synced__',
+              uri: '/posts/__synced__',
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -331,7 +367,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: `/blog/${longSlug}`,
+              uri: `/posts/${longSlug}`,
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
@@ -354,7 +390,7 @@ describe('viewer-request CloudFront Function', () => {
         (
           (await kvsApi.handler({
             request: {
-              uri: `/blog/${maxSlug}`,
+              uri: `/posts/${maxSlug}`,
               headers: { host: { value: 'gagnechris.com' } },
             },
           })) as CfRequest
