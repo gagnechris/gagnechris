@@ -130,7 +130,7 @@ const GAME_CARDS: readonly GameCard[] = [
     title: 'Stay Wild',
     body: 'Help Maple fatten up on berries and beechnuts and reach the den before winter. Campsite snacks are tempting. Too tempting.',
     details: '3 short levels · keyboard or touch · run, jump, sniff',
-    cta: 'Coming soon',
+    cta: 'Play as the bear',
     Art: WildArt,
   },
 ];

@@ -26,17 +26,6 @@
   color: var(--neutral-900);
 }
 
-.bears-game-page__soon {
-  max-width: 720px;
-  padding: var(--space-8) 0;
-}
-
-.bears-game-page__soon-lede {
-  margin: 0 0 var(--space-6);
-  font-size: var(--text-lg);
-  color: var(--neutral-700);
-}
-
 .bears-game-page__actions {
   display: flex;
   flex-wrap: wrap;
