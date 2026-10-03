@@ -473,6 +473,132 @@ describe('useQueuedAutosave recovery', () => {
     vi.useRealTimers();
   });
 
+  const signalHub = () => {
+    const listeners = new Set<() => void>();
+    return {
+      subscribe: (retry: () => void) => {
+        listeners.add(retry);
+        return () => {
+          listeners.delete(retry);
+        };
+      },
+      fire: () => {
+        for (const retry of [...listeners]) retry();
+      },
+    };
+  };
+
+  const deferredSaves = () => {
+    const settles: Array<
+      (
+        result:
+          | { ok: false; status: number }
+          | { ok: true; entity: { version: number } },
+      ) => void
+    > = [];
+    const performSave = vi.fn(
+      () =>
+        new Promise<
+          | { ok: true; entity: { version: number } }
+          | { ok: false; status: number }
+        >((resolve) => {
+          settles.push(resolve);
+        }),
+    );
+    return { performSave, settles };
+  };
+
+  test('a retry signal while the failing save is in flight retries promptly', async () => {
+    vi.useFakeTimers();
+    const hub = signalHub();
+    const { performSave, settles } = deferredSaves();
+    const { result } = renderEdited(performSave, hub.subscribe);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(performSave).toHaveBeenCalledTimes(1);
+
+    hub.fire();
+    await act(async () => {
+      settles[0]?.({ ok: false, status: 0 });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(performSave).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      settles[1]?.({ ok: true, entity: { version: 2 } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.saveState).toBe('saved');
+    vi.useRealTimers();
+  });
+
+  test('a retry signal after the failure but before the next render retries promptly', async () => {
+    vi.useFakeTimers();
+    const hub = signalHub();
+    const { performSave, settles } = deferredSaves();
+    renderEdited(performSave, hub.subscribe);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    await act(async () => {
+      settles[0]?.({ ok: false, status: 0 });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      hub.fire();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(performSave).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  test('a retry signal during a save that succeeds does not skip the next backoff', async () => {
+    vi.useFakeTimers();
+    const hub = signalHub();
+    const { performSave, settles } = deferredSaves();
+    const { result } = renderEdited(performSave, hub.subscribe);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    hub.fire();
+    await act(async () => {
+      settles[0]?.({ ok: true, entity: { version: 2 } });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.saveState).toBe('saved');
+
+    act(() => {
+      result.current.bumpEdit();
+      result.current.setDraft('more');
+      result.current.setDirty(true);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    await act(async () => {
+      settles[1]?.({ ok: false, status: 0 });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_999);
+    });
+    expect(performSave).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(performSave).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
+  });
+
   test('backs off and retries server errors on its own', async () => {
     vi.useFakeTimers();
     const performSave = vi

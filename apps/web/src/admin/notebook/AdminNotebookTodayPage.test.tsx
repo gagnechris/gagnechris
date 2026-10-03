@@ -29,6 +29,8 @@ const state = vi.hoisted(() => ({
   offline: false,
   /** Holds each PUT in flight this long before the server applies it. */
   putDelayMs: 0,
+  /** Holds each PUT in flight until it resolves; `offline` is read at send time. */
+  putGate: null as null | Promise<void>,
   puts: 0,
   note: null as null | {
     id: string;
@@ -151,7 +153,9 @@ vi.mock('../../api/client', () => ({
       },
     ) => {
       state.puts += 1;
-      if (state.offline) throw new TypeError('Failed to fetch');
+      const offlineAtSend = state.offline;
+      if (state.putGate) await state.putGate;
+      if (offlineAtSend) throw new TypeError('Failed to fetch');
       if (state.putDelayMs) {
         await new Promise((resolve) => setTimeout(resolve, state.putDelayMs));
       }
@@ -276,6 +280,7 @@ describe('AdminNotebookTodayPage', () => {
     state.others = {};
     state.offline = false;
     state.putDelayMs = 0;
+    state.putGate = null;
     state.puts = 0;
     localStorage.clear();
     // Pin "today" away from the dates under test; only Date is faked.
@@ -399,6 +404,35 @@ describe('AdminNotebookTodayPage', () => {
       { timeout: 1500 },
     );
     expect(screen.queryByText('Save failed (0).')).not.toBeInTheDocument();
+  });
+
+  test('retries promptly when the browser comes back online while the failing save is in flight', async () => {
+    const user = userEvent.setup();
+    state.offline = true;
+    let releasePut!: () => void;
+    state.putGate = new Promise((resolve) => {
+      releasePut = resolve;
+    });
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    await user.type(editor, 'offline words');
+
+    await waitFor(() => {
+      expect(state.puts).toBe(1);
+    });
+    state.offline = false;
+    state.putGate = null;
+    window.dispatchEvent(new Event('online'));
+    releasePut();
+
+    // Well before the first 2 s backoff retry, with no further edit.
+    await waitFor(
+      () => {
+        expect(state.note?.bodyMarkdown).toBe('offline words');
+      },
+      { timeout: 1500 },
+    );
+    expect(state.puts).toBe(2);
   });
 
   test('second tab on an empty daily note gets a recoverable conflict, not a stuck 400', async () => {
