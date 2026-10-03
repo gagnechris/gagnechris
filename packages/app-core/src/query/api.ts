@@ -276,14 +276,7 @@ export type NotesPage = {
   nextCursor?: string;
 };
 
-export type ListNotesQuery = {
-  area?: NotebookArea;
-  from?: string;
-  to?: string;
-  type?: NoteType;
-  cursor?: string;
-  limit?: number;
-};
+export type ListNotesQuery = components['schemas']['ListNotesQuery'];
 
 export const fetchNotesPage = async (
   client: ApiClient,
@@ -376,19 +369,12 @@ export type TasksPage = {
   nextCursor?: string;
 };
 
-export type ListTasksQuery = {
-  area?: NotebookArea;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  dueOn?: string;
-  dueBefore?: string;
-  noteId?: string;
-  /** Only todo + in_progress (ignored when `status` is set) — CHR-185. */
+/** `open` is a boolean here; {@link fetchTasksPage} sends the wire string. */
+export type ListTasksQuery = Omit<
+  components['schemas']['ListTasksQuery'],
+  'open'
+> & {
   open?: boolean;
-  /** Caller's local day for overdue ranking (CHR-185). */
-  today?: string;
-  cursor?: string;
-  limit?: number;
 };
 
 export const fetchTasksPage = async (

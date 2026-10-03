@@ -1,19 +1,6 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import type {
-  Home,
-  Note,
-  NotesPage,
-  Post,
-  PostsPage,
-  Resume,
-  Task,
-  TasksPage,
-} from './api.js';
+import type { Home, Note, Post, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
-
-type PostsListData = InfiniteData<PostsPage, string | undefined>;
-type NotesListData = InfiniteData<NotesPage, string | undefined>;
-type TasksListData = InfiniteData<TasksPage, string | undefined>;
 
 /** Keep the higher-version entity when a stale GET races a mutation (CHR-147). */
 export const preferNewerByVersion = <T extends { version: number }>(
@@ -107,32 +94,51 @@ const postMatches = (
   return true;
 };
 
+/** `seedUnfiltered` writes the unfiltered list even before its first fetch, so a create shows up immediately. */
+const upsertIntoListCaches = <T extends { id: string; version: number }>(
+  queryClient: QueryClient,
+  listKey: readonly unknown[],
+  entity: T,
+  {
+    removed,
+    matches,
+    seedUnfiltered = false,
+  }: {
+    removed: boolean;
+    matches: (entity: T, filters: Record<string, unknown>) => ListMatch;
+    seedUnfiltered?: boolean;
+  },
+): void => {
+  if (seedUnfiltered) {
+    queryClient.setQueryData<Paged<T>>(listKey, (prev) =>
+      upsertInPages(prev, entity, { removed, matches: matches(entity, {}) }),
+    );
+  }
+  for (const [key, data] of queryClient.getQueriesData<Paged<T>>({
+    queryKey: listKey,
+  })) {
+    if (seedUnfiltered && key.length === listKey.length) continue;
+    if (!isInfinite(data)) continue;
+    queryClient.setQueryData<Paged<T>>(
+      key,
+      upsertInPages(data, entity, {
+        removed,
+        matches: matches(entity, listFilters(key)),
+      }),
+    );
+  }
+};
+
 /** Write a post into detail + infinite list caches (create/save/publish/etc.). */
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
     preferNewerByVersion(prev, post),
   );
-  // The unfiltered list is seeded even before first fetch (create flow).
-  queryClient.setQueryData<PostsListData>(queryKeys.posts.list(), (prev) =>
-    upsertInPages(prev, post, {
-      removed: post.status === 'deleted',
-      matches: true,
-    }),
-  );
-  for (const [key, data] of queryClient.getQueriesData<PostsListData>({
-    queryKey: [...queryKeys.posts.all, 'list'],
-  })) {
-    if (key.length === queryKeys.posts.list().length || !isInfinite(data)) {
-      continue;
-    }
-    queryClient.setQueryData<PostsListData>(
-      key,
-      upsertInPages(data, post, {
-        removed: post.status === 'deleted',
-        matches: postMatches(post, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.posts.list(), post, {
+    removed: post.status === 'deleted',
+    matches: postMatches,
+    seedUnfiltered: true,
+  });
 };
 
 export const setCachedHome = (queryClient: QueryClient, home: Home): void => {
@@ -194,18 +200,10 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
     }
   }
   // Infinite notes lists only (not daily-dates Sets), filter-aware.
-  for (const [key, data] of queryClient.getQueriesData<NotesListData>({
-    queryKey: [...queryKeys.notes.all, 'list'],
-  })) {
-    if (!isInfinite(data)) continue;
-    queryClient.setQueryData<NotesListData>(
-      key,
-      upsertInPages(data, note, {
-        removed: note.deleted,
-        matches: noteMatches(note, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.notes.list(), note, {
+    removed: note.deleted,
+    matches: noteMatches,
+  });
 };
 
 const taskMatches = (
@@ -243,16 +241,8 @@ export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
   queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>
     preferNewerByVersion(prev, task),
   );
-  for (const [key, data] of queryClient.getQueriesData<TasksListData>({
-    queryKey: [...queryKeys.tasks.all, 'list'],
-  })) {
-    if (!isInfinite(data)) continue;
-    queryClient.setQueryData<TasksListData>(
-      key,
-      upsertInPages(data, task, {
-        removed: task.deleted,
-        matches: taskMatches(task, listFilters(key)),
-      }),
-    );
-  }
+  upsertIntoListCaches(queryClient, queryKeys.tasks.list(), task, {
+    removed: task.deleted,
+    matches: taskMatches,
+  });
 };

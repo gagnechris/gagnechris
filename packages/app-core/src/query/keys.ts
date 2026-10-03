@@ -1,7 +1,6 @@
-/**
- * Query-key factories for admin data (UI-free).
- * Room left for notes / tasks / today under the same `admin` prefix.
- */
+/** Query-key factories for admin data (UI-free). */
+import type { ListNotesQuery, ListTasksQuery } from './api.js';
+
 export const queryKeys = {
   posts: {
     all: ['admin', 'posts'] as const,
@@ -16,13 +15,7 @@ export const queryKeys = {
   resume: () => ['admin', 'resume'] as const,
   notes: {
     all: ['admin', 'notebook', 'notes'] as const,
-    list: (filters?: {
-      area?: 'work' | 'personal';
-      type?: 'daily' | 'page';
-      from?: string;
-      to?: string;
-      q?: string;
-    }) =>
+    list: (filters?: Omit<ListNotesQuery, 'cursor'> & { q?: string }) =>
       filters
         ? ([...queryKeys.notes.all, 'list', filters] as const)
         : ([...queryKeys.notes.all, 'list'] as const),
@@ -39,14 +32,7 @@ export const queryKeys = {
   },
   tasks: {
     all: ['admin', 'notebook', 'tasks'] as const,
-    list: (filters?: {
-      area?: 'work' | 'personal';
-      status?: 'todo' | 'in_progress' | 'done';
-      priority?: 'low' | 'med' | 'high';
-      dueOn?: string;
-      dueBefore?: string;
-      noteId?: string;
-    }) =>
+    list: (filters?: Omit<ListTasksQuery, 'cursor'>) =>
       filters
         ? ([...queryKeys.tasks.all, 'list', filters] as const)
         : ([...queryKeys.tasks.all, 'list'] as const),
