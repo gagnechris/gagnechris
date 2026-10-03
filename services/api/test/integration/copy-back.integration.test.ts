@@ -1,7 +1,7 @@
 import { DeleteCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createNotesRepository } from '../../src/notes/repository.js';
+import { NotesRepository } from '../../src/notes/repository.js';
 import {
   applyCopyBack,
   formatCopyBackPlan,
@@ -12,7 +12,7 @@ import {
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { SyncLedger } from '../../src/sync/ledger.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
-import { createTasksRepository } from '../../src/tasks/repository.js';
+import { TasksRepository } from '../../src/tasks/repository.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
@@ -74,8 +74,8 @@ describe('restore copy-back (DynamoDB Local)', () => {
   }
 
   async function seedAndDamage() {
-    const notes = createNotesRepository(doc, live, now);
-    const tasks = createTasksRepository(doc, live, now);
+    const notes = new NotesRepository(doc, live, now);
+    const tasks = new TasksRepository(doc, live, now);
     const page = (id: string, title: string, userId = OWNER) =>
       notes.createFromRequest(userId, {
         id,

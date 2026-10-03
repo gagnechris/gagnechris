@@ -6,7 +6,7 @@ import { registerProductionSyncAdapters } from '../src/sync/adapters.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { createSyncRoutes } from '../src/sync/handlers.js';
 import { SyncLedger } from '../src/sync/ledger.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
 
 const TABLE = 'gagnechris-notes-test';
@@ -41,7 +41,7 @@ describe('notes handlers', () => {
 
   it('creates, gets, updates with If-Match ETag, and lists by area', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createNotesRepository(doc, TABLE);
+    const repo = new NotesRepository(doc, TABLE);
     const routes = createNoteRoutes(repo);
 
     const created = await dispatchRoutes(
@@ -118,7 +118,7 @@ describe('notes handlers', () => {
 
   it('daily GET returns empty draft; PUT creates; create race loser gets daily_taken', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createNotesRepository(
+    const repo = new NotesRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
@@ -173,7 +173,7 @@ describe('notes handlers', () => {
 
   it('cross-user GET is 404; soft-delete appears on sync feed as note', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createNotesRepository(
+    const repo = new NotesRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',

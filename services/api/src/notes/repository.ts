@@ -1,3 +1,6 @@
+/**
+ * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
+ */
 import {
   DeleteCommand,
   GetCommand,
@@ -28,9 +31,11 @@ import { BadRequestError } from '../data/errors.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
-  OwnerScopedVersionedEntityRepository,
+  VersionedRepository,
+  ownerScoped,
+  type OwnerKey,
   type UniqueClaimHook,
-} from '../data/owner-scoped-versioned-entity-repository.js';
+} from '../data/versioned-repository.js';
 import { hashCreateFields } from '../data/create-hash.js';
 
 export const NOTE_CHANGE_TYPE = 'note';
@@ -200,10 +205,7 @@ function isConditionalCheckFailed(error: unknown): boolean {
 }
 
 export class NotesRepository {
-  private readonly base: OwnerScopedVersionedEntityRepository<
-    Note,
-    NoteMetaItem
-  >;
+  private readonly base: VersionedRepository<Note, NoteMetaItem, OwnerKey>;
 
   private readonly nowIso: () => string;
 
@@ -213,12 +215,14 @@ export class NotesRepository {
     nowIso?: () => string,
   ) {
     this.nowIso = nowIso ?? (() => new Date().toISOString());
-    this.base = new OwnerScopedVersionedEntityRepository<Note, NoteMetaItem>(
+    this.base = new VersionedRepository<Note, NoteMetaItem, OwnerKey>(
       {
         conflictLabel: 'note',
-        keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
-        idOf: (n) => n.id,
-        userIdOf: (n) => n.userId,
+        scope: ownerScoped({
+          keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
+          idOf: (n) => n.id,
+          userIdOf: (n) => n.userId,
+        }),
         toEntity: (item) => metaToNote(parseNoteMetaItem(item)),
         toItem: buildNoteMetaItem,
         isDeleted: (n) => n.deleted,
@@ -240,46 +244,31 @@ export class NotesRepository {
   }
 
   get(userId: string, id: string): Promise<Note | undefined> {
-    return this.base.get(userId, id);
+    return this.base.get({ userId, id });
   }
 
   getOrThrow(userId: string, id: string): Promise<Note> {
-    return this.base.getOrThrow(userId, id);
+    return this.base.getOrThrow({ userId, id });
   }
 
   createIdempotent(note: Note): Promise<Note> {
     return this.base.createIdempotent(note);
   }
 
-  updateIfVersion(
-    userId: string,
-    id: string,
-    expectedVersion: number,
-    next: Note,
-  ): Promise<Note> {
-    return this.base.updateIfVersion(userId, id, expectedVersion, next);
-  }
-
-  softDelete(
-    userId: string,
-    id: string,
-    expectedVersion: number,
-    tombstone: Note,
-  ): Promise<Note> {
-    return this.base.softDelete(userId, id, expectedVersion, tombstone);
-  }
-
-  /** Tombstone built from a consistent read. */
   deleteIfVersion(
     userId: string,
     id: string,
     expected: number | 'any',
   ): Promise<Note> {
-    return this.base.softDeleteIfVersion(userId, id, expected, (n, now) => ({
-      ...n,
-      updatedAt: now,
-      deleted: true,
-    }));
+    return this.base.softDeleteIfVersion(
+      { userId, id },
+      expected,
+      (n, now) => ({
+        ...n,
+        updatedAt: now,
+        deleted: true,
+      }),
+    );
   }
 
   async createFromRequest(
@@ -305,36 +294,39 @@ export class NotesRepository {
     return this.createIdempotent(note);
   }
 
-  /** Applies `body` to a consistent read so a stale replica can never revert content or reuse a version. */
   async updateFromRequest(
     userId: string,
     id: string,
     expected: number | 'any',
     body: Omit<UpdateNoteRequest, 'version'>,
   ): Promise<Note> {
-    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => {
-      // The (area, date) claim is what makes a daily note unique; moving it
-      // to another area would leave two dailies for one day.
-      if (
-        existing.type === 'daily' &&
-        body.area !== undefined &&
-        body.area !== existing.area
-      ) {
-        throw new BadRequestError("A daily note's area cannot change", {
-          area: 'immutable',
-        });
-      }
-      return {
-        ...existing,
-        title: body.title ?? existing.title,
-        bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
-        tags:
-          body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
-        pinned: body.pinned ?? existing.pinned,
-        area: body.area ?? existing.area,
-        updatedAt: now,
-      };
-    });
+    return this.base.mutateIfVersion(
+      { userId, id },
+      expected,
+      (existing, now) => {
+        // The (area, date) claim is what makes a daily note unique; moving it
+        // to another area would leave two dailies for one day.
+        if (
+          existing.type === 'daily' &&
+          body.area !== undefined &&
+          body.area !== existing.area
+        ) {
+          throw new BadRequestError("A daily note's area cannot change", {
+            area: 'immutable',
+          });
+        }
+        return {
+          ...existing,
+          title: body.title ?? existing.title,
+          bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
+          tags:
+            body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+          pinned: body.pinned ?? existing.pinned,
+          area: body.area ?? existing.area,
+          updatedAt: now,
+        };
+      },
+    );
   }
 
   async list(
@@ -349,7 +341,6 @@ export class NotesRepository {
       return this.listArea(userId, areas[0]!, query);
     }
 
-    // Composite cursor so nothing is dropped past the first page.
     return walkPartitions(
       areas,
       query.cursor,
@@ -425,11 +416,13 @@ export class NotesRepository {
     const noteId =
       typeof claim.Item?.noteId === 'string' ? claim.Item.noteId : undefined;
     const held = noteId
-      ? await this.base.getIncludingDeleted(userId, noteId, {
-          consistentRead: true,
-        })
+      ? await this.base.getIncludingDeleted(
+          { userId, id: noteId },
+          {
+            consistentRead: true,
+          },
+        )
       : undefined;
-    // A claim left behind by a deleted note reads as free.
     if (!held || held.deleted) {
       return {
         exists: false,
@@ -488,12 +481,4 @@ let defaultNotesRepo: NotesRepository | undefined;
 export function notesRepository(): NotesRepository {
   defaultNotesRepo ??= new NotesRepository();
   return defaultNotesRepo;
-}
-
-export function createNotesRepository(
-  doc: DynamoDBDocumentClient,
-  tableName: string,
-  nowIso?: () => string,
-): NotesRepository {
-  return new NotesRepository(doc, tableName, nowIso);
 }

@@ -3,9 +3,9 @@ import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
 import { dispatchRoutes } from '../src/router.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
-import { createTasksRepository } from '../src/tasks/repository.js';
+import { TasksRepository } from '../src/tasks/repository.js';
 import { createTaskRoutes } from '../src/tasks/handlers.js';
 import { createSearchRoutes } from '../src/search/handlers.js';
 import { rankTextFields } from '../src/search/match.js';
@@ -46,12 +46,12 @@ describe('search handlers', () => {
 
   it('returns grouped note and task hits for q', async () => {
     const { doc } = createMemoryDoc();
-    const notes = createNotesRepository(
+    const notes = new NotesRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
-    const tasks = createTasksRepository(
+    const tasks = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
