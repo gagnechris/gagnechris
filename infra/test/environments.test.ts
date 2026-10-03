@@ -494,7 +494,7 @@ describe('AuthStack', () => {
     });
     template.hasResourceProperties(
       'AWS::Cognito::UserPoolUserToGroupAttachment',
-      { GroupName: 'admin', Username: config.adminUsername },
+      { GroupName: { Ref: 'AdminGroup' }, Username: config.adminUsername },
     );
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/cognito-dev-client-id',

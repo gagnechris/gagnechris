@@ -176,16 +176,12 @@ export class AuthStack extends Stack {
       groupName: ADMIN_GROUP,
       description: 'Site owner: CMS and Notebook access',
     });
-    const adminMembership = new CfnUserPoolUserToGroupAttachment(
-      this,
-      'AdminGroupMembership',
-      {
-        userPoolId: this.userPool.userPoolId,
-        groupName: ADMIN_GROUP,
-        username: config.adminUsername,
-      },
-    );
-    adminMembership.addDependency(adminGroup);
+    new CfnUserPoolUserToGroupAttachment(this, 'AdminGroupMembership', {
+      userPoolId: this.userPool.userPoolId,
+      // Ref is the group name; it also orders the attachment after the group.
+      groupName: adminGroup.ref,
+      username: config.adminUsername,
+    });
 
     this.domain = this.userPool.addDomain('CustomDomain', {
       customDomain: {
