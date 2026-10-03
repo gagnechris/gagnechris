@@ -40,13 +40,13 @@ describe('BlogIndex', () => {
 
     expect(
       await screen.findByRole('link', { name: /Hello World/ }),
-    ).toHaveAttribute('href', '/blog/hello');
+    ).toHaveAttribute('href', '/writing/hello');
     expect(screen.getByText('An excerpt')).toBeInTheDocument();
     const time = screen.getByText('February 1, 2026');
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(fetch).toHaveBeenCalledWith(
-      '/blog/posts.json',
+      '/writing/posts.json',
       expect.objectContaining({ headers: { Accept: 'application/json' } }),
     );
   });
@@ -68,7 +68,7 @@ describe('BlogIndex', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No blog posts yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/No posts yet/i)).toBeInTheDocument();
     });
   });
 });

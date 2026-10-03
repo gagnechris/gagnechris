@@ -30,7 +30,7 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 | Static publisher origin                    | `4177`         |
 | Vite (`VITE_AUTH_MODE=local`)              | `5173`         |
 
-Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/blog` / `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
+Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
 
 **Admin PWA (CHR-48):** production `/spa.html` (CloudFront `/admin/*`) ships `manifest.json` + `/icons/*` for iPhone Add to Home Screen (`display: standalone`, start at `/admin/notebook`). Vite serves the same files from `apps/web/public/` in local dev; offline caching is optional and not enabled yet.
 
@@ -77,7 +77,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `VITE_API_BASE_URL`          | Optional; default same-origin                                       |
 | `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                  |
 | `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)          |
-| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` + `/blog`           |
+| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/writing` posts)  |
 | `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds** |
 
 ### Local stack (`scripts/local/env.sh`)
@@ -124,9 +124,9 @@ GitHub Actions API integration uses Compose project `gagnechris-ci` on host port
 
 Ensure `npm run local:dev` (or export `VITE_AUTH_MODE=local`). A plain `npm run dev` without local env will expect real Cognito config.
 
-### Publish succeeds but `/blog/<slug>` looks stale
+### Publish succeeds but `/writing/<slug>` looks stale
 
-Locally, confirm the static origin on `:4177` was rebuilt (API wrapper triggers publisher). Hard-refresh Vite; blog HTML is loaded from `/__site/...`, not only the SPA bundle.
+Locally, confirm the static origin on `:4177` was rebuilt (API wrapper triggers publisher). Hard-refresh Vite; post HTML is loaded from `/__site/...`, not only the SPA bundle.
 
 ### Accidentally pointed at prod
 

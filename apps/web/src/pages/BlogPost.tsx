@@ -55,7 +55,7 @@ function BlogPost() {
   useEffect(() => {
     const loadPost = async () => {
       if (!slug?.trim()) {
-        setError('Blog post not found');
+        setError('Post not found');
         setLoading(false);
         return;
       }
@@ -70,10 +70,10 @@ function BlogPost() {
           return;
         }
 
-        setError('Blog post not found');
+        setError('Post not found');
         setPost(null);
       } catch (err) {
-        setError('Error loading blog post');
+        setError('Error loading post');
         setPost(null);
         console.error('Error details:', err);
       } finally {
@@ -88,10 +88,10 @@ function BlogPost() {
     return (
       <div className="blog-post">
         <header>
-          <Link to="/blog" className="back-link">
-            ← Back to Blog
+          <Link to="/writing" className="back-link">
+            ← Back to Writing
           </Link>
-          <PublicNav current="/blog" />
+          <PublicNav current="/writing" />
         </header>
         <main>
           <p>Loading post...</p>
@@ -110,7 +110,7 @@ function BlogPost() {
   return (
     <div className="blog-post">
       <title>{`${post.title} - Chris Gagne`}</title>
-      <link rel="canonical" href={`https://gagnechris.com/blog/${slug}`} />
+      <link rel="canonical" href={`https://gagnechris.com/writing/${slug}`} />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -118,10 +118,10 @@ function BlogPost() {
         href="/rss.xml"
       />
       <header>
-        <Link to="/blog" className="back-link">
-          ← Back to Blog
+        <Link to="/writing" className="back-link">
+          ← Back to Writing
         </Link>
-        <PublicNav current="/blog" />
+        <PublicNav current="/writing" />
       </header>
       <article>
         <h1>{post.title}</h1>
@@ -136,8 +136,8 @@ function BlogPost() {
         />
       </article>
       <footer>
-        <Link to="/blog" className="back-link-footer">
-          ← Back to Blog
+        <Link to="/writing" className="back-link-footer">
+          ← Back to Writing
         </Link>
       </footer>
     </div>

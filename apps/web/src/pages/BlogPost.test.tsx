@@ -28,9 +28,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/cms-post']}>
+      <MemoryRouter initialEntries={['/writing/cms-post']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<BlogPost />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -44,7 +44,7 @@ describe('BlogPost', () => {
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(document.title).toBe('CMS Title - Chris Gagne');
     expect(fetch).toHaveBeenCalledWith(
-      '/blog/cms-post/',
+      '/writing/cms-post/',
       expect.objectContaining({ headers: { Accept: 'text/html' } }),
     );
   });
@@ -68,9 +68,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/welcome']}>
+      <MemoryRouter initialEntries={['/writing/welcome']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<BlogPost />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -91,9 +91,9 @@ describe('BlogPost', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/missing']}>
+      <MemoryRouter initialEntries={['/writing/missing']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<BlogPost />} />
         </Routes>
       </MemoryRouter>,
     );

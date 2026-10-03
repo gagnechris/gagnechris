@@ -43,7 +43,7 @@ function BlogIndex() {
   if (loading) {
     return (
       <div className="blog-index">
-        <title>Blog - Chris Gagne</title>
+        <title>Writing - Chris Gagne</title>
         <link
           rel="alternate"
           type="application/rss+xml"
@@ -51,8 +51,8 @@ function BlogIndex() {
           href="/rss.xml"
         />
         <header>
-          <h1>Blog</h1>
-          <PublicNav current="/blog" />
+          <h1>Writing</h1>
+          <PublicNav current="/writing" />
         </header>
         <main>
           <p>Loading posts...</p>
@@ -63,8 +63,8 @@ function BlogIndex() {
 
   return (
     <div className="blog-index">
-      <title>Blog - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/blog" />
+      <title>Writing - Chris Gagne</title>
+      <link rel="canonical" href="https://gagnechris.com/writing" />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -72,13 +72,13 @@ function BlogIndex() {
         href="/rss.xml"
       />
       <header>
-        <h1>Blog</h1>
-        <PublicNav current="/blog" />
+        <h1>Writing</h1>
+        <PublicNav current="/writing" />
       </header>
       <main>
         {error ? <p>{error}</p> : null}
         {!error && posts.length === 0 ? (
-          <p>No blog posts yet. Check back soon!</p>
+          <p>No posts yet. Check back soon!</p>
         ) : null}
         {posts.length > 0 ? (
           <div className="posts-list">
@@ -88,7 +88,7 @@ function BlogIndex() {
               return (
                 <article key={post.id || post.slug} className="post-preview">
                   <Link
-                    to={`/blog/${post.slug}`}
+                    to={`/writing/${post.slug}`}
                     className="post-preview__link"
                   >
                     <h2>{post.title}</h2>

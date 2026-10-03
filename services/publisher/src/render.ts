@@ -37,7 +37,17 @@ const injectPrerender = (shellHtml: string, body: string): string => {
     : shellHtml.replace(ROOT_EMPTY_RE, () => root);
 };
 
+/** Public posts path; S3 keys stay under `blog/` (CHR-206). */
+export const POSTS_PATH = '/writing';
+
 export const postCanonicalUrl = (slug: string): string =>
+  `https://${APEX}${POSTS_PATH}/${slug}`;
+
+/**
+ * Pre-CHR-206 post URL. RSS guids keep it so feed readers don't re-list every
+ * post as new; CloudFront 301s it to the canonical URL.
+ */
+export const legacyPostUrl = (slug: string): string =>
   `https://${APEX}/blog/${slug}`;
 
 export const resolveOgImage = (post: Post): string => {
@@ -108,18 +118,18 @@ export const renderBlogIndexPage = (
   shellHtml: string,
   posts: Post[],
 ): string => {
-  const title = 'Blog - Chris Gagne';
-  const description = 'Posts by Chris Gagne.';
-  const url = `https://${APEX}/blog`;
+  const title = 'Writing - Chris Gagne';
+  const description = 'Writing by Chris Gagne.';
+  const url = `https://${APEX}${POSTS_PATH}`;
   const list = posts
     .map(
       (p) =>
-        `<li><a href="/blog/${escapeHtml(p.slug)}">${escapeHtml(p.title)}</a></li>`,
+        `<li><a href="${POSTS_PATH}/${escapeHtml(p.slug)}">${escapeHtml(p.title)}</a></li>`,
     )
     .join('\n');
   const body = `
 <section class="blog-index-prerender">
-  <h1>Blog</h1>
+  <h1>Writing</h1>
   <ul>${list || '<li>No published posts yet.</li>'}</ul>
 </section>`.trim();
 
@@ -206,12 +216,12 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
 export const buildSitemapXml = (
   posts: Post[],
   /**
-   * Extra blog slugs to keep in the sitemap when their PUBLISHED rows are
+   * Extra post slugs to keep in the sitemap when their PUBLISHED rows are
    * corrupt (CHR-167). HTML is preserved; the slug must stay discoverable.
    */
   extraSlugs: readonly string[] = [],
 ): string => {
-  const staticPaths = ['/', '/blog', '/resume', '/contact'];
+  const staticPaths = ['/', POSTS_PATH, '/resume', '/contact'];
   const seen = new Set(posts.map((p) => p.slug));
   const urls = [
     ...staticPaths.map((path) => ({
@@ -245,9 +255,9 @@ export const buildRssXml = (posts: Post[]): string => {
       const pub = p.publishedAt
         ? `<pubDate>${new Date(p.publishedAt).toUTCString()}</pubDate>`
         : '';
-      return `<item><title>${escapeHtml(p.title)}</title><link>${link}</link><guid>${link}</guid><description>${escapeHtml(p.excerpt || p.title)}</description>${pub}</item>`;
+      return `<item><title>${escapeHtml(p.title)}</title><link>${link}</link><guid>${legacyPostUrl(p.slug)}</guid><description>${escapeHtml(p.excerpt || p.title)}</description>${pub}</item>`;
     })
     .join('');
   const self = `https://${APEX}/rss.xml`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://${APEX}/blog</link><atom:link href="${self}" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description>${items}</channel></rss>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://${APEX}${POSTS_PATH}</link><atom:link href="${self}" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description>${items}</channel></rss>\n`;
 };

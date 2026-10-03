@@ -181,7 +181,7 @@ export const NOT_FOUND_PRERENDER = `<!--prerender:start--><div class="not-found"
     <p class="not-found-bear">Lost in the woods? <a href="/dont-feed-the-bears?from=404">Don't feed the bears</a> while you find your way.</p>
     <ul class="not-found-links">
       <li><a href="/">Home</a></li>
-      <li><a href="/blog">Blog</a></li>
+      <li><a href="/writing">Writing</a></li>
       <li><a href="/resume">Resume</a></li>
       <li><a href="/contact">Contact</a></li>
     </ul>

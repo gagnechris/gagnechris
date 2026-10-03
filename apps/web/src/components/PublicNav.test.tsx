@@ -14,9 +14,9 @@ describe('PublicNav', () => {
       'href',
       '/',
     );
-    expect(screen.getByRole('link', { name: 'Blog' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute(
       'href',
-      '/blog',
+      '/writing',
     );
     expect(screen.getByRole('link', { name: 'Resume' })).toHaveAttribute(
       'href',
@@ -29,9 +29,9 @@ describe('PublicNav', () => {
   });
 
   test('marks the current page', () => {
-    renderWithProviders(<PublicNav current="/blog" />);
+    renderWithProviders(<PublicNav current="/writing" />);
 
-    expect(screen.getByRole('link', { name: 'Blog' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute(
       'aria-current',
       'page',
     );

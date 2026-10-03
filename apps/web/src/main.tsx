@@ -12,6 +12,7 @@ import BlogIndex from './pages/BlogIndex.tsx';
 import BlogPost from './pages/BlogPost.tsx';
 import Contact from './pages/Contact.tsx';
 import NotFound from './pages/NotFound.tsx';
+import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
 import AppWithTracking from './components/AppWithTracking.tsx';
 import { LazyFallback } from './components/LazyFallback.tsx';
 import { lazyRoute } from './routing/lazyRoute';
@@ -35,12 +36,21 @@ const router = createBrowserRouter(
           element: <Resume />,
         },
         {
-          path: 'blog',
+          path: 'writing',
           element: <BlogIndex />,
         },
         {
-          path: 'blog/:slug',
+          path: 'writing/:slug',
           element: <BlogPost />,
+        },
+        // CloudFront 301s /blog in prod; this covers local dev (CHR-206).
+        {
+          path: 'blog',
+          element: <Navigate to="/writing" replace />,
+        },
+        {
+          path: 'blog/:slug',
+          element: <LegacyPostRedirect />,
         },
         {
           path: 'contact',

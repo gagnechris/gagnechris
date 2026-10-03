@@ -126,11 +126,18 @@ PUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish" \
 node -e "const p=JSON.parse(process.argv[1]); if(p.status!=='published'){console.error(p);process.exit(1)}" "${PUBLISH}"
 
 echo "==> Assert prerendered HTML + OG"
-HTML="$(curl -sS "${SITE}/blog/${SLUG}")"
+HTML="$(curl -sS "${SITE}/writing/${SLUG}")"
 echo "${HTML}" | grep -q 'Local E2E Post'
 echo "${HTML}" | grep -q 'property="og:title"'
 echo "${HTML}" | grep -q 'class="blog-post-prerender"'
 echo "${HTML}" | grep -q 'Local body'
+
+echo "==> Legacy /blog URL 301s to /writing (CHR-206)"
+LEGACY_LOCATION="$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "${SITE}/blog/${SLUG}")"
+if [[ "${LEGACY_LOCATION}" != "301 ${SITE}/writing/${SLUG}" ]]; then
+  echo "Expected 301 to /writing/${SLUG}, got ${LEGACY_LOCATION}" >&2
+  exit 1
+fi
 
 echo "==> Seed home as draft, publish, assert prerender (CHR-96)"
 HOME_JSON="$(curl -sS "${API}/api/admin/home")"
@@ -146,9 +153,9 @@ echo "${HOME_HTML}" | grep -q 'About Me'
 echo "${HOME_HTML}" | grep -q '<script type="module"'
 
 echo "==> Home prerender must not leak into other pages"
-POST_HTML="$(curl -sS "${SITE}/blog/${SLUG}")"
+POST_HTML="$(curl -sS "${SITE}/writing/${SLUG}")"
 if echo "${POST_HTML}" | grep -q 'home-page-prerender'; then
-  echo "Home prerender leaked into /blog/${SLUG}" >&2
+  echo "Home prerender leaked into /writing/${SLUG}" >&2
   exit 1
 fi
 echo "${POST_HTML}" | grep -q 'class="blog-post-prerender"'
@@ -160,7 +167,7 @@ UPDATED="$(curl -sS -X PUT "${API}/api/admin/posts/${POST_ID}" \
   -d "{\"version\":${VERSION},\"title\":\"Local E2E Updated\"}")"
 node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||!p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${UPDATED}"
 
-HTML2="$(curl -sS "${SITE}/blog/${SLUG}")"
+HTML2="$(curl -sS "${SITE}/writing/${SLUG}")"
 echo "${HTML2}" | grep -q 'Local E2E Post'
 if echo "${HTML2}" | grep -q 'Local E2E Updated'; then
   echo "Draft edit unexpectedly went live before publish" >&2
@@ -173,11 +180,11 @@ REPUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${VERSION}}")"
 node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${REPUBLISH}"
-HTML3="$(curl -sS "${SITE}/blog/${SLUG}")"
+HTML3="$(curl -sS "${SITE}/writing/${SLUG}")"
 echo "${HTML3}" | grep -q 'Local E2E Updated'
 
 echo "==> Orphan cleanup"
-ORPHAN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/blog/orphan-e2e")"
+ORPHAN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/writing/orphan-e2e")"
 if [[ "${ORPHAN_CODE}" != "404" ]]; then
   echo "Expected orphan-e2e to be removed (404), got ${ORPHAN_CODE}" >&2
   exit 1
@@ -188,9 +195,9 @@ VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${REPUBLI
 curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/unpublish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${VERSION}}" >/dev/null
-GONE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/blog/${SLUG}")"
+GONE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/writing/${SLUG}")"
 if [[ "${GONE}" != "404" ]]; then
-  echo "Expected /blog/${SLUG} 404 after unpublish, got ${GONE}" >&2
+  echo "Expected /writing/${SLUG} 404 after unpublish, got ${GONE}" >&2
   exit 1
 fi
 

@@ -69,7 +69,7 @@ export function sitemapPlugin(): Plugin {
           priority: '0.8',
         },
         {
-          loc: `${SITE_URL}/blog`,
+          loc: `${SITE_URL}/writing`,
           lastmod: today,
           changefreq: 'weekly',
           priority: '0.9',

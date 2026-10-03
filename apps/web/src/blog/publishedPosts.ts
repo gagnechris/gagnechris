@@ -1,4 +1,7 @@
-/** Client loader for publisher-generated `/blog/posts.json` (Option B). */
+/**
+ * Client loader for publisher-generated `/writing/posts.json` (Option B).
+ * CloudFront serves `/writing/*` from the `blog/` S3 prefix (CHR-206).
+ */
 
 export type PublishedPostListItem = {
   id: string;
@@ -18,12 +21,12 @@ type PostsJson = {
 /** Local Vite uses `/__site` → static origin; prod is same-origin. */
 export function publishedPostsUrl(): string {
   const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  return localSite ? '/__site/blog/posts.json' : '/blog/posts.json';
+  return localSite ? '/__site/writing/posts.json' : '/writing/posts.json';
 }
 
 export function publishedPostPageUrl(slug: string): string {
   const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  const path = `/blog/${slug}/`;
+  const path = `/writing/${slug}/`;
   return localSite ? `/__site${path}` : path;
 }
 

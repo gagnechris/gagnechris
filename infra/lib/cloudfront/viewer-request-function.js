@@ -2,10 +2,14 @@
  * CloudFront Function (cloudfront-js-2.0) - viewer-request.
  * - www -> apex 301 (preserves query string)
  * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
+ * - Legacy /blog and /blog/* -> /writing equivalent 301 (CHR-206)
+ * - Public /writing and /writing/* -> /blog storage prefix in S3 (CHR-206);
+ *   the publisher still writes blog/<slug>/index.html, posts.json, slugs.json
  * - Skip rewrite for /api/*, /media/*, and /.well-known/* (AASA / webauthn; CHR-177)
  * - Option B prefixes (generated from publisher targets + Vite static pages)
  *   -> {path}/index.html (CHR-179)
- * - /blog/<slug> -> Option B only when slug is in the associated KeyValueStore
+ * - /blog/<slug> (after the /writing rewrite) -> Option B only when slug is
+ *   in the associated KeyValueStore
  *   (CHR-115); unknown slugs -> /404.html (avoids raw S3 XML)
  * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
  * - Other extensionless paths -> /404.html (NotFound, not Home)
@@ -40,6 +44,10 @@ var OPTION_B_PREFIXES = [
   '/resume',
 ];
 /* PUBLISH_SURFACE_END */
+
+/** Public URL prefix for posts; S3 keys stay under the storage prefix (CHR-206). */
+var PUBLIC_POSTS_PREFIX = '/writing';
+var STORAGE_POSTS_PREFIX = '/blog';
 
 /** Pre-CMS resume PDF object name (spaces may arrive encoded or decoded). */
 var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
@@ -76,6 +84,33 @@ async function handler(event) {
         },
       },
     };
+  }
+
+  var legacyPostsUri = swapPathPrefix(
+    uri,
+    STORAGE_POSTS_PREFIX,
+    PUBLIC_POSTS_PREFIX,
+  );
+  if (legacyPostsUri !== null) {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        location: {
+          value: legacyPostsUri + serializeQueryString(request.querystring),
+        },
+      },
+    };
+  }
+
+  var storagePostsUri = swapPathPrefix(
+    uri,
+    PUBLIC_POSTS_PREFIX,
+    STORAGE_POSTS_PREFIX,
+  );
+  if (storagePostsUri !== null) {
+    uri = storagePostsUri;
+    request.uri = uri;
   }
 
   if (
@@ -143,6 +178,14 @@ async function handler(event) {
   }
 
   return request;
+}
+
+/** `from` or `from/...` -> same path under `to`; otherwise null. */
+function swapPathPrefix(uri, from, to) {
+  if (uri === from || uri.indexOf(from + '/') === 0) {
+    return to + uri.substring(from.length);
+  }
+  return null;
 }
 
 function isSpaShellPath(uri) {
