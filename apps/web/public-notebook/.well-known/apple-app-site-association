@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["APPLE_TEAM_ID.com.gagnechris.mobile"],
+        "components": [
+          { "/": "/auth/*", "exclude": true },
+          { "/": "/today" },
+          { "/": "/notes/*" },
+          { "/": "/tasks/*" }
+        ]
+      }
+    ]
+  }
+}

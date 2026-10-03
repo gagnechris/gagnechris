@@ -5,12 +5,9 @@ import type { Plugin } from 'vite';
 import {
   STATIC_PAGE_META,
   applyNotFoundPageMeta,
-  applySpaShellMeta,
   applyStaticPageMeta,
   outputRelativePath,
-  removeAnalytics,
 } from './staticPageMeta.ts';
-import { isPrivatePath } from '../src/utils/privatePaths.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -22,7 +19,7 @@ export function staticPagesPlugin(): Plugin {
   return {
     name: 'static-page-meta',
     apply: 'build',
-    closeBundle() {
+    writeBundle() {
       const shellPath = path.join(appRoot, 'dist/index.html');
       if (!fs.existsSync(shellPath)) {
         throw new Error(
@@ -34,11 +31,8 @@ export function staticPagesPlugin(): Plugin {
       // Publisher reads this only; keep the raw Vite shell before home meta.
       fs.writeFileSync(path.join(appRoot, 'dist/_shell.html'), shell);
 
-      // Capture spa/404 shells before home meta is applied.
-      fs.writeFileSync(
-        path.join(appRoot, 'dist/spa.html'),
-        applySpaShellMeta(shell),
-      );
+      // No spa.html: the apex keeps serving the last one the deploy left in S3
+      // for /admin* and /auth*, and the deploy refuses to overwrite it.
       fs.writeFileSync(
         path.join(appRoot, 'dist/404.html'),
         applyNotFoundPageMeta(shell),
@@ -51,21 +45,6 @@ export function staticPagesPlugin(): Plugin {
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, html);
       }
-    },
-  };
-}
-
-/**
- * Dev server parity with CloudFront: /admin and /auth get the shell without
- * GA4, like prod's /spa.html.
- */
-export function devSpaShellPlugin(): Plugin {
-  return {
-    name: 'dev-spa-shell',
-    apply: 'serve',
-    transformIndexHtml(html, ctx) {
-      const url = ctx.originalUrl ?? ctx.path;
-      return isPrivatePath(url) ? removeAnalytics(html) : html;
     },
   };
 }

@@ -1,0 +1,67 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
+const { signOut, signInWithRedirect } = vi.hoisted(() => ({
+  signOut: vi.fn(async () => undefined),
+  signInWithRedirect: vi.fn(async () => undefined),
+}));
+
+vi.mock('aws-amplify/auth', () => ({
+  fetchAuthSession: vi.fn(),
+  getCurrentUser: vi.fn(),
+  signInWithRedirect,
+  signOut,
+}));
+vi.mock('./config', () => ({ ensureAmplifyConfigured: vi.fn() }));
+
+import {
+  RETURN_TO_KEY,
+  redirectToSignIn,
+  safeReturnTo,
+  signOutUser,
+  takeReturnTo,
+} from './session';
+
+describe('Cognito session', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('VITE_AUTH_MODE', '');
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    window.history.replaceState(null, '', '/');
+  });
+
+  test("signs out of this app only, so the other app's session survives", async () => {
+    await signOutUser();
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledWith();
+  });
+
+  test('remembers the deep link before leaving for managed login', async () => {
+    window.history.replaceState(null, '', '/notes/01J9ZX?area=work#top');
+    await redirectToSignIn();
+    expect(signInWithRedirect).toHaveBeenCalledTimes(1);
+    expect(window.sessionStorage.getItem(RETURN_TO_KEY)).toBe(
+      '/notes/01J9ZX?area=work#top',
+    );
+    expect(takeReturnTo()).toBe('/notes/01J9ZX?area=work#top');
+    expect(takeReturnTo()).toBe('/');
+  });
+
+  test.each([
+    [null, '/'],
+    ['', '/'],
+    ['https://evil.example/x', '/'],
+    ['//evil.example/x', '/'],
+    ['/\\evil.example', '/'],
+    ['/auth/callback?code=x', '/'],
+    ['/auth', '/'],
+    ['/today', '/today'],
+    ['/posts/01J9ZX', '/posts/01J9ZX'],
+    ['/authors', '/authors'],
+  ])('safeReturnTo(%s) is %s', (value, expected) => {
+    expect(safeReturnTo(value)).toBe(expected);
+  });
+});

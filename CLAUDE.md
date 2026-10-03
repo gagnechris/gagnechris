@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 npm workspaces. Root scripts delegate across workspaces (see Commands).
 
-- `apps/web` — React/Vite site + admin
+- `apps/web` — React/Vite: public site (`gagnechris.com`), admin (`admin.`) and Notebook (`notebook.`) apps; three Vite targets via `WEB_APP`
 - `services/api` — Lambda HTTP API
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 - `services/restore-test` — AWS Backup restore-test validator + leftover restore-table check
@@ -23,20 +23,21 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 
 ## Commands
 
-- Build: `npm run build` (`tsc -b` then Vite in `apps/web`)
+- Build: `npm run build` (`tsc -b`, then the public, admin and Notebook Vite builds → `apps/web/dist`, `dist-admin`, `dist-notebook`; the public build fails if it bundles admin, Notebook or auth code)
+- Web shell guard: `npm run check:web-shells` (after build: GA only in the public shell, no inline or third-party script in the app shells)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
 - Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
-- Dev (Vite only): `npm run dev` (API proxied to local by default)
+- Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
-- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + Vite; fake auth)
-- Preview: `npm run preview` (production build locally)
+- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth)
+- Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates CloudFront Option B prefixes + local publish-relevance routes from publisher targets; fails on diff)
 - Local E2E: `npm run e2e:local` (curl smoke)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
-- Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
+- Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync is dry-run first and `check:legacy-admin-plan` refuses it if it would break the frozen legacy `/admin` shell)
 - CI: lint/typecheck/test/build/synth; the **Local E2E smoke (CHR-82)** job runs `e2e:local` then `e2e:browser` (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift. Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke (CHR-82)**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)

@@ -62,7 +62,8 @@ npx --yes tsx scripts/local/bootstrap-table.ts
 echo "==> Build web shell (if needed)"
 if [[ ! -f apps/web/dist/index.html ]]; then
   VITE_COGNITO_USER_POOL_ID="${VITE_COGNITO_USER_POOL_ID:-us-east-1_ciPlaceholder}" \
-  VITE_COGNITO_WEB_CLIENT_ID="${VITE_COGNITO_WEB_CLIENT_ID:-ciplaceholderclientid00000000}" \
+  VITE_COGNITO_ADMIN_CLIENT_ID="${VITE_COGNITO_ADMIN_CLIENT_ID:-ciplaceholderadminclient000000}" \
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID="${VITE_COGNITO_NOTEBOOK_CLIENT_ID:-ciplaceholdernotebookclient000}" \
   VITE_COGNITO_AUTH_DOMAIN="${VITE_COGNITO_AUTH_DOMAIN:-auth.example.com}" \
   env -u VITE_AUTH_MODE npm run build
 fi

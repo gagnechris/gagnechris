@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
+# Builds the public, admin and Notebook apps and ships each to its own bucket
+# and CloudFront distribution.
 set -euo pipefail
 
 ENV_NAME="${ENV_NAME:-prod}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DIST="${ROOT}/apps/web/dist"
+WEB="${ROOT}/apps/web"
+DIST="${WEB}/dist"
 SSM_JSON="${ROOT}/infra/lib/config/ssm-params.json"
 
 ssm_name() {
@@ -16,99 +19,142 @@ ssm_name() {
   echo "${prefix}/${leaf}"
 }
 
-BUCKET="$(aws ssm get-parameter \
-  --name "$(ssm_name siteBucketName)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text)"
-DISTRIBUTION_ID="$(aws ssm get-parameter \
-  --name "$(ssm_name cloudfrontDistributionId)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text)"
+ssm_value() {
+  aws ssm get-parameter \
+    --name "$(ssm_name "$1")" \
+    --region "${AWS_REGION}" \
+    --query 'Parameter.Value' --output text
+}
 
-echo "Deploying web → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
+BUCKET="$(ssm_value siteBucketName)"
+DISTRIBUTION_ID="$(ssm_value cloudfrontDistributionId)"
+ADMIN_BUCKET="$(ssm_value adminSiteBucketName)"
+ADMIN_DISTRIBUTION_ID="$(ssm_value adminDistributionId)"
+NOTEBOOK_BUCKET="$(ssm_value notebookSiteBucketName)"
+NOTEBOOK_DISTRIBUTION_ID="$(ssm_value notebookDistributionId)"
 
-export VITE_COGNITO_USER_POOL_ID="$(aws ssm get-parameter \
-  --name "$(ssm_name cognitoUserPoolId)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text)"
-export VITE_COGNITO_WEB_CLIENT_ID="$(aws ssm get-parameter \
-  --name "$(ssm_name cognitoWebClientId)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text)"
-export VITE_COGNITO_AUTH_DOMAIN="$(aws ssm get-parameter \
-  --name "$(ssm_name cognitoAuthDomain)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text)"
+VITE_COGNITO_USER_POOL_ID="$(ssm_value cognitoUserPoolId)"
+VITE_COGNITO_ADMIN_CLIENT_ID="$(ssm_value cognitoAdminWebClientId)"
+VITE_COGNITO_NOTEBOOK_CLIENT_ID="$(ssm_value cognitoNotebookWebClientId)"
+VITE_COGNITO_AUTH_DOMAIN="$(ssm_value cognitoAuthDomain)"
+export VITE_COGNITO_USER_POOL_ID VITE_COGNITO_ADMIN_CLIENT_ID \
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID VITE_COGNITO_AUTH_DOMAIN
 
 npm run build -w @gagnechris/web
-
-if [ ! -d "${DIST}" ]; then
-  echo "Missing build output: ${DIST}" >&2
-  exit 1
-fi
-
-if [ ! -f "${DIST}/index.html" ]; then
-  echo "Missing build output: ${DIST}/index.html" >&2
-  exit 1
-fi
+npm run --silent check:web-shells
 
 # The publisher renders from this pristine shell; index.html gets prerendered over.
-if [ ! -f "${DIST}/_shell.html" ]; then
-  echo "Missing build output: ${DIST}/_shell.html" >&2
-  exit 1
-fi
-
-# Upload hashed assets before the HTML that references them.
-if [ -d "${DIST}/assets" ]; then
-  aws s3 sync "${DIST}/assets/" "s3://${BUCKET}/assets/" \
-    --region "${AWS_REGION}" \
-    --cache-control "public,max-age=31536000,immutable" \
-    --metadata-directive REPLACE
-fi
-
-# Excludes also protect publisher-owned paths from --delete. home/* holds
-# last-published.json so an unpublished Home survives deploys.
-aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
-  --region "${AWS_REGION}" \
-  --delete \
-  --exclude "assets/*" \
-  --exclude "blog/*" \
-  --exclude "resume/*" \
-  --exclude "resume.pdf" \
-  --exclude "home/*" \
-  --exclude "media/*" \
-  --exclude "notebook/*" \
-  --exclude "sitemap.xml" \
-  --exclude "rss.xml" \
-  --cache-control "public,max-age=0,must-revalidate" \
-  --metadata-directive REPLACE
+for required in index.html _shell.html; do
+  if [ ! -f "${DIST}/${required}" ]; then
+    echo "Missing build output: ${DIST}/${required}" >&2
+    exit 1
+  fi
+done
 
 # Extensionless Apple / WebAuthn association files need application/json; S3
 # guesses binary/octet-stream.
-if [ -d "${DIST}/.well-known" ]; then
+upload_well_known() {
+  local dir="$1" bucket="$2"
+  [ -d "${dir}/.well-known" ] || return 0
   while IFS= read -r -d '' well_known; do
-    key=".well-known/${well_known#"${DIST}/.well-known/"}"
+    local key=".well-known/${well_known#"${dir}/.well-known/"}"
     echo "Uploading ${key} as application/json"
-    aws s3 cp "${well_known}" "s3://${BUCKET}/${key}" \
+    aws s3 cp "${well_known}" "s3://${bucket}/${key}" \
       --region "${AWS_REGION}" \
       --content-type "application/json" \
       --cache-control "public,max-age=0,must-revalidate" \
       --metadata-directive REPLACE
-  done < <(find "${DIST}/.well-known" -type f -print0)
-fi
+  done < <(find "${dir}/.well-known" -type f -print0)
+}
 
-aws cloudfront create-invalidation \
-  --distribution-id "${DISTRIBUTION_ID}" \
-  --paths "/*" \
-  --region "${AWS_REGION}" \
-  --query 'Invalidation.Id' --output text
+# Hashed assets go up before the HTML that references them and are never
+# deleted: an open tab or installed PWA still lazy-loads chunks from the build
+# it started with.
+upload_assets() {
+  local dir="$1" bucket="$2"
+  [ -d "${dir}/assets" ] || return 0
+  aws s3 sync "${dir}/assets/" "s3://${bucket}/assets/" \
+    --region "${AWS_REGION}" \
+    --cache-control "public,max-age=31536000,immutable" \
+    --metadata-directive REPLACE
+}
+
+invalidate() {
+  aws cloudfront create-invalidation \
+    --distribution-id "$1" \
+    --paths "/*" \
+    --region "${AWS_REGION}" \
+    --query 'Invalidation.Id' --output text
+}
+
+deploy_app() {
+  local label="$1" dir="$2" bucket="$3" distribution_id="$4"
+  echo "Deploying ${label} → s3://${bucket} (CloudFront ${distribution_id})"
+  if [ ! -f "${dir}/index.html" ]; then
+    echo "Missing build output: ${dir}/index.html" >&2
+    exit 1
+  fi
+  upload_assets "${dir}" "${bucket}"
+  aws s3 sync "${dir}/" "s3://${bucket}/" \
+    --region "${AWS_REGION}" \
+    --delete \
+    --exclude "assets/*" \
+    --cache-control "public,max-age=0,must-revalidate" \
+    --metadata-directive REPLACE
+  upload_well_known "${dir}" "${bucket}"
+  if [ -f "${dir}/manifest.json" ]; then
+    aws s3 cp "${dir}/manifest.json" "s3://${bucket}/manifest.json" \
+      --region "${AWS_REGION}" \
+      --content-type "application/manifest+json" \
+      --cache-control "public,max-age=0,must-revalidate" \
+      --metadata-directive REPLACE
+  fi
+  invalidate "${distribution_id}"
+}
+
+deploy_app admin "${WEB}/dist-admin" "${ADMIN_BUCKET}" "${ADMIN_DISTRIBUTION_ID}"
+deploy_app notebook "${WEB}/dist-notebook" "${NOTEBOOK_BUCKET}" "${NOTEBOOK_DISTRIBUTION_ID}"
+
+echo "Deploying public → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
+upload_assets "${DIST}" "${BUCKET}"
+
+# Excludes also protect publisher-owned paths from --delete. home/* holds
+# last-published.json so an unpublished Home survives deploys. spa.html,
+# manifest.json and icons/* belong to the legacy apex /admin shell, which the
+# public build no longer produces.
+APEX_SYNC=(
+  "${DIST}/" "s3://${BUCKET}/"
+  --region "${AWS_REGION}"
+  --delete
+  --exclude "assets/*"
+  --exclude "blog/*"
+  --exclude "resume/*"
+  --exclude "resume.pdf"
+  --exclude "home/*"
+  --exclude "media/*"
+  --exclude "notebook/*"
+  --exclude "sitemap.xml"
+  --exclude "rss.xml"
+  --exclude "spa.html"
+  --exclude "manifest.json"
+  --exclude "icons/*"
+  --cache-control "public,max-age=0,must-revalidate"
+  --metadata-directive REPLACE
+)
+
+# Same arguments as the real sync, so the guard checks exactly what runs.
+PLAN="$(mktemp)"
+trap 'rm -f "${PLAN}"' EXIT
+aws s3 sync "${APEX_SYNC[@]}" --dryrun >"${PLAN}"
+npm run --silent check:legacy-admin-plan -- --plan "${PLAN}" --bucket "${BUCKET}"
+aws s3 sync "${APEX_SYNC[@]}"
+
+upload_well_known "${DIST}" "${BUCKET}"
+invalidate "${DISTRIBUTION_ID}"
 
 # Re-render publisher pages against the new shell. `aws lambda invoke` exits 0
 # even when the function throws, so check FunctionError.
-PUBLISHER_FN="$(aws ssm get-parameter \
-  --name "$(ssm_name publisherFunctionName)" \
-  --region "${AWS_REGION}" \
-  --query 'Parameter.Value' --output text 2>/dev/null || true)"
+PUBLISHER_FN="$(ssm_value publisherFunctionName 2>/dev/null || true)"
 if [ -n "${PUBLISHER_FN}" ]; then
   echo "Invoking publisher republish-all (${PUBLISHER_FN})"
   OUT="$(mktemp)"

@@ -11,7 +11,7 @@ const put = vi.fn();
 const post = vi.fn();
 const del = vi.fn();
 
-vi.mock('../api/client', () => ({
+vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: (...args: unknown[]) => get(...args),
     PUT: (...args: unknown[]) => put(...args),
@@ -20,7 +20,7 @@ vi.mock('../api/client', () => ({
   }),
 }));
 
-vi.mock('../components/markdown/MarkdownEditor', () => ({
+vi.mock('../workspace/markdown/MarkdownEditor', () => ({
   default: ({
     value,
     onChange,
@@ -36,7 +36,7 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
   ),
 }));
 
-vi.mock('../components/markdown/MarkdownPreview', () => ({
+vi.mock('../workspace/markdown/MarkdownPreview', () => ({
   default: () => <div data-testid="preview" />,
 }));
 
@@ -58,8 +58,8 @@ const basePost = {
 
 function renderEditor(queryClient = createTestQueryClient()) {
   const router = createMemoryRouter(
-    [{ path: '/admin/posts/:postId', element: <PostEditorPage /> }],
-    { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
+    [{ path: '/posts/:postId', element: <PostEditorPage /> }],
+    { initialEntries: ['/posts/01TESTPOSTID00000000000000'] },
   );
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -351,10 +351,10 @@ describe('PostEditorPage delete (CHR-158)', () => {
 
     const router = createMemoryRouter(
       [
-        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
-        { path: '/admin', element: <p>Posts list</p> },
+        { path: '/posts/:postId', element: <PostEditorPage /> },
+        { path: '/', element: <p>Posts list</p> },
       ],
-      { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
+      { initialEntries: ['/posts/01TESTPOSTID00000000000000'] },
     );
 
     render(
@@ -391,7 +391,7 @@ describe('PostEditorPage delete (CHR-158)', () => {
     });
 
     await screen.findByText('Posts list');
-    expect(router.state.location.pathname).toBe('/admin');
+    expect(router.state.location.pathname).toBe('/');
 
     // No additional GET of the deleted post after DELETE started.
     expect(get.mock.calls.length).toBe(getCallsDuringDelete);
@@ -430,10 +430,10 @@ describe('PostEditorPage delete (CHR-158)', () => {
 
     const router = createMemoryRouter(
       [
-        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
-        { path: '/admin', element: <p>Posts list</p> },
+        { path: '/posts/:postId', element: <PostEditorPage /> },
+        { path: '/', element: <p>Posts list</p> },
       ],
-      { initialEntries: ['/admin/posts/01TESTPOSTID00000000000000'] },
+      { initialEntries: ['/posts/01TESTPOSTID00000000000000'] },
     );
 
     render(
@@ -503,10 +503,10 @@ describe('PostEditorPage navigation (CHR-178)', () => {
   function renderWithRoutes() {
     const router = createMemoryRouter(
       [
-        { path: '/admin/posts/:postId', element: <PostEditorPage /> },
-        { path: '/admin', element: <p>Posts list</p> },
+        { path: '/posts/:postId', element: <PostEditorPage /> },
+        { path: '/', element: <p>Posts list</p> },
       ],
-      { initialEntries: [`/admin/posts/${basePost.id}`] },
+      { initialEntries: [`/posts/${basePost.id}`] },
     );
     render(
       <QueryClientTestProvider>
@@ -559,7 +559,7 @@ describe('PostEditorPage navigation (CHR-178)', () => {
     );
 
     await act(async () => {
-      void router.navigate('/admin');
+      void router.navigate('/');
     });
 
     // Blocked until the save lands.
@@ -567,7 +567,7 @@ describe('PostEditorPage navigation (CHR-178)', () => {
     expect(put.mock.calls[0]?.[1]?.body).toMatchObject({
       bodyMarkdown: 'line one dirty',
     });
-    expect(router.state.location.pathname).toBe(`/admin/posts/${basePost.id}`);
+    expect(router.state.location.pathname).toBe(`/posts/${basePost.id}`);
 
     resolvePut({
       data: { ...basePost, bodyMarkdown: 'line one dirty', version: 2 },
@@ -594,7 +594,7 @@ describe('PostEditorPage navigation (CHR-178)', () => {
     await user.type(screen.getByLabelText('Markdown'), ' dirty');
 
     await act(async () => {
-      await router.navigate('/admin');
+      await router.navigate('/');
     });
 
     await waitFor(() =>
@@ -602,7 +602,7 @@ describe('PostEditorPage navigation (CHR-178)', () => {
         'Your changes could not be saved. Leave without saving?',
       ),
     );
-    expect(router.state.location.pathname).toBe(`/admin/posts/${basePost.id}`);
+    expect(router.state.location.pathname).toBe(`/posts/${basePost.id}`);
     expect(screen.queryByText('Posts list')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Markdown')).toHaveValue('line one dirty');
     confirmSpy.mockRestore();
@@ -627,7 +627,7 @@ describe('PostEditorPage navigation (CHR-178)', () => {
 
     // Leave A (save fails → confirm "leave anyway") and open B.
     await act(async () => {
-      await router.navigate(`/admin/posts/${otherPost.id}`);
+      await router.navigate(`/posts/${otherPost.id}`);
     });
     await screen.findByDisplayValue('Other post');
     expect(screen.getByLabelText('Markdown')).toHaveValue('other body');

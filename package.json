@@ -44,6 +44,8 @@
     "publish-surface:check": "npm run publish-surface:generate && git diff --exit-code -- infra/lib/cloudfront/viewer-request-function.js packages/data/src/publish-admin-routes.generated.ts",
     "mobile": "npm start --prefix apps/mobile",
     "check:rn-bundles": "tsx scripts/check-rn-bundles.ts",
+    "check:web-shells": "tsx apps/web/scripts/checkWebShells.ts",
+    "check:legacy-admin-plan": "tsx scripts/check-legacy-admin-plan.ts",
     "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs",
     "check:tsconfig-coverage": "node scripts/check-tsconfig-coverage.mjs",
     "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts"

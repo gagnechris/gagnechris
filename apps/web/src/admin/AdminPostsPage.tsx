@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
 import { ApiError } from './query/api';
-import { Button } from '../ui/Button';
-import { TextInput, Select } from '../ui/Field';
-import { StatusBadge } from '../ui/StatusBadge';
+import { Button } from '../workspace/ui/Button';
+import { TextInput, Select } from '../workspace/ui/Field';
+import { StatusBadge } from '../workspace/ui/StatusBadge';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';
@@ -78,7 +78,7 @@ export default function AdminPostsPage() {
     setActionError(null);
     try {
       const data = await createMutation.mutateAsync();
-      void navigate(`/admin/posts/${data.id}`);
+      void navigate(`/posts/${data.id}`);
     } catch (err) {
       setActionError(
         err instanceof ApiError ? err.message : 'Could not create draft.',
@@ -148,7 +148,7 @@ export default function AdminPostsPage() {
           {visible.map((post) => (
             <li key={post.id}>
               <Link
-                to={`/admin/posts/${post.id}`}
+                to={`/posts/${post.id}`}
                 className="admin-post-list__item admin-post-list__link"
               >
                 <span className="admin-post-list__title">{post.title}</span>

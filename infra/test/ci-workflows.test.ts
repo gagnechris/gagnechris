@@ -201,6 +201,31 @@ describe('deploy job guards', () => {
     expect(deploy.steps![gsi]!.if).toBe(deploy.steps![cdkDeploy]!.if);
   });
 
+  it('runs CDK deploy before the web deploy in the same job', () => {
+    const cdkDeploy = stepIndex(
+      deploy,
+      (s) => s.run?.includes('cdk -- deploy') ?? false,
+    );
+    const web = stepIndex(
+      deploy,
+      (s) => s.run?.includes('scripts/deploy-web.sh') ?? false,
+    );
+    expect(cdkDeploy).toBeGreaterThan(-1);
+    expect(web).toBeGreaterThan(cdkDeploy);
+  });
+
+  it('checks the built web shells in the Lint, test, and build job', () => {
+    const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+    const build = ci.jobs.build!;
+    const buildStep = stepIndex(build, (s) => s.run === 'npm run build');
+    const shells = stepIndex(
+      build,
+      (s) => s.run === 'npm run check:web-shells',
+    );
+    expect(buildStep).toBeGreaterThan(-1);
+    expect(shells).toBeGreaterThan(buildStep);
+  });
+
   it('serializes plan and deploy in cdk-prod without cancelling', () => {
     for (const jobId of ['plan', 'deploy']) {
       expect(cdk.jobs[jobId]!.concurrency).toEqual({

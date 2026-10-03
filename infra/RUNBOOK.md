@@ -196,7 +196,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 - Behaviours: default (`HtmlCachePolicy`) and `/assets/*` (`AssetsCachePolicy`) from the host's bucket, `/api/*` to the HTTP API (same as the apex, `api-security-headers`). Admin also serves `/media/*` from the **site** bucket, so the site bucket policy grants the admin distribution `GetObject` and `ListBucket`.
 - Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:`, `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows `https://admin.gagnechris.com` for those PUTs.
 - Viewer-request `gagnechris-prod-app-viewer-request` (`infra/lib/cloudfront/app-viewer-request.js`, no KVS): `/api`, `/assets`, `/media`, `/.well-known` and any path whose last segment has a dot pass through; everything else → `/index.html`. No distribution-wide error pages.
-- On first create, CDK writes a placeholder `index.html` (no script) to each bucket so the host answers 200 before the first app deploy. It never runs again, so later web deploys are not overwritten.
+- Content is the admin and Notebook builds (`apps/web/dist-admin/`, `dist-notebook/`), shipped by `scripts/deploy-web.sh` (see Web deploy pipeline). On first create, CDK wrote a placeholder `index.html` (no script) to each bucket so the host answered 200 before the first app deploy. It never runs again, so web deploys are not overwritten.
 - 5xx alarms `gagnechris-prod-admin-cloudfront-5xx`, `gagnechris-prod-notebook-cloudfront-5xx`.
 - SSM: `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`.
 
@@ -212,9 +212,16 @@ done
 
 ## Web deploy pipeline
 
-On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
+On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk deploy --all`, CI runs `scripts/deploy-web.sh`. **Prod only**. It reads everything from SSM under `/gagnechris/prod/`: `site-bucket-name`, `cloudfront-distribution-id`, `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`, `cognito-user-pool-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-auth-domain` and `publisher-function-name`. The deploy role (`gagnechris-prod-gha-deploy`, `AdministratorAccess`) covers the syncs, invalidations and SSM reads.
 
-Publisher-owned paths are never deleted by the sync: `blog/*`, `resume/*`, `resume.pdf`, `media/*`, `sitemap.xml`, `rss.xml`. After sync + `/*` invalidation, deploy invokes the publisher with `{"action":"republishAll"}` (SSM `/gagnechris/prod/publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
+1. `npm run build -w @gagnechris/web` builds all three apps; `check:web-shells` must pass before anything uploads.
+2. Admin and Notebook: `assets/` (immutable cache), then `sync --delete` (excluding `assets/*`) to the host's bucket, `.well-known/*` as `application/json`, `manifest.json` as `application/manifest+json`, and a `/*` invalidation on that host's distribution.
+3. Public: `assets/`, then a dry run of the apex `sync --delete`, `check:legacy-admin-plan` on that plan, the real sync, `.well-known/*`, and a `/*` invalidation.
+4. Publisher `{"action":"republishAll"}` (SSM `publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
+
+The apex sync never deletes publisher-owned paths (`blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `sitemap.xml`, `rss.xml`), the reserved `notebook/*`, hashed `assets/*`, or the legacy `/admin` shell and its PWA files (`spa.html`, `manifest.json`, `icons/*`). The public build doesn't produce those three.
+
+**If `check:legacy-admin-plan` refuses the deploy:** it prints each file the frozen `spa.html` loads that the sync would delete or that is already missing. Nothing on the apex has been written yet (the admin and Notebook hosts already have the new build). Fix the exclude list in `deploy-web.sh` and re-run the deploy. If a referenced file is already gone from the site bucket, restore its previous version (the bucket is versioned; noncurrent versions are kept 90 days) with an admin-approved `aws s3api copy-object` from that version, then re-run. To list what the live shell loads: `npx tsx scripts/check-legacy-admin-plan.ts --origin https://gagnechris.com`.
 
 Manual / local:
 
@@ -640,13 +647,24 @@ aws cognito-idp admin-set-user-password \
   --profile gagnechris-admin
 ```
 
-Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://gagnechris.com/auth/callback`).
+Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://<admin|notebook>.gagnechris.com/auth/callback` with that host's client ID).
 
-## Admin shell
+## Admin and Notebook apps
 
-SPA routes `/admin/*` (lazy-loaded) and `/auth/callback`. Cognito managed login via Amplify (`signInWithRedirect`, auth code + PKCE). Web build reads Cognito IDs from SSM in `scripts/deploy-web.sh` (`VITE_COGNITO_*`). Local: copy `apps/web/.env.example` to `.env.local`.
+- CMS: `https://admin.gagnechris.com` (Posts at `/`, `/home`, `/resume`). Notebook: `https://notebook.gagnechris.com` (`/` opens Today; `/notes`, `/tasks`). There is no public login link.
+- Each app signs in with its own Cognito client through managed login (`signInWithRedirect`, auth code + PKCE) and returns to the page that started sign-in. Opening the second app within an hour of signing in to the first is silent; after that it asks once, then stays signed in for 30 days.
+- Tokens are in that origin's `localStorage` (`CognitoIdentityServiceProvider.<clientId>.*`). API calls send the **ID token** (`aud` = that app's client).
+- **Sign out** on one app revokes that app's refresh token and ends the managed-login session; the other app stays signed in.
+- `deploy-web.sh` bakes the client IDs in from SSM (`VITE_COGNITO_ADMIN_CLIENT_ID`, `VITE_COGNITO_NOTEBOOK_CLIENT_ID`). Local: copy `apps/web/.env.example` to `.env.local` (both use `dev-local`).
 
-Reach admin by opening `https://gagnechris.com/admin` (no public login link). API calls send the Cognito **ID token** (HTTP API JWT `aud` = web client id).
+**Notebook on iPhone (PWA):** the manifest is scoped to `notebook.gagnechris.com/`, so an icon installed from the apex can't move. To install:
+
+1. Delete the old Notebook Home Screen icon.
+2. Open `https://notebook.gagnechris.com` in Safari.
+3. Share → Add to Home Screen.
+4. Open the new icon and sign in once (standalone apps keep their own storage).
+
+**Legacy apex app:** `https://gagnechris.com/admin*` (including `/admin/notebook/*`) still serves the last pre-split build: the frozen `spa.html` and its hashed assets in the site bucket, signing in with the `web` client and the `admin` group (accepted while `LEGACY_WEB_AUTH` is on), tokens in `Domain=gagnechris.com` cookies. Deploys never change it. It is a fallback while the new hosts are in use; switch to the new hosts for daily work.
 
 ## HTTP API runtime and contract
 

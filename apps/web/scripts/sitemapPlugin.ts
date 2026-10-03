@@ -51,7 +51,7 @@ export function sitemapPlugin(): Plugin {
   return {
     name: 'generate-sitemap',
     apply: 'build',
-    closeBundle() {
+    writeBundle() {
       const today = formatDate();
 
       const staticEntries: SitemapEntry[] = [

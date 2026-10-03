@@ -6,8 +6,8 @@ import {
   useDeletePostMutation,
   useGetApiClient,
 } from '@gagnechris/app-core';
-import { Button } from '../ui/Button';
-import { EditorActionBar } from '../ui/EditorActionBar';
+import { Button } from '../workspace/ui/Button';
+import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';
 import {
   PostEditorBody,
@@ -16,7 +16,7 @@ import {
   type PostDraftFields,
 } from './PostEditorSections';
 import { uploadImages } from './uploadImages';
-import { useVersionedEntityEditor } from './useVersionedEntityEditor';
+import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 
 /** Outer shell keys the editor by postId so A→B navigation drops pending debounce. */
 export default function PostEditorPage() {
@@ -27,7 +27,7 @@ export default function PostEditorPage() {
         <p className="admin-panel__error" role="alert">
           Missing post id.
         </p>
-        <Link to="/admin">← Back to posts</Link>
+        <Link to="/">← Back to posts</Link>
       </section>
     );
   }
@@ -84,7 +84,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         await deleteMutation.mutateAsync({ id: postId, version });
       },
       onDeleted: () => {
-        void navigate('/admin');
+        void navigate('/');
       },
     },
   });
@@ -123,7 +123,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         <p className="admin-panel__error" role="alert">
           {loadError}
         </p>
-        <Link to="/admin">← Back to posts</Link>
+        <Link to="/">← Back to posts</Link>
       </section>
     );
   }
@@ -140,7 +140,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     <section className="admin-panel admin-panel--editor">
       <EditorActionBar
         leading={
-          <Link to="/admin" className="admin-back">
+          <Link to="/" className="admin-back">
             ← Posts
           </Link>
         }

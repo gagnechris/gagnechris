@@ -1,5 +1,5 @@
 import type { Resume, ResumeContent } from '@gagnechris/shared';
-import { newRepeaterId } from '../ui/repeaterId';
+import { newRepeaterId } from '../workspace/ui/repeaterId';
 
 export type ExperienceDraft = {
   id: string;

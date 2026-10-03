@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
-import { Field, TextArea, TextInput } from '../ui/Field';
-import { Repeater } from '../ui/Repeater';
+import { Field, TextArea, TextInput } from '../workspace/ui/Field';
+import { Repeater } from '../workspace/ui/Repeater';
 import {
   emptyEducation,
   emptyExperience,

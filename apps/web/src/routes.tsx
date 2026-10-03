@@ -11,9 +11,7 @@ import { LazyFallback } from './components/LazyFallback.tsx';
 import { lazyRoute } from './routing/lazyRoute';
 
 // HydrateFallback must be a static route property (sibling to `lazy`): React
-// Router skips one returned from lazy() during initial hydration and warns on /admin.
-// admin and auth are caseSensitive so /ADMIN can't boot the admin app under the
-// public CSP (CloudFront's /admin* behaviour is case-sensitive).
+// Router skips one returned from lazy() during initial hydration.
 export const routes: RouteObject[] = [
   {
     path: '/',
@@ -60,73 +58,6 @@ export const routes: RouteObject[] = [
       lazyRoute({
         path: 'dont-feed-the-bears/wild',
         load: () => import('./pages/bears/StayWild.tsx'),
-      }),
-      lazyRoute({
-        path: 'auth/callback',
-        caseSensitive: true,
-        load: () => import('./auth/AuthCallback.tsx'),
-      }),
-      lazyRoute({
-        path: 'admin',
-        caseSensitive: true,
-        load: () => import('./admin/AdminLayout.tsx'),
-        children: [
-          lazyRoute({
-            index: true,
-            load: () => import('./admin/AdminPostsPage.tsx'),
-          }),
-          lazyRoute({
-            path: 'posts',
-            load: () => import('./admin/AdminPostsPage.tsx'),
-          }),
-          lazyRoute({
-            path: 'posts/:postId',
-            load: () => import('./admin/PostEditorPage.tsx'),
-          }),
-          lazyRoute({
-            path: 'home',
-            load: () => import('./admin/AdminHomePage.tsx'),
-          }),
-          lazyRoute({
-            path: 'resume',
-            load: () => import('./admin/AdminResumePage.tsx'),
-          }),
-          lazyRoute({
-            path: 'notebook',
-            load: () => import('./admin/AdminNotebookLayout.tsx'),
-            children: [
-              {
-                index: true,
-                element: <Navigate to="today" replace />,
-              },
-              lazyRoute({
-                path: 'today',
-                load: () =>
-                  import('./admin/notebook/AdminNotebookTodayPage.tsx'),
-              }),
-              lazyRoute({
-                path: 'notes',
-                load: () =>
-                  import('./admin/notebook/AdminNotebookNotesPage.tsx'),
-              }),
-              lazyRoute({
-                path: 'notes/:id',
-                load: () =>
-                  import('./admin/notebook/AdminNotebookNotePage.tsx'),
-              }),
-              lazyRoute({
-                path: 'tasks',
-                load: () =>
-                  import('./admin/notebook/AdminNotebookTasksPage.tsx'),
-              }),
-              lazyRoute({
-                path: 'tasks/:id',
-                load: () =>
-                  import('./admin/notebook/AdminNotebookTaskPage.tsx'),
-              }),
-            ],
-          }),
-        ],
       }),
       {
         path: '*',

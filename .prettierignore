@@ -1,5 +1,7 @@
 node_modules
 dist
+dist-admin
+dist-notebook
 coverage
 cdk.out
 package-lock.json

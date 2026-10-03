@@ -1,6 +1,21 @@
 # Architecture
 
-Personal site + headless CMS on AWS. Public pages are **statically prerendered** into S3 and served by CloudFront. The React admin talks to a Lambda API over API Gateway; publish writes update DynamoDB, which triggers a publisher Lambda that rebuilds HTML/PDF/feeds and invalidates CloudFront.
+Personal site + headless CMS on AWS. Public pages are **statically prerendered** into S3 and served by CloudFront from `gagnechris.com`. The CMS (`admin.gagnechris.com`) and Notebook (`notebook.gagnechris.com`) are separate React apps on their own hosts; both talk to a Lambda API over API Gateway. Publish writes update DynamoDB, which triggers a publisher Lambda that rebuilds HTML/PDF/feeds and invalidates CloudFront.
+
+## Web apps
+
+`apps/web` builds three apps from one Vite config, selected by `WEB_APP` (`apps/web/scripts/webApps.ts`):
+
+| App      | Host                      | Entry                                     | `publicDir`        | Output           |
+| -------- | ------------------------- | ----------------------------------------- | ------------------ | ---------------- |
+| public   | `gagnechris.com`          | `index.html` → `src/main.tsx` (GA4)       | `public/`          | `dist/`          |
+| admin    | `admin.gagnechris.com`    | `admin.html` → `src/admin/main.tsx`       | `public-admin/`    | `dist-admin/`    |
+| notebook | `notebook.gagnechris.com` | `notebook.html` → `src/notebook/main.tsx` | `public-notebook/` | `dist-notebook/` |
+
+- Each app's routes start at its host root (`admin.gagnechris.com/posts/<id>`, `notebook.gagnechris.com/today`). The admin and Notebook builds write their shell as `index.html`.
+- `src/workspace/` holds what both signed-in apps share: auth, the query provider, versioned-doc hooks, the leave guard, the lazy `MarkdownEditor`, UI primitives, chrome (`WorkspaceShell`) and CSS. ESLint zones stop public code importing `src/admin`, `src/notebook`, `src/workspace`, Amplify, app-core or TanStack Query, and stop admin and Notebook importing each other.
+- **Bundle boundary:** the public build runs `bundleBoundaryPlugin` (`apps/web/scripts/bundleBoundaryPlugin.ts`). In `generateBundle` it checks every chunk's `moduleIds` and fails the build on any module under `src/{admin,notebook,workspace,auth}/`, `aws-amplify` / `@aws-amplify/*`, app-core or `@tanstack/react-query`. The public build has no admin entry, so its whole output is the reachable graph.
+- **Shell check:** `npm run check:web-shells` (CI, after `npm run build`, and in `deploy-web.sh`) fails if the admin or Notebook shell references GA or has an inline or non-bundled `<script>`, if `dist/index.html` or `dist/_shell.html` lost GA, if the public build emits `spa.html`, `manifest.json` or `icons/`, or if the Notebook manifest isn't scoped to `/`.
 
 ## Request flow
 
@@ -13,14 +28,16 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
    - `/` → `/index.html` (prerendered home)
    - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/dont-feed-the-bears/camp` and `/dont-feed-the-bears/wild` are served from their own `index.html`.
    - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
-   - `/admin/*` and `/auth/*` → `/spa.html` (neutral SPA shell, not the home prerender)
+   - `/admin/*` and `/auth/*` → `/spa.html`: the frozen legacy admin shell from before the app split, which `deploy-web.sh` never overwrites or deletes (see Media, deploy excludes, and backups)
    - Other extensionless paths → `/404.html`
 3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404
 4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, `spa.html`)
 5. **API Gateway → Lambda API** for CRUD, publish, Notebook, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
-8. **Cognito** (passkeys) protects admin routes; **SES** sends contact and download notifications
+8. **Cognito** (passkeys) protects the admin and Notebook apps; **SES** sends contact and download notifications
+
+`admin.gagnechris.com` and `notebook.gagnechris.com` each have their own private bucket and distribution (`AppHost`): `/api/*` goes to the same HTTP API, `/media/*` (admin only) to the site bucket, and a viewer-request function rewrites every extensionless path outside `/api`, `/assets`, `/media` and `/.well-known` to `/index.html`.
 
 API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild bundling, log retention, Powertools env, standard alarms).
 
@@ -98,13 +115,13 @@ On relevant stream events the publisher updates, among others:
 - CloudFront KeyValueStore keys for known published slugs
 - Targeted CloudFront invalidations
 
-The Vite `apps/web` build produces the SPA shell and admin chunks; it does **not** generate the sitemap/RSS/posts index.
+The Vite `apps/web` build produces the public shell and the admin and Notebook apps; it does **not** generate the sitemap/RSS/posts index.
 
 ## Admin data layer (TanStack Query)
 
-Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/react-query`). Public pages stay outside Query so the public bundle stays lean.
+`WorkspaceShell` (admin and Notebook) wraps routes in `WorkspaceQueryProvider` (`@tanstack/react-query`). The public app has no Query at all.
 
-- Query-key factories, API helpers, and TanStack Query hooks live in `@gagnechris/app-core` (re-exported from `apps/web/src/admin/query/` for the admin SPA).
+- Query-key factories, API helpers, and TanStack Query hooks live in `@gagnechris/app-core`.
 - `createVersionedResource` builds query + setCache + update (+ optional delete) from config. Publishable entities layer `createDraftPublishResource` for publish / unpublish / discard (post / home / resume). Non-publishable entities (e.g. Notebook notes) use the versioned resource alone — not “config only” on the draft/publish factory.
 - `useVersionedDocEditor` owns hydrate-once, version binding, performSave, autosave, remote-conflict detection, and delete-with-hold (no DOM, no `status`). `useVersionedEntityEditor` layers draft/publish lifecycle on top for post / home / resume. The web shell (`useVersionedDocShell`) adds confirm / leave-guards / ⌘S, with ⌘⏎ optional via `publishRef`.
 - List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
@@ -123,8 +140,8 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - `createVersionedResource` + `useVersionedDocEditor` (hydrate, version, autosave, conflict, delete-with-hold)
 - `createDraftPublishResource` + `useVersionedEntityEditor` (layers publish / unpublish / discard on the doc editor)
 - `useQueuedAutosave` + shared `withHold` from the doc editor (`useDraftPublishEditor` consumes it for lifecycle actions)
-- Web shell `apps/web/src/admin/useVersionedDocShell.ts` adds leave guards and ⌘S; `useVersionedEntityEditor.ts` injects confirm and optional ⌘⏎ via `publishRef`
-- UI primitives in `apps/web/src/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates + reorder focus), `navLinkClass`
+- Web shell `apps/web/src/workspace/useVersionedDocShell.ts` adds leave guards and ⌘S; `useVersionedEntityEditor.ts` injects confirm and optional ⌘⏎ via `publishRef`
+- UI primitives in `apps/web/src/workspace/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates + reorder focus), `navLinkClass`
 - Post editor splits container (`PostEditorPage`, keyed by `postId`) from presentational sections; `uploadImages(client, files)` takes the AppApiProvider client
 
 ## 404 handling
@@ -132,11 +149,14 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Unknown / unpublished **blog slugs**: viewer-request checks KVS; miss → `/404.html` (not S3 `NoSuchKey` XML), once `__synced__` exists.
 - Soft-deleted / unpublished posts: publisher removes objects and clears the KVS entry so subsequent requests 404 cleanly.
 - Other unknown public paths: viewer-request rewrites to `/404.html` (not the home page).
-- Admin client routes under `/spa.html`: React Router `NotFound` for unmatched paths.
+- Admin and Notebook: the viewer-request function serves `index.html` for every app path, and unmatched routes render `WorkspaceNotFound` inside the signed-in chrome.
 
 ## Auth
 
-- Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
+- Admin and Notebook sign in through Cognito managed login (`auth.gagnechris.com`, passkeys) with auth code + PKCE. Each app uses its own client (`admin-web`, `notebook-web`; `VITE_COGNITO_ADMIN_CLIENT_ID` / `VITE_COGNITO_NOTEBOOK_CLIENT_ID`), and each client registers only its own host's `/auth/callback` and `/`. The public site never signs in.
+- Sign-in on one app doesn't sign in the other. Opening the second app within an hour of an interactive sign-in is silent (the one-hour managed-login session cookie); after that it takes one prompt, then that app stays signed in for its 30-day refresh token.
+- `redirectToSignIn` stores the current path in `sessionStorage`; `/auth/callback` returns there (same-app paths only) or to the app's home.
+- Sign-out is per app: `signOut()` revokes that app's refresh token (`RevokeToken`) and ends the managed-login session via `/logout`. The other app stays signed in. Global sign-out isn't used: `GlobalSignOut` needs the `aws.cognito.signin.user.admin` scope, which the clients don't request.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
 - API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts the `admin-web` client, `/api/notebook/*` the `notebook-web` client, and both accept the legacy `web` client while `LEGACY_WEB_AUTH` is on. The iOS client is in neither audience until the app ships with universal-link callbacks. A token from another client gets a gateway **401**. The web sends the ID token.
 - The router re-checks every protected route by its `auth` kind (`authorize` in `services/api/src/router.ts`):
@@ -150,12 +170,13 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   - **Legacy fallback:** while the Lambda has `AUTH_LEGACY_WEB_CLIENT_ID` set, a token from that client with the `admin` group passes on both prefixes (the apex `/admin` app's access). A new-client token never falls back to `admin`. Unsetting the variable removes the fallback.
   - So a `notebook`-only user gets 403 on every `/api/admin` route and a `site-admin`-only user gets 403 on every `/api/notebook` route. Notebook data is also owner-scoped by `sub`.
 
-- Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
+- Tokens live in Amplify's default `localStorage` store, so each app's tokens (refresh token included) are readable only by script on its own origin; public pages on `gagnechris.com` can't read them, and none ride on requests as cookies. HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and the app hosts' strict CSP (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
+- The frozen legacy apex app (`/spa.html`) still signs in with the `web` client and keeps its tokens in `CookieStorage` on `Domain=gagnechris.com`.
 - Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only that app's group. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
-## Admin Notebook shell
+## Notebook app
 
-- Lazy `/admin/notebook/*` under the admin layout: section routes `today`, `notes`, `notes/:id`, `tasks` (index redirects to `today`).
+- `notebook.gagnechris.com` routes: `today`, `notes`, `notes/:id`, `tasks`, `tasks/:id`; `/` redirects to `today`. Each page is a lazy chunk under `NotebookShell` (signed-in chrome + Notebook chrome).
 - Layout chrome: Work / Personal / **All** area filter (UI-only; `'all'` omits `area` on list APIs) plus Today / Notes / Tasks nav. Area preference persists in `localStorage` (`gagnechris.notebook.areaFilter`).
 - Child pages read the filter via React Router outlet context.
 - **Today:** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict. Deleting a daily note (from the page editor) drops that day's cache key instead of caching the tombstone there, and a cached tombstone never wins over a fetch, so Today shows the fresh placeholder and the next save creates a new note. Day changes push history entries (Back steps through days); the heading reads Today only for the current local day, which rolls over at midnight (unless the editor is focused or unsaved, in which case the page stays on the previous day until you navigate). Dashboard also shows overdue / due-today / in-progress tasks with quick-complete (failures show an error), a due-today progress bar, quick-add (defaults due today), and after 18:00 local a tomorrow preview.
@@ -163,7 +184,8 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Tasks:** list with quick-add (`!high` anywhere; `today` / `tomorrow` only as the last word), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
 - **Search:** `POST /api/notebook/search` with a JSON body `{ q, area?, limit? }` (POST so terms stay out of URLs and access logs) scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets. The input is an ARIA combobox: focus stays in it, arrow keys move `aria-activedescendant` through options grouped by Notes/Tasks, and Enter opens the active hit.
 - **Export:** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup are in `infra/RUNBOOK.md`.
-- **PWA:** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. There is no offline cache; it is not required for installability.
+- **PWA:** `notebook.html` links `manifest.json` (`id`, `start_url` and `scope` all `/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen from `notebook.gagnechris.com` opens Today full-screen. Icons under `/icons/`, both from `apps/web/public-notebook/`. There is no offline cache; it is not required for installability.
+- **AASA:** `public-notebook/.well-known/apple-app-site-association` covers `/today`, `/notes/*` and `/tasks/*` and excludes `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app.
 
 ## Notebook sync contract
 
@@ -215,10 +237,9 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 - `renderMarkdownToHtml` (`@gagnechris/shared/render`) runs `marked` output through `sanitize-html` with an allowlist: no scripts, iframes, forms, event handlers, inline styles, or `javascript:` / `data:` URLs. The admin previews and the publisher both use it, so pasted HTML is inert in the editor and on published pages.
 - The public distribution has two page response-header policies in the Site stack:
   - Public pages: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap.
-  - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
-- `admin.gagnechris.com` and `notebook.gagnechris.com` are separate distributions (`AppHost` in the Site stack), each with one strict policy on every page path: `script-src 'self'`, `img-src 'self' data:`, `connect-src` `'self'` + Cognito (+ the site bucket's regional host on admin only), no Google hosts. A host-wide policy means path case can't change it, so their viewer-request function only does the SPA fallback. See `infra/RUNBOOK.md` (App hosts).
-- CloudFront path patterns are case-sensitive, so `/ADMIN/notebook` would land on the default behaviour (public CSP, GA). The viewer-request function 301s such variants to lowercase, the React Router `admin` and `auth/callback` routes are `caseSensitive` (a variant renders `NotFound`), and `isPrivatePath` is case- and encoding-insensitive.
-- A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
+  - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). The frozen legacy `spa.html` has no GA snippet so it runs under this policy.
+- `admin.gagnechris.com` and `notebook.gagnechris.com` are separate distributions (`AppHost` in the Site stack), each with one strict policy on every page path: `script-src 'self'`, `img-src 'self' data:`, `connect-src` `'self'` + Cognito (+ the site bucket's regional host on admin only), no Google hosts. A host-wide policy means path case can't change it, so their viewer-request function only does the SPA fallback. `check:web-shells` keeps their shells free of GA and inline script. See `infra/RUNBOOK.md` (App hosts).
+- CloudFront path patterns are case-sensitive, so `/ADMIN/notebook` on the apex would land on the default behaviour (public CSP, GA). The viewer-request function 301s such variants to lowercase, the public app has no admin or auth routes at all, and `isPrivatePath` is case- and encoding-insensitive.
 
 ## Privacy: logs, caching and IAM
 
@@ -229,9 +250,9 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 - **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, and `Query` on `gsi1` limited to `STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
 - **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the router's client and group checks, API Gateway throttles and the Lambda's own headers still apply.
 
-## Analytics stay off /admin and /auth
+## Analytics stay off the signed-in apps
 
-- GA4 loads only in the public shells. `spa.html` (served for `/admin*` and `/auth*`) is built without it, and the Vite dev server strips it for those paths too (`devSpaShellPlugin`), so dev matches prod.
+- GA4 loads only in the public shells. The admin and Notebook shells never include it (`check:web-shells`), and neither does the frozen legacy `spa.html` served for apex `/admin*` and `/auth*`.
 - `apps/web/src/utils/analytics.ts` never sends page views or events for a private path (`isPrivatePath` in `utils/privatePaths.ts`). `RouteTracker` also sets gtag's `ga-disable-<id>` flag while a private route is showing, which stops gtag's own enhanced-measurement hits if gtag is already loaded from an in-app navigation.
 
 ## `@gagnechris/shared` entry points
@@ -253,7 +274,14 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 
 **Public blog media (`/media/*`)** lives on the site bucket behind CloudFront with long cache. It is public, so it must not hold private Notebook content. Notebook notes and tasks have no file attachments.
 
-**`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Excludes include `assets/*`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`.
+**`scripts/deploy-web.sh`:** reads bucket names, distribution IDs and the two app client IDs from SSM, builds all three apps, runs `check:web-shells`, then:
+
+1. Syncs `dist-admin/` and `dist-notebook/` to their own buckets (`assets/` first with immutable cache-control, then `sync --delete` excluding `assets/*`), uploads `.well-known/*` as `application/json` and `manifest.json` as `application/manifest+json`, and invalidates `/*` on each app distribution.
+2. Syncs `dist/` to the site bucket with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. `spa.html`, `manifest.json` and `icons/*` are also excluded: they are the legacy apex `/admin` shell and its PWA files, which the public build no longer produces.
+3. Before that sync it runs the identical command with `--dryrun` and `check:legacy-admin-plan` (`scripts/check-legacy-admin-plan.ts`): starting from the bucket's `spa.html`, it walks every file the legacy shell can load (HTML `src`/`href`, JS chunk imports and preload lists, CSS `url()`, manifest icons) and refuses the deploy if any is missing, if the plan deletes any of them, or if it would overwrite `spa.html`.
+4. Invalidates the public distribution and runs publisher `republishAll`.
+
+Hashed `assets/*` are never deleted on any host, so an open tab or installed PWA can still lazy-load chunks from the build it started with.
 
 **Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data cannot be recreated from git the way posts can. A weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button downloads markdown/JSON for human backup — it does not replace PITR.
 

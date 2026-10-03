@@ -1,23 +1,36 @@
-import { loadEnv } from 'vite';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadEnv, type PluginOption } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { appShellPlugin } from './scripts/appShellPlugin.ts';
+import { bundleBoundaryPlugin } from './scripts/bundleBoundaryPlugin.ts';
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
-import {
-  devSpaShellPlugin,
-  staticPagesPlugin,
-} from './scripts/staticPagesPlugin.ts';
+import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
+import { WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
 
 const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787';
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig(({ mode, command }) => {
   // Empty prefix so we can read VITE_* (and optional VITE_LOCAL_API_ORIGIN).
   const env = loadEnv(mode, process.cwd(), '');
+  const appName = webAppFromEnv(process.env.WEB_APP);
+  const app = WEB_APPS[appName];
 
   if (command === 'build' && env.VITE_AUTH_MODE === 'local') {
     throw new Error(
       'VITE_AUTH_MODE=local is not allowed in production Vite builds',
     );
+  }
+  if (command === 'build') {
+    const missing = app.requiredEnv.filter((name) => !env[name]?.trim());
+    if (missing.length > 0) {
+      throw new Error(
+        `WEB_APP=${appName} build needs ${missing.join(', ')} (see apps/web/.env.example)`,
+      );
+    }
   }
 
   const useProdApi = env.VITE_API_TARGET === 'prod';
@@ -28,15 +41,15 @@ export default defineConfig(({ mode, command }) => {
 
   if (useProdApi) {
     console.warn(
-      '[vite] VITE_API_TARGET=prod — /api proxies to https://gagnechris.com (live DynamoDB).',
+      `[vite:${appName}] VITE_API_TARGET=prod — /api proxies to https://gagnechris.com (live DynamoDB).`,
     );
   } else if (command === 'serve') {
     console.info(
-      `[vite] /api proxies to ${proxyTarget} (local). Use VITE_API_TARGET=prod only when you intend to hit production.`,
+      `[vite:${appName}] /api proxies to ${proxyTarget} (local). Use VITE_API_TARGET=prod only when you intend to hit production.`,
     );
-    if (localSiteOrigin) {
+    if (localSiteOrigin && appName === 'public') {
       console.info(
-        `[vite] /__site proxies to ${localSiteOrigin} (publisher HTML + posts.json).`,
+        `[vite:${appName}] /__site proxies to ${localSiteOrigin} (publisher HTML + posts.json).`,
       );
     }
   }
@@ -58,40 +71,65 @@ export default defineConfig(({ mode, command }) => {
   };
 
   if (localSiteOrigin && !useProdApi) {
-    // Do NOT proxy /posts or /assets — that would serve the seeded production
-    // shell/JS and bypass Vite HMR (old PostPage → NotFound for CMS slugs).
-    // PostPage fetches publisher HTML via this prefix instead.
-    proxy['/__site'] = {
-      target: localSiteOrigin,
-      changeOrigin: true,
-      secure: false,
-      rewrite: (path) => path.replace(/^\/__site/, '') || '/',
-    };
-    // Publisher-generated PDF (same origin as prod `/resume.pdf`).
-    proxy['/resume.pdf'] = {
-      target: localSiteOrigin,
-      changeOrigin: true,
-      secure: false,
-    };
+    if (appName === 'public') {
+      // Do NOT proxy /posts or /assets — that would serve the seeded production
+      // shell/JS and bypass Vite HMR (old PostPage → NotFound for CMS slugs).
+      // PostPage fetches publisher HTML via this prefix instead.
+      proxy['/__site'] = {
+        target: localSiteOrigin,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/__site/, '') || '/',
+      };
+      // Publisher-generated PDF (same origin as prod `/resume.pdf`).
+      proxy['/resume.pdf'] = {
+        target: localSiteOrigin,
+        changeOrigin: true,
+        secure: false,
+      };
+    } else if (appName === 'admin') {
+      // Prod serves /media from the site bucket on the admin host too.
+      proxy['/media'] = {
+        target: localSiteOrigin,
+        changeOrigin: true,
+        secure: false,
+      };
+    }
   }
+
+  const plugins: PluginOption[] =
+    appName === 'public'
+      ? [react(), sitemapPlugin(), staticPagesPlugin(), bundleBoundaryPlugin()]
+      : [react(), appShellPlugin(app.html)];
 
   return {
     base: '/',
-    plugins: [
-      react(),
-      sitemapPlugin(),
-      staticPagesPlugin(),
-      devSpaShellPlugin(),
-    ],
+    plugins,
+    publicDir: path.join(appRoot, app.publicDir),
+    // The three dev servers run side by side; a shared optimizer cache makes
+    // each one invalidate the others' pre-bundled deps mid-load.
+    cacheDir: path.join(appRoot, 'node_modules', '.vite', appName),
+    optimizeDeps: { entries: [app.html] },
     server: {
+      port: app.port,
+      strictPort: true,
       proxy,
     },
+    preview: {
+      port: app.port,
+      strictPort: true,
+    },
     build: {
+      outDir: path.join(appRoot, app.outDir),
+      emptyOutDir: true,
+      rollupOptions: {
+        input: path.join(appRoot, app.html),
+      },
       // Keep admin/editor chunks under the AC budget (CHR-178).
       chunkSizeWarningLimit: 500,
       // No manualChunks: under Vite 8 / Rolldown a manual `markdown-editor`
-      // group also captured React, so the public entry statically imported
-      // (and modulepreloaded) the whole CodeMirror chunk. The two
+      // group also captured React, so the entry statically imported (and
+      // modulepreloaded) the whole CodeMirror chunk. The two
       // `lazy(() => import('…/MarkdownEditor'))` call sites (Post +
       // Notebook) already share one natural async chunk (CHR-178).
     },

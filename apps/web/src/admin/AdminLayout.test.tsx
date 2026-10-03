@@ -19,11 +19,11 @@ vi.mock('@gagnechris/app-core', async (importOriginal) => ({
   },
 }));
 
-vi.mock('../api/apiTarget', () => ({
+vi.mock('../workspace/api/apiTarget', () => ({
   isDevProdApiTarget: () => isDevProdApiTargetMock(),
 }));
 
-vi.mock('../auth/session', () => ({
+vi.mock('../workspace/auth/session', () => ({
   getAuthUser: vi.fn(async () => ({
     label: 'admin@example.com',
     userId: 'u1',
@@ -33,7 +33,7 @@ vi.mock('../auth/session', () => ({
   getIdToken: vi.fn(async () => 'fake-id-token'),
 }));
 
-vi.mock('../api/client', () => ({
+vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: async () => ({
       data: { items: [] },
@@ -54,9 +54,9 @@ describe('AdminLayout', () => {
   const renderLayout = () =>
     render(
       <QueryClientTestProvider>
-        <MemoryRouter initialEntries={['/admin']}>
+        <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/" element={<AdminLayout />}>
               <Route index element={<AdminPostsPage />} />
             </Route>
           </Routes>
@@ -84,12 +84,12 @@ describe('AdminLayout', () => {
     expect(pending.cleared).toBe(1);
   });
 
-  test('shows Posts / Home / Resume / Notebook nav and posts hub when authenticated', async () => {
+  test('shows Posts / Home / Resume nav and posts hub when authenticated', async () => {
     render(
       <QueryClientTestProvider>
-        <MemoryRouter initialEntries={['/admin']}>
+        <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/" element={<AdminLayout />}>
               <Route index element={<AdminPostsPage />} />
             </Route>
           </Routes>
@@ -103,10 +103,12 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('link', { name: 'Posts' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',
-      '/admin/home',
+      '/home',
     );
     expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Notebook' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Notebook' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Sign out' }),
     ).toBeInTheDocument();
@@ -122,9 +124,9 @@ describe('AdminLayout', () => {
 
     render(
       <QueryClientTestProvider>
-        <MemoryRouter initialEntries={['/admin']}>
+        <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/" element={<AdminLayout />}>
               <Route index element={<AdminPostsPage />} />
             </Route>
           </Routes>

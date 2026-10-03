@@ -9,7 +9,7 @@ const get = vi.fn();
 const put = vi.fn();
 const post = vi.fn();
 
-vi.mock('../api/client', () => ({
+vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: (...args: unknown[]) => get(...args),
     PUT: (...args: unknown[]) => put(...args),
@@ -35,8 +35,8 @@ const baseHome = {
 
 function renderHome() {
   const router = createMemoryRouter(
-    [{ path: '/admin/home', element: <AdminHomePage /> }],
-    { initialEntries: ['/admin/home'] },
+    [{ path: '/home', element: <AdminHomePage /> }],
+    { initialEntries: ['/home'] },
   );
   return render(
     <QueryClientTestProvider>

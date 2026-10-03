@@ -1,14 +1,14 @@
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
-import { EditorActionBar } from '../ui/EditorActionBar';
+import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import {
   resumeContentFromDraft,
   resumeDraftFromResume,
   type ResumeDraftFields,
 } from './resumeDraft';
-import { useVersionedEntityEditor } from './useVersionedEntityEditor';
+import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 import '../pages/Resume.css';
 
 const emptyResumeDraft = (): ResumeDraftFields =>

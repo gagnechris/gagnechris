@@ -8,7 +8,7 @@ import AdminPostsPage from './AdminPostsPage';
 const post = vi.fn();
 const get = vi.fn();
 
-vi.mock('../api/client', () => ({
+vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: (...args: unknown[]) => get(...args),
     POST: (...args: unknown[]) => post(...args),
@@ -75,10 +75,10 @@ describe('AdminPostsPage', () => {
 
     render(
       <QueryClientTestProvider>
-        <MemoryRouter initialEntries={['/admin']}>
+        <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route path="/admin" element={<AdminPostsPage />} />
-            <Route path="/admin/posts/:postId" element={<div>editor</div>} />
+            <Route path="/" element={<AdminPostsPage />} />
+            <Route path="/posts/:postId" element={<div>editor</div>} />
           </Routes>
         </MemoryRouter>
       </QueryClientTestProvider>,

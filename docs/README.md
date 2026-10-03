@@ -33,7 +33,7 @@ npm ci
 npm run local:dev
 ```
 
-Open [http://localhost:5173/admin](http://localhost:5173/admin). Local mode uses a fake signed-in session (`VITE_AUTH_MODE=local`) and never touches production AWS.
+Open the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175); the public site is on [http://localhost:5173](http://localhost:5173). Local mode uses a fake signed-in session (`VITE_AUTH_MODE=local`) and never touches production AWS.
 
 Useful commands:
 
