@@ -103,7 +103,7 @@ export function versionedMutationRoute<
   return defineRoute({
     method: def.method,
     pattern: def.pattern,
-    auth: 'admin',
+    auth: 'notebook',
     metric: def.metric,
     params: def.params,
     body: def.body,

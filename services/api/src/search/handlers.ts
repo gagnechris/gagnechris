@@ -18,7 +18,7 @@ export function createSearchRoutes(deps?: {
     defineRoute({
       method: 'POST',
       pattern: '/notebook/search',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'NotebookSearch',
       body: NotebookSearchRequestSchema,
       handler: async (ctx, { body }) => {

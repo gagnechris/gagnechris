@@ -52,7 +52,7 @@ export function createSyncRoutes(
     defineRoute({
       method: 'GET',
       pattern: '/notebook/sync/changes',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'SyncChanges',
       query: SyncChangesQuerySchema,
       handler: async (ctx, { query }) => {

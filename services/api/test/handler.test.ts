@@ -203,7 +203,7 @@ describe('api handler', () => {
       const forbidden = await handler(
         makeEvent('POST', '/api/notebook/search', {
           jwtClaims: { sub: 'abc-123' },
-          adminGroup: false,
+          appToken: false,
           body: { q: 'x' },
         }),
         {} as never,

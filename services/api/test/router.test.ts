@@ -10,7 +10,8 @@ import {
   dispatchRoutes,
   isJwtProtectedPath,
   matchPattern,
-  pathRequiresAdminAuth,
+  AUTH_POLICIES,
+  routeAuthForPath,
   patternSpecificity,
   routePatternToOpenApiPath,
   type RouteDef,
@@ -44,9 +45,15 @@ describe('router helpers', () => {
     expect(patternSpecificity('/notebook/tasks/:id')).toBe(2);
   });
 
-  it('pathRequiresAdminAuth does not throw on malformed % escapes', () => {
-    expect(pathRequiresAdminAuth(routes, '/api/admin/posts/%E0')).toBe(false);
-    expect(pathRequiresAdminAuth(routes, '/api/echo/%E0')).toBe(false);
+  it('routeAuthForPath does not throw on malformed % escapes', () => {
+    expect(routeAuthForPath(routes, '/api/admin/posts/%E0')).toBeUndefined();
+    expect(routeAuthForPath(routes, '/api/echo/%E0')).toBeUndefined();
+  });
+
+  it('routeAuthForPath returns the matched route’s auth', () => {
+    expect(routeAuthForPath(routes, '/api/admin/posts')).toBe('site-admin');
+    expect(routeAuthForPath(routes, '/api/notebook/notes')).toBe('notebook');
+    expect(routeAuthForPath(routes, '/api/health')).toBeUndefined();
   });
 });
 
@@ -62,7 +69,7 @@ describe('dispatchRoutes', () => {
     defineRoute({
       method: 'POST',
       pattern: '/echo/:id',
-      auth: 'admin',
+      auth: 'site-admin',
       body: z.object({ name: z.string().min(1) }),
       handler: async (ctx, { body }) =>
         json(200, {
@@ -201,19 +208,27 @@ describe('dispatchRoutes', () => {
 });
 
 describe('route table contract', () => {
-  it('admin routes use exactly the API Gateway JWT prefixes', () => {
+  it('every /admin route is site-admin and every /notebook route is notebook', () => {
+    expect(AUTH_POLICIES['site-admin'].prefix).toBe('/admin');
+    expect(AUTH_POLICIES.notebook.prefix).toBe('/notebook');
+    expect(
+      Object.values(AUTH_POLICIES)
+        .map((policy) => policy.prefix)
+        .sort(),
+    ).toEqual([...API_GATEWAY_JWT_PREFIXES].sort());
     for (const route of routes) {
-      if (route.auth !== 'admin') continue;
-      expect(
-        isJwtProtectedPath(route.pattern.split('/:')[0]!) ||
-          isJwtProtectedPath(route.pattern),
-      ).toBe(true);
-      expect(
-        API_GATEWAY_JWT_PREFIXES.some(
-          (prefix) =>
-            route.pattern === prefix || route.pattern.startsWith(`${prefix}/`),
-        ),
-      ).toBe(true);
+      for (const [auth, policy] of Object.entries(AUTH_POLICIES)) {
+        const underPrefix =
+          route.pattern === policy.prefix ||
+          route.pattern.startsWith(`${policy.prefix}/`);
+        expect(
+          underPrefix ? route.auth === auth : route.auth !== auth,
+          `${route.method} ${route.pattern} has auth '${route.auth}'`,
+        ).toBe(true);
+      }
+      if (route.auth !== 'public') {
+        expect(isJwtProtectedPath(route.pattern)).toBe(true);
+      }
     }
   });
 

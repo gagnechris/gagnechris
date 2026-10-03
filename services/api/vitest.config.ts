@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    env: {
+      ADMIN_WEB_CLIENT_ID: 'test-admin-web',
+      NOTEBOOK_WEB_CLIENT_ID: 'test-notebook-web',
+    },
     projects: [
       {
         extends: true,

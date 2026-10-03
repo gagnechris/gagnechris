@@ -80,8 +80,9 @@ Import `test` and `expect` from `e2e/fixtures.ts`:
 Fake sign-in writes `{ userId, label }` to `localStorage['gagnechris.localAuthUser']`.
 In `VITE_AUTH_MODE=local` the admin reads that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the local API turns that
-into admin claims with `sub=<userId>`, so owner-scoped notebook data is
-separate per user. Any other bearer, or none, is the default user.
+into ID-token claims with `sub=<userId>` for the matched route's app
+(`site-admin` on `/api/admin`, `notebook` on `/api/notebook`), so
+owner-scoped notebook data is separate per user. Any other bearer, or none, is the default user.
 
 All tests share one stack and table, so isolate by `prefix` and per-test
 users rather than assuming an empty table. Seeding goes through the API

@@ -138,9 +138,20 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts the `admin-web` client, `/api/notebook/*` the `notebook-web` client, and both accept the legacy `web` client while `LEGACY_WEB_AUTH` is on. The iOS client is in neither audience until the app ships with universal-link callbacks; the router then requires the `admin` group in `cognito:groups` (403 otherwise).
+- API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts the `admin-web` client, `/api/notebook/*` the `notebook-web` client, and both accept the legacy `web` client while `LEGACY_WEB_AUTH` is on. The iOS client is in neither audience until the app ships with universal-link callbacks. A token from another client gets a gateway **401**. The web sends the ID token.
+- The router re-checks every protected route by its `auth` kind (`authorize` in `services/api/src/router.ts`):
+
+  | `auth`       | Prefix          | Client ID env var                         | Group        |
+  | ------------ | --------------- | ----------------------------------------- | ------------ |
+  | `site-admin` | `/api/admin`    | `ADMIN_WEB_CLIENT_ID` (`admin-web`)       | `site-admin` |
+  | `notebook`   | `/api/notebook` | `NOTEBOOK_WEB_CLIENT_ID` (`notebook-web`) | `notebook`   |
+  - No `sub` → **401**. The token's client must equal the prefix's client env var, else **403**: `aud` when `token_use` is `id`, `client_id` when it is `access`, nothing otherwise. Then the prefix's group must be in `cognito:groups`, else **403**. An unset client env var matches nothing (fail closed).
+  - `cognito:groups` parses strictly: a JSON array of strings, or the gateway's `[a b]` form split on whitespace only (commas are part of a name). Anything else is no groups.
+  - **Legacy fallback:** while the Lambda has `AUTH_LEGACY_WEB_CLIENT_ID` set, a token from that client with the `admin` group passes on both prefixes (the apex `/admin` app's access). A new-client token never falls back to `admin`. Unsetting the variable removes the fallback.
+  - So a `notebook`-only user gets 403 on every `/api/admin` route and a `site-admin`-only user gets 403 on every `/api/notebook` route. Notebook data is also owner-scoped by `sub`.
+
 - Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
-- Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
+- Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only that app's group. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
 ## Admin Notebook shell
 
@@ -189,15 +200,15 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 1. Add a `defineRoute({ … })` in the owning module (e.g. `createPostRoutes` in `services/api/src/posts/handlers.ts`) or append to `services/api/src/routes.ts`. Prefer `defineRoute` so `params` / `query` / `body` schemas type the handler input (no casts).
 2. Pattern is **without** the `/api` prefix (`/admin/posts/:id`, `/contact`). Incoming `/api/...` is stripped by the router.
-3. Set `auth: 'admin' | 'public'`, optional zod `params` / `query` / `body`, and a handler `(ctx, input) => result`.
+3. Set `auth: 'site-admin' | 'notebook' | 'public'`, optional zod `params` / `query` / `body`, and a handler `(ctx, input) => result`.
 4. Handlers receive `ctx.userId`, `ctx.claims`, `ctx.logger`, `ctx.metrics`, and `ctx.requestId`. Do **not** add per-module try/catch — validation and `mapRouteError` run in `dispatchRoutes`.
 5. Wrong method on a known path → **405** with an `Allow` header; unknown path → **404**. Malformed `%` escapes in path params → **400**. When multiple patterns match, **literal segments win** over `:param` (e.g. `/tasks/today` over `/tasks/:id`).
 6. Per-route CloudWatch metrics use the route `metric` name (no redundant `route` dimension).
 7. Keep these three places in sync (CI/tests assert agreement):
-   - **Route table** `auth: 'admin'` patterns must live under `/admin` or `/notebook` (`API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
+   - **Route table**: every `/admin*` pattern is `auth: 'site-admin'` and every `/notebook*` pattern is `auth: 'notebook'` (`AUTH_POLICIES` / `API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
    - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`) — asserted on the **synthesized** template (not source text): exactly those JWT `RouteKey`s, and no unauthenticated route under `/api/admin` or `/api/notebook`. Each `auth: 'public'` route needs its own `addRoutes` entry (method + `/api…` path); there is no `$default` catch-all.
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec. Versioned mutations document `If-Match` / `ETag` / **412** with `current`.
-8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
+8. Local API (`services/api/local/server.ts`) injects fake JWT claims for the matched route's `auth` kind — it does not hard-code path prefixes.
 
 ## Security headers and rendered HTML
 
@@ -216,7 +227,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 - **Response headers.** The router adds `X-Content-Type-Options: nosniff` to every API response and `Cache-Control: no-store` to non-public routes and to every error (router 401/403/404/405, handler 500). Public successes (health, contact, resume notify) set no cache header. CloudFront `/api/*` has its own response headers policy (`api-security-headers`: nosniff, HSTS, `no-referrer`, and `Cache-Control: no-store` when the origin sent none), which covers responses API Gateway generates itself, such as JWT authorizer 401s and throttling 429s. The edge also stays `CACHING_DISABLED`.
 - **CI read roles.** The diff, drift and CDK lookup roles run under `ReadOnlyAccess` with a `DenyPrivateDataReads` statement: DynamoDB item reads, S3 object reads, and log and trace reads (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`, `xray:BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Logs hold no note content; the log deny keeps CI out of them regardless. `cdk diff` / `cdk drift` never read logs.
 - **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, and `Query` on `gsi1` limited to `STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
-- **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the admin-group check, API Gateway throttles and the Lambda's own headers still apply.
+- **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the router's client and group checks, API Gateway throttles and the Lambda's own headers still apply.
 
 ## Analytics stay off /admin and /auth
 

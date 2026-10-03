@@ -22,7 +22,7 @@ export const mediaRoutes: RouteDef[] = [
   defineRoute({
     method: 'POST',
     pattern: '/admin/media/upload-url',
-    auth: 'admin',
+    auth: 'site-admin',
     metric: 'MediaUploadUrl',
     body: MediaUploadUrlRequestSchema,
     handler: async (_ctx, { body }) => {
@@ -33,7 +33,7 @@ export const mediaRoutes: RouteDef[] = [
   defineRoute({
     method: 'PUT',
     pattern: '/admin/media/objects/:key+',
-    auth: 'admin',
+    auth: 'site-admin',
     metric: 'MediaPutObject',
     params: KeyParams,
     rawBody: true,

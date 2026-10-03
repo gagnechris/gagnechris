@@ -22,7 +22,8 @@ import {
   metrics as defaultMetrics,
 } from './observability.js';
 
-export type AuthMode = 'public' | 'admin';
+export type ProtectedAuth = 'site-admin' | 'notebook';
+export type AuthMode = 'public' | ProtectedAuth;
 
 export type RouteCtx = {
   event: APIGatewayProxyEventV2;
@@ -123,7 +124,7 @@ export function canonicalPath(rawPath: string): string {
   return normalized;
 }
 
-/** Must stay aligned with `infra/lib/stacks/api-stack.ts`; admin routes must live under these. */
+/** Must stay aligned with `infra/lib/stacks/api-stack.ts`; protected routes must live under these. */
 export const API_GATEWAY_JWT_PREFIXES = ['/admin', '/notebook'] as const;
 
 export function isJwtProtectedPath(path: string): boolean {
@@ -132,38 +133,121 @@ export function isJwtProtectedPath(path: string): boolean {
   );
 }
 
+export type AuthPolicy = {
+  prefix: (typeof API_GATEWAY_JWT_PREFIXES)[number];
+  group: string;
+  clientIdEnv: string;
+};
+
+export const AUTH_POLICIES: Record<ProtectedAuth, AuthPolicy> = {
+  'site-admin': {
+    prefix: '/admin',
+    group: 'site-admin',
+    clientIdEnv: 'ADMIN_WEB_CLIENT_ID',
+  },
+  notebook: {
+    prefix: '/notebook',
+    group: 'notebook',
+    clientIdEnv: 'NOTEBOOK_WEB_CLIENT_ID',
+  },
+};
+
+/** While set, the legacy `web` client plus {@link LEGACY_ADMIN_GROUP} passes on every protected prefix. */
+export const LEGACY_WEB_CLIENT_ID_ENV = 'AUTH_LEGACY_WEB_CLIENT_ID';
+export const LEGACY_ADMIN_GROUP = 'admin';
+
 /** Malformed `%` escapes are non-matches so the handler can return 400; do not throw here. */
-export function pathRequiresAdminAuth(
+export function routeAuthForPath(
   routes: readonly RouteDef[],
   rawPath: string,
-): boolean {
+): ProtectedAuth | undefined {
   const path = canonicalPath(rawPath);
   for (const route of routes) {
-    if (route.auth !== 'admin') continue;
+    if (route.auth === 'public') continue;
     try {
-      if (matchPattern(route.pattern, path) != null) return true;
+      if (matchPattern(route.pattern, path) != null) return route.auth;
     } catch (error) {
       if (!(error instanceof MalformedPathError)) throw error;
     }
   }
-  return false;
+  return undefined;
 }
 
-export const ADMIN_GROUP = 'admin';
-
 /**
- * HTTP API JWT authorizers pass array claims as a bracketed string
- * (`[admin other]`); arrays stringified by {@link claimsFromEvent} arrive comma-joined.
+ * Accepts a JSON array of strings or the HTTP API authorizer's bracketed form
+ * (`[a b]`), split on whitespace only: Cognito group names may contain commas.
+ * Anything else is no groups.
  */
 export function claimGroups(raw: string | undefined): string[] {
-  if (!raw) return [];
-  return raw
-    .trim()
-    .replace(/^\[/, '')
-    .replace(/\]$/, '')
-    .split(/[\s,]+/)
-    .map((group) => group.replace(/^"|"$/g, ''))
-    .filter(Boolean);
+  const value = raw?.trim();
+  if (!value) return [];
+  if (value.startsWith('["')) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) &&
+        parsed.every((group) => typeof group === 'string')
+        ? parsed
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  const bracketed = /^\[([^[\]"]*)\]$/.exec(value);
+  if (!bracketed) return [];
+  return bracketed[1]!.split(/\s+/).filter(Boolean);
+}
+
+/** ID tokens name the client in `aud`, access tokens in `client_id`; anything else names none. */
+export function tokenClientId(
+  claims: Record<string, string> | undefined,
+): string | undefined {
+  if (claims?.token_use === 'id') return claims.aud || undefined;
+  if (claims?.token_use === 'access') return claims.client_id || undefined;
+  return undefined;
+}
+
+function envClientId(name: string): string | undefined {
+  return process.env[name]?.trim() || undefined;
+}
+
+export type AuthDecision =
+  { ok: true } | { ok: false; status: 401 | 403; message: string };
+
+export function authorize(
+  auth: ProtectedAuth,
+  claims: Record<string, string> | undefined,
+): AuthDecision {
+  if (!claims?.sub) {
+    return { ok: false, status: 401, message: 'Missing JWT claims' };
+  }
+  const policy = AUTH_POLICIES[auth];
+  const clientId = tokenClientId(claims);
+  const groups = claimGroups(claims['cognito:groups']);
+  const appClientId = envClientId(policy.clientIdEnv);
+  if (clientId && clientId === appClientId) {
+    return groups.includes(policy.group)
+      ? { ok: true }
+      : {
+          ok: false,
+          status: 403,
+          message: `Requires the ${policy.group} group`,
+        };
+  }
+  const legacyClientId = envClientId(LEGACY_WEB_CLIENT_ID_ENV);
+  if (clientId && clientId === legacyClientId) {
+    return groups.includes(LEGACY_ADMIN_GROUP)
+      ? { ok: true }
+      : {
+          ok: false,
+          status: 403,
+          message: `Requires the ${LEGACY_ADMIN_GROUP} group`,
+        };
+  }
+  return {
+    ok: false,
+    status: 403,
+    message: `Token is not from the ${policy.prefix.slice(1)} app client`,
+  };
 }
 
 export function claimsFromEvent(
@@ -182,6 +266,8 @@ export function claimsFromEvent(
   for (const [key, value] of Object.entries(jwt.claims)) {
     if (typeof value === 'string') {
       out[key] = value;
+    } else if (Array.isArray(value)) {
+      out[key] = JSON.stringify(value);
     } else if (value != null) {
       out[key] = String(value);
     }
@@ -254,20 +340,14 @@ async function invokeRoute(
   ctx: RouteCtx,
   params: Record<string, string>,
 ): Promise<APIGatewayProxyStructuredResultV2> {
-  if (route.auth === 'admin' && !ctx.userId) {
-    return json(401, {
-      error: 'unauthorized',
-      message: 'Missing JWT claims',
-    });
-  }
-  if (
-    route.auth === 'admin' &&
-    !claimGroups(ctx.claims?.['cognito:groups']).includes(ADMIN_GROUP)
-  ) {
-    return json(403, {
-      error: 'forbidden',
-      message: `Requires the ${ADMIN_GROUP} group`,
-    });
+  if (route.auth !== 'public') {
+    const decision = authorize(route.auth, ctx.claims);
+    if (!decision.ok) {
+      return json(decision.status, {
+        error: decision.status === 401 ? 'unauthorized' : 'forbidden',
+        message: decision.message,
+      });
+    }
   }
 
   let query: unknown = ctx.event.queryStringParameters ?? {};

@@ -3415,6 +3415,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -3662,6 +3689,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3966,6 +4020,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -4220,6 +4301,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4553,6 +4661,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4923,6 +5058,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5320,6 +5482,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -5667,6 +5856,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6064,6 +6280,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -6345,6 +6588,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -6579,6 +6849,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6917,6 +7214,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -7205,6 +7529,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7543,6 +7894,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -7851,6 +8229,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8293,6 +8698,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -8660,6 +9092,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9077,6 +9536,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -9469,6 +9955,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict (may include `currentVersion` / `current`)",
             "content": {
@@ -9746,6 +10259,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -9860,6 +10400,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10210,6 +10777,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -10461,6 +11055,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10871,6 +11492,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -11137,6 +11785,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11522,6 +12197,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11804,6 +12506,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -12192,6 +12921,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -12680,6 +13436,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error",
             "content": {
@@ -12963,6 +13746,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13309,6 +14119,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13716,6 +14553,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -14068,6 +14932,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -14393,6 +15284,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14825,6 +15743,33 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -15197,6 +16142,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15726,6 +16698,33 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
             "content": {
               "application/json": {
                 "schema": {

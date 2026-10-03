@@ -1,13 +1,38 @@
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
+import {
+  AUTH_POLICIES,
+  canonicalPath,
+  type ProtectedAuth,
+} from '../../src/router.js';
 
 export type MakeEventOptions = {
   body?: unknown;
   query?: Record<string, string>;
+  /**
+   * Merged over an ID token from the app that owns the path (by prefix,
+   * `site-admin` otherwise) carrying that app's group.
+   */
   jwtClaims?: Record<string, string>;
-  /** Default true; set false to test a non-admin token. */
-  adminGroup?: boolean;
+  /** Set false to send `jwtClaims` alone, with no app client or group. */
+  appToken?: boolean;
   headers?: Record<string, string>;
 };
+
+export function appIdTokenClaims(auth: ProtectedAuth): Record<string, string> {
+  const policy = AUTH_POLICIES[auth];
+  return {
+    token_use: 'id',
+    aud: process.env[policy.clientIdEnv] ?? '',
+    'cognito:groups': `[${policy.group}]`,
+  };
+}
+
+function authForPath(path: string): ProtectedAuth {
+  const canonical = canonicalPath(path);
+  return canonical === '/notebook' || canonical.startsWith('/notebook/')
+    ? 'notebook'
+    : 'site-admin';
+}
 
 export function makeEvent(
   method: string,
@@ -16,8 +41,8 @@ export function makeEvent(
 ): APIGatewayProxyEventV2 {
   const query = opts?.query;
   const claims =
-    opts?.jwtClaims && opts.adminGroup !== false
-      ? { 'cognito:groups': '[admin]', ...opts.jwtClaims }
+    opts?.jwtClaims && opts.appToken !== false
+      ? { ...appIdTokenClaims(authForPath(path)), ...opts.jwtClaims }
       : opts?.jwtClaims;
   return {
     version: '2.0',
