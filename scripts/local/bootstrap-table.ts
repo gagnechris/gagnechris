@@ -67,8 +67,24 @@ function createTableInput() {
 
 async function ensureTtl() {
   const def = APP_TABLE;
-  // DynamoDB Local 2.5.2+ accepts UpdateTimeToLive (CHR-180).
-  const { UpdateTimeToLiveCommand } = await import('@aws-sdk/client-dynamodb');
+  // DynamoDB Local 2.5.2+ accepts UpdateTimeToLive (CHR-180), but rejects it
+  // with "TimeToLive is already enabled" on a re-run, so check first (CHR-199).
+  const { DescribeTimeToLiveCommand, UpdateTimeToLiveCommand } =
+    await import('@aws-sdk/client-dynamodb');
+  const current = await client.send(
+    new DescribeTimeToLiveCommand({ TableName: tableName }),
+  );
+  const ttl = current.TimeToLiveDescription;
+  if (
+    (ttl?.TimeToLiveStatus === 'ENABLED' ||
+      ttl?.TimeToLiveStatus === 'ENABLING') &&
+    ttl.AttributeName === def.timeToLiveAttribute
+  ) {
+    console.log(
+      `TTL on ${def.timeToLiveAttribute} already enabled for ${tableName}`,
+    );
+    return;
+  }
   await client.send(
     new UpdateTimeToLiveCommand({
       TableName: tableName,

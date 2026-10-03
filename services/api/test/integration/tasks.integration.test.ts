@@ -3,6 +3,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SyncLedger } from '../../src/sync/ledger.js';
+import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { NotFoundError } from '../../src/data/errors.js';
 import { createTasksRepository } from '../../src/tasks/repository.js';
@@ -35,6 +36,7 @@ describe('tasks repository (DynamoDB Local, CHR-43)', () => {
   beforeEach(async () => {
     await truncateTable(doc, tableName);
     clearSyncEntities();
+    registerProductionSyncAdapters();
   });
 
   it('isolates owners, filters due ranges, lists by note, and feeds typed task changes', async () => {

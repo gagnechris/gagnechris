@@ -157,16 +157,26 @@ export const SYNC_TOMBSTONE_TTL_DAYS = 30;
 export const SYNC_CREATE_CLAIM_TTL_DAYS = 365;
 
 /**
- * Extra margin below the tombstone TTL for the sync `since` horizon (CHR-172).
- * Clients with `since` older than `now − tombstoneTTL − margin` get 410
- * `resync_required` (deletes may have been purged).
+ * Safety margin inside the tombstone TTL for the sync `since` horizon
+ * (CHR-172 / CHR-202). Covers clock skew between the TTL stamp and
+ * `updatedAt` and the per-second TTL granularity.
  */
 export const SYNC_RESYNC_MARGIN_MS = 24 * 60 * 60 * 1000;
 
-/** ISO watermark: `since` older than this requires a full resync (CHR-172). */
+/**
+ * ISO watermark: `since` older than this requires a full resync (CHR-172).
+ * A tombstone stamped at `t` may be purged from `t + TTL`, so every change the
+ * client still needs (`updatedAt ≥ since − SYNC_OVERLAP_MS`) is only
+ * guaranteed present while `since − overlap ≥ now − TTL + margin`. The horizon
+ * is therefore `now − TTL + margin + overlap` (CHR-202: it used to subtract
+ * the margin, serving 200 for watermarks whose deletes may already be gone).
+ */
 export function syncResyncHorizonIso(at: Date = new Date()): string {
   const ms =
-    at.getTime() - SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 - SYNC_RESYNC_MARGIN_MS;
+    at.getTime() -
+    SYNC_TOMBSTONE_TTL_DAYS * 86_400_000 +
+    SYNC_RESYNC_MARGIN_MS +
+    SYNC_OVERLAP_MS;
   return new Date(ms).toISOString();
 }
 

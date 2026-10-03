@@ -451,6 +451,12 @@ describe('stack Template assertions (CHR-136)', () => {
       AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
+      Namespace: 'gagnechris',
+      MetricName: 'SyncAdapterMissing',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       AlarmActions: alarmActions,
     });

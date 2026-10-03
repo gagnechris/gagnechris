@@ -103,6 +103,7 @@ jobs:
               - '.nvmrc'
               - 'scripts/local/**'
               - 'docker-compose.local.yml'
+              - 'docker-compose.ci.yml'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup/**'
 
