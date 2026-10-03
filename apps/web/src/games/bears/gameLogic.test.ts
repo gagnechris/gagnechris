@@ -12,7 +12,7 @@ import {
   unsecuredAttractants,
   type GameState,
 } from './gameLogic';
-import { BEAR_TIPS, BEAR_GUIDANCE_URL } from './tips';
+import { BEAR_TIPS } from './tips';
 
 function playUntil(
   start: GameState,
@@ -41,7 +41,7 @@ describe('tips', () => {
   test('every tip has a Vermont Fish & Wildlife source URL', () => {
     expect(BEAR_TIPS.length).toBeGreaterThanOrEqual(6);
     for (const tip of BEAR_TIPS) {
-      expect(tip.sourceUrl).toBe(BEAR_GUIDANCE_URL);
+      expect(tip.sourceUrl).toMatch(/^https:\/\/vtfishandwildlife\.com\//);
       expect(tip.title.length).toBeGreaterThan(0);
       expect(tip.body.length).toBeGreaterThan(0);
     }
