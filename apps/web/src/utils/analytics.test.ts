@@ -189,6 +189,11 @@ describe('analytics utilities', () => {
         '/admin/notebook/notes/01J9ZX',
         '/admin?date=2026-10-03',
         '/auth/callback',
+        '/ADMIN/notebook',
+        '/Admin',
+        '/aDmIn/notebook/notes/01J9ZX?date=2026-10-03',
+        '/AUTH/callback',
+        '/%61dmin/notebook',
       ]) {
         expect(isPrivatePath(path)).toBe(true);
       }
@@ -197,6 +202,7 @@ describe('analytics utilities', () => {
         '/posts/admin',
         '/administrator',
         '/authors',
+        '/Administrator',
         '/resume',
       ]) {
         expect(isPrivatePath(path)).toBe(false);
