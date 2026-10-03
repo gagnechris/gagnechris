@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { BearsGame } from '../../../utils/analytics';
 import type { BearTip } from '../tips';
@@ -25,6 +25,7 @@ type EndCardProps = {
   playAgainLabel?: string;
   onPlayAgain: () => void;
   onTipLinkClick: () => void;
+  extraActions?: ReactNode;
 };
 
 const OTHER_SIDE_LABEL: Readonly<Record<BearsGame, string>> = {
@@ -46,6 +47,7 @@ const EndCard = ({
   playAgainLabel = 'Play again',
   onPlayAgain,
   onTipLinkClick,
+  extraActions,
 }: EndCardProps) => {
   const titleId = useId();
   const other = otherGame(game);
@@ -97,6 +99,7 @@ const EndCard = ({
         >
           {OTHER_SIDE_LABEL[other]}
         </Link>
+        {extraActions}
       </div>
     </section>
   );
