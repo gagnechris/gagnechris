@@ -255,6 +255,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/cdk.out/**',
       '**/node_modules/**',
+      'e2e/test-results/**',
+      'e2e/playwright-report/**',
+      'e2e/.stack/**',
       'packages/api-client/src/schema.d.ts',
       'packages/shared/openapi/openapi.json',
       'packages/tokens/src/variables.css',
@@ -267,6 +270,7 @@ export default tseslint.config(
       'services/**/*.{ts,tsx}',
       'infra/**/*.{ts,tsx}',
       'scripts/**/*.{ts,tsx,mjs}',
+      'e2e/**/*.ts',
     ],
     languageOptions: {
       ecmaVersion: 2022,

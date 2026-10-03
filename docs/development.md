@@ -59,6 +59,7 @@ npm run publish-surface:check # CloudFront Option B + local publish routes from 
 npm run format        # Prettier write
 npm run build         # tsc -b + Vite → apps/web/dist
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
+npm run e2e:browser   # Playwright (Chromium + WebKit) against its own local stack
 ```
 
 The root scripts skip `apps/mobile`; its gates (including a real Metro bundle

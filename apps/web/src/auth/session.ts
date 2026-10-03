@@ -13,9 +13,37 @@ export type AuthUser = {
 
 const isLocalAuth = (): boolean => import.meta.env.VITE_AUTH_MODE === 'local';
 
+/** Local fake auth only: browser tests switch users by writing this key. */
+export const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
+
+const DEFAULT_LOCAL_USER: AuthUser = {
+  label: 'local@gagnechris.com',
+  userId: 'local-dev-user',
+};
+
+const localUser = (): AuthUser => {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_AUTH_USER_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'userId' in parsed &&
+      'label' in parsed &&
+      typeof parsed.userId === 'string' &&
+      typeof parsed.label === 'string'
+    ) {
+      return { label: parsed.label, userId: parsed.userId };
+    }
+  } catch {
+    // Malformed value: fall back to the default user.
+  }
+  return DEFAULT_LOCAL_USER;
+};
+
 export const getAuthUser = async (): Promise<AuthUser | null> => {
   if (isLocalAuth()) {
-    return { label: 'local@gagnechris.com', userId: 'local-dev-user' };
+    return localUser();
   }
   ensureAmplifyConfigured();
   try {
@@ -39,7 +67,7 @@ export const getIdToken = async (options?: {
   forceRefresh?: boolean;
 }): Promise<string | null> => {
   if (isLocalAuth()) {
-    return 'local-dev-token';
+    return `local:${localUser().userId}`;
   }
   ensureAmplifyConfigured();
   const session = await fetchAuthSession({

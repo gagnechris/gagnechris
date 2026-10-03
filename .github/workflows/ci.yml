@@ -182,6 +182,7 @@ jobs:
               - 'tsconfig.base.json'
               - '.nvmrc'
               - 'scripts/local/**'
+              - 'e2e/**'
               - 'docker-compose.local.yml'
               - 'infra/lib/cloudfront/viewer-request-function.js'
               - 'infra/lib/cloudfront/viewer-response-function.js'
@@ -199,3 +200,41 @@ jobs:
       - name: Run e2e:local
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         run: npm run e2e:local
+
+      - name: Playwright version
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        id: browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Install Playwright system deps
+        if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium webkit
+
+      - name: Run e2e:browser
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        run: npm run e2e:browser
+
+      - name: Upload Playwright report
+        if: failure() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            e2e/.stack/*/*.log
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14

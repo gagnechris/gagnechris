@@ -1,0 +1,18 @@
+{
+  "name": "@gagnechris/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Playwright browser tests against the local stack.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@gagnechris/api-client": "*",
+    "@types/node": "^22.13.0",
+    "typescript": "~6.0.3",
+    "ulid": "^3.0.2"
+  }
+}

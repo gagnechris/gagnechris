@@ -8,7 +8,8 @@
     "apps/web",
     "packages/*",
     "services/*",
-    "infra"
+    "infra",
+    "e2e"
   ],
   "scripts": {
     "dev": "npm run dev -w @gagnechris/web",
@@ -33,6 +34,7 @@
     "local:site": "bash -c 'source scripts/local/env.sh && npx tsx services/api/local/static-server.ts'",
     "local:seed-shell": "bash scripts/local/seed-shell.sh",
     "e2e:local": "bash scripts/local/e2e.sh",
+    "e2e:browser": "playwright test -c e2e/playwright.config.ts",
     "migrate:posts": "npx tsx scripts/migrate-posts.ts",
     "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client",
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
@@ -51,12 +53,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "eslint": "^10.11.0",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
     "prettier": "^3.9.9",
-    "typescript-eslint": "^8.71.0",
-    "eslint-plugin-import-x": "^4.17.1"
+    "typescript-eslint": "^8.71.0"
   }
 }
