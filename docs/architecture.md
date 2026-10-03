@@ -163,6 +163,8 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
   - Malformed `If-Match` → **400**
+  - Notebook note/task `PUT`, `DELETE`, and task `complete`/`reopen` accept `If-Match` **alone**: body `version` is optional when the header is present. With neither → **400**. `If-Match` wins when both are sent (CHR-186)
+  - Every OpenAPI request body is `required`, so the typed client cannot call a mutation (e.g. a delete) without its body; the web sends body `version` on deletes
   - Notebook note/task mutations build the new row from a **strongly consistent** read inside the repository (`mutateIfVersion` / `softDeleteIfVersion`) and always write `expected + 1`, so a lagging replica can never revert unsent fields or reuse a version (CHR-188)
   - Body-only `version` mismatch → **409** (`version_conflict`) with `currentVersion` + `current`
 - **409 `error` codes** (machine-readable): `version_conflict`, `deleted`, `payload_mismatch`, `slug_taken`, `daily_taken` (plus legacy `conflict`).

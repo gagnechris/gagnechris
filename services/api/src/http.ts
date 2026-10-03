@@ -5,6 +5,7 @@ import type {
 import { ZodError } from 'zod';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import {
+  BadRequestError,
   ConflictError,
   DataIntegrityError,
   NotFoundError,
@@ -105,6 +106,13 @@ export function mapRouteError(
     return json(400, {
       error: 'bad_request',
       message: 'Invalid pagination cursor',
+    });
+  }
+  if (error instanceof BadRequestError) {
+    return json(400, {
+      error: 'bad_request',
+      message: error.message,
+      ...(error.fields ? { fields: error.fields } : {}),
     });
   }
   if (error instanceof NotFoundError) {

@@ -84,7 +84,7 @@ export const noteResource = createVersionedResource<Note, NoteResourceParams>({
   fetch: (client, { id }) => fetchNote(client, id),
   update: (client, { id }, body) =>
     updateNote(client, id, body as UpdateNoteRequest),
-  delete: (client, { id }) => deleteNote(client, id),
+  delete: (client, { id }, body) => deleteNote(client, id, body),
   setCache: setCachedNote,
 });
 
@@ -176,7 +176,8 @@ export const useDeleteNoteMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteNote(getClient(), id),
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      deleteNote(getClient(), id, { version }),
     onSuccess: (note) => {
       setCachedNote(queryClient, note);
     },

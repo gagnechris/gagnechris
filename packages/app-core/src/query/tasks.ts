@@ -36,7 +36,7 @@ export const taskResource = createVersionedResource<Task, TaskResourceParams>({
   fetch: (client, { id }) => fetchTask(client, id),
   update: (client, { id }, body) =>
     updateTask(client, id, body as UpdateTaskRequest),
-  delete: (client, { id }) => deleteTask(client, id),
+  delete: (client, { id }, body) => deleteTask(client, id, body),
   setCache: setCachedTask,
 });
 
@@ -75,7 +75,8 @@ export const useDeleteTaskMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteTask(getClient(), id),
+    mutationFn: ({ id, version }: TaskVersionVars) =>
+      deleteTask(getClient(), id, { version }),
     onSuccess: (task) => {
       setCachedTask(queryClient, task);
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });

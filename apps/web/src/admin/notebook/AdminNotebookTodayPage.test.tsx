@@ -179,6 +179,15 @@ vi.mock('../../api/client', () => ({
         };
       }
       const prev = state.note;
+      // Mirrors the API: a placeholder save (no version) after someone else
+      // created the day gets 409 daily_taken with the winner (CHR-187).
+      if (prev && body.version === undefined && body.id !== prev.id) {
+        return {
+          data: undefined,
+          error: { error: 'daily_taken', message: 'Taken', current: prev },
+          response: { status: 409 },
+        };
+      }
       if (prev && body.version !== undefined && body.version !== prev.version) {
         return {
           data: undefined,
@@ -359,5 +368,38 @@ describe('AdminNotebookTodayPage', () => {
       { timeout: 1500 },
     );
     expect(screen.queryByText('Save failed (0).')).not.toBeInTheDocument();
+  });
+
+  test('second tab on an empty daily note gets a recoverable conflict, not a stuck 400', async () => {
+    const user = userEvent.setup();
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+
+    // Tab A creates the day while this tab still holds the empty placeholder.
+    state.note = {
+      id: '01TESTDAILYNOTETABA00000001',
+      userId: 'u1',
+      area: 'work',
+      type: 'daily',
+      date: '2026-10-02',
+      title: '',
+      bodyMarkdown: 'from tab A',
+      tags: [],
+      pinned: false,
+      version: 1,
+      createdAt: '2026-10-02T00:00:00.000Z',
+      updatedAt: '2026-10-02T00:00:00.000Z',
+      deleted: false,
+    };
+
+    await user.type(editor, 'from tab B');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(/Another tab or device already started/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Save failed \(400\)/)).not.toBeInTheDocument();
+    expect(editor).toHaveValue('from tab B');
+    expect(state.note?.bodyMarkdown).toBe('from tab A');
   });
 });

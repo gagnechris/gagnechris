@@ -70,6 +70,11 @@ function TodayEditor({
     }),
     conflictMessage:
       'Conflict — another device updated this daily note. Reload and try again.',
+    conflictMessages: {
+      // A placeholder save that lost the race to create this day (CHR-187).
+      daily_taken:
+        'Another tab or device already started this daily note. Copy what you typed, then reload to open it.',
+    },
     loadErrorFallback: 'Could not load daily note.',
   });
 

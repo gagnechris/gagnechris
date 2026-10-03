@@ -430,8 +430,12 @@ export const CreateNoteRequestSchema = z
 
 export type CreateNoteRequest = z.infer<typeof CreateNoteRequestSchema>;
 
+/**
+ * PUT note body. `version` may be omitted when `If-Match` carries the
+ * expectation (CHR-186); the route still requires one of the two.
+ */
 export const UpdateNoteRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
+  version: z.number().int().nonnegative().optional(),
   title: z.string().optional(),
   bodyMarkdown: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -510,7 +514,7 @@ export type UpsertDailyNoteRequest = z.infer<
  * tasks sort separately from due/overdue ranges in Dynamo (UPDATED# prefix).
  */
 export const TaskSchema = z.object({
-  id: z.string().min(1),
+  id: UlidSchema,
   userId: z.string().min(1),
   area: NotebookAreaSchema,
   title: z.string().min(1),
@@ -544,21 +548,25 @@ export const CreateTaskRequestSchema = z.object({
   priority: TaskPrioritySchema.default('med'),
   status: TaskStatusSchema.default('todo'),
   dueDate: CalendarDateSchema.nullable().optional(),
-  noteId: z.string().min(1).nullable().optional(),
+  noteId: UlidSchema.nullable().optional(),
   tags: z.array(z.string()).default([]),
 });
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
 
+/**
+ * PUT task body. `version` may be omitted when `If-Match` carries the
+ * expectation (CHR-186); the route still requires one of the two.
+ */
 export const UpdateTaskRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
+  version: z.number().int().nonnegative().optional(),
   area: NotebookAreaSchema.optional(),
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   priority: TaskPrioritySchema.optional(),
   status: TaskStatusSchema.optional(),
   dueDate: CalendarDateSchema.nullable().optional(),
-  noteId: z.string().min(1).nullable().optional(),
+  noteId: UlidSchema.nullable().optional(),
   tags: z.array(z.string()).optional(),
 });
 
