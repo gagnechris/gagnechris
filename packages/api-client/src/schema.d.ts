@@ -4298,6 +4298,10 @@ export interface paths {
                     dueBefore?: string;
                     /** @description Tasks linked to a note */
                     noteId?: string;
+                    /** @description Only todo and in_progress tasks (ignored when status is set) */
+                    open?: "true" | "false";
+                    /** @description Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today */
+                    today?: string;
                     cursor?: string;
                     limit?: number;
                 };
@@ -6493,6 +6497,13 @@ export interface components {
             dueBefore?: string;
             /** @description Tasks linked to a note */
             noteId?: string;
+            /**
+             * @description Only todo and in_progress tasks (ignored when status is set)
+             * @enum {string}
+             */
+            open?: "true" | "false";
+            /** @description Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today */
+            today?: string;
             cursor?: string;
             limit?: number;
         };

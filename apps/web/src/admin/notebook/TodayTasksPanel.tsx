@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   useCompleteTaskMutation,
@@ -28,18 +28,34 @@ export default function TodayTasksPanel({ area, now }: Props) {
   const today = formatLocalDate(clock);
   const [quickAdd, setQuickAdd] = useState('');
 
-  const tasksQuery = useTasksQuery({
+  // Open tasks plus today's done ones (for progress). Done tasks from other
+  // days are never read, so they cannot crowd out today's (CHR-185).
+  const tasksQuery = useTasksQuery({ area, open: true, today, limit: 100 });
+  const doneTodayQuery = useTasksQuery({
     area,
+    status: 'done',
+    dueOn: today,
+    today,
     limit: 100,
   });
+  useLoadAllPages(tasksQuery);
+  useLoadAllPages(doneTodayQuery);
   const createMutation = useCreateTaskMutation();
   const completeMutation = useCompleteTaskMutation();
   const reopenMutation = useReopenTaskMutation();
 
-  const items = useMemo(
-    () => tasksQuery.data?.pages.flatMap((p) => p.items) ?? [],
-    [tasksQuery.data],
-  );
+  const items = useMemo(() => {
+    // A task completed here can sit in both caches; keep its newest copy.
+    const byId = new Map<string, Task>();
+    for (const task of [
+      ...(tasksQuery.data?.pages.flatMap((p) => p.items) ?? []),
+      ...(doneTodayQuery.data?.pages.flatMap((p) => p.items) ?? []),
+    ]) {
+      const seen = byId.get(task.id);
+      if (!seen || task.version > seen.version) byId.set(task.id, task);
+    }
+    return [...byId.values()];
+  }, [tasksQuery.data, doneTodayQuery.data]);
   const buckets = useMemo(() => bucketTodayTasks(items, today), [items, today]);
   const progress = todayProgress(buckets);
   const showTomorrow = showTomorrowPreview(clock);
@@ -235,4 +251,16 @@ function TaskSection({
       )}
     </section>
   );
+}
+
+/** Today needs every open task, so follow cursors until exhausted. */
+function useLoadAllPages(query: {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => Promise<unknown>;
+}) {
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 }

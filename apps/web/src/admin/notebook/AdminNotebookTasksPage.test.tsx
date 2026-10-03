@@ -30,10 +30,28 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   createApiClient: () => ({
-    GET: async (path: string) => {
+    GET: async (
+      path: string,
+      init?: {
+        params?: {
+          query?: { status?: string; open?: string; dueOn?: string };
+        };
+      },
+    ) => {
       if (path === '/api/notebook/tasks') {
+        // Honour the filters the UI sends, like the API (CHR-185).
+        const q = init?.params?.query ?? {};
         return {
-          data: { items: state.tasks.filter((t) => !t.deleted) },
+          data: {
+            items: state.tasks.filter(
+              (t) =>
+                !t.deleted &&
+                (q.status
+                  ? t.status === q.status
+                  : q.open !== 'true' || t.status !== 'done') &&
+                (!q.dueOn || t.dueDate === q.dueOn),
+            ),
+          },
           error: undefined,
           response: { status: 200 },
         };
@@ -170,6 +188,37 @@ describe('AdminNotebookTasksPage (CHR-44)', () => {
     await waitFor(() => {
       expect(state.tasks[0]?.status).toBe('done');
     });
-    expect(screen.getByText(/Completed \(1\)/)).toBeInTheDocument();
+    // Completed loads lazily when expanded (CHR-185).
+    await user.click(screen.getByText('Completed'));
+    expect(await screen.findByText(/Completed \(1\)/)).toBeInTheDocument();
+  });
+
+  test('120 done past-due tasks do not hide 3 open tasks (CHR-185)', async () => {
+    const mk = (i: number, status: Task['status'], dueDate: string): Task => ({
+      id: `01TASKPILE${String(i).padStart(16, '0')}`,
+      userId: 'u1',
+      area: 'work',
+      title: status === 'done' ? `old ${i}` : `open ${i}`,
+      description: '',
+      priority: 'high',
+      status,
+      dueDate,
+      completedAt: status === 'done' ? '2026-09-01T12:00:00.000Z' : null,
+      noteId: null,
+      tags: [],
+      version: 1,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      updatedAt: '2026-09-01T12:00:00.000Z',
+      deleted: false,
+    });
+    state.tasks = [
+      ...Array.from({ length: 120 }, (_, i) => mk(i, 'done', '2026-09-01')),
+      ...[0, 1, 2].map((i) => mk(200 + i, 'todo', '2026-10-02')),
+    ];
+    renderTasks();
+
+    const open = await screen.findByRole('list', { name: 'Open tasks' });
+    expect(open.querySelectorAll('li')).toHaveLength(3);
+    expect(screen.queryByText('old 0')).not.toBeInTheDocument();
   });
 });
