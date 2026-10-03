@@ -138,6 +138,27 @@
   color: #16191d;
 }
 
+/* Undo the site-wide button:hover recolor and lift on the game controls. */
+.wild-hud__sniff:hover,
+.wild-hud__pause:hover,
+.wild-touch button:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.wild-hud__sniff:hover,
+.wild-touch__sniff:hover {
+  background-color: #16191d;
+}
+
+.wild-hud__pause:hover {
+  background-color: white;
+}
+
+.wild-touch__jump:hover {
+  background-color: var(--primary-700);
+}
+
 .wild-hud__sniff:disabled,
 .wild-hud__pause:disabled {
   opacity: 0.55;
