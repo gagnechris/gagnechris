@@ -1,20 +1,25 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BEARS_LANDING_PATH, withFrom } from '../../games/bears/shared/routes';
 
 type BearsGameHeaderProps = {
   title: string;
   from: string;
+  actions?: ReactNode;
 };
 
-const BearsGameHeader = ({ title, from }: BearsGameHeaderProps) => (
+const BearsGameHeader = ({ title, from, actions }: BearsGameHeaderProps) => (
   <header className="bears-game-page__header">
-    <Link
-      to={withFrom(BEARS_LANDING_PATH, from)}
-      className="bears-game-page__back"
-    >
-      Don’t Feed the Bears
-    </Link>
-    <h1>{title}</h1>
+    <div>
+      <Link
+        to={withFrom(BEARS_LANDING_PATH, from)}
+        className="bears-game-page__back"
+      >
+        Don’t Feed the Bears
+      </Link>
+      <h1>{title}</h1>
+    </div>
+    {actions ? <div className="bears-game-page__actions">{actions}</div> : null}
   </header>
 );
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test, vi } from 'vitest';
 import CampRules from './CampRules';
@@ -21,6 +21,8 @@ describe('Camp Rules page', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Camp Rules' }),
     ).toBeInTheDocument();
+    expect(trackBearsGameStart).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Start the evening' }));
     expect(trackBearsGameStart).toHaveBeenCalledWith('camp', '404');
   });
 

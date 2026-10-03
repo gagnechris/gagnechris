@@ -22,7 +22,7 @@ describe('public entry bundle isolation', () => {
   });
 
   test('the bears landing page loads neither game', () => {
-    expect(landingSource).not.toMatch(/BearGame/);
+    expect(landingSource).not.toMatch(/games\/bears\/camp\//);
     expect(landingSource).not.toMatch(/pages\/bears\//);
   });
 
