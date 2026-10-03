@@ -23,8 +23,12 @@ export type VersionedResourceConfig<
     params: TParams,
     body: ExpectedVersionRequest & Record<string, unknown>,
   ) => Promise<TEntity>;
-  /** Optional soft-delete (notes, posts). */
-  delete?: (client: ApiClient, params: TParams) => Promise<TEntity>;
+  /** Optional soft-delete (notes, posts). Sends the expected version (CHR-186). */
+  delete?: (
+    client: ApiClient,
+    params: TParams,
+    body: ExpectedVersionRequest,
+  ) => Promise<TEntity>;
   setCache: (queryClient: QueryClient, entity: TEntity) => void;
 };
 

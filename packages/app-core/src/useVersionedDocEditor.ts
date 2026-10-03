@@ -11,7 +11,8 @@ export type VersionedDocEntity = {
 
 export type VersionedDocDeleteOptions = {
   confirm: string;
-  mutate: () => Promise<void>;
+  /** Receives the editor's current entity version (CHR-186). */
+  mutate: (version: number) => Promise<void>;
   onDeleted: () => void;
 };
 
@@ -234,11 +235,11 @@ export function useVersionedDocEditor<
     if (!deleteOpts || !enabled || busyRef.current) return;
     if (!(await confirm(deleteOpts.confirm))) return;
     await withHold(async () => {
-      // DELETE carries no version — wait out any in-flight autosave PUT first
-      // so the two cannot race (CHR-165).
+      // Wait out any in-flight autosave PUT first so DELETE sends the version
+      // that save produced, not the one before it (CHR-165 / CHR-186).
       await awaitInFlight();
       try {
-        await deleteOpts.mutate();
+        await deleteOpts.mutate(versionRef.current);
         // Clear dirty before navigation so leave-guards do not prompt (CHR-158).
         markClean();
         suppressLeaveGuardRef.current = true;

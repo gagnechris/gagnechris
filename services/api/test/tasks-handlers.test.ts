@@ -10,6 +10,8 @@ import {
   sortTasksForList,
 } from '../src/tasks/repository.js';
 import { createTaskRoutes } from '../src/tasks/handlers.js';
+import { createNotesRepository } from '../src/notes/repository.js';
+import { createNoteRoutes } from '../src/notes/handlers.js';
 import type { Task } from '@gagnechris/shared';
 
 const TABLE = 'gagnechris-tasks-test';
@@ -18,7 +20,7 @@ const OTHER = 'user-tasks-2';
 const TASK_A = '01ARZ3NDEKTSV4RRFFQ48JMTA1';
 const TASK_B = '01ARZ3NDEKTSV4RRFFQ48JMTA2';
 const TASK_C = '01ARZ3NDEKTSV4RRFFQ48JMTA3';
-const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ48JMNO1';
+const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ48JMN01';
 
 function adminEvent(
   method: string,
@@ -226,12 +228,27 @@ describe('tasks handlers (CHR-43)', () => {
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
+    const notes = createNotesRepository(doc, TABLE);
     const routes = [
-      ...createTaskRoutes(repo),
+      ...createTaskRoutes(repo, notes),
+      ...createNoteRoutes(notes),
       ...createSyncRoutes(
         new SyncLedger(doc, TABLE, () => '2026-10-02T13:00:00.000Z'),
       ),
     ];
+
+    const noteCreated = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/notes', {
+        id: NOTE_ID,
+        area: 'personal',
+        type: 'page',
+        title: 'Linked page',
+      }),
+      'POST',
+      '/api/notebook/notes',
+    );
+    expect(noteCreated?.statusCode).toBe(201);
 
     await dispatchRoutes(
       routes,
@@ -302,5 +319,164 @@ describe('tasks handlers (CHR-43)', () => {
       type: 'task',
       deleted: true,
     });
+  });
+
+  it('accepts If-Match alone on PUT and DELETE; stale If-Match is 412 (CHR-186)', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createTasksRepository(
+      doc,
+      TABLE,
+      () => '2026-10-02T12:00:00.000Z',
+    );
+    const routes = createTaskRoutes(repo, createNotesRepository(doc, TABLE));
+    await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_A,
+        area: 'work',
+        title: 'Header only',
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+
+    const updated = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/tasks/${TASK_A}`,
+        { title: 'Renamed' },
+        { 'if-match': '"1"' },
+      ),
+      'PUT',
+      `/api/notebook/tasks/${TASK_A}`,
+    );
+    expect(updated?.statusCode).toBe(200);
+    expect(updated?.headers?.ETag).toBe('"2"');
+    expect(JSON.parse(updated!.body as string).title).toBe('Renamed');
+
+    const stale = await dispatchRoutes(
+      routes,
+      adminEvent(
+        'PUT',
+        `/api/notebook/tasks/${TASK_A}`,
+        { title: 'Stale' },
+        { 'if-match': '"1"' },
+      ),
+      'PUT',
+      `/api/notebook/tasks/${TASK_A}`,
+    );
+    expect(stale?.statusCode).toBe(412);
+
+    const missing = await dispatchRoutes(
+      routes,
+      adminEvent('PUT', `/api/notebook/tasks/${TASK_A}`, { title: 'No ver' }),
+      'PUT',
+      `/api/notebook/tasks/${TASK_A}`,
+    );
+    expect(missing?.statusCode).toBe(400);
+
+    const deleted = await dispatchRoutes(
+      routes,
+      adminEvent('DELETE', `/api/notebook/tasks/${TASK_A}`, undefined, {
+        'if-match': '"2"',
+      }),
+      'DELETE',
+      `/api/notebook/tasks/${TASK_A}`,
+    );
+    expect(deleted?.statusCode).toBe(200);
+    expect(JSON.parse(deleted!.body as string).deleted).toBe(true);
+  });
+
+  it('rejects a noteId that is not a live note owned by the caller (CHR-186)', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = createTasksRepository(
+      doc,
+      TABLE,
+      () => '2026-10-02T12:00:00.000Z',
+    );
+    const notes = createNotesRepository(doc, TABLE);
+    const routes = [
+      ...createTaskRoutes(repo, notes),
+      ...createNoteRoutes(notes),
+    ];
+
+    const notUlid = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_A,
+        area: 'work',
+        title: 'Bad link',
+        noteId: 'not-a-note',
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+    expect(notUlid?.statusCode).toBe(400);
+
+    const unknown = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_A,
+        area: 'work',
+        title: 'Dangling link',
+        noteId: NOTE_ID,
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+    expect(unknown?.statusCode).toBe(400);
+    expect(JSON.parse(unknown!.body as string).fields).toEqual({
+      noteId: 'not_found',
+    });
+
+    // Another user's note is not linkable.
+    await dispatchRoutes(
+      routes,
+      adminEvent(
+        'POST',
+        '/api/notebook/notes',
+        { id: NOTE_ID, area: 'work', type: 'page', title: 'Theirs' },
+        undefined,
+        undefined,
+        OTHER,
+      ),
+      'POST',
+      '/api/notebook/notes',
+    );
+    const crossUser = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_A,
+        area: 'work',
+        title: 'Cross-user link',
+        noteId: NOTE_ID,
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+    expect(crossUser?.statusCode).toBe(400);
+
+    const created = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_A,
+        area: 'work',
+        title: 'Unlinked',
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+    expect(created?.statusCode).toBe(201);
+    const relink = await dispatchRoutes(
+      routes,
+      adminEvent('PUT', `/api/notebook/tasks/${TASK_A}`, {
+        version: 1,
+        noteId: NOTE_ID,
+      }),
+      'PUT',
+      `/api/notebook/tasks/${TASK_A}`,
+    );
+    expect(relink?.statusCode).toBe(400);
   });
 });

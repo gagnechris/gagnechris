@@ -1345,10 +1345,7 @@
               "personal"
             ]
           }
-        },
-        "required": [
-          "version"
-        ]
+        }
       },
       "ListNotesQuery": {
         "type": "object",
@@ -1659,7 +1656,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
           },
           "userId": {
             "type": "string",
@@ -1760,7 +1757,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "minLength": 1
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                 },
                 "userId": {
                   "type": "string",
@@ -1909,7 +1906,7 @@
           "noteId": {
             "type": "string",
             "nullable": true,
-            "minLength": 1
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
           },
           "tags": {
             "type": "array",
@@ -1970,7 +1967,7 @@
           "noteId": {
             "type": "string",
             "nullable": true,
-            "minLength": 1
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
           },
           "tags": {
             "type": "array",
@@ -1978,10 +1975,7 @@
               "type": "string"
             }
           }
-        },
-        "required": [
-          "version"
-        ]
+        }
       },
       "ListTasksQuery": {
         "type": "object",
@@ -2471,7 +2465,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "minLength": 1
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
               },
               "userId": {
                 "type": "string",
@@ -2799,7 +2793,7 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "minLength": 1
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                   },
                   "userId": {
                     "type": "string",
@@ -3134,7 +3128,7 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                         },
                         "userId": {
                           "type": "string",
@@ -3803,7 +3797,8 @@
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -4414,7 +4409,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -4783,7 +4779,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -5154,7 +5151,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -5525,7 +5523,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -5896,7 +5895,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -6456,7 +6456,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -6768,7 +6769,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -7080,7 +7082,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -7392,7 +7395,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -8062,7 +8066,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -8453,7 +8458,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -8844,7 +8850,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -9235,7 +9242,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -9630,7 +9638,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -10313,7 +10322,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -10597,7 +10607,16 @@
         ],
         "responses": {
           "200": {
-            "description": "Daily note or empty draft",
+            "description": "Daily note (with ETag) or empty draft (no ETag)",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -10948,7 +10967,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11580,13 +11600,11 @@
                       "personal"
                     ]
                   }
-                },
-                "required": [
-                  "version"
-                ]
+                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11946,7 +11964,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12376,7 +12395,7 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "minLength": 1
+                            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                           },
                           "userId": {
                             "type": "string",
@@ -12651,7 +12670,7 @@
                   "noteId": {
                     "type": "string",
                     "nullable": true,
-                    "minLength": 1
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                   },
                   "tags": {
                     "type": "array",
@@ -12668,7 +12687,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -12689,7 +12709,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -12986,7 +13006,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13007,7 +13028,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -13367,7 +13388,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13388,7 +13410,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -13740,7 +13762,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -14053,7 +14075,7 @@
                   "noteId": {
                     "type": "string",
                     "nullable": true,
-                    "minLength": 1
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                   },
                   "tags": {
                     "type": "array",
@@ -14061,13 +14083,11 @@
                       "type": "string"
                     }
                   }
-                },
-                "required": [
-                  "version"
-                ]
+                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14088,7 +14108,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -14446,7 +14466,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14467,7 +14488,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                     },
                     "userId": {
                       "type": "string",
@@ -15356,7 +15377,7 @@
                                 "properties": {
                                   "id": {
                                     "type": "string",
-                                    "minLength": 1
+                                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
                                   },
                                   "userId": {
                                     "type": "string",
@@ -15667,7 +15688,8 @@
                 ]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -15848,7 +15870,8 @@
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {

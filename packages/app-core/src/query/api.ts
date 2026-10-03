@@ -152,9 +152,11 @@ export const updatePost = async (
 export const deletePost = async (
   client: ApiClient,
   id: string,
+  body: ExpectedVersionRequest,
 ): Promise<Post> => {
   const result = await client.DELETE('/api/admin/posts/{id}', {
     params: { path: { id } },
+    body,
   });
   return unwrap(result, 'Delete failed');
 };
@@ -330,9 +332,11 @@ export const updateNote = async (
 export const deleteNote = async (
   client: ApiClient,
   id: string,
+  body: ExpectedVersionRequest,
 ): Promise<Note> => {
   const result = await client.DELETE('/api/notebook/notes/{id}', {
     params: { path: { id } },
+    body,
   });
   return unwrap(result, 'Delete failed');
 };
@@ -430,9 +434,11 @@ export const updateTask = async (
 export const deleteTask = async (
   client: ApiClient,
   id: string,
+  body: ExpectedVersionRequest,
 ): Promise<Task> => {
   const result = await client.DELETE('/api/notebook/tasks/{id}', {
     params: { path: { id } },
+    body,
   });
   return unwrap(result, 'Delete failed');
 };

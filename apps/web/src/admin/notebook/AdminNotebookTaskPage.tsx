@@ -47,8 +47,8 @@ export default function AdminNotebookTaskPage() {
     loadErrorFallback: 'Could not load task.',
     delete: {
       confirm: 'Delete this task? It will disappear from your list.',
-      mutate: async () => {
-        await deleteMutation.mutateAsync(id);
+      mutate: async (version) => {
+        await deleteMutation.mutateAsync({ id: id, version });
       },
       onDeleted: () => {
         void navigate('/admin/notebook/tasks');
