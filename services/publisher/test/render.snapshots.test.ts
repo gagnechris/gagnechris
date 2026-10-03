@@ -104,6 +104,7 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
         }),
       },
       corruptPostSlugs: new Set(),
+      retainedPosts: [],
     };
 
     const feeds = await postsFeedsTarget.run({

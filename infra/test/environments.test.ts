@@ -848,6 +848,15 @@ describe('ApiStack', () => {
       AlarmActions: Match.anyValue(),
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
+      Namespace: 'gagnechris',
+      MetricName: 'SyncAdapterMissing',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
+      ]),
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       Namespace: 'AWS/ApiGateway',
       MetricName: '5xx',

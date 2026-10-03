@@ -307,6 +307,14 @@ export class ApiStack extends Stack {
       metricName: 'DataIntegrityError',
       alertsTopic,
     });
+    emfServiceAlarm(this, 'ApiSyncAdapterMissing', {
+      alarmName: `gagnechris-${config.name}-api-sync-adapter-missing`,
+      alarmDescription:
+        'Sync feed hit a change type with no registered adapter (500, CHR-202)',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'SyncAdapterMissing',
+      alertsTopic,
+    });
     metricAlarm(this, 'ApiGateway5xx', {
       alarmName: `gagnechris-${config.name}-api-gateway-5xx`,
       alarmDescription: 'API Gateway HTTP API 5XX responses ≥ 1 in 5 minutes',

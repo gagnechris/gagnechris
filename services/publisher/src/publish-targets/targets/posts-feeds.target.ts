@@ -1,4 +1,4 @@
-import { toListItem } from '../../posts.js';
+import { sortPostsNewestFirst, toListItem } from '../../posts.js';
 import {
   buildRssXml,
   buildSitemapXml,
@@ -22,21 +22,26 @@ const target: PublishTarget = {
     return scope.feeds;
   },
   async run(ctx) {
-    const { shell, published, corruptPostSlugs } = ctx;
+    const { shell, published, corruptPostSlugs, retainedPosts } = ctx;
+    // Live posts missing from the catalog keep their feed entries (CHR-201).
+    const feedPosts =
+      retainedPosts.length > 0
+        ? sortPostsNewestFirst([...published, ...retainedPosts])
+        : published;
     const allowlistedSlugs = [
-      ...new Set([...published.map((p) => p.slug), ...corruptPostSlugs]),
+      ...new Set([...feedPosts.map((p) => p.slug), ...corruptPostSlugs]),
     ].filter(Boolean);
     return {
       artifacts: [
         {
           key: 'blog/index.html',
-          body: renderPostsIndexPage(shell, published),
+          body: renderPostsIndexPage(shell, feedPosts),
           contentType: 'text/html; charset=utf-8',
           cacheControl: CACHE_HTML,
         },
         {
           key: 'blog/posts.json',
-          body: JSON.stringify({ items: published.map(toListItem) }, null, 0),
+          body: JSON.stringify({ items: feedPosts.map(toListItem) }, null, 0),
           contentType: 'application/json; charset=utf-8',
           cacheControl: CACHE_HTML,
         },
@@ -48,13 +53,13 @@ const target: PublishTarget = {
         },
         {
           key: 'sitemap.xml',
-          body: buildSitemapXml(published, [...corruptPostSlugs]),
+          body: buildSitemapXml(feedPosts, [...corruptPostSlugs]),
           contentType: 'application/xml; charset=utf-8',
           cacheControl: CACHE_FEED,
         },
         {
           key: 'rss.xml',
-          body: buildRssXml(published),
+          body: buildRssXml(feedPosts),
           contentType: 'application/rss+xml; charset=utf-8',
           cacheControl: CACHE_FEED,
         },

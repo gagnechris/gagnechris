@@ -33,7 +33,6 @@ import {
 import { getDocClient, requireTableName } from '../data/client.js';
 import { OwnerScopedVersionedEntityRepository } from '../data/owner-scoped-versioned-entity-repository.js';
 import { walkPartitions } from '../data/partition-walk.js';
-import { registerSyncEntity } from '../sync/registry.js';
 import { hashCreateFields } from '../data/create-hash.js';
 
 export const TASK_CHANGE_TYPE = 'task';
@@ -104,11 +103,6 @@ export function taskToChange(
   return change;
 }
 
-registerSyncEntity({
-  changeType: TASK_CHANGE_TYPE,
-  toChange: taskToChange,
-});
-
 /** Past due and not done: done tasks never rank as overdue (CHR-185). */
 function isOverdue(task: Task, today: string): boolean {
   return (
@@ -175,7 +169,6 @@ export class TasksRepository {
           changeType: TASK_CHANGE_TYPE,
           userIdOf: (t) => t.userId,
           createPayloadHash: taskCreatePayloadHash,
-          toChange: taskToChange,
         },
       },
       doc,

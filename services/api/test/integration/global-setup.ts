@@ -8,6 +8,7 @@ import {
   ciComposeFileArgs,
   dynamodbCiStartedFlagPath,
   integrationComposeEnv,
+  integrationDynamoEndpoint,
   teardownDynamodbCi,
 } from '../support/dynamodb-ci-lifecycle.js';
 
@@ -22,8 +23,8 @@ function applyIntegrationEnv(): void {
   process.env.AWS_REGION = 'us-east-1';
   process.env.AWS_DEFAULT_REGION = 'us-east-1';
   delete process.env.AWS_PROFILE;
-  process.env.AWS_ENDPOINT_URL_DYNAMODB =
-    process.env.AWS_ENDPOINT_URL_DYNAMODB ?? 'http://127.0.0.1:8000';
+  // Never the local-dev DynamoDB on 8000 (CHR-199).
+  process.env.AWS_ENDPOINT_URL_DYNAMODB = integrationDynamoEndpoint();
   // Never inherit DATA_TABLE_NAME (e.g. gagnechris-local from env.sh).
   delete process.env.DATA_TABLE_NAME;
   // Always isolate from `env.sh`'s COMPOSE_PROJECT_NAME=gagnechris.

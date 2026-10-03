@@ -1,5 +1,7 @@
 # CI / API integration only: host port 8001 so local dev can keep 8000 (CHR-176).
+# `!override` replaces the base file's ports instead of appending to them, so
+# this project never also binds 8000 (CHR-199). Needs Docker Compose 2.24.4+.
 services:
   dynamodb:
-    ports:
+    ports: !override
       - '8001:8000'

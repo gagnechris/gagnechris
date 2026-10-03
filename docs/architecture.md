@@ -41,11 +41,14 @@ API repositories share one layering:
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
-Integrity notes (CHR-160 / CHR-167):
+Integrity notes (CHR-160 / CHR-167 / CHR-201):
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
 - Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post (CHR-167).
+- Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished (CHR-201).
+- Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise (CHR-201).
+- `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing (CHR-201).
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
 - List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400** (CHR-170).
@@ -148,16 +151,16 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Export (CHR-47):** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup stay in `infra/RUNBOOK.md`.
 - **PWA (CHR-48):** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. Offline read-only cache is optional and not required for installability.
 
-## Notebook sync contract (CHR-153 / CHR-162 / CHR-172)
+## Notebook sync contract (CHR-153 / CHR-162 / CHR-172 / CHR-202)
 
 `GET /api/notebook/sync/changes` is the generic change feed real Notebook entities will use:
 
 - **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, `sha256:` of the fields including `userId`, never the text; CHR-192) are idempotent (mismatch → 409). Pre-CHR-192 rows hold the plaintext join until `scripts/migrate-create-hash.mjs` rewrites them; comparison accepts both forms. A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge. Soft-delete **extends** the claim TTL from delete time. Rows without `createHash` cannot prove create-time identity and return **409** `payload_mismatch`.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
-- **Adapters** come from `config.sync.toChange` (registered when the repository is constructed). Missing adapters log + emit `SyncAdapterMissing`; a unit test fails if a synced fixture has no adapter.
-- **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (`note`, `task`, plus the `fakeNote` test fixture).
-- **`since` / `nextSince`**: `nextSince` is an ISO-8601 server watermark (treat as opaque; echo as `since`). Overlap window `SYNC_OVERLAP_MS` (15s ≥ API Lambda timeout); clients dedupe by `(id, version)`. **`since` older than `now − SYNC_TOMBSTONE_TTL_DAYS − SYNC_RESYNC_MARGIN_MS` → 410 `resync_required`** (full resync). Omit `since` for a full feed.
-- **Paging**: default `limit` is 50 (max 100). No batch mutate endpoint — clients apply changes one-by-one.
+- **Adapters** are listed explicitly in `services/api/src/sync/adapters.ts` and registered by `routes.ts` (not by importing or constructing a repository; repositories are built lazily per request). A unit test cold-imports `routes.ts` and asserts the registered types equal the `SyncChangeSchema` discriminator values. A sync row whose type has no adapter fails the page with **500** `sync_adapter_missing` + `SyncAdapterMissing` metric (alarm `gagnechris-prod-api-sync-adapter-missing`) instead of being skipped while `nextSince` advances.
+- **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (`note`, `task`), then on `deleted`: `deleted: false` always carries `entity`; tombstones omit it. The `fakeNote` fixture schema lives in API test support, not the production union.
+- **`since` / `nextSince`**: `nextSince` is an ISO-8601 server watermark (treat as opaque; echo as `since`). Overlap window `SYNC_OVERLAP_MS` (15s ≥ API Lambda timeout); clients dedupe by `(id, version)`. **`since` older than `now − SYNC_TOMBSTONE_TTL_DAYS + SYNC_RESYNC_MARGIN_MS + SYNC_OVERLAP_MS` → 410 `resync_required`** (full resync): the horizon sits a day _inside_ the 30-day tombstone TTL so every delete at or after `since − overlap` is still stored. Omit `since` for a full feed.
+- **Paging**: default `limit` is 50 (max 100) and counts returned changes (corrupt rows the adapter skips do not use up the page; at most `SYNC_MAX_QUERIES_PER_PAGE` Dynamo reads per page, so a page can still be short with a `nextCursor`). Cursors are bound to the partition and to the query's `since` (a cursor minted without `since` cannot be replayed with one) → **400** otherwise. No batch mutate endpoint — clients apply changes one-by-one.
 - **`updatedAt` is server-stamped**; clients must not rely on client clocks for ordering.
 - **Throttle**: stage default 20 rps / 50 burst; notebook routes 50/100; public contact and resume-download 5/10. API Gateway 429 bodies are `{"message":…}` (not `ErrorResponse`) — retry with backoff and refresh Cognito tokens before a long offline catch-up.
 - **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version` (helpers in `services/api/src/data/versioned-route.ts` / `concurrency.ts`):
@@ -173,11 +176,11 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 ### API versioning policy (sync contract v1)
 
 - OpenAPI info version tracks the HTTP contract (currently `0.3.0`). Sync feed changes are **additive only** until a major bump: new `SyncChange` variants, optional fields, new query params with defaults.
-- Clients must **tolerant-decode**: ignore unknown `type` values and unknown entity fields.
-- A future `X-Client-Version` / minimum-client gate may return **426**; until then there is no min-client header.
+- Clients must **tolerant-decode**: ignore unknown `type` values and unknown entity fields. Use `decodeSyncChangesResponse` from `@gagnechris/shared` (skips unknown types and reports them in `skippedTypes`; known types are still validated) rather than `SyncChangesResponseSchema.parse`, which rejects the whole page.
+- **Minimum client version** (kill switch): native clients send `x-gagnechris-client-version: MAJOR.MINOR.PATCH` on sync requests. Below `SYNC_MIN_CLIENT_VERSION` (`@gagnechris/shared`, currently `0.0.0`) → **426** `{ "error": "upgrade_required", "message", "minClientVersion" }`; malformed → **400**; header absent (web, older builds) → allowed. Raise the constant and deploy to force upgrades.
 - On **410 `resync_required`**, discard tombstone-dependent local state and re-fetch with no `since`.
 
-Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChange variant remains in the OpenAPI union alongside `note` / `task`. Real notes HTTP routes live under `/api/notebook/notes*` (CHR-40); tasks under `/api/notebook/tasks*` (CHR-43), including `POST …/complete` and `…/reopen`. List responses are **server-sorted**: overdue first, then due date ascending, then priority (`high` → `med` → `low`). Details: [data-model.md](./data-model.md).
+Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (CHR-153 / CHR-202); the production union and OpenAPI list only `note` / `task`. Real notes HTTP routes live under `/api/notebook/notes*` (CHR-40); tasks under `/api/notebook/tasks*` (CHR-43), including `POST …/complete` and `…/reopen`. List responses are **server-sorted**: overdue first, then due date ascending, then priority (`high` → `med` → `low`). Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 

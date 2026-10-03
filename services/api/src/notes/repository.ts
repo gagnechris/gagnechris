@@ -35,7 +35,6 @@ import {
   OwnerScopedVersionedEntityRepository,
   type UniqueClaimHook,
 } from '../data/owner-scoped-versioned-entity-repository.js';
-import { registerSyncEntity } from '../sync/registry.js';
 import { hashCreateFields } from '../data/create-hash.js';
 
 export const NOTE_CHANGE_TYPE = 'note';
@@ -104,12 +103,6 @@ export function noteToChange(
   });
   return change;
 }
-
-/** Ensure sync feed can decode notes even before the first repository construct. */
-registerSyncEntity({
-  changeType: NOTE_CHANGE_TYPE,
-  toChange: noteToChange,
-});
 
 function dailyNoteClaimHook(
   doc: DynamoDBDocumentClient,
@@ -242,7 +235,6 @@ export class NotesRepository {
           changeType: NOTE_CHANGE_TYPE,
           userIdOf: (n) => n.userId,
           createPayloadHash: noteCreatePayloadHash,
-          toChange: noteToChange,
         },
         uniqueClaim: dailyNoteClaimHook(doc, tableName),
       },

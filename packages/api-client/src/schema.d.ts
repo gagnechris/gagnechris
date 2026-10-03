@@ -5642,7 +5642,10 @@ export interface paths {
                     /** @description Page size (1-100; default 50) */
                     limit?: number;
                 };
-                header?: never;
+                header?: {
+                    /** @description Client build version (`MAJOR.MINOR.PATCH`). Omit from web; below the server minimum → 426 `upgrade_required` */
+                    "x-gagnechris-client-version"?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -5655,38 +5658,16 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            changes: ({
-                                /** @enum {string} */
-                                type: "fakeNote";
-                                id: string;
-                                version: number;
-                                deleted: boolean;
-                                /** Format: date-time */
-                                updatedAt: string;
-                                entity?: {
-                                    id: string;
-                                    userId: string;
-                                    title: string;
-                                    body: string;
-                                    version: number;
-                                    /** Format: date-time */
-                                    createdAt: string;
-                                    /** Format: date-time */
-                                    updatedAt: string;
-                                    deleted: boolean;
-                                    /** @enum {string} */
-                                    area?: "work" | "personal";
-                                    noteDate?: string;
-                                };
-                            } | {
+                            changes: (({
                                 /** @enum {string} */
                                 type: "note";
                                 id: string;
                                 version: number;
-                                deleted: boolean;
                                 /** Format: date-time */
                                 updatedAt: string;
-                                entity?: {
+                                /** @enum {boolean} */
+                                deleted: false;
+                                entity: {
                                     id: string;
                                     userId: string;
                                     /** @enum {string} */
@@ -5707,13 +5688,23 @@ export interface paths {
                                 };
                             } | {
                                 /** @enum {string} */
+                                type: "note";
+                                id: string;
+                                version: number;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** @enum {boolean} */
+                                deleted: true;
+                            }) | ({
+                                /** @enum {string} */
                                 type: "task";
                                 id: string;
                                 version: number;
-                                deleted: boolean;
                                 /** Format: date-time */
                                 updatedAt: string;
-                                entity?: {
+                                /** @enum {boolean} */
+                                deleted: false;
+                                entity: {
                                     id: string;
                                     userId: string;
                                     /** @enum {string} */
@@ -5736,7 +5727,16 @@ export interface paths {
                                     updatedAt: string;
                                     deleted: boolean;
                                 };
-                            })[];
+                            } | {
+                                /** @enum {string} */
+                                type: "task";
+                                id: string;
+                                version: number;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** @enum {boolean} */
+                                deleted: true;
+                            }))[];
                             nextCursor?: string;
                             /** Format: date-time */
                             nextSince: string;
@@ -5788,7 +5788,24 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Internal error */
+                /** @description Client build older than the server minimum (`upgrade_required`; header `x-gagnechris-client-version`) */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "upgrade_required";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            minClientVersion: string;
+                        };
+                    };
+                };
+                /** @description Internal error (including a sync row with no registered adapter) */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -6636,54 +6653,16 @@ export interface components {
                 }[];
             }[];
         };
-        FakeNoteEntity: {
-            id: string;
-            userId: string;
-            title: string;
-            body: string;
-            version: number;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            deleted: boolean;
-            /** @enum {string} */
-            area?: "work" | "personal";
-            noteDate?: string;
-        };
-        FakeNoteSyncChange: {
-            /** @enum {string} */
-            type: "fakeNote";
-            id: string;
-            version: number;
-            deleted: boolean;
-            /** Format: date-time */
-            updatedAt: string;
-            entity?: {
-                id: string;
-                userId: string;
-                title: string;
-                body: string;
-                version: number;
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                deleted: boolean;
-                /** @enum {string} */
-                area?: "work" | "personal";
-                noteDate?: string;
-            };
-        };
         NoteSyncChange: {
             /** @enum {string} */
             type: "note";
             id: string;
             version: number;
-            deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
-            entity?: {
+            /** @enum {boolean} */
+            deleted: false;
+            entity: {
                 id: string;
                 userId: string;
                 /** @enum {string} */
@@ -6702,16 +6681,26 @@ export interface components {
                 updatedAt: string;
                 deleted: boolean;
             };
+        } | {
+            /** @enum {string} */
+            type: "note";
+            id: string;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {boolean} */
+            deleted: true;
         };
         TaskSyncChange: {
             /** @enum {string} */
             type: "task";
             id: string;
             version: number;
-            deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
-            entity?: {
+            /** @enum {boolean} */
+            deleted: false;
+            entity: {
                 id: string;
                 userId: string;
                 /** @enum {string} */
@@ -6734,39 +6723,26 @@ export interface components {
                 updatedAt: string;
                 deleted: boolean;
             };
-        };
-        SyncChange: {
+        } | {
             /** @enum {string} */
-            type: "fakeNote";
+            type: "task";
             id: string;
             version: number;
-            deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
-            entity?: {
-                id: string;
-                userId: string;
-                title: string;
-                body: string;
-                version: number;
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                deleted: boolean;
-                /** @enum {string} */
-                area?: "work" | "personal";
-                noteDate?: string;
-            };
-        } | {
+            /** @enum {boolean} */
+            deleted: true;
+        };
+        SyncChange: ({
             /** @enum {string} */
             type: "note";
             id: string;
             version: number;
-            deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
-            entity?: {
+            /** @enum {boolean} */
+            deleted: false;
+            entity: {
                 id: string;
                 userId: string;
                 /** @enum {string} */
@@ -6787,13 +6763,23 @@ export interface components {
             };
         } | {
             /** @enum {string} */
+            type: "note";
+            id: string;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {boolean} */
+            deleted: true;
+        }) | ({
+            /** @enum {string} */
             type: "task";
             id: string;
             version: number;
-            deleted: boolean;
             /** Format: date-time */
             updatedAt: string;
-            entity?: {
+            /** @enum {boolean} */
+            deleted: false;
+            entity: {
                 id: string;
                 userId: string;
                 /** @enum {string} */
@@ -6816,40 +6802,27 @@ export interface components {
                 updatedAt: string;
                 deleted: boolean;
             };
-        };
+        } | {
+            /** @enum {string} */
+            type: "task";
+            id: string;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {boolean} */
+            deleted: true;
+        });
         SyncChangesResponse: {
-            changes: ({
-                /** @enum {string} */
-                type: "fakeNote";
-                id: string;
-                version: number;
-                deleted: boolean;
-                /** Format: date-time */
-                updatedAt: string;
-                entity?: {
-                    id: string;
-                    userId: string;
-                    title: string;
-                    body: string;
-                    version: number;
-                    /** Format: date-time */
-                    createdAt: string;
-                    /** Format: date-time */
-                    updatedAt: string;
-                    deleted: boolean;
-                    /** @enum {string} */
-                    area?: "work" | "personal";
-                    noteDate?: string;
-                };
-            } | {
+            changes: (({
                 /** @enum {string} */
                 type: "note";
                 id: string;
                 version: number;
-                deleted: boolean;
                 /** Format: date-time */
                 updatedAt: string;
-                entity?: {
+                /** @enum {boolean} */
+                deleted: false;
+                entity: {
                     id: string;
                     userId: string;
                     /** @enum {string} */
@@ -6870,13 +6843,23 @@ export interface components {
                 };
             } | {
                 /** @enum {string} */
+                type: "note";
+                id: string;
+                version: number;
+                /** Format: date-time */
+                updatedAt: string;
+                /** @enum {boolean} */
+                deleted: true;
+            }) | ({
+                /** @enum {string} */
                 type: "task";
                 id: string;
                 version: number;
-                deleted: boolean;
                 /** Format: date-time */
                 updatedAt: string;
-                entity?: {
+                /** @enum {boolean} */
+                deleted: false;
+                entity: {
                     id: string;
                     userId: string;
                     /** @enum {string} */
@@ -6899,10 +6882,28 @@ export interface components {
                     updatedAt: string;
                     deleted: boolean;
                 };
-            })[];
+            } | {
+                /** @enum {string} */
+                type: "task";
+                id: string;
+                version: number;
+                /** Format: date-time */
+                updatedAt: string;
+                /** @enum {boolean} */
+                deleted: true;
+            }))[];
             nextCursor?: string;
             /** Format: date-time */
             nextSince: string;
+        };
+        UpgradeRequiredErrorResponse: {
+            /** @enum {string} */
+            error: "upgrade_required";
+            message?: string;
+            fields?: {
+                [key: string]: string;
+            };
+            minClientVersion: string;
         };
     };
     responses: never;

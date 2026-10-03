@@ -18,6 +18,7 @@ import { createPostRoutes } from './posts/handlers.js';
 import { resumeRoutes } from './resume/handlers.js';
 import { defineRoute, type RouteDef } from './router.js';
 import { searchRoutes } from './search/handlers.js';
+import { registerProductionSyncAdapters } from './sync/adapters.js';
 import { syncRoutes } from './sync/handlers.js';
 import { taskRoutes } from './tasks/handlers.js';
 
@@ -50,6 +51,9 @@ const adminMe = defineRoute({
     return json(200, body);
   },
 });
+
+// Explicit, not a repository import side effect (CHR-202).
+registerProductionSyncAdapters();
 
 /** All HTTP routes for the Lambda entrypoint. */
 export const routes: RouteDef[] = [

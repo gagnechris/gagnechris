@@ -38,7 +38,6 @@ import {
   throwVersionConflict,
   versionMatchValues,
 } from './version-condition.js';
-import { registerSyncEntity } from '../sync/registry.js';
 import { createHashMatches } from './create-hash.js';
 import {
   type QueryPage,
@@ -133,15 +132,7 @@ export class OwnerScopedVersionedEntityRepository<
     protected readonly config: OwnerScopedVersionedEntityConfig<T, TItem>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
-  ) {
-    // Derive feed adapters from repository sync config (CHR-172).
-    if (config.sync) {
-      registerSyncEntity({
-        changeType: config.sync.changeType,
-        toChange: config.sync.toChange,
-      });
-    }
-  }
+  ) {}
 
   protected now(): string {
     return this.config.nowIso?.() ?? new Date().toISOString();

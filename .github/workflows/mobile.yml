@@ -1,30 +1,13 @@
 name: Mobile
 
+# No workflow-level `paths:`: "Mobile typecheck, lint, test, bundle" is a
+# required check, so the job must always report. Path filtering happens
+# inside the job, like ci.yml (CHR-199).
 on:
   push:
     branches: [main]
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/shared/**'
-      - 'packages/api-client/**'
-      - 'packages/tokens/**'
-      - 'packages/app-core/**'
-      - 'eslint.config.js'
-      - 'tsconfig.base.json'
-      - '.github/workflows/mobile.yml'
-      - 'package-lock.json'
   pull_request:
     branches: [main]
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/shared/**'
-      - 'packages/api-client/**'
-      - 'packages/tokens/**'
-      - 'packages/app-core/**'
-      - 'eslint.config.js'
-      - 'tsconfig.base.json'
-      - '.github/workflows/mobile.yml'
-      - 'package-lock.json'
 
 permissions:
   contents: read
@@ -42,19 +25,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Path filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/shared/**'
+              - 'packages/api-client/**'
+              - 'packages/tokens/**'
+              - 'packages/app-core/**'
+              - 'eslint.config.js'
+              - 'tsconfig.base.json'
+              - '.github/workflows/mobile.yml'
+              - '.github/actions/setup/**'
+              - 'package-lock.json'
 
       # Root install: the shared packages plus eslint/prettier. It no longer
       # carries Expo or React Native (CHR-150).
       - name: Setup
+        if: steps.filter.outputs.mobile == 'true'
         uses: ./.github/actions/setup
 
       # apps/mobile is outside the root workspaces and has its own lockfile, so
       # only this job pays for the Expo / RN tree.
       - name: Install mobile
+        if: steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm ci
 
       - name: Typecheck mobile + client packages
+        if: steps.filter.outputs.mobile == 'true'
         run: |
           npm run typecheck -w @gagnechris/shared
           npm run typecheck -w @gagnechris/api-client
@@ -63,9 +68,11 @@ jobs:
           npm run typecheck --prefix apps/mobile
 
       - name: Lint mobile
+        if: steps.filter.outputs.mobile == 'true'
         run: npm run lint --prefix apps/mobile
 
       - name: Test mobile + client packages
+        if: steps.filter.outputs.mobile == 'true'
         run: |
           npm test -w @gagnechris/api-client
           npm test -w @gagnechris/tokens
@@ -76,13 +83,16 @@ jobs:
       # bundled `zod`'s `.d.ts` files and the app crashed on launch. Check the
       # sourcemap, then execute a bundle that evaluates shared Zod schemas.
       - name: Export iOS bundle
+        if: steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run export:ios
 
       - name: Reject type-only sources in the bundle
+        if: steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run check:bundle
 
       - name: Smoke-run shared Zod from a real Metro bundle
+        if: steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run smoke:bundle
