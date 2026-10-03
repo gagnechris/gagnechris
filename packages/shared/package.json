@@ -5,6 +5,10 @@
   "license": "MIT",
   "type": "module",
   "description": "Shared TypeScript types and helpers for the site, API, and publisher.",
+  "sideEffects": [
+    "./src/openapi-extend.ts",
+    "./src/generate-openapi.ts"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -37,11 +41,13 @@
   },
   "dependencies": {
     "marked": "^18.0.14",
+    "sanitize-html": "^2.18.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@types/node": "^22.13.0",
+    "@types/sanitize-html": "^2.16.2",
     "esbuild": "^0.25.12",
     "tsx": "^4.20.0",
     "typescript": "~6.0.3",

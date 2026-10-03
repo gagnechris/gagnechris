@@ -519,7 +519,7 @@ describe('SiteStack', () => {
     template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
     template.resourceCountIs('AWS::CloudFront::Function', 2);
     template.resourceCountIs('AWS::CloudFront::KeyValueStore', 1);
-    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 1);
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 2);
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
