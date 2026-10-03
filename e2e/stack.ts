@@ -13,13 +13,26 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BIN = join(REPO_ROOT, 'node_modules', '.bin');
 const DYNAMODB_IMAGE = 'amazon/dynamodb-local:2.5.2';
 
+/** Dev servers use local fake auth; `*AuthUrl` serve production builds that sign in through a stubbed Cognito. */
 export type Stack = {
-  baseUrl: string;
+  publicUrl: string;
+  adminUrl: string;
+  notebookUrl: string;
+  adminAuthUrl: string;
+  notebookAuthUrl: string;
   apiUrl: string;
   siteUrl: string;
   logDir: string;
   stop: () => Promise<void>;
 };
+
+/** Baked into the auth builds; e2e/tests/app-auth.spec.ts stubs this host. */
+export const E2E_COGNITO = {
+  userPoolId: 'us-east-1_e2eFakePool',
+  authDomain: 'auth.e2e.test',
+  adminClientId: 'e2e-admin-web',
+  notebookClientId: 'e2e-notebook-web',
+} as const;
 
 function listen(server: Server): Promise<number> {
   return new Promise((ok, fail) => {
@@ -34,7 +47,7 @@ function listen(server: Server): Promise<number> {
 
 /**
  * Every port comes from env or the OS, so runs never collide with
- * `npm run local:dev` (8000/8787/4177/5173) or with each other. All probe
+ * `npm run local:dev` (8000/8787/4177/5173-5175) or with each other. All probe
  * sockets stay open until every port is picked so the OS can't hand one out
  * twice.
  */
@@ -64,6 +77,19 @@ async function pickPorts<K extends string>(
     );
   }
   return ports;
+}
+
+/** `undefined` removes a variable. */
+function withEnv(
+  base: NodeJS.ProcessEnv,
+  extra: Record<string, string | undefined>,
+): NodeJS.ProcessEnv {
+  const next = { ...base };
+  for (const [key, value] of Object.entries(extra)) {
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+  }
+  return next;
 }
 
 async function waitFor(
@@ -103,13 +129,17 @@ export async function startStack(): Promise<Stack> {
     dynamodb: 'E2E_DYNAMODB_PORT',
     api: 'E2E_API_PORT',
     site: 'E2E_SITE_PORT',
-    vite: 'E2E_VITE_PORT',
+    public: 'E2E_PUBLIC_PORT',
+    admin: 'E2E_ADMIN_PORT',
+    notebook: 'E2E_NOTEBOOK_PORT',
+    adminAuth: 'E2E_ADMIN_AUTH_PORT',
+    notebookAuth: 'E2E_NOTEBOOK_AUTH_PORT',
   });
 
   const dynamoEndpoint = reuseDynamo || `http://127.0.0.1:${ports.dynamodb}`;
   const apiUrl = `http://127.0.0.1:${ports.api}`;
   const siteUrl = `http://127.0.0.1:${ports.site}`;
-  const baseUrl = `http://127.0.0.1:${ports.vite}`;
+  const url = (port: number) => `http://127.0.0.1:${port}`;
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -160,12 +190,13 @@ export async function startStack(): Promise<Stack> {
     cmd: string,
     args: string[],
     cwd = REPO_ROOT,
+    extraEnv: Record<string, string | undefined> = {},
   ) => {
     const log = join(runDir, `${name}.log`);
     const out = createWriteStream(log);
     const child = spawn(cmd, args, {
       cwd,
-      env,
+      env: withEnv(env, extraEnv),
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -226,22 +257,76 @@ export async function startStack(): Promise<Stack> {
     const siteLogs = start('site', join(BIN, 'tsx'), [
       'services/api/local/static-server.ts',
     ]);
-    const viteLogs = start(
-      'vite',
-      join(BIN, 'vite'),
-      ['--host', '127.0.0.1', '--port', String(ports.vite), '--strictPort'],
-      join(REPO_ROOT, 'apps', 'web'),
-    );
+    const webDir = join(REPO_ROOT, 'apps', 'web');
+    const vite = (app: string, port: number, args: string[] = []) => {
+      const logs = start(
+        `vite-${app}${args[0] === 'preview' ? '-auth' : ''}`,
+        join(BIN, 'vite'),
+        [
+          ...args,
+          '--host',
+          '127.0.0.1',
+          '--port',
+          String(port),
+          '--strictPort',
+        ],
+        webDir,
+        { WEB_APP: app },
+      );
+      return waitFor(`Vite ${app}`, `${url(port)}/`, (s) => s === 200, logs);
+    };
+
+    const authBuildEnv = {
+      VITE_AUTH_MODE: undefined,
+      VITE_COGNITO_USER_POOL_ID: E2E_COGNITO.userPoolId,
+      VITE_COGNITO_AUTH_DOMAIN: E2E_COGNITO.authDomain,
+      VITE_COGNITO_ADMIN_CLIENT_ID: E2E_COGNITO.adminClientId,
+      VITE_COGNITO_NOTEBOOK_CLIENT_ID: E2E_COGNITO.notebookClientId,
+    };
+    const authBuild = async (app: string) => {
+      const outDir = join(runDir, `dist-${app}`);
+      await run(
+        join(BIN, 'vite'),
+        ['build', '--outDir', outDir, '--logLevel', 'warn'],
+        {
+          cwd: webDir,
+          env: withEnv(env, { ...authBuildEnv, WEB_APP: app }),
+        },
+      );
+      return outDir;
+    };
+    const [adminOut, notebookOut] = await Promise.all([
+      authBuild('admin'),
+      authBuild('notebook'),
+    ]);
 
     await Promise.all([
       waitFor('local API', `${apiUrl}/api/health`, (s) => s === 200, apiLogs),
       waitFor('local site', `${siteUrl}/`, (s) => s < 500, siteLogs),
-      waitFor('Vite', `${baseUrl}/admin`, (s) => s === 200, viteLogs),
+      vite('public', ports.public),
+      vite('admin', ports.admin),
+      vite('notebook', ports.notebook),
+      vite('admin', ports.adminAuth, ['preview', '--outDir', adminOut]),
+      vite('notebook', ports.notebookAuth, [
+        'preview',
+        '--outDir',
+        notebookOut,
+      ]),
     ]);
   } catch (err) {
     await stop();
     throw err;
   }
 
-  return { baseUrl, apiUrl, siteUrl, logDir: runDir, stop };
+  return {
+    publicUrl: url(ports.public),
+    adminUrl: url(ports.admin),
+    notebookUrl: url(ports.notebook),
+    adminAuthUrl: url(ports.adminAuth),
+    notebookAuthUrl: url(ports.notebookAuth),
+    apiUrl,
+    siteUrl,
+    logDir: runDir,
+    stop,
+  };
 }

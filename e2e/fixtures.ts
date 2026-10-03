@@ -3,12 +3,12 @@ import { test as base, expect, type Page } from '@playwright/test';
 import { createApiClient, type ApiClient } from '@gagnechris/api-client';
 import { ulid } from 'ulid';
 
-/** Mirrors `LOCAL_AUTH_USER_KEY` in apps/web/src/auth/session.ts. */
+/** Mirrors `LOCAL_AUTH_USER_KEY` in apps/web/src/workspace/auth/session.ts. */
 const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
 
 export type E2EUser = { userId: string; label: string };
 
-function requireEnv(name: string): string {
+export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is unset; run via playwright.config.ts`);
   return value;
@@ -56,7 +56,11 @@ export class Seed {
   }
 }
 
+/** Each app runs on its own origin, as in prod. */
+export type AppUrls = { public: string; admin: string; notebook: string };
+
 type Fixtures = {
+  apps: AppUrls;
   /** Unique per test: prefix slugs and titles with it to stay isolated. */
   prefix: string;
   /** Two distinct admins for owner-isolation checks. */
@@ -76,8 +80,12 @@ const authInit = ({ key, user }: { key: string; user: E2EUser }) => {
 // Playwright requires a destructured first argument even when unused.
 /* eslint-disable no-empty-pattern */
 export const test = base.extend<Fixtures>({
-  baseURL: async ({}, use) => {
-    await use(requireEnv('E2E_BASE_URL'));
+  apps: async ({}, use) => {
+    await use({
+      public: requireEnv('E2E_PUBLIC_URL'),
+      admin: requireEnv('E2E_ADMIN_URL'),
+      notebook: requireEnv('E2E_NOTEBOOK_URL'),
+    });
   },
   prefix: async ({}, use) => {
     await use(`e2e-${randomBytes(4).toString('hex')}`);
@@ -95,10 +103,10 @@ export const test = base.extend<Fixtures>({
         .addInitScript(authInit, { key: LOCAL_AUTH_USER_KEY, user });
     });
   },
-  pageAs: async ({ browser, baseURL }, use) => {
+  pageAs: async ({ browser }, use) => {
     const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = [];
     await use(async (user) => {
-      const context = await browser.newContext({ baseURL });
+      const context = await browser.newContext();
       contexts.push(context);
       await context.addInitScript(authInit, { key: LOCAL_AUTH_USER_KEY, user });
       return context.newPage();

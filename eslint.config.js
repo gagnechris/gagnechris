@@ -229,6 +229,111 @@ const platformNeutralRestrictedSyntax = {
   ],
 };
 
+/** Relative import of a sibling app directory under apps/web/src. */
+const webDirImport = (...dirs) => ({
+  regex: `^\\.{1,2}/(?:.*/)?(?:${dirs.join('|')})(?:/|$)`,
+});
+
+// Each web app builds alone; these keep one app's code out of another's bundle.
+// The public Vite build's bundle-boundary plugin is the hard check.
+const webAppZones = [
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ignores: [
+      'apps/web/src/{admin,notebook,workspace}/**',
+      'apps/web/src/**/*.test.{ts,tsx}',
+      'apps/web/src/__tests__/**',
+      'apps/web/src/test-utils.tsx',
+      'apps/web/src/setupTests.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'aws-amplify',
+              message: 'The public site never signs anyone in.',
+            },
+            {
+              name: '@gagnechris/app-core',
+              message: 'Signed-in app code stays out of the public bundle.',
+            },
+            {
+              name: '@tanstack/react-query',
+              message: 'Signed-in app code stays out of the public bundle.',
+            },
+          ],
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              ...webDirImport('admin', 'notebook', 'workspace', 'auth'),
+              message:
+                'Public pages must not import the admin, Notebook or workspace apps.',
+            },
+            {
+              group: ['aws-amplify/*', '@aws-amplify/*'],
+              message: 'The public site never signs anyone in.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/src/admin/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              ...webDirImport('notebook'),
+              message: 'The admin app must not import the Notebook app.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/src/notebook/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              ...webDirImport('admin'),
+              message: 'The Notebook app must not import the admin app.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/src/workspace/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              ...webDirImport('admin', 'notebook'),
+              message:
+                'Shared workspace code must not depend on either app; move the code into workspace/.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+
 const unusedVarsRule = {
   '@typescript-eslint/no-unused-vars': [
     'error',
@@ -252,6 +357,8 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      'apps/web/dist-admin/**',
+      'apps/web/dist-notebook/**',
       '**/coverage/**',
       '**/cdk.out/**',
       '**/node_modules/**',
@@ -328,6 +435,7 @@ export default tseslint.config(
       ],
     },
   },
+  ...webAppZones,
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['apps/mobile/**/*.{ts,tsx}'],

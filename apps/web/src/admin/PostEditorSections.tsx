@@ -6,12 +6,12 @@ import {
   type RefObject,
 } from 'react';
 import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
-import MarkdownPreview from '../components/markdown/MarkdownPreview';
-import { Field, TextArea, TextInput } from '../ui/Field';
-import '../components/markdown/markdown.css';
+import MarkdownPreview from '../workspace/markdown/MarkdownPreview';
+import { Field, TextArea, TextInput } from '../workspace/ui/Field';
+import '../workspace/markdown/markdown.css';
 
 const MarkdownEditor = lazy(
-  () => import('../components/markdown/MarkdownEditor'),
+  () => import('../workspace/markdown/MarkdownEditor'),
 );
 
 export type PostDraftFields = {

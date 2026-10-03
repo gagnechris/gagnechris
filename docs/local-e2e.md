@@ -41,21 +41,31 @@ afterwards:
    `gagnechris-e2e-<run>`
 2. Site root `e2e/.stack/<run>/site`, seeded from `apps/web/dist` when a
    build exists, else `scripts/local/minimal-shell.html`
-3. Local API + publisher (`services/api/local/server.ts`), static site
-   (`static-server.ts`) and Vite admin with `VITE_AUTH_MODE=local`
+3. Local API + publisher (`services/api/local/server.ts`) and static site
+   (`static-server.ts`)
+4. One Vite dev server per app (public, admin, Notebook) with
+   `VITE_AUTH_MODE=local`, each on its own port, so each app is its own
+   origin as in prod
+5. Production builds of the admin and Notebook apps (`vite build` into
+   `e2e/.stack/<run>/dist-*`, real Amplify, Cognito settings from
+   `E2E_COGNITO` in `e2e/stack.ts`) served by `vite preview`.
+   `tests/app-auth.spec.ts` signs in to these through a stubbed managed login
+   on `https://auth.e2e.test` (routed in the browser; nothing leaves the
+   machine)
 
 Every port is picked by the OS unless set, so a run never collides with
-`npm run local:dev` (8000/8787/4177/5173), another worktree, or another run.
-No Compose project is used.
+`npm run local:dev` (8000/8787/4177/5173-5175), another worktree, or another
+run. No Compose project is used.
 
-| Env                     | Default                                              |
-| ----------------------- | ---------------------------------------------------- |
-| `E2E_DYNAMODB_PORT`     | free port                                            |
-| `E2E_DYNAMODB_ENDPOINT` | unset; when set, reuse that DynamoDB                 |
-| `E2E_API_PORT`          | free port                                            |
-| `E2E_SITE_PORT`         | free port                                            |
-| `E2E_VITE_PORT`         | free port                                            |
-| `E2E_OUTPUT_DIR`        | `e2e/` (holds `test-results/`, `playwright-report/`) |
+| Env                                                  | Default                                              |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| `E2E_DYNAMODB_PORT`                                  | free port                                            |
+| `E2E_DYNAMODB_ENDPOINT`                              | unset; when set, reuse that DynamoDB                 |
+| `E2E_API_PORT`                                       | free port                                            |
+| `E2E_SITE_PORT`                                      | free port                                            |
+| `E2E_PUBLIC_PORT` / `_ADMIN_PORT` / `_NOTEBOOK_PORT` | free ports (dev servers, fake auth)                  |
+| `E2E_ADMIN_AUTH_PORT` / `E2E_NOTEBOOK_AUTH_PORT`     | free ports (production builds, stubbed Cognito)      |
+| `E2E_OUTPUT_DIR`                                     | `e2e/` (holds `test-results/`, `playwright-report/`) |
 
 Playwright wipes its output dir on start, so give concurrent runs in the
 same checkout different `E2E_OUTPUT_DIR`s. Process logs go to
@@ -68,17 +78,18 @@ other run is active).
 
 Import `test` and `expect` from `e2e/fixtures.ts`:
 
-| Fixture  | What it gives you                                                          |
-| -------- | -------------------------------------------------------------------------- |
-| `prefix` | Unique per test; slugs and titles from `seed` start with it                |
-| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`) |
-| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`        |
-| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context        |
-| `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)    |
-| `seedAs` | `seedAs(user)` seeds as another user                                       |
+| Fixture  | What it gives you                                                                       |
+| -------- | --------------------------------------------------------------------------------------- |
+| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')` |
+| `prefix` | Unique per test; slugs and titles from `seed` start with it                             |
+| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)              |
+| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                     |
+| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                     |
+| `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)                 |
+| `seedAs` | `seedAs(user)` seeds as another user                                                    |
 
 Fake sign-in writes `{ userId, label }` to `localStorage['gagnechris.localAuthUser']`.
-In `VITE_AUTH_MODE=local` the admin reads that user (default `local-dev-user`)
+In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the local API turns that
 into ID-token claims with `sub=<userId>` for the matched route's app
 (`site-admin` on `/api/admin`, `notebook` on `/api/notebook`), so
@@ -105,15 +116,15 @@ One terminal:
 npm run local:dev
 ```
 
-This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API, and `/__site` and `/resume.pdf` → static origin (which applies the prod CloudFront viewer-request routing).
+This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts the three Vite servers with `VITE_AUTH_MODE=local`: public `:5173`, admin `:5174`, Notebook `:5175`. Each proxies `/api` → API; the public one also proxies `/__site` and `/resume.pdf`, and the admin one `/media`, → static origin (which applies the prod CloudFront viewer-request routing).
 
-Open `http://localhost:5173/admin`. After publish, **View live** / `/posts/<slug>` uses the Vite SPA (with HMR). `PostPage` loads publisher HTML via `/__site/posts/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
+Open `http://localhost:5174` for the CMS and `http://localhost:5175` for Notebook. After publish, `http://localhost:5173/posts/<slug>` uses the Vite public app (with HMR). `PostPage` loads publisher HTML via `/__site/posts/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
 Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
 
 ### Resume CMS
 
-`http://localhost:5173/admin/resume` edits the singleton resume draft. The first
+`http://localhost:5174/resume` edits the singleton resume draft. The first
 `GET` seeds a **draft** from `DEFAULT_RESUME` (no live rebuild). Publish copies
 the draft to the `PUBLISHED` snapshot and rebuilds
 `.local-site/resume/index.html` + `.local-site/resume.pdf`. Autosave updates the
@@ -124,7 +135,7 @@ origin).
 
 ### Home CMS
 
-`http://localhost:5173/admin/home` edits the header (name + title) and the
+`http://localhost:5174/home` edits the header (name + title) and the
 About Me copy. Like the resume, the first `GET` seeds a **draft** and does not
 rebuild. Publish writes the `PUBLISHED` snapshot so `.local-site/index.html`
 gets the `home-page-prerender` article. The public page at
@@ -143,7 +154,7 @@ Lower-level scripts (`local:up`, `local:api`, `local:site`, …) run the pieces 
 | Guard                  | Behavior                                                           |
 | ---------------------- | ------------------------------------------------------------------ |
 | Default Vite `/api`    | Proxies to `http://127.0.0.1:8787`, not prod                       |
-| `VITE_API_TARGET=prod` | Opt-in only; admin shows a **PRODUCTION** banner                   |
+| `VITE_API_TARGET=prod` | Opt-in only; admin and Notebook show a **PRODUCTION** banner       |
 | `scripts/local/env.sh` | Fake `AWS_*` keys, unsets `AWS_PROFILE`, table `gagnechris-local`  |
 | Bootstrap / local API  | Refuse `DATA_TABLE_NAME=gagnechris-prod`                           |
 | `VITE_AUTH_MODE=local` | Fake session in Vite; **production `vite build` fails** if set     |

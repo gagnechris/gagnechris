@@ -21,7 +21,6 @@ type LazyIndexRoute = LazyRouteBase & {
 type LazyPathRoute = LazyRouteBase & {
   index?: false;
   path: string;
-  caseSensitive?: boolean;
 };
 
 /** RR skips HydrateFallback returned from lazy() during initial hydration, so it sits beside `lazy`. */
@@ -49,9 +48,6 @@ export function lazyRoute(
     HydrateFallback: LazyFallback,
     lazy,
   };
-  if (opts.caseSensitive) {
-    route.caseSensitive = true;
-  }
   if (opts.children) {
     route.children = opts.children;
   }

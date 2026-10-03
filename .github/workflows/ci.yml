@@ -15,7 +15,8 @@ concurrency:
 # Placeholders only; nothing is deployed from this workflow.
 env:
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
-  VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
+  VITE_COGNITO_ADMIN_CLIENT_ID: ciplaceholderadminclient000000
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID: ciplaceholdernotebookclient000
   VITE_COGNITO_AUTH_DOMAIN: auth.example.com
 
 jobs:
@@ -68,6 +69,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The public build's bundle-boundary plugin already failed above if any
+      # admin, Notebook or auth module reached it.
+      - name: Web shell guard
+        run: npm run check:web-shells
 
       - name: Reject VITE_AUTH_MODE=local in production build
         run: |

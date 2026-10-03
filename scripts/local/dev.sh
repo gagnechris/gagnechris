@@ -125,8 +125,10 @@ echo "==> Rebuild published site from DynamoDB"
 npx tsx scripts/local/rebuild-site.ts
 
 echo ""
-echo "Local admin ready:"
-echo "  Vite     → http://localhost:5173/admin"
+echo "Local stack ready:"
+echo "  Public   → http://localhost:5173"
+echo "  Admin    → http://localhost:5174"
+echo "  Notebook → http://localhost:5175"
 echo "  /__site  → proxied to :${LOCAL_SITE_PORT} (publisher HTML, /posts/*)"
 echo "  API      → http://127.0.0.1:${LOCAL_API_PORT}"
 echo "  Auth     → VITE_AUTH_MODE=local (no Cognito)"

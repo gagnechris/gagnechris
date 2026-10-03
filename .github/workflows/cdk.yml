@@ -26,7 +26,8 @@ env:
   # Cognito admin-group member; empty falls back to ALERTS_EMAIL.
   ADMIN_USERNAME: ${{ vars.ADMIN_USERNAME }}
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
-  VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
+  VITE_COGNITO_ADMIN_CLIENT_ID: ciplaceholderadminclient000000
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID: ciplaceholdernotebookclient000
   VITE_COGNITO_AUTH_DOMAIN: auth.example.com
 
 jobs:

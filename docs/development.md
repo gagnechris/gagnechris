@@ -24,24 +24,29 @@ npm run local:dev
 
 Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-local`, seeds a publisher shell under `.local-site/`, runs:
 
-| Process                                    | Port (default) |
-| ------------------------------------------ | -------------- |
-| Local API (`services/api/local/server.ts`) | `8787`         |
-| Static publisher origin                    | `4177`         |
-| Vite (`VITE_AUTH_MODE=local`)              | `5173`         |
+| Process                                     | Port (default) |
+| ------------------------------------------- | -------------- |
+| Local API (`services/api/local/server.ts`)  | `8787`         |
+| Static publisher origin                     | `4177`         |
+| Vite, public site                           | `5173`         |
+| Vite, admin app (`VITE_AUTH_MODE=local`)    | `5174`         |
+| Vite, Notebook app (`VITE_AUTH_MODE=local`) | `5175`         |
 
-Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
+Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
 
-**Admin PWA:** production `/spa.html` (CloudFront `/admin/*`) ships `manifest.json` + `/icons/*` for iPhone Add to Home Screen (`display: standalone`, start at `/admin/notebook`). Vite serves the same files from `apps/web/public/` in local dev. There is no offline cache.
+**Notebook PWA:** `apps/web/public-notebook/` holds `manifest.json` (`id`, `start_url` and `scope` all `/`), `/icons/*` and the Notebook AASA, so iPhone Add to Home Screen on `notebook.gagnechris.com` opens Today in standalone mode. There is no offline cache.
 
 More detail: [local-e2e.md](./local-e2e.md).
 
 ## Vite-only
 
 ```bash
-npm run dev           # API → local (default)
-npm run dev:prod-api  # API → https://gagnechris.com (prints PRODUCTION banner)
+npm run dev                 # public :5173, admin :5174, Notebook :5175; API → local (default)
+npm run dev -- notebook     # just the named app(s)
+npm run dev:prod-api        # API → https://gagnechris.com (prints PRODUCTION banner)
 ```
+
+`apps/web` is one workspace with three Vite targets picked by `WEB_APP=public|admin|notebook` (`apps/web/scripts/webApps.ts`): `index.html` → `dist/`, `admin.html` → `dist-admin/`, `notebook.html` → `dist-notebook/`, each with its own `publicDir`. Code lives in `src/` (public pages), `src/admin/`, `src/notebook/` and `src/workspace/` (sign-in, query provider, editors and chrome both signed-in apps share). ESLint zones stop public code importing the other three and stop the two apps importing each other.
 
 Prefer `local:dev` unless you intentionally need the production API.
 
@@ -57,7 +62,8 @@ npm run openapi:check # OpenAPI + generated client drift (CI)
 npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # CloudFront Option B + local publish routes from publisher targets (CI)
 npm run format        # Prettier write
-npm run build         # tsc -b + Vite → apps/web/dist
+npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
+npm run check:web-shells # after build: GA on the public shell only; app shells load bundled scripts only (CI)
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 npm run e2e:browser   # Playwright (Chromium + WebKit) against its own local stack
 ```
@@ -70,16 +76,18 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 ### Vite (`apps/web`)
 
-| Variable                     | Notes                                                                                                              |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                                                               |
-| `VITE_COGNITO_WEB_CLIENT_ID` | Real Cognito auth; locally the `dev-local` client (SSM `cognito-dev-client-id`), whose tokens the prod API rejects |
-| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                                                                |
-| `VITE_API_BASE_URL`          | Optional; default same-origin                                                                                      |
-| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                                                                 |
-| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)                                                         |
-| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                   |
-| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                |
+| Variable                          | Notes                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `VITE_COGNITO_USER_POOL_ID`       | Admin and Notebook builds: required for real Cognito auth                                                                            |
+| `VITE_COGNITO_ADMIN_CLIENT_ID`    | Admin build: the `admin-web` client; locally the `dev-local` client (SSM `cognito-dev-client-id`), whose tokens the prod API rejects |
+| `VITE_COGNITO_NOTEBOOK_CLIENT_ID` | Notebook build: the `notebook-web` client; locally `dev-local` as above                                                              |
+| `VITE_COGNITO_AUTH_DOMAIN`        | Admin and Notebook builds: Cognito domain host                                                                                       |
+| `WEB_APP`                         | `public` (default), `admin` or `notebook`: which app `vite` serves or builds                                                         |
+| `VITE_API_BASE_URL`               | Optional; default same-origin                                                                                                        |
+| `VITE_API_TARGET`                 | Dev only: set `prod` to proxy `/api` to production                                                                                   |
+| `VITE_LOCAL_API_ORIGIN`           | Dev only: local API origin (set by `scripts/local/env.sh`)                                                                           |
+| `VITE_LOCAL_SITE_ORIGIN`          | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                                     |
+| `VITE_AUTH_MODE`                  | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                                  |
 
 ### Local stack (`scripts/local/env.sh`)
 
@@ -124,9 +132,9 @@ Use the stable Compose project name (`gagnechris`) so worktrees share one Local 
 
 API integration (in CI and locally) uses Compose project `gagnechris-ci` on host port **8001** only: `docker-compose.ci.yml` replaces the base ports with `ports: !override` (Compose 2.24.4+), so it never also binds **8000** and cannot block `npm run local:dev`. If a `gagnechris-ci-dynamodb-1` container is holding 8000, remove it with `docker rm -f gagnechris-ci-dynamodb-1`.
 
-### Admin still hits Cognito locally
+### Admin or Notebook still hits Cognito locally
 
-Ensure `npm run local:dev` (or export `VITE_AUTH_MODE=local`). A plain `npm run dev` without local env will expect real Cognito config.
+Ensure `npm run local:dev` (or export `VITE_AUTH_MODE=local`). A plain `npm run dev` without local env will expect real Cognito config. The public site never signs in.
 
 ### Publish succeeds but `/posts/<slug>` looks stale
 

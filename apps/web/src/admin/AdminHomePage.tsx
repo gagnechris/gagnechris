@@ -1,9 +1,9 @@
 import { type FormEvent } from 'react';
 import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import { homeResource, mergeEditorSeo, type Home } from '@gagnechris/app-core';
-import { EditorActionBar } from '../ui/EditorActionBar';
-import { Field, TextArea, TextInput } from '../ui/Field';
-import { useVersionedEntityEditor } from './useVersionedEntityEditor';
+import { EditorActionBar } from '../workspace/ui/EditorActionBar';
+import { Field, TextArea, TextInput } from '../workspace/ui/Field';
+import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 
 type DraftFields = {
   name: string;

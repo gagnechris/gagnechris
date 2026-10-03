@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   STATIC_PAGE_META,
   applyNotFoundPageMeta,
-  applySpaShellMeta,
   applyStaticPageMeta,
   canonicalUrlFor,
   outputRelativePath,
@@ -117,57 +116,6 @@ describe('staticPageMeta', () => {
     );
     expect(html).toContain(
       `<link rel="canonical" href="${canonicalUrlFor('dont-feed-the-bears')}" />`,
-    );
-  });
-
-  it('builds spa.html without home canonical and with noindex', () => {
-    const html = applySpaShellMeta(shell);
-    expect(html).toContain('<title>Notebook</title>');
-    expect(html).toContain('<meta name="robots" content="noindex" />');
-    expect(html).not.toMatch(/rel=["']canonical["']/);
-    expect(html).toContain('<div id="root"></div>');
-  });
-
-  it('strips GA from spa.html for the strict admin CSP', () => {
-    const withGa = shell.replace(
-      '</head>',
-      `    <!-- Google Analytics -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-TEST"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-      gtag('config', 'G-TEST');
-    </script>
-  </head>`,
-    );
-    const html = applySpaShellMeta(withGa);
-    expect(html).not.toMatch(/googletagmanager|gtag|Google Analytics/);
-    expect(html).not.toMatch(/<script>/);
-    expect(applyStaticPageMeta(withGa, STATIC_PAGE_META[0]!)).toContain(
-      'googletagmanager',
-    );
-  });
-
-  it('adds installable PWA tags to spa.html', () => {
-    const html = applySpaShellMeta(shell);
-    expect(html).toContain('rel="manifest" href="/manifest.json"');
-    expect(html).toContain('rel="apple-touch-icon"');
-    expect(html).toContain('/icons/apple-touch-icon.png');
-    expect(html).toContain(
-      '<meta name="apple-mobile-web-app-capable" content="yes" />',
-    );
-    expect(html).toContain(
-      '<meta name="apple-mobile-web-app-title" content="Notebook" />',
-    );
-    expect(html).toContain('<meta name="theme-color" content="#235a58" />');
-    expect(html).toContain(
-      '<meta property="og:url" content="https://gagnechris.com/admin/notebook" />',
     );
   });
 
