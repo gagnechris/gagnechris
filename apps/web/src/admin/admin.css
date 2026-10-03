@@ -112,6 +112,270 @@
   padding: var(--space-6) 0 var(--space-8);
 }
 
+/* Notebook shell (CHR-41): area filter + section nav above page body. */
+.admin-notebook {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.admin-notebook__chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.admin-notebook__areas,
+.admin-notebook__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notebook-today {
+  display: grid;
+  gap: var(--space-6);
+}
+
+@media (min-width: 900px) {
+  .notebook-today {
+    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1100px) {
+  .notebook-today {
+    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr) minmax(
+        16rem,
+        22rem
+      );
+  }
+}
+
+.notebook-today__tasks-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.notebook-today__progress {
+  height: 0.35rem;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-200);
+  overflow: hidden;
+}
+
+.notebook-today__progress-bar {
+  height: 100%;
+  background: var(--accent, var(--neutral-800));
+  transition: width 160ms ease;
+}
+
+.notebook-today__task-section {
+  margin-top: var(--space-4);
+}
+
+.notebook-today__task-section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--neutral-600);
+}
+
+.notebook-search__kbd {
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+}
+
+.notebook-search {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: start center;
+  padding: 10vh var(--space-4) var(--space-4);
+}
+
+.notebook-search__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: color-mix(in srgb, black 35%, transparent);
+  cursor: default;
+}
+
+.notebook-search__panel {
+  position: relative;
+  width: min(36rem, 100%);
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: 0 12px 40px color-mix(in srgb, black 18%, transparent);
+}
+
+.notebook-search__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.notebook-search__input {
+  flex: 1 1 12rem;
+}
+
+.notebook-search__group h3 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--neutral-600);
+}
+
+.notebook-search__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notebook-search__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notebook-search__hit--active,
+.notebook-search__hit:hover {
+  background: color-mix(in srgb, var(--neutral-200) 70%, white);
+}
+
+.notebook-search__hit-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+.notebook-search__hit-snippet {
+  font-size: var(--font-size-sm);
+  color: var(--neutral-700);
+}
+
+.notebook-search__hit-snippet mark {
+  background: color-mix(in srgb, gold 55%, white);
+  color: inherit;
+  padding: 0 0.1em;
+}
+
+.notebook-today__day-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.notebook-calendar {
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, white 70%, transparent);
+}
+
+.notebook-calendar__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.notebook-calendar__label {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.notebook-calendar__weekdays,
+.notebook-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.notebook-calendar__weekdays {
+  margin-bottom: 0.25rem;
+  font-size: var(--text-xs);
+  color: var(--neutral-500);
+  text-align: center;
+}
+
+.notebook-calendar__cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 2.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.notebook-calendar__cell--empty {
+  cursor: default;
+}
+
+.notebook-calendar__cell:hover:not(.notebook-calendar__cell--empty) {
+  background: var(--primary-100);
+}
+
+.notebook-calendar__cell--selected {
+  background: var(--primary-200);
+  font-weight: 700;
+}
+
+.notebook-calendar__cell--today:not(.notebook-calendar__cell--selected) {
+  box-shadow: inset 0 0 0 1px var(--primary-400);
+}
+
+.notebook-calendar__dot {
+  position: absolute;
+  bottom: 0.2rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--primary-700);
+}
+
+.admin-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
 .admin-panel h1 {
   margin: 0 0 var(--space-2);
   font-size: var(--text-3xl);
@@ -152,6 +416,10 @@
 }
 
 .admin-post-list__title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: 600;
 }
 

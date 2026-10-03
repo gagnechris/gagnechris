@@ -115,13 +115,27 @@ export function applyStaticPageMeta(
   return html;
 }
 
+/** Insert or replace a `<link …>` by `rel` (CHR-48 PWA). */
+function upsertLinkRel(html: string, rel: string, attrs: string): string {
+  const tag = `<link rel="${rel}" ${attrs} />`;
+  const re = new RegExp(
+    `<link\\s[^>]*?rel=["']${escapeRegExp(rel)}["'][^>]*>\\s*`,
+    'i',
+  );
+  if (re.test(html)) {
+    return html.replace(re, () => `${tag}\n`);
+  }
+  return html.replace(/<\/head>/i, () => `    ${tag}\n</head>`);
+}
+
 /**
  * Neutral SPA shell for /admin and /auth (CHR-102). Empty #root, noindex,
  * no Home canonical — avoids flashing the Home prerender before React mounts.
+ * Installable PWA meta + manifest for Add to Home Screen (CHR-48).
  */
 export function applySpaShellMeta(shellHtml: string): string {
-  const title = 'Chris Gagne';
-  const description = 'Chris Gagne — engineering leadership and software.';
+  const title = 'Notebook';
+  const description = 'Personal notes and tasks.';
   let html = shellHtml;
   html = html.replace(
     /<title>[\s\S]*?<\/title>/i,
@@ -131,9 +145,25 @@ export function applySpaShellMeta(shellHtml: string): string {
   html = replaceMeta(html, 'property', 'og:title', title);
   html = replaceMeta(html, 'property', 'og:description', description);
   html = replaceMeta(html, 'property', 'og:type', 'website');
-  html = replaceMeta(html, 'property', 'og:url', APEX);
+  html = replaceMeta(html, 'property', 'og:url', `${APEX}/admin/notebook`);
   html = replaceMeta(html, 'name', 'twitter:title', title);
   html = replaceMeta(html, 'name', 'twitter:description', description);
+  html = replaceMeta(html, 'name', 'theme-color', '#235a58');
+  html = replaceMeta(html, 'name', 'mobile-web-app-capable', 'yes');
+  html = replaceMeta(html, 'name', 'apple-mobile-web-app-capable', 'yes');
+  html = replaceMeta(
+    html,
+    'name',
+    'apple-mobile-web-app-status-bar-style',
+    'default',
+  );
+  html = replaceMeta(html, 'name', 'apple-mobile-web-app-title', 'Notebook');
+  html = upsertLinkRel(html, 'manifest', 'href="/manifest.json"');
+  html = upsertLinkRel(
+    html,
+    'apple-touch-icon',
+    'href="/icons/apple-touch-icon.png"',
+  );
   html = removeCanonical(html);
   html = upsertRobotsNoIndex(html);
   html = injectRoot(html, '');

@@ -98,10 +98,27 @@ describe('staticPageMeta', () => {
 
   it('builds spa.html without home canonical and with noindex', () => {
     const html = applySpaShellMeta(shell);
-    expect(html).toContain('<title>Chris Gagne</title>');
+    expect(html).toContain('<title>Notebook</title>');
     expect(html).toContain('<meta name="robots" content="noindex" />');
     expect(html).not.toMatch(/rel=["']canonical["']/);
     expect(html).toContain('<div id="root"></div>');
+  });
+
+  it('adds installable PWA tags to spa.html (CHR-48)', () => {
+    const html = applySpaShellMeta(shell);
+    expect(html).toContain('rel="manifest" href="/manifest.json"');
+    expect(html).toContain('rel="apple-touch-icon"');
+    expect(html).toContain('/icons/apple-touch-icon.png');
+    expect(html).toContain(
+      '<meta name="apple-mobile-web-app-capable" content="yes" />',
+    );
+    expect(html).toContain(
+      '<meta name="apple-mobile-web-app-title" content="Notebook" />',
+    );
+    expect(html).toContain('<meta name="theme-color" content="#235a58" />');
+    expect(html).toContain(
+      '<meta property="og:url" content="https://gagnechris.com/admin/notebook" />',
+    );
   });
 
   it('builds 404.html with NotFound markup, noindex, and no home canonical', () => {

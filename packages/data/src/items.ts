@@ -1,11 +1,18 @@
 import { z } from 'zod';
 import {
+  CalendarDateSchema,
+  NotebookAreaSchema,
+  NoteTypeSchema,
   PostSeoSchema,
   PostStatusSchema,
   ResumeContentSchema,
+  TaskPrioritySchema,
+  TaskStatusSchema,
   type Home,
+  type Note,
   type Post,
   type Resume,
+  type Task,
 } from '@gagnechris/shared';
 import {
   EMPTY_SLUG_FALLBACK,
@@ -17,6 +24,15 @@ import {
   homeMetaSk,
   homePk,
   homePublishedSk,
+  dailyNoteClaimPk,
+  dailyNoteClaimSk,
+  noteDateGsi1Sk,
+  noteMetaSk,
+  notePageGsi1Sk,
+  notePk,
+  noteTasksGsi2Pk,
+  noteTasksGsi2Sk,
+  notebookAreaGsi1Pk,
   postMetaSk,
   postPk,
   postPublishedSk,
@@ -26,6 +42,11 @@ import {
   resumePublishedSk,
   statusGsi1Pk,
   statusGsi1Sk,
+  taskAreaStatusGsi1Pk,
+  taskDueGsi1Sk,
+  taskMetaSk,
+  taskPk,
+  taskUpdatedGsi1Sk,
 } from './keys.js';
 
 export function nowIso(): string {
@@ -329,4 +350,270 @@ export function buildResumePublishedItem(resume: Resume): ResumeMetaItem {
     sk: resumePublishedSk(),
     status: 'published',
   };
+}
+
+/** Shared versioned META fields for owner-scoped Notebook entities (CHR-39). */
+export const VersionedMetaFieldsSchema = z.object({
+  version: z.number().int().nonnegative(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+  deleted: z.boolean(),
+  createHash: z.string().min(1).optional(),
+  syncPk: z.string().min(1).optional(),
+  syncSk: z.string().min(1).optional(),
+  ttl: z.number().int().positive().optional(),
+  gsi1pk: z.string().min(1).optional(),
+  gsi1sk: z.string().min(1).optional(),
+  gsi2pk: z.string().min(1).optional(),
+  gsi2sk: z.string().min(1).optional(),
+});
+
+export const NoteMetaItemSchema = VersionedMetaFieldsSchema.extend({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('note'),
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  type: NoteTypeSchema,
+  date: CalendarDateSchema.nullable(),
+  title: z.string(),
+  bodyMarkdown: z.string(),
+  tags: z.array(z.string()),
+  pinned: z.boolean(),
+});
+
+export type NoteMetaItem = z.infer<typeof NoteMetaItemSchema>;
+
+export const DailyNoteClaimItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('dailyNoteClaim'),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  date: CalendarDateSchema,
+  noteId: z.string().min(1),
+});
+
+export type DailyNoteClaimItem = z.infer<typeof DailyNoteClaimItemSchema>;
+
+export const TaskMetaItemSchema = VersionedMetaFieldsSchema.extend({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('task'),
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  title: z.string().min(1),
+  description: z.string(),
+  priority: TaskPrioritySchema,
+  status: TaskStatusSchema,
+  dueDate: CalendarDateSchema.nullable(),
+  completedAt: z.string().nullable(),
+  noteId: z.string().min(1).nullable(),
+  tags: z.array(z.string()),
+});
+
+export type TaskMetaItem = z.infer<typeof TaskMetaItemSchema>;
+
+export function parseNoteMetaItem(raw: unknown): NoteMetaItem {
+  return NoteMetaItemSchema.parse(raw);
+}
+
+export function parseDailyNoteClaimItem(raw: unknown): DailyNoteClaimItem {
+  return DailyNoteClaimItemSchema.parse(raw);
+}
+
+export function parseTaskMetaItem(raw: unknown): TaskMetaItem {
+  return TaskMetaItemSchema.parse(raw);
+}
+
+export function noteContentEqual(
+  a: Pick<
+    Note,
+    'area' | 'type' | 'date' | 'title' | 'bodyMarkdown' | 'tags' | 'pinned'
+  >,
+  b: Pick<
+    Note,
+    'area' | 'type' | 'date' | 'title' | 'bodyMarkdown' | 'tags' | 'pinned'
+  >,
+): boolean {
+  return (
+    a.area === b.area &&
+    a.type === b.type &&
+    a.date === b.date &&
+    a.title === b.title &&
+    a.bodyMarkdown === b.bodyMarkdown &&
+    a.pinned === b.pinned &&
+    deepEqual(a.tags, b.tags)
+  );
+}
+
+export function taskContentEqual(
+  a: Pick<
+    Task,
+    | 'area'
+    | 'title'
+    | 'description'
+    | 'priority'
+    | 'status'
+    | 'dueDate'
+    | 'completedAt'
+    | 'noteId'
+    | 'tags'
+  >,
+  b: Pick<
+    Task,
+    | 'area'
+    | 'title'
+    | 'description'
+    | 'priority'
+    | 'status'
+    | 'dueDate'
+    | 'completedAt'
+    | 'noteId'
+    | 'tags'
+  >,
+): boolean {
+  return (
+    a.area === b.area &&
+    a.title === b.title &&
+    a.description === b.description &&
+    a.priority === b.priority &&
+    a.status === b.status &&
+    a.dueDate === b.dueDate &&
+    a.completedAt === b.completedAt &&
+    a.noteId === b.noteId &&
+    deepEqual(a.tags, b.tags)
+  );
+}
+
+export function metaToNote(item: NoteMetaItem): Note {
+  return {
+    id: item.id,
+    userId: item.userId,
+    area: item.area,
+    type: item.type,
+    date: item.date,
+    title: item.title,
+    bodyMarkdown: item.bodyMarkdown,
+    tags: item.tags,
+    pinned: item.pinned,
+    version: item.version,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    deleted: item.deleted,
+  };
+}
+
+export function metaToTask(item: TaskMetaItem): Task {
+  return {
+    id: item.id,
+    userId: item.userId,
+    area: item.area,
+    title: item.title,
+    description: item.description,
+    priority: item.priority,
+    status: item.status,
+    dueDate: item.dueDate,
+    completedAt: item.completedAt,
+    noteId: item.noteId,
+    tags: item.tags,
+    version: item.version,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    deleted: item.deleted,
+  };
+}
+
+/**
+ * Build a Note META item. List GSI keys are omitted when deleted so queries
+ * never return tombstones (CHR-169). Sync keys are stamped by the repository.
+ */
+export function buildNoteMetaItem(note: Note): NoteMetaItem {
+  const { pk, sk } = { pk: notePk(note.userId, note.id), sk: noteMetaSk() };
+  const item: NoteMetaItem = {
+    pk,
+    sk,
+    entityType: 'note',
+    id: note.id,
+    userId: note.userId,
+    area: note.area,
+    type: note.type,
+    date: note.date,
+    title: note.title,
+    bodyMarkdown: note.bodyMarkdown,
+    tags: note.tags,
+    pinned: note.pinned,
+    version: note.version,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    deleted: note.deleted,
+  };
+  if (!note.deleted) {
+    item.gsi1pk = notebookAreaGsi1Pk(note.userId, note.area);
+    // Daily notes: DATE# for calendar ranges. Pages: PAGE# so they never
+    // appear inside from/to date queries used for calendar dots.
+    item.gsi1sk =
+      note.type === 'daily' && note.date
+        ? noteDateGsi1Sk(note.date, note.id)
+        : notePageGsi1Sk(note.updatedAt, note.id);
+  }
+  return item;
+}
+
+export function buildDailyNoteClaimItem(
+  userId: string,
+  area: Note['area'],
+  date: string,
+  noteId: string,
+): DailyNoteClaimItem {
+  return {
+    pk: dailyNoteClaimPk(userId, area, date),
+    sk: dailyNoteClaimSk(),
+    entityType: 'dailyNoteClaim',
+    userId,
+    area,
+    date,
+    noteId,
+  };
+}
+
+/**
+ * Build a Task META item. Due-dated tasks use `DUE#` GSI1 sort keys; undated
+ * tasks use `UPDATED#` so due/overdue ranges never pick them up. GSI2 links
+ * tasks to a note when `noteId` is set. Tombstones omit list GSI keys.
+ */
+export function buildTaskMetaItem(task: Task): TaskMetaItem {
+  const item: TaskMetaItem = {
+    pk: taskPk(task.userId, task.id),
+    sk: taskMetaSk(),
+    entityType: 'task',
+    id: task.id,
+    userId: task.userId,
+    area: task.area,
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: task.status,
+    dueDate: task.dueDate,
+    completedAt: task.completedAt,
+    noteId: task.noteId,
+    tags: task.tags,
+    version: task.version,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    deleted: task.deleted,
+  };
+  if (!task.deleted) {
+    item.gsi1pk = taskAreaStatusGsi1Pk(task.userId, task.area, task.status);
+    item.gsi1sk = task.dueDate
+      ? taskDueGsi1Sk(task.dueDate, task.id)
+      : taskUpdatedGsi1Sk(task.updatedAt, task.id);
+    if (task.noteId) {
+      item.gsi2pk = noteTasksGsi2Pk(task.userId, task.noteId);
+      item.gsi2sk = noteTasksGsi2Sk(task.id);
+    }
+  }
+  return item;
 }

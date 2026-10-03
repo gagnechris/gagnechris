@@ -19,14 +19,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gagnechris/api-client": "*"
+    "@gagnechris/api-client": "*",
+    "@gagnechris/shared": "*"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@gagnechris/shared": "*",
     "@tanstack/react-query": "^5.104.0",
     "@types/react": "^19.3.0",
     "react": "^19.3.0",

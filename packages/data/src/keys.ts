@@ -3,6 +3,10 @@
  * Application code must import builders from here — do not hard-code prefixes.
  */
 
+import type { NotebookArea } from '@gagnechris/shared';
+
+export type { NotebookArea };
+
 export const SK_META = 'META';
 export const SK_PUBLISHED = 'PUBLISHED';
 export const SK_POST = 'POST';
@@ -18,9 +22,6 @@ export const GSI3_NAME = 'gsi3';
 
 export const HOME_ID = 'current';
 export const RESUME_ID = 'current';
-
-/** Notebook area partition values (CHR-39 / CHR-169). */
-export type NotebookArea = 'work' | 'personal';
 
 /** Post entity keys only — never NOTE# / TASK# (reserved for Notebook). */
 export function postPk(postId: string): string {
@@ -267,6 +268,14 @@ export function noteDateGsi1Sk(noteDate: string, noteId: string): string {
 }
 
 /**
+ * Note GSI1 sort key for freeform pages (keeps them out of DATE# calendar ranges).
+ * Example: `PAGE#2026-10-02T12:00:00.000Z#NOTE#01ABC…`
+ */
+export function notePageGsi1Sk(updatedAt: string, noteId: string): string {
+  return `PAGE#${updatedAt}#NOTE#${noteId}`;
+}
+
+/**
  * GSI1 partition for tasks by area + status.
  * Example: `USER#<sub>#AREA#work#STATUS#todo`
  */
@@ -418,6 +427,8 @@ export const keys = {
       notebookAreaGsi1Pk(userId, area),
     noteDateSk: (noteDate: string, noteId: string) =>
       noteDateGsi1Sk(noteDate, noteId),
+    notePageSk: (updatedAt: string, noteId: string) =>
+      notePageGsi1Sk(updatedAt, noteId),
     taskAreaStatusGsi1: (userId: string, area: string, status: string) =>
       taskAreaStatusGsi1Pk(userId, area, status),
     taskDueSk: (dueDate: string, taskId: string) =>
