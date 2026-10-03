@@ -4,11 +4,11 @@ import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import {
   fetchPublishedPosts,
   type PublishedPostListItem,
-} from '../blog/publishedPosts';
+} from '../posts/publishedPosts';
 import PublicNav from '../components/PublicNav';
-import './BlogIndex.css';
+import './PostsIndex.css';
 
-function BlogIndex() {
+function PostsIndex() {
   const [posts, setPosts] = useState<PublishedPostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +42,8 @@ function BlogIndex() {
 
   if (loading) {
     return (
-      <div className="blog-index">
-        <title>Blog - Chris Gagne</title>
+      <div className="posts-index">
+        <title>Posts - Chris Gagne</title>
         <link
           rel="alternate"
           type="application/rss+xml"
@@ -51,8 +51,8 @@ function BlogIndex() {
           href="/rss.xml"
         />
         <header>
-          <h1>Blog</h1>
-          <PublicNav current="/blog" />
+          <h1>Posts</h1>
+          <PublicNav current="/posts" />
         </header>
         <main>
           <p>Loading posts...</p>
@@ -62,9 +62,9 @@ function BlogIndex() {
   }
 
   return (
-    <div className="blog-index">
-      <title>Blog - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/blog" />
+    <div className="posts-index">
+      <title>Posts - Chris Gagne</title>
+      <link rel="canonical" href="https://gagnechris.com/posts" />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -72,13 +72,13 @@ function BlogIndex() {
         href="/rss.xml"
       />
       <header>
-        <h1>Blog</h1>
-        <PublicNav current="/blog" />
+        <h1>Posts</h1>
+        <PublicNav current="/posts" />
       </header>
       <main>
         {error ? <p>{error}</p> : null}
         {!error && posts.length === 0 ? (
-          <p>No blog posts yet. Check back soon!</p>
+          <p>No posts yet. Check back soon!</p>
         ) : null}
         {posts.length > 0 ? (
           <div className="posts-list">
@@ -88,7 +88,7 @@ function BlogIndex() {
               return (
                 <article key={post.id || post.slug} className="post-preview">
                   <Link
-                    to={`/blog/${post.slug}`}
+                    to={`/posts/${post.slug}`}
                     className="post-preview__link"
                   >
                     <h2>{post.title}</h2>
@@ -115,4 +115,4 @@ function BlogIndex() {
   );
 }
 
-export default BlogIndex;
+export default PostsIndex;

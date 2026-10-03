@@ -2,7 +2,7 @@ import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '../App';
-import BlogPost from '../pages/BlogPost';
+import PostPage from '../pages/PostPage';
 import Contact from '../pages/Contact';
 import NotFound from '../pages/NotFound';
 import Resume from '../pages/Resume';
@@ -91,9 +91,9 @@ describe('meta tags (no duplicates with static defaults)', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/blog/welcome']}>
+      <MemoryRouter initialEntries={['/posts/welcome']}>
         <Routes>
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/posts/:slug" element={<PostPage />} />
         </Routes>
       </MemoryRouter>,
     );

@@ -180,4 +180,57 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
     });
     expect(send.mock.calls[0]![0]).toBeInstanceOf(QueryCommand);
   });
+
+  it('mutateIfVersion reads consistently and always writes expected + 1 (CHR-188)', async () => {
+    const stored = {
+      pk: keys.notebook.note.meta('a', 'n1').pk,
+      sk: 'META',
+      id: 'n1',
+      userId: 'a',
+      title: 'live',
+      version: 2,
+      updatedAt: '2026-10-02T12:00:00.000Z',
+    };
+    send.mockImplementation(async (cmd: unknown) => {
+      if (cmd instanceof GetCommand) return { Item: stored };
+      return {};
+    });
+
+    // A builder that echoes a stale version must not leak it into the write.
+    const next = await repo.mutateIfVersion('a', 'n1', 'any', (n) => ({
+      ...n,
+      title: `${n.title}!`,
+      version: 1,
+    }));
+
+    expect(next).toMatchObject({ title: 'live!', version: 3 });
+    const get = send.mock.calls[0]![0] as GetCommand;
+    expect(get.input.ConsistentRead).toBe(true);
+    const put = send.mock.calls[1]![0] as {
+      input: {
+        Item: { version: number };
+        ExpressionAttributeValues: Record<string, number>;
+      };
+    };
+    expect(put.input.Item.version).toBe(3);
+    expect(put.input.ExpressionAttributeValues[':v']).toBe(2);
+  });
+
+  it('mutateIfVersion on a tombstone is 404 (CHR-188)', async () => {
+    send.mockResolvedValueOnce({
+      Item: {
+        pk: keys.notebook.note.meta('a', 'n1').pk,
+        sk: 'META',
+        id: 'n1',
+        userId: 'a',
+        title: 'gone',
+        version: 3,
+        updatedAt: '2026-10-02T12:00:00.000Z',
+        deleted: true,
+      },
+    });
+    await expect(
+      repo.mutateIfVersion('a', 'n1', 3, (n) => n),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
 });

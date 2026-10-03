@@ -225,64 +225,68 @@ export class TasksRepository {
     return this.createIdempotent(task);
   }
 
-  async updateFromRequest(
+  /**
+   * Apply only the fields in `body` to a consistent read (CHR-188), so a
+   * stale replica can never revert content or reuse a version.
+   */
+  updateFromRequest(
     userId: string,
     id: string,
-    expectedVersion: number,
-    body: UpdateTaskRequest,
-    existing: Task,
+    expected: number | 'any',
+    body: Omit<UpdateTaskRequest, 'version'>,
   ): Promise<Task> {
-    const now = this.nowIso();
-    const status = body.status ?? existing.status;
-    const next: Task = {
-      ...existing,
-      area: body.area ?? existing.area,
-      title: body.title ?? existing.title,
-      description: body.description ?? existing.description,
-      priority: body.priority ?? existing.priority,
-      status,
-      dueDate: body.dueDate !== undefined ? body.dueDate : existing.dueDate,
-      noteId: body.noteId !== undefined ? body.noteId : existing.noteId,
-      tags: body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
-      completedAt: withCompletedAt(status, existing.completedAt, now),
-      version: existing.version + 1,
-      updatedAt: now,
-    };
-    return this.updateIfVersion(userId, id, expectedVersion, next);
+    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => {
+      const status = body.status ?? existing.status;
+      return {
+        ...existing,
+        area: body.area ?? existing.area,
+        title: body.title ?? existing.title,
+        description: body.description ?? existing.description,
+        priority: body.priority ?? existing.priority,
+        status,
+        dueDate: body.dueDate !== undefined ? body.dueDate : existing.dueDate,
+        noteId: body.noteId !== undefined ? body.noteId : existing.noteId,
+        tags:
+          body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+        completedAt: withCompletedAt(status, existing.completedAt, now),
+        updatedAt: now,
+      };
+    });
   }
 
-  async complete(
+  complete(
     userId: string,
     id: string,
-    expectedVersion: number,
-    existing: Task,
+    expected: number | 'any',
   ): Promise<Task> {
-    const now = this.nowIso();
-    const next: Task = {
+    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
       ...existing,
       status: 'done',
       completedAt: existing.completedAt ?? now,
-      version: existing.version + 1,
       updatedAt: now,
-    };
-    return this.updateIfVersion(userId, id, expectedVersion, next);
+    }));
   }
 
-  async reopen(
-    userId: string,
-    id: string,
-    expectedVersion: number,
-    existing: Task,
-  ): Promise<Task> {
-    const now = this.nowIso();
-    const next: Task = {
+  reopen(userId: string, id: string, expected: number | 'any'): Promise<Task> {
+    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
       ...existing,
       status: 'todo',
       completedAt: null,
-      version: existing.version + 1,
       updatedAt: now,
-    };
-    return this.updateIfVersion(userId, id, expectedVersion, next);
+    }));
+  }
+
+  /** Tombstone built from a consistent read (CHR-188). */
+  deleteIfVersion(
+    userId: string,
+    id: string,
+    expected: number | 'any',
+  ): Promise<Task> {
+    return this.base.softDeleteIfVersion(userId, id, expected, (t, now) => ({
+      ...t,
+      updatedAt: now,
+      deleted: true,
+    }));
   }
 
   async list(
