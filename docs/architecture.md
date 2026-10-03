@@ -7,9 +7,11 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
    - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA+webauthn; CHR-177)
+   - `/blog` and `/blog/*` → 301 to the same path under `/posts` (CHR-206)
+   - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`, but the publisher still stores them under `blog/` (no S3 or KVS migration). Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
    - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`
-   - `/blog/<slug>` → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
+   - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
    - `/admin/*` and `/auth/*` → `/spa.html` (neutral SPA shell, not the home prerender)
    - Other extensionless paths → `/404.html`
 3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404
@@ -85,7 +87,7 @@ are unchanged (hash-skip / no feed rewrite). That is intentional after CHR-157.
 On relevant stream events the publisher updates, among others:
 
 - `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html` (prerendered pages)
-- `/blog/posts.json`, `/rss.xml`, `/sitemap.xml`
+- `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s keep the old `/blog/<slug>` URL so feed readers don't re-list posts.
 - `/resume.pdf` (pdf-lib + Inter fonts)
 - CloudFront KeyValueStore keys for known published slugs
 - Targeted CloudFront invalidations

@@ -7,13 +7,13 @@ import {
 import {
   buildRssXml,
   buildSitemapXml,
-  renderBlogIndexPage,
+  renderPostsIndexPage,
   renderHomePage,
   renderPostPage,
   renderResumePage,
   renderResumeUnavailablePage,
 } from '../src/render.js';
-import blogFeedsTarget from '../src/publish-targets/targets/blog-feeds.target.js';
+import postsFeedsTarget from '../src/publish-targets/targets/posts-feeds.target.js';
 import homeTarget from '../src/publish-targets/targets/home.target.js';
 import type { PublishTargetContext } from '../src/publish-targets/types.js';
 import type { SiteStorage } from '../src/storage.js';
@@ -58,7 +58,7 @@ const shell = `<!doctype html>
 describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
   it('matches frozen output for home, blog index, resume, and post', () => {
     expect(renderHomePage(shell, DEFAULT_HOME)).toMatchSnapshot();
-    expect(renderBlogIndexPage(shell, [samplePost()])).toMatchSnapshot();
+    expect(renderPostsIndexPage(shell, [samplePost()])).toMatchSnapshot();
     expect(renderResumePage(shell, DEFAULT_RESUME)).toMatchSnapshot();
     expect(renderPostPage(shell, samplePost())).toMatchSnapshot();
   });
@@ -106,7 +106,7 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
       corruptPostSlugs: new Set(),
     };
 
-    const feeds = await blogFeedsTarget.run({
+    const feeds = await postsFeedsTarget.run({
       ...baseCtx,
       published: [post],
       scope: {

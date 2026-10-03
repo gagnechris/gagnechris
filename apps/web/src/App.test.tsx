@@ -142,13 +142,17 @@ describe('App', () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
 
-    for (const name of ['Resume', 'Blog', 'Contact'] as const) {
+    for (const name of ['Resume', 'Posts', 'Contact'] as const) {
       const link = screen.getByRole('link', { name });
       expect(link.tagName).toBe('A');
       // react-router Link still renders <a>; ensure no target=_blank full reload.
       expect(link).not.toHaveAttribute('target');
       expect(link.getAttribute('href')).toMatch(
-        name === 'Resume' ? '/resume' : name === 'Blog' ? '/blog' : '/contact',
+        name === 'Resume'
+          ? '/resume'
+          : name === 'Posts'
+            ? '/posts'
+            : '/contact',
       );
     }
 

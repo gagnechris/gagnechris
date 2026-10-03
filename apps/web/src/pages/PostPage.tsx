@@ -1,10 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
-import { publishedPostPageUrl } from '../blog/publishedPosts';
+import { publishedPostPageUrl } from '../posts/publishedPosts';
 import PublicNav from '../components/PublicNav';
 import NotFound from './NotFound';
-import './BlogPost.css';
+import './PostPage.css';
 
 interface PostData {
   title: string;
@@ -46,7 +46,7 @@ async function loadPublishedPost(slug: string): Promise<PostData | null> {
   };
 }
 
-function BlogPost() {
+function PostPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ function BlogPost() {
   useEffect(() => {
     const loadPost = async () => {
       if (!slug?.trim()) {
-        setError('Blog post not found');
+        setError('Post not found');
         setLoading(false);
         return;
       }
@@ -70,10 +70,10 @@ function BlogPost() {
           return;
         }
 
-        setError('Blog post not found');
+        setError('Post not found');
         setPost(null);
       } catch (err) {
-        setError('Error loading blog post');
+        setError('Error loading post');
         setPost(null);
         console.error('Error details:', err);
       } finally {
@@ -86,12 +86,12 @@ function BlogPost() {
 
   if (loading) {
     return (
-      <div className="blog-post">
+      <div className="post-page">
         <header>
-          <Link to="/blog" className="back-link">
-            ← Back to Blog
+          <Link to="/posts" className="back-link">
+            ← Back to Posts
           </Link>
-          <PublicNav current="/blog" />
+          <PublicNav current="/posts" />
         </header>
         <main>
           <p>Loading post...</p>
@@ -108,9 +108,9 @@ function BlogPost() {
   const dateAttr = postDateAttribute(post.date);
 
   return (
-    <div className="blog-post">
+    <div className="post-page">
       <title>{`${post.title} - Chris Gagne`}</title>
-      <link rel="canonical" href={`https://gagnechris.com/blog/${slug}`} />
+      <link rel="canonical" href={`https://gagnechris.com/posts/${slug}`} />
       <link
         rel="alternate"
         type="application/rss+xml"
@@ -118,10 +118,10 @@ function BlogPost() {
         href="/rss.xml"
       />
       <header>
-        <Link to="/blog" className="back-link">
-          ← Back to Blog
+        <Link to="/posts" className="back-link">
+          ← Back to Posts
         </Link>
-        <PublicNav current="/blog" />
+        <PublicNav current="/posts" />
       </header>
       <article>
         <h1>{post.title}</h1>
@@ -136,12 +136,12 @@ function BlogPost() {
         />
       </article>
       <footer>
-        <Link to="/blog" className="back-link-footer">
-          ← Back to Blog
+        <Link to="/posts" className="back-link-footer">
+          ← Back to Posts
         </Link>
       </footer>
     </div>
   );
 }
 
-export default BlogPost;
+export default PostPage;

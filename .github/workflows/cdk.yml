@@ -188,7 +188,7 @@ jobs:
 
       - name: Path filter
         if: github.event_name == 'workflow_run' && steps.path_base.outputs.deploy_all != 'true'
-        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: filter
         with:
           base: ${{ steps.path_base.outputs.sha }}
