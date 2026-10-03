@@ -55,9 +55,9 @@ export default defineConfig(({ mode, command }) => {
   };
 
   if (localSiteOrigin && !useProdApi) {
-    // Do NOT proxy /blog or /assets — that would serve the seeded production
-    // shell/JS and bypass Vite HMR (old BlogPost → NotFound for CMS slugs).
-    // BlogPost fetches publisher HTML via this prefix instead.
+    // Do NOT proxy /posts or /assets — that would serve the seeded production
+    // shell/JS and bypass Vite HMR (old PostPage → NotFound for CMS slugs).
+    // PostPage fetches publisher HTML via this prefix instead.
     proxy['/__site'] = {
       target: localSiteOrigin,
       changeOrigin: true,

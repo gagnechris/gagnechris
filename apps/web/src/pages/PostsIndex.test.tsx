@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import BlogIndex from './BlogIndex';
+import PostsIndex from './PostsIndex';
 
-describe('BlogIndex', () => {
+describe('PostsIndex', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -34,19 +34,19 @@ describe('BlogIndex', () => {
 
     render(
       <MemoryRouter>
-        <BlogIndex />
+        <PostsIndex />
       </MemoryRouter>,
     );
 
     expect(
       await screen.findByRole('link', { name: /Hello World/ }),
-    ).toHaveAttribute('href', '/blog/hello');
+    ).toHaveAttribute('href', '/posts/hello');
     expect(screen.getByText('An excerpt')).toBeInTheDocument();
     const time = screen.getByText('February 1, 2026');
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(fetch).toHaveBeenCalledWith(
-      '/blog/posts.json',
+      '/posts/posts.json',
       expect.objectContaining({ headers: { Accept: 'application/json' } }),
     );
   });
@@ -63,12 +63,12 @@ describe('BlogIndex', () => {
 
     render(
       <MemoryRouter>
-        <BlogIndex />
+        <PostsIndex />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/No blog posts yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/No posts yet/i)).toBeInTheDocument();
     });
   });
 });
