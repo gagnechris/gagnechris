@@ -68,28 +68,7 @@ ensure_shell() {
     bash "${ROOT}/scripts/local/seed-shell.sh"
   elif [[ ! -f "${SITE_BUCKET_NAME}/index.html" ]]; then
     echo "==> Write minimal publisher shell (run npm run build later for full assets)"
-    cat > "${SITE_BUCKET_NAME}/index.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chris Gagne</title>
-    <meta name="description" content="" />
-    <meta property="og:title" content="" />
-    <meta property="og:description" content="" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="" />
-    <meta property="og:image" content="" />
-    <meta name="twitter:title" content="" />
-    <meta name="twitter:description" content="" />
-    <meta name="twitter:image" content="" />
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-HTML
+    cp "${ROOT}/scripts/local/minimal-shell.html" "${SITE_BUCKET_NAME}/index.html"
     cp "${SITE_BUCKET_NAME}/index.html" "${SITE_BUCKET_NAME}/_shell.html"
   else
     echo "==> Site shell already present at ${SITE_BUCKET_NAME}"

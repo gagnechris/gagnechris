@@ -19,7 +19,7 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 ## API target and auth
 
 - `EXPO_PUBLIC_API_BASE_URL` sets the API origin; the default is the local API at `http://127.0.0.1:8787` (`npm run local:dev`).
-- The authed client sends the fake bearer `local-dev-token`, which the local API accepts on admin routes (same as `VITE_AUTH_MODE=local`). Authenticated calls against production need a real Cognito ID token.
+- The authed client sends the fake bearer `local-dev-token`, which the local API maps to the default local admin (`local-dev-user`, the same user `VITE_AUTH_MODE=local` signs in as). Authenticated calls against production need a real Cognito ID token.
 - `TokenProvider` in `@gagnechris/api-client` accepts `{ forceRefresh?: boolean }` and retries once on HTTP 401.
 
 ### iOS sign-in and associated domains

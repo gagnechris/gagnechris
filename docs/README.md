@@ -42,6 +42,7 @@ npm test
 npm run typecheck
 npm run lint
 npm run e2e:local
+npm run e2e:browser
 ```
 
 `npm run dev` starts Vite only (API proxied to local by default). To hit **production** APIs from Vite, use `npm run dev:prod-api` — it prints a PRODUCTION banner; prefer `local:dev` for day-to-day work.
@@ -56,6 +57,7 @@ packages/shared/       Domain schemas/types; `/render`, `/openapi` subpaths
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
 scripts/               Local stack, deploy-web, branch protection
 docs/                  Architecture, development, data model, E2E
+e2e/                   Playwright browser tests
 ```
 
 ## Workflow

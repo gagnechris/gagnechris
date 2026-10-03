@@ -15,6 +15,11 @@ dist-ssr
 # Local E2E publisher filesystem root
 .local-site
 
+# Playwright output and per-run stack (site root + logs)
+e2e/test-results
+e2e/playwright-report
+e2e/.stack
+
 # CDK
 cdk.out
 # cdk.context.json is committed so CI can synth HostedZone.fromLookup without live AWS.

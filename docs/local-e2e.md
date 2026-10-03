@@ -24,6 +24,78 @@ This script:
 6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
 7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
 
+## Browser tests (Playwright)
+
+```bash
+npx playwright install chromium webkit   # once per Playwright version
+npm run e2e:browser                      # headless, Chromium + WebKit
+npm run e2e:browser -- --ui              # interactive UI mode
+npm run e2e:browser -- --project=webkit --headed tests/admin-posts.spec.ts
+```
+
+`e2e/global-setup.ts` boots a private stack for each run and tears it down
+afterwards:
+
+1. DynamoDB Local in its own container (`gagnechris-e2e-<run>`, label
+   `gagnechris.e2e=1`, bound to `127.0.0.1` only), table
+   `gagnechris-e2e-<run>`
+2. Site root `e2e/.stack/<run>/site`, seeded from `apps/web/dist` when a
+   build exists, else `scripts/local/minimal-shell.html`
+3. Local API + publisher (`services/api/local/server.ts`), static site
+   (`static-server.ts`) and Vite admin with `VITE_AUTH_MODE=local`
+
+Every port is picked by the OS unless set, so a run never collides with
+`npm run local:dev` (8000/8787/4177/5173), another worktree, or another run.
+No Compose project is used.
+
+| Env                     | Default                                              |
+| ----------------------- | ---------------------------------------------------- |
+| `E2E_DYNAMODB_PORT`     | free port                                            |
+| `E2E_DYNAMODB_ENDPOINT` | unset; when set, reuse that DynamoDB                 |
+| `E2E_API_PORT`          | free port                                            |
+| `E2E_SITE_PORT`         | free port                                            |
+| `E2E_VITE_PORT`         | free port                                            |
+| `E2E_OUTPUT_DIR`        | `e2e/` (holds `test-results/`, `playwright-report/`) |
+
+Playwright wipes its output dir on start, so give concurrent runs in the
+same checkout different `E2E_OUTPUT_DIR`s. Process logs go to
+`e2e/.stack/<run>/*.log`; they are deleted after a local run and kept in CI.
+If a run is killed hard, remove leftovers with
+`docker rm -f $(docker ps -q --filter label=gagnechris.e2e=1)` (only when no
+other run is active).
+
+### Writing specs
+
+Import `test` and `expect` from `e2e/fixtures.ts`:
+
+| Fixture  | What it gives you                                                          |
+| -------- | -------------------------------------------------------------------------- |
+| `prefix` | Unique per test; slugs and titles from `seed` start with it                |
+| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`) |
+| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`        |
+| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context        |
+| `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)    |
+| `seedAs` | `seedAs(user)` seeds as another user                                       |
+
+Fake sign-in writes `{ userId, label }` to `localStorage['gagnechris.localAuthUser']`.
+In `VITE_AUTH_MODE=local` the admin reads that user (default `local-dev-user`)
+and sends `Authorization: Bearer local:<userId>`; the local API turns that
+into admin claims with `sub=<userId>`, so owner-scoped notebook data is
+separate per user. Any other bearer, or none, is the default user.
+
+All tests share one stack and table, so isolate by `prefix` and per-test
+users rather than assuming an empty table. Seeding goes through the API
+(`@gagnechris/api-client`), so it hits the same validation as the UI.
+
+### CI
+
+The **Local E2E smoke (CHR-82)** job runs `npm run e2e:local`, then installs
+cached Chromium + WebKit (`~/.cache/ms-playwright`, keyed by Playwright
+version) and runs `npm run e2e:browser`. On failure it uploads the
+`playwright-report-<attempt>` artifact: HTML report, `test-results/`
+(traces, screenshots, video) and stack logs. Open a trace with
+`npx playwright show-trace <trace.zip>` or the HTML report's trace viewer.
+
 ## Day-to-day local admin
 
 One terminal:
@@ -88,6 +160,8 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 | `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                        |
 | `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                    |
 | `scripts/local/e2e.sh`                | Automated smoke (`npm run e2e:local`)                   |
+| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing         |
+| `e2e/`                                | Playwright config, stack global setup, fixtures, specs  |
 | `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild               |
 | `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request        |
 | `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored) |
