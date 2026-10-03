@@ -65,10 +65,30 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   conflictCode: 'slug_taken' | 'daily_taken';
   conflictMessage?: string;
   /**
-   * When a unique claim conflicts during `createIdempotent`, resolve to the
-   * existing winner (daily-note first-writer-wins). Return `undefined` to throw.
+   * When a unique claim conflicts during `createIdempotent`, look up the
+   * entity holding the claim. A live holder with a different id makes the
+   * create fail with `conflictCode` and `current` (CHR-187). Return
+   * `undefined` to rethrow the original conflict.
    */
   resolveConflict?: (entity: T) => Promise<T | undefined>;
+  /**
+   * Transaction items that free the claim when `entity` is soft-deleted, so
+   * the slot can be reused (CHR-187). Each should only remove a claim that
+   * still points at `entity`.
+   */
+  releaseItems?: (entity: T) => Array<{
+    Delete: {
+      Key: Record<string, unknown>;
+      ConditionExpression?: string;
+      ExpressionAttributeNames?: Record<string, string>;
+      ExpressionAttributeValues?: Record<string, unknown>;
+    };
+  }>;
+  /**
+   * Free a claim still held by a tombstone (rows deleted before claims were
+   * released on delete). Called once before retrying the create (CHR-187).
+   */
+  releaseStale?: (holder: T) => Promise<void>;
 };
 
 export type OwnerScopedVersionedEntityConfig<
@@ -372,24 +392,43 @@ export class OwnerScopedVersionedEntityRepository<
    * Daily-note races: first claim wins; loser returns the existing winner
    * when `uniqueClaim.resolveConflict` is configured (CHR-169).
    */
-  async createIdempotent(entity: T): Promise<T> {
+  async createIdempotent(entity: T, retried = false): Promise<T> {
     const userId = this.config.userIdOf(entity);
     const id = this.config.idOf(entity);
     try {
       return await this.create(entity);
     } catch (error) {
+      const unique = this.config.uniqueClaim;
       if (
         error instanceof ConflictError &&
         error.code !== 'conflict' &&
-        this.config.uniqueClaim?.resolveConflict
+        unique?.resolveConflict
       ) {
-        const resolved = await this.config.uniqueClaim.resolveConflict(entity);
-        // Different ULID lost the daily claim → return the first writer.
-        // Same ULID falls through to createHash idempotency below.
+        const resolved = await unique.resolveConflict(entity);
         if (resolved && this.config.idOf(resolved) !== id) {
           this.assertOwner(userId, resolved);
-          return resolved;
+          // A tombstone still holding the claim: free it and retry once.
+          if (
+            this.config.isDeleted?.(resolved) &&
+            unique.releaseStale &&
+            !retried
+          ) {
+            await unique.releaseStale(resolved);
+            return this.createIdempotent(entity, true);
+          }
+          // Different ULID lost the claim: tell the client who won so it can
+          // merge instead of silently dropping its write (CHR-187).
+          throw new ConflictError(
+            unique.conflictMessage ??
+              `Create conflict (${this.config.conflictLabel})`,
+            {
+              code: unique.conflictCode,
+              currentVersion: resolved.version,
+              current: resolved,
+            },
+          );
         }
+        // Same ULID falls through to createHash idempotency below.
         if (!resolved) {
           throw error;
         }
@@ -410,6 +449,16 @@ export class OwnerScopedVersionedEntityRepository<
             `${this.config.conflictLabel} ${id} was deleted`,
             { code: 'deleted' },
           );
+        }
+        // A transaction conflict with a concurrent create (not a failed
+        // condition) leaves nothing to compare against: retry once, which
+        // either wins or surfaces the claim holder (CHR-187).
+        if (
+          !retried &&
+          error instanceof ConflictError &&
+          error.code === 'conflict'
+        ) {
+          return this.createIdempotent(entity, true);
         }
         throw new ConflictError(
           `Create conflict (${this.config.conflictLabel})`,
@@ -617,6 +666,11 @@ export class OwnerScopedVersionedEntityRepository<
                     },
                   ]
                 : []),
+              ...(this.config.uniqueClaim?.releaseItems?.(existing) ?? []).map(
+                (item) => ({
+                  Delete: { TableName: this.tableName, ...item.Delete },
+                }),
+              ),
             ],
           }),
         ),

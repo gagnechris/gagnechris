@@ -186,7 +186,8 @@ function dailyNoteClaimHook(
     conflictMessage: 'Daily note already exists for this area and date',
     /**
      * Two offline devices creating the same `(area, date)` with different
-     * ULIDs: first writer wins; loser returns the existing note (CHR-169).
+     * ULIDs: first writer wins; the loser gets a `daily_taken` conflict
+     * carrying the winner (CHR-187).
      */
     resolveConflict: async (entity) => {
       if (!entity.area || !entity.noteDate) return undefined;

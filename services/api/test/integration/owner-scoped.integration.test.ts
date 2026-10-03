@@ -134,7 +134,7 @@ describe('owner-scoped repository (DynamoDB Local, CHR-169)', () => {
     expect(feedB.changes.map((c) => c.id)).toEqual([NOTE_B]);
   });
 
-  it('two daily-note creates (same area/date, different ULIDs) keep one winner', async () => {
+  it('two daily-note creates (same area/date, different ULIDs) keep one winner; loser gets daily_taken', async () => {
     const repo = createFakeNotesRepo(
       doc,
       tableName,
@@ -153,22 +153,25 @@ describe('owner-scoped repository (DynamoDB Local, CHR-169)', () => {
         '2026-10-02T10:00:00.000Z',
       ),
     );
-    // Semantics: first writer wins; loser returns the existing daily note.
-    const second = await repo.createIdempotent(
-      buildFakeNote(
-        USER_A,
-        DAILY_ULID_2,
-        {
-          title: 'device-2',
-          area: 'personal',
-          noteDate: '2026-10-02',
-        },
-        '2026-10-02T10:00:01.000Z',
+    // First writer wins; the loser gets daily_taken with the winner so it can
+    // merge instead of silently losing its write (CHR-187).
+    await expect(
+      repo.createIdempotent(
+        buildFakeNote(
+          USER_A,
+          DAILY_ULID_2,
+          {
+            title: 'device-2',
+            area: 'personal',
+            noteDate: '2026-10-02',
+          },
+          '2026-10-02T10:00:01.000Z',
+        ),
       ),
-    );
-
-    expect(second.id).toBe(first.id);
-    expect(second.title).toBe('device-1');
+    ).rejects.toMatchObject({
+      code: 'daily_taken',
+      current: { id: first.id, title: 'device-1' },
+    });
     expect(await repo.get(USER_A, DAILY_ULID_2)).toBeUndefined();
     expect(await repo.get(USER_A, DAILY_ULID_1)).toMatchObject({
       title: 'device-1',

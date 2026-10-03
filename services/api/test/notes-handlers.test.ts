@@ -114,7 +114,7 @@ describe('notes handlers (CHR-40)', () => {
     expect(JSON.parse(listed!.body as string).items).toHaveLength(1);
   });
 
-  it('daily GET returns empty draft; PUT creates; create race returns winner', async () => {
+  it('daily GET returns empty draft; PUT creates; create race loser gets daily_taken', async () => {
     const { doc } = createMemoryDoc();
     const repo = createNotesRepository(
       doc,
@@ -150,18 +150,23 @@ describe('notes handlers (CHR-40)', () => {
     expect(upsert?.statusCode).toBe(200);
     expect(JSON.parse(upsert!.body as string).id).toBe(DAILY_ID);
 
-    const race = await repo.createFromRequest(USER, {
-      id: DAILY_ID_2,
-      area: 'work',
-      type: 'daily',
-      date: '2026-10-02',
-      title: 'Other device',
-      bodyMarkdown: '',
-      tags: [],
-      pinned: false,
+    // The loser learns who won instead of silently getting the winner (CHR-187).
+    await expect(
+      repo.createFromRequest(USER, {
+        id: DAILY_ID_2,
+        area: 'work',
+        type: 'daily',
+        date: '2026-10-02',
+        title: 'Other device',
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+      }),
+    ).rejects.toMatchObject({
+      code: 'daily_taken',
+      currentVersion: 1,
+      current: { id: DAILY_ID, title: 'Today' },
     });
-    expect(race.id).toBe(DAILY_ID);
-    expect(race.title).toBe('Today');
   });
 
   it('cross-user GET is 404; soft-delete appears on sync feed as note', async () => {

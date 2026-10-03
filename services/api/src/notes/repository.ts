@@ -2,7 +2,11 @@
  * Owner-scoped Notebook notes (CHR-40).
  * Uses OwnerScopedVersionedEntityRepository + CHR-39 mappers/keys.
  */
-import { GetCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import {
+  DeleteCommand,
+  GetCommand,
+  type DynamoDBDocumentClient,
+} from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
   buildDailyNoteClaimItem,
@@ -24,6 +28,7 @@ import {
   type UpdateNoteRequest,
 } from '@gagnechris/shared';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
+import { BadRequestError } from '../data/errors.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
@@ -156,7 +161,52 @@ function dailyNoteClaimHook(
       if (!meta.Item) return undefined;
       return metaToNote(parseNoteMetaItem(meta.Item));
     },
+    releaseItems: (entity) => {
+      if (entity.type !== 'daily' || !entity.date) return [];
+      return [
+        {
+          Delete: {
+            Key: keys.notebook.dailyClaim(
+              entity.userId,
+              entity.area,
+              entity.date,
+            ),
+            // Only free the claim if it is still this note's.
+            ConditionExpression: 'attribute_not_exists(pk) OR noteId = :id',
+            ExpressionAttributeValues: { ':id': entity.id },
+          },
+        },
+      ];
+    },
+    releaseStale: async (holder) => {
+      if (holder.type !== 'daily' || !holder.date) return;
+      try {
+        await doc.send(
+          new DeleteCommand({
+            TableName: tableName,
+            Key: keys.notebook.dailyClaim(
+              holder.userId,
+              holder.area,
+              holder.date,
+            ),
+            ConditionExpression: 'noteId = :id',
+            ExpressionAttributeValues: { ':id': holder.id },
+          }),
+        );
+      } catch (error) {
+        // Someone else already freed or re-took it; the retry sorts it out.
+        if (!isConditionalCheckFailed(error)) throw error;
+      }
+    },
   };
+}
+
+function isConditionalCheckFailed(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: unknown }).name === 'ConditionalCheckFailedException'
+  );
 }
 
 export class NotesRepository {
@@ -276,15 +326,29 @@ export class NotesRepository {
     expected: number | 'any',
     body: Omit<UpdateNoteRequest, 'version'>,
   ): Promise<Note> {
-    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
-      ...existing,
-      title: body.title ?? existing.title,
-      bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
-      tags: body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
-      pinned: body.pinned ?? existing.pinned,
-      area: body.area ?? existing.area,
-      updatedAt: now,
-    }));
+    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => {
+      // The (area, date) claim is what makes a daily note unique; moving it
+      // to another area would leave two dailies for one day (CHR-187).
+      if (
+        existing.type === 'daily' &&
+        body.area !== undefined &&
+        body.area !== existing.area
+      ) {
+        throw new BadRequestError("A daily note's area cannot change", {
+          area: 'immutable',
+        });
+      }
+      return {
+        ...existing,
+        title: body.title ?? existing.title,
+        bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
+        tags:
+          body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+        pinned: body.pinned ?? existing.pinned,
+        area: body.area ?? existing.area,
+        updatedAt: now,
+      };
+    });
   }
 
   async list(
@@ -376,7 +440,13 @@ export class NotesRepository {
     );
     const noteId =
       typeof claim.Item?.noteId === 'string' ? claim.Item.noteId : undefined;
-    if (!noteId) {
+    const held = noteId
+      ? await this.base.getIncludingDeleted(userId, noteId, {
+          consistentRead: true,
+        })
+      : undefined;
+    // A claim left behind by a deleted note (pre-CHR-187) reads as free.
+    if (!held || held.deleted) {
       return {
         exists: false,
         userId,
@@ -390,7 +460,7 @@ export class NotesRepository {
         version: 0,
       };
     }
-    return this.getOrThrow(userId, noteId);
+    return held;
   }
 
   /**

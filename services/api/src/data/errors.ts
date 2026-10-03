@@ -45,6 +45,17 @@ export class ConflictError extends Error {
   }
 }
 
+/** Request is well-formed but not allowed for this entity (HTTP 400). */
+export class BadRequestError extends Error {
+  readonly fields?: Record<string, string>;
+
+  constructor(message: string, fields?: Record<string, string>) {
+    super(message);
+    this.name = 'BadRequestError';
+    this.fields = fields;
+  }
+}
+
 export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);
