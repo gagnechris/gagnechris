@@ -86,12 +86,15 @@ const api = new ApiStack(app, `Api-${config.name}`, {
   notifyEmailIdentity: email.notifyEmailIdentity,
   fromEmail: email.fromEmail,
 });
+// Api reads the app client IDs from Auth's SSM params, which must exist first.
+api.node.addDependency(auth);
 
 const site = new SiteStack(app, `Site-${config.name}`, {
   env: stackEnv,
   description: `Static site hosting (${config.name}).`,
   config,
   certificate: certificate.certificate,
+  appHostsCertificate: certificate.appHostsCertificate,
   alertsTopic: guardrails.alertsTopic,
 });
 site.node.addDependency(api);
@@ -103,6 +106,8 @@ new DnsStack(app, `Dns-${config.name}`, {
   description: `DNS records for ${config.domainName} (${config.name}).`,
   config,
   distribution: site.distribution,
+  adminDistribution: site.adminHost.distribution,
+  notebookDistribution: site.notebookHost.distribution,
 });
 
 const publisher = new PublisherStack(app, `Publisher-${config.name}`, {

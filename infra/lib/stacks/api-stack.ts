@@ -30,6 +30,7 @@ import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
+  LEGACY_WEB_AUTH,
   POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
   ssmParameterName,
@@ -41,7 +42,10 @@ import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly userPool: IUserPool;
+  /** Legacy apex client; trusted on both prefixes only while `legacyWebAuth`. */
   readonly webClient: IUserPoolClient;
+  /** Defaults to LEGACY_WEB_AUTH. */
+  readonly legacyWebAuth?: boolean;
   readonly alertsTopic: ITopic;
   readonly dataTable: ITable;
   readonly emailIdentity: IEmailIdentity;
@@ -67,6 +71,21 @@ export class ApiStack extends Stack {
       notifyEmailIdentity,
       fromEmail,
     } = props;
+
+    const legacyWebAuth = props.legacyWebAuth ?? LEGACY_WEB_AUTH;
+    const legacyWebClientIds = legacyWebAuth
+      ? [webClient.userPoolClientId]
+      : [];
+    // Via SSM, not Auth exports, so Auth can replace or drop a client without
+    // first removing an import here. Auth deploys before Api.
+    const adminWebClientId = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'cognitoAdminWebClientId'),
+    );
+    const notebookWebClientId = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'cognitoNotebookWebClientId'),
+    );
 
     // Via SSM to avoid Site↔Api CFN exports.
     const siteBucketName = StringParameter.valueForStringParameter(
@@ -104,6 +123,11 @@ export class ApiStack extends Stack {
         CONTACT_TO_EMAIL: config.alertsEmail,
         CONTACT_FROM_EMAIL: fromEmail,
         SITE_APEX_DOMAIN: config.domainName,
+        ADMIN_WEB_CLIENT_ID: adminWebClientId,
+        NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
+        ...(legacyWebAuth
+          ? { AUTH_LEGACY_WEB_CLIENT_ID: webClient.userPoolClientId }
+          : {}),
       },
     });
 
@@ -113,15 +137,19 @@ export class ApiStack extends Stack {
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
 
-    // Web client only. The iOS client (custom-scheme callback) stays out of the
-    // API audience until the app ships with universal links (CHR-240, CHR-205).
-    const audiences = [webClient.userPoolClientId];
-
-    const jwtAuthorizer = new HttpJwtAuthorizer(
-      'CognitoJwt',
-      `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`,
+    // One authorizer per prefix so a token from the other app's client gets a
+    // gateway 401. The iOS client (custom-scheme callback) stays out of both
+    // audiences until the app ships with universal links.
+    const issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`;
+    const adminAuthorizer = new HttpJwtAuthorizer('CognitoJwtAdmin', issuer, {
+      jwtAudience: [adminWebClientId, ...legacyWebClientIds],
+      identitySource: ['$request.header.Authorization'],
+    });
+    const notebookAuthorizer = new HttpJwtAuthorizer(
+      'CognitoJwtNotebook',
+      issuer,
       {
-        jwtAudience: audiences,
+        jwtAudience: [notebookWebClientId, ...legacyWebClientIds],
         identitySource: ['$request.header.Authorization'],
       },
     );
@@ -255,25 +283,25 @@ export class ApiStack extends Stack {
       path: '/api/admin/{proxy+}',
       methods: [HttpMethod.ANY],
       integration,
-      authorizer: jwtAuthorizer,
+      authorizer: adminAuthorizer,
     });
     this.httpApi.addRoutes({
       path: '/api/admin',
       methods: [HttpMethod.ANY],
       integration,
-      authorizer: jwtAuthorizer,
+      authorizer: adminAuthorizer,
     });
     this.httpApi.addRoutes({
       path: '/api/notebook/{proxy+}',
       methods: [HttpMethod.ANY],
       integration,
-      authorizer: jwtAuthorizer,
+      authorizer: notebookAuthorizer,
     });
     this.httpApi.addRoutes({
       path: '/api/notebook',
       methods: [HttpMethod.ANY],
       integration,
-      authorizer: jwtAuthorizer,
+      authorizer: notebookAuthorizer,
     });
 
     // Handled 500s never increment Lambda Errors, so alarm on EMF.
