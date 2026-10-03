@@ -9,6 +9,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `apps/web` — React/Vite site + admin
 - `services/api` — Lambda HTTP API
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
+- `services/restore-test` — AWS Backup restore-test validator + leftover restore-table check (CHR-198)
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
 - `packages/data` — DynamoDB keys, item schemas, DocumentClient, and Dynamo write helpers for API + publisher
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`

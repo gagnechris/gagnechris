@@ -236,7 +236,7 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 
 **`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Current excludes include `blog/*`, `resume/*`, `home/*`, `media/*`, **`notebook/*`** (reserved for any future site-bucket notebook exports), `sitemap.xml`, `rss.xml`. When CHR-42 adds attachments, put bytes in the private bucket above — do not rely on `/media/*`.
 
-**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are; treat Backup + rehearsed PITR restore as required before storing irreplaceable notes. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
+**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are. Restores are proven off the deploy path (CHR-198): a weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
 
 ## Related
 

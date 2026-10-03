@@ -245,61 +245,144 @@ AWS_PROFILE=gagnechris-readonly aws backup list-recovery-points-by-backup-vault 
   --query 'RecoveryPoints[].[CreationDate,Status,Lifecycle.DeleteAfterDays]'
 ```
 
-Restore test (scratch table; delete it afterwards):
+Restore proof no longer runs on deploys (CHR-198). It is the weekly restore testing plan below; manual restores use the PITR rehearsal workflow or the "Restore my notes" steps.
+
+### Weekly restore testing (CHR-198)
+
+AWS Backup restore testing proves the vault restores, with content checks, and cleans up after itself. All of it is in `Data-prod` (`infra/lib/constructs/restore-testing.ts`):
+
+- **Plan** `gagnechris_prod_app_table_weekly`: Sundays `09:00 UTC` (starts within 1 h), latest `SNAPSHOT` recovery point from `gagnechris-prod-app-table` created in the last 2 days (the daily backup runs at `07:00 UTC`).
+- **Selection** `app_table`: only `gagnechris-prod`, restored with role `gagnechris-prod-restore-testing` (AWS-managed `AWSBackupServiceRolePolicyForRestores`, which restore testing requires). AWS Backup names the table `awsbackup-restore-test-<random>`, with deletion protection off and the default (AWS-owned) encryption key. That is restore testing's inferred metadata for DynamoDB. It is a scratch copy that lives for a few hours, so it is not overridden.
+- **Validation window: 4 h.** AWS Backup deletes the restored table once a validation result is reported or the window closes, whatever the result. DynamoDB has no tag-on-restore, so AWS deletes it by its `awsbackup-restore-test-` name. Never rename it.
+- **Validator** Lambda `gagnechris-prod-restore-test` (`services/restore-test`), triggered by rule `gagnechris-prod-restore-test-validate` (`Restore Job State Change`, `COMPLETED`, this plan's ARN). It scans the restored table and checks that the table is not empty, every item has string `pk`/`sk`, every item with a known `entityType` (post, home, resume, contact, note, task, daily claim) parses with its `@gagnechris/data` schema and sits under the key the key builders produce, and `HOME#current`/`RESUME#current` META exist. It then calls `PutRestoreValidationResult` with `SUCCESSFUL` or `FAILED`. Messages and logs carry keys and schema paths only, never content. A scan error is reported as `FAILED` rather than retried. IAM: `dynamodb:Scan`/`DescribeTable` on `table/awsbackup-restore-test-*` only, `DescribeTable` on `table/gagnechris-*-restore-*`, `ListTables`, and `backup:PutRestoreValidationResult`. It has no access to `gagnechris-prod`.
+- **Leftover check:** the same Lambda runs daily at `12:00 UTC` (rule `gagnechris-prod-restore-leftover-check`). It lists tables named `awsbackup-restore-test-*`, `gagnechris-<env>-restore-*` or `gagnechris-<env>-backup-restore-*` that are older than 24 h, and emits `LeftoverRestoreTables`. Each one is a full copy of prod, private notes included, with no deletion protection, PITR, Backup or alarms.
+- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check failed), `gagnechris-prod-restore-leftover-tables` (scratch table older than 24 h; re-alerts daily until it is deleted), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which now also matches restore jobs of the restore testing plan that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL`.
+
+Verify (read-only):
 
 ```bash
-RP_ARN=$(aws backup list-recovery-points-by-backup-vault \
-  --backup-vault-name gagnechris-prod-app-table --region us-east-1 \
-  --query 'max_by(RecoveryPoints,&CreationDate).RecoveryPointArn' --output text)
-aws backup start-restore-job --region us-east-1 \
-  --recovery-point-arn "$RP_ARN" \
-  --iam-role-arn "<AppTableSelection role ARN>" \
-  --metadata TargetTableName=gagnechris-prod-backup-restore-$(date -u +%Y%m%d)
-aws backup describe-restore-job --restore-job-id <id> --region us-east-1
-# ItemCount lags by hours; count with a scan and compare to the live table
-aws dynamodb scan --table-name gagnechris-prod-backup-restore-<date> --select COUNT
-aws dynamodb scan --table-name gagnechris-prod --select COUNT
-aws dynamodb delete-table --table-name gagnechris-prod-backup-restore-<date>
+export AWS_PROFILE=gagnechris-readonly AWS_REGION=us-east-1
+aws backup get-restore-testing-plan --restore-testing-plan-name gagnechris_prod_app_table_weekly
+PLAN_ARN=$(aws backup get-restore-testing-plan --restore-testing-plan-name gagnechris_prod_app_table_weekly \
+  --query 'RestoreTestingPlan.RestoreTestingPlanArn' --output text)
+# Last runs: Status COMPLETED, ValidationStatus SUCCESSFUL, DeletionStatus SUCCESSFUL
+aws backup list-restore-jobs --by-restore-testing-plan-arn "$PLAN_ARN" \
+  --query 'RestoreJobs[].[CreationDate,Status,ValidationStatus,ValidationStatusMessage,DeletionStatus,CreatedResourceArn]'
+# Leftover scratch tables: must print []
+aws dynamodb list-tables \
+  --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"
 ```
 
-Record each restore test in the rehearsal log table below, with "AWS Backup" in Notes.
+Run the leftover check on demand (needs `lambda:InvokeFunction`): `aws lambda invoke --function-name gagnechris-prod-restore-test --cli-binary-format raw-in-base64-out --payload '{"action":"leftoverCheck"}' /tmp/leftover.json && cat /tmp/leftover.json`.
 
-### PITR restore + cut-over (scratch rehearsal)
+On `restore-validation-failed`: read the job's `ValidationStatusMessage` (command above) and the `/aws/lambda/gagnechris-prod-restore-test` logs. The scratch table is already being deleted. Fix the data or the validator, and record the outcome in the rehearsal log. On `restore-leftover-tables`: check the table's tags (`purpose`, `created-by`), then `aws dynamodb delete-table --table-name <name>` (admin).
 
-The live table name is fixed (`gagnechris-prod`). A PITR restore always creates a **new** table; cut-over is a deliberate rename/swap, not an in-place undo.
+### Manual PITR rehearsal (scratch table)
 
-**Rehearsal (safe — does not touch the live table name):**
+Actions → **PITR restore rehearsal** (`pitr-rehearsal.yml`; manual only, one run at a time) runs `scripts/rehearse-pitr-restore.sh`:
 
-```bash
-# Prefer the CI workflow: Actions → "PITR restore rehearsal" → Run workflow
-# Or locally with a break-glass admin profile (record use here):
-SOURCE=gagnechris-prod
-TARGET=gagnechris-prod-restore-$(date -u +%Y%m%d)
-REGION=us-east-1
+- It fixes the restore point once, up front (`LatestRestorableDateTime`), and restores `gagnechris-prod` to `gagnechris-prod-restore-<stamp>` at that time with `--sse-specification-override Enabled=true,SSEType=KMS`. That is the AWS-managed `aws/dynamodb` key, the same as prod (`TableEncryption.AWS_MANAGED`). Without the override a PITR restore keeps the source's encryption, but the override makes it explicit and the script checks `SSEType=KMS`.
+- It tags the scratch table `purpose=restore-rehearsal`, `created-by`, `source-table`, `restore-date-time` and `keep`.
+- It verifies content that was stable at the restore point. It samples up to 25 rows whose `updatedAt` is at least 60 s older than the restore point, and each must exist in the restore with the same `version` and `updatedAt`. It also checks that the singleton rows exist and the table is not empty. There is no live-count compare, so autosaves and TTL expiry during the run cannot fail it. It reads keys, `version` and `updatedAt` only, and prints counts only.
+- A `trap` deletes the scratch table on **every** exit (success, mismatch, ACTIVE timeout, cancel), waiting for `ACTIVE` first because a restoring table cannot be deleted. With `keep_target=1` the table is kept and tagged `keep=true`, and the leftover alarm fires after 24 h. Delete it by hand.
+- `force_failure=1` fails after verification, to prove the cleanup.
 
-# 1) Item count on source (approx; Scan)
-SRC_COUNT=$(aws dynamodb scan --table-name "$SOURCE" --region "$REGION" \
-  --select COUNT --query 'Count' --output text)
+It still uses the deploy role. A least-privilege rehearsal role is a follow-up.
 
-# 2) Restore to a scratch table (PITR; latest restorable time)
-aws dynamodb restore-table-to-point-in-time \
-  --region "$REGION" \
-  --source-table-name "$SOURCE" \
-  --target-table-name "$TARGET" \
-  --use-latest-restorable-time
+### Restore my notes (item-level copy-back)
 
-# 3) Wait until ACTIVE, then compare counts
-aws dynamodb wait table-exists --table-name "$TARGET" --region "$REGION"
-# (also wait until TableStatus=ACTIVE via describe-table)
-DST_COUNT=$(aws dynamodb scan --table-name "$TARGET" --region "$REGION" \
-  --select COUNT --query 'Count' --output text)
-test "$SRC_COUNT" = "$DST_COUNT"
+Use this for the realistic single-user case: notes or tasks deleted or overwritten by mistake. The live table is never swapped. Restore a scratch copy from before the damage, then copy the selected rows back with a version bump, so the web app and iOS sync pick them up like any edit.
 
-# 4) Delete the scratch table (never delete gagnechris-prod here)
-aws dynamodb delete-table --table-name "$TARGET" --region "$REGION"
-```
+1. **Owner id** (Cognito `sub`; it is the `USER#<sub>#…` key segment):
 
-**Production cut-over (disaster only — stop and ask Chris first):** restore to a new name, pause writers (API/publisher), verify counts/sample keys, then swap by updating SSM / redeploying consumers to the restored table name, or rename via a planned dual-write window. Document the chosen name in the incident notes. Do not `delete-table` on `gagnechris-prod` while cut-over is incomplete.
+   ```bash
+   export AWS_REGION=us-east-1
+   POOL=$(aws ssm get-parameter --name /gagnechris/prod/cognito-user-pool-id --query Parameter.Value --output text)
+   aws cognito-idp list-users --user-pool-id "$POOL" \
+     --query "Users[].[Username,Attributes[?Name=='sub']|[0].Value]"
+   ```
+
+2. **Scratch restore** from before the damage (admin profile). Use PITR, which goes back 35 days to the second:
+
+   ```bash
+   export AWS_PROFILE=gagnechris-admin AWS_REGION=us-east-1
+   AT=2026-10-03T09:00:00Z                       # just before the damage (UTC)
+   SCRATCH=gagnechris-prod-restore-$(date -u +%Y%m%d%H%M)
+   aws dynamodb restore-table-to-point-in-time \
+     --source-table-name gagnechris-prod --target-table-name "$SCRATCH" \
+     --restore-date-time "$AT" --sse-specification-override Enabled=true,SSEType=KMS
+   until [ "$(aws dynamodb describe-table --table-name "$SCRATCH" --query Table.TableStatus --output text)" = ACTIVE ]; do sleep 15; done
+   aws dynamodb tag-resource --resource-arn "$(aws dynamodb describe-table --table-name "$SCRATCH" --query Table.TableArn --output text)" \
+     --tags Key=purpose,Value=restore-my-notes Key=created-by,Value="$USER"
+   ```
+
+   Or use the Backup vault (daily, 7 days), for example when PITR is unavailable:
+
+   ```bash
+   RP_ARN=$(aws backup list-recovery-points-by-backup-vault --backup-vault-name gagnechris-prod-app-table \
+     --query 'max_by(RecoveryPoints,&CreationDate).RecoveryPointArn' --output text)   # or pick by CreationDate
+   ROLE_ARN=$(aws iam get-role --role-name gagnechris-prod-restore-testing --query Role.Arn --output text)
+   aws backup start-restore-job --recovery-point-arn "$RP_ARN" --iam-role-arn "$ROLE_ARN" \
+     --metadata TargetTableName="$SCRATCH"
+   aws backup describe-restore-job --restore-job-id <id> --query '[Status,CreatedResourceArn]'
+   ```
+
+3. **Dry run** (the default; it reads only and prints one line per row: action, id, source vs live version/updatedAt, new version). Add `--show-titles` to see titles. They are private, so do not paste them into tickets.
+
+   ```bash
+   npx tsx scripts/restore-copy-back.ts --source "$SCRATCH" --target gagnechris-prod \
+     --owner "$SUB" --types note,task            # optionally --ids <id>,<id>
+   ```
+
+   | Action                | Meaning                                                                                                                |
+   | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+   | `create`              | Live row is gone (purged tombstone): written with `source.version + 1`                                                 |
+   | `undelete`            | Live row is a tombstone: written live again with `tombstone.version + 1`                                               |
+   | `overwrite`           | Live row differs: written with `live.version + 1`                                                                      |
+   | `skip-target-newer`   | Live row changed after the restore point. Pass `--overwrite-newer` to replace it, which is the "overwritten note" case |
+   | `skip-identical`      | Nothing to do                                                                                                          |
+   | `skip-daily-taken`    | Another live daily note now holds that day; merge by hand                                                              |
+   | `skip-source-deleted` | Already deleted at the restore point; pick an earlier `AT`                                                             |
+   | warning on a task     | Its linked note will not be live; restore the note too (`--ids`)                                                       |
+
+4. **Apply:** re-run with `--apply` (admin profile). Each row is one transaction: the META row, rebuilt with the shared builders (list GSIs, sync `syncSk` at the copy-back time, `createHash` kept and hashed if it is a pre-CHR-192 plaintext value, no `ttl`), plus the owner create claim and, for daily notes, the day claim when it is free. Every write is conditional on the live version read during the plan, so an edit made in between shows as `conflict` (exit 2) and is never overwritten; re-run the dry run. The script refuses any target other than `gagnechris-prod` / `gagnechris-local`, a source equal to the target, and a live table as the source.
+
+5. **Check** the notes in the app (clients pick them up on the next sync poll). Then **delete the scratch table** and confirm nothing is left:
+
+   ```bash
+   aws dynamodb delete-table --table-name "$SCRATCH"
+   AWS_PROFILE=gagnechris-readonly aws dynamodb list-tables \
+     --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"   # []
+   ```
+
+Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integration.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the log below.
+
+### Full-table disaster recovery (stop and ask Chris first)
+
+`gagnechris-prod` has a fixed name, `RETAIN` and deletion protection. Api and Publisher get its name, ARN and **stream ARN** through CloudFormation cross-stack exports (`api-stack.ts` / `publisher-stack.ts` take `dataTable`). So you cannot point consumers at another table: CloudFormation will not change an export that another stack imports, and SSM is not what they read. A restored table also starts with **no stream** (the publisher would stop), no TTL, no PITR, no deletion protection, no Backup selection, no tags and no alarms.
+
+**Recover into the CDK-managed table instead of swapping it:**
+
+1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it.
+2. Restore a scratch copy from before the damage (step 2 above).
+3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
+4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `HOME#`, `RESUME#`, `CONTACT#`) have no versioned clients, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
+
+   ```bash
+   aws dynamodb scan --table-name "$SCRATCH" --output json \
+     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|HOME|RESUME|CONTACT)#"))]
+              | . as $all | range(0; length; 25) | $all[.:(. + 25)]
+              | {"gagnechris-prod": [ .[] | {PutRequest: {Item: .}} ]}' > /tmp/cms-batches.jsonl
+   wc -l /tmp/cms-batches.jsonl     # batches of 25
+   while read -r batch; do
+     aws dynamodb batch-write-item --request-items "$batch" --query 'UnprocessedItems' ; done < /tmp/cms-batches.jsonl
+   ```
+
+   `PUBLISHED` writes hit the stream and the publisher rebuilds the site. Finish with the manual `republishAll` (Publisher section).
+
+5. Delete the scratch table and run the leftover check.
+
+If the table itself is gone (only possible after someone removed deletion protection), restore the PITR or vault backup as a scratch table, then re-create `gagnechris-prod` through CDK, not by restoring under the live name. The stack's state, stream export and alarms must come from CloudFormation; see **Adopting existing resources (`cdk import`)** and plan it with Chris. Then copy back as above. Neither full-table path has been rehearsed in prod.
 
 ### Notebook human export (CHR-47)
 
@@ -313,11 +396,13 @@ Archive layout:
 
 **Use this for:** personal backup, migration into another markdown editor, offline reading.
 
-**Do not use this for:** restoring the DynamoDB table. There is no import-from-export path that rebuilds `gagnechris-prod`. Table recovery remains PITR restore + cut-over (or AWS Backup restore) above.
+**Do not use this for:** restoring the DynamoDB table. There is no import-from-export path that rebuilds `gagnechris-prod`. Table recovery is a scratch restore plus copy-back (**Restore my notes** / **Full-table disaster recovery** above).
 
 Optional later (not required for core Notebook): scheduled weekly markdown/JSON dump to a versioned S3 prefix under the reserved `notebook/*` site-bucket exclude.
 
 #### Restore rehearsal log
+
+Weekly restore tests are recorded by AWS Backup (`list-restore-jobs` above). Log manual PITR rehearsals, vault restores and copy-backs here.
 
 | Date (UTC) | Operator       | Source count | Restored table                          | Restored count | Duration | Notes                                                                                         |
 | ---------- | -------------- | ------------ | --------------------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------- |
