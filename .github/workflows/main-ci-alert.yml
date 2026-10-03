@@ -1,0 +1,59 @@
+name: Main CI alert
+
+# Branch protection doesn't require PRs to be up to date with main
+# (strict_required_status_checks_policy: false). So two PRs that pass alone
+# can break main together. The deploy only runs after CI succeeds on main,
+# so prod is safe, but a red main must not go unnoticed: email the alerts
+# topic when CI or Mobile fails on a push to main.
+on:
+  workflow_run:
+    workflows: [CI, Mobile]
+    types: [completed]
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  alert:
+    name: Alert on red main
+    if: >
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push' &&
+      contains(fromJSON('["failure","timed_out","startup_failure"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    # The drift role trusts environment:prod and may publish to the alerts topic.
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials (drift role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Notify SNS
+        env:
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          TOPIC_ARN=$(aws ssm get-parameter \
+            --name "$(bash scripts/ssm-param-name.sh prod alertsTopicArn)" \
+            --query 'Parameter.Value' \
+            --output text)
+          aws sns publish \
+            --topic-arn "$TOPIC_ARN" \
+            --subject "gagnechris main is red: ${WORKFLOW} ${CONCLUSION}" \
+            --message "${WORKFLOW} ${CONCLUSION} on main at ${HEAD_SHA}. Nothing deploys until main is green again; fix forward with a PR. Run: ${RUN_URL}"

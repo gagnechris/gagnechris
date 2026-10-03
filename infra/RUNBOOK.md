@@ -139,7 +139,7 @@ gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 bash scripts/apply-github-environments.sh
 ```
 
-3. Require CI checks on `main` (includes Local E2E):
+3. Require CI checks on `main` (includes Local E2E). PRs don't have to be up to date with `main` (`strict_required_status_checks_policy: false`), so two PRs that are green alone can break `main` together. That can't reach prod (deploy waits for CI on `main`), and **Main CI alert** (`.github/workflows/main-ci-alert.yml`) emails the alerts topic through the drift role when CI or Mobile fails on a push to `main`. Fix forward with a PR:
 
 ```bash
 bash scripts/apply-branch-protection.sh
