@@ -582,11 +582,10 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
 
-### Admin group and clients
+### Groups and clients
 
-- `/api/admin/*` and `/api/notebook/*` require the `admin` group in `cognito:groups`; any other pool user gets 403. CDK creates the group and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to it. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced.
-- An ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
-- CDK also creates the `site-admin` and `notebook` groups with `ADMIN_USERNAME` in both. `admin` stays while the legacy apex client is in use.
+- Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and the legacy `admin` (apex app, kept while `LEGACY_WEB_AUTH` is on). CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
+- An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
 - API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). While `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is `true`, both also accept the legacy `web` client, and the Lambda gets `AUTH_LEGACY_WEB_CLIENT_ID`. The Lambda always gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`. Api reads the two new client IDs from SSM (not Auth exports).
 - Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
