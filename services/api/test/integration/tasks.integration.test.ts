@@ -110,11 +110,11 @@ describe('tasks repository (DynamoDB Local, CHR-43)', () => {
     });
     expect(allTodo.items.map((t) => t.id)).toEqual([TASK_1, TASK_2, TASK_3]);
 
-    const done = await repo.complete(USER_A, TASK_1, 1, overdue);
+    const done = await repo.complete(USER_A, TASK_1, 1);
     expect(done.status).toBe('done');
     expect(done.completedAt).toBe('2026-10-02T10:00:00.000Z');
 
-    const reopened = await repo.reopen(USER_A, TASK_1, 2, done);
+    const reopened = await repo.reopen(USER_A, TASK_1, 2);
     expect(reopened.status).toBe('todo');
     expect(reopened.completedAt).toBeNull();
 

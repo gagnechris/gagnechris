@@ -165,11 +165,14 @@ export class NotesRepository {
     NoteMetaItem
   >;
 
+  private readonly nowIso: () => string;
+
   constructor(
     private readonly doc: DynamoDBDocumentClient = getDocClient(),
     private readonly tableName: string = requireTableName(),
     nowIso?: () => string,
   ) {
+    this.nowIso = nowIso ?? (() => new Date().toISOString());
     this.base = new OwnerScopedVersionedEntityRepository<Note, NoteMetaItem>(
       {
         conflictLabel: 'note',
@@ -227,11 +230,24 @@ export class NotesRepository {
     return this.base.softDelete(userId, id, expectedVersion, tombstone);
   }
 
+  /** Tombstone built from a consistent read (CHR-188). */
+  deleteIfVersion(
+    userId: string,
+    id: string,
+    expected: number | 'any',
+  ): Promise<Note> {
+    return this.base.softDeleteIfVersion(userId, id, expected, (n, now) => ({
+      ...n,
+      updatedAt: now,
+      deleted: true,
+    }));
+  }
+
   async createFromRequest(
     userId: string,
     body: CreateNoteRequest,
   ): Promise<Note> {
-    const now = new Date().toISOString();
+    const now = this.nowIso();
     const note: Note = {
       id: body.id,
       userId,
@@ -250,25 +266,25 @@ export class NotesRepository {
     return this.createIdempotent(note);
   }
 
+  /**
+   * Apply only the fields in `body` to a consistent read (CHR-188), so a
+   * stale replica can never revert content or reuse a version.
+   */
   async updateFromRequest(
     userId: string,
     id: string,
-    expectedVersion: number,
-    body: UpdateNoteRequest,
-    existing: Note,
+    expected: number | 'any',
+    body: Omit<UpdateNoteRequest, 'version'>,
   ): Promise<Note> {
-    const now = new Date().toISOString();
-    const next: Note = {
+    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
       ...existing,
       title: body.title ?? existing.title,
       bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
       tags: body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
       pinned: body.pinned ?? existing.pinned,
       area: body.area ?? existing.area,
-      version: existing.version + 1,
       updatedAt: now,
-    };
-    return this.updateIfVersion(userId, id, expectedVersion, next);
+    }));
   }
 
   async list(
@@ -397,21 +413,12 @@ export class NotesRepository {
   ): Promise<Note> {
     const existing = await this.getDaily(userId, area, date);
     if (!isEmptyDaily(existing)) {
-      const version =
-        expectedVersion === 'any' ? existing.version : expectedVersion;
-      return this.updateFromRequest(
-        userId,
-        existing.id,
-        version,
-        {
-          version,
-          title: body.title,
-          bodyMarkdown: body.bodyMarkdown,
-          tags: body.tags,
-          pinned: body.pinned,
-        },
-        existing,
-      );
+      return this.updateFromRequest(userId, existing.id, expectedVersion, {
+        title: body.title,
+        bodyMarkdown: body.bodyMarkdown,
+        tags: body.tags,
+        pinned: body.pinned,
+      });
     }
     return this.createFromRequest(userId, {
       id: body.id,

@@ -1,5 +1,5 @@
-/* Blog Post Page Styles */
-.blog-post {
+/* Post Page Styles */
+.post-page {
   max-width: 900px;
   margin: 0 auto;
   padding: var(--space-8);
@@ -10,7 +10,7 @@
   animation: fadeIn 0.6s ease-out forwards;
 }
 
-.blog-post header {
+.post-page header {
   margin-bottom: var(--space-6);
   display: flex;
   flex-wrap: wrap;
@@ -19,7 +19,7 @@
   gap: var(--space-3);
 }
 
-.blog-post article {
+.post-page article {
   background-color: white;
   padding: var(--space-8);
   border-radius: var(--radius-md);
@@ -27,7 +27,7 @@
   margin-bottom: var(--space-6);
 }
 
-.blog-post h1 {
+.post-page h1 {
   font-size: var(--text-4xl);
   color: var(--neutral-900);
   margin: 0 0 var(--space-2) 0;
@@ -160,15 +160,15 @@
 }
 
 @media (max-width: 768px) {
-  .blog-post {
+  .post-page {
     padding: var(--space-4);
   }
 
-  .blog-post article {
+  .post-page article {
     padding: var(--space-4);
   }
 
-  .blog-post h1 {
+  .post-page h1 {
     font-size: var(--text-3xl);
   }
 

@@ -19,7 +19,7 @@ source scripts/local/env.sh
 npm run migrate:posts
 ```
 
-With `SITE_STORAGE=filesystem` the script also rebuilds `.local-site/`. Or use `npm run local:dev` and confirm drafts under `/admin` and `/blog/welcome` via `/__site`.
+With `SITE_STORAGE=filesystem` the script also rebuilds `.local-site/`. Or use `npm run local:dev` and confirm drafts under `/admin` and `/posts/welcome` via `/__site`.
 
 ## Production
 
@@ -41,8 +41,8 @@ AWS_PROFILE=gagnechris-admin \
 Then verify:
 
 ```bash
-curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/blog/welcome/
-curl -sS https://gagnechris.com/blog/posts.json | head -c 400
+curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/posts/welcome/
+curl -sS https://gagnechris.com/posts/posts.json | head -c 400
 ```
 
 `src/posts/`, `frontmatter.ts`, and the hand-written `public/sitemap.xml` were already removed in CHR-35.

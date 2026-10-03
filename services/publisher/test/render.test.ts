@@ -11,7 +11,7 @@ import {
   buildJsonLd,
   buildRssXml,
   buildSitemapXml,
-  renderBlogIndexPage,
+  renderPostsIndexPage,
   renderHomePage,
   renderPostPage,
   renderResumePage,
@@ -77,7 +77,7 @@ describe('publisher render', () => {
     expect(html).toContain('<title>Hello World - Chris Gagne</title>');
     expect(html).toContain('property="og:type" content="article"');
     expect(html).toContain(
-      'property="og:url" content="https://gagnechris.com/blog/hello-world"',
+      'property="og:url" content="https://gagnechris.com/posts/hello-world"',
     );
     expect(html).toContain(
       'property="og:image" content="https://gagnechris.com/media/cover.jpg"',
@@ -93,13 +93,13 @@ describe('publisher render', () => {
     const post = renderPostPage(shell, samplePost());
     expect(post.match(/rel="canonical"/g)).toHaveLength(1);
     expect(post).toContain(
-      '<link rel="canonical" href="https://gagnechris.com/blog/hello-world" />',
+      '<link rel="canonical" href="https://gagnechris.com/posts/hello-world" />',
     );
 
-    const index = renderBlogIndexPage(shell, [samplePost()]);
+    const index = renderPostsIndexPage(shell, [samplePost()]);
     expect(index.match(/rel="canonical"/g)).toHaveLength(1);
     expect(index).toContain(
-      '<link rel="canonical" href="https://gagnechris.com/blog" />',
+      '<link rel="canonical" href="https://gagnechris.com/posts" />',
     );
   });
 
@@ -195,7 +195,7 @@ describe('publisher render', () => {
     expect(homeWithOg).toContain('/media/home-og.jpg');
 
     // Other pages must start from the pristine shell, not the home output.
-    const blog = renderBlogIndexPage(shell, [samplePost()]);
+    const blog = renderPostsIndexPage(shell, [samplePost()]);
     expect(blog).not.toContain('/media/home-og.jpg');
     expect(blog).not.toContain('home-page-prerender');
     expect(blog).toContain(
@@ -216,8 +216,8 @@ describe('publisher render', () => {
     const homeB = renderHomePage(shell, DEFAULT_HOME);
     expect(homeB).toBe(homeA);
 
-    const blogA = renderBlogIndexPage(shell, [samplePost()]);
-    const blogB = renderBlogIndexPage(shell, [samplePost()]);
+    const blogA = renderPostsIndexPage(shell, [samplePost()]);
+    const blogB = renderPostsIndexPage(shell, [samplePost()]);
     expect(blogB).toBe(blogA);
 
     const resumeA = renderResumePage(shell, DEFAULT_RESUME);
@@ -277,12 +277,21 @@ describe('publisher render', () => {
   it('builds sitemap and RSS for published posts', () => {
     const posts = [samplePost()];
     const sitemap = buildSitemapXml(posts);
-    expect(sitemap).toContain('https://gagnechris.com/blog/hello-world');
+    expect(sitemap).toContain('https://gagnechris.com/posts/hello-world');
+    expect(sitemap).toContain('<loc>https://gagnechris.com/posts</loc>');
+    expect(sitemap).not.toContain('/blog');
     expect(sitemap).toContain('https://gagnechris.com/resume');
 
     const rss = buildRssXml(posts);
     expect(rss).toContain('<item>');
     expect(rss).toContain('Hello World');
+    expect(rss).toContain(
+      '<link>https://gagnechris.com/posts/hello-world</link>',
+    );
+    // Legacy guid so feed readers don't re-list existing posts (CHR-206).
+    expect(rss).toContain(
+      '<guid>https://gagnechris.com/blog/hello-world</guid>',
+    );
     expect(rss).toContain('xmlns:atom="http://www.w3.org/2005/Atom"');
     expect(rss).toContain(
       '<atom:link href="https://gagnechris.com/rss.xml" rel="self" type="application/rss+xml"/>',
