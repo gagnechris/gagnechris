@@ -17,6 +17,7 @@ import {
   CachedMethods,
   CachePolicy,
   Distribution,
+  type BehaviorOptions,
   Function as CloudFrontFunction,
   FunctionCode,
   FunctionEventType,
@@ -148,44 +149,73 @@ export class SiteStack extends Stack {
       originAccessControl: oac,
     });
 
+    const region = Stack.of(this).region;
+    const cognitoOrigins = `https://auth.${config.domainName} https://cognito-idp.${region}.amazonaws.com`;
+    // Presigned media PUTs go to this bucket's regional host only (CHR-193).
+    const uploadOrigin = `https://${this.siteBucket.bucketRegionalDomainName}`;
+    const sharedCsp = [
+      "default-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      'upgrade-insecure-requests',
+    ];
+
+    const securityHeadersBehavior = (contentSecurityPolicy: string[]) => ({
+      strictTransportSecurity: {
+        accessControlMaxAge: Duration.days(365),
+        includeSubdomains: true,
+        preload: true,
+        override: true,
+      },
+      contentTypeOptions: { override: true },
+      frameOptions: {
+        frameOption: HeadersFrameOption.DENY,
+        override: true,
+      },
+      referrerPolicy: {
+        referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+        override: true,
+      },
+      xssProtection: { protection: true, modeBlock: true, override: true },
+      contentSecurityPolicy: {
+        contentSecurityPolicy: contentSecurityPolicy.join('; '),
+        override: true,
+      },
+    });
+
     const securityHeaders = new ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: `gagnechris-${config.name}-security-headers`,
       comment: 'HSTS, CSP (GA4 + Cognito + S3 uploads), and browser hardening',
-      securityHeadersBehavior: {
-        strictTransportSecurity: {
-          accessControlMaxAge: Duration.days(365),
-          includeSubdomains: true,
-          preload: true,
-          override: true,
-        },
-        contentTypeOptions: { override: true },
-        frameOptions: {
-          frameOption: HeadersFrameOption.DENY,
-          override: true,
-        },
-        referrerPolicy: {
-          referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-          override: true,
-        },
-        xssProtection: { protection: true, modeBlock: true, override: true },
-        contentSecurityPolicy: {
-          contentSecurityPolicy: [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
-            "font-src 'self'",
-            // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
-            `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com https://auth.${config.domainName} https://cognito-idp.${Stack.of(this).region}.amazonaws.com https://*.s3.${Stack.of(this).region}.amazonaws.com https://*.s3.amazonaws.com`,
-            "frame-ancestors 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            'upgrade-insecure-requests',
-          ].join('; '),
-          override: true,
-        },
-      },
+      securityHeadersBehavior: securityHeadersBehavior([
+        ...sharedCsp,
+        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
+        "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
+        // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
+        `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com ${cognitoOrigins} ${uploadOrigin}`,
+      ]),
     });
+
+    // /admin and /auth documents: no inline script, no Google hosts, and only
+    // our API, Cognito and the media bucket for fetches (CHR-193). spa.html
+    // ships without the GA snippet so nothing here needs 'unsafe-inline'.
+    const adminSecurityHeaders = new ResponseHeadersPolicy(
+      this,
+      'AdminSecurityHeaders',
+      {
+        responseHeadersPolicyName: `gagnechris-${config.name}-admin-security-headers`,
+        comment: 'Strict CSP for /admin and /auth (no inline script, no GA)',
+        securityHeadersBehavior: securityHeadersBehavior([
+          ...sharedCsp,
+          "script-src 'self'",
+          "img-src 'self' data:",
+          `connect-src 'self' ${cognitoOrigins} ${uploadOrigin}`,
+        ]),
+      },
+    );
 
     const viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const blogSlugsKvs = new KeyValueStore(this, 'BlogSlugsKvs', {
@@ -254,6 +284,32 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
+    // HTML/SPA behavior: viewer-request routes /admin|/auth to spa.html,
+    // unknowns to 404.html (CHR-102/115). Admin paths reuse it with the
+    // strict policy.
+    const siteBehavior = (
+      responseHeadersPolicy: ResponseHeadersPolicy,
+    ): BehaviorOptions => ({
+      origin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+      cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+      compress: true,
+      cachePolicy: htmlCachePolicy,
+      originRequestPolicy: OriginRequestPolicy.CORS_S3_ORIGIN,
+      responseHeadersPolicy,
+      functionAssociations: [
+        {
+          function: viewerRequestFn,
+          eventType: FunctionEventType.VIEWER_REQUEST,
+        },
+        {
+          function: viewerResponseFn,
+          eventType: FunctionEventType.VIEWER_RESPONSE,
+        },
+      ],
+    });
+
     this.distribution = new Distribution(this, 'Distribution', {
       comment: `gagnechris ${config.name} static site`,
       domainNames,
@@ -265,27 +321,10 @@ export class SiteStack extends Stack {
       logBucket: accessLogs,
       logFilePrefix: 'cloudfront/',
       defaultRootObject: 'index.html',
-      defaultBehavior: {
-        origin,
-        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-        cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-        compress: true,
-        cachePolicy: htmlCachePolicy,
-        originRequestPolicy: OriginRequestPolicy.CORS_S3_ORIGIN,
-        responseHeadersPolicy: securityHeaders,
-        functionAssociations: [
-          {
-            function: viewerRequestFn,
-            eventType: FunctionEventType.VIEWER_REQUEST,
-          },
-          {
-            function: viewerResponseFn,
-            eventType: FunctionEventType.VIEWER_RESPONSE,
-          },
-        ],
-      },
+      defaultBehavior: siteBehavior(securityHeaders),
       additionalBehaviors: {
+        '/admin*': siteBehavior(adminSecurityHeaders),
+        '/auth*': siteBehavior(adminSecurityHeaders),
         '/assets/*': {
           origin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

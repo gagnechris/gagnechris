@@ -63,6 +63,22 @@ describe('publisher render', () => {
     expect(html).toContain('<strong>bold</strong>');
   });
 
+  it('publishes script-bearing markdown inert (CHR-193)', () => {
+    const html = renderPostPage(
+      shell,
+      samplePost({
+        bodyMarkdown: [
+          '<img src=x onerror="alert(1)">',
+          '[x](javascript:alert(1))',
+          '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+        ].join('\n\n'),
+      }),
+    );
+    const body = html.slice(html.indexOf('<div class="blog-post-body">'));
+    expect(body).toContain('<img src="x" />');
+    expect(body).not.toMatch(/onerror|javascript:|<iframe|srcdoc/i);
+  });
+
   it('formats midnight UTC publish dates in UTC for prerender', () => {
     const html = buildArticleHtml(
       samplePost({ publishedAt: '2026-02-01T00:00:00.000Z' }),

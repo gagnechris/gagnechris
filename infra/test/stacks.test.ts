@@ -20,6 +20,29 @@ const testEnv = {
   ALERTS_EMAIL: 'alerts@example.com',
 };
 
+function siteTemplate(): Template {
+  const app = new App();
+  const config = getEnvironment('prod', testEnv);
+  const deps = new Stack(app, 'SiteAssertDeps', {
+    env: { account: config.account, region: config.region },
+  });
+  const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
+  const certificate = Certificate.fromCertificateArn(
+    deps,
+    'Cert',
+    `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
+  );
+  const site = new SiteStack(app, 'Site-prod', {
+    env: { account: config.account, region: config.region },
+    config,
+    certificate,
+    alertsTopic,
+  });
+  applyStandardTags(site, config);
+  Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+  return Template.fromStack(site);
+}
+
 describe('stack Template assertions (CHR-136)', () => {
   it('DataStack matches APP_TABLE keys and GSIs', () => {
     const app = new App();
@@ -81,26 +104,7 @@ describe('stack Template assertions (CHR-136)', () => {
   });
 
   it('SiteStack has /api/* and /media/* behaviors', () => {
-    const app = new App();
-    const config = getEnvironment('prod', testEnv);
-    const deps = new Stack(app, 'SiteAssertDeps', {
-      env: { account: config.account, region: config.region },
-    });
-    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
-    const certificate = Certificate.fromCertificateArn(
-      deps,
-      'Cert',
-      `arn:aws:acm:us-east-1:${config.account}:certificate/11111111-1111-1111-1111-111111111111`,
-    );
-    const site = new SiteStack(app, 'Site-prod', {
-      env: { account: config.account, region: config.region },
-      config,
-      certificate,
-      alertsTopic,
-    });
-    applyStandardTags(site, config);
-    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-    const template = Template.fromStack(site);
+    const template = siteTemplate();
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: Match.objectLike({
         CacheBehaviors: Match.arrayWith([
@@ -131,6 +135,59 @@ describe('stack Template assertions (CHR-136)', () => {
         ]),
       },
     });
+  });
+
+  it('SiteStack serves /admin and /auth with a strict CSP (CHR-193)', () => {
+    const template = siteTemplate();
+    const policies = template.findResources(
+      'AWS::CloudFront::ResponseHeadersPolicy',
+    );
+    const cspFor = (name: string): string => {
+      const policy = Object.values(policies).find(
+        (p) => p.Properties.ResponseHeadersPolicyConfig.Name === name,
+      );
+      expect(policy, name).toBeDefined();
+      return JSON.stringify(
+        policy!.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig
+          .ContentSecurityPolicy.ContentSecurityPolicy,
+      );
+    };
+
+    const admin = cspFor('gagnechris-prod-admin-security-headers');
+    expect(admin).toContain("script-src 'self';");
+    expect(admin).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(admin).not.toMatch(/google/);
+    expect(admin).not.toContain('*.s3');
+    expect(admin).toContain("frame-ancestors 'none'");
+
+    const site = cspFor('gagnechris-prod-security-headers');
+    expect(site).toContain('https://www.googletagmanager.com');
+    expect(site).not.toContain('*.s3');
+
+    const distribution = JSON.stringify(
+      template.findResources('AWS::CloudFront::Distribution'),
+    );
+    const adminPolicyId = Object.keys(policies).find(
+      (id) =>
+        policies[id]!.Properties.ResponseHeadersPolicyConfig.Name ===
+        'gagnechris-prod-admin-security-headers',
+    );
+    for (const pattern of ['/admin*', '/auth*']) {
+      template.hasResourceProperties('AWS::CloudFront::Distribution', {
+        DistributionConfig: Match.objectLike({
+          CacheBehaviors: Match.arrayWith([
+            Match.objectLike({
+              PathPattern: pattern,
+              ResponseHeadersPolicyId: { Ref: adminPolicyId },
+              FunctionAssociations: Match.arrayWith([
+                Match.objectLike({ EventType: 'viewer-request' }),
+              ]),
+            }),
+          ]),
+        }),
+      });
+    }
+    expect(distribution).toContain('"/admin*"');
   });
 
   it('PublisherStack stream filter uses PUBLISH_STREAM_SK and has DLQ + alarms', () => {
