@@ -6,6 +6,7 @@ export {
   type Timers,
 } from './platform.js';
 export { mergeEditorSeo } from './mergeEditorSeo.js';
+export { clearPendingFlushes, hasPendingFlushes } from './pendingFlushes.js';
 export {
   useQueuedAutosave,
   type AutosaveResult,

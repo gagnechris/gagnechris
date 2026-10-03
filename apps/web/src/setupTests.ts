@@ -1,5 +1,12 @@
 import '@testing-library/jest-dom/vitest';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
+import { clearPendingFlushes } from '@gagnechris/app-core';
+
+// Editors unmounted by cleanup hand unsaved edits to a module-level queue;
+// do not let one test's queue reach the next test's editors.
+afterEach(() => {
+  clearPendingFlushes();
+});
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

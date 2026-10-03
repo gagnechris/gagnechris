@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   dailyNoteResource,
@@ -41,10 +41,12 @@ function TodayEditor({
   area,
   date,
   today,
+  onUnsavedChange,
 }: {
   area: NotebookArea;
   date: string;
   today: string;
+  onUnsavedChange: (unsaved: boolean) => void;
 }) {
   const {
     draft,
@@ -76,6 +78,11 @@ function TodayEditor({
     },
     loadErrorFallback: 'Could not load daily note.',
   });
+
+  const unsaved = dirty || saveState === 'saving';
+  useEffect(() => {
+    onUnsavedChange(unsaved);
+  }, [onUnsavedChange, unsaved]);
 
   if (loadError) {
     return (
@@ -129,8 +136,28 @@ function TodayEditor({
 export default function AdminNotebookTodayPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const today = useLocalToday();
-  const date = resolveDate(searchParams.get('date'), today);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const unsavedRef = useRef(false);
+  const onUnsavedChange = useCallback((unsaved: boolean) => {
+    unsavedRef.current = unsaved;
+  }, []);
+  // Midnight must not swap the day under someone mid-sentence: hold the
+  // previous day until they navigate.
+  const [heldDay, setHeldDay] = useState<string | null>(null);
+  const followsTodayRef = useRef(true);
+  const today = useLocalToday(
+    useCallback((previous: string) => {
+      if (!followsTodayRef.current) return;
+      const focused = editorRef.current?.contains(document.activeElement);
+      if (unsavedRef.current || focused) setHeldDay(previous);
+    }, []),
+  );
+  const dateParam = searchParams.get('date');
+  const followsToday = !(dateParam && parseLocalDate(dateParam));
+  useEffect(() => {
+    followsTodayRef.current = followsToday && heldDay === null;
+  }, [followsToday, heldDay]);
+  const date = resolveDate(dateParam, heldDay ?? today);
   const { from, to } = useMemo(() => monthBounds(date), [date]);
 
   const writingArea: NotebookArea | null =
@@ -147,6 +174,7 @@ export default function AdminNotebookTodayPage() {
   // Leaving a day unmounts its editor, which flushes unsaved text.
   const setDate = (next: string) => {
     if (next === date) return;
+    setHeldDay(null);
     setSearchParams(next === today ? {} : { date: next });
   };
 
@@ -183,13 +211,14 @@ export default function AdminNotebookTodayPage() {
             markedDates={datesQuery.data}
           />
         </aside>
-        <div className="notebook-today__editor">
+        <div className="notebook-today__editor" ref={editorRef}>
           {writingArea ? (
             <TodayEditor
               key={`${writingArea}:${date}`}
               area={writingArea}
               date={date}
               today={today}
+              onUnsavedChange={onUnsavedChange}
             />
           ) : (
             <>
