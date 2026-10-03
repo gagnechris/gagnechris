@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 import { createDraftPublishResource } from '../src/query/createDraftPublishResource.js';
 import { AppApiProvider } from '../src/AppApiProvider.js';
-import { preferNewerByVersion } from '../src/query/cache.js';
 import { act, renderHook } from './renderHook.js';
 
 type FakeEntity = {
@@ -19,7 +18,7 @@ type FakeParams = { id: string };
 
 /**
  * CHR-158 / CHR-165: config alone is not enough — exercise update/setCache,
- * preferNewerByVersion on stale fetch, and lifecycle mutators.
+ * prefer-newer on a stale fetch through the queryFn, and lifecycle mutators.
  */
 describe('createDraftPublishResource fake-entity (CHR-158)', () => {
   test('update, setCache, stale fetch, and lifecycle mutators stay coherent', async () => {
@@ -118,11 +117,15 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
       () => fakeResource.useQuery({ id: 'f1' }),
       { wrapper },
     );
+    // Assert on the refetch result and the cache, not `queryResult.current`
+    // (react-test-renderer may not have re-rendered yet, which hid a queryFn
+    // that returned `fetched` directly — CHR-178).
+    let refetched!: Awaited<ReturnType<typeof queryResult.current.refetch>>;
     await act(async () => {
-      await queryResult.current.refetch();
+      refetched = await queryResult.current.refetch();
     });
-    expect(queryResult.current.data).toEqual(updated);
-    expect(preferNewerByVersion(updated, store.get('f1')!)).toEqual(updated);
+    expect(refetched.data).toEqual(updated);
+    expect(queryClient.getQueryData(['admin', 'fake', 'f1'])).toEqual(updated);
 
     const { result } = renderHook(
       () => fakeResource.useLifecycleMutators({ id: 'f1' }),

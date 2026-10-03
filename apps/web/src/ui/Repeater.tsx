@@ -46,7 +46,7 @@ export function Repeater<T extends RepeaterItem>({
   return (
     <fieldset className="admin-repeat">
       <legend>{legend}</legend>
-      {items.map((item) => (
+      {items.map((item, position) => (
         <div className="admin-repeat__item" key={item.id}>
           {renderItem(item, {
             update: (patch) =>
@@ -63,7 +63,7 @@ export function Repeater<T extends RepeaterItem>({
                 <Button
                   // Keep focus on the field so stable keys preserve caret (CHR-165).
                   onMouseDown={(e) => e.preventDefault()}
-                  aria-label={`Move up row ${item.id}`}
+                  aria-label={`Move row ${position + 1} up`}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -80,7 +80,7 @@ export function Repeater<T extends RepeaterItem>({
                 </Button>
                 <Button
                   onMouseDown={(e) => e.preventDefault()}
-                  aria-label={`Move down row ${item.id}`}
+                  aria-label={`Move row ${position + 1} down`}
                   onClick={() =>
                     apply((rows) => {
                       const index = rows.findIndex((row) => row.id === item.id);
@@ -99,7 +99,8 @@ export function Repeater<T extends RepeaterItem>({
             ) : null}
             <Button
               variant="danger"
-              aria-label={`${removeLabel} row ${item.id}`}
+              // Positional, human-readable names (row ids are ULIDs) — CHR-178.
+              aria-label={`${removeLabel} ${position + 1}`}
               onClick={() => removeItem(item.id)}
             >
               {removeLabel}
