@@ -34,6 +34,7 @@ import { getDocClient, requireTableName } from '../data/client.js';
 import { OwnerScopedVersionedEntityRepository } from '../data/owner-scoped-versioned-entity-repository.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { registerSyncEntity } from '../sync/registry.js';
+import { hashCreateFields } from '../data/create-hash.js';
 
 export const TASK_CHANGE_TYPE = 'task';
 
@@ -69,7 +70,7 @@ export function taskCreatePayloadHash(
     | 'tags'
   >,
 ): string {
-  return [
+  return hashCreateFields([
     t.userId,
     t.area,
     t.title,
@@ -79,7 +80,7 @@ export function taskCreatePayloadHash(
     t.dueDate ?? '',
     t.noteId ?? '',
     t.tags.join(','),
-  ].join('\0');
+  ]);
 }
 
 export function taskToChange(

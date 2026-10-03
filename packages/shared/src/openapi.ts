@@ -160,6 +160,9 @@ const r410 = err(
   'Gone — sync watermark older than tombstone horizon (`resync_required`)',
 );
 const r412 = preconditionFailed();
+const r413 = err(
+  'A field is over its size limit (`payload_too_large`, with `fields`)',
+);
 const r429 = err('Rate limited');
 const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
@@ -620,6 +623,7 @@ export function buildOpenApiDocument() {
     responses: {
       201: okWithEtag(NoteSchema, 'Created'),
       400: r400,
+      413: r413,
       409: r409,
       ...adminAuth,
     },
@@ -660,6 +664,7 @@ export function buildOpenApiDocument() {
     responses: {
       200: okWithEtag(NoteSchema, 'Upserted daily note'),
       400: r400,
+      413: r413,
       404: r404,
       409: r409,
       ...versionedAuth,
@@ -699,6 +704,7 @@ export function buildOpenApiDocument() {
     responses: {
       200: okWithEtag(NoteSchema, 'Updated'),
       400: r400,
+      413: r413,
       404: r404,
       409: r409,
       ...versionedAuth,
@@ -755,6 +761,7 @@ export function buildOpenApiDocument() {
     responses: {
       201: okWithEtag(TaskSchema, 'Created'),
       400: r400,
+      413: r413,
       409: r409,
       ...adminAuth,
     },
@@ -831,6 +838,7 @@ export function buildOpenApiDocument() {
     responses: {
       200: okWithEtag(TaskSchema, 'Updated'),
       400: r400,
+      413: r413,
       404: r404,
       409: r409,
       ...versionedAuth,

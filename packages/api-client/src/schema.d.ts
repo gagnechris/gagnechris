@@ -3383,7 +3383,10 @@ export interface paths {
                         date?: string;
                         /** @default  */
                         title?: string;
-                        /** @default  */
+                        /**
+                         * @description Up to 100 KB (UTF-8); larger → 413
+                         * @default
+                         */
                         bodyMarkdown?: string;
                         /** @default [] */
                         tags?: string[];
@@ -3467,6 +3470,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -3658,6 +3676,7 @@ export interface paths {
                         id: string;
                         version?: number;
                         title?: string;
+                        /** @description Up to 100 KB (UTF-8); larger → 413 */
                         bodyMarkdown?: string;
                         tags?: string[];
                         pinned?: boolean;
@@ -3772,6 +3791,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -3959,6 +3993,7 @@ export interface paths {
                     "application/json": {
                         version?: number;
                         title?: string;
+                        /** @description Up to 100 KB (UTF-8); larger → 413 */
                         bodyMarkdown?: string;
                         tags?: string[];
                         pinned?: boolean;
@@ -4075,6 +4110,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -4425,7 +4475,10 @@ export interface paths {
                         /** @enum {string} */
                         area: "work" | "personal";
                         title: string;
-                        /** @default  */
+                        /**
+                         * @description Up to 100 KB (UTF-8); larger → 413
+                         * @default
+                         */
                         description?: string;
                         /**
                          * @default med
@@ -4523,6 +4576,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -5081,6 +5149,7 @@ export interface paths {
                         /** @enum {string} */
                         area?: "work" | "personal";
                         title?: string;
+                        /** @description Up to 100 KB (UTF-8); larger → 413 */
                         description?: string;
                         /** @enum {string} */
                         priority?: "low" | "med" | "high";
@@ -5204,6 +5273,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -6300,7 +6384,10 @@ export interface components {
             date?: string;
             /** @default  */
             title: string;
-            /** @default  */
+            /**
+             * @description Up to 100 KB (UTF-8); larger → 413
+             * @default
+             */
             bodyMarkdown: string;
             /** @default [] */
             tags: string[];
@@ -6310,6 +6397,7 @@ export interface components {
         UpdateNoteRequest: {
             version?: number;
             title?: string;
+            /** @description Up to 100 KB (UTF-8); larger → 413 */
             bodyMarkdown?: string;
             tags?: string[];
             pinned?: boolean;
@@ -6397,6 +6485,7 @@ export interface components {
             id: string;
             version?: number;
             title?: string;
+            /** @description Up to 100 KB (UTF-8); larger → 413 */
             bodyMarkdown?: string;
             tags?: string[];
             pinned?: boolean;
@@ -6455,7 +6544,10 @@ export interface components {
             /** @enum {string} */
             area: "work" | "personal";
             title: string;
-            /** @default  */
+            /**
+             * @description Up to 100 KB (UTF-8); larger → 413
+             * @default
+             */
             description: string;
             /**
              * @default med
@@ -6477,6 +6569,7 @@ export interface components {
             /** @enum {string} */
             area?: "work" | "personal";
             title?: string;
+            /** @description Up to 100 KB (UTF-8); larger → 413 */
             description?: string;
             /** @enum {string} */
             priority?: "low" | "med" | "high";

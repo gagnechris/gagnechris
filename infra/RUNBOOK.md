@@ -302,6 +302,16 @@ AWS_PROFILE=gagnechris-readonly aws dynamodb scan \
   --max-items 25
 ```
 
+**CHR-192 createHash migration (one-off, after the CHR-192 deploy):** rows written before CHR-192 hold plaintext note/task text in `createHash`. `scripts/migrate-create-hash.mjs` rewrites live META values to `sha256:<hex>` (what the API now computes, so replays still match) and removes `createHash` from tombstones and create claims. It prints counts only, and writes are conditional on the old value.
+
+```bash
+AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs           # dry run: counts
+AWS_PROFILE=<deploy/admin profile> node scripts/migrate-create-hash.mjs --apply
+AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs --verify  # exit 2 if any remain
+```
+
+PITR (35 days) and AWS Backup recovery points keep the old plaintext until their retention expires; restored copies from before the migration contain it too.
+
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
 Legacy post import (CHR-36): `docs/migrate-posts.md` (`npm run migrate:posts`).

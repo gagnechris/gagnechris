@@ -354,6 +354,53 @@ export const TaskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 /**
+ * Notebook write limits (CHR-192): well under DynamoDB's 400 KB item cap so
+ * an oversized note is a clear 413, never a 500 from the table.
+ */
+export const NOTEBOOK_TEXT_MAX_BYTES = 100_000;
+export const NOTEBOOK_TITLE_MAX_LENGTH = 300;
+export const NOTEBOOK_TAG_MAX_LENGTH = 50;
+export const NOTEBOOK_TAGS_MAX = 50;
+
+/** UTF-8 byte length without TextEncoder (works in React Native too). */
+export function utf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length) {
+      bytes += 4;
+      i += 1;
+    } else bytes += 3;
+  }
+  return bytes;
+}
+
+/** Markdown body / task description capped by UTF-8 size. */
+const NotebookTextSchema = z
+  .string()
+  .superRefine((value, ctx) => {
+    if (utf8ByteLength(value) > NOTEBOOK_TEXT_MAX_BYTES) {
+      ctx.addIssue({
+        code: 'too_big',
+        origin: 'string',
+        maximum: NOTEBOOK_TEXT_MAX_BYTES,
+        inclusive: true,
+        input: value,
+        message: `Text is over the ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB limit`,
+      });
+    }
+  })
+  .describe(`Up to ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB (UTF-8); larger → 413`);
+
+const NotebookTitleSchema = z.string().max(NOTEBOOK_TITLE_MAX_LENGTH);
+
+const NotebookTagsSchema = z
+  .array(z.string().max(NOTEBOOK_TAG_MAX_LENGTH))
+  .max(NOTEBOOK_TAGS_MAX);
+
+/**
  * Notebook note API entity (CHR-39). Soft-deleted rows keep `deleted: true`
  * for the sync tombstone window; list indexes omit them.
  */
@@ -406,9 +453,9 @@ export const CreateNoteRequestSchema = z
     area: NotebookAreaSchema,
     type: NoteTypeSchema,
     date: CalendarDateSchema.optional(),
-    title: z.string().default(''),
-    bodyMarkdown: z.string().default(''),
-    tags: z.array(z.string()).default([]),
+    title: NotebookTitleSchema.default(''),
+    bodyMarkdown: NotebookTextSchema.default(''),
+    tags: NotebookTagsSchema.default([]),
     pinned: z.boolean().default(false),
   })
   .superRefine((body, ctx) => {
@@ -436,9 +483,9 @@ export type CreateNoteRequest = z.infer<typeof CreateNoteRequestSchema>;
  */
 export const UpdateNoteRequestSchema = z.object({
   version: z.number().int().nonnegative().optional(),
-  title: z.string().optional(),
-  bodyMarkdown: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  title: NotebookTitleSchema.optional(),
+  bodyMarkdown: NotebookTextSchema.optional(),
+  tags: NotebookTagsSchema.optional(),
   pinned: z.boolean().optional(),
   area: NotebookAreaSchema.optional(),
 });
@@ -499,9 +546,9 @@ export type DailyNoteGetResponse = z.infer<typeof DailyNoteGetResponseSchema>;
 export const UpsertDailyNoteRequestSchema = z.object({
   id: UlidSchema.describe('Client ULID used when creating the daily note'),
   version: z.number().int().nonnegative().optional(),
-  title: z.string().optional(),
-  bodyMarkdown: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  title: NotebookTitleSchema.optional(),
+  bodyMarkdown: NotebookTextSchema.optional(),
+  tags: NotebookTagsSchema.optional(),
   pinned: z.boolean().optional(),
 });
 
@@ -543,13 +590,13 @@ export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 export const CreateTaskRequestSchema = z.object({
   id: UlidSchema,
   area: NotebookAreaSchema,
-  title: z.string().min(1),
-  description: z.string().default(''),
+  title: NotebookTitleSchema.min(1),
+  description: NotebookTextSchema.default(''),
   priority: TaskPrioritySchema.default('med'),
   status: TaskStatusSchema.default('todo'),
   dueDate: CalendarDateSchema.nullable().optional(),
   noteId: UlidSchema.nullable().optional(),
-  tags: z.array(z.string()).default([]),
+  tags: NotebookTagsSchema.default([]),
 });
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
@@ -561,13 +608,13 @@ export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
 export const UpdateTaskRequestSchema = z.object({
   version: z.number().int().nonnegative().optional(),
   area: NotebookAreaSchema.optional(),
-  title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  title: NotebookTitleSchema.min(1).optional(),
+  description: NotebookTextSchema.optional(),
   priority: TaskPrioritySchema.optional(),
   status: TaskStatusSchema.optional(),
   dueDate: CalendarDateSchema.nullable().optional(),
   noteId: UlidSchema.nullable().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: NotebookTagsSchema.optional(),
 });
 
 export type UpdateTaskRequest = z.infer<typeof UpdateTaskRequestSchema>;

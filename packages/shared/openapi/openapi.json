@@ -1292,17 +1292,21 @@
           },
           "title": {
             "type": "string",
+            "maxLength": 300,
             "default": ""
           },
           "bodyMarkdown": {
             "type": "string",
-            "default": ""
+            "default": "",
+            "description": "Up to 100 KB (UTF-8); larger → 413"
           },
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 50
             },
+            "maxItems": 50,
             "default": []
           },
           "pinned": {
@@ -1324,16 +1328,20 @@
             "minimum": 0
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 300
           },
           "bodyMarkdown": {
-            "type": "string"
+            "type": "string",
+            "description": "Up to 100 KB (UTF-8); larger → 413"
           },
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 50
           },
           "pinned": {
             "type": "boolean"
@@ -1632,16 +1640,20 @@
             "minimum": 0
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 300
           },
           "bodyMarkdown": {
-            "type": "string"
+            "type": "string",
+            "description": "Up to 100 KB (UTF-8); larger → 413"
           },
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 50
           },
           "pinned": {
             "type": "boolean"
@@ -1874,11 +1886,13 @@
           },
           "title": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 300
           },
           "description": {
             "type": "string",
-            "default": ""
+            "default": "",
+            "description": "Up to 100 KB (UTF-8); larger → 413"
           },
           "priority": {
             "type": "string",
@@ -1911,8 +1925,10 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 50
             },
+            "maxItems": 50,
             "default": []
           }
         },
@@ -1938,10 +1954,12 @@
           },
           "title": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 300
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Up to 100 KB (UTF-8); larger → 413"
           },
           "priority": {
             "type": "string",
@@ -1972,8 +1990,10 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 50
           }
         }
       },
@@ -10310,17 +10330,21 @@
                   },
                   "title": {
                     "type": "string",
+                    "maxLength": 300,
                     "default": ""
                   },
                   "bodyMarkdown": {
                     "type": "string",
-                    "default": ""
+                    "default": "",
+                    "description": "Up to 100 KB (UTF-8); larger → 413"
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 50
                     },
+                    "maxItems": 50,
                     "default": []
                   },
                   "pinned": {
@@ -10518,6 +10542,33 @@
                     },
                     "current": {
                       "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
@@ -10960,16 +11011,20 @@
                     "minimum": 0
                   },
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 300
                   },
                   "bodyMarkdown": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Up to 100 KB (UTF-8); larger → 413"
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    }
+                      "type": "string",
+                      "maxLength": 50
+                    },
+                    "maxItems": 50
                   },
                   "pinned": {
                     "type": "boolean"
@@ -11226,6 +11281,33 @@
                     },
                     "current": {
                       "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
@@ -11592,16 +11674,20 @@
                     "minimum": 0
                   },
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 300
                   },
                   "bodyMarkdown": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Up to 100 KB (UTF-8); larger → 413"
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    }
+                      "type": "string",
+                      "maxLength": 50
+                    },
+                    "maxItems": 50
                   },
                   "pinned": {
                     "type": "boolean"
@@ -11862,6 +11948,33 @@
                     },
                     "current": {
                       "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
@@ -12676,11 +12789,13 @@
                   },
                   "title": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 300
                   },
                   "description": {
                     "type": "string",
-                    "default": ""
+                    "default": "",
+                    "description": "Up to 100 KB (UTF-8); larger → 413"
                   },
                   "priority": {
                     "type": "string",
@@ -12713,8 +12828,10 @@
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "maxLength": 50
                     },
+                    "maxItems": 50,
                     "default": []
                   }
                 },
@@ -12927,6 +13044,33 @@
                     },
                     "current": {
                       "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
@@ -14084,10 +14228,12 @@
                   },
                   "title": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 300
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Up to 100 KB (UTF-8); larger → 413"
                   },
                   "priority": {
                     "type": "string",
@@ -14118,8 +14264,10 @@
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    }
+                      "type": "string",
+                      "maxLength": 50
+                    },
+                    "maxItems": 50
                   }
                 }
               }
@@ -14389,6 +14537,33 @@
                     },
                     "current": {
                       "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [

@@ -72,6 +72,7 @@ export function createTaskRoutes(
       pattern: '/notebook/tasks',
       auth: 'admin',
       metric: 'CreateTask',
+      oversizedBody413: true,
       body: CreateTaskRequestSchema,
       handler: async (ctx, { body }) => {
         const badNote = await checkLinkedNote(ctx.userId!, body.noteId);
@@ -129,6 +130,7 @@ export function createTaskRoutes(
       pattern: '/notebook/tasks/:id',
       auth: 'admin',
       metric: 'UpdateTask',
+      oversizedBody413: true,
       params: IdParams,
       body: UpdateTaskRequestSchema,
       handler: async (ctx, { params, body }) => {

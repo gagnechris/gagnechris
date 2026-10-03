@@ -39,6 +39,7 @@ import {
   versionMatchValues,
 } from './version-condition.js';
 import { registerSyncEntity } from '../sync/registry.js';
+import { createHashMatches } from './create-hash.js';
 
 export { VERSION_MATCH_CONDITION } from './version-condition.js';
 
@@ -52,7 +53,9 @@ export type SyncEntityConfig<T extends VersionedEntity> = {
   changeType: string;
   userIdOf: (entity: T) => string;
   /**
-   * Hash of create payload fields. Stored as `createHash` on create.
+   * Hash of create payload fields (`sha256:…` via `hashCreateFields`, never
+   * the fields themselves; CHR-192). Stored as `createHash` on the live META
+   * row only.
    * Retries with the same id but a different hash throw ConflictError (409);
    * matching hash is idempotent. Required when sync is configured (CHR-162).
    */
@@ -292,7 +295,6 @@ export class VersionedEntityRepository<
                     entityType: 'syncCreateClaim',
                     changeType: sync.changeType,
                     entityId: id,
-                    createHash,
                     createdAt: entity.updatedAt,
                     ttl: ttlDaysFromNow(
                       SYNC_CREATE_CLAIM_TTL_DAYS,
@@ -357,7 +359,7 @@ export class VersionedEntityRepository<
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
         // Legacy rows without createHash cannot prove create-time identity
         // (hashing current state is unsafe after updates) — CHR-172.
-        if (storedHash === undefined || requestHash !== storedHash) {
+        if (!createHashMatches(storedHash, requestHash)) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
             {
@@ -416,9 +418,6 @@ export class VersionedEntityRepository<
     const sync = this.config.sync;
     const clock = new Date(this.now());
     const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
-    const raw = await this.getRawItem(id);
-    const createHash =
-      typeof raw?.createHash === 'string' ? raw.createHash : undefined;
     const claimTtl = sync
       ? ttlDaysFromNow(SYNC_CREATE_CLAIM_TTL_DAYS, clock)
       : undefined;
@@ -430,7 +429,9 @@ export class VersionedEntityRepository<
               {
                 Put: {
                   TableName: this.tableName,
-                  Item: this.toStoredItem(tombstone, { ttl, createHash }),
+                  // No createHash on tombstones: a deleted id never replays
+                  // (CHR-192), so its content fingerprint isn't kept.
+                  Item: this.toStoredItem(tombstone, { ttl }),
                   ConditionExpression: VERSION_MATCH_CONDITION,
                   ExpressionAttributeValues:
                     versionMatchValues(expectedVersion),
@@ -447,7 +448,6 @@ export class VersionedEntityRepository<
                           entityType: 'syncCreateClaim',
                           changeType: sync.changeType,
                           entityId: id,
-                          ...(createHash !== undefined ? { createHash } : {}),
                           createdAt: tombstone.updatedAt,
                           ttl: claimTtl,
                         },

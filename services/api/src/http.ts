@@ -93,6 +93,28 @@ export function zodBadRequest(
   });
 }
 
+/** True when a body failed only because a field is over its size limit. */
+export function isZodTooLarge(error: ZodError): boolean {
+  return (
+    error.issues.length > 0 &&
+    error.issues.every((issue) => issue.code === 'too_big')
+  );
+}
+
+/**
+ * 413 for oversized notebook fields (CHR-192), with the same per-field codes
+ * as a 400 so clients can point at the field.
+ */
+export function zodPayloadTooLarge(
+  error: ZodError,
+): APIGatewayProxyStructuredResultV2 {
+  return json(413, {
+    error: 'payload_too_large',
+    message: error.issues[0]?.message ?? 'Request body is too large',
+    fields: zodFieldCodes(error),
+  });
+}
+
 /** Map common handler errors to HTTP responses; return undefined to rethrow. */
 export function mapRouteError(
   error: unknown,

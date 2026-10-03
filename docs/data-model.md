@@ -218,13 +218,13 @@ them (same as draft `META` rows).
 
 Synced entities stamp sparse GSI3 keys on their **META** item (no append-only ledger):
 
-| Attr         | Notes                                                               |
-| ------------ | ------------------------------------------------------------------- |
-| `syncPk`     | `SYNC#<userId>` (Cognito `sub`) — GSI3 partition                    |
-| `syncSk`     | `<updatedAt>#<TYPE>#<id>` (ISO-8601 UTC ms; lex order ≈ time order) |
-| `entityType` | Adapter key for the change feed (stamped from sync `changeType`)    |
-| `createHash` | Create-time payload hash for idempotent ULID retries                |
-| `ttl`        | Set on soft-delete (default 30 days via `SYNC_TOMBSTONE_TTL_DAYS`)  |
+| Attr         | Notes                                                                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `syncPk`     | `SYNC#<userId>` (Cognito `sub`) — GSI3 partition                                                                                                |
+| `syncSk`     | `<updatedAt>#<TYPE>#<id>` (ISO-8601 UTC ms; lex order ≈ time order)                                                                             |
+| `entityType` | Adapter key for the change feed (stamped from sync `changeType`)                                                                                |
+| `createHash` | `sha256:<hex>` of the create-time fields for idempotent ULID retries (never the text itself; live META only, not tombstones or claims; CHR-192) |
+| `ttl`        | Set on soft-delete (default 30 days via `SYNC_TOMBSTONE_TTL_DAYS`)                                                                              |
 
 Create also writes a durable claim row (not on GSI3):
 
@@ -306,6 +306,8 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 | Tasks for a note | (task META)                            | `META` | GSI2: `USER#<sub>#NOTE#<noteId>#TASKS` / `TASK#<taskId>`                                                                          |
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
+
+**Write limits (CHR-192):** note `bodyMarkdown` and task `description` up to 100 KB (UTF-8), titles 300 characters, at most 50 tags of 50 characters. Over a limit, notebook `POST`/`PUT` return **413** `payload_too_large` with `fields`, well before DynamoDB's 400 KB item cap.
 
 **Daily-note claim lifecycle (CHR-187):**
 
