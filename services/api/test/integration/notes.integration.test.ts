@@ -3,13 +3,16 @@ import { SyncLedger } from '../../src/sync/ledger.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { NotFoundError } from '../../src/data/errors.js';
+import { createNoteRoutes } from '../../src/notes/handlers.js';
 import { NotesRepository } from '../../src/notes/repository.js';
+import { dispatchRoutes } from '../../src/router.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
   deleteIntegrationTable,
   truncateTable,
 } from '../support/dynamo-local.js';
+import { makeEvent } from '../support/make-event.js';
 
 const USER_A = 'user-a-notes';
 const USER_B = 'user-b-notes';
@@ -167,6 +170,53 @@ describe('notes repository (DynamoDB Local)', () => {
         code: 'daily_taken',
         current: { id: winnerId },
       });
+    }
+  });
+
+  it('10 parallel versionless daily PUTs give exactly one 200 and nine daily_taken with the winner', async () => {
+    const routes = createNoteRoutes(new NotesRepository(doc, tableName));
+    const put = async (path: string, id: string) => {
+      const res = await dispatchRoutes(
+        routes,
+        makeEvent('PUT', path, {
+          body: { id, title: id, bodyMarkdown: `body ${id}` },
+          jwtClaims: { sub: USER_A },
+        }),
+        'PUT',
+        path,
+      );
+      return {
+        status: res.statusCode,
+        body: JSON.parse(res.body as string) as Record<string, unknown>,
+      };
+    };
+
+    for (let run = 0; run < 50; run += 1) {
+      const day = new Date(Date.UTC(2027, 0, 1 + run))
+        .toISOString()
+        .slice(0, 10);
+      const path = `/api/notebook/notes/daily/work/${day}`;
+      const ids = Array.from(
+        { length: 10 },
+        (_, i) => `01ARZ3NDEKTSV4RRFF${String(run).padStart(2, '0')}${i}00000`,
+      );
+      const results = await Promise.all(ids.map((id) => put(path, id)));
+
+      const won = results.filter((r) => r.status === 200);
+      const lost = results.filter((r) => r.status === 409);
+      expect(won, `run ${run}`).toHaveLength(1);
+      expect(lost, `run ${run}`).toHaveLength(9);
+      const winner = won[0]!.body;
+      expect(winner).toMatchObject({
+        version: 1,
+        bodyMarkdown: `body ${winner.id}`,
+      });
+      for (const r of lost) {
+        expect(r.body).toMatchObject({
+          error: 'daily_taken',
+          current: { id: winner.id, version: 1, title: winner.id },
+        });
+      }
     }
   });
 });

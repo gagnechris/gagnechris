@@ -55,6 +55,14 @@ export type EmptyDailyNote = {
 
 export type DailyNoteResult = Note | EmptyDailyNote;
 
+type DailyNoteFields = {
+  id: string;
+  title?: string;
+  bodyMarkdown?: string;
+  tags?: string[];
+  pinned?: boolean;
+};
+
 function isEmptyDaily(result: DailyNoteResult): result is EmptyDailyNote {
   return 'exists' in result && result.exists === false;
 }
@@ -440,18 +448,12 @@ export class NotesRepository {
     return held;
   }
 
+  /** Updates only with a caller-supplied version; otherwise the claim decides. */
   async upsertDaily(
     userId: string,
     area: NotebookArea,
     date: string,
-    body: {
-      id: string;
-      version?: number;
-      title?: string;
-      bodyMarkdown?: string;
-      tags?: string[];
-      pinned?: boolean;
-    },
+    body: DailyNoteFields,
     expectedVersion: number | 'any',
   ): Promise<Note> {
     const existing = await this.getDaily(userId, area, date);
@@ -463,6 +465,16 @@ export class NotesRepository {
         pinned: body.pinned,
       });
     }
+    return this.createDaily(userId, area, date, body);
+  }
+
+  /** A loser of the day's claim gets 409 `daily_taken` with the winner. */
+  createDaily(
+    userId: string,
+    area: NotebookArea,
+    date: string,
+    body: DailyNoteFields,
+  ): Promise<Note> {
     return this.createFromRequest(userId, {
       id: body.id,
       area,
