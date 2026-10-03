@@ -383,6 +383,10 @@ export type ListTasksQuery = {
   dueOn?: string;
   dueBefore?: string;
   noteId?: string;
+  /** Only todo + in_progress (ignored when `status` is set) — CHR-185. */
+  open?: boolean;
+  /** Caller's local day for overdue ranking (CHR-185). */
+  today?: string;
   cursor?: string;
   limit?: number;
 };
@@ -391,8 +395,14 @@ export const fetchTasksPage = async (
   client: ApiClient,
   query: ListTasksQuery = {},
 ): Promise<TasksPage> => {
+  const { open, ...rest } = query;
   const result = await client.GET('/api/notebook/tasks', {
-    params: { query },
+    params: {
+      query: {
+        ...rest,
+        ...(open !== undefined ? { open: open ? 'true' : 'false' } : {}),
+      },
+    },
   });
   const data = unwrap(result, 'Could not load tasks');
   return {

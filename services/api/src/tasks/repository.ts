@@ -32,6 +32,7 @@ import {
 } from '../data/cursor.js';
 import { getDocClient, requireTableName } from '../data/client.js';
 import { OwnerScopedVersionedEntityRepository } from '../data/owner-scoped-versioned-entity-repository.js';
+import { walkPartitions } from '../data/partition-walk.js';
 import { registerSyncEntity } from '../sync/registry.js';
 
 export const TASK_CHANGE_TYPE = 'task';
@@ -44,7 +45,12 @@ const PRIORITY_RANK: Record<TaskPriority, number> = {
   low: 2,
 };
 
-/** UTC calendar day `yyyy-mm-dd` for overdue comparisons. */
+const OPEN_STATUSES: TaskStatus[] = ['todo', 'in_progress'];
+
+/**
+ * UTC calendar day `yyyy-mm-dd`: fallback "today" for overdue sorting when
+ * the client does not send its own local day (CHR-185).
+ */
 export function utcToday(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
@@ -102,10 +108,17 @@ registerSyncEntity({
   toChange: taskToChange,
 });
 
+/** Past due and not done: done tasks never rank as overdue (CHR-185). */
+function isOverdue(task: Task, today: string): boolean {
+  return (
+    task.status !== 'done' && task.dueDate !== null && task.dueDate < today
+  );
+}
+
 export function sortTasksForList(items: Task[], today: string): Task[] {
   return [...items].sort((a, b) => {
-    const aOverdue = a.dueDate !== null && a.dueDate < today ? 0 : 1;
-    const bOverdue = b.dueDate !== null && b.dueDate < today ? 0 : 1;
+    const aOverdue = isOverdue(a, today) ? 0 : 1;
+    const bOverdue = isOverdue(b, today) ? 0 : 1;
     if (aOverdue !== bOverdue) return aOverdue - bOverdue;
 
     if (a.dueDate === null && b.dueDate !== null) return 1;
@@ -297,8 +310,13 @@ export class TasksRepository {
       return this.listByNote(userId, query.noteId, query);
     }
 
+    const today = query.today ?? utcToday();
     const areas = query.area ? [query.area] : ALL_AREAS;
-    const statuses = query.status ? [query.status] : ALL_STATUSES;
+    const statuses = query.status
+      ? [query.status]
+      : query.open
+        ? OPEN_STATUSES
+        : ALL_STATUSES;
     const singlePartition = areas.length === 1 && statuses.length === 1;
 
     if (singlePartition) {
@@ -309,28 +327,31 @@ export class TasksRepository {
         query,
       );
       return {
-        items: sortTasksForList(page.items, utcToday()),
+        items: sortTasksForList(page.items, today),
         nextCursor: page.nextCursor,
       };
     }
 
-    const pages = await Promise.all(
-      areas.flatMap((area) =>
-        statuses.map((status) =>
-          this.listPartition(userId, area, status, {
-            ...query,
-            cursor: undefined,
-          }),
-        ),
-      ),
+    // Walk (area, status) partitions with a composite cursor so nothing is
+    // dropped past the first page (CHR-185). Each page is sorted on its own.
+    const partitions = areas.flatMap((area) =>
+      statuses.map((status) => ({ area, status })),
     );
-    let merged = pages.flatMap((p) => p.items);
-    if (query.priority) {
-      merged = merged.filter((t) => t.priority === query.priority);
-    }
-    const sorted = sortTasksForList(merged, utcToday());
-    const limit = query.limit ?? 50;
-    return { items: sorted.slice(0, limit) };
+    const page = await walkPartitions(
+      partitions,
+      query.cursor,
+      query.limit ?? 50,
+      ({ area, status }, cursor, remaining) =>
+        this.listPartition(userId, area, status, {
+          ...query,
+          cursor,
+          limit: remaining,
+        }),
+    );
+    return {
+      items: sortTasksForList(page.items, today),
+      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    };
   }
 
   private async listByNote(
@@ -362,8 +383,9 @@ export class TasksRepository {
         (t) => t.dueDate !== null && t.dueDate < query.dueBefore!,
       );
     }
+    if (query.open) items = items.filter((t) => t.status !== 'done');
     return {
-      items: sortTasksForList(items, utcToday()),
+      items: sortTasksForList(items, query.today ?? utcToday()),
       nextCursor: page.nextCursor,
     };
   }

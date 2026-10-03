@@ -16,7 +16,12 @@ export type SearchHit = {
 };
 
 const SCAN_PAGE = 100;
-const SCAN_CAP = 500;
+/**
+ * Per-type scan cap. Multi-area lists now page completely (CHR-185), so this
+ * is a real bound: a personal notebook stays well under it. Documented in
+ * docs/data-model.md.
+ */
+const SCAN_CAP = 2000;
 
 async function collectNotes(
   repo: NotesRepository,

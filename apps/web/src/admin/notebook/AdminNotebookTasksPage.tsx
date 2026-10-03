@@ -57,9 +57,12 @@ export default function AdminNotebookTasksPage() {
     priority?: TaskPriority;
     dueOn?: string;
     dueBefore?: string;
+    open?: boolean;
+    today: string;
     limit: number;
   } = {
     area,
+    today,
     limit: 50,
   };
   if (status) listQuery.status = status;
@@ -67,19 +70,33 @@ export default function AdminNotebookTasksPage() {
   if (due === 'today') listQuery.dueOn = today;
   if (due === 'overdue') listQuery.dueBefore = today;
 
-  const tasksQuery = useTasksQuery(listQuery);
+  // Default view reads open tasks only; Completed loads when expanded, so a
+  // pile of done tasks can never push open ones off the page (CHR-185).
+  const tasksQuery = useTasksQuery(
+    status ? listQuery : { ...listQuery, open: true },
+  );
+  const completedQuery = useTasksQuery(
+    { ...listQuery, status: 'done' },
+    { enabled: showCompleted && !status },
+  );
   const createMutation = useCreateTaskMutation();
   const completeMutation = useCompleteTaskMutation();
   const reopenMutation = useReopenTaskMutation();
 
   const { openItems, doneItems } = useMemo(() => {
-    const all = tasksQuery.data?.pages.flatMap((page) => page.items) ?? [];
-    const filtered = all.filter((t) => matchesDueFilter(t, due, today));
+    const main = tasksQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    const completed = status
+      ? main
+      : (completedQuery.data?.pages.flatMap((page) => page.items) ?? []);
+    const matches = (t: Task) => matchesDueFilter(t, due, today);
     return {
-      openItems: filtered.filter((t) => t.status !== 'done'),
-      doneItems: filtered.filter((t) => t.status === 'done'),
+      openItems: main.filter((t) => t.status !== 'done' && matches(t)),
+      doneItems: completed.filter((t) => t.status === 'done' && matches(t)),
     };
-  }, [tasksQuery.data, due, today]);
+  }, [tasksQuery.data, completedQuery.data, status, due, today]);
+  const completedSource = status ? tasksQuery : completedQuery;
+  const showCompletedSection =
+    status === 'done' || (!status && (doneItems.length > 0 || !showCompleted));
 
   const submitQuickAdd = async () => {
     const parsed = parseTaskQuickAdd(quickAdd, today);
@@ -205,7 +222,8 @@ export default function AdminNotebookTasksPage() {
 
       {!tasksQuery.isPending &&
       openItems.length === 0 &&
-      doneItems.length === 0 ? (
+      doneItems.length === 0 &&
+      (status || showCompleted) ? (
         <p className="admin-hint">No tasks match.</p>
       ) : null}
 
@@ -221,7 +239,7 @@ export default function AdminNotebookTasksPage() {
         </ul>
       ) : null}
 
-      {doneItems.length > 0 ? (
+      {showCompletedSection ? (
         <details
           className="admin-notebook-completed"
           open={showCompleted || status === 'done'}
@@ -229,7 +247,12 @@ export default function AdminNotebookTasksPage() {
             setShowCompleted((e.target as HTMLDetailsElement).open)
           }
         >
-          <summary>Completed ({doneItems.length})</summary>
+          <summary>
+            Completed
+            {showCompleted || status === 'done'
+              ? ` (${doneItems.length}${completedSource.hasNextPage ? '+' : ''})`
+              : ''}
+          </summary>
           <ul className="admin-post-list" aria-label="Completed tasks">
             {doneItems.map((task) => (
               <TaskRow
@@ -239,6 +262,16 @@ export default function AdminNotebookTasksPage() {
               />
             ))}
           </ul>
+          {!status && completedQuery.hasNextPage ? (
+            <button
+              type="button"
+              className="admin-btn"
+              disabled={completedQuery.isFetchingNextPage}
+              onClick={() => void completedQuery.fetchNextPage()}
+            >
+              Load more completed
+            </button>
+          ) : null}
         </details>
       ) : null}
 

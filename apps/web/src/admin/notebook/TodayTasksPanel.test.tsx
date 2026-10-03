@@ -29,10 +29,28 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   createApiClient: () => ({
-    GET: async (path: string) => {
+    GET: async (
+      path: string,
+      init?: {
+        params?: {
+          query?: { status?: string; open?: string; dueOn?: string };
+        };
+      },
+    ) => {
       if (path === '/api/notebook/tasks') {
+        // Honour the filters the UI sends, like the API (CHR-185).
+        const q = init?.params?.query ?? {};
         return {
-          data: { items: state.tasks.filter((t) => !t.deleted) },
+          data: {
+            items: state.tasks.filter(
+              (t) =>
+                !t.deleted &&
+                (q.status
+                  ? t.status === q.status
+                  : q.open !== 'true' || t.status !== 'done') &&
+                (!q.dueOn || t.dueDate === q.dueOn),
+            ),
+          },
           error: undefined,
           response: { status: 200 },
         };

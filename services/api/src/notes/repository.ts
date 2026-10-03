@@ -29,6 +29,7 @@ import {
 } from '@gagnechris/shared';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
 import { BadRequestError } from '../data/errors.js';
+import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
   OwnerScopedVersionedEntityRepository,
@@ -363,20 +364,15 @@ export class NotesRepository {
       return this.listArea(userId, areas[0]!, query);
     }
 
-    const pages = await Promise.all(
-      areas.map((area) =>
-        this.listArea(userId, area, { ...query, cursor: undefined }),
-      ),
+    // Walk areas in order with a composite cursor so nothing is dropped
+    // past the first page (CHR-185).
+    return walkPartitions(
+      areas,
+      query.cursor,
+      query.limit ?? 50,
+      (area, cursor, remaining) =>
+        this.listArea(userId, area, { ...query, cursor, limit: remaining }),
     );
-    const merged = pages
-      .flatMap((p) => p.items)
-      .sort((a, b) => {
-        const ak = `${a.date ?? a.updatedAt}#${a.id}`;
-        const bk = `${b.date ?? b.updatedAt}#${b.id}`;
-        return ak < bk ? -1 : ak > bk ? 1 : 0;
-      });
-    const limit = query.limit ?? 50;
-    return { items: merged.slice(0, limit) };
   }
 
   private async listArea(

@@ -40,10 +40,14 @@ export const taskResource = createVersionedResource<Task, TaskResourceParams>({
   setCache: setCachedTask,
 });
 
-export const useTasksQuery = (filters: ListTasksQuery = {}) => {
+export const useTasksQuery = (
+  filters: ListTasksQuery = {},
+  options: { enabled?: boolean } = {},
+) => {
   const getClient = useGetApiClient();
   const { cursor: _cursor, ...keyFilters } = filters;
   return useInfiniteQuery({
+    enabled: options.enabled ?? true,
     queryKey: queryKeys.tasks.list(keyFilters),
     queryFn: ({ pageParam }) =>
       fetchTasksPage(getClient(), {

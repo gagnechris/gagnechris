@@ -582,6 +582,14 @@ export const ListTasksQuerySchema = z.object({
     'Tasks due strictly before this date (overdue-style ranges)',
   ),
   noteId: z.string().min(1).optional().describe('Tasks linked to a note'),
+  open: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional()
+    .describe('Only todo and in_progress tasks (ignored when status is set)'),
+  today: CalendarDateSchema.optional().describe(
+    "Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today",
+  ),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 });
