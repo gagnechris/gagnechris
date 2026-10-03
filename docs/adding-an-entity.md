@@ -406,7 +406,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/notebook/bookmarks',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'ListBookmarks',
       query: ListBookmarksQuerySchema,
       handler: async (ctx, { query }) => {
@@ -423,7 +423,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/notebook/bookmarks',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'CreateBookmark',
       oversizedBody413: true,
       body: CreateBookmarkRequestSchema,
@@ -437,7 +437,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/notebook/bookmarks/:id',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'GetBookmark',
       params: IdParams,
       handler: async (ctx, { params }) =>

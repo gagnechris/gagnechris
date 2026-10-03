@@ -45,7 +45,7 @@ export function createTaskRoutes(
     defineRoute({
       method: 'GET',
       pattern: '/notebook/tasks',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'ListTasks',
       query: ListTasksQuerySchema,
       handler: async (ctx, { query }) => {
@@ -62,7 +62,7 @@ export function createTaskRoutes(
     defineRoute({
       method: 'POST',
       pattern: '/notebook/tasks',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'CreateTask',
       oversizedBody413: true,
       body: CreateTaskRequestSchema,
@@ -96,7 +96,7 @@ export function createTaskRoutes(
     defineRoute({
       method: 'GET',
       pattern: '/notebook/tasks/:id',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'GetTask',
       params: IdParams,
       handler: async (ctx, { params }) => {

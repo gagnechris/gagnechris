@@ -19,7 +19,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/admin/posts',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'ListPosts',
       query: ListPostsQuerySchema,
       handler: async (_ctx, { query }) => {
@@ -33,7 +33,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/admin/posts',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'CreatePost',
       body: CreatePostRequestSchema,
       handler: async (_ctx, { body }) => {
@@ -44,7 +44,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/admin/posts/:id',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'GetPost',
       params: IdParams,
       handler: async (_ctx, { params }) => {
@@ -61,7 +61,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'PUT',
       pattern: '/admin/posts/:id',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'UpdatePost',
       params: IdParams,
       body: UpdatePostRequestSchema,
@@ -73,7 +73,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'DELETE',
       pattern: '/admin/posts/:id',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'DeletePost',
       params: IdParams,
       body: ExpectedVersionRequestSchema,
@@ -85,7 +85,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/publish',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'PublishPost',
       params: IdParams,
       body: ExpectedVersionRequestSchema,
@@ -97,7 +97,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/unpublish',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'UnpublishPost',
       params: IdParams,
       body: ExpectedVersionRequestSchema,
@@ -109,7 +109,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/discard',
-      auth: 'admin',
+      auth: 'site-admin',
       metric: 'DiscardPost',
       params: IdParams,
       body: ExpectedVersionRequestSchema,
