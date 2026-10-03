@@ -149,6 +149,11 @@ export class AuthStack extends Stack {
         logoutUrls: [...logoutUrls, 'gagnechris://'],
       },
     });
+    // Api-prod imported this until CHR-240 dropped the iOS client from the API
+    // audience. Auth deploys first, so the export must outlive that import for
+    // one deploy or CloudFormation refuses to delete it. Remove once Api-prod
+    // no longer references it (CHR-253).
+    this.exportValue(this.iosClient.userPoolClientId);
 
     this.devClient = this.userPool.addClient('DevClient', {
       ...clientCommon,
