@@ -449,17 +449,90 @@ export class OwnerScopedVersionedEntityRepository<
     }
   }
 
+  /**
+   * Strongly consistent read of a live entity for a read-modify-write
+   * (CHR-188). Returns the stored row too so `createHash` is preserved.
+   */
+  protected async readForWrite(
+    userId: string,
+    id: string,
+  ): Promise<{ raw: Record<string, unknown>; existing: T }> {
+    const raw = await this.getRawItem(userId, id);
+    if (!raw) {
+      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
+    }
+    const existing = this.mapItem(raw);
+    this.assertOwner(userId, existing);
+    if (this.config.isDeleted?.(existing)) {
+      throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
+    }
+    return { raw, existing };
+  }
+
+  /**
+   * Versioned read-modify-write (CHR-188). `build` receives a strongly
+   * consistent read, so fields the caller did not change can never revert to
+   * a stale replica's values. `expected: 'any'` (If-Match `*`) resolves to the
+   * version just read. The written version is always `expected + 1`, so the
+   * write condition and the new version agree and no two contents share a
+   * version.
+   */
+  async mutateIfVersion(
+    userId: string,
+    id: string,
+    expected: number | 'any',
+    build: (existing: T, now: string) => T,
+  ): Promise<T> {
+    const { raw, existing } = await this.readForWrite(userId, id);
+    const expectedVersion = expected === 'any' ? existing.version : expected;
+    const next = {
+      ...build(existing, this.now()),
+      version: expectedVersion + 1,
+    };
+    return this.putIfVersion(userId, id, expectedVersion, next, raw);
+  }
+
+  /** Soft-delete counterpart of {@link mutateIfVersion} (CHR-188). */
+  async softDeleteIfVersion(
+    userId: string,
+    id: string,
+    expected: number | 'any',
+    build: (existing: T, now: string) => T,
+  ): Promise<T> {
+    const { existing } = await this.readForWrite(userId, id);
+    const expectedVersion = expected === 'any' ? existing.version : expected;
+    const tombstone = {
+      ...build(existing, this.now()),
+      version: expectedVersion + 1,
+    };
+    return this.softDelete(userId, id, expectedVersion, tombstone);
+  }
+
+  /**
+   * Low-level conditional put of a caller-built entity. Prefer
+   * {@link mutateIfVersion}, which builds `next` from a consistent read.
+   */
   async updateIfVersion(
     userId: string,
     id: string,
     expectedVersion: number,
     next: T,
   ): Promise<T> {
-    this.assertOwner(userId, next);
     const raw = await this.getRawItem(userId, id);
     if (!raw) {
       throw new NotFoundError(`${this.config.conflictLabel} ${id} not found`);
     }
+    return this.putIfVersion(userId, id, expectedVersion, next, raw);
+  }
+
+  private async putIfVersion(
+    userId: string,
+    id: string,
+    expectedVersion: number,
+    next: T,
+    raw: Record<string, unknown>,
+  ): Promise<T> {
+    this.assertOwner(userId, next);
     const existing = this.mapItem(raw);
     this.assertOwner(userId, existing);
     const createHash =
