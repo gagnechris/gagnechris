@@ -12,6 +12,8 @@ import {
   MAPLE_H,
   MAPLE_W,
   carOnRoad,
+  dogAwake,
+  personWatching,
   currentLevel,
   isRevealed,
   isSniffing,
@@ -339,13 +341,31 @@ function campFood(
   }
 }
 
-function person(ctx: CanvasRenderingContext2D, x: number, clapping: boolean) {
+function cueBubble(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(x, y, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y + 18);
+  ctx.lineTo(x, y + 30);
+  ctx.lineTo(x + 6, y + 18);
+  ctx.fill();
+}
+
+/** Watching: facing the path with an eye cue. Busy: turned away with a pan and "…". */
+function person(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  watching: boolean,
+  clapping: boolean,
+) {
   ctx.fillStyle = '#16191d';
   ctx.fillRect(x - 8, GROUND_Y - 40, 6, 40);
   ctx.fillRect(x + 2, GROUND_Y - 40, 6, 40);
-  ctx.fillStyle = '#c2552d';
+  ctx.fillStyle = watching ? '#c2552d' : '#9a4323';
   ctx.fillRect(x - 12, GROUND_Y - 90, 24, 52);
-  ctx.fillStyle = '#f2c9a0';
+  ctx.fillStyle = watching ? '#f2c9a0' : '#6b4f3a';
   ctx.beginPath();
   ctx.arc(x, GROUND_Y - 104, 14, 0, Math.PI * 2);
   ctx.fill();
@@ -358,25 +378,104 @@ function person(ctx: CanvasRenderingContext2D, x: number, clapping: boolean) {
     ctx.lineTo(x - 26, GROUND_Y - 112);
     ctx.moveTo(x + 10, GROUND_Y - 84);
     ctx.lineTo(x + 26, GROUND_Y - 112);
-  } else {
+  } else if (watching) {
     ctx.moveTo(x - 12, GROUND_Y - 84);
     ctx.lineTo(x - 16, GROUND_Y - 56);
     ctx.moveTo(x + 12, GROUND_Y - 84);
     ctx.lineTo(x + 16, GROUND_Y - 56);
+  } else {
+    ctx.moveTo(x + 10, GROUND_Y - 80);
+    ctx.lineTo(x + 30, GROUND_Y - 70);
   }
   ctx.stroke();
+  if (!watching && !clapping) {
+    ctx.fillStyle = '#2b3138';
+    ctx.beginPath();
+    ctx.ellipse(x + 42, GROUND_Y - 70, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(x + 28, GROUND_Y - 72, 6, 4);
+  }
+
+  const cy = GROUND_Y - 160;
+  cueBubble(ctx, x, cy);
+  if (watching) {
+    ctx.fillStyle = '#16191d';
+    ctx.beginPath();
+    ctx.ellipse(x, cy, 14, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x, cy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#16191d';
+    ctx.beginPath();
+    ctx.arc(x - 1, cy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = '#667085';
+    for (const dx of [-9, 0, 9]) {
+      ctx.beginPath();
+      ctx.arc(x + dx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 }
 
-function dog(ctx: CanvasRenderingContext2D, x: number) {
+/** Awake: standing, ears up, "!". Napping: lying down with "z z". */
+function dog(ctx: CanvasRenderingContext2D, x: number, awake: boolean) {
   ctx.fillStyle = '#d9b98a';
+  if (awake) {
+    ctx.beginPath();
+    ctx.ellipse(x, GROUND_Y - 22, 26, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 24, GROUND_Y - 32, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 18, GROUND_Y - 40);
+    ctx.lineTo(x + 20, GROUND_Y - 54);
+    ctx.lineTo(x + 26, GROUND_Y - 42);
+    ctx.fill();
+    ctx.fillRect(x - 18, GROUND_Y - 14, 6, 14);
+    ctx.fillRect(x + 12, GROUND_Y - 14, 6, 14);
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(x, GROUND_Y - 10, 30, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 26, GROUND_Y - 12, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const cy = GROUND_Y - 90;
+  cueBubble(ctx, x + 10, cy);
+  ctx.fillStyle = awake ? '#a3341f' : '#667085';
+  ctx.font = '800 22px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(awake ? '!' : 'z z', x + 10, cy + 1);
+}
+
+function highLog(
+  ctx: CanvasRenderingContext2D,
+  p: { x: number; w: number; top: number },
+) {
+  const y = GROUND_Y - p.top;
+  ctx.strokeStyle = '#5a3a20';
+  ctx.lineWidth = 8;
+  for (const f of [0.12, 0.5, 0.88]) {
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w * f, y + 20);
+    ctx.lineTo(p.x + p.w * f + 10, GROUND_Y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#7a4b2a';
   ctx.beginPath();
-  ctx.ellipse(x, GROUND_Y - 22, 26, 13, 0, 0, Math.PI * 2);
+  ctx.roundRect(p.x, y, p.w, 24, 12);
   ctx.fill();
+  ctx.fillStyle = '#b07a4f';
   ctx.beginPath();
-  ctx.arc(x + 24, GROUND_Y - 32, 11, 0, Math.PI * 2);
+  ctx.ellipse(p.x + p.w - 12, y + 12, 9, 9, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillRect(x - 18, GROUND_Y - 14, 6, 14);
-  ctx.fillRect(x + 12, GROUND_Y - 14, 6, 14);
 }
 
 function car(ctx: CanvasRenderingContext2D, x: number) {
@@ -557,6 +656,8 @@ export function renderWild(
     if (carOnRoad(state.levelT, road)) car(ctx, road.x + road.w / 2 - 85);
   }
 
+  for (const p of level.platforms) if (inView(p.x, p.w)) highLog(ctx, p);
+
   for (const s of level.solids) {
     if (!inView(s.x, s.w)) continue;
     const top = GROUND_Y - s.h;
@@ -601,9 +702,18 @@ export function renderWild(
   }
 
   const clappingAt = state.bubble?.x;
-  for (const p of level.people)
-    if (inView(p.x - 40, 80)) person(ctx, p.x, clappingAt === p.x);
-  for (const d of level.dogs) if (inView(d.x - 40, 80)) dog(ctx, d.x);
+  for (const p of level.people) {
+    if (!inView(p.x - 40, 120)) continue;
+    person(
+      ctx,
+      p.x,
+      personWatching(state.levelT, p.offsetMs),
+      clappingAt === p.x,
+    );
+  }
+  for (const d of level.dogs) {
+    if (inView(d.x - 40, 80)) dog(ctx, d.x, dogAwake(state.levelT, d.offsetMs));
+  }
 
   if (isSniffing(state)) {
     ctx.strokeStyle = 'rgba(244, 185, 66, 0.5)';

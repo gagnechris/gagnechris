@@ -3,6 +3,11 @@ import { SEASON_FOODS } from '../facts';
 import {
   CAMP_FOOD_GAIN,
   COMFY_LIMIT,
+  DOG_RANGE,
+  JUMP_SPEED,
+  GRAVITY,
+  PERSON_CYCLE,
+  PERSON_RANGE,
   MAPLE_H,
   MAPLE_W,
   NO_INPUT,
@@ -11,6 +16,9 @@ import {
   STEP_MS,
   createWildState,
   currentLevel,
+  dogAwake,
+  onHighRoute,
+  personWatching,
   isRevealed,
   levelSecondsLeft,
   sniffReady,
@@ -46,6 +54,7 @@ function onLevel(level: Partial<WildLevel>, x = 80): WildState {
   const custom: WildLevel = {
     ...WILD_LEVELS[0]!,
     solids: [],
+    platforms: [],
     foods: [],
     camp: [],
     people: [],
@@ -201,34 +210,150 @@ describe('campsite food', () => {
   });
 });
 
-describe('hazards', () => {
-  test('a clapping camper pushes Maple back, then lets her pass', () => {
-    const person = { id: 'p', x: 700 };
-    const s0 = onLevel({ people: [person] });
-    const { state, events } = run(s0, 300, RIGHT);
-    expect(
-      events.filter((e) => e.type === 'clap').length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(state.maple.x).toBeGreaterThan(person.x);
+// A camper with this offset is watching from t = 0; with 0 they're busy at first.
+const WATCHING_NOW = PERSON_CYCLE.periodMs - PERSON_CYCLE.activeMs;
+
+describe('campers and dogs', () => {
+  test('campers alternate between busy and watching; dogs between napping and awake', () => {
+    expect(personWatching(0)).toBe(false);
+    expect(personWatching(0, WATCHING_NOW)).toBe(true);
+    expect(personWatching(PERSON_CYCLE.periodMs - 1)).toBe(true);
+    expect(dogAwake(0)).toBe(false);
   });
 
-  test('a barking dog pushes Maple back', () => {
-    const { events } = run(
-      onLevel({ dogs: [{ id: 'd', x: 500 }] }),
-      120,
+  test('Maple can slip past a busy camper', () => {
+    const person = { id: 'p', x: 500 };
+    const { state, events } = run(onLevel({ people: [person] }), 120, RIGHT);
+    expect(events).not.toContainEqual({ type: 'clap' });
+    expect(state.maple.x).toBeGreaterThan(person.x + PERSON_RANGE);
+  });
+
+  test('a watching camper claps and pushes Maple back', () => {
+    const person = { id: 'p', x: 500, offsetMs: WATCHING_NOW };
+    const { state, events } = run(onLevel({ people: [person] }), 45, RIGHT);
+    expect(events).toContainEqual({ type: 'clap' });
+    expect(state.maple.x + MAPLE_W / 2).toBeLessThan(person.x);
+  });
+
+  test('waiting for the camper to look away gets Maple past', () => {
+    const person = { id: 'p', x: 700, offsetMs: WATCHING_NOW };
+    const { state } = run(onLevel({ people: [person] }), 600, (s) => ({
+      ...NO_INPUT,
+      right: !personWatching(s.levelT, person.offsetMs),
+    }));
+    expect(state.maple.x).toBeGreaterThan(person.x + PERSON_RANGE);
+  });
+
+  test('a napping dog lets Maple by; an awake one barks', () => {
+    const asleep = run(onLevel({ dogs: [{ id: 'd', x: 400 }] }), 90, RIGHT);
+    expect(asleep.events).not.toContainEqual({ type: 'bark' });
+    expect(asleep.state.maple.x).toBeGreaterThan(400 + DOG_RANGE);
+
+    const awake = run(
+      onLevel({ dogs: [{ id: 'd', x: 400, offsetMs: 2_700 }] }),
+      90,
       RIGHT,
     );
-    expect(events).toContainEqual({ type: 'bark' });
+    expect(awake.events).toContainEqual({ type: 'bark' });
   });
 
-  test('stepping onto the road while a car passes sends Maple back to the edge', () => {
-    const road = {
-      id: 'r',
-      x: 300,
-      w: 200,
-      periodMs: 100_000,
-      carMs: 100_000,
+  test('Maple gets one hint as she approaches each camper and dog', () => {
+    const { events } = run(
+      onLevel({ people: [{ id: 'p', x: 900 }], dogs: [{ id: 'd', x: 1300 }] }),
+      400,
+      RIGHT,
+    );
+    expect(events.filter((e) => e.type === 'warn')).toEqual([
+      { type: 'warn', who: 'person' },
+      { type: 'warn', who: 'dog' },
+    ]);
+  });
+});
+
+describe('the high route', () => {
+  const step = { x: 300, w: 150, h: 40, kind: 'log' as const };
+  const ledge = { x: 420, w: 700, top: 150 };
+
+  test('Maple walks under a high log without bumping into it', () => {
+    const { state } = run(onLevel({ platforms: [ledge] }), 260, RIGHT);
+    expect(state.maple.x).toBeGreaterThan(ledge.x + ledge.w);
+    expect(state.maple.onGround).toBe(true);
+  });
+
+  test('it is too high to jump onto from the ground, but a step log reaches it', () => {
+    const fromGround = run(
+      onLevel({ platforms: [ledge] }, 360),
+      80,
+      (_, i) => ({ ...RIGHT, jump: i === 0 }),
+    ).state;
+    expect(onHighRoute(fromGround.maple)).toBe(false);
+
+    const maxJump = JUMP_SPEED ** 2 / (2 * GRAVITY);
+    expect(maxJump).toBeLessThan(ledge.top);
+    expect(step.h + maxJump).toBeGreaterThan(ledge.top);
+  });
+
+  test('up high, a watching camper and dog ignore Maple, and she skips the campsite food', () => {
+    const level = {
+      solids: [step],
+      platforms: [ledge],
+      camp: [{ id: 't', kind: 'trash' as const, x: 650 }],
+      people: [{ id: 'p', x: 800, offsetMs: WATCHING_NOW }],
+      dogs: [{ id: 'd', x: 950, offsetMs: 2_700 }],
     };
+    // Stand on the step, jump up onto the log, then walk along it.
+    const start = onLevel(level, 320);
+    let s: WildState = {
+      ...start,
+      maple: { ...start.maple, y: GROUND_Y - step.h - MAPLE_H },
+    };
+    s = run(s, 10).state;
+    s = run(s, 60, (_, i) => ({ ...RIGHT, jump: i === 0 })).state;
+    expect(onHighRoute(s.maple)).toBe(true);
+    const { state, events } = run(s, 160, RIGHT);
+    expect(events).not.toContainEqual({ type: 'clap' });
+    expect(events).not.toContainEqual({ type: 'bark' });
+    expect(state.campSnacks).toBe(0);
+    expect(state.maple.x).toBeGreaterThan(ledge.x + ledge.w - MAPLE_W);
+  });
+
+  test('every campsite in the game has a reachable high log that covers it', () => {
+    const maxJump = JUMP_SPEED ** 2 / (2 * GRAVITY);
+    for (const level of WILD_LEVELS) {
+      const watchers = [
+        ...level.people.map((p) => ({ x: p.x, range: PERSON_RANGE })),
+        ...level.dogs.map((d) => ({ x: d.x, range: DOG_RANGE })),
+      ];
+      for (const w of watchers) {
+        const ledgeOver = level.platforms.find(
+          (p) =>
+            p.x <= w.x - w.range && p.x + p.w >= w.x + w.range - MAPLE_W / 2,
+        );
+        expect(ledgeOver, `${level.season} watcher at ${w.x}`).toBeDefined();
+        const stepUp = level.solids.find(
+          (s) =>
+            s.x + s.w >= ledgeOver!.x - 40 &&
+            s.x <= ledgeOver!.x + 40 &&
+            s.h + maxJump > ledgeOver!.top,
+        );
+        expect(
+          stepUp,
+          `${level.season} step to ledge at ${ledgeOver!.x}`,
+        ).toBeDefined();
+      }
+      for (const c of level.camp) {
+        expect(
+          level.platforms.some((p) => p.x <= c.x && p.x + p.w >= c.x + 52),
+          `${level.season} camp food at ${c.x}`,
+        ).toBe(true);
+      }
+    }
+  });
+});
+
+describe('roads', () => {
+  test('stepping onto the road while a car passes sends Maple back to the edge', () => {
+    const road = { id: 'r', x: 300, w: 200, periodMs: 100_000, carMs: 100_000 };
     const { state, events } = run(onLevel({ roads: [road] }), 60, RIGHT);
     expect(events).toContainEqual({ type: 'car' });
     expect(state.maple.x + MAPLE_W).toBeLessThanOrEqual(road.x);

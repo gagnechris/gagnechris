@@ -28,10 +28,17 @@ export const SNIFF_MS = 3_000;
 export const SNIFF_COOLDOWN_MS = 5_000;
 export const SNIFF_RANGE = 450;
 
-const PERSON_RANGE = 170;
-const PERSON_COOLDOWN_MS = 3_000;
-const DOG_RANGE = 120;
-const DOG_COOLDOWN_MS = 2_500;
+export const PERSON_RANGE = 170;
+export const DOG_RANGE = 120;
+/** Short, just so one shove doesn't immediately repeat. */
+const REACT_COOLDOWN_MS = 1_200;
+const WARN_RANGE = 520;
+/** Campers are busy, then look up and watch for a while. */
+export const PERSON_CYCLE = { periodMs: 5_000, activeMs: 2_000 };
+/** Dogs nap, then wake up for a while. */
+export const DOG_CYCLE = { periodMs: 4_400, activeMs: 1_700 };
+/** Up on a high log, Maple is out of the way and nobody reacts. */
+const HIGH_ROUTE_CLEARANCE = 100;
 const PUSHBACK_MS = 500;
 const PUSHBACK_SPEED = 450;
 const BUBBLE_MS = 1_400;
@@ -86,6 +93,8 @@ export type WildState = {
   sniffReadyAt: number;
   /** Per person/dog id: levelT when they can react again. */
   reactReadyAt: Readonly<Record<string, number>>;
+  /** Person/dog ids whose "wait or go around" hint has been given this level. */
+  warned: readonly string[];
   bubble: Bubble | null;
   timeBonus: number;
 };
@@ -102,6 +111,7 @@ export type WildEvent =
   | { type: 'sniff' }
   | { type: 'clap' }
   | { type: 'bark' }
+  | { type: 'warn'; who: 'person' | 'dog' }
   | { type: 'car' }
   | { type: 'level'; level: number; reason: 'goal' | 'time' }
   | { type: 'end'; phase: Exclude<WildPhase, 'playing'> };
@@ -137,6 +147,7 @@ export function createWildState(
     sniffUntil: 0,
     sniffReadyAt: 0,
     reactReadyAt: {},
+    warned: [],
     bubble: null,
     timeBonus: 0,
   };
@@ -175,6 +186,28 @@ export function isRevealed(state: WildState, foodX: number): boolean {
     isSniffing(state) &&
     Math.abs(foodX - (state.maple.x + MAPLE_W / 2)) <= SNIFF_RANGE
   );
+}
+
+export function cycleActive(
+  levelT: number,
+  cycle: { periodMs: number; activeMs: number },
+  offsetMs = 0,
+): boolean {
+  return (
+    (levelT + offsetMs) % cycle.periodMs >= cycle.periodMs - cycle.activeMs
+  );
+}
+
+export function personWatching(levelT: number, offsetMs = 0): boolean {
+  return cycleActive(levelT, PERSON_CYCLE, offsetMs);
+}
+
+export function dogAwake(levelT: number, offsetMs = 0): boolean {
+  return cycleActive(levelT, DOG_CYCLE, offsetMs);
+}
+
+export function onHighRoute(maple: Maple): boolean {
+  return maple.y + MAPLE_H <= GROUND_Y - HIGH_ROUTE_CLEARANCE;
 }
 
 export function carOnRoad(
@@ -224,10 +257,13 @@ function moveMaple(
   m.y += m.vy * DT;
   m.onGround = false;
   let floor = GROUND_Y;
-  for (const s of level.solids) {
-    const top = GROUND_Y - s.h;
-    if (m.x + MAPLE_W > s.x && m.x < s.x + s.w && prevBottom <= top + 0.5) {
-      floor = Math.min(floor, top);
+  const surfaces = [
+    ...level.solids.map((s) => ({ x: s.x, w: s.w, top: GROUND_Y - s.h })),
+    ...level.platforms.map((p) => ({ x: p.x, w: p.w, top: GROUND_Y - p.top })),
+  ];
+  for (const s of surfaces) {
+    if (m.x + MAPLE_W > s.x && m.x < s.x + s.w && prevBottom <= s.top + 0.5) {
+      floor = Math.min(floor, s.top);
     }
   }
   if (m.y + MAPLE_H >= floor && m.vy >= 0) {
@@ -253,6 +289,7 @@ function startLevel(state: WildState, level: number): WildState {
     sniffUntil: 0,
     sniffReadyAt: 0,
     reactReadyAt: {},
+    warned: [],
     bubble: null,
   };
 }
@@ -326,11 +363,19 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
     }
   }
 
+  const warned = [...s.warned];
+  const high = onHighRoute(maple);
+
   for (const person of level.people) {
-    if (t < (reactReadyAt[person.id] ?? 0)) continue;
-    if (Math.abs(center - person.x) < PERSON_RANGE) {
+    const dist = Math.abs(center - person.x);
+    if (!warned.includes(person.id) && dist < WARN_RANGE && center < person.x) {
+      warned.push(person.id);
+      events.push({ type: 'warn', who: 'person' });
+    }
+    if (high || t < (reactReadyAt[person.id] ?? 0)) continue;
+    if (dist < PERSON_RANGE && personWatching(t, person.offsetMs)) {
       maple = pushAwayFrom(maple, person.x, t);
-      reactReadyAt[person.id] = t + PERSON_COOLDOWN_MS;
+      reactReadyAt[person.id] = t + REACT_COOLDOWN_MS;
       bubble = {
         text: 'CLAP CLAP! GO ON, BEAR!',
         x: person.x,
@@ -341,10 +386,15 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
   }
 
   for (const dog of level.dogs) {
-    if (t < (reactReadyAt[dog.id] ?? 0)) continue;
-    if (Math.abs(center - dog.x) < DOG_RANGE) {
+    const dist = Math.abs(center - dog.x);
+    if (!warned.includes(dog.id) && dist < WARN_RANGE && center < dog.x) {
+      warned.push(dog.id);
+      events.push({ type: 'warn', who: 'dog' });
+    }
+    if (high || t < (reactReadyAt[dog.id] ?? 0)) continue;
+    if (dist < DOG_RANGE && dogAwake(t, dog.offsetMs)) {
       maple = pushAwayFrom(maple, dog.x, t);
-      reactReadyAt[dog.id] = t + DOG_COOLDOWN_MS;
+      reactReadyAt[dog.id] = t + REACT_COOLDOWN_MS;
       bubble = { text: 'Woof!', x: dog.x, until: t + BUBBLE_MS };
       events.push({ type: 'bark' });
     }
@@ -379,6 +429,7 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
     campSnacks,
     eaten,
     reactReadyAt,
+    warned,
     bubble,
   };
 

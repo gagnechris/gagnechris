@@ -120,6 +120,11 @@
   color: #235a58;
 }
 
+.wild-eat-toast--info {
+  background: #16191d;
+  color: white;
+}
+
 .wild-eat-toast--bad {
   background: #fdecea;
   color: #a3341f;
