@@ -31,6 +31,11 @@ export function isUniqueClaimCancellation(
   );
 }
 
+/** Lost to a concurrent transaction on one of the items, not a failed condition. */
+export function isTransactionConflict(error: unknown): boolean {
+  return cancellationCodes(error).includes('TransactionConflict');
+}
+
 /** @deprecated Prefer {@link isUniqueClaimCancellation}. */
 export function isSlugClaimCancellation(
   error: unknown,
@@ -71,7 +76,7 @@ export async function runDynamoWrite<T>(
           { code: opts?.uniqueClaimCode ?? 'slug_taken' },
         );
       }
-      throw new ConflictError(conflictMessage);
+      throw new ConflictError(conflictMessage, { cause: error });
     }
     if (kind === 'throttling') {
       throw new ServiceUnavailableError(
