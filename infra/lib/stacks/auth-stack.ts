@@ -29,9 +29,15 @@ import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
   ADMIN_GROUP,
+  ADMIN_HOST,
   APEX_DOMAIN,
   AUTH_DOMAIN as AUTH_DOMAIN_CONST,
+  DEV_ADMIN_ORIGIN,
+  DEV_NOTEBOOK_ORIGIN,
   DEV_ORIGIN,
+  NOTEBOOK_GROUP,
+  NOTEBOOK_HOST,
+  SITE_ADMIN_GROUP,
   ssmParameterName,
 } from '../config/constants.js';
 
@@ -46,7 +52,10 @@ export interface AuthStackProps extends StackProps {
 
 export class AuthStack extends Stack {
   readonly userPool: UserPool;
+  /** Legacy apex client; kept until the subdomain cutover. */
   readonly webClient: UserPoolClient;
+  readonly adminWebClient: UserPoolClient;
+  readonly notebookWebClient: UserPoolClient;
   readonly iosClient: UserPoolClient;
   /** Local Vite only; the API authorizer does not accept its tokens. */
   readonly devClient: UserPoolClient;
@@ -140,6 +149,26 @@ export class AuthStack extends Stack {
       userPoolClientName: 'web',
     });
 
+    // Each app client trusts only its own host, so a script on one host can't
+    // land the other client's code on a callback it controls.
+    const hostOAuth = (host: string) => ({
+      ...clientCommon.oAuth,
+      callbackUrls: [`https://${host}/auth/callback`],
+      logoutUrls: [`https://${host}/`],
+    });
+
+    this.adminWebClient = this.userPool.addClient('AdminWebClient', {
+      ...clientCommon,
+      userPoolClientName: 'admin-web',
+      oAuth: hostOAuth(ADMIN_HOST),
+    });
+
+    this.notebookWebClient = this.userPool.addClient('NotebookWebClient', {
+      ...clientCommon,
+      userPoolClientName: 'notebook-web',
+      oAuth: hostOAuth(NOTEBOOK_HOST),
+    });
+
     this.iosClient = this.userPool.addClient('IosClient', {
       ...clientCommon,
       userPoolClientName: 'ios',
@@ -149,19 +178,18 @@ export class AuthStack extends Stack {
         logoutUrls: [...logoutUrls, 'gagnechris://'],
       },
     });
-    // Api-prod imported this until CHR-240 dropped the iOS client from the API
-    // audience. Auth deploys first, so the export must outlive that import for
-    // one deploy or CloudFormation refuses to delete it. Remove once Api-prod
-    // no longer references it (CHR-253).
-    this.exportValue(this.iosClient.userPoolClientId);
 
     this.devClient = this.userPool.addClient('DevClient', {
       ...clientCommon,
       userPoolClientName: 'dev-local',
       oAuth: {
         ...clientCommon.oAuth,
-        callbackUrls: [`${DEV_ORIGIN}/auth/callback`],
-        logoutUrls: [`${DEV_ORIGIN}/`],
+        callbackUrls: [DEV_ORIGIN, DEV_ADMIN_ORIGIN, DEV_NOTEBOOK_ORIGIN].map(
+          (origin) => `${origin}/auth/callback`,
+        ),
+        logoutUrls: [DEV_ORIGIN, DEV_ADMIN_ORIGIN, DEV_NOTEBOOK_ORIGIN].map(
+          (origin) => `${origin}/`,
+        ),
       },
     });
 
@@ -177,6 +205,22 @@ export class AuthStack extends Stack {
       username: config.adminUsername,
     });
 
+    for (const [id, groupName, description] of [
+      ['SiteAdmin', SITE_ADMIN_GROUP, 'Public-site CMS on the admin host'],
+      ['Notebook', NOTEBOOK_GROUP, 'Notebook on the notebook host'],
+    ] as const) {
+      const group = new CfnUserPoolGroup(this, `${id}Group`, {
+        userPoolId: this.userPool.userPoolId,
+        groupName,
+        description,
+      });
+      new CfnUserPoolUserToGroupAttachment(this, `${id}GroupMembership`, {
+        userPoolId: this.userPool.userPoolId,
+        groupName: group.ref,
+        username: config.adminUsername,
+      });
+    }
+
     this.domain = this.userPool.addDomain('CustomDomain', {
       customDomain: {
         domainName: AUTH_DOMAIN,
@@ -188,6 +232,19 @@ export class AuthStack extends Stack {
     new CfnManagedLoginBranding(this, 'WebManagedLoginBranding', {
       userPoolId: this.userPool.userPoolId,
       clientId: this.webClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
+    // Managed login isn't available to a client without its own branding.
+    new CfnManagedLoginBranding(this, 'AdminWebManagedLoginBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.adminWebClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
+    new CfnManagedLoginBranding(this, 'NotebookWebManagedLoginBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.notebookWebClient.userPoolClientId,
       useCognitoProvidedValues: true,
     });
 
@@ -233,6 +290,21 @@ export class AuthStack extends Stack {
       description: 'Cognito web app client ID (public, PKCE)',
     });
 
+    new StringParameter(this, 'AdminWebClientIdParam', {
+      parameterName: ssmParameterName(config.name, 'cognitoAdminWebClientId'),
+      stringValue: this.adminWebClient.userPoolClientId,
+      description: `Cognito admin-web client ID (${ADMIN_HOST}, public, PKCE)`,
+    });
+
+    new StringParameter(this, 'NotebookWebClientIdParam', {
+      parameterName: ssmParameterName(
+        config.name,
+        'cognitoNotebookWebClientId',
+      ),
+      stringValue: this.notebookWebClient.userPoolClientId,
+      description: `Cognito notebook-web client ID (${NOTEBOOK_HOST}, public, PKCE)`,
+    });
+
     new StringParameter(this, 'IosClientIdParam', {
       parameterName: ssmParameterName(config.name, 'cognitoIosClientId'),
       stringValue: this.iosClient.userPoolClientId,
@@ -260,6 +332,16 @@ export class AuthStack extends Stack {
     new CfnOutput(this, 'WebClientId', {
       value: this.webClient.userPoolClientId,
       description: 'Web app client ID (no secret; auth code + PKCE)',
+    });
+
+    new CfnOutput(this, 'AdminWebClientId', {
+      value: this.adminWebClient.userPoolClientId,
+      description: `${ADMIN_HOST} app client ID (no secret; auth code + PKCE)`,
+    });
+
+    new CfnOutput(this, 'NotebookWebClientId', {
+      value: this.notebookWebClient.userPoolClientId,
+      description: `${NOTEBOOK_HOST} app client ID (no secret; auth code + PKCE)`,
     });
 
     new CfnOutput(this, 'IosClientId', {

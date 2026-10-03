@@ -60,14 +60,19 @@ Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
 Deploy order (CDK `addDependency` + props):
 
-1. Certificate, Guardrails, Data, Email, Auth
-2. **Api** (reads SSM `site-bucket-name`; writes `http-api-id`)
-3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`)
-4. Dns (needs Site's distribution for Route 53 aliases)
+1. Certificate, Guardrails, Data, Email, Auth (writes `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`)
+2. **Api** (depends on Auth; reads SSM `site-bucket-name` and both app client IDs; writes `http-api-id`)
+3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, and the bucket and distribution IDs for the admin and notebook hosts)
+4. Dns (needs Site's three distributions for Route 53 aliases)
 5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
 6. CiDeployRole
 
 Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM, not CloudFormation exports.
+
+**Removing a cross-stack reference:** The producer stack (for example Auth) deploys before the consumer (Api). If a single PR drops both the consumer's use and the producer's export, the producer tries to delete an export that is still imported. It then rolls back and blocks every later deploy (CHR-240, CHR-253). Do it in two deploys instead:
+
+1. Drop the consumer's use, but keep the export in the producer with `this.exportValue(<value>)`.
+2. Once `aws cloudformation list-imports --export-name <export>` reports no importers, remove the `exportValue` line.
 
 ### First-time / disaster-recovery bootstrap (two-pass)
 
@@ -76,6 +81,7 @@ Site and Api each read an SSM parameter the other writes:
 | Stack     | Needs SSM (must exist at deploy)    | Writes SSM                                                                |
 | --------- | ----------------------------------- | ------------------------------------------------------------------------- |
 | Api       | `/gagnechris/prod/site-bucket-name` | `http-api-id`, `http-api-url`                                             |
+| Api       | Auth's two app client ID params     | (Auth writes them in step 1, so no placeholder is needed)                 |
 | Site      | `/gagnechris/prod/http-api-id`      | `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, … |
 | Publisher | Site's three params above           | `publisher-function-name`, `publisher-function-arn`                       |
 
@@ -162,8 +168,8 @@ Prod only — there is no staging environment.
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → CloudFront aliases; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
-- ACM site cert (`SiteCertificateV2`: apex + www) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing one when the other changes (cross-stack export).
+- Apex/www → the public distribution; `admin.` and `notebook.` (A + AAAA) → their own distributions; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
+- ACM certs in **us-east-1** via `Certificate-prod` (DNS validation; CloudFormation writes the validation CNAMEs into the zone): `SiteCertificateV2` (apex + www), `AuthCertificate` (`auth.gagnechris.com`) and `AppHostsCertificate` (`admin.gagnechris.com` + `notebook.gagnechris.com`). Separate certs avoid replacing one when another changes (cross-stack export).
 - DNSSEC is not enabled (cost).
 
 ```bash
@@ -184,6 +190,26 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --require-approval never
 ```
 
+### App hosts (`admin.gagnechris.com`, `notebook.gagnechris.com`)
+
+- Two `AppHost` constructs in `Site-prod`, one distribution each on `AppHostsCertificate`. Each has its own private, versioned bucket (access logs under `s3-admin/` / `s3-notebook/`, CloudFront logs under `cloudfront-admin/` / `cloudfront-notebook/` in `AccessLogs`), no AWS Backup (build output only).
+- Behaviours: default (`HtmlCachePolicy`) and `/assets/*` (`AssetsCachePolicy`) from the host's bucket, `/api/*` to the HTTP API (same as the apex, `api-security-headers`). Admin also serves `/media/*` from the **site** bucket, so the site bucket policy grants the admin distribution `GetObject` and `ListBucket`.
+- Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:`, `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows `https://admin.gagnechris.com` for those PUTs.
+- Viewer-request `gagnechris-prod-app-viewer-request` (`infra/lib/cloudfront/app-viewer-request.js`, no KVS): `/api`, `/assets`, `/media`, `/.well-known` and any path whose last segment has a dot pass through; everything else → `/index.html`. No distribution-wide error pages.
+- On first create, CDK writes a placeholder `index.html` (no script) to each bucket so the host answers 200 before the first app deploy. It never runs again, so later web deploys are not overwritten.
+- 5xx alarms `gagnechris-prod-admin-cloudfront-5xx`, `gagnechris-prod-notebook-cloudfront-5xx`.
+- SSM: `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`.
+
+Smoke (headers only):
+
+```bash
+for h in admin notebook; do
+  curl -sI "https://$h.gagnechris.com/" | grep -iE '^(HTTP|content-security-policy|strict-transport-security)'
+  curl -sS "https://$h.gagnechris.com/api/health"; echo
+done
+# Expect: 200, CSP with script-src 'self' and no google hosts, {"status":"ok",...}
+```
+
 ## Web deploy pipeline
 
 On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
@@ -198,7 +224,7 @@ AWS_PROFILE=gagnechris-admin npm run deploy:web
 
 ## HTTP API
 
-`Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`). Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts and Notebook share the `Data-prod` table (`DATA_TABLE_NAME`) with different key prefixes (`docs/data-model.md`).
+`Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`) for the apex and both app hosts. Cognito JWT on `/api/admin/*` and `/api/notebook/*`, one authorizer per prefix (see **Cognito auth**). Posts and Notebook share the `Data-prod` table (`DATA_TABLE_NAME`) with different key prefixes (`docs/data-model.md`).
 
 Site depends on Api so `/api` origin updates when the HttpApi is replaced. First-time bootstrap (circular SSM) is documented under **First-time / disaster-recovery bootstrap** above.
 
@@ -552,16 +578,17 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 ## Cognito auth
 
-`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
+`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `admin-web` / `notebook-web` / `ios` clients (authorization code + PKCE), each with its own managed login branding.
 
-SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
 
-### Admin group and clients
+### Groups and clients
 
-- `/api/admin/*` and `/api/notebook/*` require the `admin` group in `cognito:groups`; any other pool user gets 403. CDK creates the group and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to it. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced.
-- An ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
-- Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). Prod CORS (API + site bucket) has no localhost origins.
-- `dev-local` client: localhost:5173 callbacks only, for exercising managed login from local Vite. The API authorizer doesn't list it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
+- Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and the legacy `admin` (apex app, kept while `LEGACY_WEB_AUTH` is on). CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
+- An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
+- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). While `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is `true`, both also accept the legacy `web` client, and the Lambda gets `AUTH_LEGACY_WEB_CLIENT_ID`. The Lambda always gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`. Api reads the two new client IDs from SSM (not Auth exports).
+- Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
+- `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools
 
@@ -623,7 +650,7 @@ Reach admin by opening `https://gagnechris.com/admin` (no public login link). AP
 
 ## HTTP API runtime and contract
 
-`Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizer on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
+`Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
 OpenAPI contract: `packages/shared/openapi/openapi.json` and client types
 `packages/api-client/src/schema.d.ts`. Regenerate both with `npm run openapi`; CI runs

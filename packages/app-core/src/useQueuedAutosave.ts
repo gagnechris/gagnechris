@@ -97,6 +97,10 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const timersRef = useRef(timers);
   const dirtyRef = useRef(dirty);
   const lastFailureRetryableRef = useRef(false);
+  // A signal that lands before the retry loop is armed (mid-request, or
+  // between the failure and the next commit) would otherwise be lost.
+  const signalledSinceSendRef = useRef(false);
+  const retryNowRef = useRef<(() => void) | null>(null);
   // Refs so inline message objects do not give save() a new identity each
   // render, which would re-arm the debounce after every failure.
   const conflictMessageRef = useRef(conflictMessage);
@@ -168,6 +172,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
       try {
         for (;;) {
           pendingRef.current = false;
+          signalledSinceSendRef.current = false;
           const genAtStart = editGenRef.current;
           const current = draftRef.current;
           if (current == null) {
@@ -256,18 +261,26 @@ export function useQueuedAutosave<TDraft, TEntity>({
     retrySignalsRef.current = retrySignals;
   }, [retrySignals]);
   useEffect(() => {
+    if (!enabled || !dirty) return;
+    return retrySignalsRef.current?.(() => {
+      signalledSinceSendRef.current = true;
+      retryNowRef.current?.();
+    });
+  }, [dirty, enabled]);
+  useEffect(() => {
     if (!enabled || !dirty || held || retryAttempt === 0) return;
     const retry = () => {
       if (heldRef.current || chainRef.current) return;
       void save();
     };
-    const delay =
-      retryDelaysMs[Math.min(retryAttempt, retryDelaysMs.length) - 1] ?? 0;
+    const delay = signalledSinceSendRef.current
+      ? 0
+      : (retryDelaysMs[Math.min(retryAttempt, retryDelaysMs.length) - 1] ?? 0);
     const handle = timersRef.current.setTimeout(retry, delay);
-    const unsubscribe = retrySignalsRef.current?.(retry);
+    retryNowRef.current = retry;
     return () => {
       timersRef.current.clearTimeout(handle);
-      unsubscribe?.();
+      if (retryNowRef.current === retry) retryNowRef.current = null;
     };
   }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save]);
 
