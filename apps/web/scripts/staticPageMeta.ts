@@ -4,10 +4,14 @@ import {
   replaceMeta,
   upsertCanonical,
 } from '@gagnechris/shared/html';
+import {
+  BEARS_PAGE_META,
+  type BearsPageMetaEntry,
+} from '../src/games/bears/shared/pageMeta.ts';
 
 export type StaticPageMeta = {
   /** URL path without trailing slash; empty string = home. */
-  routePath: '' | 'resume' | 'contact' | 'dont-feed-the-bears';
+  routePath: '' | 'resume' | 'contact' | BearsPageMetaEntry['routePath'];
   title: string;
   description: string;
   ogImagePath?: string;
@@ -32,13 +36,9 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
     description:
       'Contact Chris Gagne — engineering leadership, software collaboration, and speaking.',
   },
-  {
-    routePath: 'dont-feed-the-bears',
-    title: "Don't Feed the Bears - Chris Gagne",
-    description:
-      'A short Vermont camp mini-game: secure attractants before black bears reach them, then learn real tips from Vermont Fish & Wildlife.',
-    ogImagePath: '/og-dont-feed-the-bears.jpg',
-  },
+  BEARS_PAGE_META.landing,
+  BEARS_PAGE_META.camp,
+  BEARS_PAGE_META.wild,
 ];
 
 const APEX = 'https://gagnechris.com';

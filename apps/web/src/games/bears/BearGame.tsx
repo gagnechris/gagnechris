@@ -5,7 +5,6 @@ import {
   useState,
   type KeyboardEvent,
 } from 'react';
-import { Link } from 'react-router-dom';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -22,30 +21,16 @@ import {
   type AttractantKind,
   type GameState,
 } from './gameLogic';
+import EndCard from './shared/EndCard';
+import SkipToTips from './shared/SkipToTips';
+import SoundToggle from './shared/SoundToggle';
+import { readHighScore, writeHighScore } from './shared/highScore';
 import { playFailSound, playSecureSound, playSuccessSound } from './sound';
-import { BEAR_GUIDANCE_URL, BEAR_TIPS, type BearTip } from './tips';
+import { BEAR_TIPS, type BearTip } from './tips';
 import './BearGame.css';
 
-const HIGH_SCORE_KEY = 'dont-feed-the-bears-high-score';
+const GAME = 'camp';
 const TICK_MS = 50;
-
-function readHighScore(): number {
-  try {
-    const raw = localStorage.getItem(HIGH_SCORE_KEY);
-    const n = raw == null ? 0 : Number.parseInt(raw, 10);
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeHighScore(score: number): void {
-  try {
-    localStorage.setItem(HIGH_SCORE_KEY, String(score));
-  } catch {
-    /* private mode / blocked storage */
-  }
-}
 
 function prefersReducedMotion(): boolean {
   return (
@@ -237,16 +222,13 @@ function BearGlyph() {
   );
 }
 
-type ViewMode = 'play' | 'tips';
-
 type BearGameProps = {
   from?: string;
 };
 
 export function BearGame({ from = 'direct' }: BearGameProps) {
-  const [view, setView] = useState<ViewMode>('play');
   const [soundOn, setSoundOn] = useState(false);
-  const [highScore, setHighScore] = useState(() => readHighScore());
+  const [highScore, setHighScore] = useState(() => readHighScore(GAME));
   const [reducedMotion, setReducedMotion] = useState(() =>
     prefersReducedMotion(),
   );
@@ -265,15 +247,14 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   const startRound = useCallback(
     (nextRound: number) => {
       setReducedMotion(prefersReducedMotion());
-      setHighScore(readHighScore());
+      setHighScore(readHighScore(GAME));
       setState(
         createInitialState({
           tipIndex: nextRound % BEAR_TIPS.length,
         }),
       );
       setRound(nextRound);
-      setView('play');
-      trackBearsGameStart(from);
+      trackBearsGameStart(GAME, from);
     },
     [from],
   );
@@ -281,11 +262,11 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   useEffect(() => {
     if (didTrackInitialStart.current) return;
     didTrackInitialStart.current = true;
-    trackBearsGameStart(from);
+    trackBearsGameStart(GAME, from);
   }, [from]);
 
   useEffect(() => {
-    if (view !== 'play' || state.phase !== 'playing') return;
+    if (state.phase !== 'playing') return;
 
     const speedScale = reducedMotion ? 0.55 : 1;
     const id = window.setInterval(() => {
@@ -296,19 +277,19 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
     }, TICK_MS);
 
     return () => window.clearInterval(id);
-  }, [view, state.phase, round, reducedMotion]);
+  }, [state.phase, round, reducedMotion]);
 
   // Persist best score to localStorage when a round ends (no React state update).
   useEffect(() => {
     if (state.phase === 'playing') return;
     if (state.score > highScore) {
-      writeHighScore(state.score);
+      writeHighScore(GAME, state.score);
     }
   }, [state.phase, state.score, highScore]);
 
   useEffect(() => {
     if (prevPhase.current === 'playing' && state.phase !== 'playing') {
-      trackBearsGameComplete(from, state.score);
+      trackBearsGameComplete(GAME, from, state.score);
       if (soundOnRef.current) {
         if (state.phase === 'success') playSuccessSound();
         else playFailSound();
@@ -318,7 +299,7 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   }, [state.phase, state.score, from]);
 
   const onTipLinkClick = () => {
-    trackBearsTipLinkClick(from);
+    trackBearsTipLinkClick(from, GAME);
   };
 
   const onSecure = (attractant: Attractant) => {
@@ -351,54 +332,6 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
   const remainingSec = Math.ceil(remainingMs / 1000);
   const shownHigh = Math.max(highScore, state.score);
 
-  if (view === 'tips') {
-    return (
-      <div className="bear-game bear-game--tips">
-        <div className="bear-game__toolbar">
-          <button
-            type="button"
-            className="bear-game__btn bear-game__btn--ghost"
-            onClick={() => startRound(round)}
-          >
-            Play the game
-          </button>
-          <Link to="/" className="bear-game__btn bear-game__btn--ghost">
-            Back home
-          </Link>
-        </div>
-        <h2 className="bear-game__tips-heading">Vermont bear tips</h2>
-        <p className="bear-game__lede">
-          Guidance paraphrased from{' '}
-          <a
-            href={BEAR_GUIDANCE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onTipLinkClick}
-          >
-            Vermont Fish &amp; Wildlife
-          </a>
-          .
-        </p>
-        <ul className="bear-game__tip-list">
-          {BEAR_TIPS.map((t) => (
-            <li key={t.id} className="bear-game__tip-card">
-              <h3>{t.title}</h3>
-              <p>{t.body}</p>
-              <a
-                href={t.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onTipLinkClick}
-              >
-                Source
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
   return (
     <div className={`bear-game${reducedMotion ? ' bear-game--reduced' : ''}`}>
       <div className="bear-game__toolbar">
@@ -420,26 +353,8 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
           </span>
         </div>
         <div className="bear-game__controls">
-          <button
-            type="button"
-            className="bear-game__btn bear-game__btn--ghost"
-            aria-pressed={soundOn}
-            onClick={() => setSoundOn((v) => !v)}
-            title={
-              soundOn
-                ? 'Mute game sounds'
-                : 'Enable short sound effects (off by default)'
-            }
-          >
-            Sound: {soundOn ? 'On' : 'Off'}
-          </button>
-          <button
-            type="button"
-            className="bear-game__btn bear-game__btn--ghost"
-            onClick={() => setView('tips')}
-          >
-            Skip the game, show me the bear tips
-          </button>
+          <SoundToggle on={soundOn} onToggle={() => setSoundOn((v) => !v)} />
+          <SkipToTips from={from} />
         </div>
       </div>
 
@@ -490,52 +405,30 @@ export function BearGame({ from = 'direct' }: BearGameProps) {
         ))}
 
         {state.phase !== 'playing' && (
-          <div
-            className="bear-game__end"
-            role="dialog"
-            aria-labelledby="bear-end-title"
-          >
-            <h2 id="bear-end-title">
-              {state.phase === 'success' ? 'Camp secured!' : 'Bear got a snack'}
-            </h2>
-            <p>
-              You secured {securedCount(state)} of {totalAttractants(state)}{' '}
-              attractants · Score {state.score}
-              {state.score >= shownHigh && state.score > 0
-                ? ' · New best!'
-                : ''}
-            </p>
-            <blockquote className="bear-game__end-tip">
-              <strong>{tip.title}</strong>
-              <p>{tip.body}</p>
-              <a
-                href={tip.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onTipLinkClick}
-              >
-                Vermont Fish &amp; Wildlife source
-              </a>
-            </blockquote>
-            <div className="bear-game__end-actions">
-              <button
-                type="button"
-                className="bear-game__btn bear-game__btn--primary"
-                onClick={() => startRound(round + 1)}
-              >
-                Play again
-              </button>
-              <Link to="/" className="bear-game__btn bear-game__btn--ghost">
-                Back home
-              </Link>
-              <button
-                type="button"
-                className="bear-game__btn bear-game__btn--ghost"
-                onClick={() => setView('tips')}
-              >
-                More tips
-              </button>
-            </div>
+          <div className="bear-game__end">
+            <EndCard
+              game={GAME}
+              from={from}
+              outcome={state.phase === 'success' ? 'win' : 'lose'}
+              kicker={state.phase === 'success' ? 'Camp made it' : 'Round over'}
+              title={
+                state.phase === 'success'
+                  ? 'Camp secured!'
+                  : 'A bear got a snack'
+              }
+              paws={state.phase === 'success' ? 3 : 0}
+              stats={[
+                {
+                  label: 'Secured',
+                  value: `${securedCount(state)} of ${totalAttractants(state)}`,
+                },
+                { label: 'Score', value: state.score },
+                { label: 'Best', value: shownHigh },
+              ]}
+              tip={tip}
+              onPlayAgain={() => startRound(round + 1)}
+              onTipLinkClick={onTipLinkClick}
+            />
           </div>
         )}
       </div>

@@ -159,6 +159,7 @@ export function mapRouteError(
     });
   }
   if (error instanceof PreconditionFailedError) {
+    metrics.addMetric('WriteConflict', MetricUnit.Count, 1);
     return json(412, {
       error: 'precondition_failed',
       message: error.message,
@@ -169,6 +170,7 @@ export function mapRouteError(
     });
   }
   if (error instanceof ConflictError) {
+    metrics.addMetric('WriteConflict', MetricUnit.Count, 1);
     return json(409, {
       error: error.code,
       message: error.message,

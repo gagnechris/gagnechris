@@ -9,8 +9,15 @@ A ticket is **Done** only when all of the following are true:
 
 1. The PR is merged into `main`.
 2. CI finished successfully, including CDK deploy / web deploy when the change requires it (not merely "workflow started").
-3. Acceptance criteria were checked **against production** (e.g. `curl` output, `aws … --profile gagnechris-readonly` output).
-4. Evidence is pasted into a Linear comment on the ticket before moving it to Done.
+3. **Every acceptance criterion** was checked against production, one by one. Each one gets its own evidence:
+   - an `aws … --profile gagnechris-readonly` output;
+   - a `curl` that exercises the behavior itself;
+   - Playwright output against the change, or a screenshot for UI.
+
+   A page returning 200 or an API returning 401 proves the deploy is up. It doesn't prove any criterion.
+4. Evidence is pasted into a Linear comment on the ticket, AC by AC, **before** moving it to Done. If an AC can't be verified (for example, it needs a device), say so in the comment and leave the ticket open, or record it as accepted with a reason.
+5. Before merging, read your own PR diff once end to end, and confirm each AC is covered by a test that **fails when the fix is reverted**.
+6. Never reword an AC to match what was built. If the AC was wrong, change it in Linear with a note explaining why.
 
 Do not mark Done while a deploy is still in progress or based only on local synth/unit tests.
 
