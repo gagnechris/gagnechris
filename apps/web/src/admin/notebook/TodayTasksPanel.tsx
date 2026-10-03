@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  useCompleteTaskMutation,
   useCreateTaskMutation,
-  useReopenTaskMutation,
   useTasksQuery,
   type NotebookArea,
   type Task,
@@ -11,6 +9,7 @@ import {
 import { createUlid } from '../../lib/ulid';
 import { addLocalDays, formatLocalDate } from './calendarDates';
 import { parseTaskQuickAdd } from './parseTaskQuickAdd';
+import { useTaskToggle } from './useTaskToggle';
 import {
   bucketTodayTasks,
   showTomorrowPreview,
@@ -41,8 +40,8 @@ export default function TodayTasksPanel({ area, now }: Props) {
   useLoadAllPages(tasksQuery);
   useLoadAllPages(doneTodayQuery);
   const createMutation = useCreateTaskMutation();
-  const completeMutation = useCompleteTaskMutation();
-  const reopenMutation = useReopenTaskMutation();
+  const { toggle: toggleTask, error: toggleError } = useTaskToggle();
+  const [quickAddHint, setQuickAddHint] = useState<string | null>(null);
 
   const items = useMemo(() => {
     // A task completed here can sit in both caches; keep its newest copy.
@@ -64,7 +63,11 @@ export default function TodayTasksPanel({ area, now }: Props) {
 
   const submitQuickAdd = async () => {
     const parsed = parseTaskQuickAdd(quickAdd, today);
-    if (!parsed.title) return;
+    if (!parsed.title) {
+      setQuickAddHint('Add a title before the due date.');
+      return;
+    }
+    setQuickAddHint(null);
     await createMutation.mutateAsync({
       id: createUlid(),
       area: createArea,
@@ -79,11 +82,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
   };
 
   const toggle = (task: Task) => {
-    if (task.status === 'done') {
-      void reopenMutation.mutateAsync({ id: task.id, version: task.version });
-    } else {
-      void completeMutation.mutateAsync({ id: task.id, version: task.version });
-    }
+    void toggleTask(task);
   };
 
   return (
@@ -133,7 +132,10 @@ export default function TodayTasksPanel({ area, now }: Props) {
           type="text"
           placeholder="Quick-add task (defaults due today)"
           value={quickAdd}
-          onChange={(e) => setQuickAdd(e.target.value)}
+          onChange={(e) => {
+            setQuickAdd(e.target.value);
+            setQuickAddHint(null);
+          }}
           aria-label="Quick add task for today"
           disabled={createMutation.isPending}
         />
@@ -145,6 +147,14 @@ export default function TodayTasksPanel({ area, now }: Props) {
           Add
         </button>
       </form>
+
+      {quickAddHint ? <p className="admin-hint">{quickAddHint}</p> : null}
+
+      {toggleError ? (
+        <p className="admin-panel__error" role="alert">
+          {toggleError}
+        </p>
+      ) : null}
 
       {tasksQuery.isError ? (
         <p className="admin-panel__error" role="alert">

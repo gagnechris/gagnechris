@@ -2,6 +2,7 @@ import {
   useVersionedDocEditor as useVersionedDocEditorCore,
   type VersionedDocEditorOptions,
 } from '@gagnechris/app-core';
+import { browserRetrySignals } from './browserRetrySignals';
 import { useVersionedDocShell } from './useVersionedDocShell';
 
 /**
@@ -18,6 +19,7 @@ export function useVersionedDocEditor<
   const editor = useVersionedDocEditorCore({
     ...options,
     confirm: (message) => Promise.resolve(window.confirm(message)),
+    retrySignals: browserRetrySignals,
   });
 
   useVersionedDocShell({

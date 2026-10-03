@@ -2,6 +2,7 @@ import {
   useVersionedEntityEditor as useVersionedEntityEditorCore,
   type VersionedEntityEditorOptions,
 } from '@gagnechris/app-core';
+import { browserRetrySignals } from './browserRetrySignals';
 import { useVersionedDocShell } from './useVersionedDocShell';
 
 /**
@@ -25,6 +26,7 @@ export function useVersionedEntityEditor<
   const editor = useVersionedEntityEditorCore({
     ...options,
     confirm: (message) => Promise.resolve(window.confirm(message)),
+    retrySignals: browserRetrySignals,
   });
 
   useVersionedDocShell({

@@ -370,3 +370,157 @@ test('slug_taken 409 shows slug-taken message, not conflictMessage (CHR-160)', a
   );
   expect(result.current.saveError).not.toContain('Reload');
 });
+
+describe('useQueuedAutosave recovery (CHR-189)', () => {
+  const renderEdited = (
+    performSave: (
+      draft: string,
+      version: number,
+    ) => Promise<
+      | { ok: true; entity: { version: number } }
+      | { ok: false; status: number; error?: string }
+    >,
+    retrySignals?: (retry: () => void) => () => void,
+  ) => {
+    const versionRef = { current: 1 };
+    const hook = renderHook(() => {
+      const [draft, setDraft] = useState('a');
+      const [dirty, setDirty] = useState(false);
+      const autosave = useQueuedAutosave({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 900,
+        versionRef,
+        getVersion: (e: { version: number }) => e.version,
+        performSave,
+        onSaved: () => {},
+        conflictMessage: 'Conflict',
+        retrySignals,
+      });
+      return { ...autosave, setDraft, setDirty, dirty };
+    });
+    act(() => {
+      hook.result.current.bumpEdit();
+      hook.result.current.setDraft('typed');
+      hook.result.current.setDirty(true);
+    });
+    return hook;
+  };
+
+  test('flushes unsaved edits on unmount instead of dropping them', async () => {
+    const performSave = vi.fn(async () => ({
+      ok: true as const,
+      entity: { version: 2 },
+    }));
+    const { unmount } = renderEdited(performSave);
+
+    unmount();
+    await flush();
+
+    expect(performSave).toHaveBeenCalledTimes(1);
+    expect(performSave.mock.calls[0]).toEqual(['typed', 1]);
+  });
+
+  test('does not save on unmount when nothing is pending', async () => {
+    const performSave = vi.fn(async () => ({
+      ok: true as const,
+      entity: { version: 2 },
+    }));
+    const { result, unmount } = renderEdited(performSave);
+    act(() => {
+      result.current.markClean();
+    });
+
+    unmount();
+    await flush();
+
+    expect(performSave).not.toHaveBeenCalled();
+  });
+
+  test('retries a network failure on the retry signal without a new edit', async () => {
+    vi.useFakeTimers();
+    let online = false;
+    const performSave = vi.fn(async () =>
+      online
+        ? { ok: true as const, entity: { version: 2 } }
+        : { ok: false as const, status: 0 },
+    );
+    let fireRetry: (() => void) | undefined;
+    const { result } = renderEdited(performSave, (retry) => {
+      fireRetry = retry;
+      return () => {
+        fireRetry = undefined;
+      };
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(result.current.saveError).toBe('Save failed (0).');
+    expect(fireRetry).toBeDefined();
+
+    online = true;
+    await act(async () => {
+      fireRetry?.();
+      await Promise.resolve();
+    });
+    await flush();
+
+    expect(performSave).toHaveBeenCalledTimes(2);
+    expect(result.current.saveState).toBe('saved');
+    expect(result.current.dirty).toBe(false);
+    expect(fireRetry).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  test('backs off and retries server errors on its own', async () => {
+    vi.useFakeTimers();
+    const performSave = vi
+      .fn<
+        () => Promise<
+          | { ok: true; entity: { version: number } }
+          | { ok: false; status: number }
+        >
+      >()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({ ok: true, entity: { version: 2 } });
+    const { result } = renderEdited(performSave);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(performSave).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(performSave).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_999);
+    });
+    expect(performSave).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(performSave).toHaveBeenCalledTimes(3);
+    expect(result.current.saveState).toBe('saved');
+    vi.useRealTimers();
+  });
+
+  test('does not retry a conflict', async () => {
+    vi.useFakeTimers();
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status: 409,
+    }));
+    const { result } = renderEdited(performSave);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900 + 120_000);
+    });
+    expect(performSave).toHaveBeenCalledTimes(1);
+    expect(result.current.saveError).toBe('Conflict');
+    vi.useRealTimers();
+  });
+});

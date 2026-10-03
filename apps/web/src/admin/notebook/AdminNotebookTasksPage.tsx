@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
-  useCompleteTaskMutation,
   useCreateTaskMutation,
-  useReopenTaskMutation,
   useTasksQuery,
   type NotebookArea,
   type Task,
@@ -14,6 +12,7 @@ import { createUlid } from '../../lib/ulid';
 import { addLocalDays, localToday, parseLocalDate } from './calendarDates';
 import { areaQueryParam } from './notebookAreaPreference';
 import { parseTaskQuickAdd } from './parseTaskQuickAdd';
+import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from '../AdminNotebookLayout';
 
 type DueFilter = '' | 'overdue' | 'today' | 'week' | 'none';
@@ -80,8 +79,8 @@ export default function AdminNotebookTasksPage() {
     { enabled: showCompleted && !status },
   );
   const createMutation = useCreateTaskMutation();
-  const completeMutation = useCompleteTaskMutation();
-  const reopenMutation = useReopenTaskMutation();
+  const { toggle: toggleTask, error: toggleError } = useTaskToggle();
+  const [quickAddHint, setQuickAddHint] = useState<string | null>(null);
 
   const { openItems, doneItems } = useMemo(() => {
     const main = tasksQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -100,7 +99,11 @@ export default function AdminNotebookTasksPage() {
 
   const submitQuickAdd = async () => {
     const parsed = parseTaskQuickAdd(quickAdd, today);
-    if (!parsed.title) return;
+    if (!parsed.title) {
+      setQuickAddHint('Add a title before the due date.');
+      return;
+    }
+    setQuickAddHint(null);
     const createArea: NotebookArea =
       areaFilter === 'personal' ? 'personal' : 'work';
     await createMutation.mutateAsync({
@@ -117,11 +120,7 @@ export default function AdminNotebookTasksPage() {
   };
 
   const toggleComplete = (task: Task) => {
-    if (task.status === 'done') {
-      void reopenMutation.mutateAsync({ id: task.id, version: task.version });
-    } else {
-      void completeMutation.mutateAsync({ id: task.id, version: task.version });
-    }
+    void toggleTask(task);
   };
 
   return (
@@ -136,7 +135,8 @@ export default function AdminNotebookTasksPage() {
                 ? 'Work'
                 : 'Personal'}
             {' · '}
-            quick-add supports <code>!high</code> and <code>tomorrow</code>
+            quick-add supports <code>!high</code> and a trailing{' '}
+            <code>today</code> / <code>tomorrow</code>
           </p>
         </div>
       </div>
@@ -153,7 +153,10 @@ export default function AdminNotebookTasksPage() {
           type="text"
           placeholder="Add a task and press Enter"
           value={quickAdd}
-          onChange={(e) => setQuickAdd(e.target.value)}
+          onChange={(e) => {
+            setQuickAdd(e.target.value);
+            setQuickAddHint(null);
+          }}
           aria-label="Quick add task"
           disabled={createMutation.isPending}
         />
@@ -165,6 +168,12 @@ export default function AdminNotebookTasksPage() {
           Add
         </button>
       </form>
+      {quickAddHint ? <p className="admin-hint">{quickAddHint}</p> : null}
+      {toggleError ? (
+        <p className="admin-panel__error" role="alert">
+          {toggleError}
+        </p>
+      ) : null}
 
       <div className="admin-toolbar">
         <label className="admin-field">

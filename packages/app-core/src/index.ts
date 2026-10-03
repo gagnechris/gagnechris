@@ -1,5 +1,10 @@
 export { AppApiProvider, useGetApiClient } from './AppApiProvider.js';
-export { defaultTimers, type ConfirmFn, type Timers } from './platform.js';
+export {
+  defaultTimers,
+  type ConfirmFn,
+  type RetrySignals,
+  type Timers,
+} from './platform.js';
 export { mergeEditorSeo } from './mergeEditorSeo.js';
 export {
   useQueuedAutosave,

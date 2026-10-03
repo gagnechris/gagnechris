@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { defaultTimers, type Timers } from './platform.js';
+import { defaultTimers, type RetrySignals, type Timers } from './platform.js';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -33,7 +33,20 @@ type Options<TDraft, TEntity> = {
   conflictMessages?: Record<string, string>;
   /** Defaults to `globalThis` timers (no `window`). */
   timers?: Timers;
+  /**
+   * Extra "try again now" signals for retryable failures (network / 5xx),
+   * e.g. the browser `online` event. Backoff retries run regardless (CHR-189).
+   */
+  retrySignals?: RetrySignals;
+  /** Backoff schedule for retryable failures; last entry repeats. */
+  retryDelaysMs?: readonly number[];
 };
+
+const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
+
+/** Network errors (0), rate limits and server errors are worth retrying. */
+const isRetryableStatus = (status: number) =>
+  status === 0 || status === 408 || status === 429 || status >= 500;
 
 /**
  * Single-flight autosave with a latest-draft queue.
@@ -60,11 +73,15 @@ export function useQueuedAutosave<TDraft, TEntity>({
   conflictMessage,
   conflictMessages,
   timers = defaultTimers,
+  retrySignals,
+  retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   /** Re-render token so debounce effect cancels when hold flips. */
   const [held, setHeld] = useState(false);
+  /** Consecutive retryable failures; > 0 arms the retry loop (CHR-189). */
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   const draftRef = useRef(draft);
   const editGenRef = useRef(0);
@@ -151,6 +168,9 @@ export function useQueuedAutosave<TDraft, TEntity>({
           );
           if (!result.ok) {
             setSaveState('error');
+            setRetryAttempt((n) =>
+              isRetryableStatus(result.status) ? n + 1 : 0,
+            );
             const codeMessage =
               result.error && conflictMessages
                 ? conflictMessages[result.error]
@@ -164,6 +184,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
             break;
           }
 
+          setRetryAttempt(0);
           versionRef.current = getVersionRef.current(result.entity);
           onSavedRef.current(result.entity);
           lastSavedGenRef.current = genAtStart;
@@ -191,6 +212,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
         }
       } catch {
         outcome = 'error';
+        setRetryAttempt((n) => n + 1);
         setSaveState('error');
         setSaveError('Save failed.');
       } finally {
@@ -211,6 +233,44 @@ export function useQueuedAutosave<TDraft, TEntity>({
     }, debounceMs);
     return () => timersRef.current.clearTimeout(handle);
   }, [dirty, draft, debounceMs, enabled, save, held]);
+
+  // After a retryable failure the debounce above will not fire again until the
+  // next edit, so retry on a backoff timer and on any injected signal (e.g.
+  // back online) until a save lands or a non-retryable error stops it.
+  const retrySignalsRef = useRef(retrySignals);
+  useEffect(() => {
+    retrySignalsRef.current = retrySignals;
+  }, [retrySignals]);
+  useEffect(() => {
+    if (!enabled || !dirty || held || retryAttempt === 0) return;
+    const retry = () => {
+      if (heldRef.current || chainRef.current) return;
+      void save();
+    };
+    const delay =
+      retryDelaysMs[Math.min(retryAttempt, retryDelaysMs.length) - 1] ?? 0;
+    const handle = timersRef.current.setTimeout(retry, delay);
+    const unsubscribe = retrySignalsRef.current?.(retry);
+    return () => {
+      timersRef.current.clearTimeout(handle);
+      unsubscribe?.();
+    };
+  }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save]);
+
+  // Unmount (route change, editor re-keyed by date/area) cancels the debounce
+  // timer above; flush unsaved edits instead of dropping them (CHR-189).
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+  useEffect(
+    () => () => {
+      if (heldRef.current) return;
+      if (editGenRef.current === lastSavedGenRef.current) return;
+      void saveRef.current();
+    },
+    [],
+  );
 
   const awaitInFlight = useCallback((): Promise<FlushResult> => {
     return chainRef.current ?? Promise.resolve('clean');

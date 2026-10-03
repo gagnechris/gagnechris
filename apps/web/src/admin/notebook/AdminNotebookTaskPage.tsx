@@ -1,14 +1,10 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import {
-  taskResource,
-  useCompleteTaskMutation,
-  useDeleteTaskMutation,
-  useReopenTaskMutation,
-} from '@gagnechris/app-core';
+import { taskResource, useDeleteTaskMutation } from '@gagnechris/app-core';
 import { Field, Select, TextInput } from '../../ui/Field';
 import { SaveIndicator } from '../../ui/SaveIndicator';
 import { useVersionedDocEditor } from '../useVersionedDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { useTaskToggle } from './useTaskToggle';
 import {
   emptyTaskDraft,
   taskDraftFromTask,
@@ -19,8 +15,11 @@ export default function AdminNotebookTaskPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const deleteMutation = useDeleteTaskMutation();
-  const completeMutation = useCompleteTaskMutation();
-  const reopenMutation = useReopenTaskMutation();
+  const {
+    toggle: toggleTask,
+    error: toggleError,
+    pending: togglePending,
+  } = useTaskToggle();
 
   const {
     draft,
@@ -77,19 +76,7 @@ export default function AdminNotebookTaskPage() {
     );
   }
 
-  const toggleDone = async () => {
-    if (entity.status === 'done') {
-      await reopenMutation.mutateAsync({
-        id: entity.id,
-        version: entity.version,
-      });
-    } else {
-      await completeMutation.mutateAsync({
-        id: entity.id,
-        version: entity.version,
-      });
-    }
-  };
+  const toggleDone = () => toggleTask(entity);
 
   return (
     <section className="admin-panel admin-panel--editor">
@@ -112,12 +99,7 @@ export default function AdminNotebookTaskPage() {
           <button
             type="button"
             className="admin-btn"
-            disabled={
-              busy ||
-              dirty ||
-              completeMutation.isPending ||
-              reopenMutation.isPending
-            }
+            disabled={busy || dirty || togglePending}
             onClick={() => void toggleDone()}
             title={dirty ? 'Save before completing' : undefined}
           >
@@ -137,6 +119,11 @@ export default function AdminNotebookTaskPage() {
       {saveError ? (
         <p className="admin-panel__error" role="alert">
           {saveError}
+        </p>
+      ) : null}
+      {toggleError ? (
+        <p className="admin-panel__error" role="alert">
+          {toggleError}
         </p>
       ) : null}
 

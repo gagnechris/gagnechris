@@ -281,9 +281,10 @@ export class TasksRepository {
   }
 
   reopen(userId: string, id: string, expected: number | 'any'): Promise<Task> {
+    // Reopen undoes completion only; an in-progress task keeps its status.
     return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
       ...existing,
-      status: 'todo',
+      status: existing.status === 'done' ? 'todo' : existing.status,
       completedAt: null,
       updatedAt: now,
     }));

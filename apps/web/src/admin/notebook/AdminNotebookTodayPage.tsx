@@ -8,12 +8,7 @@ import {
 import { SaveIndicator } from '../../ui/SaveIndicator';
 import type { NotebookOutletContext } from '../AdminNotebookLayout';
 import { useVersionedDocEditor } from '../useVersionedDocEditor';
-import {
-  addLocalDays,
-  localToday,
-  monthBounds,
-  parseLocalDate,
-} from './calendarDates';
+import { addLocalDays, monthBounds, parseLocalDate } from './calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import {
@@ -22,13 +17,36 @@ import {
   notePayloadFromDraft,
 } from './noteDraft';
 import TodayTasksPanel from './TodayTasksPanel';
+import { useLocalToday } from './useLocalToday';
 
-function resolveDate(param: string | null): string {
+function resolveDate(param: string | null, today: string): string {
   if (param && parseLocalDate(param)) return param;
-  return localToday();
+  return today;
 }
 
-function TodayEditor({ area, date }: { area: NotebookArea; date: string }) {
+/** "Today" for today, otherwise the weekday and date being written. */
+function dayHeading(date: string, today: string): string {
+  if (date === today) return 'Today';
+  const parsed = parseLocalDate(date);
+  return parsed
+    ? parsed.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : date;
+}
+
+function TodayEditor({
+  area,
+  date,
+  today,
+}: {
+  area: NotebookArea;
+  date: string;
+  today: string;
+}) {
   const {
     draft,
     updateDraft,
@@ -76,7 +94,7 @@ function TodayEditor({ area, date }: { area: NotebookArea; date: string }) {
     <>
       <div className="admin-action-bar">
         <div className="admin-action-bar__status">
-          <h1>Today</h1>
+          <h1>{dayHeading(date, today)}</h1>
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
         <div className="admin-toolbar" style={{ marginBottom: 0 }}>
@@ -112,7 +130,8 @@ function TodayEditor({ area, date }: { area: NotebookArea; date: string }) {
 export default function AdminNotebookTodayPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const date = resolveDate(searchParams.get('date'));
+  const today = useLocalToday();
+  const date = resolveDate(searchParams.get('date'), today);
   const { from, to } = useMemo(() => monthBounds(date), [date]);
 
   const writingArea: NotebookArea | null =
@@ -125,13 +144,11 @@ export default function AdminNotebookTodayPage() {
     writingArea !== null,
   );
 
+  // Push (not replace) so Back steps through the days visited (CHR-189).
+  // Leaving a day unmounts its editor, which flushes unsaved text.
   const setDate = (next: string) => {
-    const today = localToday();
-    if (next === today) {
-      setSearchParams({}, { replace: true });
-    } else {
-      setSearchParams({ date: next }, { replace: true });
-    }
+    if (next === date) return;
+    setSearchParams(next === today ? {} : { date: next });
   };
 
   return (
@@ -149,7 +166,7 @@ export default function AdminNotebookTodayPage() {
             <button
               type="button"
               className="admin-btn"
-              onClick={() => setDate(localToday())}
+              onClick={() => setDate(today)}
             >
               Jump to today
             </button>
@@ -173,10 +190,11 @@ export default function AdminNotebookTodayPage() {
               key={`${writingArea}:${date}`}
               area={writingArea}
               date={date}
+              today={today}
             />
           ) : (
             <>
-              <h1>Today</h1>
+              <h1>{dayHeading(date, today)}</h1>
               <p className="admin-panel__lede">
                 Choose Work or Personal in the area switcher to write a daily
                 note. All is for browsing lists only.
