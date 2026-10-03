@@ -166,10 +166,18 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
     preferNewerByVersion(prev, note),
   );
   if (note.type === 'daily' && note.date) {
-    queryClient.setQueryData<Note>(
-      queryKeys.notes.daily(note.area, note.date),
-      (prev) => preferNewerByVersion(prev, note),
-    );
+    const dailyKey = queryKeys.notes.daily(note.area, note.date);
+    if (note.deleted) {
+      // The day's key must fall back to the server's fresh placeholder; a
+      // tombstone there would outrank it by version and every save would 409.
+      if (queryClient.getQueryData<Note>(dailyKey)?.id === note.id) {
+        queryClient.removeQueries({ queryKey: dailyKey, exact: true });
+      }
+    } else {
+      queryClient.setQueryData<Note>(dailyKey, (prev) =>
+        preferNewerByVersion(prev, note),
+      );
+    }
     for (const [key, data] of queryClient.getQueriesData<Set<string>>({
       queryKey: [...queryKeys.notes.all, 'daily-dates'],
     })) {

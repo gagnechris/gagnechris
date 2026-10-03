@@ -12,6 +12,10 @@ import { preferNewerByVersion } from './cache.js';
 
 export type VersionedEntity = { version: number };
 
+const isTombstone = (entity: object): boolean =>
+  ('deleted' in entity && entity.deleted === true) ||
+  ('status' in entity && entity.status === 'deleted');
+
 export type VersionedResourceConfig<
   TEntity extends VersionedEntity,
   TParams,
@@ -45,6 +49,9 @@ export function createVersionedResource<
       queryFn: async () => {
         const fetched = await config.fetch(getClient(), params);
         const cached = queryClient.getQueryData<TEntity>(key);
+        // A deleted entry never beats what the server serves now (for a
+        // daily, a fresh placeholder at version 0).
+        if (cached && isTombstone(cached)) return fetched;
         return preferNewerByVersion(cached, fetched);
       },
       enabled,

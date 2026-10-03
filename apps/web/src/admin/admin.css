@@ -236,18 +236,12 @@
   flex: 1 1 12rem;
 }
 
-.notebook-search__group h3 {
+.notebook-search__group-label {
   margin: var(--space-3) 0 var(--space-2);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--neutral-600);
-}
-
-.notebook-search__group ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 
 .notebook-search__hit {
@@ -259,6 +253,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
+  color: var(--neutral-900);
   text-align: left;
   cursor: pointer;
 }
@@ -277,7 +272,7 @@
 }
 
 .notebook-search__hit-snippet {
-  font-size: var(--font-size-sm);
+  font-size: var(--text-sm);
   color: var(--neutral-700);
 }
 

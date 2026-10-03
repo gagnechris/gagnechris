@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { taskListToggle } from '../../components/markdown/taskListToggle';
 import MarkdownPreview from '../../components/markdown/MarkdownPreview';
+import '../../components/markdown/markdown.css';
 
 const MarkdownEditor = lazy(
   () => import('../../components/markdown/MarkdownEditor'),
