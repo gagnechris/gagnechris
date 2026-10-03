@@ -1,10 +1,17 @@
 import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_RESUME, type Post, type Resume } from '@gagnechris/shared';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  DEFAULT_HOME,
+  DEFAULT_RESUME,
+  type Home,
+  type Post,
+  type Resume,
+} from '@gagnechris/shared';
 import { rebuildPublishedSite } from '../src/s3-site.js';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
+import type { SiteStorage } from '../src/storage.js';
 import { RESUME_PDF_KEY } from '../src/resume-pdf.js';
 
 const SHELL =
@@ -131,5 +138,69 @@ describe('rebuildPublishedSite corrupt rows (CHR-160)', () => {
     await expect(
       access(join(root, 'blog', 'gone', 'index.html')),
     ).rejects.toThrow();
+  });
+
+  it('no-op full rebuild with a published resume puts nothing and invalidates nothing (CHR-201)', async () => {
+    const fs = createFilesystemSiteStorage(root);
+    const puts: string[] = [];
+    const deletes: string[] = [];
+    const invalidations: string[][] = [];
+    // Record only real writes (put/delete return true when bytes changed).
+    const storage: SiteStorage = {
+      ...fs,
+      async put(...args) {
+        const wrote = await fs.put(...args);
+        if (wrote) puts.push(args[0]);
+        return wrote;
+      },
+      async delete(key) {
+        const deleted = await fs.delete(key);
+        if (deleted) deletes.push(key);
+        return deleted;
+      },
+      async invalidate(paths) {
+        invalidations.push([...paths]);
+      },
+    };
+    const home: Home = {
+      ...DEFAULT_HOME,
+      status: 'published',
+      publishedAt: '2026-09-27T12:00:00.000Z',
+      updatedAt: '2026-09-27T12:00:00.000Z',
+      version: 1,
+      hasUnpublishedChanges: false,
+    };
+    const post = { ...publishedPost(), slug: 'steady-post' };
+    const sources = {
+      listPublishedPosts: async () => ({ posts: [post], corruptSlugs: [] }),
+      getPublishedResume: async () => ({
+        status: 'ok' as const,
+        entity: publishedResume(),
+      }),
+      getPublishedHome: async () => ({ status: 'ok' as const, entity: home }),
+    };
+
+    // Real renderResumePdf: pdf-lib stamps "now" unless the dates are pinned.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-01T00:00:00.000Z'));
+      const first = await rebuildPublishedSite({ storage, sources });
+      expect(first.resumePublished).toBe(true);
+      expect(first.resumePdfFailed).toBe(false);
+      expect(puts).toContain(RESUME_PDF_KEY);
+
+      puts.length = 0;
+      deletes.length = 0;
+      invalidations.length = 0;
+      vi.setSystemTime(new Date('2026-10-02T09:30:00.000Z'));
+      const second = await rebuildPublishedSite({ storage, sources });
+
+      expect(puts).toEqual([]);
+      expect(deletes).toEqual([]);
+      expect(second.invalidated).toEqual([]);
+      expect(invalidations).toEqual([[]]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

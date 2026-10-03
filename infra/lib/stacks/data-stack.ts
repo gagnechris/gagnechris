@@ -39,6 +39,7 @@ import {
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { metricAlarm } from '../constructs/emf-alarm.js';
+import { AppTableRestoreTesting } from '../constructs/restore-testing.js';
 
 function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
   switch (code) {
@@ -130,6 +131,8 @@ const BACKUP_FAILURE_STATES = ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'];
 
 export class DataStack extends Stack {
   readonly table: Table;
+  /** Weekly AWS Backup restore test + validator (CHR-198). */
+  readonly restoreTesting: AppTableRestoreTesting;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
@@ -241,11 +244,21 @@ export class DataStack extends Stack {
       true,
     );
 
+    // Weekly restore test from the vault, content-validated, auto-deleted
+    // (CHR-198). Replaces the PITR rehearsal that ran on every deploy.
+    this.restoreTesting = new AppTableRestoreTesting(this, 'RestoreTesting', {
+      config,
+      table: this.table,
+      backupVault,
+      alertsTopic,
+    });
+
     // Failed, aborted, expired or partial backup/restore/copy jobs email the
     // Guardrails topic (CHR-197). The three event types name their fields
     // differently: restore jobs report `status` (not `state`) and carry no
     // `backupVaultName`, and copy jobs only name the source/destination vault
     // ARNs. Hence one `$or` branch per type, keyed on fields each one has.
+    // Restore-testing jobs also match on their plan ARN (CHR-198).
     new Rule(this, 'BackupJobFailureRule', {
       ruleName: `gagnechris-${config.name}-backup-job-failures`,
       description: 'AWS Backup job failed, aborted, expired or partial',
@@ -269,6 +282,12 @@ export class DataStack extends Stack {
             {
               state: BACKUP_FAILURE_STATES,
               sourceBackupVaultArn: [backupVault.backupVaultArn],
+            },
+            {
+              status: BACKUP_FAILURE_STATES,
+              restoreTestingPlanArn: [
+                this.restoreTesting.plan.attrRestoreTestingPlanArn,
+              ],
             },
           ],
         },

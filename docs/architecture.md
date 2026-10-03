@@ -41,11 +41,14 @@ API repositories share one layering:
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
-Integrity notes (CHR-160 / CHR-167):
+Integrity notes (CHR-160 / CHR-167 / CHR-201):
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
 - Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post (CHR-167).
+- Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished (CHR-201).
+- Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise (CHR-201).
+- `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing (CHR-201).
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
 - List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400** (CHR-170).
@@ -233,7 +236,7 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 
 **`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Current excludes include `blog/*`, `resume/*`, `home/*`, `media/*`, **`notebook/*`** (reserved for any future site-bucket notebook exports), `sitemap.xml`, `rss.xml`. When CHR-42 adds attachments, put bytes in the private bucket above — do not rely on `/media/*`.
 
-**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are; treat Backup + rehearsed PITR restore as required before storing irreplaceable notes. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
+**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are. Restores are proven off the deploy path (CHR-198): a weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
 
 ## Related
 
