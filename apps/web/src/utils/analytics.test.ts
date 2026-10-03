@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   trackPageView,
   trackEvent,
@@ -7,7 +7,10 @@ import {
   trackBearsGameStart,
   trackBearsGameComplete,
   trackBearsTipLinkClick,
+  setAnalyticsEnabledForPath,
+  GA_MEASUREMENT_ID,
 } from './analytics';
+import { isPrivatePath } from './privatePaths';
 
 const mockGtag = vi.fn();
 
@@ -144,6 +147,62 @@ describe('analytics utilities', () => {
       }).not.toThrow();
 
       globalThis.window = originalWindow;
+    });
+  });
+
+  describe('private routes (CHR-194)', () => {
+    const disableKey = `ga-disable-${GA_MEASUREMENT_ID}`;
+    const flags = window as unknown as Record<string, unknown>;
+
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+      delete flags[disableKey];
+    });
+
+    test('isPrivatePath matches /admin and /auth only', () => {
+      for (const path of [
+        '/admin',
+        '/admin/',
+        '/admin/notebook/notes/01J9ZX',
+        '/admin?date=2026-10-03',
+        '/auth/callback',
+      ]) {
+        expect(isPrivatePath(path)).toBe(true);
+      }
+      for (const path of [
+        '/',
+        '/posts/admin',
+        '/administrator',
+        '/authors',
+        '/resume',
+      ]) {
+        expect(isPrivatePath(path)).toBe(false);
+      }
+    });
+
+    test('trackPageView ignores private paths', () => {
+      trackPageView('/admin/notebook/notes/01J9ZX');
+      trackPageView('/auth/callback');
+
+      expect(mockGtag).not.toHaveBeenCalled();
+    });
+
+    test('events are not sent while a private route is showing', () => {
+      window.history.replaceState(null, '', '/admin/notebook/today');
+
+      trackPageView('/resume');
+      trackEvent('click', 'link');
+      trackBearsGameStart('direct');
+
+      expect(mockGtag).not.toHaveBeenCalled();
+    });
+
+    test('setAnalyticsEnabledForPath toggles the gtag disable flag', () => {
+      setAnalyticsEnabledForPath('/admin/notebook');
+      expect(flags[disableKey]).toBe(true);
+
+      setAnalyticsEnabledForPath('/posts');
+      expect(flags[disableKey]).toBe(false);
     });
   });
 });

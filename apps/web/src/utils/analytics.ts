@@ -1,15 +1,38 @@
+import { isPrivatePath } from './privatePaths';
+
 declare global {
   interface Window {
     gtag: (command: string, ...args: unknown[]) => void;
   }
 }
 
+export const GA_MEASUREMENT_ID = 'G-CDG30T24XY';
+
+/**
+ * gtag is only loaded on public pages (spa.html strips it), but never report
+ * from /admin or /auth even if it is present (CHR-194).
+ */
+const canTrack = () =>
+  typeof window !== 'undefined' &&
+  Boolean(window.gtag) &&
+  !isPrivatePath(window.location.pathname);
+
+/**
+ * Turns gtag off while a private route is showing, so its own hits
+ * (enhanced-measurement outbound clicks, history page views) stop too.
+ */
+export const setAnalyticsEnabledForPath = (pathname: string) => {
+  if (typeof window === 'undefined') return;
+  (window as unknown as Record<string, unknown>)[
+    `ga-disable-${GA_MEASUREMENT_ID}`
+  ] = isPrivatePath(pathname);
+};
+
 export const trackPageView = (url: string) => {
-  if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', 'G-CDG30T24XY', {
-      page_path: url,
-    });
-  }
+  if (isPrivatePath(url) || !canTrack()) return;
+  window.gtag('config', GA_MEASUREMENT_ID, {
+    page_path: url,
+  });
 };
 
 export const trackEvent = (
@@ -18,7 +41,7 @@ export const trackEvent = (
   label?: string,
   value?: number,
 ) => {
-  if (typeof window !== 'undefined' && window.gtag) {
+  if (canTrack()) {
     window.gtag('event', action, {
       event_category: category,
       event_label: label,
@@ -43,7 +66,7 @@ const trackNamedEvent = (
   name: string,
   params: Record<string, string | number | undefined>,
 ) => {
-  if (typeof window !== 'undefined' && window.gtag) {
+  if (canTrack()) {
     window.gtag('event', name, params);
   }
 };

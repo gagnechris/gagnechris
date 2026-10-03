@@ -7,6 +7,7 @@ import * as analytics from '../utils/analytics';
 vi.mock('../utils/analytics');
 
 const mockTrackPageView = vi.mocked(analytics.trackPageView);
+const mockSetEnabled = vi.mocked(analytics.setAnalyticsEnabledForPath);
 
 describe('RouteTracker', () => {
   beforeEach(() => {
@@ -80,5 +81,17 @@ describe('RouteTracker', () => {
     routes.forEach((route) => {
       expect(mockTrackPageView).toHaveBeenCalledWith(route);
     });
+  });
+
+  test('passes private routes to the analytics guard (CHR-194)', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/notebook/today']}>
+        <RouteTracker>
+          <div>Admin</div>
+        </RouteTracker>
+      </MemoryRouter>,
+    );
+
+    expect(mockSetEnabled).toHaveBeenCalledWith('/admin/notebook/today');
   });
 });
