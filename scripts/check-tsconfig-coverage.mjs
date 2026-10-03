@@ -15,6 +15,7 @@ const workspaces = [
   'services/publisher',
   'services/restore-test',
   'infra',
+  'e2e',
 ];
 
 const ignoreDirNames = new Set([
@@ -23,6 +24,9 @@ const ignoreDirNames = new Set([
   'coverage',
   'cdk.out',
   '.local-site',
+  '.stack',
+  'test-results',
+  'playwright-report',
 ]);
 
 function walkTsFiles(dir, out = []) {

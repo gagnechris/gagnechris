@@ -48,15 +48,20 @@ describe('Camp Rules page', () => {
 });
 
 describe('Stay Wild page', () => {
-  test('says the game is coming and points to Camp Rules', () => {
+  test('explains the game and starts it with the entry point', () => {
     renderAt('/dont-feed-the-bears/wild?from=footer', <StayWild />);
 
     expect(
       screen.getByRole('heading', { level: 1, name: 'Stay Wild' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Play as the camper' }),
-    ).toHaveAttribute('href', '/dont-feed-the-bears/camp?from=footer');
+      screen.getByRole('heading', { name: 'Help Maple get ready for winter' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Sound: Off' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wake up, Maple' }));
+    expect(trackBearsGameStart).toHaveBeenCalledWith('wild', 'footer');
   });
 });

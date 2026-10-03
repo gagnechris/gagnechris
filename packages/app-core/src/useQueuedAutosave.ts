@@ -4,6 +4,11 @@ import {
   NOTEBOOK_TEXT_MAX_BYTES,
   NOTEBOOK_TITLE_MAX_LENGTH,
 } from '@gagnechris/shared';
+import {
+  registerPendingFlush,
+  resolvePendingFlush,
+  type PendingFlush,
+} from './pendingFlushes.js';
 import { defaultTimers, type RetrySignals, type Timers } from './platform.js';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -33,6 +38,11 @@ type Options<TDraft, TEntity> = {
   retrySignals?: RetrySignals;
   /** Last entry repeats. */
   retryDelaysMs?: readonly number[];
+  /**
+   * Identifies the document. With a key, edits still unsaved at unmount keep
+   * retrying in the background until a remount of the same key adopts them.
+   */
+  queueKey?: string;
 };
 
 export const TOO_LARGE_MESSAGE = `Too large to save: notes and descriptions are limited to ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB, titles to ${NOTEBOOK_TITLE_MAX_LENGTH} characters and tags to ${NOTEBOOK_TAGS_MAX}.`;
@@ -65,6 +75,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   timers = defaultTimers,
   retrySignals,
   retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+  queueKey,
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,10 +95,25 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const onSavedRef = useRef(onSaved);
   const getVersionRef = useRef(getVersion);
   const timersRef = useRef(timers);
+  const dirtyRef = useRef(dirty);
+  const lastFailureRetryableRef = useRef(false);
+  // Refs so inline message objects do not give save() a new identity each
+  // render, which would re-arm the debounce after every failure.
+  const conflictMessageRef = useRef(conflictMessage);
+  const conflictMessagesRef = useRef(conflictMessages);
 
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  useEffect(() => {
+    conflictMessageRef.current = conflictMessage;
+    conflictMessagesRef.current = conflictMessages;
+  }, [conflictMessage, conflictMessages]);
 
   useEffect(() => {
     setDirtyRef.current = setDirty;
@@ -156,17 +182,16 @@ export function useQueuedAutosave<TDraft, TEntity>({
             versionRef.current,
           );
           if (!result.ok) {
+            const retryable = isRetryableStatus(result.status);
+            lastFailureRetryableRef.current = retryable;
             setSaveState('error');
-            setRetryAttempt((n) =>
-              isRetryableStatus(result.status) ? n + 1 : 0,
-            );
-            const codeMessage =
-              result.error && conflictMessages
-                ? conflictMessages[result.error]
-                : undefined;
+            setRetryAttempt((n) => (retryable ? n + 1 : 0));
+            const codeMessage = result.error
+              ? conflictMessagesRef.current?.[result.error]
+              : undefined;
             setSaveError(
               result.status === 409
-                ? (codeMessage ?? conflictMessage)
+                ? (codeMessage ?? conflictMessageRef.current)
                 : result.status === 413
                   ? TOO_LARGE_MESSAGE
                   : `Save failed (${result.status}).`,
@@ -201,6 +226,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
         }
       } catch {
         outcome = 'error';
+        lastFailureRetryableRef.current = true;
         setRetryAttempt((n) => n + 1);
         setSaveState('error');
         setSaveError('Save failed.');
@@ -212,7 +238,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     })();
 
     return promise;
-  }, [conflictMessage, conflictMessages, enabled, versionRef]);
+  }, [enabled, versionRef]);
 
   useEffect(() => {
     if (!enabled || !dirty || held) return;
@@ -250,13 +276,74 @@ export function useQueuedAutosave<TDraft, TEntity>({
   useEffect(() => {
     saveRef.current = save;
   }, [save]);
+  const queueKeyRef = useRef(queueKey);
+  const retryDelaysRef = useRef(retryDelaysMs);
+  useEffect(() => {
+    queueKeyRef.current = queueKey;
+    retryDelaysRef.current = retryDelaysMs;
+  }, [queueKey, retryDelaysMs]);
   useEffect(
     () => () => {
       if (heldRef.current) return;
-      if (editGenRef.current === lastSavedGenRef.current) return;
-      void saveRef.current();
+      if (!dirtyRef.current && editGenRef.current === lastSavedGenRef.current)
+        return;
+      const key = queueKeyRef.current;
+      if (!key) {
+        void saveRef.current();
+        return;
+      }
+      // save() keeps working after unmount: it reads refs, and React ignores
+      // the state updates.
+      let stopped = false;
+      // Set by a signal that lands mid-request, so it is not lost.
+      let signalled = false;
+      let wake: (() => void) | null = null;
+      const unsubscribe = retrySignalsRef.current?.(() => {
+        signalled = true;
+        wake?.();
+      });
+      const wait = (ms: number) =>
+        new Promise<void>((resolve) => {
+          const t = timersRef.current;
+          const handle = t.setTimeout(() => wake?.(), ms);
+          wake = () => {
+            t.clearTimeout(handle);
+            wake = null;
+            resolve();
+          };
+        });
+      const entry: PendingFlush = {
+        draft: () => draftRef.current,
+        version: () => versionRef.current,
+        settle: () => {
+          stopped = true;
+          wake?.();
+          return run;
+        },
+      };
+      const run = (async (): Promise<FlushResult> => {
+        try {
+          for (let attempt = 1; ; attempt += 1) {
+            signalled = false;
+            const outcome = await saveRef.current();
+            if (outcome === 'clean') {
+              resolvePendingFlush(key, entry);
+              return outcome;
+            }
+            if (stopped || !lastFailureRetryableRef.current) return outcome;
+            if (!signalled) {
+              const delays = retryDelaysRef.current;
+              await wait(delays[Math.min(attempt, delays.length) - 1] ?? 0);
+            }
+            if (stopped) return outcome;
+          }
+        } finally {
+          unsubscribe?.();
+        }
+      })();
+      registerPendingFlush(key, entry);
     },
-    [],
+    [versionRef],
   );
 
   const awaitInFlight = useCallback((): Promise<FlushResult> => {

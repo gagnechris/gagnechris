@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetApiClient } from './AppApiProvider.js';
+import { peekPendingFlush, takePendingFlush } from './pendingFlushes.js';
 import type { ConfirmFn, RetrySignals } from './platform.js';
 import { ApiError } from './query/api.js';
 import type { VersionedResource } from './query/createVersionedResource.js';
@@ -60,6 +61,7 @@ export function useVersionedDocEditor<
   const getClient = useGetApiClient();
   const query = resource.useQuery(params, enabled);
   const setCache = resource.useSetCache();
+  const queueKey = JSON.stringify(resource.queryKey(params));
 
   const [draft, setDraft] = useState<TDraft>(initialDraft);
   const [hydratedId, setHydratedId] = useState<string | null>(null);
@@ -73,6 +75,32 @@ export function useVersionedDocEditor<
   const onHydrateRef = useRef(onHydrate);
   const toDraftRef = useRef(toDraft);
   const getEntityIdRef = useRef(getEntityId);
+  // A previous mount of this document may still be saving (or failing to
+  // save) its last edits; hydrating before that settles shows stale text
+  // and binds a version that is about to be superseded.
+  const [adopting, setAdopting] = useState(() =>
+    Boolean(peekPendingFlush(queueKey)),
+  );
+  const [adopted, setAdopted] = useState<{
+    draft: TDraft;
+    version: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!peekPendingFlush(queueKey)) return;
+    let cancelled = false;
+    setAdopting(true);
+    void takePendingFlush(queueKey).then((taken) => {
+      if (cancelled) return;
+      if (taken && taken.outcome !== 'clean') {
+        setAdopted({ draft: taken.draft as TDraft, version: taken.version });
+      }
+      setAdopting(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [queueKey]);
 
   useEffect(() => {
     onHydrateRef.current = onHydrate;
@@ -90,12 +118,19 @@ export function useVersionedDocEditor<
   if (
     entity &&
     isFetchedAfterMount &&
+    !adopting &&
     getEntityIdRef.current(entity) !== hydratedId
   ) {
     setHydratedId(getEntityIdRef.current(entity));
-    setDraft(toDraftRef.current(entity));
-    setDirty(false);
-    setBoundVersion(entity.version);
+    if (adopted) {
+      setDraft(adopted.draft);
+      setDirty(true);
+      setBoundVersion(adopted.version);
+    } else {
+      setDraft(toDraftRef.current(entity));
+      setDirty(false);
+      setBoundVersion(entity.version);
+    }
     onHydrateRef.current?.(entity);
   }
 
@@ -174,6 +209,7 @@ export function useVersionedDocEditor<
     conflictMessage,
     conflictMessages,
     retrySignals,
+    queueKey,
   });
 
   const {
@@ -265,6 +301,7 @@ export function useVersionedDocEditor<
   const isLoading =
     Boolean(enabled) &&
     (isPending ||
+      adopting ||
       !isFetchedAfterMount ||
       !entity ||
       hydratedId !== getEntityIdRef.current(entity));

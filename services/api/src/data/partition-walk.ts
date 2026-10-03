@@ -1,3 +1,5 @@
+import { PAGE_BYTE_BUDGET, jsonByteLength } from './page-budget.js';
+
 // Results are grouped by partition, not globally sorted.
 
 type PartitionPage<T> = { items: T[]; nextCursor?: string };
@@ -44,7 +46,11 @@ function decodeComposite(
   }
 }
 
-/** `fetchPage` may return fewer items than asked (post-filters) as long as `nextCursor` advances. */
+/**
+ * `fetchPage` may return fewer items than asked (post-filters or its byte
+ * share) as long as `nextCursor` advances. Stops at `limit` items or once the
+ * page reaches `byteBudget` JSON bytes, whichever comes first.
+ */
 export async function walkPartitions<P, T>(
   partitions: readonly P[],
   cursor: string | undefined,
@@ -53,24 +59,34 @@ export async function walkPartitions<P, T>(
     partition: P,
     innerCursor: string | undefined,
     remaining: number,
+    remainingBytes: number,
   ) => Promise<PartitionPage<T>>,
+  byteBudget: number = PAGE_BYTE_BUDGET,
 ): Promise<{ items: T[]; nextCursor?: string }> {
   let { p, k } = decodeComposite(cursor, partitions.length);
   const items: T[] = [];
+  let bytes = 0;
+  const full = () => items.length >= limit || bytes >= byteBudget;
   while (p < partitions.length) {
     const remaining = limit - items.length;
-    const page = await fetchPage(partitions[p]!, k, remaining);
+    const page = await fetchPage(
+      partitions[p]!,
+      k,
+      remaining,
+      byteBudget - bytes,
+    );
+    for (const item of page.items) bytes += jsonByteLength(item);
     items.push(...page.items);
     if (page.nextCursor) {
       k = page.nextCursor;
-      if (items.length >= limit) {
+      if (full()) {
         return { items, nextCursor: encodeComposite({ p, k }) };
       }
       continue;
     }
     p += 1;
     k = undefined;
-    if (items.length >= limit) {
+    if (full()) {
       return p < partitions.length
         ? { items, nextCursor: encodeComposite({ p }) }
         : { items };

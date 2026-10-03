@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
 import { isDevProdApiTarget } from '../api/apiTarget';
 import RequireAuth from '../auth/RequireAuth';
 import { signOutUser, type AuthUser } from '../auth/session';
@@ -10,6 +12,17 @@ import './admin.css';
 function AdminChrome({ user }: { user: AuthUser }) {
   const prodApi = isDevProdApiTarget();
   useVisualViewportCssVars();
+
+  // Editors that already unmounted can still be retrying a save.
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasPendingFlushes()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
 
   return (
     <div className="admin-shell">
@@ -41,7 +54,10 @@ function AdminChrome({ user }: { user: AuthUser }) {
           <button
             type="button"
             className="admin-nav__link admin-nav__button"
-            onClick={() => void signOutUser()}
+            onClick={() => {
+              clearPendingFlushes();
+              void signOutUser();
+            }}
           >
             Sign out
           </button>

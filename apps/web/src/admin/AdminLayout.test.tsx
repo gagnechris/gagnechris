@@ -1,12 +1,22 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
 import AdminLayout from './AdminLayout';
 import AdminPostsPage from './AdminPostsPage';
 
-const { isDevProdApiTargetMock } = vi.hoisted(() => ({
+const { isDevProdApiTargetMock, pending } = vi.hoisted(() => ({
   isDevProdApiTargetMock: vi.fn(() => false),
+  pending: { value: false, cleared: 0 },
+}));
+
+vi.mock('@gagnechris/app-core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@gagnechris/app-core')>()),
+  hasPendingFlushes: () => pending.value,
+  clearPendingFlushes: () => {
+    pending.cleared += 1;
+    pending.value = false;
+  },
 }));
 
 vi.mock('../api/apiTarget', () => ({
@@ -37,6 +47,38 @@ describe('AdminLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isDevProdApiTargetMock.mockReturnValue(false);
+    pending.value = false;
+    pending.cleared = 0;
+  });
+
+  const renderLayout = () =>
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Routes>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminPostsPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+  test('warns on unload only while unmounted editors still have saves queued', async () => {
+    renderLayout();
+    await screen.findByRole('navigation', { name: 'Admin' });
+
+    const idle = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(idle);
+    expect(idle.defaultPrevented).toBe(false);
+
+    pending.value = true;
+    const queued = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(queued);
+    expect(queued.defaultPrevented).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(pending.cleared).toBe(1);
   });
 
   test('shows Posts / Home / Resume / Notebook nav and posts hub when authenticated', async () => {

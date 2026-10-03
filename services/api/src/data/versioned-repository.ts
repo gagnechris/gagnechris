@@ -33,6 +33,7 @@ import {
 } from './cursor.js';
 import { throwCursorValidation } from './dynamo-errors.js';
 import { runDynamoWrite } from './dynamo-write.js';
+import { cursorKeyOf, jsonByteLength } from './page-budget.js';
 import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
   VERSION_MATCH_CONDITION,
@@ -142,6 +143,8 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   }>;
   /** Frees a claim still held by a tombstone; the create is then retried once. */
   releaseStale?: (holder: T) => Promise<void>;
+  /** Frees a claim whose holder row is gone; the create is then retried once. */
+  releaseOrphan?: (entity: T) => Promise<void>;
 };
 
 export type VersionedRepositoryConfig<
@@ -441,6 +444,10 @@ export class VersionedRepository<
         }
         // Same ULID falls through to createHash idempotency below.
         if (!resolved) {
+          if (!retried && unique.releaseOrphan) {
+            await unique.releaseOrphan(entity);
+            return this.createIdempotent(entity, true);
+          }
           throw error;
         }
       } else if (error instanceof ConflictError && error.code !== 'conflict') {
@@ -663,6 +670,8 @@ export class VersionedRepository<
       cursorPartition?: { attr: string; value: string };
       /** Rejects cursors below the range's lower bound. */
       cursorSortBound?: { attr: string; lowerBoundInclusive: string };
+      /** JSON bytes of returned items; the first item is always returned. */
+      byteBudget?: number;
     },
   ): Promise<QueryPage<T>> {
     const {
@@ -671,6 +680,7 @@ export class VersionedRepository<
       cursorKeyNames: perQueryKeys,
       cursorPartition,
       cursorSortBound,
+      byteBudget,
       ...queryInput
     } = input;
     const indexName =
@@ -705,11 +715,12 @@ export class VersionedRepository<
       throwCursorValidation(error);
     }
     const items: T[] = [];
-    for (const raw of result.Items ?? []) {
+    const rows = (result.Items ?? []) as Record<string, unknown>[];
+    let bytes = 0;
+    for (const [index, raw] of rows.entries()) {
+      let entity: T;
       try {
-        const entity = this.mapItem(raw);
-        if (this.config.isDeleted?.(entity)) continue;
-        items.push(entity);
+        entity = this.mapItem(raw);
       } catch (error) {
         if (error instanceof DataIntegrityError) {
           logCorruptStoredItem(error);
@@ -717,6 +728,18 @@ export class VersionedRepository<
         }
         throw error;
       }
+      if (this.config.isDeleted?.(entity)) continue;
+      if (byteBudget !== undefined) {
+        const size = jsonByteLength(entity);
+        if (items.length > 0 && bytes + size > byteBudget) {
+          return {
+            items,
+            nextCursor: encodeCursor(cursorKeyOf(rows[index - 1]!, cursorKeys)),
+          };
+        }
+        bytes += size;
+      }
+      items.push(entity);
     }
     return {
       items,

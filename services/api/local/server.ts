@@ -12,16 +12,9 @@ import { isPublishRelevantAdminMutation } from '@gagnechris/data';
 import { rebuildPublishedSite } from '@gagnechris/publisher/s3-site';
 import { pathRequiresAdminAuth } from '../src/router.js';
 import { routes } from '../src/routes.js';
+import { localClaims } from './claims.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
-
-const LOCAL_CLAIMS = {
-  sub: 'local-dev-user',
-  email: 'local@gagnechris.com',
-  'cognito:username': 'local-admin',
-  // Same shape API Gateway passes array claims in.
-  'cognito:groups': '[admin]',
-};
 
 function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -81,7 +74,7 @@ function buildEvent(
         ? {
             authorizer: {
               jwt: {
-                claims: LOCAL_CLAIMS,
+                claims: localClaims(headers.authorization),
                 scopes: [],
               },
             },

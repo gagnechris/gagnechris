@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -27,6 +27,8 @@ const state = vi.hoisted(() => ({
   others: {} as Record<string, DailyNote>,
   /** When true, PUT fails like a dropped connection. */
   offline: false,
+  /** Holds each PUT in flight this long before the server applies it. */
+  putDelayMs: 0,
   puts: 0,
   note: null as null | {
     id: string;
@@ -150,6 +152,9 @@ vi.mock('../../api/client', () => ({
     ) => {
       state.puts += 1;
       if (state.offline) throw new TypeError('Failed to fetch');
+      if (state.putDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, state.putDelayMs));
+      }
       const body = init?.body ?? {};
       const area = (init?.params?.path?.area ?? 'work') as DailyNote['area'];
       const date = init?.params?.path?.date ?? '2026-10-02';
@@ -222,7 +227,7 @@ vi.mock('../../api/client', () => ({
   }),
 }));
 
-function renderToday(date = '2026-10-02') {
+function renderToday(date: string | null = '2026-10-02') {
   const router = createMemoryRouter(
     [
       {
@@ -231,20 +236,46 @@ function renderToday(date = '2026-10-02') {
         children: [{ path: 'today', element: <AdminNotebookTodayPage /> }],
       },
     ],
-    { initialEntries: [`/admin/notebook/today?date=${date}`] },
+    {
+      initialEntries: [
+        date ? `/admin/notebook/today?date=${date}` : '/admin/notebook/today',
+      ],
+    },
   );
-  return render(
-    <QueryClientTestProvider>
-      <RouterProvider router={router} />
-    </QueryClientTestProvider>,
-  );
+  return {
+    router,
+    ...render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    ),
+  };
 }
+
+const seedNote = (bodyMarkdown: string, version = 1) => {
+  state.note = {
+    id: '01TESTDAILYNOTE000000000001',
+    userId: 'u1',
+    area: 'work',
+    type: 'daily',
+    date: '2026-10-02',
+    title: '',
+    bodyMarkdown,
+    tags: [],
+    pinned: false,
+    version,
+    createdAt: '2026-10-02T00:00:00.000Z',
+    updatedAt: '2026-10-02T00:00:00.000Z',
+    deleted: false,
+  };
+};
 
 describe('AdminNotebookTodayPage', () => {
   beforeEach(() => {
     state.note = null;
     state.others = {};
     state.offline = false;
+    state.putDelayMs = 0;
     state.puts = 0;
     localStorage.clear();
     // Pin "today" away from the dates under test; only Date is faked.
@@ -254,6 +285,7 @@ describe('AdminNotebookTodayPage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   test('autosaves daily note body and keeps it after remount', async () => {
@@ -400,5 +432,131 @@ describe('AdminNotebookTodayPage', () => {
     expect(screen.queryByText(/Save failed \(400\)/)).not.toBeInTheDocument();
     expect(editor).toHaveValue('from tab B');
     expect(state.note?.bodyMarkdown).toBe('from tab A');
+  });
+  test('offline edits survive a date change and save once back online', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm');
+    state.offline = true;
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    await user.type(editor, 'offline words');
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(state.puts).toBeGreaterThan(0));
+    expect(state.note).toBeNull();
+
+    state.offline = false;
+    window.dispatchEvent(new Event('online'));
+
+    // Well before the first 2 s backoff retry.
+    await waitFor(
+      () => {
+        expect(state.note?.bodyMarkdown).toBe('offline words');
+      },
+      { timeout: 1500 },
+    );
+    expect(confirm).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    expect(
+      await screen.findByDisplayValue('offline words'),
+    ).toBeInTheDocument();
+  });
+
+  test('a quick bounce during a slow save shows the saved text without a false conflict', async () => {
+    const user = userEvent.setup();
+    seedNote('first');
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    expect(editor).toHaveValue('first');
+    state.putDelayMs = 400;
+
+    await user.type(editor, ' second');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ });
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+
+    const back = await screen.findByRole('textbox', { name: 'Note body' });
+    expect(back).toHaveValue('first second');
+    expect(state.note?.version).toBe(2);
+
+    state.putDelayMs = 0;
+    await user.type(back, ' third');
+    await waitFor(
+      () => {
+        expect(state.note?.bodyMarkdown).toBe('first second third');
+      },
+      { timeout: 3000 },
+    );
+    expect(screen.queryByText(/Conflict/)).not.toBeInTheDocument();
+    expect(back).toHaveValue('first second third');
+  });
+
+  test('Back steps through the days visited', async () => {
+    const user = userEvent.setup();
+    const { router } = renderToday();
+    await screen.findByRole('heading', { level: 1, name: /Oct 2, 2026/ });
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { level: 1, name: /Oct 4, 2026/ });
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ }),
+    ).toBeInTheDocument();
+  });
+
+  test('midnight does not swap the day out from under someone typing', async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
+    renderToday(null);
+    await screen.findByRole('heading', { level: 1, name: 'Today' });
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    await user.type(editor, 'late night');
+
+    vi.setSystemTime(new Date(2026, 9, 21, 0, 0, 5));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: /Oct 20, 2026/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Note body' })).toBe(editor);
+    expect(editor).toHaveValue('late night');
+    await user.type(editor, ' still');
+    await waitFor(
+      () => {
+        expect(state.others['work:2026-10-20']?.bodyMarkdown).toBe(
+          'late night still',
+        );
+      },
+      { timeout: 3000 },
+    );
+    expect(state.others['work:2026-10-21']).toBeUndefined();
+  });
+
+  test('an idle Today page rolls over to the new day', async () => {
+    vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
+    renderToday(null);
+    await screen.findByRole('textbox', { name: 'Note body' });
+    expect(screen.getByText(/2026-10-20/)).toBeInTheDocument();
+
+    vi.setSystemTime(new Date(2026, 9, 21, 0, 0, 5));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(await screen.findByText(/2026-10-21/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Today' }),
+    ).toBeInTheDocument();
   });
 });

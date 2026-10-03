@@ -31,6 +31,7 @@
 }
 
 .bears-btn--ghost:hover {
+  background-color: white;
   border-color: var(--primary-500);
   color: var(--primary-700);
   text-decoration: none;

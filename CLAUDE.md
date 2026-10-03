@@ -17,6 +17,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
+- `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
 - `scripts/` — local stack, web deploy, branch protection
 - `docs/` — architecture, development, data model, adding a Notebook entity (`docs/adding-an-entity.md`), local E2E
 
@@ -32,10 +33,11 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates CloudFront Option B prefixes + local publish-relevance routes from publisher targets; fails on diff)
-- Local E2E: `npm run e2e:local`
+- Local E2E: `npm run e2e:local` (curl smoke)
+- Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
-- CI: lint/typecheck/test/build/synth; OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift. Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
+- CI: lint/typecheck/test/build/synth; the **Local E2E smoke (CHR-82)** job runs `e2e:local` then `e2e:browser` (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift. Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke (CHR-82)**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 
