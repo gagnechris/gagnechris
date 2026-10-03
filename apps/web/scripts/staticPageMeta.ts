@@ -166,8 +166,27 @@ export function applySpaShellMeta(shellHtml: string): string {
   );
   html = removeCanonical(html);
   html = upsertRobotsNoIndex(html);
+  html = removeAnalytics(html);
   html = injectRoot(html, '');
   return html;
+}
+
+/**
+ * Drop the GA4 loader and inline gtag bootstrap. /admin and /auth are served
+ * under a strict CSP with no inline scripts or Google hosts (CHR-193), and
+ * the private area shouldn't report page views anyway.
+ */
+export function removeAnalytics(html: string): string {
+  return html
+    .replace(/[ \t]*<!-- Google Analytics -->\n?/g, '')
+    .replace(
+      /[ \t]*<script\b[^>]*\bsrc="https:\/\/www\.googletagmanager\.com\/[^"]*"[^>]*><\/script>\n?/g,
+      '',
+    )
+    .replace(
+      /[ \t]*<script>(?:(?!<\/script>)[\s\S])*\bgtag\([\s\S]*?<\/script>\n?/g,
+      '',
+    );
 }
 
 /** Static NotFound markup injected into #root for crawlers (CHR-102). */

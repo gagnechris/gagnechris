@@ -133,6 +133,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
 - API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
+- Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) is the remaining lever; it trades for more frequent sign-ins (CHR-193).
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
 ## Admin Notebook shell (CHR-41 / CHR-42)
@@ -192,6 +193,14 @@ Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChang
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec. Versioned mutations document `If-Match` / `ETag` / **412** with `current`.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 
+## Security headers and rendered HTML (CHR-193)
+
+- `renderMarkdownToHtml` (`@gagnechris/shared/render`) runs `marked` output through `sanitize-html` with an allowlist: no scripts, iframes, forms, event handlers, inline styles, or `javascript:` / `data:` URLs. The admin previews and the publisher both use it, so pasted HTML is inert in the editor and on published pages.
+- CloudFront has two response-header policies in the Site stack:
+  - Public pages: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap.
+  - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
+- A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
+
 ## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)
 
 | Import                       | Contents                                                                                                                 |
@@ -201,7 +210,7 @@ Fixture-note spike **routes** stay test-only (CHR-153); the `fakeNote` SyncChang
 | `@gagnechris/shared/html`    | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
 | `@gagnechris/shared/openapi` | OpenAPI document builder (build-time only)                                                                               |
 
-`marked` remains a runtime dependency of the shared package because `/render` lives in the same package; the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
+`marked` and `sanitize-html` remain runtime dependencies of the shared package because `/render` lives in the same package (the package is `sideEffects`-free apart from the OpenAPI extension, so pages that don't render markdown don't bundle them); the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 

@@ -104,6 +104,32 @@ describe('staticPageMeta', () => {
     expect(html).toContain('<div id="root"></div>');
   });
 
+  it('strips GA from spa.html for the strict admin CSP (CHR-193)', () => {
+    const withGa = shell.replace(
+      '</head>',
+      `    <!-- Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-TEST"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', 'G-TEST');
+    </script>
+  </head>`,
+    );
+    const html = applySpaShellMeta(withGa);
+    expect(html).not.toMatch(/googletagmanager|gtag|Google Analytics/);
+    expect(html).not.toMatch(/<script>/);
+    expect(applyStaticPageMeta(withGa, STATIC_PAGE_META[0]!)).toContain(
+      'googletagmanager',
+    );
+  });
+
   it('adds installable PWA tags to spa.html (CHR-48)', () => {
     const html = applySpaShellMeta(shell);
     expect(html).toContain('rel="manifest" href="/manifest.json"');
