@@ -256,8 +256,9 @@ aws backup start-restore-job --region us-east-1 \
   --iam-role-arn "<AppTableSelection role ARN>" \
   --metadata TargetTableName=gagnechris-prod-backup-restore-$(date -u +%Y%m%d)
 aws backup describe-restore-job --restore-job-id <id> --region us-east-1
-aws dynamodb describe-table --table-name gagnechris-prod-backup-restore-<date> \
-  --query 'Table.ItemCount'
+# ItemCount lags by hours; count with a scan and compare to the live table
+aws dynamodb scan --table-name gagnechris-prod-backup-restore-<date> --select COUNT
+aws dynamodb scan --table-name gagnechris-prod --select COUNT
 aws dynamodb delete-table --table-name gagnechris-prod-backup-restore-<date>
 ```
 
@@ -318,9 +319,10 @@ Optional later (not required for core Notebook): scheduled weekly markdown/JSON 
 
 #### Restore rehearsal log
 
-| Date (UTC) | Operator | Source count | Restored table                         | Restored count | Duration | Notes                                                                                        |
-| ---------- | -------- | ------------ | -------------------------------------- | -------------- | -------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-02 | CI       | 14           | gagnechris-prod-restore-20261002130416 | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085) |
+| Date (UTC) | Operator       | Source count | Restored table                          | Restored count | Duration | Notes                                                                                         |
+| ---------- | -------------- | ------------ | --------------------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------- |
+| 2026-10-02 | CI             | 14           | gagnechris-prod-restore-20261002130416  | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085)  |
+| 2026-10-03 | Chris (Claude) | 17           | gagnechris-prod-backup-restore-20261003 | 17             | 338s     | AWS Backup, restore job 74890aff-107b-4a9d-aa1b-c9d519afa04f; scratch table deleted (CHR-197) |
 
 **CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
 
