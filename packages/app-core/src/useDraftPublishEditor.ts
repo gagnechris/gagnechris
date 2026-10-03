@@ -25,7 +25,8 @@ export type DraftPublishAutosave = {
 /** @deprecated Prefer `VersionedDocDeleteOptions` from `useVersionedDocEditor`. */
 export type DraftPublishDeleteOptions = {
   confirm: string;
-  mutate: () => Promise<void>;
+  /** Receives the editor's current entity version (CHR-186). */
+  mutate: (version: number) => Promise<void>;
   onDeleted: () => void;
 };
 

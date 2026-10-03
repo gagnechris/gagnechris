@@ -19,6 +19,7 @@ import {
   versionForWrite,
 } from '../data/versioned-route.js';
 import { json } from '../http.js';
+import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { tasksRepository, type TasksRepository } from './repository.js';
 
@@ -28,8 +29,27 @@ function parseTask(task: Task): Task {
   return TaskSchema.parse(task);
 }
 
-export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
+export function createTaskRoutes(
+  repo?: TasksRepository,
+  notesRepo?: NotesRepository,
+): RouteDef[] {
   const tasks = () => repo ?? tasksRepository();
+  const notes = () => notesRepo ?? notesRepository();
+
+  /** 400 unless `noteId` is a live note owned by the caller (CHR-186). */
+  const checkLinkedNote = async (
+    userId: string,
+    noteId: string | null | undefined,
+  ) => {
+    if (noteId == null) return undefined;
+    const note = await notes().get(userId, noteId);
+    if (note && !note.deleted) return undefined;
+    return json(400, {
+      error: 'bad_request',
+      message: 'noteId must reference an existing note',
+      fields: { noteId: 'not_found' },
+    });
+  };
   return [
     defineRoute({
       method: 'GET',
@@ -55,6 +75,8 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
       metric: 'CreateTask',
       body: CreateTaskRequestSchema,
       handler: async (ctx, { body }) => {
+        const badNote = await checkLinkedNote(ctx.userId!, body.noteId);
+        if (badNote) return badNote;
         const task = await tasks().createFromRequest(ctx.userId!, body);
         return jsonEntity(201, task, parseTask);
       },
@@ -118,6 +140,12 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;
         const existing = await tasks().getOrThrow(ctx.userId!, params.id);
+        // Only a changed link is checked: the web resends noteId on every
+        // save, and a task whose note was later deleted must stay editable.
+        if (body.noteId !== undefined && body.noteId !== existing.noteId) {
+          const badNote = await checkLinkedNote(ctx.userId!, body.noteId);
+          if (badNote) return badNote;
+        }
         const version = versionForWrite(resolved.expected, existing.version);
         const task = await runVersionedMutation(resolved.fromIfMatch, () =>
           tasks().updateFromRequest(

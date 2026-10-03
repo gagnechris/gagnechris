@@ -289,7 +289,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         /** @default Untitled */
@@ -572,7 +572,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -751,7 +751,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -932,7 +932,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -1114,7 +1114,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -1296,7 +1296,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -1558,7 +1558,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -1727,7 +1727,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -1887,7 +1887,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -2047,7 +2047,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -2306,7 +2306,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -2507,7 +2507,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -2683,7 +2683,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -2859,7 +2859,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -3032,7 +3032,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         /** @enum {string} */
@@ -3372,7 +3372,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         id: string;
@@ -3528,9 +3528,11 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Daily note or empty draft */
+                /** @description Daily note (with ETag) or empty draft (no ETag) */
                 200: {
                     headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3649,7 +3651,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         /** @description Client ULID used when creating the daily note */
@@ -3952,10 +3954,10 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        version: number;
+                        version?: number;
                         title?: string;
                         bodyMarkdown?: string;
                         tags?: string[];
@@ -4123,7 +4125,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -4412,7 +4414,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         id: string;
@@ -4581,7 +4583,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -4764,7 +4766,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -5068,10 +5070,10 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        version: number;
+                        version?: number;
                         /** @enum {string} */
                         area?: "work" | "personal";
                         title?: string;
@@ -5248,7 +5250,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         version: number;
@@ -5755,7 +5757,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         name: string;
@@ -5884,7 +5886,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
                         referrer?: string;
@@ -6302,7 +6304,7 @@ export interface components {
             pinned: boolean;
         };
         UpdateNoteRequest: {
-            version: number;
+            version?: number;
             title?: string;
             bodyMarkdown?: string;
             tags?: string[];
@@ -6467,7 +6469,7 @@ export interface components {
             tags: string[];
         };
         UpdateTaskRequest: {
-            version: number;
+            version?: number;
             /** @enum {string} */
             area?: "work" | "personal";
             title?: string;

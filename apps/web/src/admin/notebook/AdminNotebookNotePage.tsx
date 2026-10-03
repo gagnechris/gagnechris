@@ -40,8 +40,8 @@ export default function AdminNotebookNotePage() {
     loadErrorFallback: 'Could not load note.',
     delete: {
       confirm: 'Delete this page? It will disappear from your list.',
-      mutate: async () => {
-        await deleteMutation.mutateAsync(id);
+      mutate: async (version) => {
+        await deleteMutation.mutateAsync({ id: id, version });
       },
       onDeleted: () => {
         void navigate('/admin/notebook/notes');
