@@ -114,6 +114,44 @@ export function noteToChange(
   return change;
 }
 
+async function readDailyHolder(
+  doc: DynamoDBDocumentClient,
+  tableName: string,
+  entity: Note,
+): Promise<
+  | {
+      claimKey: { pk: string; sk: string };
+      noteId: string;
+      meta?: Record<string, unknown>;
+    }
+  | undefined
+> {
+  if (entity.type !== 'daily' || !entity.date) return undefined;
+  const claimKey = keys.notebook.dailyClaim(
+    entity.userId,
+    entity.area,
+    entity.date,
+  );
+  const claim = await doc.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: claimKey,
+      ConsistentRead: true,
+    }),
+  );
+  const noteId =
+    typeof claim.Item?.noteId === 'string' ? claim.Item.noteId : undefined;
+  if (!noteId) return undefined;
+  const meta = await doc.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: keys.notebook.note.meta(entity.userId, noteId),
+      ConsistentRead: true,
+    }),
+  );
+  return { claimKey, noteId, meta: meta.Item };
+}
+
 function dailyNoteClaimHook(
   doc: DynamoDBDocumentClient,
   tableName: string,
@@ -140,30 +178,10 @@ function dailyNoteClaimHook(
     conflictCode: 'daily_taken',
     conflictMessage: 'Daily note already exists for this area and date',
     resolveConflict: async (entity) => {
-      if (entity.type !== 'daily' || !entity.date) return undefined;
-      const claim = await doc.send(
-        new GetCommand({
-          TableName: tableName,
-          Key: keys.notebook.dailyClaim(
-            entity.userId,
-            entity.area,
-            entity.date,
-          ),
-          ConsistentRead: true,
-        }),
-      );
-      const noteId =
-        typeof claim.Item?.noteId === 'string' ? claim.Item.noteId : undefined;
-      if (!noteId) return undefined;
-      const meta = await doc.send(
-        new GetCommand({
-          TableName: tableName,
-          Key: keys.notebook.note.meta(entity.userId, noteId),
-          ConsistentRead: true,
-        }),
-      );
-      if (!meta.Item) return undefined;
-      return metaToNote(parseNoteMetaItem(meta.Item));
+      const holder = await readDailyHolder(doc, tableName, entity);
+      return holder?.meta
+        ? metaToNote(parseNoteMetaItem(holder.meta))
+        : undefined;
     },
     releaseItems: (entity) => {
       if (entity.type !== 'daily' || !entity.date) return [];
@@ -199,6 +217,25 @@ function dailyNoteClaimHook(
         );
       } catch (error) {
         // Someone else already freed or re-took it; the retry sorts it out.
+        if (!isConditionalCheckFailed(error)) throw error;
+      }
+    },
+    // Left by deletes that never released the claim once the tombstone is
+    // TTL-purged, or by a partial restore.
+    releaseOrphan: async (entity) => {
+      const holder = await readDailyHolder(doc, tableName, entity);
+      // Already freed, or re-taken by a racer; the retry sorts it out.
+      if (!holder || holder.meta) return;
+      try {
+        await doc.send(
+          new DeleteCommand({
+            TableName: tableName,
+            Key: holder.claimKey,
+            ConditionExpression: 'noteId = :id',
+            ExpressionAttributeValues: { ':id': holder.noteId },
+          }),
+        );
+      } catch (error) {
         if (!isConditionalCheckFailed(error)) throw error;
       }
     },
