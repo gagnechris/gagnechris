@@ -1,8 +1,10 @@
 /**
- * Notebook search HTTP routes (CHR-46).
+ * Notebook search HTTP routes (CHR-46). POST with a JSON body so search
+ * terms never appear in a URL, and so never in CloudFront or API Gateway
+ * access logs (CHR-196).
  */
 import {
-  NotebookSearchQuerySchema,
+  NotebookSearchRequestSchema,
   NotebookSearchResponseSchema,
 } from '@gagnechris/shared';
 import { json } from '../http.js';
@@ -17,13 +19,13 @@ export function createSearchRoutes(deps?: {
 }): RouteDef[] {
   return [
     defineRoute({
-      method: 'GET',
+      method: 'POST',
       pattern: '/notebook/search',
       auth: 'admin',
       metric: 'NotebookSearch',
-      query: NotebookSearchQuerySchema,
-      handler: async (ctx, { query }) => {
-        const result = await searchNotebook(ctx.userId!, query, deps);
+      body: NotebookSearchRequestSchema,
+      handler: async (ctx, { body }) => {
+        const result = await searchNotebook(ctx.userId!, body, deps);
         return json(200, NotebookSearchResponseSchema.parse(result));
       },
     }),

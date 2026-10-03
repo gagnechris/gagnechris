@@ -41,11 +41,14 @@ API repositories share one layering:
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
-Integrity notes (CHR-160 / CHR-167):
+Integrity notes (CHR-160 / CHR-167 / CHR-201):
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
 - Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post (CHR-167).
+- Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished (CHR-201).
+- Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise (CHR-201).
+- `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing (CHR-201).
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
 - List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400** (CHR-170).
@@ -144,7 +147,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Today (CHR-42 / CHR-45):** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict. Day changes push history entries (Back steps through days); the heading reads Today only for the current local day, which rolls over at midnight. Dashboard also shows overdue / due-today / in-progress tasks with quick-complete (failures show an error), a due-today progress bar, quick-add (defaults due today), and after 18:00 local a tomorrow preview.
 - **Pages (CHR-42):** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
 - **Tasks (CHR-44):** list with quick-add (`!high` anywhere; `today` / `tomorrow` only as the last word), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
-- **Search (CHR-46):** `GET /api/notebook/search?q=` scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets.
+- **Search (CHR-46):** `POST /api/notebook/search` with a JSON body `{ q, area?, limit? }` (POST since CHR-196 so terms stay out of URLs and access logs) scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets.
 - **Export (CHR-47):** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup stay in `infra/RUNBOOK.md`.
 - **PWA (CHR-48):** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. Offline read-only cache is optional and not required for installability.
 
@@ -201,6 +204,15 @@ Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (C
   - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
 - A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
 
+## Privacy: logs, caching and IAM (CHR-196)
+
+- **Search terms are not logged (decision).** CloudFront standard logging writes `cs-uri-query` to the `AccessLogs` bucket (`cloudfront/` prefix, expired after 90 days), and API Gateway access logs record the route and path. Search used `GET ...?q=`, so terms landed in both. Search is now `POST /api/notebook/search` with a JSON body; the GET route is gone (405 with `Allow: POST`). Request bodies are never in either log.
+- **API logs carry no bodies or query values.** The Lambda logs `request` with the path only (no query string, no body); Powertools `logEvent` stays off. `services/api/test/request-logging.test.ts` runs the real handler and fails if a search term or a note create/update body appears on stdout/stderr.
+- **Response headers.** The router adds `X-Content-Type-Options: nosniff` to every API response and `Cache-Control: no-store` to non-public routes and to every error (router 401/403/404/405, handler 500). Public successes (health, contact, resume notify) set no cache header. CloudFront `/api/*` has its own response headers policy (`api-security-headers`: nosniff, HSTS, `no-referrer`, and `Cache-Control: no-store` when the origin sent none), which covers responses API Gateway generates itself, such as JWT authorizer 401s and throttling 429s. The edge also stays `CACHING_DISABLED`.
+- **CI read roles.** The diff, drift and CDK lookup roles run under `ReadOnlyAccess` with a `DenyPrivateDataReads` statement: DynamoDB item reads, S3 object reads, and log and trace reads (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`, `xray:BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Logs hold no note content today; the deny keeps that true if a future log line slips. `cdk diff` / `cdk drift` never read logs.
+- **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, and `Query` on `gsi1` limited to `STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
+- **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the admin-group check, API Gateway throttles and the Lambda's own headers still apply. A secret origin header checked by the API is the follow-up if this ever matters.
+
 ## Analytics stay off /admin and /auth (CHR-194)
 
 - GA4 loads only in the public shells. `spa.html` (served for `/admin*` and `/auth*`) is built without it, and the Vite dev server strips it for those paths too (`devSpaShellPlugin`), so dev matches prod.
@@ -233,7 +245,7 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 
 **`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Current excludes include `blog/*`, `resume/*`, `home/*`, `media/*`, **`notebook/*`** (reserved for any future site-bucket notebook exports), `sitemap.xml`, `rss.xml`. When CHR-42 adds attachments, put bytes in the private bucket above — do not rely on `/media/*`.
 
-**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are; treat Backup + rehearsed PITR restore as required before storing irreplaceable notes. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
+**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are. Restores are proven off the deploy path (CHR-198): a weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
 
 ## Related
 

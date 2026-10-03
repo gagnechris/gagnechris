@@ -15,6 +15,7 @@ import {
   AttributeType,
   BillingMode,
   Operation,
+  ProjectionType,
   StreamViewType,
   Table,
   TableEncryption,
@@ -29,12 +30,16 @@ import {
   APP_TABLE,
   LAST_DEPLOYED_GSIS,
   appTableName,
-  assertAppTableGsiUpdateSafe,
+  assertSafeGsiUpdate,
+  gsiProjection,
+  type AppTableDefinition,
   type DynamoAttributeTypeCode,
+  type DynamoProjectionType,
 } from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { metricAlarm } from '../constructs/emf-alarm.js';
+import { AppTableRestoreTesting } from '../constructs/restore-testing.js';
 
 function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
   switch (code) {
@@ -46,6 +51,21 @@ function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
       return AttributeType.BINARY;
     default: {
       const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
+}
+
+function toCdkProjectionType(type: DynamoProjectionType): ProjectionType {
+  switch (type) {
+    case 'ALL':
+      return ProjectionType.ALL;
+    case 'KEYS_ONLY':
+      return ProjectionType.KEYS_ONLY;
+    case 'INCLUDE':
+      return ProjectionType.INCLUDE;
+    default: {
+      const _exhaustive: never = type;
       return _exhaustive;
     }
   }
@@ -94,6 +114,11 @@ const APP_TABLE_OPERATIONS = [
 export interface DataStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly alertsTopic: ITopic;
+  /**
+   * Table schema. Defaults to `@gagnechris/data` {@link APP_TABLE}; tests pass
+   * a variant to prove GSI options (projection) reach the template.
+   */
+  readonly tableDefinition?: AppTableDefinition;
 }
 
 /**
@@ -106,16 +131,19 @@ const BACKUP_FAILURE_STATES = ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'];
 
 export class DataStack extends Stack {
   readonly table: Table;
+  /** Weekly AWS Backup restore test + validator (CHR-198). */
+  readonly restoreTesting: AppTableRestoreTesting;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
 
-    // Offline guard at synth time (CHR-174). PR CDK also runs
-    // `npm run check:deployed-gsi` against the live table.
-    assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS);
-
     const { config, alertsTopic } = props;
-    const def = APP_TABLE;
+    const def = props.tableDefinition ?? APP_TABLE;
+
+    // Offline guard at synth time (CHR-174). The deploy job also runs
+    // `npm run check:deployed-gsi` against the live table before
+    // `cdk deploy` (CHR-200).
+    assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, def.globalSecondaryIndexes);
 
     this.table = new Table(this, 'AppTable', {
       tableName: appTableName(config.name),
@@ -139,6 +167,9 @@ export class DataStack extends Stack {
     });
 
     for (const gsi of def.globalSecondaryIndexes) {
+      // Same projection the local bootstrap uses (CHR-200); throws on an
+      // INCLUDE without attributes or attributes on ALL / KEYS_ONLY.
+      const projection = gsiProjection(gsi);
       this.table.addGlobalSecondaryIndex({
         indexName: gsi.indexName,
         partitionKey: {
@@ -149,6 +180,10 @@ export class DataStack extends Stack {
           name: gsi.sortKey.name,
           type: toCdkAttrType(gsi.sortKey.type),
         },
+        projectionType: toCdkProjectionType(projection.ProjectionType),
+        ...(projection.NonKeyAttributes
+          ? { nonKeyAttributes: projection.NonKeyAttributes }
+          : {}),
       });
     }
 
@@ -209,11 +244,21 @@ export class DataStack extends Stack {
       true,
     );
 
+    // Weekly restore test from the vault, content-validated, auto-deleted
+    // (CHR-198). Replaces the PITR rehearsal that ran on every deploy.
+    this.restoreTesting = new AppTableRestoreTesting(this, 'RestoreTesting', {
+      config,
+      table: this.table,
+      backupVault,
+      alertsTopic,
+    });
+
     // Failed, aborted, expired or partial backup/restore/copy jobs email the
     // Guardrails topic (CHR-197). The three event types name their fields
     // differently: restore jobs report `status` (not `state`) and carry no
     // `backupVaultName`, and copy jobs only name the source/destination vault
     // ARNs. Hence one `$or` branch per type, keyed on fields each one has.
+    // Restore-testing jobs also match on their plan ARN (CHR-198).
     new Rule(this, 'BackupJobFailureRule', {
       ruleName: `gagnechris-${config.name}-backup-job-failures`,
       description: 'AWS Backup job failed, aborted, expired or partial',
@@ -237,6 +282,12 @@ export class DataStack extends Stack {
             {
               state: BACKUP_FAILURE_STATES,
               sourceBackupVaultArn: [backupVault.backupVaultArn],
+            },
+            {
+              status: BACKUP_FAILURE_STATES,
+              restoreTestingPlanArn: [
+                this.restoreTesting.plan.attrRestoreTestingPlanArn,
+              ],
             },
           ],
         },

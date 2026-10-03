@@ -13,7 +13,7 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
-import { PUBLISH_STREAM_SK } from '@gagnechris/data';
+import { GSI1_NAME, PUBLISH_STREAM_SK, statusGsi1Pk } from '@gagnechris/data';
 import {
   PUBLISHER_SERVICE_NAME,
   ssmParameterName,
@@ -25,6 +25,44 @@ import {
   NodeLambda,
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
+
+/** Table partition prefixes the publisher may read (CHR-196). */
+export const PUBLISHER_TABLE_LEADING_KEYS = ['POST#*', 'HOME#*', 'RESUME#*'];
+
+/** gsi1 partitions the publisher may query (CHR-196). */
+export const PUBLISHER_GSI1_LEADING_KEYS = [statusGsi1Pk('published')];
+
+/**
+ * Read-only DynamoDB statements for the publisher: item reads on the table
+ * and Query on gsi1, each limited by `dynamodb:LeadingKeys` (for an index,
+ * that is the index partition key).
+ */
+export function publisherTableReadStatements(
+  tableArn: string,
+): PolicyStatement[] {
+  return [
+    new PolicyStatement({
+      sid: 'PublisherReadPublishedItems',
+      actions: ['dynamodb:GetItem', 'dynamodb:BatchGetItem'],
+      resources: [tableArn],
+      conditions: {
+        'ForAllValues:StringLike': {
+          'dynamodb:LeadingKeys': PUBLISHER_TABLE_LEADING_KEYS,
+        },
+      },
+    }),
+    new PolicyStatement({
+      sid: 'PublisherQueryPublishedIndex',
+      actions: ['dynamodb:Query'],
+      resources: [`${tableArn}/index/${GSI1_NAME}`],
+      conditions: {
+        'ForAllValues:StringLike': {
+          'dynamodb:LeadingKeys': PUBLISHER_GSI1_LEADING_KEYS,
+        },
+      },
+    }),
+  ];
+}
 
 export interface PublisherStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -89,7 +127,7 @@ export class PublisherStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
       iam5NagReason:
-        'Publisher reads/writes site objects under the bucket, writes lazy META→PUBLISHED DynamoDB copies (CHR-96), stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern.',
+        'Publisher reads/writes site objects under the bucket, stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern. DynamoDB access is read-only and scoped by dynamodb:LeadingKeys (CHR-196).',
       iam5NagAppliesTo: [
         'Resource::*',
         'Action::s3:Abort*',
@@ -97,7 +135,6 @@ export class PublisherStack extends Stack {
         'Action::s3:GetBucket*',
         'Action::s3:GetObject*',
         'Action::s3:List*',
-        { regex: '/^Resource::.*/index*/g' },
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/g' },
       ],
       bundling: {
@@ -136,8 +173,13 @@ export class PublisherStack extends Stack {
       },
     });
 
-    // Read published snapshots + write lazy META→PUBLISHED rollout copies (CHR-96).
-    dataTable.grantReadWriteData(this.publisherFunction);
+    // Read-only, key-scoped DynamoDB access (CHR-196). The publisher writes
+    // nothing to the table; it Gets the HOME/RESUME PUBLISHED singletons,
+    // BatchGets POST# PUBLISHED rows, and Queries gsi1 for STATUS#published.
+    // LeadingKeys keeps it away from notebook (USER#...) and contact data.
+    for (const statement of publisherTableReadStatements(dataTable.tableArn)) {
+      this.publisherFunction.addToRolePolicy(statement);
+    }
     dataTable.grantStreamRead(this.publisherFunction);
     siteBucket.grantReadWrite(this.publisherFunction);
 

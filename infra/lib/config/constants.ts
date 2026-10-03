@@ -8,6 +8,7 @@ import {
   APEX_DOMAIN,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
+  RESTORE_TEST_SERVICE_NAME,
 } from '@gagnechris/shared';
 import ssmParams from './ssm-params.json' with { type: 'json' };
 
@@ -16,6 +17,7 @@ export {
   APEX_DOMAIN,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
+  RESTORE_TEST_SERVICE_NAME,
 };
 
 /** Cognito managed-login hostname. */

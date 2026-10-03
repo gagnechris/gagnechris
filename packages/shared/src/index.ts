@@ -7,6 +7,7 @@ export {
   APEX_DOMAIN,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
+  RESTORE_TEST_SERVICE_NAME,
 } from './constants.js';
 export {
   SITE_AUTHOR_NAME,
@@ -43,7 +44,7 @@ export {
   NoteSyncChangeSchema,
   NoteTypeSchema,
   NotebookSearchHitSchema,
-  NotebookSearchQuerySchema,
+  NotebookSearchRequestSchema,
   NotebookSearchResponseSchema,
   SyncChangeSchema,
   CLIENT_VERSION_HEADER,
@@ -115,7 +116,7 @@ export {
   type NoteSyncChange,
   type NoteType,
   type NotebookSearchHit,
-  type NotebookSearchQuery,
+  type NotebookSearchRequest,
   type NotebookSearchResponse,
   type Post,
   type PostListResponse,

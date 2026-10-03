@@ -29,6 +29,7 @@ import {
   CiDeployRoleStack,
 } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
+import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -303,6 +304,32 @@ describe('CiDeployRoleStack', () => {
       expect(json).toContain('dynamodb:PartiQLSelect');
       expect(json).toContain('s3:GetObject');
       expect(json).toContain('"Effect":"Deny"');
+      // CHR-196: logs and traces are denied alongside item/object reads.
+      const statements = (p.Properties?.PolicyDocument?.Statement ??
+        []) as Array<{
+        Sid?: string;
+        Effect?: string;
+        Action?: string | string[];
+        Resource?: string | string[];
+      }>;
+      const deny = statements.find((s) => s.Sid === 'DenyPrivateDataReads');
+      expect(deny?.Effect).toBe('Deny');
+      expect(deny?.Resource).toBe('*');
+      const denied = Array.isArray(deny?.Action) ? deny.Action : [deny?.Action];
+      for (const action of [
+        'logs:GetLogEvents',
+        'logs:FilterLogEvents',
+        'logs:StartQuery',
+        'logs:GetQueryResults',
+        'logs:StartLiveTail',
+        'logs:GetLogRecord',
+        'logs:Unmask',
+        'xray:BatchGetTraces',
+        'xray:GetTraceSummaries',
+        'xray:GetTraceGraph',
+      ]) {
+        expect(denied).toContain(action);
+      }
     }
     const lookupDeny = denyPolicies.find((p) =>
       JSON.stringify(p).includes(
@@ -534,6 +561,7 @@ describe('SiteStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(site);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
     template.resourceCountIs('AWS::S3::Bucket', 2);
     template.hasResourceProperties('AWS::S3::Bucket', {
@@ -550,7 +578,7 @@ describe('SiteStack', () => {
     template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
     template.resourceCountIs('AWS::CloudFront::Function', 2);
     template.resourceCountIs('AWS::CloudFront::KeyValueStore', 1);
-    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 2);
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 3); // site, admin, api (CHR-196)
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
@@ -576,7 +604,7 @@ describe('SiteStack', () => {
       Threshold: 5,
       EvaluationPeriods: 2,
       DatapointsToAlarm: 2,
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     // Viewer-request function is associated with the blog-slugs KeyValueStore (CHR-115 / CHR-180).
     const cfFunctions = template.findResources('AWS::CloudFront::Function');
@@ -627,6 +655,7 @@ describe('DataStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(data);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       TableName: 'gagnechris-prod',
       BillingMode: 'PAY_PER_REQUEST',
@@ -663,11 +692,11 @@ describe('DataStack', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-dynamodb-system-errors',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-dynamodb-throttled-requests',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
   });
 });
@@ -724,6 +753,7 @@ describe('ApiStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(api);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
     template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
       Name: 'gagnechris-prod',
@@ -836,7 +866,7 @@ describe('ApiStack', () => {
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
       ]),
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-data-integrity',
@@ -845,7 +875,7 @@ describe('ApiStack', () => {
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
       ]),
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
@@ -860,7 +890,7 @@ describe('ApiStack', () => {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       Namespace: 'AWS/ApiGateway',
       MetricName: '5xx',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
@@ -919,6 +949,7 @@ describe('PublisherStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(publisher);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
     // Site bucket / distribution / KVS come from SSM, not Site exports (CHR-149).
     const rendered = JSON.stringify(template.toJSON());
     expect(rendered).not.toMatch(/ImportValue":"[^"]*Site/);
@@ -984,7 +1015,7 @@ describe('PublisherStack', () => {
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-publisher' }),
       ]),
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',
@@ -1007,7 +1038,9 @@ describe('PublisherStack', () => {
     );
     const publisherPolicyJson = JSON.stringify(publisherPolicies);
     expect(publisherPolicyJson).toContain('dynamodb:GetRecords');
-    expect(publisherPolicyJson).toContain('dynamodb:PutItem');
+    // CHR-196: read-only table access; no writes.
+    expect(publisherPolicyJson).toContain('dynamodb:GetItem');
+    expect(publisherPolicyJson).not.toContain('dynamodb:PutItem');
     expect(publisherPolicyJson).toContain('s3:PutObject');
     expect(publisherPolicyJson).toContain('cloudfront:CreateInvalidation');
     expect(publisherPolicyJson).toContain('CloudFrontInvalidate');

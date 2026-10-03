@@ -487,8 +487,10 @@ export const searchNotebook = async (
   client: ApiClient,
   query: NotebookSearchQuery,
 ): Promise<NotebookSearchResponse> => {
-  const result = await client.GET('/api/notebook/search', {
-    params: { query },
+  // POST body, not a query string: search terms stay out of URLs and
+  // access logs (CHR-196).
+  const result = await client.POST('/api/notebook/search', {
+    body: query,
   });
   return unwrap(result, 'Search failed');
 };
