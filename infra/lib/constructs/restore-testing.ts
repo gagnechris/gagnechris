@@ -23,17 +23,11 @@ import type { EnvironmentConfig } from '../config/environments.js';
 import { emfServiceAlarm } from './emf-alarm.js';
 import { NodeLambda, REPO_ROOT } from './node-lambda.js';
 
-/**
- * AWS Backup names DynamoDB restore-test tables `awsbackup-restore-test-*`
- * (restore testing inferred metadata) and deletes them by that name.
- */
+/** AWS Backup picks this name itself and deletes the table by it. */
 export const RESTORE_TEST_TABLE_PATTERN = 'awsbackup-restore-test-*';
-/** Manual PITR / vault restores (`gagnechris-prod-restore-*`, `…-backup-restore-*`). */
 export const MANUAL_RESTORE_TABLE_PATTERN = 'gagnechris-*-restore-*';
 
-/** Hours AWS Backup keeps the restored table for validation before deleting it. */
 export const RESTORE_TEST_VALIDATION_WINDOW_HOURS = 4;
-/** A restore scratch table older than this is reported as a leftover. */
 export const LEFTOVER_MAX_AGE_HOURS = 24;
 
 export interface AppTableRestoreTestingProps {
@@ -43,18 +37,6 @@ export interface AppTableRestoreTestingProps {
   readonly alertsTopic: ITopic;
 }
 
-/**
- * Weekly AWS Backup restore test of the app table (CHR-198), replacing the
- * PITR rehearsal that ran on every deploy.
- *
- * - Restore testing plan: Sundays 09:00 UTC, latest snapshot from the app-table
- *   vault (daily backup runs 07:00 UTC). AWS Backup restores it as
- *   `awsbackup-restore-test-*` and deletes it after validation (or when the
- *   validation window closes), whatever the outcome.
- * - Validator Lambda on the restore job's COMPLETED event: scans the scratch
- *   table, checks content, reports SUCCESSFUL / FAILED.
- * - Same Lambda, daily: alarms on any restore scratch table older than 24 h.
- */
 export class AppTableRestoreTesting extends Construct {
   readonly plan: CfnRestoreTestingPlan;
   readonly selection: CfnRestoreTestingSelection;
@@ -73,11 +55,9 @@ export class AppTableRestoreTesting extends Construct {
     const stack = Stack.of(this);
     const prefix = `gagnechris-${config.name}`;
 
-    // Restore testing requires the AWSBackupServiceRolePolicyForRestores
-    // permissions on the role it restores with.
     this.restoreRole = new Role(this, 'RestoreRole', {
       roleName: `${prefix}-restore-testing`,
-      description: 'AWS Backup restore testing of the app table (CHR-198)',
+      description: 'AWS Backup restore testing of the app table',
       assumedBy: new ServicePrincipal('backup.amazonaws.com'),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName(
@@ -91,7 +71,7 @@ export class AppTableRestoreTesting extends Construct {
         {
           id: 'AwsSolutions-IAM4',
           reason:
-            'AWS Backup restore testing requires the AWS-managed AWSBackupServiceRolePolicyForRestores permissions on its restore role; a hand-copied replica would drift from AWS updates (CHR-198).',
+            'AWS Backup restore testing requires the AWS-managed AWSBackupServiceRolePolicyForRestores permissions on its restore role; a hand-copied replica would drift from AWS updates.',
           appliesTo: [
             'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores',
           ],
@@ -132,7 +112,7 @@ export class AppTableRestoreTesting extends Construct {
     this.validator = new NodeLambda(stack, 'RestoreTestFunction', {
       functionName: `${prefix}-restore-test`,
       description:
-        'Validate AWS Backup restore-test tables and alarm on leftover restore scratch tables (CHR-198)',
+        'Validate AWS Backup restore-test tables and alarm on leftover restore scratch tables',
       entry: join(REPO_ROOT, 'services/restore-test/src/handler.ts'),
       handler: 'handler',
       memorySize: 256,
@@ -150,8 +130,6 @@ export class AppTableRestoreTesting extends Construct {
         },
       ],
       bundling: {
-        // Bundle client-backup (PutRestoreValidationResult); the runtime SDK
-        // provides DynamoDB.
         externalModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'],
       },
       environment: {
@@ -221,7 +199,7 @@ export class AppTableRestoreTesting extends Construct {
       {
         alarmName: `${prefix}-restore-validation-failed`,
         alarmDescription:
-          'AWS Backup restore test restored the app table but content validation FAILED (see restore-test logs; CHR-198)',
+          'AWS Backup restore test restored the app table but content validation FAILED (see restore-test logs)',
         serviceName: RESTORE_TEST_SERVICE_NAME,
         metricName: 'RestoreValidationFailed',
         alertsTopic,
@@ -233,7 +211,7 @@ export class AppTableRestoreTesting extends Construct {
       {
         alarmName: `${prefix}-restore-leftover-tables`,
         alarmDescription:
-          'A restore scratch table (awsbackup-restore-test-* or gagnechris-*-restore-*) is older than 24 h: a full copy of prod is lying around. Delete it (RUNBOOK; CHR-198)',
+          'A restore scratch table (awsbackup-restore-test-* or gagnechris-*-restore-*) is older than 24 h: a full copy of prod is lying around. Delete it (RUNBOOK)',
         serviceName: RESTORE_TEST_SERVICE_NAME,
         metricName: 'LeftoverRestoreTables',
         alertsTopic,

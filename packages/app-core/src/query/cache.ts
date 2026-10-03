@@ -2,7 +2,6 @@ import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { Home, Note, Post, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
 
-/** Keep the higher-version entity when a stale GET races a mutation (CHR-147). */
 export const preferNewerByVersion = <T extends { version: number }>(
   prev: T | undefined,
   next: T,
@@ -13,17 +12,8 @@ export const preferNewerByVersion = <T extends { version: number }>(
 
 type Paged<T> = InfiniteData<{ items: T[] }, string | undefined>;
 
-/**
- * Whether an entity belongs in a cached list: `true` / `false` when the list's
- * filters say so, `undefined` when they cannot be evaluated client-side
- * (update rows already there, never insert) — CHR-189.
- */
 type ListMatch = boolean | undefined;
 
-/**
- * Upsert one entity into infinite list pages, respecting the list's filters:
- * removed or non-matching entities drop out, matching new ones go first.
- */
 const upsertInPages = <T extends { id: string; version: number }>(
   prev: Paged<T> | undefined,
   entity: T,
@@ -72,7 +62,6 @@ const upsertInPages = <T extends { id: string; version: number }>(
   };
 };
 
-/** Filters object stored as the last element of a `…, 'list', filters` key. */
 const listFilters = (key: readonly unknown[]): Record<string, unknown> => {
   const last = key[key.length - 1];
   return last && typeof last === 'object'
@@ -129,7 +118,6 @@ const upsertIntoListCaches = <T extends { id: string; version: number }>(
   }
 };
 
-/** Write a post into detail + infinite list caches (create/save/publish/etc.). */
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
     preferNewerByVersion(prev, post),
@@ -163,7 +151,6 @@ const noteMatches = (
   if (filters.q) return undefined;
   if (filters.area !== undefined && filters.area !== note.area) return false;
   if (filters.type !== undefined && filters.type !== note.type) return false;
-  // Date ranges select daily notes by date only (API lists `DATE#` keys).
   const from = typeof filters.from === 'string' ? filters.from : undefined;
   const to = typeof filters.to === 'string' ? filters.to : undefined;
   if (from !== undefined || to !== undefined) {
@@ -174,7 +161,6 @@ const noteMatches = (
   return true;
 };
 
-/** Write a note into detail + daily + list caches. */
 export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
   queryClient.setQueryData<Note>(queryKeys.notes.detail(note.id), (prev) =>
     preferNewerByVersion(prev, note),
@@ -184,8 +170,6 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
       queryKeys.notes.daily(note.area, note.date),
       (prev) => preferNewerByVersion(prev, note),
     );
-    // Calendar dots: `Set<string>` under `daily-dates, area|'all', from, to`.
-    // Only touch sets whose area and month range cover this note (CHR-189).
     for (const [key, data] of queryClient.getQueriesData<Set<string>>({
       queryKey: [...queryKeys.notes.all, 'daily-dates'],
     })) {
@@ -199,7 +183,6 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
       queryClient.setQueryData(key, next);
     }
   }
-  // Infinite notes lists only (not daily-dates Sets), filter-aware.
   upsertIntoListCaches(queryClient, queryKeys.notes.list(), note, {
     removed: note.deleted,
     matches: noteMatches,
@@ -236,7 +219,6 @@ const taskMatches = (
   return true;
 };
 
-/** Write a task into detail + infinite list caches. */
 export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
   queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>
     preferNewerByVersion(prev, task),

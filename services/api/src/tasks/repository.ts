@@ -1,5 +1,4 @@
 /**
- * Owner-scoped Notebook tasks (CHR-43).
  * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
  */
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
@@ -51,10 +50,6 @@ const PRIORITY_RANK: Record<TaskPriority, number> = {
 
 const OPEN_STATUSES: TaskStatus[] = ['todo', 'in_progress'];
 
-/**
- * UTC calendar day `yyyy-mm-dd`: fallback "today" for overdue sorting when
- * the client does not send its own local day (CHR-185).
- */
 export function utcToday(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
@@ -107,7 +102,6 @@ export function taskToChange(
   return change;
 }
 
-/** Past due and not done: done tasks never rank as overdue (CHR-185). */
 function isOverdue(task: Task, today: string): boolean {
   return (
     task.status !== 'done' && task.dueDate !== null && task.dueDate < today
@@ -217,10 +211,6 @@ export class TasksRepository {
     return this.createIdempotent(task);
   }
 
-  /**
-   * Apply only the fields in `body` to a consistent read (CHR-188), so a
-   * stale replica can never revert content or reuse a version.
-   */
   updateFromRequest(
     userId: string,
     id: string,
@@ -281,7 +271,6 @@ export class TasksRepository {
     );
   }
 
-  /** Tombstone built from a consistent read (CHR-188). */
   deleteIfVersion(
     userId: string,
     id: string,
@@ -328,8 +317,6 @@ export class TasksRepository {
       };
     }
 
-    // Walk (area, status) partitions with a composite cursor so nothing is
-    // dropped past the first page (CHR-185). Each page is sorted on its own.
     const partitions = areas.flatMap((area) =>
       statuses.map((status) => ({ area, status })),
     );

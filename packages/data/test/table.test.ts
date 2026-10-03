@@ -55,14 +55,13 @@ describe('APP_TABLE', () => {
     ]);
   });
 
-  it('keeps APP_TABLE within one GSI step of LAST_DEPLOYED_GSIS (CHR-174)', () => {
-    // LAST_DEPLOYED stays independent of APP_TABLE — do not require equality.
-    // A PR may add one index; bump LAST_DEPLOYED only after that deploy.
+  it('keeps APP_TABLE within one GSI step of LAST_DEPLOYED_GSIS', () => {
+    // Not equality: a PR may add one index before LAST_DEPLOYED is bumped.
     expect(() => assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)).not.toThrow();
   });
 });
 
-describe('assertSafeGsiUpdate (CHR-174)', () => {
+describe('assertSafeGsiUpdate', () => {
   it('allows a single GSI create vs last deployed', () => {
     expect(() =>
       assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, [
@@ -118,7 +117,7 @@ describe('assertSafeGsiUpdate (CHR-174)', () => {
   });
 });
 
-describe('gsiProjection (CHR-200)', () => {
+describe('gsiProjection', () => {
   it('returns ALL / KEYS_ONLY without NonKeyAttributes', () => {
     expect(gsiProjection(gsi4)).toEqual({ ProjectionType: 'ALL' });
     expect(gsiProjection({ ...gsi4, projectionType: 'KEYS_ONLY' })).toEqual({
@@ -162,7 +161,7 @@ describe('gsiProjection (CHR-200)', () => {
   });
 });
 
-describe('INCLUDE nonKeyAttributes changes (CHR-200)', () => {
+describe('INCLUDE nonKeyAttributes changes', () => {
   const included: TableIndexDefinition = {
     ...gsi4,
     projectionType: 'INCLUDE',
@@ -188,7 +187,7 @@ describe('INCLUDE nonKeyAttributes changes (CHR-200)', () => {
   });
 });
 
-describe('tableIndexesFromDescribeTable (CHR-174)', () => {
+describe('tableIndexesFromDescribeTable', () => {
   it('maps DescribeTable GSIs into TableIndexDefinition', () => {
     const indexes = tableIndexesFromDescribeTable({
       AttributeDefinitions: [
@@ -259,8 +258,7 @@ describe('tableIndexesFromDescribeTable (CHR-174)', () => {
     });
   });
 
-  // What `check:deployed-gsi` does in the deploy job (CHR-200): a live table
-  // two GSIs behind APP_TABLE must fail even if LAST_DEPLOYED_GSIS was bumped.
+  // A live table two GSIs behind APP_TABLE must fail even if LAST_DEPLOYED_GSIS was bumped.
   it('refuses APP_TABLE when the live table is two GSIs behind', () => {
     const [first] = APP_TABLE.globalSecondaryIndexes;
     const keys = (g: TableIndexDefinition) => [
@@ -314,7 +312,6 @@ describe('isPublishRelevantAdminMutation', () => {
     expect(isPublishRelevantAdminMutation('PUT', '/api/admin/posts/abc')).toBe(
       false,
     );
-    // Soft-delete only for targets that set adminSoftDelete (posts).
     expect(isPublishRelevantAdminMutation('DELETE', '/api/admin/home')).toBe(
       false,
     );

@@ -16,7 +16,7 @@ describe('renderMarkdownToHtml', () => {
   });
 });
 
-describe('renderMarkdownToHtml sanitizing (CHR-193)', () => {
+describe('renderMarkdownToHtml sanitizing', () => {
   const payloads: Array<[string, string]> = [
     ['img onerror', '<img src=x onerror="alert(1)">'],
     ['javascript: link', '[x](javascript:alert(1))'],
@@ -100,13 +100,13 @@ describe('slugify', () => {
     expect(slugify('   ')).toBe('');
   });
 
-  it('caps length at MAX_SLUG_LENGTH (CHR-145)', () => {
+  it('caps length at MAX_SLUG_LENGTH', () => {
     const slug = slugify('a'.repeat(200));
     expect(slug.length).toBe(MAX_SLUG_LENGTH);
     expect(slug).toBe('a'.repeat(MAX_SLUG_LENGTH));
   });
 
-  it('never ends with a hyphen after truncation (CHR-154)', () => {
+  it('never ends with a hyphen after truncation', () => {
     const slug = slugify('Word '.repeat(40).trim());
     expect(slug.endsWith('-')).toBe(false);
     expect(slug.length).toBeLessThanOrEqual(MAX_SLUG_LENGTH);

@@ -1,6 +1,6 @@
 .admin-shell {
   /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
-     --vv-height accounts for the on-screen keyboard (CHR-148). */
+     --vv-height accounts for the on-screen keyboard. */
   min-height: 100vh;
   min-height: 100dvh;
   min-height: var(--vv-height, 100dvh);
@@ -112,7 +112,7 @@
   padding: var(--space-6) 0 var(--space-8);
 }
 
-/* Notebook shell (CHR-41): area filter + section nav above page body. */
+/* Notebook shell: area filter + section nav above page body. */
 .admin-notebook {
   display: flex;
   flex-direction: column;
@@ -465,7 +465,7 @@
   margin-bottom: var(--space-4);
 }
 
-/* Sticky status + actions bar for editors (CHR-108). */
+/* Sticky status + actions bar for editors. */
 .admin-action-bar {
   position: sticky;
   top: calc(env(safe-area-inset-top, 0px) + var(--vv-offset-top, 0px));

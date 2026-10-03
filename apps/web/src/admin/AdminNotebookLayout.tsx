@@ -27,10 +27,6 @@ function areaButtonClass(active: boolean): string {
     : 'admin-nav__link admin-nav__button';
 }
 
-/**
- * Notebook chrome for `/admin/notebook/*`: Work/Personal/All filter (persisted)
- * plus Today / Notes / Tasks section nav. Child routes render in the outlet.
- */
 export default function AdminNotebookLayout() {
   const [areaFilter, setAreaFilterState] = useState<NotebookAreaFilter>(() =>
     readNotebookAreaFilter(),

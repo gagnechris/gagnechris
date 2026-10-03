@@ -1,6 +1,3 @@
-/**
- * DynamoDB Local: hard-deleted META cannot be recreated via versioned write (CHR-170).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { NotFoundError } from '../../src/data/errors.js';
@@ -29,7 +26,7 @@ type NoteItem = {
   updatedAt: string;
 };
 
-describe('hard-delete recreate guard (DynamoDB Local, CHR-170)', () => {
+describe('hard-delete recreate guard (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 

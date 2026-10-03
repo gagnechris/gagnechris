@@ -7,7 +7,7 @@ import {
 import { requireExpectedVersion } from '../src/data/versioned-route.js';
 import { makeEvent } from './support/make-event.js';
 
-describe('If-Match parsing (CHR-162 / CHR-171)', () => {
+describe('If-Match parsing', () => {
   it('parses strong and weak quoted versions', () => {
     expect(parseIfMatch({ 'if-match': '"3"' })).toEqual({
       kind: 'version',

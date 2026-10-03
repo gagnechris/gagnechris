@@ -197,7 +197,7 @@ describe('AdminHomePage autosave', () => {
   });
 });
 
-describe('AdminHomePage publish (CHR-124)', () => {
+describe('AdminHomePage publish', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     get.mockResolvedValue({

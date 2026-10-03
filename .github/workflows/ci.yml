@@ -8,12 +8,11 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Never cancel main: a cancelled CI never triggers CDK deploy, and the
-  # next push's path filter would not see that commit's infra/web changes
-  # if the base were HEAD~1 (CHR-149). PRs may still cancel in progress.
+  # Never cancel main: a cancelled CI never triggers the CDK deploy, so that
+  # commit's infra/web changes would be skipped.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Shared Vite placeholders for CI builds (not deployed from this workflow).
+# Placeholders only; nothing is deployed from this workflow.
 env:
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
   VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
@@ -40,7 +39,6 @@ jobs:
       - name: Publish surface drift
         run: npm run publish-surface:check
 
-      # Root scripts delegate into workspaces. The site lives in apps/web.
       - name: Lint
         run: npm run lint
 
@@ -150,7 +148,6 @@ jobs:
           AWS_REGION: us-east-1
           AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
           COMPOSE_PROJECT_NAME: gagnechris-ci
-          # CI already started DynamoDB Local; per-file tables (no shared bootstrap).
           SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
         run: npm run test:integration -w @gagnechris/api
 

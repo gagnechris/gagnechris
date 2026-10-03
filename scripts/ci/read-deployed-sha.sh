@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Print the last deployed commit SHA from SSM (CHR-149), or print nothing when
-# the parameter does not exist yet (first deploy).
-#
-# Fails closed (CHR-200): any other SSM error (throttling, AccessDenied,
-# expired credentials, network) or a value that is not a 40-hex SHA exits
-# non-zero, so the deploy cannot fall back to "deploy everything and skip the
-# rollback check" because a read failed.
-#
+# Prints nothing only on ParameterNotFound (first deploy). Any other failure
+# exits non-zero so a failed read cannot skip the rollback check.
 # Usage (AWS credentials and region in the environment):
 #   scripts/ci/read-deployed-sha.sh [envName]
 set -euo pipefail

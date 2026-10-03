@@ -1,6 +1,5 @@
-# Manual PITR restore rehearsal into a tagged scratch table (CHR-175 / CHR-198).
-# Not part of any deploy. Does not rename or delete gagnechris-prod; the script
-# deletes the scratch table on every exit unless keep_target=1.
+# Never renames or deletes gagnechris-prod; the script deletes the scratch
+# table on every exit unless keep_target=1.
 name: PITR restore rehearsal
 
 on:

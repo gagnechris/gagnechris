@@ -1,6 +1,5 @@
 import { BEAR_TIPS, tipAtIndex, type BearTip } from './tips';
 
-/** Attractants a Vermont camp visitor should secure before bears arrive. */
 export type AttractantKind =
   'trash' | 'birdFeeder' | 'cooler' | 'grill' | 'petFood';
 
@@ -36,7 +35,6 @@ export type GameState = {
   elapsedMs: number;
   /** Target round length before auto-success (~45s). */
   roundDurationMs: number;
-  /** Tip index shown when the round ends. */
   tipIndex: number;
   nextBearSeq: number;
   /** When the next bear should spawn (elapsedMs). */
@@ -193,9 +191,7 @@ export type TickOptions = {
   speedScale?: number;
 };
 
-/**
- * Advance the simulation by `deltaMs`. Pure: returns a new state object.
- */
+/** Pure: returns a new state object. */
 export function tick(
   state: GameState,
   deltaMs: number,
@@ -219,12 +215,10 @@ export function tick(
   let nextSpawnAtMs = state.nextSpawnAtMs;
   const score = state.score;
 
-  // Move bears toward their targets.
   const moved: Bear[] = [];
   for (const bear of bears) {
     const target = attractants.find((a) => a.id === bear.targetAttractantId);
     if (!target || target.status === 'secured') {
-      // Retarget or despawn if the food was secured.
       const open = attractants.filter((a) => a.status === 'unsecured');
       const next = pickTarget(open, rng);
       if (!next) continue;
@@ -285,7 +279,6 @@ export function tick(
     };
   }
 
-  // Spawn bears while unsecured attractants remain.
   while (
     elapsedMs >= nextSpawnAtMs &&
     attractants.some((a) => a.status === 'unsecured')
@@ -308,7 +301,6 @@ export function tick(
     nextSpawnAtMs += spawnIntervalForProgress(p);
   }
 
-  // Timer success if the visitor held the line long enough.
   if (elapsedMs >= state.roundDurationMs) {
     phase = 'success';
   }
@@ -331,10 +323,6 @@ export function tick(
   };
 }
 
-/**
- * Secure an attractant. Awards a point when newly secured.
- * If every attractant is secured, the round succeeds.
- */
 export function secureAttractant(
   state: GameState,
   attractantId: string,

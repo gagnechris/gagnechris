@@ -53,17 +53,15 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Shared slugify with EMPTY_SLUG_FALLBACK when the title yields an empty slug. */
 export function slugify(input: string): string {
   return sharedSlugify(input) || EMPTY_SLUG_FALLBACK;
 }
 
-/** Shared publishable META fields (status / publishedAt / updatedAt / version). */
 export const PublishableMetaFieldsSchema = z.object({
   status: PostStatusSchema,
   publishedAt: z.string().nullable().optional(),
   updatedAt: z.string().min(1),
-  /** Required (CHR-170). Missing-attribute writes still treated as 0 via VERSION_MATCH_CONDITION. */
+  /** Items missing the attribute are still treated as 0 by VERSION_MATCH_CONDITION. */
   version: z.number().int().nonnegative(),
 });
 
@@ -226,10 +224,7 @@ export function buildMetaItem(post: Post): PostMetaItem {
   };
 }
 
-/**
- * Live snapshot read by the publisher. Omits GSI1 keys so admin
- * `STATUS#published` queries only return draft META rows.
- */
+/** Omits GSI1 keys so admin `STATUS#published` queries only return draft META rows. */
 export function buildPublishedItem(
   post: Post,
 ): Omit<PostMetaItem, 'gsi1pk' | 'gsi1sk'> {
@@ -352,7 +347,6 @@ export function buildResumePublishedItem(resume: Resume): ResumeMetaItem {
   };
 }
 
-/** Shared versioned META fields for owner-scoped Notebook entities (CHR-39). */
 export const VersionedMetaFieldsSchema = z.object({
   version: z.number().int().nonnegative(),
   createdAt: z.string().min(1),
@@ -526,10 +520,7 @@ export function metaToTask(item: TaskMetaItem): Task {
   };
 }
 
-/**
- * Build a Note META item. List GSI keys are omitted when deleted so queries
- * never return tombstones (CHR-169). Sync keys are stamped by the repository.
- */
+/** List GSI keys are omitted when deleted so queries never return tombstones. */
 export function buildNoteMetaItem(note: Note): NoteMetaItem {
   const { pk, sk } = { pk: notePk(note.userId, note.id), sk: noteMetaSk() };
   const item: NoteMetaItem = {
@@ -552,8 +543,7 @@ export function buildNoteMetaItem(note: Note): NoteMetaItem {
   };
   if (!note.deleted) {
     item.gsi1pk = notebookAreaGsi1Pk(note.userId, note.area);
-    // Daily notes: DATE# for calendar ranges. Pages: PAGE# so they never
-    // appear inside from/to date queries used for calendar dots.
+    // PAGE# keeps freeform pages out of the DATE# calendar range queries.
     item.gsi1sk =
       note.type === 'daily' && note.date
         ? noteDateGsi1Sk(note.date, note.id)
@@ -579,11 +569,7 @@ export function buildDailyNoteClaimItem(
   };
 }
 
-/**
- * Build a Task META item. Due-dated tasks use `DUE#` GSI1 sort keys; undated
- * tasks use `UPDATED#` so due/overdue ranges never pick them up. GSI2 links
- * tasks to a note when `noteId` is set. Tombstones omit list GSI keys.
- */
+/** Tombstones omit list GSI keys so queries never return them. */
 export function buildTaskMetaItem(task: Task): TaskMetaItem {
   const item: TaskMetaItem = {
     pk: taskPk(task.userId, task.id),

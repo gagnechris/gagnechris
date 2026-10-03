@@ -1,9 +1,3 @@
-/**
- * Fail if any React Native-facing package entry pulls banned modules (CHR-156).
- * Exact-package externals only — `@gagnechris/shared` must not also externalize
- * `@gagnechris/shared/render` (CHR-164).
- * Run: `npm run check:rn-bundles`
- */
 import { build, type Plugin } from 'esbuild';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +23,6 @@ const entries = [
   },
 ] as const;
 
-/** Bare imports / path prefixes that must never appear in RN-facing bundles. */
 const bannedImportPrefixes = [
   'node:',
   '@aws-sdk/',
@@ -41,7 +34,6 @@ const bannedImportPrefixes = [
   '@gagnechris/shared/',
 ] as const;
 
-/** Source path fragments that must not appear in the shared domain graph. */
 const bannedPathFragments = [
   'markdown.ts',
   'home-html.ts',
@@ -53,7 +45,7 @@ const bannedPathFragments = [
   'generate-openapi.ts',
 ] as const;
 
-/** Only exact package names — not subpaths (CHR-164). */
+/** Exact names only: externalizing `@gagnechris/shared` must not also hide `/render`. */
 const exactExternals = new Set([
   'react',
   'react/jsx-runtime',
@@ -101,7 +93,6 @@ const exactExternalPlugin: Plugin = {
   },
 };
 
-/** Negative fixture: a temp entry that must fail the ban (CHR-180). */
 async function assertNegativeFixtureFails(): Promise<boolean> {
   const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');

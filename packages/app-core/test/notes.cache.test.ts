@@ -21,7 +21,7 @@ const baseNote = (overrides: Partial<Note> = {}): Note => ({
   ...overrides,
 });
 
-describe('setCachedNote with calendar dates (CHR-42)', () => {
+describe('setCachedNote with calendar dates', () => {
   test('does not throw when daily-dates Set is cached alongside lists', () => {
     const queryClient = new QueryClient();
     const datesKey = queryKeys.notes.dailyDates(
@@ -55,7 +55,7 @@ describe('setCachedNote with calendar dates (CHR-42)', () => {
       from: '2026-10-01',
       to: '2026-10-31',
     });
-    // Legacy/wrong shape that previously made first daily save throw (CHR-42).
+    // A non-list shape under a list key must not make the save throw.
     queryClient.setQueryData(listKey, new Set<string>(['2026-10-02']));
 
     expect(() => setCachedNote(queryClient, baseNote())).not.toThrow();

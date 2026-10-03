@@ -1,5 +1,4 @@
 /**
- * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162 / CHR-171).
  * Not registered in the prod route table.
  */
 import { z } from 'zod';

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Read-only prod scan for META/PUBLISHED rows missing `version` (CHR-170).
+ * Read-only prod scan for META/PUBLISHED rows missing `version`.
  *
  *   AWS_PROFILE=gagnechris-readonly aws sso login --sso-session gagnechris
  *   node scripts/scan-missing-version.mjs

@@ -9,7 +9,7 @@ import {
 } from '../src/publish-targets/surface.js';
 import nowPageTarget from './fixtures/now-page.target.js';
 
-describe('publish surface collectors (CHR-179)', () => {
+describe('publish surface collectors', () => {
   it('collects Option B paths from production targets plus static Vite pages', () => {
     expect(collectOptionBPaths(publishTargets)).toEqual(['/blog', '/resume']);
     expect(allOptionBPrefixes(publishTargets)).toEqual([

@@ -1,6 +1,3 @@
-/**
- * createHash privacy + notebook size limits on DynamoDB Local (CHR-192).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { NOTEBOOK_TEXT_MAX_BYTES } from '@gagnechris/shared';
@@ -24,7 +21,7 @@ const TASK_ID = '01ARZ3NDEKTSV4RRFFQ69G5HA2';
 const BIG_ID = '01ARZ3NDEKTSV4RRFFQ69G5HA3';
 const SECRET = 'my bank password is hunter2';
 
-describe('createHash privacy and size limits (CHR-192)', () => {
+describe('createHash privacy and size limits', () => {
   let tableName: string;
   let routes: RouteDef[];
   const doc = createLocalDocClient();
@@ -129,7 +126,7 @@ describe('createHash privacy and size limits (CHR-192)', () => {
     expect(mismatch.body).toMatchObject({ error: 'payload_mismatch' });
   });
 
-  it('still replays rows written with the pre-CHR-192 plaintext hash', async () => {
+  it('still replays rows written with the old plaintext hash', async () => {
     expect((await createNote(SECRET)).status).toBe(201);
     const meta = (await scanAll()).find(
       (item) => typeof item.createHash === 'string',

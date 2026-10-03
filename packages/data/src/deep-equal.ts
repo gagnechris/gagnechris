@@ -1,6 +1,3 @@
-/**
- * Structural deep equality (key-order insensitive for plain objects).
- */
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (typeof a !== typeof b) return false;

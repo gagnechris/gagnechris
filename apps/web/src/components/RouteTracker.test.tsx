@@ -83,7 +83,7 @@ describe('RouteTracker', () => {
     });
   });
 
-  test('passes private routes to the analytics guard (CHR-194)', () => {
+  test('passes private routes to the analytics guard', () => {
     render(
       <MemoryRouter initialEntries={['/admin/notebook/today']}>
         <RouteTracker>

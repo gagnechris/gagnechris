@@ -12,10 +12,7 @@ type Props = {
   hint?: string;
 };
 
-/**
- * Shared Notebook markdown split (editor + preview) with checklist toggles.
- * No image upload — Notebook attachments need the private bucket (CHR-175).
- */
+/** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({ value, onChange, hint }: Props) {
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
   const extensions = useMemo(() => [taskListToggle()], []);

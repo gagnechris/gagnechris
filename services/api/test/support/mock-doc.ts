@@ -19,7 +19,6 @@ function itemsForKeys(
   return out;
 }
 
-/** Respond to BatchGet (META+PUBLISHED) and optional writes (publishable repos). */
 export function mockPair(
   meta: unknown,
   published?: unknown,
@@ -62,7 +61,6 @@ export function mockDoc(impl: (command: FakeCommand) => Promise<unknown>): {
   };
 }
 
-/** When tests only need a document client without inspecting `send`. */
 export function mockDocClient(
   impl: (command: FakeCommand) => Promise<unknown>,
 ): DynamoDBDocumentClient {

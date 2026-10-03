@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
-# Report CloudFormation activity on the app's `*-prod` stacks (CHR-200).
-#
-# Exit 0: no stack is *_IN_PROGRESS and, when SINCE_EPOCH is given, none was
-# updated at or after it. Exit 3: activity; the stacks are listed on stdout.
-# Any other exit is an AWS / script error.
-#
-# The nightly drift job runs this before and after `cdk drift` so a deploy
-# that overlaps the check cannot produce a false drift result. Drift does not
-# share the deploy concurrency group because a queued drift run would cancel
-# a pending deploy run.
-#
+# Exit 0: no `*-prod` stack is *_IN_PROGRESS or updated since SINCE_EPOCH.
+# Exit 3: activity (stacks on stdout). Any other exit is an error.
 # Usage (AWS credentials and region in the environment):
 #   scripts/ci/prod-stack-activity.sh [SINCE_EPOCH]
 set -euo pipefail

@@ -19,7 +19,7 @@ code.
 | `sk`                | Sort key                                                                                          |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                                 |
 | `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk |
-| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity; CHR-153)                        |
+| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                 |
 | `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …)       |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
@@ -44,13 +44,13 @@ redirects use dedicated items.
 | `updatedAt`                        | ISO-8601                                                                                    |
 | `coverImage`                       | Optional `/media/...` path                                                                  |
 | `seo`                              | Optional map: `title`, `description`, `ogImage` overrides                                   |
-| `version`                          | Number for optimistic concurrency (CHR-30)                                                  |
+| `version`                          | Number for optimistic concurrency                                                           |
 | `gsi1pk`                           | `STATUS#<status>`                                                                           |
 | `gsi1sk`                           | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt`    |
 
 Admin autosave writes **only** this item. Edits never change the live site.
 
-#### `POST#<postId>` / `PUBLISHED` — live snapshot (CHR-96)
+#### `POST#<postId>` / `PUBLISHED` — live snapshot
 
 Written only on `POST .../publish`. Same content attrs as META (no GSI1 keys —
 admin `STATUS#published` queries stay unique to META). The publisher stream
@@ -76,13 +76,8 @@ posts cannot claim the same slug.
 | `entityType` | `slugRedirect`              |
 
 On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
-update `META.slug`. Publisher (CHR-34) can emit a meta refresh or CloudFront
-function later; until then the API/admin treats redirects as reserved slugs.
-
-#### Optional: `POST#<postId>` / `REV#<version>` — revision history
-
-Reserved for last-N body snapshots (not required for CHR-29 deploy). Same `pk`,
-`sk` = `REV#<zeroPaddedVersion>`.
+update `META.slug`. The publisher does not serve redirects; the API/admin
+treats redirect slugs as reserved.
 
 ### Access patterns (posts)
 
@@ -125,7 +120,7 @@ List by tag: `Query` `pk = TAG#x` (or GSI2), newest first.
 
 Editable draft plus an optional live snapshot.
 
-#### `RESUME#current` / `META` — editable draft — draft
+#### `RESUME#current` / `META` — editable draft
 
 | Attr         | Notes                                                                                      |
 | ------------ | ------------------------------------------------------------------------------------------ |
@@ -135,22 +130,20 @@ Editable draft plus an optional live snapshot.
 | `pdfPath`    | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
 
 No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
-`DEFAULT_RESUME` on first read (CHR-96). Publish copies META → `PUBLISHED`
-(and triggers PDF regeneration). Unpublish deletes `PUBLISHED`. A missing
-published snapshot leaves the existing `resume/index.html` and `resume.pdf`
-in place rather than deleting them.
+`DEFAULT_RESUME` on first read. Publish copies META → `PUBLISHED` (and
+triggers PDF regeneration). Unpublish deletes `PUBLISHED`; the publisher then
+replaces `resume/index.html` with a "Resume available on request" page and
+deletes `resume.pdf`. A corrupt `PUBLISHED` row leaves both in place.
 
 #### `RESUME#current` / `PUBLISHED` — live snapshot
 
-Same content attrs as META. Publisher reads only this item. Existing
-`status=published` META rows are copied to `PUBLISHED` on first admin read or
-publisher rebuild so the live site does not change during rollout.
+Same content attrs as META. Publisher reads only this item.
 
 ## Home (singleton)
 
 Same draft / published split as the resume.
 
-#### `HOME#current` / `META` — editable draft — draft
+#### `HOME#current` / `META` — editable draft
 
 | Attr         | Notes                                               |
 | ------------ | --------------------------------------------------- |
@@ -161,13 +154,14 @@ Same draft / published split as the resume.
 | `about`      | About Me body text; blank lines separate paragraphs |
 
 `GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
-writes `HOME#current` / `PUBLISHED`; unpublish deletes it. A draft or missing
-published item leaves the live `index.html` alone.
+writes `HOME#current` / `PUBLISHED`; unpublish deletes it. On publish the
+publisher also writes `home/last-published.json`; when `PUBLISHED` is missing
+or corrupt it re-renders `index.html` from that snapshot (or leaves
+`index.html` alone if there is none).
 
 #### `HOME#current` / `PUBLISHED` — live snapshot
 
-Publisher reads only this item (with the same META→PUBLISHED migration as
-resume).
+Publisher reads only this item.
 
 Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
 (home meta shell), then invokes `republishAll`, which reads `_shell.html` and
@@ -176,19 +170,18 @@ cannot leak into `/posts` or `/resume`. Profile photo, Quick Links, and footer
 **link data** are defined once in `@gagnechris/shared/render` (`HOME_QUICK_LINKS` /
 `HOME_FOOTER_LINKS`); the publisher prerenders HTML from that list and React
 renders the same list as JSX (`<Link>` / tracked `<a>`) so SPA navigation and
-GA4 click events stay intact (CHR-116 / CHR-122 / CHR-125). The prerender
+GA4 click events stay intact. The prerender
 footer year is fixed at publish time; the SPA uses the live year.
 
-## Contact messages (CHR-98)
+## Contact messages
 
 Public contact form submissions are persisted before SES notification so a
 failed send never loses the message. Sort key is `MSG` (not `PUBLISHED`), so
 the publisher stream filter (`sk = PUBLISHED`) ignores these writes.
 
 Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
-client-controlled** (CHR-114 / CHR-122): a bot can omit or inflate the value.
-Hard caps remain the per-IP contact rate limit and the global SES daily cap. A
-signed server-issued token would make timing authoritative if spam warrants it.
+client-controlled**: a bot can omit or inflate the value. The hard caps are
+the per-IP contact rate limit and the global SES daily cap.
 
 #### `CONTACT#<ulid>` / `MSG`
 
@@ -214,17 +207,17 @@ them (same as draft `META` rows).
 | SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
 | Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 
-## Notebook sync feed (CHR-153 / CHR-162)
+## Notebook sync feed
 
 Synced entities stamp sparse GSI3 keys on their **META** item (no append-only ledger):
 
-| Attr         | Notes                                                                                                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `syncPk`     | `SYNC#<userId>` (Cognito `sub`) — GSI3 partition                                                                                                |
-| `syncSk`     | `<updatedAt>#<TYPE>#<id>` (ISO-8601 UTC ms; lex order ≈ time order)                                                                             |
-| `entityType` | Adapter key for the change feed (stamped from sync `changeType`)                                                                                |
-| `createHash` | `sha256:<hex>` of the create-time fields for idempotent ULID retries (never the text itself; live META only, not tombstones or claims; CHR-192) |
-| `ttl`        | Set on soft-delete (default 30 days via `SYNC_TOMBSTONE_TTL_DAYS`)                                                                              |
+| Attr         | Notes                                                                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `syncPk`     | `SYNC#<userId>` (Cognito `sub`) — GSI3 partition                                                                                       |
+| `syncSk`     | `<updatedAt>#<TYPE>#<id>` (ISO-8601 UTC ms; lex order ≈ time order)                                                                    |
+| `entityType` | Adapter key for the change feed (stamped from sync `changeType`)                                                                       |
+| `createHash` | `sha256:<hex>` of the create-time fields for idempotent ULID retries (never the text itself; live META only, not tombstones or claims) |
+| `ttl`        | Set on soft-delete (default 30 days via `SYNC_TOMBSTONE_TTL_DAYS`)                                                                     |
 
 Create also writes a durable claim row (not on GSI3):
 
@@ -238,8 +231,8 @@ Create also writes a durable claim row (not on GSI3):
 - Normalizes `since` with `Date.parse` → `toISOString()` so missing milliseconds or offsets match UTC-ms keys.
 - Re-queries an overlap window (`SYNC_OVERLAP_MS`, 15s ≥ `API_LAMBDA_TIMEOUT_MS`) below `since` so late-committed writes are not skipped; clients dedupe by `(id, version)`.
 - Returns opaque `nextSince` (server watermark at query start) for the next poll.
-- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition). `limit` counts returned changes, not skipped corrupt rows (CHR-202).
-- Cursors are bound to the queried partition and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400** (CHR-170 / CHR-202). `ValidationException` on ExclusiveStartKey is also mapped to 400.
+- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition). `limit` counts returned changes, not skipped corrupt rows.
+- Cursors are bound to the queried partition and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400**. `ValidationException` on ExclusiveStartKey is also mapped to 400.
 - Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
 
 Adding a synced entity: **`sync` config on its `VersionedRepository`** (`sync: { changeType, userIdOf, createPayloadHash }`, which stamps `entityType` / `syncPk` / `syncSk`; see [adding-an-entity.md](./adding-an-entity.md)), one entry in `services/api/src/sync/adapters.ts` (the feed adapter; the repository does not register it), and its variant in `SyncChangeSchema` — no edits to the ledger/feed modules. A test fails until the adapter list and the schema agree; a row with no adapter returns 500.
@@ -250,9 +243,9 @@ Clients:
 - Poll or page the change feed with `since` / `nextSince` + opaque `cursor`.
 - Send **`If-Match: "<version>"`**, **`If-Match: W/"<version>"`**, or **`If-Match: *`** (or body `version`) on update/delete; treat **412** vs **409** as documented in [architecture.md](./architecture.md).
 
-## Notebook (owner-scoped key space, CHR-169 / CHR-39)
+## Notebook (owner-scoped key space)
 
-Production Notebook notes/tasks use **owner-scoped** keys so a second Cognito user
+Notebook notes/tasks use **owner-scoped** keys so a second Cognito user
 (or recreated pool `sub`) cannot read, mutate, or collide with another user's rows.
 Access patterns: daily note by `(user, area, date)`, notes by area/date (calendar),
 tasks by area/status/due, tasks linked to a note.
@@ -307,41 +300,41 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 
-**Write limits (CHR-192):** note `bodyMarkdown` and task `description` up to 100 KB (UTF-8), titles 300 characters, at most 50 tags of 50 characters. Over a limit, notebook `POST`/`PUT` return **413** `payload_too_large` with `fields`, well before DynamoDB's 400 KB item cap.
+**Write limits:** note `bodyMarkdown` and task `description` up to 100 KB (UTF-8), titles 300 characters, at most 50 tags of 50 characters. Over a limit, notebook `POST`/`PUT` return **413** `payload_too_large` with `fields`, well before DynamoDB's 400 KB item cap.
 
-**Daily-note claim lifecycle (CHR-187):**
+**Daily-note claim lifecycle:**
 
 - **Race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser (`POST /notes` or `PUT /notes/daily/...`) gets **409 `daily_taken`** with `current` (the winner) and `currentVersion`. Nothing is dropped silently.
 - **Client merge rule (web and iOS):** on `daily_taken`, keep the local draft and show a conflict. Then either reload and adopt `current`, or re-send your text as an update to `current.id` with `version: current.version` once the user chooses to merge. Never retry the create with the losing ULID.
 - **Placeholder writers:** `PUT /notes/daily/...` with no `version` or `If-Match` when the day already exists returns 409 (`daily_taken` for a different id, `version_conflict` for the same id with changed content). Re-sending the exact create (same id and content) returns 200 with the stored note.
-- **Delete frees the day:** soft-deleting a daily note removes its claim in the same transaction (only if the claim still points at that note). A claim left pointing at a tombstone by older data reads as empty on `GET`, and is freed on the next create.
+- **Delete frees the day:** soft-deleting a daily note removes its claim in the same transaction (only if the claim still points at that note). A claim pointing at a tombstone reads as empty on `GET`, and is freed on the next create.
 - **Area is immutable for daily notes:** `PUT /notes/{id}` with a different `area` on a daily note → **400** `fields.area=immutable`. Pages can still move.
 
-**No new GSIs** for Notes/Tasks core — GSI1–3 are already deployed.
+Notes and tasks use only GSI1–3; they need no further indexes.
 
 API surface: Notebook repositories use `VersionedRepository` with the `ownerScoped` strategy, whose get/mutate/delete take a `{ userId, id }` key; posts use the `unscoped` (id-only) strategy through `PublishableRepository`. Query cursors are chosen per call / `IndexName` (`cursorKeysByIndex`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
 
-**List paging (CHR-185):** `GET /api/notebook/notes` without `area` walks the Work then Personal partitions with a composite `mp.` cursor instead of merging one page per area. Pages are grouped by partition, not globally sorted; clients that need a global order sort after loading. A single-partition cursor is the raw DynamoDB key as before. A malformed or foreign cursor → **400**.
+**List paging:** `GET /api/notebook/notes` without `area` walks the Work then Personal partitions with a composite `mp.` cursor instead of merging one page per area. Pages are grouped by partition, not globally sorted; clients that need a global order sort after loading. A single-partition cursor is the raw DynamoDB key. A malformed or foreign cursor → **400**.
 
-### Tasks HTTP API (CHR-43)
+### Tasks HTTP API
 
-| Method                   | Path                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`                    | `/api/notebook/tasks`               | Query: `area`, `status`, `priority`, `dueOn`, `dueBefore`, `noteId`, `open` (`true` = todo + in_progress only), `today` (caller's local `yyyy-mm-dd` for overdue ranking; default UTC), `cursor`, `limit`. Single area+status uses GSI1; `noteId` uses GSI2. Multi-partition lists walk (area, status) partitions in order with a composite `mp.` cursor, so every task is returned exactly once (CHR-185). Done tasks never rank as overdue. |
-| `POST`                   | `/api/notebook/tasks`               | Client ULID create; idempotent. `noteId` (create and `PUT`) must be the caller's live note, else **400** `fields.noteId=not_found`                                                                                                                                                                                                                                                                                                            |
-| `GET` / `PUT` / `DELETE` | `/api/notebook/tasks/{id}`          | Soft-delete tombstone; `If-Match` / body `version`                                                                                                                                                                                                                                                                                                                                                                                            |
-| `POST`                   | `/api/notebook/tasks/{id}/complete` | Sets `status=done` and `completedAt`                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `POST`                   | `/api/notebook/tasks/{id}/reopen`   | Sets `status=todo` (from `done`; other statuses unchanged), clears `completedAt`                                                                                                                                                                                                                                                                                                                                                              |
+| Method                   | Path                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`                    | `/api/notebook/tasks`               | Query: `area`, `status`, `priority`, `dueOn`, `dueBefore`, `noteId`, `open` (`true` = todo + in_progress only), `today` (caller's local `yyyy-mm-dd` for overdue ranking; default UTC), `cursor`, `limit`. Single area+status uses GSI1; `noteId` uses GSI2. Multi-partition lists walk (area, status) partitions in order with a composite `mp.` cursor, so every task is returned exactly once. Done tasks never rank as overdue. |
+| `POST`                   | `/api/notebook/tasks`               | Client ULID create; idempotent. `noteId` (create and `PUT`) must be the caller's live note, else **400** `fields.noteId=not_found`                                                                                                                                                                                                                                                                                                  |
+| `GET` / `PUT` / `DELETE` | `/api/notebook/tasks/{id}`          | Soft-delete tombstone; `If-Match` / body `version`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `POST`                   | `/api/notebook/tasks/{id}/complete` | Sets `status=done` and `completedAt`                                                                                                                                                                                                                                                                                                                                                                                                |
+| `POST`                   | `/api/notebook/tasks/{id}/reopen`   | Sets `status=todo` (from `done`; other statuses unchanged), clears `completedAt`                                                                                                                                                                                                                                                                                                                                                    |
 
 `dueBefore` / `dueOn` key conditions use the `DUE#` prefix only (undated `UPDATED#…` rows are excluded). List sort is applied **on the server**: overdue (`dueDate` &lt; UTC today), then earlier due dates, then priority, then id.
 
-### Search HTTP API (CHR-46)
+### Search HTTP API
 
-| Method | Path                   | Notes                                                                                                                                                                                                                                                                                                                                           |
-| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/notebook/search` | JSON body: `q` (required), optional `area`, `limit` (max 50). POST so search terms never appear in a URL or access log (CHR-196); `GET` returns 405. Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas since CHR-185) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
+| Method | Path                   | Notes                                                                                                                                                                                                                                                                                                                   |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/notebook/search` | JSON body: `q` (required), optional `area`, `limit` (max 50). POST so search terms never appear in a URL or access log; `GET` returns 405. Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
 
-### Human export (CHR-47)
+### Human export
 
 No dedicated export API. The admin **Export** button pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). See `infra/RUNBOOK.md` (human export vs PITR).
 
@@ -351,5 +344,5 @@ No dedicated export API. The admin **Export** button pages the notes and tasks l
 - Tag normalization: trim, lowercase, collapse internal whitespace to `-`.
 - Transactions: slug claim + `META` (+ tag rows) in one `TransactWriteItems`
   where uniqueness matters.
-- Streams: publisher consumes `sk=PUBLISHED` modifications only (CHR-96). Draft
+- Streams: publisher consumes `sk=PUBLISHED` modifications only. Draft
   META autosaves never rebuild the live site.

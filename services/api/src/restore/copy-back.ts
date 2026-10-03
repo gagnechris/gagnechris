@@ -1,18 +1,10 @@
 /**
- * Item-level copy-back of Notebook notes/tasks from a scratch restore table
- * into the live table (CHR-198). "Restore my notes" without swapping tables:
- * restore prod to a scratch table (PITR or AWS Backup), plan a copy-back
- * (dry run), apply it, then delete the scratch table. See infra/RUNBOOK.md.
- *
- * Writes follow the repository conventions so clients see the change:
- * - META rebuilt with `buildNoteMetaItem` / `buildTaskMetaItem` (list GSIs)
- * - sync stamps (`entityType`, `syncPk`, `syncSk` at the copy-back time), so
- *   the GSI3 change feed returns the restored row on the next poll
- * - version bumped past the live row (`target.version + 1`, or
- *   `source.version + 1` when the live row is gone), written with the same
- *   optimistic condition as the API, so a concurrent edit is never clobbered
- * - `createHash` kept (hashed if a pre-CHR-192 restore holds plaintext), the
- *   owner create claim refreshed, and the daily-note claim re-taken when free
+ * Copy-back writes follow the repository conventions so clients see the change
+ * (see infra/RUNBOOK.md):
+ * - sync stamps at copy-back time, so the change feed returns the restored row
+ * - version bumped past the live row with the API's optimistic condition, so a
+ *   concurrent edit is never clobbered
+ * - plaintext `createHash` from an old restore point is hashed
  * - no `ttl`: a restored tombstone becomes a live row again
  */
 import {
@@ -69,7 +61,6 @@ export type CopyBackOptions = {
   /** Cognito `sub` that owns the rows (the `USER#<sub>#…` key segment). */
   userId: string;
   types?: readonly CopyBackType[];
-  /** Restrict to these note/task ids. */
   ids?: readonly string[];
   /** Overwrite a live row that changed after the restore point. */
   overwriteNewer?: boolean;
@@ -117,7 +108,6 @@ export type CopyBackEntry = {
   targetUpdatedAt?: string;
   targetDeleted?: boolean;
   newVersion?: number;
-  /** Write inputs; not printed. */
   write?: {
     source: Entity;
     /** undefined → the live row must not exist. */
@@ -142,7 +132,6 @@ export class CopyBackRefusedError extends Error {
   }
 }
 
-/** Throws unless source/target are a safe pair. */
 export function assertCopyBackTables(
   sourceTable: string,
   targetTable: string,
@@ -192,13 +181,12 @@ function typeOfItem(item: Record<string, unknown>): CopyBackType | undefined {
     : undefined;
 }
 
-/** Hash a pre-CHR-192 plaintext createHash so it never lands in prod again. */
+/** Old restore points may hold a plaintext createHash; never let it land in prod again. */
 function normalizeCreateHash(raw: unknown): string | undefined {
   if (typeof raw !== 'string' || raw.length === 0) return undefined;
   return isHashedCreateHash(raw) ? raw : hashJoinedCreateFields(raw);
 }
 
-/** All owner META rows of the selected types in the scratch table. */
 async function scanSourceRows(
   doc: DynamoDBDocumentClient,
   opts: CopyBackOptions,
@@ -264,7 +252,6 @@ async function planDailyClaim(
   return live ? { kind: 'taken', holderId } : { kind: 'stale', holderId };
 }
 
-/** Decide, per selected row, what applying would do. Reads only. */
 export async function planCopyBack(
   doc: DynamoDBDocumentClient,
   opts: CopyBackOptions,
@@ -444,7 +431,6 @@ function storedItem(
   };
 }
 
-/** Write the planned rows. Each row is one conditional transaction. */
 export async function applyCopyBack(
   doc: DynamoDBDocumentClient,
   opts: CopyBackOptions,
@@ -543,7 +529,7 @@ export async function applyCopyBack(
   return results;
 }
 
-/** One line per entry for the CLI (titles only when asked: they are private). */
+/** Titles only when asked: they are private. */
 export function formatCopyBackPlan(
   plan: readonly CopyBackEntry[],
   opts: { showTitles?: boolean } = {},

@@ -9,7 +9,6 @@ function getSes(): SESv2Client {
   return client;
 }
 
-/** Test helper. */
 export function setSesClient(next: SESv2Client | undefined): void {
   client = next;
 }

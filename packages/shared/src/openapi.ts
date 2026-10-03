@@ -78,7 +78,6 @@ const DailyNoteParamsSchema = z.object({
   date: CalendarDateSchema,
 });
 
-/** Optional If-Match on versioned mutations (CHR-171). */
 const IfMatchHeadersSchema = z.object({
   'if-match': z.string().optional().openapi({
     description:
@@ -103,7 +102,6 @@ const versionBody = {
   },
 };
 
-/** Shared OpenAPI response fragments (CHR-130 / CHR-171). */
 function jsonBody(schema: z.ZodType) {
   return { content: { 'application/json': { schema } } };
 }
@@ -801,7 +799,7 @@ export function buildOpenApiDocument() {
     path: '/api/notebook/search',
     summary: 'Search notes and tasks for the authenticated user',
     description:
-      'Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs (CHR-196).',
+      'Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs.',
     tags: ['Notebook'],
     security: [{ bearerAuth: [] }],
     request: {
@@ -913,10 +911,8 @@ export function buildOpenApiDocument() {
 type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>;
 
 /**
- * Mark every declared JSON body `required` (CHR-186). Otherwise
- * openapi-typescript makes `body` optional and a mutation called without its
- * body (e.g. a delete with no expected version) still typechecks. Notebook
- * routes also accept `If-Match` alone, but typed clients send the body.
+ * Otherwise openapi-typescript makes `body` optional and a mutation called
+ * without its body still typechecks.
  */
 function requireRequestBodies(doc: OpenApiDocument): OpenApiDocument {
   for (const pathItem of Object.values(doc.paths ?? {})) {

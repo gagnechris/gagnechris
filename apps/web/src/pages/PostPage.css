@@ -45,7 +45,7 @@
   border-bottom: 2px solid var(--primary-200);
 }
 
-/* .back-link / .back-link-footer: shared in index.css (CHR-109) */
+/* .back-link / .back-link-footer: shared in index.css */
 
 .post-content {
   line-height: var(--line-relaxed);

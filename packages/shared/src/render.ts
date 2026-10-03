@@ -1,4 +1,4 @@
-/** HTML / markdown prerender helpers (web + publisher). Not for mobile. */
+/** Not for mobile. */
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export { renderMarkdownToHtml, sanitizeRenderedHtml } from './markdown.js';

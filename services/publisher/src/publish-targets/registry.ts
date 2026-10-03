@@ -1,13 +1,4 @@
-/**
- * Explicit publish-target registry. Esbuild (Lambda bundle) does not expand
- * `import.meta.glob`, so each `*.target.ts` is imported below.
- *
- * Adding a published page: add `targets/<name>.target.ts` and one entry in
- * `publishTargets`. Match existing scope flags or `touchedEntityTypes` for an
- * own Dynamo entity — no new RebuildScope boolean. Declare `optionBPaths` /
- * `adminMutationPrefixes` on the target; `npm run publish-surface:generate`
- * updates CloudFront + local publish-relevance (CHR-166 / CHR-179).
- */
+// Explicit imports: esbuild (Lambda bundle) does not expand `import.meta.glob`.
 import type { PublishTarget } from './types.js';
 import postsFeedsTarget from './targets/posts-feeds.target.js';
 import homeTarget from './targets/home.target.js';

@@ -3,7 +3,7 @@ import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import { ConflictError, ServiceUnavailableError } from '../src/data/errors.js';
 import { runDynamoWrite } from '../src/data/dynamo-write.js';
 
-describe('runDynamoWrite (CHR-120 / CHR-126)', () => {
+describe('runDynamoWrite', () => {
   it('maps TransactionConflict to ConflictError', async () => {
     await expect(
       runDynamoWrite(async () => {
@@ -31,7 +31,7 @@ describe('runDynamoWrite (CHR-120 / CHR-126)', () => {
     expect(write).toHaveBeenCalledTimes(1);
   });
 
-  it('maps RequestLimitExceeded to ServiceUnavailableError (CHR-126)', async () => {
+  it('maps RequestLimitExceeded to ServiceUnavailableError', async () => {
     await expect(
       runDynamoWrite(async () => {
         const err = new Error('Rate exceeded');

@@ -27,7 +27,7 @@ const USER = 'user-sync-it';
 const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const NOTE_ID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
 
-describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
+describe('sync feed (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 
@@ -99,7 +99,7 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
     expect(byId[NOTE_ID_2]!.entity).toMatchObject({ title: 'local-b' });
   });
 
-  it('stale since throws ResyncRequiredError (CHR-172)', async () => {
+  it('stale since throws ResyncRequiredError', async () => {
     const now = '2026-10-02T12:00:00.000Z';
     const ledger = new SyncLedger(doc, tableName, () => now);
     const stale = new Date(
@@ -110,7 +110,7 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
     ).rejects.toBeInstanceOf(ResyncRequiredError);
   });
 
-  it('softDelete extends create-claim TTL from delete time (CHR-172)', async () => {
+  it('softDelete extends create-claim TTL from delete time', async () => {
     const createAt = new Date('2026-01-01T00:00:00.000Z');
     const deleteAt = new Date('2026-09-28T11:00:00.000Z');
     let clock = createAt;

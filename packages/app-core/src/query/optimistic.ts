@@ -16,7 +16,6 @@ export type OptimisticContext<TData> = {
 
 type OptimisticHandlersArgs<TData, TVariables> = {
   queryClient: QueryClient;
-  /** When false, skip invalidateQueries (useful in unit tests). */
   invalidate?: boolean;
 } & (
   | {
@@ -34,35 +33,6 @@ type OptimisticHandlersArgs<TData, TVariables> = {
     }
 );
 
-/**
- * Documented optimistic update + rollback pattern for TanStack Query.
- *
- * Single key (legacy):
- *
- * ```ts
- * optimisticMutationHandlers<Task[], { id: string }>({
- *   queryClient,
- *   queryKey: queryKeys.tasks.list(),
- *   update: (tasks, { id }) =>
- *     tasks?.map((t) => (t.id === id ? { ...t, done: true } : t)),
- * })
- * ```
- *
- * Multi-key (Today + Tasks list stay in sync — CHR-158):
- *
- * ```ts
- * optimisticMutationHandlers<Task[], { id: string }>({
- *   queryClient,
- *   targets: [
- *     { queryKey: queryKeys.today.tasks(), update: markDone },
- *     { queryKey: queryKeys.tasks.list(), update: markDone },
- *   ],
- * })
- * ```
- *
- * Flow: cancel in-flight reads → snapshot each target → apply optimistic data →
- * on error restore each snapshot → onSettled invalidate so server truth wins.
- */
 export const optimisticMutationHandlers = <TData, TVariables>(
   args: OptimisticHandlersArgs<TData, TVariables>,
 ) => {

@@ -23,7 +23,7 @@ const sample = (overrides: Partial<Task> = {}): Task => ({
   ...overrides,
 });
 
-describe('setCachedTask (CHR-44)', () => {
+describe('setCachedTask', () => {
   test('writes detail and upserts into list pages', () => {
     const qc = new QueryClient();
     const listKey = queryKeys.tasks.list({ area: 'work' });

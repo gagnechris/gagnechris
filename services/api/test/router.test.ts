@@ -44,7 +44,7 @@ describe('router helpers', () => {
     expect(patternSpecificity('/notebook/tasks/:id')).toBe(2);
   });
 
-  it('pathRequiresAdminAuth does not throw on malformed % escapes (CHR-166)', () => {
+  it('pathRequiresAdminAuth does not throw on malformed % escapes', () => {
     expect(pathRequiresAdminAuth(routes, '/api/admin/posts/%E0')).toBe(false);
     expect(pathRequiresAdminAuth(routes, '/api/echo/%E0')).toBe(false);
   });
@@ -75,7 +75,7 @@ describe('dispatchRoutes', () => {
       pattern: '/broken-response',
       auth: 'public',
       handler: async () => {
-        // Response schema failure — server bug, must not look like 400 (CHR-168).
+        // Response schema failure is a server bug and must not look like 400.
         z.object({ ok: z.literal(true) }).parse({ ok: false });
         return json(200, { ok: true });
       },
@@ -148,7 +148,7 @@ describe('dispatchRoutes', () => {
     expect(result.statusCode).toBe(401);
   });
 
-  it('prefers literal segments over :param (CHR-154)', async () => {
+  it('prefers literal segments over :param', async () => {
     const table: RouteDef[] = [
       defineRoute({
         method: 'GET',
@@ -185,7 +185,7 @@ describe('dispatchRoutes', () => {
     expect(JSON.parse(result.body as string).error).toBe('bad_request');
   });
 
-  it('lets response-schema ZodError bubble (handler turns it into 500) (CHR-168)', async () => {
+  it('lets response-schema ZodError bubble (handler turns it into 500)', async () => {
     await expect(
       dispatchRoutes(
         echoRoutes,
@@ -200,7 +200,7 @@ describe('dispatchRoutes', () => {
   });
 });
 
-describe('route table contract (CHR-154 / CHR-166 / CHR-171)', () => {
+describe('route table contract', () => {
   it('admin routes use exactly the API Gateway JWT prefixes', () => {
     for (const route of routes) {
       if (route.auth !== 'admin') continue;
@@ -217,7 +217,7 @@ describe('route table contract (CHR-154 / CHR-166 / CHR-171)', () => {
     }
   });
 
-  it('rejects public routes under JWT prefixes (CHR-166)', () => {
+  it('rejects public routes under JWT prefixes', () => {
     for (const route of routes) {
       if (route.auth !== 'public') continue;
       expect(

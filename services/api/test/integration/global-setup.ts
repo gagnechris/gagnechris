@@ -23,7 +23,7 @@ function applyIntegrationEnv(): void {
   process.env.AWS_REGION = 'us-east-1';
   process.env.AWS_DEFAULT_REGION = 'us-east-1';
   delete process.env.AWS_PROFILE;
-  // Never the local-dev DynamoDB on 8000 (CHR-199).
+  // Never the local-dev DynamoDB on 8000.
   process.env.AWS_ENDPOINT_URL_DYNAMODB = integrationDynamoEndpoint();
   // Never inherit DATA_TABLE_NAME (e.g. gagnechris-local from env.sh).
   delete process.env.DATA_TABLE_NAME;

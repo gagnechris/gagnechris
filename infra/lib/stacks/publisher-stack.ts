@@ -26,17 +26,11 @@ import {
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
 
-/** Table partition prefixes the publisher may read (CHR-196). */
 export const PUBLISHER_TABLE_LEADING_KEYS = ['POST#*', 'HOME#*', 'RESUME#*'];
 
-/** gsi1 partitions the publisher may query (CHR-196). */
 export const PUBLISHER_GSI1_LEADING_KEYS = [statusGsi1Pk('published')];
 
-/**
- * Read-only DynamoDB statements for the publisher: item reads on the table
- * and Query on gsi1, each limited by `dynamodb:LeadingKeys` (for an index,
- * that is the index partition key).
- */
+/** For an index, `dynamodb:LeadingKeys` is the index partition key. */
 export function publisherTableReadStatements(
   tableArn: string,
 ): PolicyStatement[] {
@@ -70,14 +64,8 @@ export interface PublisherStackProps extends StackProps {
   readonly alertsTopic: ITopic;
 }
 
-/**
- * DynamoDB Streams → Publisher Lambda → S3 static blog + CloudFront invalidation.
- * Site bucket, distribution, and blog-slugs KVS are resolved from SSM (CHR-149)
- * so Publisher does not import Site CloudFormation exports.
- */
 export class PublisherStack extends Stack {
   readonly publisherFunction: NodeLambda;
-  /** On-failure SQS destination for discarded stream records (CHR-134). */
   readonly streamFailureDestination: LambdaFailureDestination;
 
   constructor(scope: Construct, id: string, props: PublisherStackProps) {
@@ -85,7 +73,7 @@ export class PublisherStack extends Stack {
 
     const { config, dataTable, alertsTopic } = props;
 
-    // Site writes these SSM params; Publisher looks them up (no CFN exports).
+    // SSM rather than Site CFN exports.
     const siteBucketName = StringParameter.valueForStringParameter(
       this,
       ssmParameterName(config.name, 'siteBucketName'),
@@ -104,8 +92,7 @@ export class PublisherStack extends Stack {
       'SiteBucket',
       siteBucketName,
     );
-    // domainName is required by fromDistributionAttributes; Publisher only uses
-    // distributionId (invalidations). Apex is a stable stand-in.
+    // domainName is required but unused (invalidations need only the id).
     const distribution = Distribution.fromDistributionAttributes(
       this,
       'SiteDistribution',
@@ -127,7 +114,7 @@ export class PublisherStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
       iam5NagReason:
-        'Publisher reads/writes site objects under the bucket, stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern. DynamoDB access is read-only and scoped by dynamodb:LeadingKeys (CHR-196).',
+        'Publisher reads/writes site objects under the bucket, stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern. DynamoDB access is read-only and scoped by dynamodb:LeadingKeys.',
       iam5NagAppliesTo: [
         'Resource::*',
         'Action::s3:Abort*',
@@ -138,9 +125,8 @@ export class PublisherStack extends Stack {
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/g' },
       ],
       bundling: {
-        // Runtime provides most @aws-sdk/* clients. Bundle only CloudFront
-        // KeyValueStore + SigV4a so they share one @smithy/signature-v4
-        // singleton (CHR-115); externalize the rest to shrink the zip (CHR-122).
+        // Bundle CloudFront KeyValueStore + SigV4a so they share one
+        // @smithy/signature-v4 singleton; the runtime provides the rest.
         externalModules: [
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
@@ -173,10 +159,8 @@ export class PublisherStack extends Stack {
       },
     });
 
-    // Read-only, key-scoped DynamoDB access (CHR-196). The publisher writes
-    // nothing to the table; it Gets the HOME/RESUME PUBLISHED singletons,
-    // BatchGets POST# PUBLISHED rows, and Queries gsi1 for STATUS#published.
-    // LeadingKeys keeps it away from notebook (USER#...) and contact data.
+    // LeadingKeys keeps the publisher away from notebook (USER#...) and
+    // contact data; it writes nothing to the table.
     for (const statement of publisherTableReadStatements(dataTable.tableArn)) {
       this.publisherFunction.addToRolePolicy(statement);
     }
@@ -222,8 +206,8 @@ export class PublisherStack extends Stack {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
-        // Handler rebuilds from the whole batch and throws on failure; partial
-        // batchItemFailures are not returned, so reportBatchItemFailures is omitted.
+        // The handler rebuilds from the whole batch, so there are no partial
+        // batchItemFailures to report.
         onFailure: this.streamFailureDestination.streamDestination,
         filters: [
           FilterCriteria.filter({
@@ -237,8 +221,7 @@ export class PublisherStack extends Stack {
       }),
     );
 
-    // PDF failures are isolated from the rebuild (CHR-97) so Lambda Errors
-    // stays quiet; alert on the dedicated EMF metric instead.
+    // PDF failures do not fail the rebuild, so Lambda Errors stays quiet.
     emfServiceAlarm(this, 'PublisherResumePdfErrors', {
       alarmName: `gagnechris-${config.name}-publisher-resume-pdf-errors`,
       alarmDescription:
@@ -248,8 +231,7 @@ export class PublisherStack extends Stack {
       alertsTopic,
     });
 
-    // KVS slug sync failures also fail the invocation (stream retries), but
-    // surface a dedicated metric so alerts name the root cause (CHR-119).
+    // These also fail the invocation; the metric makes alerts name the cause.
     emfServiceAlarm(this, 'PublisherKvsSyncFailed', {
       alarmName: `gagnechris-${config.name}-publisher-kvs-sync-failed`,
       alarmDescription:
@@ -259,7 +241,7 @@ export class PublisherStack extends Stack {
       alertsTopic,
     });
 
-    // Corrupt PUBLISHED rows preserve live pages but still need a page (CHR-168).
+    // Corrupt rows keep the live page, so nothing else surfaces them.
     emfServiceAlarm(this, 'PublisherDataIntegrityErrors', {
       alarmName: `gagnechris-${config.name}-publisher-data-integrity`,
       alarmDescription:

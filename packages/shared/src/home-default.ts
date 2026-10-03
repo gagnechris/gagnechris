@@ -1,10 +1,7 @@
 import type { Home } from './schemas.js';
 import { SITE_AUTHOR_NAME } from './site-config.js';
 
-/**
- * Seed + fallback home content. Mirrors the pre-CMS `apps/web/src/App.tsx`
- * copy so the public page never blanks before the first publish.
- */
+/** Fallback so the public page never blanks before the first publish. */
 export const DEFAULT_HOME: Home = {
   name: SITE_AUTHOR_NAME,
   title: 'Engineering Leader',

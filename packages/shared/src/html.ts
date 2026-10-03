@@ -1,7 +1,6 @@
 /**
- * Shared HTML helpers for publisher, prerender, and build-time static meta.
  * Always pass a replacer function to String.replace so `$` in content is not
- * treated as a replacement pattern (CHR-100).
+ * treated as a replacement pattern.
  */
 
 export const escapeHtml = (value: string): string =>
@@ -15,7 +14,6 @@ export const escapeHtml = (value: string): string =>
 export const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
 
-/** Replace an existing meta tag, or append one before </head>. */
 export const replaceMeta = (
   html: string,
   attr: 'name' | 'property',
@@ -34,7 +32,6 @@ export const replaceMeta = (
   return upsertMeta(html, attr, key, content);
 };
 
-/** Append a meta tag before </head> (no replace of existing). */
 export const upsertMeta = (
   html: string,
   attr: 'name' | 'property',

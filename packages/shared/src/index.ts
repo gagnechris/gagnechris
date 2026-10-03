@@ -1,7 +1,4 @@
-/**
- * Platform-neutral domain entry for `@gagnechris/shared`.
- * No marked, HTML renderers, OpenAPI, or Node DynamoDB helpers (CHR-139).
- */
+/** Platform-neutral: no marked, HTML renderers, OpenAPI, or Node DynamoDB helpers. */
 export {
   API_SERVICE_NAME,
   APEX_DOMAIN,

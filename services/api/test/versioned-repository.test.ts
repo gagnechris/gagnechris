@@ -24,7 +24,7 @@ type NoteItem = {
   deleted?: boolean;
 };
 
-/** ~30 lines of config for a non-publishable versioned entity (CHR-129 AC). */
+/** ~30 lines of config for a non-publishable versioned entity. */
 function createNotesRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   return new VersionedRepository<Note, NoteItem, string>(
     {

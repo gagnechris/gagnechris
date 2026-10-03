@@ -1,6 +1,3 @@
-/**
- * Owner-scoped notebook search (CHR-46): list notes/tasks then filter in memory.
- */
 import type { Note, NotebookArea, Task } from '@gagnechris/shared';
 import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
@@ -16,11 +13,7 @@ export type SearchHit = {
 };
 
 const SCAN_PAGE = 100;
-/**
- * Per-type scan cap. Multi-area lists now page completely (CHR-185), so this
- * is a real bound: a personal notebook stays well under it. Documented in
- * docs/data-model.md.
- */
+/** Per-type scan cap; a personal notebook stays well under it (see docs/data-model.md). */
 const SCAN_CAP = 2000;
 
 async function collectNotes(

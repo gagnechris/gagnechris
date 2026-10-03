@@ -64,7 +64,7 @@
   position: relative;
 }
 
-/* Honeypot — visually hidden but present for bots (CHR-38). */
+/* Honeypot — visually hidden but present for bots. */
 .hp-field {
   position: absolute;
   left: -10000px;

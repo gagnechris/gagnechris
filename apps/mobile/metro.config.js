@@ -2,13 +2,8 @@ const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 /**
- * Monorepo Metro config (CHR-142, fixed in CHR-150).
- * - Watch the workspace root so packages/* hot-reload
- * - Resolve node_modules from this app first, then the workspace root, so the
- *   Expo-pinned React wins over the root copy (the two are kept on the same
- *   version; see docs/mobile.md)
- * - Resolve NodeNext-style `.js` specifiers to `.ts` / `.tsx` source files,
- *   but only for first-party code
+ * node_modules resolve from this app before the workspace root so the
+ * Expo-pinned React wins over the root copy (see docs/mobile.md).
  */
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -24,7 +19,6 @@ config.resolver.nodeModulesPaths = [
 config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = true;
 
-/** Roots whose TypeScript sources Metro compiles directly (no build step). */
 const firstPartyRoots = [
   path.join(projectRoot, path.sep),
   path.join(workspaceRoot, 'packages', path.sep),
@@ -41,7 +35,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   // Scope the remap to relative imports from first-party files: a blanket
   // remap also rewrites node_modules imports, and a package that ships
   // `foo.js` beside `foo.d.ts` (zod) then resolves to the type-only
-  // declaration, which has no runtime and crashes on import (CHR-150).
+  // declaration, which has no runtime and crashes on import.
   if (
     moduleName.startsWith('.') &&
     moduleName.endsWith('.js') &&
@@ -51,9 +45,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     for (const candidate of [`${base}.ts`, `${base}.tsx`]) {
       try {
         return context.resolveRequest(context, candidate, platform);
-      } catch {
-        // No such source file — fall through to the specifier as written.
-      }
+      } catch {}
     }
   }
 

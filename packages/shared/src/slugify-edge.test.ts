@@ -6,7 +6,7 @@ import { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-describe('MAX_SLUG_LENGTH vs CloudFront (CHR-145)', () => {
+describe('MAX_SLUG_LENGTH vs CloudFront', () => {
   it('matches isValidBlogSlug max in the viewer-request function', () => {
     const fnSource = readFileSync(
       join(

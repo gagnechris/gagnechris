@@ -10,7 +10,7 @@ import {
   teardownDynamodbCi,
 } from './dynamodb-ci-lifecycle.js';
 
-describe('dynamodb CI lifecycle (CHR-163)', () => {
+describe('dynamodb CI lifecycle', () => {
   let tmp: string;
 
   beforeEach(() => {
@@ -30,7 +30,7 @@ describe('dynamodb CI lifecycle (CHR-163)', () => {
     expect(CI_COMPOSE_PROJECT_NAME).toBe('gagnechris-ci');
   });
 
-  it('targets the CI port 8001, not env.sh local dev on 8000 (CHR-199)', () => {
+  it('targets the CI port 8001, not env.sh local dev on 8000', () => {
     expect(
       integrationDynamoEndpoint({
         AWS_ENDPOINT_URL_DYNAMODB: 'http://127.0.0.1:8000',

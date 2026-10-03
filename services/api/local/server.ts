@@ -1,11 +1,5 @@
-/**
- * Dev-only HTTP wrapper around the API Lambda handler.
- * Injects Cognito JWT claims the same way API Gateway would — only when the
- * matched route declares `auth: 'admin'` — so public routes still exercise the
- * missing-auth path.
- *
- * Not bundled into the Lambda (CDK entry is src/handler.ts only).
- */
+// Injects claims only when the matched route declares `auth: 'admin'`, so
+// public routes still exercise the missing-auth path.
 import { createServer, type IncomingMessage } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -25,7 +19,7 @@ const LOCAL_CLAIMS = {
   sub: 'local-dev-user',
   email: 'local@gagnechris.com',
   'cognito:username': 'local-admin',
-  // Same shape API Gateway passes array claims in (CHR-195).
+  // Same shape API Gateway passes array claims in.
   'cognito:groups': '[admin]',
 };
 

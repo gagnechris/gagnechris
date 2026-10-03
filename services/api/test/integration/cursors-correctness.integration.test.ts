@@ -1,6 +1,3 @@
-/**
- * DynamoDB Local: foreign / wrong-since cursors → 400 (CHR-170).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { encodeCursor } from '../../src/data/cursor.js';
 import { SyncLedger } from '../../src/sync/ledger.js';
@@ -22,7 +19,7 @@ const USER_B = 'user-cursor-b';
 const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const NOTE_ID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
 
-describe('cursor correctness (DynamoDB Local, CHR-170)', () => {
+describe('cursor correctness (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 
@@ -85,7 +82,6 @@ describe('cursor correctness (DynamoDB Local, CHR-170)', () => {
       }),
     ).rejects.toBeInstanceOf(SyntaxError);
 
-    // Explicit foreign ExclusiveStartKey partition.
     const foreign = encodeCursor({
       pk: `USER#${USER_A}#NOTE#${NOTE_ID}`,
       sk: 'META',

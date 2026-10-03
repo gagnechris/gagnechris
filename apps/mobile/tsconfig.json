@@ -1,5 +1,5 @@
 {
-  "comment": "Base repo strictness plus Expo's RN defaults. No `paths` aliases: `moduleResolution: bundler` + the `react-native` condition make tsc resolve first-party packages exactly as Metro does (CHR-150).",
+  "comment": "Base repo strictness plus Expo's RN defaults. No `paths` aliases: `moduleResolution: bundler` + the `react-native` condition make tsc resolve first-party packages exactly as Metro does.",
   "extends": ["../../tsconfig.base.json", "expo/tsconfig.base"],
   "compilerOptions": {
     "moduleResolution": "bundler",

@@ -1,13 +1,6 @@
 /**
- * CloudFront Function (cloudfront-js-2.0) - viewer-response on the S3 default
- * behavior only (not /api, /assets, or /media).
- *
- * - Serving /404.html with a body (200) → force HTTP 404 and disable caching
- *   so revalidation never returns a blank 304 (CHR-117)
- * - S3 NoSuchKey / AccessDenied XML for missing Option B HTML → site HTML 404
- *
- * Keeps distribution-wide errorResponses off so API JSON 403/404 stay intact
- * (CHR-62 / CHR-102).
+ * Default S3 behavior only. Doing this here keeps distribution-wide
+ * errorResponses off so API JSON 403/404 stay intact.
  */
 function handler(event) {
   var request = event.request;
@@ -16,13 +9,14 @@ function handler(event) {
   var status = response.statusCode;
 
   if (uri === '/404.html') {
-    // 304 has no body — rewriting its status alone yields a blank page.
+    // 304 has no body; rewriting its status alone yields a blank page.
     if (status === 304) {
       return htmlNotFoundResponse();
     }
     if (status === 200) {
       response.statusCode = 404;
       response.statusDescription = 'Not Found';
+      // Disable caching so revalidation never returns a blank 304.
       response.headers['cache-control'] = { value: 'no-cache' };
       delete response.headers.etag;
       delete response.headers['last-modified'];
@@ -58,7 +52,6 @@ function htmlNotFoundResponse() {
   };
 }
 
-// Compact static NotFound (no SPA). Full prerender lives at /404.html.
 var NOT_FOUND_HTML =
   '<!doctype html><html lang="en"><head><meta charset="utf-8"/>' +
   '<meta name="viewport" content="width=device-width, initial-scale=1"/>' +

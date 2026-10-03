@@ -1,6 +1,4 @@
-/**
- * Test-only FIXTURE# keys (CHR-162). Kept out of `@gagnechris/data` prod surface.
- */
+// Kept out of the `@gagnechris/data` prod surface.
 import { SK_META } from '@gagnechris/data';
 
 export function fixturePk(fixtureId: string): string {

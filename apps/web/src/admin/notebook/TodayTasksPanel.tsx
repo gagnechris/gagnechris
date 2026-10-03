@@ -28,7 +28,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
   const [quickAdd, setQuickAdd] = useState('');
 
   // Open tasks plus today's done ones (for progress). Done tasks from other
-  // days are never read, so they cannot crowd out today's (CHR-185).
+  // days are never read, so they cannot crowd out today's.
   const tasksQuery = useTasksQuery({ area, open: true, today, limit: 100 });
   const doneTodayQuery = useTasksQuery({
     area,

@@ -17,7 +17,6 @@ export type RepublishAllEvent = {
   action: 'republishAll';
 };
 
-/** Test harness hooks (CHR-179 AC: now fixture through the real handler). */
 export type PublisherHandlerDeps = {
   getTargets?: () => readonly PublishTarget[];
   rebuild?: typeof rebuildPublishedSite;
@@ -49,7 +48,6 @@ function isRepublishAll(event: unknown): event is RepublishAllEvent {
   );
 }
 
-/** Collect slugs that may need S3 cleanup after unpublish / delete / rename. */
 export function collectSlugsToRemove(records: DynamoDBRecord[]): Set<string> {
   return collectRebuildScope(records).slugsToRemove;
 }

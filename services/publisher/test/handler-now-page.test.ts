@@ -60,7 +60,7 @@ function memoryStorage(): SiteStorage & { puts: string[] } {
 
 const fakeContext = { awsRequestId: 'test' } as Context;
 
-describe('handler + now-page fixture (CHR-179)', () => {
+describe('handler + now-page fixture', () => {
   afterEach(() => {
     setPublisherHandlerDepsForTests(undefined);
   });

@@ -55,7 +55,7 @@ function validatorStatements(): Statement[] {
 const actionsOf = (s: Statement) =>
   Array.isArray(s.Action) ? s.Action : [s.Action];
 
-describe('AWS Backup restore testing (CHR-198)', () => {
+describe('AWS Backup restore testing', () => {
   it('runs a weekly restore test of the latest snapshot from the app-table vault', () => {
     template.hasResourceProperties('AWS::Backup::RestoreTestingPlan', {
       RestoreTestingPlanName: 'gagnechris_prod_app_table_weekly',
@@ -119,7 +119,6 @@ describe('AWS Backup restore testing (CHR-198)', () => {
       ].sort(),
     );
     const json = JSON.stringify(statements);
-    // Never the live table, never writes or deletes.
     expect(json).not.toMatch(/AppTable/);
     expect(json).not.toMatch(/dynamodb:(Put|Update|Delete|BatchWrite|\*)/);
     const scan = statements.find((s) => actionsOf(s).includes('dynamodb:Scan'));
@@ -192,7 +191,7 @@ describe('AWS Backup restore testing (CHR-198)', () => {
   });
 });
 
-describe('deploy workflow (CHR-198)', () => {
+describe('deploy workflow', () => {
   const workflow = (name: string) =>
     readFileSync(join(REPO_ROOT, '.github/workflows', name), 'utf8');
 

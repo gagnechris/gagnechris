@@ -1,5 +1,5 @@
 /**
- * One-time CHR-36 import of legacy bundled posts into the CMS table.
+ * One-time import of bundled posts into the CMS table.
  *
  * Local:
  *   source scripts/local/env.sh && npm run migrate:posts
@@ -16,7 +16,6 @@ import { PostsRepository } from '@gagnechris/api/posts/repository';
 
 type MigrateTarget = {
   file: string;
-  /** Override frontmatter slug when set. */
   slug?: string;
   status: 'draft' | 'published';
 };

@@ -1,6 +1,3 @@
-/**
- * Notebook Tasks HTTP routes (CHR-43).
- */
 import { z } from 'zod';
 import {
   CreateTaskRequestSchema,
@@ -31,7 +28,6 @@ export function createTaskRoutes(
   const tasks = () => repo ?? tasksRepository();
   const notes = () => notesRepo ?? notesRepository();
 
-  /** 400 unless `noteId` is a live note owned by the caller (CHR-186). */
   const checkLinkedNote = async (
     userId: string,
     noteId: string | null | undefined,
@@ -77,7 +73,6 @@ export function createTaskRoutes(
         return jsonEntity(201, task, parseTask);
       },
     }),
-    // Literal segments before :id (complete/reopen).
     versionedMutationRoute({
       method: 'POST',
       pattern: '/notebook/tasks/:id/complete',

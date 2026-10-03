@@ -297,7 +297,7 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
   });
 
-  it('retries BatchGet UnprocessedKeys so draft META is never published (CHR-120)', async () => {
+  it('retries BatchGet UnprocessedKeys so draft META is never published', async () => {
     const published = makePost('welcome', 1);
     const draftTitle = 'DRAFT TITLE MUST NOT GO LIVE';
     let batchCalls = 0;
@@ -339,7 +339,7 @@ describe('rebuildPublishedSite selective scope', () => {
             Responses: { [table]: [postPublished(published)] },
           };
         }
-        // Legacy Get META must not be used when snapshot arrives on retry.
+        // Get META must not be used when snapshot arrives on retry.
         if (cmd.input?.Key?.sk === 'META') {
           return {
             Item: {
@@ -377,7 +377,7 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(postsJson.items[0]?.title).toBe(published.title);
   });
 
-  it('invalidates CloudFront before KVS sync so a sync failure still clears cache (CHR-123)', async () => {
+  it('invalidates CloudFront before KVS sync so a sync failure still clears cache', async () => {
     const post = makePost('welcome', 1);
     const order: string[] = [];
 
@@ -435,7 +435,7 @@ describe('rebuildPublishedSite selective scope', () => {
     );
   });
 
-  it('skips META-only published rows when building feeds (CHR-146)', async () => {
+  it('skips META-only published rows when building feeds', async () => {
     const staleMeta = makePost('stale-only', 1);
 
     ddbSend.mockImplementation(

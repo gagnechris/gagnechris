@@ -1,6 +1,3 @@
-/**
- * In-memory DynamoDBDocumentClient for sync GSI unit tests (CHR-153 / CHR-162).
- */
 import { vi } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
@@ -43,7 +40,6 @@ function checkPutCondition(
   }
 }
 
-/** Conditions used on claim deletes (CHR-187): owner-pointer checks only. */
 function checkDeleteCondition(
   store: Map<string, Record<string, unknown>>,
   input: Record<string, unknown>,
@@ -95,7 +91,6 @@ export function createMemoryDoc(): {
         Put?: Record<string, unknown>;
         Delete?: Record<string, unknown>;
       }>;
-      // Validate all conditions first (transactional).
       const reasons: Array<{ Code?: string }> = items.map(() => ({}));
       let failed = false;
       for (let i = 0; i < items.length; i += 1) {

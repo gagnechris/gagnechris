@@ -1,9 +1,5 @@
-/**
- * Shared DynamoDB helpers (CHR-120 / CHR-126).
- * Duck-typed so `@gagnechris/shared` stays free of the AWS SDK (web imports this package).
- */
+/** Duck-typed so `@gagnechris/shared` stays free of the AWS SDK (web imports this package). */
 
-/** Keys request for one table in BatchGetItem. */
 export type BatchGetTableRequest = {
   Keys: Array<Record<string, unknown>>;
   [key: string]: unknown;
@@ -20,10 +16,6 @@ export type BatchGetSend = (
   requestItems: BatchGetRequestItems,
 ) => Promise<BatchGetOutput>;
 
-/**
- * DocClient-shaped send that returns the raw BatchGet result (Responses /
- * UnprocessedKeys may be loosely typed from the SDK).
- */
 export type BatchGetDocClientSend = (
   requestItems: BatchGetRequestItems,
 ) => Promise<{
@@ -59,10 +51,7 @@ function hasUnprocessedKeys(
   return false;
 }
 
-/**
- * BatchGetItem that retries `UnprocessedKeys` with exponential backoff until
- * empty (or throws). Never treat an unprocessed key as "missing".
- */
+/** Never treat an unprocessed key as "missing". */
 export async function batchGetAll(
   send: BatchGetSend,
   requestItems: BatchGetRequestItems,
@@ -100,10 +89,7 @@ export async function batchGetAll(
   );
 }
 
-/**
- * BatchGet via a DocClient send that returns loosely typed Responses /
- * UnprocessedKeys — one cast site for API + publisher (CHR-126).
- */
+/** The single cast site for the SDK's loosely typed BatchGet result. */
 export async function batchGetAllWithDocClient(
   sendRaw: BatchGetDocClientSend,
   requestItems: BatchGetRequestItems,
@@ -153,11 +139,6 @@ function cancellationCodes(error: unknown): string[] {
 }
 
 /**
- * Classify DynamoDB write failures for HTTP mapping (CHR-120 / CHR-126):
- * - ConditionalCheckFailed / TransactionConflict → conflict (409)
- * - Throttling / ProvisionedThroughputExceeded / RequestLimitExceeded → throttling (503)
- * - anything else → other (rethrow)
- *
  * Retries are owned by the AWS SDK client (`maxAttempts`); callers should not
  * stack another throttle-retry loop on top.
  */
@@ -196,9 +177,7 @@ export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
     ) {
       return 'conflict';
     }
-    // Empty / unknown cancellation reasons: treat as conflict only when the
-    // exception itself is a canceled transaction with no throttle signal.
-    // Prefer rethrow for truly unknown codes.
+    // A canceled transaction with no reasons and no throttle signal is a conflict.
     if (codes.length === 0) return 'conflict';
     return 'other';
   }
@@ -206,7 +185,6 @@ export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
   return 'other';
 }
 
-/** True when a write failed due to optimistic lock or concurrent transaction. */
 export function isOptimisticLockConflict(error: unknown): boolean {
   return classifyDynamoWriteError(error) === 'conflict';
 }

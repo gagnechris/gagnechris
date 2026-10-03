@@ -1,7 +1,4 @@
-/**
- * Map DynamoDB write failures using shared classification (CHR-120 / CHR-126).
- * Throttle retries are owned by the AWS SDK client — this only classifies.
- */
+// Throttle retries are owned by the AWS SDK client; this only classifies.
 import { classifyDynamoWriteError } from '@gagnechris/data';
 import { ConflictError, ServiceUnavailableError } from './errors.js';
 
@@ -22,10 +19,6 @@ function cancellationCodes(error: unknown): Array<string | undefined> {
   });
 }
 
-/**
- * True when a TransactWrite cancellation failed on a unique-claim Put
- * (ConditionalCheckFailed at one of the given item indexes).
- */
 export function isUniqueClaimCancellation(
   error: unknown,
   claimIndexes: readonly number[],
@@ -46,17 +39,7 @@ export function isSlugClaimCancellation(
   return isUniqueClaimCancellation(error, slugClaimIndexes);
 }
 
-/**
- * Run a DynamoDB write once; map conflict → ConflictError (409),
- * throttling → ServiceUnavailableError (503), other → rethrow.
- *
- * When `uniqueClaimIndexes` / `slugClaimIndexes` matches a
- * ConditionalCheckFailed cancellation, throws ConflictError with the
- * configured claim code (`slug_taken` by default for slug indexes).
- *
- * If `versionItemIndex` also failed, prefer a plain version conflict so
- * callers can attach `current` (CHR-170).
- */
+/** If `versionItemIndex` also failed, a plain version conflict wins so callers can attach `current`. */
 export async function runDynamoWrite<T>(
   write: () => Promise<T>,
   conflictMessage: string,

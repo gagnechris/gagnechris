@@ -19,10 +19,6 @@ export type ExpectedVersionErr = {
   response: APIGatewayProxyStructuredResultV2;
 };
 
-/**
- * Parse If-Match (or body.version). Malformed If-Match → 400.
- * Missing expectation → 400 with a clear message.
- */
 export function requireExpectedVersion(
   event: APIGatewayProxyEventV2,
   body: { version?: number },
@@ -53,7 +49,6 @@ export function requireExpectedVersion(
   }
 }
 
-/** Run a versioned mutation; If-Match conflicts become 412. */
 export async function runVersionedMutation<T>(
   fromIfMatch: boolean,
   fn: () => Promise<T>,
@@ -65,7 +60,6 @@ export async function runVersionedMutation<T>(
   }
 }
 
-/** JSON + strong ETag from an entity `version`. */
 export function jsonEntity<T extends { version: number }>(
   statusCode: number,
   entity: T,

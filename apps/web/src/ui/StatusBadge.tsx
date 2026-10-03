@@ -3,7 +3,6 @@ type Props = {
   hasUnpublishedChanges?: boolean;
 };
 
-/** Status + optional "Unpublished changes" badges. */
 export function StatusBadge({ status, hasUnpublishedChanges }: Props) {
   return (
     <>

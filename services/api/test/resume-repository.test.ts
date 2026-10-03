@@ -135,7 +135,7 @@ describe('ResumeRepository', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('maps TransactionConflict cancellation to a 409 conflict (CHR-120)', async () => {
+  it('maps TransactionConflict cancellation to a 409 conflict', async () => {
     const draft: Resume = {
       ...stored,
       name: 'Edited Name',

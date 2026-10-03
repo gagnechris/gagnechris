@@ -15,7 +15,7 @@ const call = async (
     () => undefined,
   )) as { statusCode: number; body: string };
 
-describe('admin group gate (CHR-195)', () => {
+describe('admin group gate', () => {
   const routes: Array<[string, string]> = [
     ['GET', '/api/admin/me'],
     ['GET', '/api/admin/posts'],

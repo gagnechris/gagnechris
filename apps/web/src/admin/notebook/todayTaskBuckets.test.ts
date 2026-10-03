@@ -23,7 +23,7 @@ const base = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   ...overrides,
 });
 
-describe('bucketTodayTasks (CHR-45)', () => {
+describe('bucketTodayTasks', () => {
   test('splits overdue, due today, in progress, done today, tomorrow', () => {
     const buckets = bucketTodayTasks(
       [

@@ -55,7 +55,7 @@ const shell = `<!doctype html>
   </body>
 </html>`;
 
-describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
+describe('render HTML snapshots', () => {
   it('matches frozen output for home, blog index, resume, and post', () => {
     expect(renderHomePage(shell, DEFAULT_HOME)).toMatchSnapshot();
     expect(renderPostsIndexPage(shell, [samplePost()])).toMatchSnapshot();
@@ -69,7 +69,7 @@ describe('render HTML snapshots (CHR-143 / CHR-157)', () => {
     expect(buildSitemapXml([samplePost()])).toMatchSnapshot();
   });
 
-  it('matches frozen JSON from real publish targets (CHR-179)', async () => {
+  it('matches frozen JSON from real publish targets', async () => {
     const post = samplePost();
     const storage: SiteStorage = {
       async readShell() {

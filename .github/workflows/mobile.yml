@@ -1,8 +1,7 @@
 name: Mobile
 
-# No workflow-level `paths:`: "Mobile typecheck, lint, test, bundle" is a
-# required check, so the job must always report. Path filtering happens
-# inside the job, like ci.yml (CHR-199).
+# No workflow-level `paths:`: this is a required check, so the job must
+# always report. Path filtering happens inside the job.
 on:
   push:
     branches: [main]
@@ -16,7 +15,6 @@ concurrency:
   group: mobile-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# No AWS credentials — typecheck/lint/test/bundle only (CHR-142).
 jobs:
   mobile:
     name: Mobile typecheck, lint, test, bundle
@@ -45,8 +43,6 @@ jobs:
               - '.github/actions/setup/**'
               - 'package-lock.json'
 
-      # Root install: the shared packages plus eslint/prettier. It no longer
-      # carries Expo or React Native (CHR-150).
       - name: Setup
         if: steps.filter.outputs.mobile == 'true'
         uses: ./.github/actions/setup
@@ -79,9 +75,8 @@ jobs:
           npm test -w @gagnechris/app-core
           npm test --prefix apps/mobile
 
-      # `expo export` succeeding proves nothing on its own: the CHR-142 spike
-      # bundled `zod`'s `.d.ts` files and the app crashed on launch. Check the
-      # sourcemap, then execute a bundle that evaluates shared Zod schemas.
+      # A successful `expo export` can still bundle `.d.ts` files and crash on
+      # launch, so check the sourcemap and execute the bundle too.
       - name: Export iOS bundle
         if: steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile

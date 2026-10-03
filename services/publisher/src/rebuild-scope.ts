@@ -2,28 +2,14 @@ import type { AttributeValue, DynamoDBRecord } from 'aws-lambda';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { SK_PUBLISHED } from '@gagnechris/data';
 
-/** What a stream batch (or republish-all) needs the publisher to touch. */
 export type RebuildScope = {
-  /**
-   * Re-render every published post HTML. Used by republish-all / local full
-   * rebuilds. When false, only `postSlugs` are rendered.
-   */
   allPosts: boolean;
-  /** Post slugs whose `blog/<slug>/index.html` must be re-rendered. */
   postSlugs: Set<string>;
-  /** Candidates for orphan cleanup (unpublish / rename / delete). */
   slugsToRemove: Set<string>;
-  /** Update blog index, posts.json, slugs.json, sitemap.xml, rss.xml. */
   feeds: boolean;
-  /** Update home prerender (`index.html`). */
   home: boolean;
-  /** Update resume HTML + PDF. */
   resume: boolean;
-  /**
-   * PUBLISHED entity types seen in this stream batch (including types that are
-   * not yet scope flags). Targets with their own Dynamo entity match via this
-   * set — no new RebuildScope boolean required (CHR-166).
-   */
+  /** Targets with their own Dynamo entity match via this set, so they need no RebuildScope flag. */
   touchedEntityTypes: Set<string>;
 };
 
@@ -35,7 +21,6 @@ export type StreamMeta = {
   status?: string;
 };
 
-/** Known PUBLISHED entity types the publisher understands (CHR-128). */
 const KNOWN_ENTITY_TYPES = new Set(['post', 'home', 'resume']);
 
 function isLegacyPostPk(pk: string | undefined): boolean {
@@ -43,9 +28,8 @@ function isLegacyPostPk(pk: string | undefined): boolean {
 }
 
 /**
- * Whether a PUBLISHED stream image is a post (including legacy rows that omit
- * `entityType` but use a `POST#…` pk). Missing entityType on other pks is not
- * treated as a post (CHR-167).
+ * Rows without `entityType` count as posts only on a `POST#…` pk; missing
+ * entityType on other pks is not treated as a post.
  */
 export function isStreamPostEntity(meta: StreamMeta | undefined): boolean {
   if (!meta) return false;
@@ -77,16 +61,10 @@ export function fullRebuildScope(): RebuildScope {
   };
 }
 
-/** Republish-all / local full rebuild — CloudFront invalidation collapses to `/*`. */
 export function isFullRebuildScope(scope: RebuildScope): boolean {
   return scope.allPosts && scope.home && scope.resume && scope.feeds;
 }
 
-/**
- * Derive a minimal rebuild scope from a DynamoDB Streams batch of PUBLISHED items.
- * Unknown entity types do not set home/resume/feeds flags (CHR-128) but are
- * recorded in `touchedEntityTypes` so registered targets can match them (CHR-166).
- */
 export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   const postSlugs = new Set<string>();
   const slugsToRemove = new Set<string>();
@@ -104,8 +82,8 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       touchedEntityTypes.add(entity);
     }
 
-    // Unknown entity types do not set home/resume/feeds/post flags (CHR-128),
-    // but remain in `touchedEntityTypes` so targets can match them (CHR-166).
+    // Unknown entity types set no flags but remain in `touchedEntityTypes` so
+    // targets can match them.
     if (entity != null && !KNOWN_ENTITY_TYPES.has(entity)) {
       continue;
     }
@@ -124,7 +102,6 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       continue;
     }
 
-    // Posts only: entityType post, or legacy POST# pk with missing type (CHR-167).
     if (!isStreamPostEntity(newMeta) && !isStreamPostEntity(oldMeta)) {
       continue;
     }
@@ -159,7 +136,6 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   };
 }
 
-/** PUBLISHED-row pk of a stream record (Keys first, then either image). */
 function streamPublishedPk(record: DynamoDBRecord): string | undefined {
   for (const image of [
     record.dynamodb?.Keys,
@@ -177,11 +153,9 @@ function streamPublishedPk(record: DynamoDBRecord): string | undefined {
 }
 
 /**
- * Unmarshalled PUBLISHED post NewImages from a stream batch. Used to merge
- * just-published posts into the catalog when GSI1 has not caught up (CHR-167).
- *
- * Only the last record per pk counts: a publish then unpublish in the same
- * batch (INSERT then REMOVE) must not add the post back (CHR-201).
+ * Merged into the catalog when GSI1 has not caught up. Only the last record
+ * per pk counts: a publish then unpublish in the same batch must not add the
+ * post back.
  */
 export function collectStreamPublishedPostItems(
   records: DynamoDBRecord[],
@@ -208,11 +182,6 @@ export function collectStreamPublishedPostItems(
   return items;
 }
 
-/**
- * True when any registered publish target matches the stream scope.
- * Own-entity pages match via `touchedEntityTypes` in their `matches()` —
- * no rebuild-scope boolean and no hard-coded entity allowlist (CHR-179).
- */
 export function streamNeedsRebuild(
   records: DynamoDBRecord[],
   targets: readonly { matches(scope: RebuildScope): boolean }[],

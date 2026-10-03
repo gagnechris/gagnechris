@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-/** Compose project for API integration tests — never the local-dev `gagnechris`. */
+/** Never the local-dev `gagnechris` project. */
 export const CI_COMPOSE_PROJECT_NAME = 'gagnechris-ci' as const;
 
 export const CI_COMPOSE_FILES = [
@@ -11,13 +11,12 @@ export const CI_COMPOSE_FILES = [
   'docker-compose.ci.yml',
 ] as const;
 
-/** Host port `docker-compose.ci.yml` publishes; local dev keeps 8000 (CHR-199). */
+/** Local dev keeps 8000. */
 export const INTEGRATION_DYNAMODB_HOST_PORT = 8001;
 
 /**
- * DynamoDB Local endpoint for integration tests. Deliberately ignores an
- * inherited AWS_ENDPOINT_URL_DYNAMODB (env.sh points that at local dev on
- * 8000); override with INTEGRATION_DYNAMODB_ENDPOINT.
+ * Deliberately ignores an inherited AWS_ENDPOINT_URL_DYNAMODB (env.sh points
+ * that at local dev on 8000); override with INTEGRATION_DYNAMODB_ENDPOINT.
  */
 export function integrationDynamoEndpoint(
   env: NodeJS.ProcessEnv = process.env,
@@ -32,7 +31,6 @@ export function ciComposeFileArgs(): string {
   return CI_COMPOSE_FILES.map((f) => `-f ${f}`).join(' ');
 }
 
-/** Flag that this process started DynamoDB Local (lives in os.tmpdir, not the repo). */
 export function dynamodbCiStartedFlagPath(
   tmpDir: string = os.tmpdir(),
 ): string {
@@ -53,11 +51,7 @@ export type ComposeExec = (
   options?: { cwd?: string; env?: NodeJS.ProcessEnv; stdio?: string },
 ) => void;
 
-/**
- * Tear down the CI DynamoDB compose project only when this run started it.
- * A stale flag (or env.sh's COMPOSE_PROJECT_NAME=gagnechris) must never stop
- * `gagnechris-dynamodb-1`.
- */
+/** A stale flag (or env.sh's COMPOSE_PROJECT_NAME=gagnechris) must never stop `gagnechris-dynamodb-1`. */
 export function teardownDynamodbCi(opts: {
   startedByUs: boolean;
   repoRoot: string;

@@ -73,7 +73,7 @@
   letter-spacing: -0.02em;
 }
 
-/* .subtle-download / .back-link: shared in index.css (CHR-109) */
+/* .subtle-download / .back-link: shared in index.css */
 .download-icon {
   margin-right: var(--space-2);
 }

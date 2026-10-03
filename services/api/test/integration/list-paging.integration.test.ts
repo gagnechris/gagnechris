@@ -1,7 +1,3 @@
-/**
- * DynamoDB Local: multi-partition lists page completely over HTTP routes
- * (CHR-185). 150 notes over 2 areas, 150 tasks over 2 areas x 3 statuses.
- */
 import { afterAll, beforeAll, describe, it } from 'vitest';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import type { RouteDef } from '../../src/router.js';
@@ -23,7 +19,7 @@ import {
 const N = 150;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-describe('list paging (DynamoDB Local, CHR-185)', () => {
+describe('list paging (DynamoDB Local)', () => {
   let tableName: string;
   let routes: RouteDef[];
   const doc = createLocalDocClient();

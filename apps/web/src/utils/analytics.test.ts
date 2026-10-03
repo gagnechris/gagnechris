@@ -150,7 +150,7 @@ describe('analytics utilities', () => {
     });
   });
 
-  describe('private routes (CHR-194)', () => {
+  describe('private routes', () => {
     const disableKey = `ga-disable-${GA_MEASUREMENT_ID}`;
     const flags = window as unknown as Record<string, unknown>;
 

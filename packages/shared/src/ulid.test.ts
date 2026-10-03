@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { UlidSchema } from './schemas.js';
 import { createUlid } from './ulid.js';
 
-describe('createUlid (CHR-177)', () => {
+describe('createUlid', () => {
   it('produces a valid UlidSchema value from fixed entropy', () => {
     const fixed = new Uint8Array(10).fill(0);
     const id = createUlid(() => fixed, 0);

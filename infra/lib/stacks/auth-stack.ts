@@ -35,24 +35,15 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 
-/** Managed-login hostname (Cognito custom domain). */
 export const AUTH_DOMAIN = AUTH_DOMAIN_CONST;
 
 export interface AuthStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** ACM cert in us-east-1 covering `auth.gagnechris.com`. */
   readonly certificate: ICertificate;
-  /**
-   * Optional zone override for unit tests. Production uses
-   * `HostedZone.fromLookup`.
-   */
+  /** Tests only. */
   readonly hostedZone?: IHostedZone;
 }
 
-/**
- * Single-admin Cognito user pool: passkeys + TOTP MFA, managed login on
- * auth.gagnechris.com, public web/ios clients (auth code + PKCE).
- */
 export class AuthStack extends Stack {
   readonly userPool: UserPool;
   readonly webClient: UserPoolClient;
@@ -89,8 +80,7 @@ export class AuthStack extends Stack {
         tempPasswordValidity: Duration.days(7),
       },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
-      // Cognito forbids MFA=REQUIRED with WebAuthn as a first factor (SINGLE_FACTOR).
-      // Passkeys are the primary factor; TOTP remains available for password sign-in.
+      // Cognito forbids MFA=REQUIRED with WebAuthn as a first factor.
       mfa: Mfa.OPTIONAL,
       mfaSecondFactor: { otp: true, sms: false },
       featurePlan: FeaturePlan.ESSENTIALS,
@@ -116,11 +106,11 @@ export class AuthStack extends Stack {
       {
         id: 'AwsSolutions-COG8',
         reason:
-          'Essentials tier covers managed login and passkeys; Plus (threat protection) remains optional and out of scope for CHR-27.',
+          'Essentials tier covers managed login and passkeys; Plus (threat protection) remains optional and out of scope.',
       },
     ]);
 
-    // Prod clients never trust localhost (CHR-195); local Vite uses devClient.
+    // Prod clients never trust localhost; local Vite uses devClient.
     const callbackUrls = [`https://${APEX_DOMAIN}/auth/callback`];
     const logoutUrls = [`https://${APEX_DOMAIN}/`];
 
@@ -170,7 +160,6 @@ export class AuthStack extends Stack {
       },
     });
 
-    // Admin and notebook routes require this group (CHR-195).
     const adminGroup = new CfnUserPoolGroup(this, 'AdminGroup', {
       userPoolId: this.userPool.userPoolId,
       groupName: ADMIN_GROUP,

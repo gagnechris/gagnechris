@@ -1,5 +1,4 @@
 /**
- * Owner-scoped Notebook notes (CHR-40).
  * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
  */
 import {
@@ -256,7 +255,6 @@ export class NotesRepository {
     return this.base.createIdempotent(note);
   }
 
-  /** Tombstone built from a consistent read (CHR-188). */
   deleteIfVersion(
     userId: string,
     id: string,
@@ -296,10 +294,6 @@ export class NotesRepository {
     return this.createIdempotent(note);
   }
 
-  /**
-   * Apply only the fields in `body` to a consistent read (CHR-188), so a
-   * stale replica can never revert content or reuse a version.
-   */
   async updateFromRequest(
     userId: string,
     id: string,
@@ -343,13 +337,10 @@ export class NotesRepository {
       ? [query.area]
       : ['work', 'personal'];
 
-    // Single-area path supports opaque cursors; multi-area merges one page each.
     if (areas.length === 1) {
       return this.listArea(userId, areas[0]!, query);
     }
 
-    // Walk areas in order with a composite cursor so nothing is dropped
-    // past the first page (CHR-185).
     return walkPartitions(
       areas,
       query.cursor,
@@ -432,7 +423,6 @@ export class NotesRepository {
           },
         )
       : undefined;
-    // A claim left behind by a deleted note (pre-CHR-187) reads as free.
     if (!held || held.deleted) {
       return {
         exists: false,
@@ -450,10 +440,6 @@ export class NotesRepository {
     return held;
   }
 
-  /**
-   * Upsert today's (or any) daily note. Creates with claim when missing;
-   * updates the claim winner when present.
-   */
   async upsertDaily(
     userId: string,
     area: NotebookArea,

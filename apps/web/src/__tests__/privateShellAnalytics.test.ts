@@ -6,7 +6,7 @@ import { applySpaShellMeta } from '../../scripts/staticPageMeta';
 import { devSpaShellPlugin } from '../../scripts/staticPagesPlugin';
 
 // The real shell, so a change to the GA snippet can't silently slip past
-// removeAnalytics (CHR-194).
+// removeAnalytics.
 const indexHtml = fs.readFileSync(
   path.resolve(__dirname, '../../index.html'),
   'utf8',
@@ -23,7 +23,7 @@ const transform = (url: string) => {
   );
 };
 
-describe('analytics stay off private shells (CHR-194)', () => {
+describe('analytics stay off private shells', () => {
   it('index.html loads GA for public pages', () => {
     expect(indexHtml).toMatch(GA);
   });

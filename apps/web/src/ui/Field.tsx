@@ -12,7 +12,6 @@ type FieldProps = {
   children: ReactNode;
 };
 
-/** Labeled admin field wrapper (`admin-field`). */
 export function Field({ label, hint, fullWidth, children }: FieldProps) {
   return (
     <label

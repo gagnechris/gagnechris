@@ -35,7 +35,6 @@ function emptyFlagAccumulator(): FlagAccumulator {
   };
 }
 
-/** OR-merge boolean flags; concat removedSlugs (CHR-179). */
 export function mergeTargetResultFlags(
   acc: FlagAccumulator,
   result: PublishTargetRunResult,
@@ -93,10 +92,6 @@ async function deleteKeys(
   return deleted;
 }
 
-/**
- * Collapse target-owned invalidation paths. Full rebuild → `/*`.
- * Empty when nothing was written or deleted (hash-skip).
- */
 export function finalizeInvalidationPaths(
   scope: RebuildScope,
   paths: string[],
@@ -108,12 +103,11 @@ export function finalizeInvalidationPaths(
 }
 
 /**
- * Previous feed entries (`blog/posts.json`) for live posts missing from the
- * catalog, so their page, KVS entry, and feed entries survive (CHR-201):
- * - corrupt PUBLISHED rows (any rebuild) — also recovers the live slug when
- *   the row's own slug is the corrupt field;
- * - stream rebuilds only: GSI lag — the page still exists and the batch is
- *   not removing it. Full rebuilds trust the catalog for everything else.
+ * Keeps the page, KVS entry, and feed entries of live posts missing from the
+ * catalog:
+ * - corrupt PUBLISHED rows (any rebuild), which also recovers the live slug
+ *   when the row's own slug is the corrupt field;
+ * - stream rebuilds only: GSI lag. Full rebuilds trust the catalog otherwise.
  */
 export async function retainLivePosts(
   storage: SiteStorage,
@@ -156,7 +150,6 @@ export async function runPublishTargets(options: {
   scope?: RebuildScope;
   storage: SiteStorage;
   sources: RebuildSiteSources;
-  /** Override production registry (tests / AC demos). */
   targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options.scope ?? fullRebuildScope();
@@ -225,9 +218,9 @@ export async function runPublishTargets(options: {
     hadChanges,
   );
 
-  // Invalidate before KVS sync so a sync failure still clears cache (CHR-123).
-  // Desired allowlist is the in-memory catalog (posts ∪ corrupt) — list once
-  // per rebuild so corrupt slugs stay reachable and reads cannot diverge (CHR-167).
+  // Invalidate before KVS sync so a sync failure still clears cache. The
+  // allowlist is the in-memory catalog (posts ∪ corrupt) so corrupt slugs
+  // stay reachable and reads cannot diverge.
   await storage.invalidate(invalidated);
 
   if (scope.feeds) {

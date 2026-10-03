@@ -1,36 +1,15 @@
 /**
- * CloudFront Function (cloudfront-js-2.0) - viewer-request.
- * - www -> apex 301 (preserves query string)
- * - Legacy resume PDF filename -> /resume.pdf 301 (encoded or decoded)
- * - Legacy /blog and /blog/* -> /posts equivalent 301 (CHR-206)
- * - Public /posts and /posts/* -> /blog storage prefix in S3 (CHR-206);
- *   the publisher still writes blog/<slug>/index.html, posts.json, slugs.json
- * - Skip rewrite for /api/*, /media/*, and /.well-known/* (AASA / webauthn; CHR-177)
- * - Option B prefixes (generated from publisher targets + Vite static pages)
- *   -> {path}/index.html (CHR-179)
- * - /blog/<slug> (after the /posts rewrite) -> Option B only when slug is
- *   in the associated KeyValueStore
- *   (CHR-115); unknown slugs -> /404.html (avoids raw S3 XML)
- * - /admin, /auth -> /spa.html (neutral shell, not Home prerender)
- * - Other extensionless paths -> /404.html (NotFound, not Home)
- * - Direct /_shell.html is blocked (publisher template only; CHR-104)
- * - Paths with a file extension pass through unchanged
+ * Unknown paths go to /404.html rather than S3, which would return raw XML;
+ * there are no distribution-wide error pages so /api and /assets keep their
+ * real 403/404.
  *
- * No distribution-wide custom error pages (so /api and /assets keep real 403/404).
- *
- * Published slugs live in a CloudFront KeyValueStore (publisher UpdateKeys).
- * Until the first sync writes the __synced__ sentinel, blog slugs fail-open
- * (Option B for any slug), matching the prior CDK default of a null map.
- * Lookup uses exists(slug) first (one read on hit); miss checks the sentinel.
- * Unexpected KVS read errors fail-open so live posts don't 404 (CHR-119).
- * Local/tests can override via setPublishedBlogSlugsForTests().
+ * Blog slugs fail open (any slug is served) until the publisher writes the
+ * __synced__ sentinel, and on any KVS error, so live posts never 404.
  */
 import cf from 'cloudfront';
 
-/** Non-null = test/local override; null = use KVS (or fail-open if unavailable). */
 var PUBLISHED_BLOG_SLUGS_OVERRIDE = null;
 
-/** Non-null = test override for Option B prefixes (CHR-179). */
 var OPTION_B_PREFIXES_OVERRIDE = null;
 
 /* PUBLISH_SURFACE_BEGIN */
@@ -45,11 +24,10 @@ var OPTION_B_PREFIXES = [
 ];
 /* PUBLISH_SURFACE_END */
 
-/** Public URL prefix for posts; S3 keys stay under the storage prefix (CHR-206). */
+/** S3 keys stay under the storage prefix. */
 var PUBLIC_POSTS_PREFIX = '/posts';
 var STORAGE_POSTS_PREFIX = '/blog';
 
-/** Pre-CMS resume PDF object name (spaces may arrive encoded or decoded). */
 var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
 
 async function handler(event) {
@@ -124,7 +102,7 @@ async function handler(event) {
     return request;
   }
 
-  // Pristine publisher shell is an origin object only — not a public URL (CHR-104).
+  // The publisher's template, not a public URL.
   if (uri === '/_shell.html') {
     return {
       statusCode: 404,
@@ -153,8 +131,7 @@ async function handler(event) {
 
   var blogSlug = blogPostSlug(uri);
   if (blogSlug !== null) {
-    // Reject reserved / malformed slugs before KVS (CHR-123): __synced__ and
-    // over-long keys must not fail-open to Option B or hit raw S3 XML.
+    // Before KVS: __synced__ and over-long keys must not fail open.
     if (!isValidBlogSlug(blogSlug)) {
       request.uri = '/404.html';
       return request;
@@ -180,7 +157,6 @@ async function handler(event) {
   return request;
 }
 
-/** `from` or `from/...` -> same path under `to`; otherwise null. */
 function swapPathPrefix(uri, from, to) {
   if (uri === from || uri.indexOf(from + '/') === 0) {
     return to + uri.substring(from.length);
@@ -212,7 +188,7 @@ function isOptionBIndexPath(uri) {
     if (uri === prefix || uri === prefix + '/') {
       return true;
     }
-    // Nested paths (e.g. /resume/foo) — not for /blog (slug allowlist owns those).
+    // The slug allowlist owns nested /blog paths.
     if (prefix !== '/blog' && uri.indexOf(prefix + '/') === 0) {
       return true;
     }
@@ -246,8 +222,7 @@ function blogPostSlug(uri) {
   return segment;
 }
 
-/** Published post slugs: lowercase alnum + hyphen; no reserved __*__ keys.
- * Max length must match MAX_SLUG_LENGTH in @gagnechris/shared (CHR-145). */
+/** Max length must match MAX_SLUG_LENGTH in @gagnechris/shared. */
 function isValidBlogSlug(slug) {
   if (!slug || slug.length > 120) {
     return false;
@@ -278,18 +253,16 @@ async function isPublishedBlogSlug(slug) {
   }
   try {
     var kvsHandle = cf.kvs();
-    // exists(slug) first: one KVS read for published posts (CHR-119).
+    // exists(slug) first: one KVS read for published posts.
     var slugExists;
     try {
       slugExists = await kvsHandle.exists(slug);
     } catch (e) {
-      // Transient / unexpected KVS error — fail-open so live posts don't 404.
       return true;
     }
     if (slugExists) {
       return true;
     }
-    // Miss: enforce allowlist only once the __synced__ sentinel is present.
     try {
       if (await kvsHandle.exists('__synced__')) {
         return false;
@@ -299,7 +272,6 @@ async function isPublishedBlogSlug(slug) {
       return true;
     }
   } catch (e) {
-    // KVS not associated or unavailable — fail-open.
     return true;
   }
 }
@@ -320,10 +292,7 @@ function rewriteOptionB(uri) {
   return uri;
 }
 
-/**
- * Match the old resume PDF path whether CloudFront passed it percent-encoded
- * or already decoded (and tolerate one extra decode pass).
- */
+/** CloudFront may pass the path percent-encoded or already decoded. */
 function isLegacyResumePdfUri(uri) {
   var candidate = uri;
   for (var i = 0; i < 2; i++) {

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Apply (or update) the "Protect main" repository ruleset from
-# scripts/main-branch-ruleset.json. Requires gh auth with admin on the repo.
+# Requires gh auth with admin on the repo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

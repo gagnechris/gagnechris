@@ -1,6 +1,3 @@
-/**
- * Shared Powertools Logger / Metrics for the restore-test Lambda (CHR-198).
- */
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Metrics } from '@aws-lambda-powertools/metrics';
 import {

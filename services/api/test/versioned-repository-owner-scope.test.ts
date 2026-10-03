@@ -187,7 +187,7 @@ describe('VersionedRepository with ownerScoped', () => {
     expect(send.mock.calls[0]![0]).toBeInstanceOf(QueryCommand);
   });
 
-  it('mutateIfVersion reads consistently and always writes expected + 1 (CHR-188)', async () => {
+  it('mutateIfVersion reads consistently and always writes expected + 1', async () => {
     const stored = {
       pk: keys.notebook.note.meta('a', 'n1').pk,
       sk: 'META',
@@ -226,7 +226,7 @@ describe('VersionedRepository with ownerScoped', () => {
     expect(put.input.ExpressionAttributeValues[':v']).toBe(2);
   });
 
-  it('mutateIfVersion on a tombstone is 404 (CHR-188)', async () => {
+  it('mutateIfVersion on a tombstone is 404', async () => {
     send.mockResolvedValueOnce({
       Item: {
         pk: keys.notebook.note.meta('a', 'n1').pk,

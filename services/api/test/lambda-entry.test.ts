@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-describe('Lambda bundle boundary (CHR-78)', () => {
+describe('Lambda bundle boundary', () => {
   it('ApiStack entry is services/api/src/handler.ts only', () => {
     const stack = readFileSync(
       join(root, 'infra/lib/stacks/api-stack.ts'),

@@ -5,9 +5,6 @@ type RequireAuthProps = {
   children: (user: AuthUser) => ReactNode;
 };
 
-/**
- * Gate for /admin. Unauthenticated visitors are sent to Cognito managed login.
- */
 export default function RequireAuth({ children }: RequireAuthProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checking, setChecking] = useState(true);

@@ -24,7 +24,6 @@ function resolveDate(param: string | null, today: string): string {
   return today;
 }
 
-/** "Today" for today, otherwise the weekday and date being written. */
 function dayHeading(date: string, today: string): string {
   if (date === today) return 'Today';
   const parsed = parseLocalDate(date);
@@ -71,7 +70,7 @@ function TodayEditor({
     conflictMessage:
       'Conflict — another device updated this daily note. Reload and try again.',
     conflictMessages: {
-      // A placeholder save that lost the race to create this day (CHR-187).
+      // A placeholder save that lost the race to create this day.
       daily_taken:
         'Another tab or device already started this daily note. Copy what you typed, then reload to open it.',
     },
@@ -144,7 +143,7 @@ export default function AdminNotebookTodayPage() {
     writingArea !== null,
   );
 
-  // Push (not replace) so Back steps through the days visited (CHR-189).
+  // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
   const setDate = (next: string) => {
     if (next === date) return;

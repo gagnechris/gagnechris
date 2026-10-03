@@ -48,7 +48,6 @@ export type { RebuildResult } from './rebuild-result.js';
 
 let storageOverride: SiteStorage | undefined;
 
-/** Test / local harness hook. */
 export function setSiteStorage(storage: SiteStorage | undefined): void {
   storageOverride = storage;
 }
@@ -96,7 +95,7 @@ export async function listPublishedPosts(
     for (const item of page.Items ?? []) {
       if (item.entityType !== 'post') continue;
       // PUBLISHED rows are not on gsi1 (no gsi1pk). The index returns published
-      // META drafts; load PUBLISHED snapshots via BatchGet (CHR-117).
+      // META drafts; load PUBLISHED snapshots via BatchGet.
       if (item.sk === SK_META && typeof item.postId === 'string') {
         metaPostIds.push(item.postId);
       }
@@ -141,7 +140,7 @@ export async function listPublishedPosts(
         logCorruptPublished({ label: 'post', pk, sk, err: error });
         if (postId) corruptPostIds.add(postId);
         // Only trust the PUBLISHED row's own slug. META may already hold a
-        // draft rename, which would protect the wrong path (CHR-167).
+        // draft rename, which would protect the wrong path.
         const slug =
           typeof (item as { slug?: unknown }).slug === 'string' &&
           (item as { slug: string }).slug
@@ -154,8 +153,8 @@ export async function listPublishedPosts(
 
   for (const postId of uniqueIds) {
     const publishedItem = publishedById.get(postId);
-    // Skip META-only rows: never synthesize PUBLISHED from a stale META read (CHR-146).
-    // Corrupt PUBLISHED rows are tracked separately so orphans are not deleted (CHR-160).
+    // Never synthesize PUBLISHED from a stale META read. Corrupt PUBLISHED
+    // rows are tracked separately so orphans are not deleted.
     if (!publishedItem) continue;
     if (corruptPostIds.has(postId)) continue;
     posts.push(metaToPost(publishedItem));
@@ -172,10 +171,7 @@ export async function listPublishedPosts(
   };
 }
 
-/**
- * Merge stream NewImage PUBLISHED posts into a GSI-backed catalog so a
- * just-published post is still rendered when GSI1 has not caught up (CHR-167).
- */
+/** A just-published post must still render when GSI1 has not caught up. */
 export function mergeStreamPublishedPosts(
   catalog: PublishedPostsCatalog,
   streamItems: readonly unknown[],
@@ -281,29 +277,17 @@ export async function getPublishedHome(
 export type { RebuildSiteSources } from './publish-targets/types.js';
 
 /**
- * Rebuild published static artifacts from DynamoDB + the site shell.
- *
- * Pass `scope` to limit work (stream path). Omit scope (or pass
- * `fullRebuildScope()`) for republish-all / local full rebuilds.
- *
- * - Unpublished Resume: replace `resume/index.html` with a placeholder and
- *   delete `resume.pdf` (CHR-103).
- * - Corrupt Resume/Post PUBLISHED rows: preserve live artifacts (CHR-160).
- * - Unpublished Home: re-render `index.html` from `home/last-published.json` so
- *   the last published copy survives web deploys (CHR-103).
- * - Shell is always the pristine `_shell.html` template (CHR-104).
- * - Stream NewImages are merged into the catalog so GSI lag cannot drop a
- *   just-published post (CHR-167).
+ * - Corrupt Resume/Post PUBLISHED rows: preserve live artifacts.
+ * - Unpublished Home: re-render from `home/last-published.json` so the last
+ *   published copy survives web deploys.
  * - Live posts missing from the catalog (corrupt row, or GSI lag on a stream
- *   rebuild) keep their page, KVS entry, and previous feed entry (CHR-201).
+ *   rebuild) keep their page, KVS entry, and previous feed entry.
  */
 export async function rebuildPublishedSite(options?: {
   scope?: RebuildScope;
   storage?: SiteStorage;
   sources?: RebuildSiteSources;
-  /** Unmarshalled PUBLISHED post NewImages from the triggering stream batch. */
   streamPublishedPosts?: readonly unknown[];
-  /** Override production registry (tests / AC demos). */
   targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();

@@ -45,7 +45,7 @@ const target: PublishTarget = {
         homePublished: true,
       };
     }
-    // missing or corrupt: restore last published snapshot when present (CHR-103 / CHR-160).
+    // missing or corrupt: restore last published snapshot when present.
     const snapshot = await readHomePublishSnapshot(storage);
     if (snapshot) {
       return {

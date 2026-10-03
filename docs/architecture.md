@@ -6,9 +6,9 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
-   - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA+webauthn; CHR-177)
-   - `/blog` and `/blog/*` → 301 to the same path under `/posts` (CHR-206)
-   - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`, but the publisher still stores them under `blog/` (no S3 or KVS migration). Everything below sees the storage path.
+   - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA + webauthn)
+   - `/blog` and `/blog/*` → 301 to the same path under `/posts`
+   - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
    - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`
    - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
@@ -16,7 +16,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
    - Other extensionless paths → `/404.html`
 3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404
 4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, `spa.html`)
-5. **API Gateway → Lambda API** for CRUD, publish, contact, resume download notify
+5. **API Gateway → Lambda API** for CRUD, publish, Notebook, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
 8. **Cognito** (passkeys) protects admin routes; **SES** sends contact and download notifications
@@ -42,22 +42,22 @@ API repositories share one layering:
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
-Integrity notes (CHR-160 / CHR-167 / CHR-201):
+Integrity rules:
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
-- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post (CHR-167).
-- Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished (CHR-201).
-- Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise (CHR-201).
-- `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing (CHR-201).
+- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post.
+- Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished.
+- Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise.
+- `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing.
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
-- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400** (CHR-170).
-- Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current` (CHR-170).
-- Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken` (CHR-170).
+- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400**.
+- Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current`.
+- Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken`.
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
 
-Observability (CHR-168): handled API 500s emit EMF `HandlerError` (Lambda `Errors` stays quiet). Alarms on the Guardrails SNS topic cover API `HandlerError` / `DataIntegrityError`, publisher `DataIntegrityError`, API Gateway `5xx`, and DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Response-schema Zod failures are 500s; request Zod stays 400.
+Observability: handled API 500s emit EMF `HandlerError` (Lambda `Errors` stays quiet). Alarms on the Guardrails SNS topic cover API `HandlerError` / `DataIntegrityError`, publisher `DataIntegrityError`, API Gateway `5xx`, and DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Response-schema Zod failures are 500s; request Zod stays 400.
 
 Details: [data-model.md](./data-model.md).
 
@@ -68,10 +68,9 @@ Stream scope (`collectRebuildScope`) selects **publish targets** under
 listed in the explicit `publishTargets` array in `publish-targets/registry.ts`
 (esbuild bundles those imports). Targets return `{ artifacts, deleteKeys,
 invalidationPaths }`; the orchestrator writes, deletes, and invalidates.
-CloudFront KeyValueStore slug sync remains a post-step after invalidation
-(CHR-123 order).
+CloudFront KeyValueStore slug sync runs as a post-step after invalidation.
 
-**Adding a page:** one new `*.target.ts` plus one registry entry (CHR-179). Prefer
+**Adding a page:** one new `*.target.ts` plus one registry entry. Prefer
 matching existing scope flags (`home`, `feeds`, …) or `touchedEntityTypes` for a
 page with its own Dynamo entity — no new `RebuildScope` boolean.
 `streamNeedsRebuild` asks registered targets’ `matches()` (so an own-entity
@@ -80,18 +79,17 @@ target wakes the real handler). Declare `optionBPaths` and
 those into the CloudFront Option B allowlist and local-dev
 `isPublishRelevantAdminMutation` routes (`publish-surface:check` guards drift).
 Vite-only pages (`/contact`, `/dont-feed-the-bears`) stay in
-`STATIC_OPTION_B_PREFIXES`. `collectRebuildScope` still records every PUBLISHED
-`entityType` in `touchedEntityTypes`; unknown types do not set home/resume/feeds
-(CHR-128 / CHR-166).
+`STATIC_OPTION_B_PREFIXES`. `collectRebuildScope` records every PUBLISHED
+`entityType` in `touchedEntityTypes`; unknown types do not set home/resume/feeds.
 
 Invalidation is target-owned: a body-only post edit that does not change feed
-artifacts will not re-invalidate `/rss.xml` or `/sitemap.xml` when those files
-are unchanged (hash-skip / no feed rewrite). That is intentional after CHR-157.
+artifacts does not re-invalidate `/rss.xml` or `/sitemap.xml` when those files
+are unchanged (hash-skip / no feed rewrite).
 
 On relevant stream events the publisher updates, among others:
 
 - `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html` (prerendered pages)
-- `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s keep the old `/blog/<slug>` URL so feed readers don't re-list posts.
+- `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s use the `/blog/<slug>` URL so feed readers don't re-list posts.
 - `/resume.pdf` (pdf-lib + Inter fonts)
 - CloudFront KeyValueStore keys for known published slugs
 - Targeted CloudFront invalidations
@@ -106,13 +104,13 @@ Admin routes (`AdminLayout`) wrap children in `AdminQueryProvider` (`@tanstack/r
 - `createVersionedResource` builds query + setCache + update (+ optional delete) from config. Publishable entities layer `createDraftPublishResource` for publish / unpublish / discard (post / home / resume). Non-publishable entities (e.g. Notebook notes) use the versioned resource alone — not “config only” on the draft/publish factory.
 - `useVersionedDocEditor` owns hydrate-once, version binding, performSave, autosave, remote-conflict detection, and delete-with-hold (no DOM, no `status`). `useVersionedEntityEditor` layers draft/publish lifecycle on top for post / home / resume. The web shell (`useVersionedDocShell`) adds confirm / leave-guards / ⌘S, with ⌘⏎ optional via `publishRef`.
 - List/detail queries replace hand-rolled `useEffect` loading; mutations update or remove related cache entries (e.g. publish/delete updates the posts list without a manual refetch).
-- Autosave still uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
-- Autosave never drops typed text (CHR-189): unmounting an editor with unsaved edits (route change, Today re-keyed by date/area) flushes a save; the web leave-guard saves first and only asks to leave if that save fails. Network/408/429/5xx failures retry on a backoff (2 s → 60 s) and on injected `retrySignals` (web: `online`, focus, tab visible); 409/412 and other 4xx do not retry.
-- `setCachedNote` / `setCachedTask` / `setCachedPost` share one filter-aware upsert: an entity is inserted only into list caches whose key filters it matches (area, type, date range, status / `open`, priority, due, note), and removed from ones it no longer matches; calendar `daily-dates` Sets update only for the matching area and month (CHR-189).
+- Autosave uses `useQueuedAutosave`; on success it writes the entity into the Query cache.
+- Autosave never drops typed text: unmounting an editor with unsaved edits (route change, Today re-keyed by date/area) flushes a save; the web leave-guard saves first and only asks to leave if that save fails. Network/408/429/5xx failures retry on a backoff (2 s → 60 s) and on injected `retrySignals` (web: `online`, focus, tab visible); 409/412 and other 4xx do not retry.
+- `setCachedNote` / `setCachedTask` / `setCachedPost` share one filter-aware upsert: an entity is inserted only into list caches whose key filters it matches (area, type, date range, status / `open`, priority, due, note), and removed from ones it no longer matches; calendar `daily-dates` Sets update only for the matching area and month.
 - Optimistic update + rollback: `optimisticMutationHandlers` supports one key or `targets[]` for multi-key snapshot/rollback (Notebook Today + Tasks).
 - Typed HTTP client: `@gagnechris/api-client` with injectable `TokenProvider` (web passes Amplify `getIdToken`; public calls omit the token). Admin pages use `useGetApiClient()` / resource hooks — not per-call `createApiClient()` wrappers.
 - Design tokens: `@gagnechris/tokens` (TS) generates `variables.css` imported by the web app. `text` / `space` / `radius` are px numbers for RN; the generator emits `rem` (`npm run tokens:check` guards drift).
-- Mobile spike: `apps/mobile` (Expo) imports shared / api-client / app-core / tokens under Metro. Outside the root workspaces with its own lockfile, and CI executes a real Metro bundle — see `docs/mobile.md` (CHR-142, CHR-150).
+- Mobile: `apps/mobile` (Expo) imports shared / api-client / app-core / tokens under Metro. It sits outside the root workspaces with its own lockfile, and CI executes a real Metro bundle — see [mobile.md](./mobile.md).
 
 ## Admin editor foundation
 
@@ -136,27 +134,27 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API authorizer validates Cognito JWTs (web and iOS client audiences) for `/api/admin/*` and `/api/notebook/*` routes; the router then requires the `admin` group in `cognito:groups` (403 otherwise, CHR-195).
-- Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) is the remaining lever; it trades for more frequent sign-ins (CHR-193).
+- API authorizer validates Cognito JWTs (web and iOS client audiences) for `/api/admin/*` and `/api/notebook/*` routes; the router then requires the `admin` group in `cognito:groups` (403 otherwise).
+- Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
-## Admin Notebook shell (CHR-41 / CHR-42)
+## Admin Notebook shell
 
 - Lazy `/admin/notebook/*` under the admin layout: section routes `today`, `notes`, `notes/:id`, `tasks` (index redirects to `today`).
 - Layout chrome: Work / Personal / **All** area filter (UI-only; `'all'` omits `area` on list APIs) plus Today / Notes / Tasks nav. Area preference persists in `localStorage` (`gagnechris.notebook.areaFilter`).
 - Child pages read the filter via React Router outlet context.
-- **Today (CHR-42 / CHR-45):** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict. Day changes push history entries (Back steps through days); the heading reads Today only for the current local day, which rolls over at midnight. Dashboard also shows overdue / due-today / in-progress tasks with quick-complete (failures show an error), a due-today progress bar, quick-add (defaults due today), and after 18:00 local a tomorrow preview.
-- **Pages (CHR-42):** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
-- **Tasks (CHR-44):** list with quick-add (`!high` anywhere; `today` / `tomorrow` only as the last word), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
-- **Search (CHR-46):** `POST /api/notebook/search` with a JSON body `{ q, area?, limit? }` (POST since CHR-196 so terms stay out of URLs and access logs) scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets.
-- **Export (CHR-47):** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup stay in `infra/RUNBOOK.md`.
-- **PWA (CHR-48):** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. Offline read-only cache is optional and not required for installability.
+- **Today:** calendar (dots from `useDailyNoteDatesQuery` / `daily-dates` keys — a `Set` of dates, not infinite list pages), prev/next/jump-to-today, daily editor keyed by area+date. Writing requires Work or Personal (All is list-only). Empty daily GETs become a client-ULID placeholder; first save uses daily PUT upsert. `setCachedNote` updates daily-dates Sets and skips non-infinite list cache entries so first-write autosave cannot throw a false conflict. Day changes push history entries (Back steps through days); the heading reads Today only for the current local day, which rolls over at midnight. Dashboard also shows overdue / due-today / in-progress tasks with quick-complete (failures show an error), a due-today progress bar, quick-add (defaults due today), and after 18:00 local a tomorrow preview.
+- **Pages:** list + search by title, create page (client ULID), editor with title/tags/pin. Reuses `createVersionedResource` + `useVersionedDocEditor` + `useVersionedDocShell` (no publish) and the shared `MarkdownEditor` with `taskListToggle`. No public `/media` uploads for notes.
+- **Tasks:** list with quick-add (`!high` anywhere; `today` / `tomorrow` only as the last word), status/priority/due filters, one-click complete (optimistic), collapsed completed section, and detail editor (markdown description + metadata) via `taskResource` + `useVersionedDocEditor`.
+- **Search:** `POST /api/notebook/search` with a JSON body `{ q, area?, limit? }` (POST so terms stay out of URLs and access logs) scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette with notes/tasks groups, optional current-area filter, and highlighted snippets.
+- **Export:** chrome **Export** builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup are in `infra/RUNBOOK.md`.
+- **PWA:** `/spa.html` (served for `/admin/*`) links `manifest.json` (`start_url` `/admin/notebook`, `scope` `/admin/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen opens full-screen. Icons under `/icons/`. There is no offline cache; it is not required for installability.
 
-## Notebook sync contract (CHR-153 / CHR-162 / CHR-172 / CHR-202)
+## Notebook sync contract
 
-`GET /api/notebook/sync/changes` is the generic change feed real Notebook entities will use:
+`GET /api/notebook/sync/changes` is the change feed for Notebook notes and tasks:
 
-- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, `sha256:` of the fields including `userId`, never the text; CHR-192) are idempotent (mismatch → 409). Pre-CHR-192 rows hold the plaintext join until `scripts/migrate-create-hash.mjs` rewrites them; comparison accepts both forms. A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge. Soft-delete **extends** the claim TTL from delete time. Rows without `createHash` cannot prove create-time identity and return **409** `payload_mismatch`.
+- **Client ULID** on create; retries with the same id + matching **create-time** payload hash (`createHash`, `sha256:` of the fields including `userId`, never the text) are idempotent (mismatch → 409). Comparison also accepts rows that hold the plaintext joined fields; `scripts/migrate-create-hash.mjs` rewrites those to `sha256:` (dry run by default, `--apply` to write, `--verify` to check). A durable owner-scoped `CREATED#<TYPE>#USER#<sub>#<id>` claim (TTL ≫ tombstone TTL) prevents offline create replays from resurrecting an entity after META TTL purge. Soft-delete **extends** the claim TTL from delete time. Rows without `createHash` cannot prove create-time identity and return **409** `payload_mismatch`.
 - **One sync row per entity** via sparse GSI3 (`syncPk` / `syncSk` on META). Soft delete sets `deleted=true`, bumps `version`, and sets item `ttl` (~30 days). `entityType` is stamped from sync config on every write.
 - **Adapters** are listed explicitly in `services/api/src/sync/adapters.ts` and registered by `routes.ts` (not by importing or constructing a repository; repositories are built lazily per request). A unit test cold-imports `routes.ts` and asserts the registered types equal the `SyncChangeSchema` discriminator values. A sync row whose type has no adapter fails the page with **500** `sync_adapter_missing` + `SyncAdapterMissing` metric (alarm `gagnechris-prod-api-sync-adapter-missing`) instead of being skipped while `nextSince` advances.
 - **Typed `SyncChange`**: OpenAPI/client use a discriminated union on `type` (`note`, `task`), then on `deleted`: `deleted: false` always carries `entity`; tombstones omit it. The `fakeNote` fixture schema lives in API test support, not the production union.
@@ -168,9 +166,9 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
   - Malformed `If-Match` → **400**
-  - Notebook note/task `PUT`, `DELETE`, and task `complete`/`reopen` accept `If-Match` **alone**: body `version` is optional when the header is present. With neither → **400**. `If-Match` wins when both are sent (CHR-186)
+  - Notebook note/task `PUT`, `DELETE`, and task `complete`/`reopen` accept `If-Match` **alone**: body `version` is optional when the header is present. With neither → **400**. `If-Match` wins when both are sent
   - Every OpenAPI request body is `required`, so the typed client cannot call a mutation (e.g. a delete) without its body; the web sends body `version` on deletes
-  - Notebook note/task mutations build the new row from a **strongly consistent** read inside the repository (`mutateIfVersion` / `softDeleteIfVersion`) and always write `expected + 1`, so a lagging replica can never revert unsent fields or reuse a version (CHR-188)
+  - Notebook note/task mutations build the new row from a **strongly consistent** read inside the repository (`mutateIfVersion` / `softDeleteIfVersion`) and always write `expected + 1`, so a lagging replica can never revert unsent fields or reuse a version
   - Body-only `version` mismatch → **409** (`version_conflict`) with `currentVersion` + `current`
 - **409 `error` codes** (machine-readable): `version_conflict`, `deleted`, `payload_mismatch`, `slug_taken`, `daily_taken` (plus legacy `conflict`).
 
@@ -181,7 +179,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Minimum client version** (kill switch): native clients send `x-gagnechris-client-version: MAJOR.MINOR.PATCH` on sync requests. Below `SYNC_MIN_CLIENT_VERSION` (`@gagnechris/shared`, currently `0.0.0`) → **426** `{ "error": "upgrade_required", "message", "minClientVersion" }`; malformed → **400**; header absent (web, older builds) → allowed. Raise the constant and deploy to force upgrades.
 - On **410 `resync_required`**, discard tombstone-dependent local state and re-fetch with no `since`.
 
-Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (CHR-153 / CHR-202); the production union and OpenAPI list only `note` / `task`. Real notes HTTP routes live under `/api/notebook/notes*` (CHR-40); tasks under `/api/notebook/tasks*` (CHR-43), including `POST …/complete` and `…/reopen`. List responses are **server-sorted**: overdue first, then due date ascending, then priority (`high` → `med` → `low`). Details: [data-model.md](./data-model.md).
+Fixture-note **routes** and the `fakeNote` change schema are test-only; the production union and OpenAPI list only `note` / `task`. Notes HTTP routes live under `/api/notebook/notes*`; tasks under `/api/notebook/tasks*`, including `POST …/complete` and `…/reopen`. List responses are **server-sorted**: overdue first, then due date ascending, then priority (`high` → `med` → `low`). Details: [data-model.md](./data-model.md).
 
 ## How to add an API route
 
@@ -197,7 +195,7 @@ Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (C
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec. Versioned mutations document `If-Match` / `ETag` / **412** with `current`.
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` — it does not hard-code path prefixes.
 
-## Security headers and rendered HTML (CHR-193)
+## Security headers and rendered HTML
 
 - `renderMarkdownToHtml` (`@gagnechris/shared/render`) runs `marked` output through `sanitize-html` with an allowlist: no scripts, iframes, forms, event handlers, inline styles, or `javascript:` / `data:` URLs. The admin previews and the publisher both use it, so pasted HTML is inert in the editor and on published pages.
 - CloudFront has two response-header policies in the Site stack:
@@ -205,21 +203,21 @@ Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (C
   - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). `spa.html` is built without the GA snippet so it runs under this policy.
 - A CSP applies per document load: an admin page reached by in-app navigation from a public page keeps the public policy until reload.
 
-## Privacy: logs, caching and IAM (CHR-196)
+## Privacy: logs, caching and IAM
 
-- **Search terms are not logged (decision).** CloudFront standard logging writes `cs-uri-query` to the `AccessLogs` bucket (`cloudfront/` prefix, expired after 90 days), and API Gateway access logs record the route and path. Search used `GET ...?q=`, so terms landed in both. Search is now `POST /api/notebook/search` with a JSON body; the GET route is gone (405 with `Allow: POST`). Request bodies are never in either log.
+- **Search terms are not logged.** CloudFront standard logging writes `cs-uri-query` to the `AccessLogs` bucket (`cloudfront/` prefix, expired after 90 days), and API Gateway access logs record the route and path. Search is `POST /api/notebook/search` with a JSON body so terms appear in neither; `GET` returns 405 with `Allow: POST`. Request bodies are never in either log.
 - **API logs carry no bodies or query values.** The Lambda logs `request` with the path only (no query string, no body); Powertools `logEvent` stays off. `services/api/test/request-logging.test.ts` runs the real handler and fails if a search term or a note create/update body appears on stdout/stderr.
 - **Response headers.** The router adds `X-Content-Type-Options: nosniff` to every API response and `Cache-Control: no-store` to non-public routes and to every error (router 401/403/404/405, handler 500). Public successes (health, contact, resume notify) set no cache header. CloudFront `/api/*` has its own response headers policy (`api-security-headers`: nosniff, HSTS, `no-referrer`, and `Cache-Control: no-store` when the origin sent none), which covers responses API Gateway generates itself, such as JWT authorizer 401s and throttling 429s. The edge also stays `CACHING_DISABLED`.
-- **CI read roles.** The diff, drift and CDK lookup roles run under `ReadOnlyAccess` with a `DenyPrivateDataReads` statement: DynamoDB item reads, S3 object reads, and log and trace reads (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`, `xray:BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Logs hold no note content today; the deny keeps that true if a future log line slips. `cdk diff` / `cdk drift` never read logs.
+- **CI read roles.** The diff, drift and CDK lookup roles run under `ReadOnlyAccess` with a `DenyPrivateDataReads` statement: DynamoDB item reads, S3 object reads, and log and trace reads (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`, `xray:BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Logs hold no note content; the log deny keeps CI out of them regardless. `cdk diff` / `cdk drift` never read logs.
 - **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, and `Query` on `gsi1` limited to `STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
-- **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the admin-group check, API Gateway throttles and the Lambda's own headers still apply. A secret origin header checked by the API is the follow-up if this ever matters.
+- **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the admin-group check, API Gateway throttles and the Lambda's own headers still apply.
 
-## Analytics stay off /admin and /auth (CHR-194)
+## Analytics stay off /admin and /auth
 
 - GA4 loads only in the public shells. `spa.html` (served for `/admin*` and `/auth*`) is built without it, and the Vite dev server strips it for those paths too (`devSpaShellPlugin`), so dev matches prod.
 - `apps/web/src/utils/analytics.ts` never sends page views or events for a private path (`isPrivatePath` in `utils/privatePaths.ts`). `RouteTracker` also sets gtag's `ga-disable-<id>` flag while a private route is showing, which stops gtag's own enhanced-measurement hits if gtag is already loaded from an in-app navigation.
 
-## `@gagnechris/shared` entry points (CHR-139 / CHR-156 / CHR-164)
+## `@gagnechris/shared` entry points
 
 | Import                       | Contents                                                                                                                 |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -228,25 +226,19 @@ Fixture-note spike **routes** and the `fakeNote` change schema stay test-only (C
 | `@gagnechris/shared/html`    | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
 | `@gagnechris/shared/openapi` | OpenAPI document builder (build-time only)                                                                               |
 
-`marked` and `sanitize-html` remain runtime dependencies of the shared package because `/render` lives in the same package (the package is `sideEffects`-free apart from the OpenAPI extension, so pages that don't render markdown don't bundle them); the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
+`marked` and `sanitize-html` are runtime dependencies of the shared package because `/render` lives in the same package (the package is `sideEffects`-free apart from the OpenAPI extension, so pages that don't render markdown don't bundle them); the domain entry does not import it (enforced by `check:rn-bundles`). Prefer `/render` in app/publisher code; use `/html` only where the importer runs as native Node ESM against TypeScript sources (e.g. Vite plugins). The generated OpenAPI document lives at `packages/shared/openapi/openapi.json` and is read by path from `api-client` generate — there is no package export for it.
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
-CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`) in the iOS export sourcemap (CHR-164).
+CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths. `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`) in the iOS export sourcemap.
 
-## Notebook attachments + deploy excludes (CHR-175)
+## Media, deploy excludes, and backups
 
-**Public blog media (`/media/*`)** stays on the site bucket and CloudFront with long cache (CHR-31). It is the wrong place for Notebook attachments (private notes/tasks).
+**Public blog media (`/media/*`)** lives on the site bucket behind CloudFront with long cache. It is public, so it must not hold private Notebook content. Notebook notes and tasks have no file attachments.
 
-**Decision — private Notebook attachments:**
+**`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Excludes include `assets/*`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`.
 
-- Store objects in a **separate private S3 bucket** (or a non-CloudFront prefix that is never published as a public behavior). Not under `/media/*` on the site bucket.
-- API issues **short-lived presigned GET/PUT** URLs after auth (`/api/notebook/...`). No public CloudFront cache for note attachments.
-- Bucket encryption + block public access; optional KMS CMK later with the Backup vault CMK follow-up.
-
-**`scripts/deploy-web.sh`:** uses `aws s3 sync --delete` with an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them. Current excludes include `blog/*`, `resume/*`, `home/*`, `media/*`, **`notebook/*`** (reserved for any future site-bucket notebook exports), `sitemap.xml`, `rss.xml`. When CHR-42 adds attachments, put bytes in the private bucket above — do not rely on `/media/*`.
-
-**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data is not recreate-from-git the way posts are. Restores are proven off the deploy path (CHR-198): a weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button (CHR-47) downloads markdown/JSON for human backup — it does not replace PITR.
+**Backups:** AppTable has PITR plus an AWS Backup daily plan (see `infra/RUNBOOK.md`). Notebook data cannot be recreated from git the way posts can. A weekly AWS Backup restore testing plan restores the latest snapshot to an auto-deleted `awsbackup-restore-test-*` table, and the `services/restore-test` Lambda validates its content (item schemas, key shapes, singleton rows) and reports the result; the same Lambda alarms daily on any restore scratch table older than 24 h. Recovering notes is an item-level copy-back from a scratch restore (`scripts/restore-copy-back.ts`), never a table swap: the live table name is fixed and Api/Publisher import it cross-stack. Separately, the admin **Export** button downloads markdown/JSON for human backup — it does not replace PITR.
 
 ## Related
 

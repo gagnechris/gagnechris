@@ -1,9 +1,5 @@
 #!/usr/bin/env npx tsx
-/**
- * Idempotent CreateTable / UpdateTable for gagnechris-local (DynamoDB Local).
- * Schema comes from `@gagnechris/data` APP_TABLE — missing GSIs are added.
- * Requires scripts/local/env.sh sourced (or equivalent env).
- */
+// Requires scripts/local/env.sh sourced.
 import {
   CreateTableCommand,
   DescribeTableCommand,
@@ -67,8 +63,8 @@ function createTableInput() {
 
 async function ensureTtl() {
   const def = APP_TABLE;
-  // DynamoDB Local 2.5.2+ accepts UpdateTimeToLive (CHR-180), but rejects it
-  // with "TimeToLive is already enabled" on a re-run, so check first (CHR-199).
+  // DynamoDB Local rejects UpdateTimeToLive with "TimeToLive is already
+  // enabled" on a re-run, so check first.
   const { DescribeTimeToLiveCommand, UpdateTimeToLiveCommand } =
     await import('@aws-sdk/client-dynamodb');
   const current = await client.send(

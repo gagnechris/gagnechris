@@ -116,7 +116,7 @@ describe('AdminResumePage autosave', () => {
   });
 });
 
-describe('AdminResumePage publish (CHR-124)', () => {
+describe('AdminResumePage publish', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     get.mockResolvedValue({

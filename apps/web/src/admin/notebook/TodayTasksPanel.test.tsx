@@ -39,7 +39,7 @@ vi.mock('../../api/client', () => ({
       },
     ) => {
       if (path === '/api/notebook/tasks') {
-        // Honour the filters the UI sends, like the API (CHR-185).
+        // Honour the filters the UI sends, like the API.
         const q = init?.params?.query ?? {};
         return {
           data: {
@@ -127,7 +127,7 @@ vi.mock('../../api/client', () => ({
   }),
 }));
 
-describe('TodayTasksPanel (CHR-45)', () => {
+describe('TodayTasksPanel', () => {
   beforeEach(() => {
     state.failComplete = false;
     state.tasks = [
@@ -175,7 +175,7 @@ describe('TodayTasksPanel (CHR-45)', () => {
     });
   });
 
-  test('a failed complete rolls back and shows an error (CHR-189)', async () => {
+  test('a failed complete rolls back and shows an error', async () => {
     const user = userEvent.setup();
     state.failComplete = true;
 

@@ -21,7 +21,7 @@ const clientCapturing = (captured: Captured[]) => {
   return createApiClient({ baseUrl: 'http://api.test' });
 };
 
-describe('delete requests send the expected version (CHR-186)', () => {
+describe('delete requests send the expected version', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });

@@ -44,9 +44,8 @@ ${urls}
 };
 
 /**
- * Build-time sitemap for static SPA routes only.
- * Blog post URLs are owned by the publisher (`rebuildPublishedSite` → sitemap.xml).
- * deploy-web excludes dist sitemap from deleting publisher's copy and re-invokes republish-all.
+ * Static routes only: post URLs belong to the publisher's sitemap.xml, which
+ * deploy-web keeps when syncing dist.
  */
 export function sitemapPlugin(): Plugin {
   return {

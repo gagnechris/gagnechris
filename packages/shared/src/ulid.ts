@@ -1,8 +1,6 @@
 /**
- * Crockford Base32 ULID (26 chars). Injectable entropy for Node / browsers /
- * Hermes (`crypto.getRandomValues`, or expo-crypto polyfill) — CHR-177.
- *
- * No BigInt — keeps the helper safe on older Hermes builds.
+ * Entropy is injectable so Hermes can use the expo-crypto polyfill. No BigInt,
+ * which older Hermes builds lack.
  */
 import { UlidSchema } from './schemas.js';
 
@@ -40,10 +38,8 @@ function encodeTime(ms: number): string {
   return out;
 }
 
-/** Encode 10 random bytes (80 bits) as 16 Crockford chars. */
 function encodeRandom(bytes: Uint8Array): string {
   const chars: string[] = new Array(16);
-  // Bit buffer: pull 5 bits at a time from the 80-bit stream (MSB first).
   let bitPos = 0;
   for (let i = 0; i < 16; i += 1) {
     const byteIndex = Math.floor(bitPos / 8);
@@ -62,10 +58,6 @@ function encodeRandom(bytes: Uint8Array): string {
   return chars.join('');
 }
 
-/**
- * Generate a ULID. Pass `random` in tests; production uses
- * `crypto.getRandomValues` (10 bytes of entropy).
- */
 export function createUlid(
   random: RandomBytes = defaultRandom,
   nowMs: number = Date.now(),

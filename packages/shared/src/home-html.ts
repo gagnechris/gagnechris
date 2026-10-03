@@ -8,20 +8,14 @@ import {
   SITE_PROFILE_IMAGE_SRC,
 } from './site-config.js';
 
-/** Stable public URL (also used by the React home header). */
 export const HOME_PROFILE_IMAGE_SRC = SITE_PROFILE_IMAGE_SRC;
 
-/**
- * Shared chrome link data for the home Quick Links + footer.
- * React renders these as JSX (`<Link>` / tracked `<a>`); the publisher
- * prerender renders the same list as HTML (CHR-125).
- */
+/** Single list rendered both as JSX by React and as HTML by the publisher prerender. */
 export type SiteChromeLink = {
   label: string;
   href: string;
   /** `spa` → React Router; `external` → new tab; `href` → plain same-tab navigation. */
   kind: 'spa' | 'external' | 'href';
-  /** GA4 event label (`click` / `external_link` / trackId). */
   trackId?: string;
   className?: string;
   ariaLabel?: string;
@@ -90,7 +84,6 @@ const renderChromeLinkHtml = (link: SiteChromeLink): string => {
   return `<a href="${href}"${classAttr}${ariaAttr}${titleAttr}>${label}</a>`;
 };
 
-/** Plain text → paragraphs; blank lines split, single newlines become breaks. */
 export const renderHomeAboutHtml = (about: string): string =>
   about
     .split(/\n\s*\n/)
@@ -105,7 +98,6 @@ export const renderHomeAboutHtml = (about: string): string =>
 export const renderHomeAboutSectionHtml = (about: string): string =>
   `<section id="about"><h2>About Me</h2><div class="about-body">${renderHomeAboutHtml(about)}</div></section>`;
 
-/** Quick Links section from {@link HOME_QUICK_LINKS} (CHR-125). */
 export const renderHomeQuickLinksHtml = (): string =>
   `<section id="quick-links"><h2>Quick Links</h2><ul>` +
   HOME_QUICK_LINKS.map((link) => `<li>${renderChromeLinkHtml(link)}</li>`).join(
@@ -113,10 +105,7 @@ export const renderHomeQuickLinksHtml = (): string =>
   ) +
   `</ul></section>`;
 
-/**
- * Site footer for no-JS / crawlers. Year is fixed at publish time; the SPA
- * renders the live year from the same link list (CHR-125).
- */
+/** Year is fixed at publish time; the SPA renders the live year. */
 export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
   `<footer class="site-footer">` +
   `<p class="site-footer__copy">© ${year} ${escapeHtml(SITE_AUTHOR_NAME)}</p>` +
@@ -127,10 +116,8 @@ export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
   `</ul></footer>`;
 
 /**
- * Full prerendered article the publisher injects into `index.html` and the SPA
- * reads back. Classes match React (`home-page` / `home-header`) so no-JS and
- * first paint look styled (CHR-116). `home-page-prerender` remains as a marker
- * for `publishedHome` hydration.
+ * Classes match React so no-JS and first paint look styled.
+ * `home-page-prerender` is the marker for `publishedHome` hydration.
  */
 export const renderHomePrerenderHtml = (home: Home): string => {
   const name = escapeHtml(home.name);
@@ -148,6 +135,5 @@ export const renderHomePrerenderHtml = (home: Home): string => {
   );
 };
 
-/** Meta-description fallback when `seo.description` is unset. */
 export const homeAboutExcerpt = (about: string, max = 200): string =>
   textExcerpt(about, max);

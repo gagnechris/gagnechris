@@ -47,7 +47,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('restore-test handler (CHR-198)', () => {
+describe('restore-test handler', () => {
   it('reports SUCCESSFUL for a healthy restore', async () => {
     const { put } = fakeDeps();
     const addMetric = vi.spyOn(metrics, 'addMetric');

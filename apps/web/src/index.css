@@ -1,4 +1,4 @@
-/* Design tokens from @gagnechris/tokens (CHR-140) */
+/* Design tokens from @gagnechris/tokens */
 @import '@gagnechris/tokens/variables.css';
 
 :root {
@@ -150,7 +150,7 @@ button:focus-visible {
   animation: slideUp 0.5s ease forwards;
 }
 
-/* Shared public UI (CHR-109) */
+/* Shared public UI */
 .back-link,
 .home-link,
 .back-link-footer,

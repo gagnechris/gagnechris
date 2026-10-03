@@ -1,8 +1,3 @@
-/**
- * Fail if previously uncovered .ts files are still outside `tsc --listFilesOnly`
- * (CHR-180). For each workspace, unions every tsconfig*.json project.
- * Run: `npm run check:tsconfig-coverage`
- */
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';

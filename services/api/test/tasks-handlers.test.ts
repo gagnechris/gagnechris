@@ -82,7 +82,7 @@ describe('sortTasksForList', () => {
   });
 });
 
-describe('tasks handlers (CHR-43)', () => {
+describe('tasks handlers', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -320,7 +320,7 @@ describe('tasks handlers (CHR-43)', () => {
     });
   });
 
-  it('accepts If-Match alone on PUT and DELETE; stale If-Match is 412 (CHR-186)', async () => {
+  it('accepts If-Match alone on PUT and DELETE; stale If-Match is 412', async () => {
     const { doc } = createMemoryDoc();
     const repo = new TasksRepository(
       doc,
@@ -387,7 +387,7 @@ describe('tasks handlers (CHR-43)', () => {
     expect(JSON.parse(deleted!.body as string).deleted).toBe(true);
   });
 
-  it('rejects a noteId that is not a live note owned by the caller (CHR-186)', async () => {
+  it('rejects a noteId that is not a live note owned by the caller', async () => {
     const { doc } = createMemoryDoc();
     const repo = new TasksRepository(
       doc,

@@ -1,10 +1,6 @@
 /**
- * Design tokens (CHR-140). Single source for web CSS vars and RN styles.
- *
- * `text`, `space`, and `radius` are **px numbers** so React Native can use them
- * directly (CHR-150); the generator converts them to `rem` for CSS. Everything
- * else is already a CSS-ready string. Values match the previous
- * `apps/web/src/index.css` `:root` block (no visual change).
+ * `text`, `space`, and `radius` are px numbers so React Native can use them
+ * directly; the generator converts them to `rem` for CSS.
  */
 export const tokens = {
   text: {
@@ -89,19 +85,13 @@ export type Tokens = typeof tokens;
 
 const ROOT_FONT_SIZE_PX = 16;
 
-/**
- * Numeric tokens that stay in `px` on the web. `radius-full` is a pill
- * sentinel, not a step on the scale, so scaling it with the root font size
- * would be meaningless.
- */
+/** `radius-full` is a pill sentinel, so scaling it with the root font size is meaningless. */
 const pxOnly = new Set(['--radius-full']);
 
-/** Trim float noise from a derived number: `1.3330000000000002` → `1.333`. */
 function round(value: number, decimals: number): string {
   return String(Number(value.toFixed(decimals)));
 }
 
-/** px number → CSS value; strings pass through unchanged. */
 function toCssValue(name: string, value: number | string): string {
   if (typeof value === 'string') return value;
   if (pxOnly.has(name)) return `${value}px`;
@@ -111,7 +101,6 @@ function toCssValue(name: string, value: number | string): string {
 type TokenEntry = {
   name: string;
   css: string;
-  /** The stored value, so the generator can derive the px comments. */
   raw: number | string;
 };
 
@@ -126,14 +115,12 @@ function tokenEntries(source: Tokens): TokenEntry[] {
   return entries;
 }
 
-/** Flat CSS custom-property map: `--text-xs` → value. */
 export function tokenCssEntries(
   source: Tokens = tokens,
 ): Array<[string, string]> {
   return tokenEntries(source).map(({ name, css }) => [name, css]);
 }
 
-/** `:root { … }` block generated from tokens (comments match prior index.css). */
 export function tokensToCssRoot(source: Tokens = tokens): string {
   const lines = [
     '/* Generated from @gagnechris/tokens — do not edit by hand. */',
@@ -164,7 +151,6 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
       lines.push('');
       lines.push(section);
     }
-    // A rem value keeps a px comment derived from the token; px is literal.
     const derivedPx =
       typeof raw === 'number' && css.endsWith('rem')
         ? ` /* ${round(raw, 2)}px */`

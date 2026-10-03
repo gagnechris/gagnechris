@@ -18,7 +18,6 @@ import { SiteStack } from '../lib/stacks/site-stack.js';
 
 const app = new App();
 
-// Prod only (staging was removed — CHR-66 / CHR-68).
 const envName = parseEnvironmentName(app.node.tryGetContext('env'));
 const config = getEnvironment(
   envName,
@@ -58,7 +57,7 @@ const data = new DataStack(app, `Data-${config.name}`, {
 });
 
 // Email looks up the hosted zone itself (not via Dns) so Site can depend on
-// Api without a cycle through Dns → Email → Api (CHR-149).
+// Api without a cycle through Dns → Email → Api.
 const email = new EmailStack(app, `Email-${config.name}`, {
   env: stackEnv,
   description: `SES domain identity for transactional email (${config.name}).`,
@@ -73,8 +72,8 @@ const auth = new AuthStack(app, `Auth-${config.name}`, {
 });
 
 // Api before Site so Site's /api origin picks up http-api-id on the same
-// deploy when the HttpApi is replaced (CHR-149). Api still needs Site's
-// site-bucket-name SSM — see RUNBOOK two-pass bootstrap.
+// deploy when the HttpApi is replaced. Api still needs Site's
+// site-bucket-name SSM; see RUNBOOK two-pass bootstrap.
 const api = new ApiStack(app, `Api-${config.name}`, {
   env: stackEnv,
   description: `HTTP API + Lambda behind CloudFront /api (${config.name}).`,
@@ -98,9 +97,8 @@ const site = new SiteStack(app, `Site-${config.name}`, {
 });
 site.node.addDependency(api);
 
-// DNS after Site so apex/www can alias to the CloudFront distribution (CHR-25).
 // Direct distribution ref is intentional: Route 53 alias targets need the
-// distribution domain/hosted-zone IDs (SSM alone is awkward for AliasTarget).
+// distribution domain and hosted-zone IDs.
 new DnsStack(app, `Dns-${config.name}`, {
   env: stackEnv,
   description: `DNS records for ${config.domainName} (${config.name}).`,

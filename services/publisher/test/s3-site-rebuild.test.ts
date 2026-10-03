@@ -170,7 +170,7 @@ const feedsScope = (): RebuildScope => ({
   touchedEntityTypes: new Set(),
 });
 
-describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
+describe('publisher corrupt / GSI / quiet rebuild', () => {
   const prevTable = process.env.DATA_TABLE_NAME;
 
   beforeEach(async () => {
@@ -439,8 +439,8 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
     const slugs = typeof desired === 'function' ? await desired() : desired;
     expect(slugs).not.toContain('pending-rename');
 
-    // CHR-201: the last published slug (from posts.json) keeps its live page,
-    // KVS entry, and feed entries.
+    // The last published slug (from posts.json) keeps its live page, KVS
+    // entry, and feed entries.
     expect(slugs).toContain(liveSlug);
     expect(storage.deletes).not.toContain(`blog/${liveSlug}/index.html`);
     expect(await storage.read(`blog/${liveSlug}/index.html`)).toBe(

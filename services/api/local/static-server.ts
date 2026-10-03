@@ -1,8 +1,3 @@
-/**
- * Local static origin that applies the real CloudFront viewer-request function
- * before serving files from SITE_BUCKET_NAME (.local-site), and mirrors
- * viewer-response 404 handling for missing Option B objects (CHR-102).
- */
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
@@ -16,7 +11,6 @@ if (!root) {
   throw new Error('SITE_BUCKET_NAME (local site root) is required');
 }
 
-/** Walk up from this file to the monorepo root (has package.json + infra/). */
 function findRepoRoot(startDir: string): string {
   let dir = startDir;
   for (;;) {

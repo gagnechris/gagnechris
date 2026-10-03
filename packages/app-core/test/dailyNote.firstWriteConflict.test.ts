@@ -45,7 +45,7 @@ const waitUntil = async (predicate: () => boolean, label: string) => {
   throw new Error(`Timed out waiting for ${label}`);
 };
 
-describe('daily note first write (CHR-42 false conflict)', () => {
+describe('daily note first write without a false conflict', () => {
   test('typing during first upsert does not surface remote conflict', async () => {
     // Object bag so nested mock assignments stay visible to tsc (let+closure → never).
     const state: { note: StoredNote | null; saveCalls: number } = {
@@ -141,8 +141,8 @@ describe('daily note first write (CHR-42 false conflict)', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    // Reproduce Today page: calendar dates query caches a Set under notes keys.
-    // setCachedNote must not treat that Set as infinite list pages (CHR-42).
+    // The Today page caches a Set under notes keys; setCachedNote must not treat
+    // it as infinite list pages.
     queryClient.setQueryData(
       [
         'admin',
@@ -207,7 +207,6 @@ describe('daily note first write (CHR-42 false conflict)', () => {
       }));
     });
 
-    // Kick explicit save and type while PUT is gated (mirrors typing during autosave).
     let savePromise!: Promise<string>;
     act(() => {
       savePromise = result.current.save();
@@ -225,7 +224,6 @@ describe('daily note first write (CHR-42 false conflict)', () => {
       }));
     });
 
-    // After bumpEdit, saveState is idle while PUT still in flight.
     expect(result.current.dirty).toBe(true);
 
     await act(async () => {
@@ -235,7 +233,6 @@ describe('daily note first write (CHR-42 false conflict)', () => {
       await Promise.resolve();
     });
 
-    // Allow follow-up save for the mid-flight edit to finish.
     await waitUntil(
       () =>
         state.note?.bodyMarkdown === 'first more' &&

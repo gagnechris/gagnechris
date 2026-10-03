@@ -1,11 +1,5 @@
-/**
- * AC demo target (CHR-157 / CHR-166): a real new page (`now/index.html`) owned
- * entirely by this file. Production registry is unchanged; tests append this
- * target to the explicit `publishTargets` array.
- *
- * Matches via `touchedEntityTypes` (own Dynamo entity trigger) or a full
- * rebuild — no new RebuildScope boolean / rebuild-scope.ts edit required.
- */
+// Proves a new page can be owned entirely by one target file; tests append it
+// to the explicit `publishTargets` array.
 import { isFullRebuildScope } from '../../src/rebuild-scope.js';
 import type { PublishTarget } from '../../src/publish-targets/types.js';
 import { CACHE_HTML } from '../../src/publish-targets/types.js';

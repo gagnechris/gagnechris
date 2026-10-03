@@ -44,7 +44,6 @@ export function startOfMonth(value: string): string {
   return formatLocalDate(date);
 }
 
-/** Inclusive from/to covering the month that contains `value`. */
 export function monthBounds(value: string): { from: string; to: string } {
   const date = parseLocalDate(value);
   if (!date) {
