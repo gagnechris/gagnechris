@@ -15,17 +15,23 @@ import {
   type NotebookArea,
 } from '@gagnechris/data';
 import {
-  FakeNoteEntitySchema,
-  FakeNoteSyncChangeSchema,
-  type SyncChange,
+  NotebookAreaSchema,
+  NoteSyncChangeSchema,
+  SyncChangesResponseSchema,
+  syncChangeSchemaFor,
+  TaskSyncChangeSchema,
 } from '@gagnechris/shared';
+import { z } from 'zod';
 import {
   OwnerScopedVersionedEntityRepository,
   type UniqueClaimHook,
 } from '../../src/data/owner-scoped-versioned-entity-repository.js';
 import { type VersionedEntity } from '../../src/data/versioned-entity-repository.js';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import { registerSyncEntity } from '../../src/sync/registry.js';
+import {
+  registerSyncEntity,
+  type SyncFeedChange,
+} from '../../src/sync/registry.js';
 import {
   GSI1_CURSOR_KEYS,
   GSI2_CURSOR_KEYS,
@@ -34,6 +40,36 @@ import {
 import { hashCreateFields } from '../../src/data/create-hash.js';
 
 export const FAKE_NOTE_CHANGE_TYPE = 'fakeNote';
+
+/** Fixture wire schema; deliberately outside the production `SyncChangeSchema`. */
+export const FakeNoteEntitySchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  title: z.string(),
+  body: z.string(),
+  version: z.number().int().nonnegative(),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  deleted: z.boolean(),
+  area: NotebookAreaSchema.optional(),
+  noteDate: z.string().optional(),
+});
+
+export const FakeNoteSyncChangeSchema = syncChangeSchemaFor(
+  FAKE_NOTE_CHANGE_TYPE,
+  FakeNoteEntitySchema,
+);
+
+/** Production sync page contract widened with the fixture change type. */
+export const TestSyncChangesResponseSchema = SyncChangesResponseSchema.extend({
+  changes: z.array(
+    z.discriminatedUnion('type', [
+      FakeNoteSyncChangeSchema,
+      NoteSyncChangeSchema,
+      TaskSyncChangeSchema,
+    ]),
+  ),
+});
 
 export type FakeNote = VersionedEntity & {
   id: string;
@@ -132,7 +168,7 @@ export function toFakeNoteItem(entity: FakeNote): FakeNoteItem {
 
 export function fakeNoteToChange(
   item: Record<string, unknown>,
-): SyncChange | undefined {
+): SyncFeedChange | undefined {
   if (item.entityType !== FAKE_NOTE_CHANGE_TYPE) return undefined;
   const parsed = FakeNoteEntitySchema.safeParse(
     toFakeNoteEntity(item as FakeNoteItem),
@@ -150,10 +186,7 @@ export function fakeNoteToChange(
   return change;
 }
 
-/**
- * Ensures the fake-note adapter is registered (also happens via repo construct).
- * Kept for tests that call the ledger without constructing a repo first.
- */
+/** Registers the fixture adapter (repositories never register adapters). */
 export function registerFakeNoteSync(): void {
   registerSyncEntity({
     changeType: FAKE_NOTE_CHANGE_TYPE,
@@ -250,7 +283,6 @@ export function createFakeNotesRepo(
         changeType: FAKE_NOTE_CHANGE_TYPE,
         userIdOf: (n) => n.userId,
         createPayloadHash: fakeNotePayloadHash,
-        toChange: fakeNoteToChange,
       },
       uniqueClaim: dailyNoteClaimHook(doc, tableName),
     },

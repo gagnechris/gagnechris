@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateNoteRequestSchema,
   CreateTaskRequestSchema,
+  decodeSyncChangesResponse,
   NoteSchema,
+  SYNC_CHANGE_TYPES,
   SyncChangeSchema,
+  SyncChangesResponseSchema,
   TaskSchema,
 } from './schemas.js';
 
@@ -135,6 +138,64 @@ describe('Notebook schemas (CHR-39)', () => {
       updatedAt: ts,
     });
     expect(taskChange.type).toBe('task');
-    expect(taskChange.entity).toBeUndefined();
+    expect('entity' in taskChange).toBe(false);
+  });
+
+  it('lists only production change types (no fakeNote fixture) (CHR-202)', () => {
+    expect([...SYNC_CHANGE_TYPES].sort()).toEqual(['note', 'task']);
+  });
+
+  it('rejects a live change without entity (CHR-202)', () => {
+    const result = SyncChangeSchema.safeParse({
+      type: 'task',
+      id: ulid,
+      version: 1,
+      deleted: false,
+      updatedAt: ts,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  describe('decodeSyncChangesResponse (CHR-202)', () => {
+    const tombstone = (type: string) => ({
+      type,
+      id: ulid,
+      version: 2,
+      deleted: true,
+      updatedAt: ts,
+    });
+
+    it('skips unknown change types and keeps the rest of the page', () => {
+      const page = {
+        changes: [
+          tombstone('note'),
+          { ...tombstone('calendarEvent'), entity: { anything: true } },
+          tombstone('task'),
+        ],
+        nextCursor: 'abc',
+        nextSince: ts,
+      };
+      // The strict schema rejects the whole page …
+      expect(SyncChangesResponseSchema.safeParse(page).success).toBe(false);
+      // … the lenient decoder keeps the known changes.
+      const decoded = decodeSyncChangesResponse(page);
+      expect(decoded.changes.map((c) => c.type)).toEqual(['note', 'task']);
+      expect(decoded.skippedTypes).toEqual(['calendarEvent']);
+      expect(decoded.nextCursor).toBe('abc');
+      expect(decoded.nextSince).toBe(ts);
+    });
+
+    it('still rejects a malformed change of a known type', () => {
+      expect(() =>
+        decodeSyncChangesResponse({
+          changes: [{ ...tombstone('note'), deleted: false }],
+          nextSince: ts,
+        }),
+      ).toThrow();
+    });
+
+    it('still rejects a malformed envelope', () => {
+      expect(() => decodeSyncChangesResponse({ changes: [] })).toThrow();
+    });
   });
 });
