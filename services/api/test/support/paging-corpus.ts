@@ -6,9 +6,9 @@ import { expect } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { makeEvent } from './make-event.js';
 import { dispatchRoutes, type RouteDef } from '../../src/router.js';
-import { createNotesRepository } from '../../src/notes/repository.js';
+import { NotesRepository } from '../../src/notes/repository.js';
 import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { createTasksRepository } from '../../src/tasks/repository.js';
+import { TasksRepository } from '../../src/tasks/repository.js';
 import { createTaskRoutes } from '../../src/tasks/handlers.js';
 
 export const PAGING_USER = 'user-paging-1';
@@ -56,12 +56,12 @@ export async function seedPagingCorpus(
   table: string,
   counts = { notes: 150, tasks: 150 },
 ) {
-  const notes = createNotesRepository(
+  const notes = new NotesRepository(
     doc,
     table,
     () => '2026-10-02T12:00:00.000Z',
   );
-  const tasks = createTasksRepository(
+  const tasks = new TasksRepository(
     doc,
     table,
     () => '2026-10-02T12:00:00.000Z',

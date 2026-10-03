@@ -3,11 +3,12 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { ConflictError } from '../../src/data/errors.js';
+import { NotFoundError } from '../../src/data/errors.js';
 import {
-  VersionedEntityRepository,
+  VersionedRepository,
+  unscoped,
   type VersionedEntity,
-} from '../../src/data/versioned-entity-repository.js';
+} from '../../src/data/versioned-repository.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
@@ -44,12 +45,14 @@ describe('hard-delete recreate guard (DynamoDB Local, CHR-170)', () => {
     await truncateTable(doc, tableName);
   });
 
-  it('refuses updateIfVersion after a hard DeleteItem (attribute_exists guard)', async () => {
-    const repo = new VersionedEntityRepository<Note, NoteItem>(
+  it('refuses updateIfVersion after a hard DeleteItem (404, never recreated)', async () => {
+    const repo = new VersionedRepository<Note, NoteItem, string>(
       {
         conflictLabel: 'note',
-        keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
-        idOf: (n) => n.id,
+        scope: unscoped({
+          keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+          idOf: (n) => n.id,
+        }),
         toEntity: (item) => ({
           id: item.id,
           title: item.title,
@@ -90,7 +93,7 @@ describe('hard-delete recreate guard (DynamoDB Local, CHR-170)', () => {
         version: 2,
         updatedAt: '2026-10-02T11:00:00.000Z',
       }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    ).rejects.toBeInstanceOf(NotFoundError);
 
     expect(await repo.get(NOTE_ID)).toBeUndefined();
   });

@@ -5,7 +5,11 @@ import {
   TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { GSI1_NAME, GSI2_NAME, keys } from '@gagnechris/data';
-import { OwnerScopedVersionedEntityRepository } from '../src/data/owner-scoped-versioned-entity-repository.js';
+import {
+  VersionedRepository,
+  ownerScoped,
+  type OwnerKey,
+} from '../src/data/versioned-repository.js';
 import { NotFoundError } from '../src/data/errors.js';
 import {
   decodeCursor,
@@ -27,12 +31,14 @@ type Note = {
 type NoteItem = Note & { pk: string; sk: string };
 
 function createRepo(doc: { send: ReturnType<typeof vi.fn> }) {
-  return new OwnerScopedVersionedEntityRepository<Note, NoteItem>(
+  return new VersionedRepository<Note, NoteItem, OwnerKey>(
     {
       conflictLabel: 'note',
-      keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
-      idOf: (n) => n.id,
-      userIdOf: (n) => n.userId,
+      scope: ownerScoped({
+        keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
+        idOf: (n) => n.id,
+        userIdOf: (n) => n.userId,
+      }),
       toEntity: (item) => ({
         id: item.id,
         userId: item.userId,
@@ -68,7 +74,7 @@ function createRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   );
 }
 
-describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
+describe('VersionedRepository with ownerScoped', () => {
   const send = vi.fn();
   const repo = createRepo({ send });
 
@@ -88,14 +94,14 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
         updatedAt: '2026-10-02T00:00:00.000Z',
       },
     });
-    expect(await repo.get('a', 'n1')).toBeUndefined();
+    expect(await repo.get({ userId: 'a', id: 'n1' })).toBeUndefined();
     expect(send.mock.calls[0]![0]).toBeInstanceOf(GetCommand);
   });
 
   it('updateIfVersion 404s when the owner key is missing', async () => {
     send.mockResolvedValueOnce({});
     await expect(
-      repo.updateIfVersion('a', 'n1', 1, {
+      repo.updateIfVersion({ userId: 'a', id: 'n1' }, 1, {
         id: 'n1',
         userId: 'a',
         title: 'x',
@@ -122,7 +128,7 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
       })
       .mockResolvedValueOnce({});
 
-    await repo.softDelete('a', 'n1', 1, {
+    await repo.softDelete({ userId: 'a', id: 'n1' }, 1, {
       id: 'n1',
       userId: 'a',
       title: 'x',
@@ -197,11 +203,15 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
     });
 
     // A builder that echoes a stale version must not leak it into the write.
-    const next = await repo.mutateIfVersion('a', 'n1', 'any', (n) => ({
-      ...n,
-      title: `${n.title}!`,
-      version: 1,
-    }));
+    const next = await repo.mutateIfVersion(
+      { userId: 'a', id: 'n1' },
+      'any',
+      (n) => ({
+        ...n,
+        title: `${n.title}!`,
+        version: 1,
+      }),
+    );
 
     expect(next).toMatchObject({ title: 'live!', version: 3 });
     const get = send.mock.calls[0]![0] as GetCommand;
@@ -230,7 +240,7 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
       },
     });
     await expect(
-      repo.mutateIfVersion('a', 'n1', 3, (n) => n),
+      repo.mutateIfVersion({ userId: 'a', id: 'n1' }, 3, (n) => n),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

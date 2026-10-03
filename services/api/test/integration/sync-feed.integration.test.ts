@@ -73,7 +73,7 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
         '2026-09-28T10:30:00.000Z',
       ),
     );
-    await repo.softDelete(USER, NOTE_ID, 1, {
+    await repo.softDelete({ userId: USER, id: NOTE_ID }, 1, {
       ...created,
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
@@ -139,7 +139,7 @@ describe('sync feed (DynamoDB Local, CHR-162 / CHR-172)', () => {
     );
 
     clock = deleteAt;
-    await repo.softDelete(USER, NOTE_ID, 1, {
+    await repo.softDelete({ userId: USER, id: NOTE_ID }, 1, {
       ...created,
       version: 2,
       updatedAt: deleteAt.toISOString(),

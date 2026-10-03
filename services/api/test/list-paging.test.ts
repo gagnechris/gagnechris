@@ -7,13 +7,10 @@ import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
 import { dispatchRoutes } from '../src/router.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
-import {
-  createTasksRepository,
-  sortTasksForList,
-} from '../src/tasks/repository.js';
+import { TasksRepository, sortTasksForList } from '../src/tasks/repository.js';
 import { createTaskRoutes } from '../src/tasks/handlers.js';
 import { searchNotebook } from '../src/search/service.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import {
   AREAS,
   PAGING_USER,
@@ -121,7 +118,7 @@ describe('multi-partition list paging (CHR-185)', () => {
 
   it('120 done past-due tasks never bury 3 open tasks due today', async () => {
     const { doc } = createMemoryDoc();
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
@@ -215,12 +212,12 @@ describe('multi-partition list paging (CHR-185)', () => {
 
   it('search finds both the oldest and the newest item in a 600-item corpus', async () => {
     const { doc } = createMemoryDoc();
-    const notes = createNotesRepository(
+    const notes = new NotesRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',
     );
-    const tasks = createTasksRepository(
+    const tasks = new TasksRepository(
       doc,
       TABLE,
       () => '2026-10-02T12:00:00.000Z',

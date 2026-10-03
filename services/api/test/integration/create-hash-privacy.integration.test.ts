@@ -7,9 +7,9 @@ import { NOTEBOOK_TEXT_MAX_BYTES } from '@gagnechris/shared';
 import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { createNotesRepository } from '../../src/notes/repository.js';
+import { NotesRepository } from '../../src/notes/repository.js';
 import { createTaskRoutes } from '../../src/tasks/handlers.js';
-import { createTasksRepository } from '../../src/tasks/repository.js';
+import { TasksRepository } from '../../src/tasks/repository.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
@@ -40,8 +40,8 @@ describe('createHash privacy and size limits (CHR-192)', () => {
   beforeEach(async () => {
     await truncateTable(doc, tableName);
     clearSyncEntities();
-    const notes = createNotesRepository(doc, tableName);
-    const tasks = createTasksRepository(doc, tableName);
+    const notes = new NotesRepository(doc, tableName);
+    const tasks = new TasksRepository(doc, tableName);
     routes = [...createNoteRoutes(notes), ...createTaskRoutes(tasks, notes)];
   });
 

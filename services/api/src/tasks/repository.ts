@@ -1,6 +1,6 @@
 /**
  * Owner-scoped Notebook tasks (CHR-43).
- * Uses OwnerScopedVersionedEntityRepository + CHR-39 mappers/keys.
+ * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
  */
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
@@ -31,7 +31,11 @@ import {
   PRIMARY_CURSOR_KEYS,
 } from '../data/cursor.js';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { OwnerScopedVersionedEntityRepository } from '../data/owner-scoped-versioned-entity-repository.js';
+import {
+  VersionedRepository,
+  ownerScoped,
+  type OwnerKey,
+} from '../data/versioned-repository.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { hashCreateFields } from '../data/create-hash.js';
 
@@ -140,22 +144,21 @@ function withCompletedAt(
 }
 
 export class TasksRepository {
-  private readonly base: OwnerScopedVersionedEntityRepository<
-    Task,
-    TaskMetaItem
-  >;
+  private readonly base: VersionedRepository<Task, TaskMetaItem, OwnerKey>;
 
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
     private readonly nowIso: () => string = () => new Date().toISOString(),
   ) {
-    this.base = new OwnerScopedVersionedEntityRepository<Task, TaskMetaItem>(
+    this.base = new VersionedRepository<Task, TaskMetaItem, OwnerKey>(
       {
         conflictLabel: 'task',
-        keyForId: (userId, id) => keys.notebook.task.meta(userId, id),
-        idOf: (t) => t.id,
-        userIdOf: (t) => t.userId,
+        scope: ownerScoped({
+          keyForId: (userId, id) => keys.notebook.task.meta(userId, id),
+          idOf: (t) => t.id,
+          userIdOf: (t) => t.userId,
+        }),
         toEntity: (item) => metaToTask(parseTaskMetaItem(item)),
         toItem: buildTaskMetaItem,
         isDeleted: (t) => t.deleted,
@@ -177,33 +180,15 @@ export class TasksRepository {
   }
 
   get(userId: string, id: string): Promise<Task | undefined> {
-    return this.base.get(userId, id);
+    return this.base.get({ userId, id });
   }
 
   getOrThrow(userId: string, id: string): Promise<Task> {
-    return this.base.getOrThrow(userId, id);
+    return this.base.getOrThrow({ userId, id });
   }
 
   createIdempotent(task: Task): Promise<Task> {
     return this.base.createIdempotent(task);
-  }
-
-  updateIfVersion(
-    userId: string,
-    id: string,
-    expectedVersion: number,
-    next: Task,
-  ): Promise<Task> {
-    return this.base.updateIfVersion(userId, id, expectedVersion, next);
-  }
-
-  softDelete(
-    userId: string,
-    id: string,
-    expectedVersion: number,
-    tombstone: Task,
-  ): Promise<Task> {
-    return this.base.softDelete(userId, id, expectedVersion, tombstone);
   }
 
   async createFromRequest(
@@ -242,23 +227,27 @@ export class TasksRepository {
     expected: number | 'any',
     body: Omit<UpdateTaskRequest, 'version'>,
   ): Promise<Task> {
-    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => {
-      const status = body.status ?? existing.status;
-      return {
-        ...existing,
-        area: body.area ?? existing.area,
-        title: body.title ?? existing.title,
-        description: body.description ?? existing.description,
-        priority: body.priority ?? existing.priority,
-        status,
-        dueDate: body.dueDate !== undefined ? body.dueDate : existing.dueDate,
-        noteId: body.noteId !== undefined ? body.noteId : existing.noteId,
-        tags:
-          body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
-        completedAt: withCompletedAt(status, existing.completedAt, now),
-        updatedAt: now,
-      };
-    });
+    return this.base.mutateIfVersion(
+      { userId, id },
+      expected,
+      (existing, now) => {
+        const status = body.status ?? existing.status;
+        return {
+          ...existing,
+          area: body.area ?? existing.area,
+          title: body.title ?? existing.title,
+          description: body.description ?? existing.description,
+          priority: body.priority ?? existing.priority,
+          status,
+          dueDate: body.dueDate !== undefined ? body.dueDate : existing.dueDate,
+          noteId: body.noteId !== undefined ? body.noteId : existing.noteId,
+          tags:
+            body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+          completedAt: withCompletedAt(status, existing.completedAt, now),
+          updatedAt: now,
+        };
+      },
+    );
   }
 
   complete(
@@ -266,22 +255,30 @@ export class TasksRepository {
     id: string,
     expected: number | 'any',
   ): Promise<Task> {
-    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
-      ...existing,
-      status: 'done',
-      completedAt: existing.completedAt ?? now,
-      updatedAt: now,
-    }));
+    return this.base.mutateIfVersion(
+      { userId, id },
+      expected,
+      (existing, now) => ({
+        ...existing,
+        status: 'done',
+        completedAt: existing.completedAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   reopen(userId: string, id: string, expected: number | 'any'): Promise<Task> {
     // Reopen undoes completion only; an in-progress task keeps its status.
-    return this.base.mutateIfVersion(userId, id, expected, (existing, now) => ({
-      ...existing,
-      status: existing.status === 'done' ? 'todo' : existing.status,
-      completedAt: null,
-      updatedAt: now,
-    }));
+    return this.base.mutateIfVersion(
+      { userId, id },
+      expected,
+      (existing, now) => ({
+        ...existing,
+        status: existing.status === 'done' ? 'todo' : existing.status,
+        completedAt: null,
+        updatedAt: now,
+      }),
+    );
   }
 
   /** Tombstone built from a consistent read (CHR-188). */
@@ -290,11 +287,15 @@ export class TasksRepository {
     id: string,
     expected: number | 'any',
   ): Promise<Task> {
-    return this.base.softDeleteIfVersion(userId, id, expected, (t, now) => ({
-      ...t,
-      updatedAt: now,
-      deleted: true,
-    }));
+    return this.base.softDeleteIfVersion(
+      { userId, id },
+      expected,
+      (t, now) => ({
+        ...t,
+        updatedAt: now,
+        deleted: true,
+      }),
+    );
   }
 
   async list(
@@ -444,12 +445,4 @@ let defaultTasksRepo: TasksRepository | undefined;
 export function tasksRepository(): TasksRepository {
   defaultTasksRepo ??= new TasksRepository();
   return defaultTasksRepo;
-}
-
-export function createTasksRepository(
-  doc: DynamoDBDocumentClient,
-  tableName: string,
-  nowIso?: () => string,
-): TasksRepository {
-  return new TasksRepository(doc, tableName, nowIso);
 }

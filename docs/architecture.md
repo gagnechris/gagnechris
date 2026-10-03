@@ -34,8 +34,9 @@ API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild b
 
 API repositories share one layering:
 
-- `VersionedEntityRepository` — optimistic concurrency + cursor queries (id-keyed; used by publishable posts/home/resume).
-- `OwnerScopedVersionedEntityRepository` — same concurrency model with `(userId, id)` keys, owner checks, per-index cursors, optional unique claims (daily notes), and GSI stripping on tombstones (CHR-169; Notebook notes/tasks).
+- `VersionedRepository` (`services/api/src/data/versioned-repository.ts`) — optimistic-concurrency base for every entity: consistent read-modify-write (`mutateIfVersion` / `softDeleteIfVersion`), idempotent client-ULID create, sync stamping + create claims, optional unique claims (daily notes), cursor queries. Keying is an owner-scoping strategy:
+  - `unscoped({ keyForId, idOf })` — id keys (publishable posts/home/resume).
+  - `ownerScoped({ keyForId, idOf, userIdOf })` — `{ userId, id }` keys, rows of another owner read as missing, owner-scoped create claims, list GSI keys stripped from tombstones (Notebook notes/tasks).
 - `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
 - Posts keep slug claims and tag-index side effects in `posts/mutation-builders.ts`.
 
@@ -163,7 +164,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - **Paging**: default `limit` is 50 (max 100) and counts returned changes (corrupt rows the adapter skips do not use up the page; at most `SYNC_MAX_QUERIES_PER_PAGE` Dynamo reads per page, so a page can still be short with a `nextCursor`). Cursors are bound to the partition and to the query's `since` (a cursor minted without `since` cannot be replayed with one) → **400** otherwise. No batch mutate endpoint — clients apply changes one-by-one.
 - **`updatedAt` is server-stamped**; clients must not rely on client clocks for ordering.
 - **Throttle**: stage default 20 rps / 50 burst; notebook routes 50/100; public contact and resume-download 5/10. API Gateway 429 bodies are `{"message":…}` (not `ErrorResponse`) — retry with backoff and refresh Cognito tokens before a long offline catch-up.
-- **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version` (helpers in `services/api/src/data/versioned-route.ts` / `concurrency.ts`):
+- **Optimistic concurrency**: responses include strong `ETag: "<version>"`. Mutations accept `If-Match` or body `version`. Notebook mutation routes are declared with `versionedMutationRoute` (`services/api/src/data/versioned-route.ts`; resolve expectation → optional precheck → mutate → 412 mapping → entity + ETag); update and tombstone timestamps come from the repository's injected clock:
   - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
   - Malformed `If-Match` → **400**

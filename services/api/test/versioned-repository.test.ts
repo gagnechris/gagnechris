@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import {
-  VersionedEntityRepository,
+  VersionedRepository,
+  unscoped,
   type VersionedEntity,
-} from '../src/data/versioned-entity-repository.js';
-import { ConflictError } from '../src/data/errors.js';
+} from '../src/data/versioned-repository.js';
+import { ConflictError, NotFoundError } from '../src/data/errors.js';
 import { decodeCursor, encodeCursor } from '../src/data/cursor.js';
 
 type Note = VersionedEntity & {
@@ -25,11 +26,13 @@ type NoteItem = {
 
 /** ~30 lines of config for a non-publishable versioned entity (CHR-129 AC). */
 function createNotesRepo(doc: { send: ReturnType<typeof vi.fn> }) {
-  return new VersionedEntityRepository<Note, NoteItem>(
+  return new VersionedRepository<Note, NoteItem, string>(
     {
       conflictLabel: 'note',
-      keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
-      idOf: (n) => n.id,
+      scope: unscoped({
+        keyForId: (id) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+        idOf: (n) => n.id,
+      }),
       toEntity: (item) => ({
         id: item.id,
         title: item.title,
@@ -53,7 +56,7 @@ function createNotesRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   );
 }
 
-describe('VersionedEntityRepository (fake note)', () => {
+describe('VersionedRepository (fake note)', () => {
   const send = vi.fn();
   const repo = createNotesRepo({ send });
 
@@ -126,10 +129,33 @@ describe('VersionedEntityRepository (fake note)', () => {
     } satisfies Partial<ConflictError>);
   });
 
-  it('refuses to recreate a hard-deleted item (CHR-161)', async () => {
+  it('refuses to recreate a hard-deleted item', async () => {
+    send.mockResolvedValueOnce({});
+
+    await expect(
+      repo.updateIfVersion('n1', 1, {
+        id: 'n1',
+        title: 'Resurrected',
+        version: 2,
+        updatedAt: '2026-09-28T00:00:01.000Z',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('a hard delete racing the write fails the attribute_exists condition', async () => {
     send
-      // getRawItem (preserve createHash) — item already gone
-      .mockResolvedValueOnce({})
+      // getRawItem (preserve createHash) — still there
+      .mockResolvedValueOnce({
+        Item: {
+          pk: 'NOTE#n1',
+          sk: 'META',
+          id: 'n1',
+          title: 'Old',
+          version: 1,
+          updatedAt: '2026-09-28T00:00:00.000Z',
+        },
+      })
       .mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' })
       .mockResolvedValueOnce({}); // GetItem: gone
 
@@ -233,7 +259,7 @@ describe('cursor helpers', () => {
   });
 });
 
-describe('VersionedEntityRepository queryPage tombstones', () => {
+describe('VersionedRepository queryPage tombstones', () => {
   it('filters soft-deleted entities from queryPage', async () => {
     const send = vi.fn().mockResolvedValueOnce({
       Items: [
@@ -256,11 +282,13 @@ describe('VersionedEntityRepository queryPage tombstones', () => {
         },
       ],
     });
-    const repo = new VersionedEntityRepository(
+    const repo = new VersionedRepository(
       {
         conflictLabel: 'note',
-        keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
-        idOf: (n: { id: string }) => n.id,
+        scope: unscoped({
+          keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+          idOf: (n: { id: string }) => n.id,
+        }),
         toEntity: (item: {
           id: string;
           title: string;
@@ -303,7 +331,7 @@ describe('VersionedEntityRepository queryPage tombstones', () => {
   });
 });
 
-describe('VersionedEntityRepository queryPage corrupt rows (CHR-160)', () => {
+describe('VersionedRepository queryPage corrupt rows', () => {
   it('skips corrupt rows in queryPage (Zod → DataIntegrityError)', async () => {
     const send = vi.fn().mockResolvedValueOnce({
       Items: [
@@ -325,11 +353,13 @@ describe('VersionedEntityRepository queryPage corrupt rows (CHR-160)', () => {
       ],
     });
     const { ZodError } = await import('zod');
-    const repo = new VersionedEntityRepository(
+    const repo = new VersionedRepository(
       {
         conflictLabel: 'note',
-        keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
-        idOf: (n: { id: string }) => n.id,
+        scope: unscoped({
+          keyForId: (id: string) => ({ pk: `NOTE#${id}`, sk: 'META' }),
+          idOf: (n: { id: string }) => n.id,
+        }),
         toEntity: (item: {
           id: string;
           title?: string;

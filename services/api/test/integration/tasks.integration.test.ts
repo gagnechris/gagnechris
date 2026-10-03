@@ -6,7 +6,7 @@ import { SyncLedger } from '../../src/sync/ledger.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { NotFoundError } from '../../src/data/errors.js';
-import { createTasksRepository } from '../../src/tasks/repository.js';
+import { TasksRepository } from '../../src/tasks/repository.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
@@ -40,7 +40,7 @@ describe('tasks repository (DynamoDB Local, CHR-43)', () => {
   });
 
   it('isolates owners, filters due ranges, lists by note, and feeds typed task changes', async () => {
-    const repo = createTasksRepository(
+    const repo = new TasksRepository(
       doc,
       tableName,
       () => '2026-10-02T10:00:00.000Z',

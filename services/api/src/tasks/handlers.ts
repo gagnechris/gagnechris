@@ -12,11 +12,7 @@ import {
   UpdateTaskRequestSchema,
   type Task,
 } from '@gagnechris/shared';
-import {
-  jsonEntity,
-  requireExpectedVersion,
-  runVersionedMutation,
-} from '../data/versioned-route.js';
+import { jsonEntity, versionedMutationRoute } from '../data/versioned-route.js';
 import { json } from '../http.js';
 import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { defineRoute, type RouteDef } from '../router.js';
@@ -82,37 +78,25 @@ export function createTaskRoutes(
       },
     }),
     // Literal segments before :id (complete/reopen).
-    defineRoute({
+    versionedMutationRoute({
       method: 'POST',
       pattern: '/notebook/tasks/:id/complete',
-      auth: 'admin',
       metric: 'CompleteTask',
       params: IdParams,
       body: ExpectedVersionRequestSchema.partial(),
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const task = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().complete(ctx.userId!, params.id, resolved.expected),
-        );
-        return jsonEntity(200, task, parseTask);
-      },
+      mutate: (ctx, { params, expected }) =>
+        tasks().complete(ctx.userId!, params.id, expected),
+      respond: parseTask,
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'POST',
       pattern: '/notebook/tasks/:id/reopen',
-      auth: 'admin',
       metric: 'ReopenTask',
       params: IdParams,
       body: ExpectedVersionRequestSchema.partial(),
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const task = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().reopen(ctx.userId!, params.id, resolved.expected),
-        );
-        return jsonEntity(200, task, parseTask);
-      },
+      mutate: (ctx, { params, expected }) =>
+        tasks().reopen(ctx.userId!, params.id, expected),
+      respond: parseTask,
     }),
     defineRoute({
       method: 'GET',
@@ -125,54 +109,36 @@ export function createTaskRoutes(
         return jsonEntity(200, task, parseTask);
       },
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'PUT',
       pattern: '/notebook/tasks/:id',
-      auth: 'admin',
       metric: 'UpdateTask',
       oversizedBody413: true,
       params: IdParams,
       body: UpdateTaskRequestSchema,
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        // Only a changed link is checked: the web resends noteId on every
-        // save, and a task whose note was later deleted must stay editable.
-        // This read only gates validation; the write itself is built from a
-        // consistent read in the repository (CHR-188).
-        if (body.noteId != null) {
-          const existing = await tasks().getOrThrow(ctx.userId!, params.id);
-          if (body.noteId !== existing.noteId) {
-            const badNote = await checkLinkedNote(ctx.userId!, body.noteId);
-            if (badNote) return badNote;
-          }
-        }
-        const task = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().updateFromRequest(
-            ctx.userId!,
-            params.id,
-            resolved.expected,
-            body,
-          ),
-        );
-        return jsonEntity(200, task, parseTask);
+      // Only a changed link is checked: the web resends noteId on every
+      // save, and a task whose note was later deleted must stay editable.
+      // This read only gates validation; the write itself is built from a
+      // consistent read in the repository.
+      precheck: async (ctx, { params, body }) => {
+        if (body.noteId == null) return undefined;
+        const existing = await tasks().getOrThrow(ctx.userId!, params.id);
+        if (body.noteId === existing.noteId) return undefined;
+        return checkLinkedNote(ctx.userId!, body.noteId);
       },
+      mutate: (ctx, { params, body, expected }) =>
+        tasks().updateFromRequest(ctx.userId!, params.id, expected, body),
+      respond: parseTask,
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'DELETE',
       pattern: '/notebook/tasks/:id',
-      auth: 'admin',
       metric: 'DeleteTask',
       params: IdParams,
       body: ExpectedVersionRequestSchema.partial(),
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const tombstone = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().deleteIfVersion(ctx.userId!, params.id, resolved.expected),
-        );
-        return jsonEntity(200, tombstone, parseTask);
-      },
+      mutate: (ctx, { params, expected }) =>
+        tasks().deleteIfVersion(ctx.userId!, params.id, expected),
+      respond: parseTask,
     }),
   ];
 }

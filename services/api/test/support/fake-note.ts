@@ -23,10 +23,12 @@ import {
 } from '@gagnechris/shared';
 import { z } from 'zod';
 import {
-  OwnerScopedVersionedEntityRepository,
+  VersionedRepository,
+  ownerScoped,
+  type OwnerKey,
   type UniqueClaimHook,
-} from '../../src/data/owner-scoped-versioned-entity-repository.js';
-import { type VersionedEntity } from '../../src/data/versioned-entity-repository.js';
+  type VersionedEntity,
+} from '../../src/data/versioned-repository.js';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import {
   registerSyncEntity,
@@ -195,9 +197,7 @@ export function registerFakeNoteSync(): void {
 }
 
 function dailyNoteClaimHook(
-  doc: NonNullable<
-    ConstructorParameters<typeof OwnerScopedVersionedEntityRepository>[1]
-  >,
+  doc: NonNullable<ConstructorParameters<typeof VersionedRepository>[1]>,
   tableName: string,
 ): UniqueClaimHook<FakeNote> {
   return {
@@ -258,18 +258,18 @@ function dailyNoteClaimHook(
 }
 
 export function createFakeNotesRepo(
-  doc: NonNullable<
-    ConstructorParameters<typeof OwnerScopedVersionedEntityRepository>[1]
-  >,
+  doc: NonNullable<ConstructorParameters<typeof VersionedRepository>[1]>,
   tableName: string,
   nowIso?: () => string,
-): OwnerScopedVersionedEntityRepository<FakeNote, FakeNoteItem> {
-  return new OwnerScopedVersionedEntityRepository<FakeNote, FakeNoteItem>(
+): VersionedRepository<FakeNote, FakeNoteItem, OwnerKey> {
+  return new VersionedRepository<FakeNote, FakeNoteItem, OwnerKey>(
     {
       conflictLabel: 'fake note',
-      keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
-      idOf: (n) => n.id,
-      userIdOf: (n) => n.userId,
+      scope: ownerScoped({
+        keyForId: (userId, id) => keys.notebook.note.meta(userId, id),
+        idOf: (n) => n.id,
+        userIdOf: (n) => n.userId,
+      }),
       toEntity: toFakeNoteEntity,
       toItem: toFakeNoteItem,
       isDeleted: (n) => n.deleted,

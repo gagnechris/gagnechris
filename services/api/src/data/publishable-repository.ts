@@ -1,5 +1,5 @@
 /**
- * Publishable layer on VersionedEntityRepository (CHR-129 / CHR-152 / CHR-161).
+ * Publishable layer on VersionedRepository.
  * One publish/unpublish/discard implementation for keyed + singleton entities.
  */
 import {
@@ -22,9 +22,10 @@ import {
   throwVersionConflict,
 } from './version-condition.js';
 import {
-  VersionedEntityRepository,
-  type VersionedEntityConfig,
-} from './versioned-entity-repository.js';
+  VersionedRepository,
+  unscoped,
+  type VersionedRepositoryConfig,
+} from './versioned-repository.js';
 
 export type PublishableEntity = {
   status: string;
@@ -136,7 +137,7 @@ type LoadedPair<T> = { draft: T; published: T | undefined };
 export class PublishableRepository<
   T extends PublishableEntity,
   TItem extends Record<string, unknown>,
-> extends VersionedEntityRepository<T, TItem> {
+> extends VersionedRepository<T, TItem, string> {
   protected readonly publishConfig: PublishableConfig<T, TItem>;
 
   constructor(
@@ -144,13 +145,15 @@ export class PublishableRepository<
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
   ) {
-    const versioned: VersionedEntityConfig<T, TItem> = {
+    const versioned: VersionedRepositoryConfig<T, TItem, string> = {
       conflictLabel: config.conflictLabel,
-      keyForId: (id) => {
-        const keys = config.keysFor(id);
-        return { pk: keys.pk, sk: keys.metaSk };
-      },
-      idOf: config.idOf,
+      scope: unscoped({
+        keyForId: (id) => {
+          const keys = config.keysFor(id);
+          return { pk: keys.pk, sk: keys.metaSk };
+        },
+        idOf: config.idOf,
+      }),
       toEntity: (item) => config.toEntity(item),
       toItem: config.toItem,
       isDeleted: config.isDeleted,

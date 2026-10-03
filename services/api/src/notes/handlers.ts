@@ -21,6 +21,7 @@ import {
   jsonEntity,
   requireExpectedVersion,
   runVersionedMutation,
+  versionedMutationRoute,
 } from '../data/versioned-route.js';
 import { parseIfMatch } from '../data/concurrency.js';
 import { ConflictError } from '../data/errors.js';
@@ -186,43 +187,26 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
         return jsonEntity(200, note, parseNote);
       },
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'PUT',
       pattern: '/notebook/notes/:id',
-      auth: 'admin',
       metric: 'UpdateNote',
       oversizedBody413: true,
       params: IdParams,
       body: UpdateNoteRequestSchema,
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const note = await runVersionedMutation(resolved.fromIfMatch, () =>
-          notes().updateFromRequest(
-            ctx.userId!,
-            params.id,
-            resolved.expected,
-            body,
-          ),
-        );
-        return jsonEntity(200, note, parseNote);
-      },
+      mutate: (ctx, { params, body, expected }) =>
+        notes().updateFromRequest(ctx.userId!, params.id, expected, body),
+      respond: parseNote,
     }),
-    defineRoute({
+    versionedMutationRoute({
       method: 'DELETE',
       pattern: '/notebook/notes/:id',
-      auth: 'admin',
       metric: 'DeleteNote',
       params: IdParams,
       body: ExpectedVersionRequestSchema.partial(),
-      handler: async (ctx, { params, body }) => {
-        const resolved = requireExpectedVersion(ctx.event, body);
-        if (!resolved.ok) return resolved.response;
-        const tombstone = await runVersionedMutation(resolved.fromIfMatch, () =>
-          notes().deleteIfVersion(ctx.userId!, params.id, resolved.expected),
-        );
-        return jsonEntity(200, tombstone, parseNote);
-      },
+      mutate: (ctx, { params, expected }) =>
+        notes().deleteIfVersion(ctx.userId!, params.id, expected),
+      respond: parseNote,
     }),
   ];
 }

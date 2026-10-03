@@ -9,9 +9,9 @@ import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
 import { dispatchRoutes } from '../src/router.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
-import { createNotesRepository } from '../src/notes/repository.js';
+import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
-import { createTasksRepository } from '../src/tasks/repository.js';
+import { TasksRepository } from '../src/tasks/repository.js';
 import { createTaskRoutes } from '../src/tasks/handlers.js';
 import type { RouteDef } from '../src/router.js';
 
@@ -85,9 +85,7 @@ describe('mutations read consistently (CHR-188)', () => {
 
   it('note PUT/DELETE never revert unsent fields or reuse a version', async () => {
     const { doc, lag } = createLaggingDoc();
-    const routes = createNoteRoutes(
-      createNotesRepository(doc, TABLE, () => NOW),
-    );
+    const routes = createNoteRoutes(new NotesRepository(doc, TABLE, () => NOW));
     const path = `/api/notebook/notes/${NOTE_ID}`;
 
     await call(routes, 'POST', '/api/notebook/notes', {
@@ -148,9 +146,7 @@ describe('mutations read consistently (CHR-188)', () => {
 
   it('task PUT/complete/reopen never revert unsent fields', async () => {
     const { doc, lag } = createLaggingDoc();
-    const routes = createTaskRoutes(
-      createTasksRepository(doc, TABLE, () => NOW),
-    );
+    const routes = createTaskRoutes(new TasksRepository(doc, TABLE, () => NOW));
     const path = `/api/notebook/tasks/${TASK_ID}`;
 
     await call(routes, 'POST', '/api/notebook/tasks', {

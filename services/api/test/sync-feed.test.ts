@@ -223,14 +223,14 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     );
     expect(created.version).toBe(1);
 
-    await repo.updateIfVersion(USER, NOTE_ID, 1, {
+    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
       ...created,
       title: 'B',
       version: 2,
       updatedAt: times[1]!,
     });
 
-    await repo.softDelete(USER, NOTE_ID, 2, {
+    await repo.softDelete({ userId: USER, id: NOTE_ID }, 2, {
       ...created,
       title: 'B',
       version: 3,
@@ -272,7 +272,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     const created = await repo.createIdempotent(
       buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
     );
-    await repo.softDelete(USER, NOTE_ID, 1, {
+    await repo.softDelete({ userId: USER, id: NOTE_ID }, 1, {
       ...created,
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
@@ -411,7 +411,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
         '2026-09-28T10:00:00.000Z',
       ),
     );
-    await repo.updateIfVersion(USER, NOTE_ID, 1, {
+    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
       ...created,
       title: 'B',
       body: 'two',
@@ -664,19 +664,19 @@ describe('If-Match / ETag routes (CHR-162)', () => {
     let note = await repo.createIdempotent(
       buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
     );
-    note = await repo.updateIfVersion(USER, NOTE_ID, 1, {
+    note = await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
       ...note,
       title: 'B',
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
     });
-    note = await repo.updateIfVersion(USER, NOTE_ID, 2, {
+    note = await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 2, {
       ...note,
       title: 'C',
       version: 3,
       updatedAt: '2026-09-28T12:00:00.000Z',
     });
-    await repo.updateIfVersion(USER, NOTE_ID, 3, {
+    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 3, {
       ...note,
       title: 'D',
       version: 4,

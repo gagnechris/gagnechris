@@ -18,14 +18,14 @@ const NOTE_BODY = 'quokka-body-b84e62';
 const UPDATED_BODY = 'narwhal-update-0e9d47';
 
 vi.mock('../src/routes.js', async () => {
-  const { createNotesRepository } = await import('../src/notes/repository.js');
-  const { createTasksRepository } = await import('../src/tasks/repository.js');
+  const { NotesRepository } = await import('../src/notes/repository.js');
+  const { TasksRepository } = await import('../src/tasks/repository.js');
   const { createNoteRoutes } = await import('../src/notes/handlers.js');
   const { createSearchRoutes } = await import('../src/search/handlers.js');
   const { doc } = createMemoryDoc();
   const now = () => '2026-10-03T12:00:00.000Z';
-  const notes = createNotesRepository(doc, TABLE, now);
-  const tasks = createTasksRepository(doc, TABLE, now);
+  const notes = new NotesRepository(doc, TABLE, now);
+  const tasks = new TasksRepository(doc, TABLE, now);
   return {
     routes: [
       ...createNoteRoutes(notes),
