@@ -54,13 +54,40 @@ const PALETTES: Readonly<Record<Season, Palette>> = {
   },
 };
 
+/** Floating "+3%" over where Maple just ate. */
+export type EatPopup = {
+  text: string;
+  x: number;
+  y: number;
+  bornAt: number;
+  tone: 'good' | 'bad';
+};
+
+export type CrumbBurst = {
+  x: number;
+  y: number;
+  bornAt: number;
+  color: string;
+};
+
+export type Effects = {
+  popups: EatPopup[];
+  crumbs: CrumbBurst[];
+  munchUntil: number;
+};
+
+export const POPUP_MS = 1_100;
+export const CRUMBS_MS = 450;
+export const MUNCH_MS = 260;
+
 export type RenderOptions = {
   /** Logical view width (height is always WORLD_HEIGHT). */
   viewWidth: number;
   cameraX: number;
-  /** ms, for idle/walk cycles. */
+  /** ms, for idle/walk cycles and effects; same clock as Effects.bornAt. */
   time: number;
   reducedMotion: boolean;
+  effects?: Effects;
 };
 
 export function cameraTarget(state: WildState, viewWidth: number): number {
@@ -373,6 +400,7 @@ function maple(
   const moving = Math.abs(m.vx) > 1 && m.onGround;
   const bob = moving && !opts.reducedMotion ? Math.sin(opts.time / 70) * 3 : 0;
   const sniffing = isSniffing(state);
+  const munching = opts.time < (opts.effects?.munchUntil ?? 0);
   ctx.save();
   ctx.translate(m.x + MAPLE_W / 2, m.y + bob);
   ctx.scale(m.facing, 1);
@@ -389,7 +417,7 @@ function maple(
   ctx.ellipse(48, 30, 46, 26, 0, 0, Math.PI * 2);
   ctx.fill();
   // head (lower when sniffing)
-  const headY = sniffing ? 30 : 16;
+  const headY = sniffing || munching ? 30 : 16;
   ctx.beginPath();
   ctx.arc(92, headY, 19, 0, Math.PI * 2);
   ctx.fill();
@@ -423,6 +451,53 @@ function maple(
     }
   }
   ctx.restore();
+}
+
+function crumbs(
+  ctx: CanvasRenderingContext2D,
+  burst: CrumbBurst,
+  time: number,
+) {
+  const t = (time - burst.bornAt) / CRUMBS_MS;
+  if (t < 0 || t >= 1) return;
+  ctx.fillStyle = burst.color;
+  ctx.globalAlpha = 1 - t;
+  for (let i = 0; i < 7; i++) {
+    const angle = (i / 7) * Math.PI * 2 - Math.PI / 2;
+    const dist = 10 + t * 34;
+    ctx.beginPath();
+    ctx.arc(
+      burst.x + Math.cos(angle) * dist,
+      burst.y + Math.sin(angle) * dist - t * 10,
+      4,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function popup(
+  ctx: CanvasRenderingContext2D,
+  p: EatPopup,
+  time: number,
+  reducedMotion: boolean,
+) {
+  const t = (time - p.bornAt) / POPUP_MS;
+  if (t < 0 || t >= 1) return;
+  const rise = reducedMotion ? 0 : 56 * t;
+  ctx.globalAlpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+  ctx.font = '800 30px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(p.text, p.x, p.y - rise);
+  ctx.fillStyle = p.tone === 'good' ? '#2f6f4f' : '#a3341f';
+  ctx.fillText(p.text, p.x, p.y - rise);
+  ctx.globalAlpha = 1;
 }
 
 function bubble(ctx: CanvasRenderingContext2D, text: string, x: number) {
@@ -548,7 +623,16 @@ export function renderWild(
     ctx.setLineDash([]);
   }
 
+  if (opts.effects && !opts.reducedMotion) {
+    for (const burst of opts.effects.crumbs) crumbs(ctx, burst, opts.time);
+  }
+
   maple(ctx, state, opts);
+
+  if (opts.effects) {
+    for (const p of opts.effects.popups)
+      popup(ctx, p, opts.time, opts.reducedMotion);
+  }
 
   if (state.bubble) bubble(ctx, state.bubble.text, state.bubble.x);
 

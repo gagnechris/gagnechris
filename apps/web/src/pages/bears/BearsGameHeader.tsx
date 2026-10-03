@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import PublicNav from '../../components/PublicNav';
 import { BEARS_LANDING_PATH, withFrom } from '../../games/bears/shared/routes';
 
 type BearsGameHeaderProps = {
@@ -9,18 +10,28 @@ type BearsGameHeaderProps = {
 };
 
 const BearsGameHeader = ({ title, from, actions }: BearsGameHeaderProps) => (
-  <header className="bears-game-page__header">
-    <div>
-      <Link
-        to={withFrom(BEARS_LANDING_PATH, from)}
-        className="bears-game-page__back"
-      >
-        Don’t Feed the Bears
-      </Link>
-      <h1>{title}</h1>
+  <>
+    <div className="bears-game-page__nav">
+      <PublicNav />
     </div>
-    {actions ? <div className="bears-game-page__actions">{actions}</div> : null}
-  </header>
+    <header className="bears-game-page__header">
+      <div>
+        <Link
+          to={withFrom(BEARS_LANDING_PATH, from)}
+          className="bears-game-page__back"
+        >
+          <span aria-hidden="true" className="bears-arrow">
+            ←
+          </span>
+          Don’t Feed the Bears
+        </Link>
+        <h1>{title}</h1>
+      </div>
+      {actions ? (
+        <div className="bears-game-page__actions">{actions}</div>
+      ) : null}
+    </header>
+  </>
 );
 
 export default BearsGameHeader;

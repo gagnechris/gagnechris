@@ -91,8 +91,14 @@ export type WildState = {
 };
 
 export type WildEvent =
-  | { type: 'eat'; kind: NaturalFoodKind; gain: number }
-  | { type: 'campSnack'; kind: CampFoodKind; comfy: number }
+  | { type: 'eat'; kind: NaturalFoodKind; gain: number; x: number; y: number }
+  | {
+      type: 'campSnack';
+      kind: CampFoodKind;
+      comfy: number;
+      x: number;
+      y: number;
+    }
   | { type: 'sniff' }
   | { type: 'clap' }
   | { type: 'bark' }
@@ -287,7 +293,13 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
       const gain = FOOD_GAIN[food.kind];
       fat = Math.min(100, fat + gain);
       naturalEaten += 1;
-      events.push({ type: 'eat', kind: food.kind, gain });
+      events.push({
+        type: 'eat',
+        kind: food.kind,
+        gain,
+        x: food.x + size.w / 2,
+        y: food.bottom - size.h / 2,
+      });
     }
   }
 
@@ -304,7 +316,13 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
       fat = Math.min(100, fat + CAMP_FOOD_GAIN);
       comfy += 1;
       campSnacks += 1;
-      events.push({ type: 'campSnack', kind: food.kind, comfy });
+      events.push({
+        type: 'campSnack',
+        kind: food.kind,
+        comfy,
+        x: food.x + CAMP_FOOD_SIZE.w / 2,
+        y: GROUND_Y - CAMP_FOOD_SIZE.h / 2,
+      });
     }
   }
 

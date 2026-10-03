@@ -95,6 +95,36 @@
   transition: width 0.3s ease;
 }
 
+.wild-hud__bar--flash {
+  animation: wild-fat-flash 600ms ease-out;
+}
+
+.wild-eat-toast {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: wild-toast-in 180ms ease-out;
+}
+
+.wild-eat-toast--good {
+  background: white;
+  color: #235a58;
+}
+
+.wild-eat-toast--bad {
+  background: #fdecea;
+  color: #a3341f;
+}
+
 .wild-hud__fill--fed {
   background: #3f7a5f;
 }
@@ -314,6 +344,26 @@
   color: var(--neutral-600);
 }
 
+@keyframes wild-fat-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 185, 66, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(244, 185, 66, 0);
+  }
+}
+
+@keyframes wild-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes wild-snow {
   from {
     transform: translateY(-20px);
@@ -324,7 +374,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wild-scene__flake {
+  .wild-scene__flake,
+  .wild-eat-toast {
     animation: none;
   }
 
