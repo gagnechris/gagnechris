@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router-dom';
 
 export type VersionedDocShellOptions = {
@@ -40,17 +40,29 @@ export function useVersionedDocShell({
       !suppressLeaveGuardRef.current &&
       currentLocation.pathname !== nextLocation.pathname,
   );
+  // Save first, then leave; only ask when the save did not land (CHR-189).
+  const handlingRef = useRef(false);
   useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    const leave = window.confirm(
-      'You have unsaved changes. Leave without saving?',
-    );
-    if (leave) {
-      blocker.proceed();
-    } else {
-      blocker.reset();
-    }
-  }, [blocker]);
+    if (blocker.state !== 'blocked' || handlingRef.current) return;
+    handlingRef.current = true;
+    void (async () => {
+      const saved = await Promise.resolve(saveRef.current()).then(
+        (outcome) => outcome === 'clean',
+        () => false,
+      );
+      const leave =
+        saved ||
+        window.confirm(
+          'Your changes could not be saved. Leave without saving?',
+        );
+      handlingRef.current = false;
+      if (leave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    })();
+  }, [blocker, saveRef]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

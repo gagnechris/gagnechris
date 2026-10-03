@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetApiClient } from './AppApiProvider.js';
-import type { ConfirmFn } from './platform.js';
+import type { ConfirmFn, RetrySignals } from './platform.js';
 import { ApiError } from './query/api.js';
 import type { VersionedResource } from './query/createVersionedResource.js';
 import { useQueuedAutosave, type SaveState } from './useQueuedAutosave.js';
@@ -42,6 +42,8 @@ export type VersionedDocEditorOptions<
   delete?: VersionedDocDeleteOptions;
   /** Extra work on first hydrate (e.g. mark slug as manual). */
   onHydrate?: (entity: TEntity) => void;
+  /** "Network may be back" signals for autosave retry (web: `online`). */
+  retrySignals?: RetrySignals;
 };
 
 /**
@@ -68,6 +70,7 @@ export function useVersionedDocEditor<
   loadErrorFallback = 'Could not load content.',
   delete: deleteOpts,
   onHydrate,
+  retrySignals,
 }: VersionedDocEditorOptions<TEntity, TDraft, TParams>) {
   const getClient = useGetApiClient();
   const query = resource.useQuery(params, enabled);
@@ -185,6 +188,7 @@ export function useVersionedDocEditor<
     onSaved,
     conflictMessage,
     conflictMessages,
+    retrySignals,
   });
 
   const {

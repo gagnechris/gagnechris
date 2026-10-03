@@ -30,3 +30,10 @@ export const defaultTimers: Timers = {
  * wraps the synchronous `window.confirm` in a resolved promise (CHR-150).
  */
 export type ConfirmFn = (message: string) => Promise<boolean>;
+
+/**
+ * Subscribe `retry` to "the network may be back" signals (web: `online`,
+ * window focus, tab visible). Returns an unsubscribe. Injected so app-core
+ * never touches `window` (CHR-189).
+ */
+export type RetrySignals = (retry: () => void) => () => void;

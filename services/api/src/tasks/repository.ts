@@ -288,9 +288,10 @@ export class TasksRepository {
     existing: Task,
   ): Promise<Task> {
     const now = this.nowIso();
+    // Reopen undoes completion only; an in-progress task keeps its status.
     const next: Task = {
       ...existing,
-      status: 'todo',
+      status: existing.status === 'done' ? 'todo' : existing.status,
       completedAt: null,
       version: existing.version + 1,
       updatedAt: now,

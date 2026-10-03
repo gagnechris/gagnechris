@@ -25,4 +25,28 @@ describe('parseTaskQuickAdd', () => {
       dueDate: null,
     });
   });
+
+  test('keeps due words inside a title (CHR-189)', () => {
+    expect(parseTaskQuickAdd('Plan for Today show', '2026-10-02')).toEqual({
+      title: 'Plan for Today show',
+      priority: 'med',
+      dueDate: null,
+    });
+  });
+
+  test('priority after a trailing due word still parses', () => {
+    expect(parseTaskQuickAdd('Ship it tomorrow !high', '2026-10-02')).toEqual({
+      title: 'Ship it',
+      priority: 'high',
+      dueDate: '2026-10-03',
+    });
+  });
+
+  test('a lone due word leaves an empty title', () => {
+    expect(parseTaskQuickAdd('tomorrow', '2026-10-02')).toEqual({
+      title: '',
+      priority: 'med',
+      dueDate: '2026-10-03',
+    });
+  });
 });

@@ -25,6 +25,7 @@ type Task = {
 
 const state = vi.hoisted(() => ({
   tasks: [] as Task[],
+  failComplete: false,
 }));
 
 vi.mock('../../api/client', () => ({
@@ -92,6 +93,13 @@ vi.mock('../../api/client', () => ({
         return { data: task, error: undefined, response: { status: 201 } };
       }
       if (path === '/api/notebook/tasks/{id}/complete') {
+        if (state.failComplete) {
+          return {
+            data: undefined,
+            error: { error: 'internal', message: 'boom' },
+            response: { status: 500 },
+          };
+        }
         const id = init?.params?.path?.id;
         const task = state.tasks.find((t) => t.id === id);
         if (!task) {
@@ -121,6 +129,7 @@ vi.mock('../../api/client', () => ({
 
 describe('TodayTasksPanel (CHR-45)', () => {
   beforeEach(() => {
+    state.failComplete = false;
     state.tasks = [
       {
         id: '01ARZ3NDEKTSV4RRFFQ48JMTC5',
@@ -164,5 +173,52 @@ describe('TodayTasksPanel (CHR-45)', () => {
     await waitFor(() => {
       expect(state.tasks[0]?.status).toBe('done');
     });
+  });
+
+  test('a failed complete rolls back and shows an error (CHR-189)', async () => {
+    const user = userEvent.setup();
+    state.failComplete = true;
+
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <TodayTasksPanel area="work" now={new Date(2026, 9, 2, 9, 0, 0)} />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Complete Pay bills' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not complete “Pay bills”',
+    );
+    expect(
+      screen.getByRole('checkbox', { name: 'Complete Pay bills' }),
+    ).not.toBeChecked();
+    expect(state.tasks[0]?.status).toBe('todo');
+  });
+
+  test('a lone due word asks for a title instead of doing nothing', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <TodayTasksPanel area="work" now={new Date(2026, 9, 2, 9, 0, 0)} />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Quick add task for today' }),
+      'tomorrow{Enter}',
+    );
+
+    expect(
+      await screen.findByText('Add a title before the due date.'),
+    ).toBeInTheDocument();
+    expect(state.tasks).toHaveLength(1);
   });
 });

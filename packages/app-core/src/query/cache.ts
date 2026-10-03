@@ -24,60 +24,87 @@ export const preferNewerByVersion = <T extends { version: number }>(
   return next;
 };
 
-const upsertPostInPages = (
-  prev: PostsListData | undefined,
-  post: Post,
-): PostsListData | undefined => {
-  if (!prev) {
-    if (post.status === 'deleted') {
-      return prev;
-    }
-    return {
-      pages: [{ items: [post] }],
-      pageParams: [undefined],
-    };
-  }
+type Paged<T> = InfiniteData<{ items: T[] }, string | undefined>;
 
-  const exists = prev.pages.some((page) =>
-    page.items.some((p) => p.id === post.id),
-  );
+/**
+ * Whether an entity belongs in a cached list: `true` / `false` when the list's
+ * filters say so, `undefined` when they cannot be evaluated client-side
+ * (update rows already there, never insert) — CHR-189.
+ */
+type ListMatch = boolean | undefined;
 
-  if (post.status === 'deleted') {
+/**
+ * Upsert one entity into infinite list pages, respecting the list's filters:
+ * removed or non-matching entities drop out, matching new ones go first.
+ */
+const upsertInPages = <T extends { id: string; version: number }>(
+  prev: Paged<T> | undefined,
+  entity: T,
+  { removed, matches }: { removed: boolean; matches: ListMatch },
+): Paged<T> | undefined => {
+  const exists =
+    prev?.pages.some((page) => page.items.some((x) => x.id === entity.id)) ??
+    false;
+
+  if (removed || (exists && matches === false)) {
+    if (!prev || !exists) return prev;
     return {
       ...prev,
       pages: prev.pages.map((page) => ({
         ...page,
-        items: page.items.filter((p) => p.id !== post.id),
+        items: page.items.filter((x) => x.id !== entity.id),
       })),
     };
   }
 
-  if (!exists) {
-    if (prev.pages.length === 0) {
-      return {
-        pages: [{ items: [post] }],
-        pageParams: prev.pageParams.length ? prev.pageParams : [undefined],
-      };
-    }
-    const [first, ...rest] = prev.pages;
+  if (exists) {
     return {
-      ...prev,
-      pages: [{ ...first, items: [post, ...first.items] }, ...rest],
+      ...prev!,
+      pages: prev!.pages.map((page) => {
+        const index = page.items.findIndex((x) => x.id === entity.id);
+        if (index === -1) return page;
+        const items = [...page.items];
+        items[index] = preferNewerByVersion(page.items[index], entity);
+        return { ...page, items };
+      }),
     };
   }
 
+  if (matches !== true) return prev;
+  if (!prev || prev.pages.length === 0) {
+    return {
+      ...prev,
+      pages: [{ items: [entity] }],
+      pageParams: prev?.pageParams.length ? prev.pageParams : [undefined],
+    };
+  }
+  const [first, ...rest] = prev.pages;
   return {
     ...prev,
-    pages: prev.pages.map((page) => {
-      const index = page.items.findIndex((p) => p.id === post.id);
-      if (index === -1) {
-        return page;
-      }
-      const items = [...page.items];
-      items[index] = preferNewerByVersion(page.items[index], post);
-      return { ...page, items };
-    }),
+    pages: [{ ...first, items: [entity, ...first.items] }, ...rest],
   };
+};
+
+/** Filters object stored as the last element of a `…, 'list', filters` key. */
+const listFilters = (key: readonly unknown[]): Record<string, unknown> => {
+  const last = key[key.length - 1];
+  return last && typeof last === 'object'
+    ? (last as Record<string, unknown>)
+    : {};
+};
+
+const isInfinite = (data: unknown): boolean =>
+  Boolean(data) && Array.isArray((data as { pages?: unknown }).pages);
+
+const postMatches = (
+  post: Post,
+  filters: Record<string, unknown>,
+): ListMatch => {
+  if (filters.q) return undefined;
+  if (filters.status !== undefined && filters.status !== post.status) {
+    return false;
+  }
+  return true;
 };
 
 /** Write a post into detail + infinite list caches (create/save/publish/etc.). */
@@ -85,9 +112,27 @@ export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
     preferNewerByVersion(prev, post),
   );
+  // The unfiltered list is seeded even before first fetch (create flow).
   queryClient.setQueryData<PostsListData>(queryKeys.posts.list(), (prev) =>
-    upsertPostInPages(prev, post),
+    upsertInPages(prev, post, {
+      removed: post.status === 'deleted',
+      matches: true,
+    }),
   );
+  for (const [key, data] of queryClient.getQueriesData<PostsListData>({
+    queryKey: [...queryKeys.posts.all, 'list'],
+  })) {
+    if (key.length === queryKeys.posts.list().length || !isInfinite(data)) {
+      continue;
+    }
+    queryClient.setQueryData<PostsListData>(
+      key,
+      upsertInPages(data, post, {
+        removed: post.status === 'deleted',
+        matches: postMatches(post, listFilters(key)),
+      }),
+    );
+  }
 };
 
 export const setCachedHome = (queryClient: QueryClient, home: Home): void => {
@@ -105,56 +150,22 @@ export const setCachedResume = (
   );
 };
 
-const upsertNoteInPages = (
-  prev: NotesListData | undefined,
+const noteMatches = (
   note: Note,
-): NotesListData | undefined => {
-  if (!prev) {
-    if (note.deleted) return prev;
-    return {
-      pages: [{ items: [note] }],
-      pageParams: [undefined],
-    };
+  filters: Record<string, unknown>,
+): ListMatch => {
+  if (filters.q) return undefined;
+  if (filters.area !== undefined && filters.area !== note.area) return false;
+  if (filters.type !== undefined && filters.type !== note.type) return false;
+  // Date ranges select daily notes by date only (API lists `DATE#` keys).
+  const from = typeof filters.from === 'string' ? filters.from : undefined;
+  const to = typeof filters.to === 'string' ? filters.to : undefined;
+  if (from !== undefined || to !== undefined) {
+    if (note.type !== 'daily' || !note.date) return false;
+    if (from !== undefined && note.date < from) return false;
+    if (to !== undefined && note.date > to) return false;
   }
-
-  const exists = prev.pages.some((page) =>
-    page.items.some((n) => n.id === note.id),
-  );
-
-  if (note.deleted) {
-    return {
-      ...prev,
-      pages: prev.pages.map((page) => ({
-        ...page,
-        items: page.items.filter((n) => n.id !== note.id),
-      })),
-    };
-  }
-
-  if (!exists) {
-    if (prev.pages.length === 0) {
-      return {
-        pages: [{ items: [note] }],
-        pageParams: prev.pageParams.length ? prev.pageParams : [undefined],
-      };
-    }
-    const [first, ...rest] = prev.pages;
-    return {
-      ...prev,
-      pages: [{ ...first, items: [note, ...first.items] }, ...rest],
-    };
-  }
-
-  return {
-    ...prev,
-    pages: prev.pages.map((page) => {
-      const index = page.items.findIndex((n) => n.id === note.id);
-      if (index === -1) return page;
-      const items = [...page.items];
-      items[index] = preferNewerByVersion(page.items[index], note);
-      return { ...page, items };
-    }),
-  };
+  return true;
 };
 
 /** Write a note into detail + daily + list caches. */
@@ -167,76 +178,64 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
       queryKeys.notes.daily(note.area, note.date),
       (prev) => preferNewerByVersion(prev, note),
     );
-    // Calendar dots use Set<string> under daily-dates — keep them in sync.
+    // Calendar dots: `Set<string>` under `daily-dates, area|'all', from, to`.
+    // Only touch sets whose area and month range cover this note (CHR-189).
     for (const [key, data] of queryClient.getQueriesData<Set<string>>({
       queryKey: [...queryKeys.notes.all, 'daily-dates'],
     })) {
       if (!(data instanceof Set)) continue;
+      const [area, from, to] = key.slice(-3) as [string, string, string];
+      if (area !== 'all' && area !== note.area) continue;
+      if (note.date < from || note.date > to) continue;
       const next = new Set(data);
       if (note.deleted) next.delete(note.date);
       else next.add(note.date);
       queryClient.setQueryData(key, next);
     }
   }
-  // Update infinite notes list queries only (not daily-dates Sets).
+  // Infinite notes lists only (not daily-dates Sets), filter-aware.
   for (const [key, data] of queryClient.getQueriesData<NotesListData>({
     queryKey: [...queryKeys.notes.all, 'list'],
   })) {
-    if (!data || !Array.isArray(data.pages)) continue;
-    queryClient.setQueryData<NotesListData>(key, upsertNoteInPages(data, note));
+    if (!isInfinite(data)) continue;
+    queryClient.setQueryData<NotesListData>(
+      key,
+      upsertInPages(data, note, {
+        removed: note.deleted,
+        matches: noteMatches(note, listFilters(key)),
+      }),
+    );
   }
 };
 
-const upsertTaskInPages = (
-  prev: TasksListData | undefined,
+const taskMatches = (
   task: Task,
-): TasksListData | undefined => {
-  if (!prev) {
-    if (task.deleted) return prev;
-    return {
-      pages: [{ items: [task] }],
-      pageParams: [undefined],
-    };
+  filters: Record<string, unknown>,
+): ListMatch => {
+  if (filters.area !== undefined && filters.area !== task.area) return false;
+  if (filters.status !== undefined) {
+    if (filters.status !== task.status) return false;
+  } else if (filters.open === true && task.status === 'done') {
+    return false;
+  } else if (filters.open === false && task.status !== 'done') {
+    return false;
   }
-
-  const exists = prev.pages.some((page) =>
-    page.items.some((t) => t.id === task.id),
-  );
-
-  if (task.deleted) {
-    return {
-      ...prev,
-      pages: prev.pages.map((page) => ({
-        ...page,
-        items: page.items.filter((t) => t.id !== task.id),
-      })),
-    };
+  if (filters.priority !== undefined && filters.priority !== task.priority) {
+    return false;
   }
-
-  if (!exists) {
-    if (prev.pages.length === 0) {
-      return {
-        pages: [{ items: [task] }],
-        pageParams: prev.pageParams.length ? prev.pageParams : [undefined],
-      };
-    }
-    const [first, ...rest] = prev.pages;
-    return {
-      ...prev,
-      pages: [{ ...first, items: [task, ...first.items] }, ...rest],
-    };
+  if (filters.noteId !== undefined && filters.noteId !== task.noteId) {
+    return false;
   }
-
-  return {
-    ...prev,
-    pages: prev.pages.map((page) => {
-      const index = page.items.findIndex((t) => t.id === task.id);
-      if (index === -1) return page;
-      const items = [...page.items];
-      items[index] = preferNewerByVersion(page.items[index], task);
-      return { ...page, items };
-    }),
-  };
+  if (filters.dueOn !== undefined && filters.dueOn !== task.dueDate) {
+    return false;
+  }
+  if (
+    typeof filters.dueBefore === 'string' &&
+    (task.dueDate === null || task.dueDate >= filters.dueBefore)
+  ) {
+    return false;
+  }
+  return true;
 };
 
 /** Write a task into detail + infinite list caches. */
@@ -247,7 +246,13 @@ export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
   for (const [key, data] of queryClient.getQueriesData<TasksListData>({
     queryKey: [...queryKeys.tasks.all, 'list'],
   })) {
-    if (!data || !Array.isArray(data.pages)) continue;
-    queryClient.setQueryData<TasksListData>(key, upsertTaskInPages(data, task));
+    if (!isInfinite(data)) continue;
+    queryClient.setQueryData<TasksListData>(
+      key,
+      upsertInPages(data, task, {
+        removed: task.deleted,
+        matches: taskMatches(task, listFilters(key)),
+      }),
+    );
   }
 };

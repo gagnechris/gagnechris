@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { ConfirmFn } from './platform.js';
+import type { ConfirmFn, RetrySignals } from './platform.js';
 import type { DraftPublishResource } from './query/createDraftPublishResource.js';
 import {
   useDraftPublishEditor,
@@ -42,6 +42,8 @@ export type VersionedEntityEditorOptions<
   delete?: DraftPublishDeleteOptions;
   /** Extra work on first hydrate (e.g. mark slug as manual). */
   onHydrate?: (entity: TEntity) => void;
+  /** "Network may be back" signals for autosave retry (web: `online`). */
+  retrySignals?: RetrySignals;
 };
 
 export type VersionedEntityActionBarProps = {
@@ -81,6 +83,7 @@ export function useVersionedEntityEditor<
   loadErrorFallback = 'Could not load content.',
   delete: deleteOpts,
   onHydrate,
+  retrySignals,
 }: VersionedEntityEditorOptions<TEntity, TDraft, TParams>) {
   const {
     publish: publishRequest,
@@ -104,6 +107,7 @@ export function useVersionedEntityEditor<
     loadErrorFallback,
     delete: deleteOpts,
     onHydrate,
+    retrySignals,
   });
 
   const publishMutate = useCallback(

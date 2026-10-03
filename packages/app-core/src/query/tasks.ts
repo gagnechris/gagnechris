@@ -174,7 +174,7 @@ export const useReopenTaskMutation = () => {
     onMutate: (vars) =>
       optimisticPatchTask(queryClient, vars, (t) => ({
         ...t,
-        status: 'todo',
+        status: t.status === 'done' ? 'todo' : t.status,
         completedAt: null,
         version: t.version + 1,
       })),
