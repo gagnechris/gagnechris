@@ -35,6 +35,7 @@ import {
   ownerScoped,
   type OwnerKey,
 } from '../data/versioned-repository.js';
+import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { hashCreateFields } from '../data/create-hash.js';
 
@@ -324,12 +325,14 @@ export class TasksRepository {
       partitions,
       query.cursor,
       query.limit ?? 50,
-      ({ area, status }, cursor, remaining) =>
-        this.listPartition(userId, area, status, {
-          ...query,
-          cursor,
-          limit: remaining,
-        }),
+      ({ area, status }, cursor, remaining, remainingBytes) =>
+        this.listPartition(
+          userId,
+          area,
+          status,
+          { ...query, cursor, limit: remaining },
+          remainingBytes,
+        ),
     );
     return {
       items: sortTasksForList(page.items, today),
@@ -351,6 +354,7 @@ export class TasksRepository {
       cursor: query.cursor,
       limit: query.limit,
       cursorPartition: { attr: 'gsi2pk', value: pk },
+      byteBudget: PAGE_BYTE_BUDGET,
     });
     let items = page.items;
     if (query.area) items = items.filter((t) => t.area === query.area);
@@ -378,6 +382,7 @@ export class TasksRepository {
     area: NotebookArea,
     status: TaskStatus,
     query: ListTasksQuery,
+    byteBudget = PAGE_BYTE_BUDGET,
   ): Promise<{ items: Task[]; nextCursor?: string }> {
     const pk = keys.notebook.taskAreaStatusGsi1(userId, area, status);
     const values: Record<string, string> = { ':pk': pk };
@@ -405,6 +410,7 @@ export class TasksRepository {
       cursor: query.cursor,
       limit: query.limit,
       cursorPartition: { attr: 'gsi1pk', value: pk },
+      byteBudget,
       ...(sortLower
         ? {
             cursorSortBound: { attr: 'gsi1sk', lowerBoundInclusive: sortLower },
