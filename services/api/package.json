@@ -27,11 +27,11 @@
   },
   "devDependencies": {
     "@gagnechris/publisher": "*",
-    "@types/aws-lambda": "^8.10.152",
+    "@types/aws-lambda": "^8.10.164",
     "@types/node": "^22.13.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   },
   "exports": {
     "./posts/repository": {
