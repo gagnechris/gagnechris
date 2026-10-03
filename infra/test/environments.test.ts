@@ -29,6 +29,7 @@ import {
   CiDeployRoleStack,
 } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
+import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -560,6 +561,7 @@ describe('SiteStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(site);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
     template.resourceCountIs('AWS::S3::Bucket', 2);
     template.hasResourceProperties('AWS::S3::Bucket', {
@@ -602,7 +604,7 @@ describe('SiteStack', () => {
       Threshold: 5,
       EvaluationPeriods: 2,
       DatapointsToAlarm: 2,
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     // Viewer-request function is associated with the blog-slugs KeyValueStore (CHR-115 / CHR-180).
     const cfFunctions = template.findResources('AWS::CloudFront::Function');
@@ -653,6 +655,7 @@ describe('DataStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(data);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       TableName: 'gagnechris-prod',
       BillingMode: 'PAY_PER_REQUEST',
@@ -689,11 +692,11 @@ describe('DataStack', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-dynamodb-system-errors',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-dynamodb-throttled-requests',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
   });
 });
@@ -750,6 +753,7 @@ describe('ApiStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(api);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
     template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
       Name: 'gagnechris-prod',
@@ -862,12 +866,21 @@ describe('ApiStack', () => {
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
       ]),
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-data-integrity',
       Namespace: 'gagnechris',
       MetricName: 'DataIntegrityError',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
+      ]),
+      AlarmActions: alarmActions,
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
+      Namespace: 'gagnechris',
+      MetricName: 'SyncAdapterMissing',
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
       ]),
@@ -877,7 +890,7 @@ describe('ApiStack', () => {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       Namespace: 'AWS/ApiGateway',
       MetricName: '5xx',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/http-api-id',
@@ -936,6 +949,7 @@ describe('PublisherStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(publisher);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
     // Site bucket / distribution / KVS come from SSM, not Site exports (CHR-149).
     const rendered = JSON.stringify(template.toJSON());
     expect(rendered).not.toMatch(/ImportValue":"[^"]*Site/);
@@ -1001,7 +1015,7 @@ describe('PublisherStack', () => {
       Dimensions: Match.arrayWith([
         Match.objectLike({ Name: 'service', Value: 'gagnechris-publisher' }),
       ]),
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/publisher-function-name',

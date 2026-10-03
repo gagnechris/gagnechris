@@ -19,6 +19,11 @@ export interface TableIndexDefinition {
   readonly partitionKey: TableKeyAttribute;
   readonly sortKey: TableKeyAttribute;
   readonly projectionType: DynamoProjectionType;
+  /**
+   * Non-key attributes copied into an `INCLUDE` index. Required (non-empty)
+   * for `INCLUDE`, and must be omitted for `ALL` / `KEYS_ONLY`.
+   */
+  readonly nonKeyAttributes?: readonly string[];
 }
 
 export interface AppTableDefinition {
@@ -117,6 +122,36 @@ export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
   },
 ];
 
+/**
+ * DynamoDB `Projection` for a GSI (CreateTable / UpdateTable shape). Both the
+ * CDK DataStack and the local bootstrap use this so projection, including
+ * `INCLUDE` non-key attributes, cannot diverge between local and prod (CHR-200).
+ */
+export function gsiProjection(gsi: TableIndexDefinition): {
+  ProjectionType: DynamoProjectionType;
+  NonKeyAttributes?: string[];
+} {
+  const attrs = gsi.nonKeyAttributes;
+  if (gsi.projectionType === 'INCLUDE') {
+    if (!attrs || attrs.length === 0) {
+      throw new Error(
+        `GSI ${gsi.indexName} uses INCLUDE projection but lists no nonKeyAttributes`,
+      );
+    }
+    return { ProjectionType: 'INCLUDE', NonKeyAttributes: [...attrs] };
+  }
+  if (attrs !== undefined) {
+    throw new Error(
+      `GSI ${gsi.indexName} lists nonKeyAttributes but uses ${gsi.projectionType} projection (only INCLUDE takes them)`,
+    );
+  }
+  return { ProjectionType: gsi.projectionType };
+}
+
+function sortedNonKeyAttributes(gsi: TableIndexDefinition): string {
+  return [...(gsi.nonKeyAttributes ?? [])].sort().join('\u0000');
+}
+
 function keyAttrEqual(a: TableKeyAttribute, b: TableKeyAttribute): boolean {
   return a.name === b.name && a.type === b.type;
 }
@@ -128,7 +163,8 @@ function gsiDefinitionEqual(
   return (
     keyAttrEqual(a.partitionKey, b.partitionKey) &&
     keyAttrEqual(a.sortKey, b.sortKey) &&
-    a.projectionType === b.projectionType
+    a.projectionType === b.projectionType &&
+    sortedNonKeyAttributes(a) === sortedNonKeyAttributes(b)
   );
 }
 
@@ -208,7 +244,7 @@ type DescribeAttributeDefinition = {
 type DescribeGlobalSecondaryIndex = {
   IndexName?: string;
   KeySchema?: DescribeKeySchemaElement[];
-  Projection?: { ProjectionType?: string };
+  Projection?: { ProjectionType?: string; NonKeyAttributes?: string[] };
 };
 
 /**
@@ -257,11 +293,15 @@ export function tableIndexesFromDescribeTable(input: {
         `DescribeTable GSI ${indexName} has unsupported ProjectionType ${String(projection)}`,
       );
     }
+    const nonKeyAttributes = gsi.Projection?.NonKeyAttributes;
     indexes.push({
       indexName,
       partitionKey: { name: pkName, type: pkType },
       sortKey: { name: skName, type: skType },
       projectionType: projection,
+      ...(projection === 'INCLUDE' && nonKeyAttributes?.length
+        ? { nonKeyAttributes: [...nonKeyAttributes] }
+        : {}),
     });
   }
   return indexes;

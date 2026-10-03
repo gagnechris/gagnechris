@@ -211,6 +211,12 @@ export const RESUME_PDF_PUBLIC_PATH = '/resume.pdf';
 export const RESUME_PDF_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';
 export const RESUME_PDF_CONTENT_DISPOSITION = `attachment; filename="${RESUME_PDF_DOWNLOAD_FILENAME}"`;
 
+/** Stable PDF creation / modification date: publishedAt, else updatedAt. */
+function resumePdfDate(resume: Resume): Date {
+  const date = new Date(resume.publishedAt ?? resume.updatedAt);
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
+
 /**
  * Build a multi-page US Letter PDF from structured resume content (pdf-lib).
  * Uses embedded Inter (Unicode) with subsetting — not WinAnsi standard fonts.
@@ -220,6 +226,11 @@ export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
   doc.registerFontkit(fontkit);
   doc.setTitle(`${sanitizeResumePdfText(resume.name)} — Resume`);
   doc.setAuthor(sanitizeResumePdfText(resume.name));
+  // pdf-lib stamps "now" by default; pin the dates so an unchanged resume
+  // renders identical bytes and a no-op rebuild skips the put (CHR-201).
+  const stamp = resumePdfDate(resume);
+  doc.setCreationDate(stamp);
+  doc.setModificationDate(stamp);
 
   const font = await doc.embedFont(getRegularFontBytes(), { subset: true });
   const fontBold = await doc.embedFont(getBoldFontBytes(), { subset: true });

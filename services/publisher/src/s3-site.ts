@@ -168,6 +168,7 @@ export async function listPublishedPosts(
       return bTs.localeCompare(aTs);
     }),
     corruptSlugs: [...new Set(corruptSlugs)],
+    corruptPostIds: [...corruptPostIds],
   };
 }
 
@@ -183,6 +184,7 @@ export function mergeStreamPublishedPosts(
 
   const byId = new Map(catalog.posts.map((p) => [p.id, p]));
   const corruptSlugs = new Set(catalog.corruptSlugs);
+  const corruptPostIds = new Set(catalog.corruptPostIds ?? []);
 
   for (const item of streamItems) {
     const pk =
@@ -198,8 +200,10 @@ export function mergeStreamPublishedPosts(
       if (record.status !== 'published') continue;
       byId.set(record.postId, metaToPost(record));
       corruptSlugs.delete(record.slug);
+      corruptPostIds.delete(record.postId);
     } catch (error) {
       logCorruptPublished({ label: 'post', pk, sk, err: error });
+      if (pk?.startsWith('POST#')) corruptPostIds.add(pk.slice('POST#'.length));
       const slug =
         typeof (item as { slug?: unknown }).slug === 'string' &&
         (item as { slug: string }).slug
@@ -216,6 +220,7 @@ export function mergeStreamPublishedPosts(
       return bTs.localeCompare(aTs);
     }),
     corruptSlugs: [...corruptSlugs],
+    corruptPostIds: [...corruptPostIds],
   };
 }
 
@@ -289,6 +294,8 @@ export type { RebuildSiteSources } from './publish-targets/types.js';
  * - Shell is always the pristine `_shell.html` template (CHR-104).
  * - Stream NewImages are merged into the catalog so GSI lag cannot drop a
  *   just-published post (CHR-167).
+ * - Live posts missing from the catalog (corrupt row, or GSI lag on a stream
+ *   rebuild) keep their page, KVS entry, and previous feed entry (CHR-201).
  */
 export async function rebuildPublishedSite(options?: {
   scope?: RebuildScope;

@@ -2218,475 +2218,8 @@
           "tasks"
         ]
       },
-      "FakeNoteEntity": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "userId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "title": {
-            "type": "string"
-          },
-          "body": {
-            "type": "string"
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "area": {
-            "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
-          },
-          "noteDate": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "title",
-          "body",
-          "version",
-          "createdAt",
-          "updatedAt",
-          "deleted"
-        ]
-      },
-      "FakeNoteSyncChange": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "fakeNote"
-            ]
-          },
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "entity": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "userId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "title": {
-                "type": "string"
-              },
-              "body": {
-                "type": "string"
-              },
-              "version": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "deleted": {
-                "type": "boolean"
-              },
-              "area": {
-                "type": "string",
-                "enum": [
-                  "work",
-                  "personal"
-                ]
-              },
-              "noteDate": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "userId",
-              "title",
-              "body",
-              "version",
-              "createdAt",
-              "updatedAt",
-              "deleted"
-            ]
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "version",
-          "deleted",
-          "updatedAt"
-        ]
-      },
       "NoteSyncChange": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "note"
-            ]
-          },
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "entity": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "userId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "area": {
-                "type": "string",
-                "enum": [
-                  "work",
-                  "personal"
-                ]
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "daily",
-                  "page"
-                ]
-              },
-              "date": {
-                "type": "string",
-                "nullable": true,
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "title": {
-                "type": "string"
-              },
-              "bodyMarkdown": {
-                "type": "string"
-              },
-              "tags": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "pinned": {
-                "type": "boolean"
-              },
-              "version": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "deleted": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "userId",
-              "area",
-              "type",
-              "date",
-              "title",
-              "bodyMarkdown",
-              "tags",
-              "pinned",
-              "version",
-              "createdAt",
-              "updatedAt",
-              "deleted"
-            ]
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "version",
-          "deleted",
-          "updatedAt"
-        ]
-      },
-      "TaskSyncChange": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "task"
-            ]
-          },
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "entity": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
-              },
-              "userId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "area": {
-                "type": "string",
-                "enum": [
-                  "work",
-                  "personal"
-                ]
-              },
-              "title": {
-                "type": "string",
-                "minLength": 1
-              },
-              "description": {
-                "type": "string"
-              },
-              "priority": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "med",
-                  "high"
-                ]
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "todo",
-                  "in_progress",
-                  "done"
-                ]
-              },
-              "dueDate": {
-                "type": "string",
-                "nullable": true,
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "completedAt": {
-                "type": "string",
-                "nullable": true,
-                "format": "date-time"
-              },
-              "noteId": {
-                "type": "string",
-                "nullable": true,
-                "minLength": 1
-              },
-              "tags": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "version": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "deleted": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "userId",
-              "area",
-              "title",
-              "description",
-              "priority",
-              "status",
-              "dueDate",
-              "completedAt",
-              "noteId",
-              "tags",
-              "version",
-              "createdAt",
-              "updatedAt",
-              "deleted"
-            ]
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "version",
-          "deleted",
-          "updatedAt"
-        ]
-      },
-      "SyncChange": {
         "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "fakeNote"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "version": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "deleted": {
-                "type": "boolean"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "entity": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "userId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "title": {
-                    "type": "string"
-                  },
-                  "body": {
-                    "type": "string"
-                  },
-                  "version": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "createdAt": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "updatedAt": {
-                    "type": "string",
-                    "format": "date-time"
-                  },
-                  "deleted": {
-                    "type": "boolean"
-                  },
-                  "area": {
-                    "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
-                  },
-                  "noteDate": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "userId",
-                  "title",
-                  "body",
-                  "version",
-                  "createdAt",
-                  "updatedAt",
-                  "deleted"
-                ]
-              }
-            },
-            "required": [
-              "type",
-              "id",
-              "version",
-              "deleted",
-              "updatedAt"
-            ]
-          },
           {
             "type": "object",
             "properties": {
@@ -2704,12 +2237,15 @@
                 "type": "integer",
                 "minimum": 0
               },
-              "deleted": {
-                "type": "boolean"
-              },
               "updatedAt": {
                 "type": "string",
                 "format": "date-time"
+              },
+              "deleted": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
               },
               "entity": {
                 "type": "object",
@@ -2793,10 +2329,51 @@
               "type",
               "id",
               "version",
+              "updatedAt",
               "deleted",
-              "updatedAt"
+              "entity"
             ]
           },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "note"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "deleted": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "version",
+              "updatedAt",
+              "deleted"
+            ]
+          }
+        ]
+      },
+      "TaskSyncChange": {
+        "oneOf": [
           {
             "type": "object",
             "properties": {
@@ -2814,12 +2391,15 @@
                 "type": "integer",
                 "minimum": 0
               },
-              "deleted": {
-                "type": "boolean"
-              },
               "updatedAt": {
                 "type": "string",
                 "format": "date-time"
+              },
+              "deleted": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
               },
               "entity": {
                 "type": "object",
@@ -2922,8 +2502,376 @@
               "type",
               "id",
               "version",
+              "updatedAt",
               "deleted",
-              "updatedAt"
+              "entity"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "task"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "deleted": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "version",
+              "updatedAt",
+              "deleted"
+            ]
+          }
+        ]
+      },
+      "SyncChange": {
+        "oneOf": [
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "note"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      false
+                    ]
+                  },
+                  "entity": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "area": {
+                        "type": "string",
+                        "enum": [
+                          "work",
+                          "personal"
+                        ]
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "daily",
+                          "page"
+                        ]
+                      },
+                      "date": {
+                        "type": "string",
+                        "nullable": true,
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "bodyMarkdown": {
+                        "type": "string"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "pinned": {
+                        "type": "boolean"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "deleted": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "userId",
+                      "area",
+                      "type",
+                      "date",
+                      "title",
+                      "bodyMarkdown",
+                      "tags",
+                      "pinned",
+                      "version",
+                      "createdAt",
+                      "updatedAt",
+                      "deleted"
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "deleted",
+                  "entity"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "note"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "deleted"
+                ]
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "task"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      false
+                    ]
+                  },
+                  "entity": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "area": {
+                        "type": "string",
+                        "enum": [
+                          "work",
+                          "personal"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "type": "string",
+                        "enum": [
+                          "low",
+                          "med",
+                          "high"
+                        ]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "todo",
+                          "in_progress",
+                          "done"
+                        ]
+                      },
+                      "dueDate": {
+                        "type": "string",
+                        "nullable": true,
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "completedAt": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "date-time"
+                      },
+                      "noteId": {
+                        "type": "string",
+                        "nullable": true,
+                        "minLength": 1
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "deleted": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "userId",
+                      "area",
+                      "title",
+                      "description",
+                      "priority",
+                      "status",
+                      "dueDate",
+                      "completedAt",
+                      "noteId",
+                      "tags",
+                      "version",
+                      "createdAt",
+                      "updatedAt",
+                      "deleted"
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "deleted",
+                  "entity"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "task"
+                    ]
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "deleted": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "deleted"
+                ]
+              }
             ]
           }
         ]
@@ -2936,329 +2884,330 @@
             "items": {
               "oneOf": [
                 {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "enum": [
-                        "fakeNote"
-                      ]
-                    },
-                    "id": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "version": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "deleted": {
-                      "type": "boolean"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "entity": {
+                  "oneOf": [
+                    {
                       "type": "object",
                       "properties": {
-                        "id": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "userId": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "body": {
-                          "type": "string"
-                        },
-                        "version": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "updatedAt": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "deleted": {
-                          "type": "boolean"
-                        },
-                        "area": {
-                          "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
-                        },
-                        "noteDate": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "userId",
-                        "title",
-                        "body",
-                        "version",
-                        "createdAt",
-                        "updatedAt",
-                        "deleted"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "id",
-                    "version",
-                    "deleted",
-                    "updatedAt"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "enum": [
-                        "note"
-                      ]
-                    },
-                    "id": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "version": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "deleted": {
-                      "type": "boolean"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "entity": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "userId": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "area": {
-                          "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
-                        },
                         "type": {
                           "type": "string",
                           "enum": [
-                            "daily",
-                            "page"
+                            "note"
                           ]
                         },
-                        "date": {
+                        "id": {
                           "type": "string",
-                          "nullable": true,
-                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "bodyMarkdown": {
-                          "type": "string"
-                        },
-                        "tags": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "pinned": {
-                          "type": "boolean"
+                          "minLength": 1
                         },
                         "version": {
                           "type": "integer",
                           "minimum": 0
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time"
                         },
                         "updatedAt": {
                           "type": "string",
                           "format": "date-time"
                         },
                         "deleted": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "entity": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "userId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "area": {
+                              "type": "string",
+                              "enum": [
+                                "work",
+                                "personal"
+                              ]
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "daily",
+                                "page"
+                              ]
+                            },
+                            "date": {
+                              "type": "string",
+                              "nullable": true,
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "bodyMarkdown": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "pinned": {
+                              "type": "boolean"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "deleted": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "userId",
+                            "area",
+                            "type",
+                            "date",
+                            "title",
+                            "bodyMarkdown",
+                            "tags",
+                            "pinned",
+                            "version",
+                            "createdAt",
+                            "updatedAt",
+                            "deleted"
+                          ]
                         }
                       },
                       "required": [
-                        "id",
-                        "userId",
-                        "area",
                         "type",
-                        "date",
-                        "title",
-                        "bodyMarkdown",
-                        "tags",
-                        "pinned",
+                        "id",
                         "version",
-                        "createdAt",
+                        "updatedAt",
+                        "deleted",
+                        "entity"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "note"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id",
+                        "version",
                         "updatedAt",
                         "deleted"
                       ]
                     }
-                  },
-                  "required": [
-                    "type",
-                    "id",
-                    "version",
-                    "deleted",
-                    "updatedAt"
                   ]
                 },
                 {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string",
-                      "enum": [
-                        "task"
-                      ]
-                    },
-                    "id": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "version": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "deleted": {
-                      "type": "boolean"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "entity": {
+                  "oneOf": [
+                    {
                       "type": "object",
                       "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "task"
+                          ]
+                        },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
-                        },
-                        "userId": {
-                          "type": "string",
                           "minLength": 1
-                        },
-                        "area": {
-                          "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
-                        },
-                        "title": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": {
-                          "type": "string"
-                        },
-                        "priority": {
-                          "type": "string",
-                          "enum": [
-                            "low",
-                            "med",
-                            "high"
-                          ]
-                        },
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "todo",
-                            "in_progress",
-                            "done"
-                          ]
-                        },
-                        "dueDate": {
-                          "type": "string",
-                          "nullable": true,
-                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                        },
-                        "completedAt": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time"
-                        },
-                        "noteId": {
-                          "type": "string",
-                          "nullable": true,
-                          "minLength": 1
-                        },
-                        "tags": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
                         },
                         "version": {
                           "type": "integer",
                           "minimum": 0
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time"
                         },
                         "updatedAt": {
                           "type": "string",
                           "format": "date-time"
                         },
                         "deleted": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "entity": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "area": {
+                              "type": "string",
+                              "enum": [
+                                "work",
+                                "personal"
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "priority": {
+                              "type": "string",
+                              "enum": [
+                                "low",
+                                "med",
+                                "high"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "todo",
+                                "in_progress",
+                                "done"
+                              ]
+                            },
+                            "dueDate": {
+                              "type": "string",
+                              "nullable": true,
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "completedAt": {
+                              "type": "string",
+                              "nullable": true,
+                              "format": "date-time"
+                            },
+                            "noteId": {
+                              "type": "string",
+                              "nullable": true,
+                              "minLength": 1
+                            },
+                            "tags": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "deleted": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "userId",
+                            "area",
+                            "title",
+                            "description",
+                            "priority",
+                            "status",
+                            "dueDate",
+                            "completedAt",
+                            "noteId",
+                            "tags",
+                            "version",
+                            "createdAt",
+                            "updatedAt",
+                            "deleted"
+                          ]
                         }
                       },
                       "required": [
+                        "type",
                         "id",
-                        "userId",
-                        "area",
-                        "title",
-                        "description",
-                        "priority",
-                        "status",
-                        "dueDate",
-                        "completedAt",
-                        "noteId",
-                        "tags",
                         "version",
-                        "createdAt",
+                        "updatedAt",
+                        "deleted",
+                        "entity"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "task"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "id",
+                        "version",
                         "updatedAt",
                         "deleted"
                       ]
                     }
-                  },
-                  "required": [
-                    "type",
-                    "id",
-                    "version",
-                    "deleted",
-                    "updatedAt"
                   ]
                 }
               ]
@@ -3276,6 +3225,33 @@
         "required": [
           "changes",
           "nextSince"
+        ]
+      },
+      "UpgradeRequiredErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "upgrade_required"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "minClientVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "minClientVersion"
         ]
       }
     },
@@ -15349,6 +15325,17 @@
             "description": "Page size (1-100; default 50)",
             "name": "limit",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{1,9})\\.(\\d{1,9})\\.(\\d{1,9})$",
+              "description": "Client build version (`MAJOR.MINOR.PATCH`). Omit from web; below the server minimum → 426 `upgrade_required`"
+            },
+            "required": false,
+            "description": "Client build version (`MAJOR.MINOR.PATCH`). Omit from web; below the server minimum → 426 `upgrade_required`",
+            "name": "x-gagnechris-client-version",
+            "in": "header"
           }
         ],
         "responses": {
@@ -15364,329 +15351,330 @@
                       "items": {
                         "oneOf": [
                           {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "fakeNote"
-                                ]
-                              },
-                              "id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "version": {
-                                "type": "integer",
-                                "minimum": 0
-                              },
-                              "deleted": {
-                                "type": "boolean"
-                              },
-                              "updatedAt": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "entity": {
+                            "oneOf": [
+                              {
                                 "type": "object",
                                 "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "userId": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "title": {
-                                    "type": "string"
-                                  },
-                                  "body": {
-                                    "type": "string"
-                                  },
-                                  "version": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  },
-                                  "createdAt": {
-                                    "type": "string",
-                                    "format": "date-time"
-                                  },
-                                  "updatedAt": {
-                                    "type": "string",
-                                    "format": "date-time"
-                                  },
-                                  "deleted": {
-                                    "type": "boolean"
-                                  },
-                                  "area": {
-                                    "type": "string",
-                                    "enum": [
-                                      "work",
-                                      "personal"
-                                    ]
-                                  },
-                                  "noteDate": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "userId",
-                                  "title",
-                                  "body",
-                                  "version",
-                                  "createdAt",
-                                  "updatedAt",
-                                  "deleted"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "type",
-                              "id",
-                              "version",
-                              "deleted",
-                              "updatedAt"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "note"
-                                ]
-                              },
-                              "id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "version": {
-                                "type": "integer",
-                                "minimum": 0
-                              },
-                              "deleted": {
-                                "type": "boolean"
-                              },
-                              "updatedAt": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "entity": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "userId": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "area": {
-                                    "type": "string",
-                                    "enum": [
-                                      "work",
-                                      "personal"
-                                    ]
-                                  },
                                   "type": {
                                     "type": "string",
                                     "enum": [
-                                      "daily",
-                                      "page"
+                                      "note"
                                     ]
                                   },
-                                  "date": {
+                                  "id": {
                                     "type": "string",
-                                    "nullable": true,
-                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                                  },
-                                  "title": {
-                                    "type": "string"
-                                  },
-                                  "bodyMarkdown": {
-                                    "type": "string"
-                                  },
-                                  "tags": {
-                                    "type": "array",
-                                    "items": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "pinned": {
-                                    "type": "boolean"
+                                    "minLength": 1
                                   },
                                   "version": {
                                     "type": "integer",
                                     "minimum": 0
-                                  },
-                                  "createdAt": {
-                                    "type": "string",
-                                    "format": "date-time"
                                   },
                                   "updatedAt": {
                                     "type": "string",
                                     "format": "date-time"
                                   },
                                   "deleted": {
-                                    "type": "boolean"
+                                    "type": "boolean",
+                                    "enum": [
+                                      false
+                                    ]
+                                  },
+                                  "entity": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "userId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "area": {
+                                        "type": "string",
+                                        "enum": [
+                                          "work",
+                                          "personal"
+                                        ]
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "daily",
+                                          "page"
+                                        ]
+                                      },
+                                      "date": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      },
+                                      "bodyMarkdown": {
+                                        "type": "string"
+                                      },
+                                      "tags": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "pinned": {
+                                        "type": "boolean"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      },
+                                      "createdAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "updatedAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "deleted": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "userId",
+                                      "area",
+                                      "type",
+                                      "date",
+                                      "title",
+                                      "bodyMarkdown",
+                                      "tags",
+                                      "pinned",
+                                      "version",
+                                      "createdAt",
+                                      "updatedAt",
+                                      "deleted"
+                                    ]
                                   }
                                 },
                                 "required": [
-                                  "id",
-                                  "userId",
-                                  "area",
                                   "type",
-                                  "date",
-                                  "title",
-                                  "bodyMarkdown",
-                                  "tags",
-                                  "pinned",
+                                  "id",
                                   "version",
-                                  "createdAt",
+                                  "updatedAt",
+                                  "deleted",
+                                  "entity"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "note"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "deleted": {
+                                    "type": "boolean",
+                                    "enum": [
+                                      true
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id",
+                                  "version",
                                   "updatedAt",
                                   "deleted"
                                 ]
                               }
-                            },
-                            "required": [
-                              "type",
-                              "id",
-                              "version",
-                              "deleted",
-                              "updatedAt"
                             ]
                           },
                           {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "task"
-                                ]
-                              },
-                              "id": {
-                                "type": "string",
-                                "minLength": 1
-                              },
-                              "version": {
-                                "type": "integer",
-                                "minimum": 0
-                              },
-                              "deleted": {
-                                "type": "boolean"
-                              },
-                              "updatedAt": {
-                                "type": "string",
-                                "format": "date-time"
-                              },
-                              "entity": {
+                            "oneOf": [
+                              {
                                 "type": "object",
                                 "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "task"
+                                    ]
+                                  },
                                   "id": {
                                     "type": "string",
-                                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
-                                  },
-                                  "userId": {
-                                    "type": "string",
                                     "minLength": 1
-                                  },
-                                  "area": {
-                                    "type": "string",
-                                    "enum": [
-                                      "work",
-                                      "personal"
-                                    ]
-                                  },
-                                  "title": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "description": {
-                                    "type": "string"
-                                  },
-                                  "priority": {
-                                    "type": "string",
-                                    "enum": [
-                                      "low",
-                                      "med",
-                                      "high"
-                                    ]
-                                  },
-                                  "status": {
-                                    "type": "string",
-                                    "enum": [
-                                      "todo",
-                                      "in_progress",
-                                      "done"
-                                    ]
-                                  },
-                                  "dueDate": {
-                                    "type": "string",
-                                    "nullable": true,
-                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-                                  },
-                                  "completedAt": {
-                                    "type": "string",
-                                    "nullable": true,
-                                    "format": "date-time"
-                                  },
-                                  "noteId": {
-                                    "type": "string",
-                                    "nullable": true,
-                                    "minLength": 1
-                                  },
-                                  "tags": {
-                                    "type": "array",
-                                    "items": {
-                                      "type": "string"
-                                    }
                                   },
                                   "version": {
                                     "type": "integer",
                                     "minimum": 0
-                                  },
-                                  "createdAt": {
-                                    "type": "string",
-                                    "format": "date-time"
                                   },
                                   "updatedAt": {
                                     "type": "string",
                                     "format": "date-time"
                                   },
                                   "deleted": {
-                                    "type": "boolean"
+                                    "type": "boolean",
+                                    "enum": [
+                                      false
+                                    ]
+                                  },
+                                  "entity": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                                      },
+                                      "userId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "area": {
+                                        "type": "string",
+                                        "enum": [
+                                          "work",
+                                          "personal"
+                                        ]
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      },
+                                      "priority": {
+                                        "type": "string",
+                                        "enum": [
+                                          "low",
+                                          "med",
+                                          "high"
+                                        ]
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "enum": [
+                                          "todo",
+                                          "in_progress",
+                                          "done"
+                                        ]
+                                      },
+                                      "dueDate": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                      },
+                                      "completedAt": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "format": "date-time"
+                                      },
+                                      "noteId": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "minLength": 1
+                                      },
+                                      "tags": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": 0
+                                      },
+                                      "createdAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "updatedAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      },
+                                      "deleted": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "userId",
+                                      "area",
+                                      "title",
+                                      "description",
+                                      "priority",
+                                      "status",
+                                      "dueDate",
+                                      "completedAt",
+                                      "noteId",
+                                      "tags",
+                                      "version",
+                                      "createdAt",
+                                      "updatedAt",
+                                      "deleted"
+                                    ]
                                   }
                                 },
                                 "required": [
+                                  "type",
                                   "id",
-                                  "userId",
-                                  "area",
-                                  "title",
-                                  "description",
-                                  "priority",
-                                  "status",
-                                  "dueDate",
-                                  "completedAt",
-                                  "noteId",
-                                  "tags",
                                   "version",
-                                  "createdAt",
+                                  "updatedAt",
+                                  "deleted",
+                                  "entity"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "task"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "deleted": {
+                                    "type": "boolean",
+                                    "enum": [
+                                      true
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "id",
+                                  "version",
                                   "updatedAt",
                                   "deleted"
                                 ]
                               }
-                            },
-                            "required": [
-                              "type",
-                              "id",
-                              "version",
-                              "deleted",
-                              "updatedAt"
                             ]
                           }
                         ]
@@ -15790,8 +15778,42 @@
               }
             }
           },
+          "426": {
+            "description": "Client build older than the server minimum (`upgrade_required`; header `x-gagnechris-client-version`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "upgrade_required"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "minClientVersion": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "minClientVersion"
+                  ]
+                }
+              }
+            }
+          },
           "500": {
-            "description": "Internal error",
+            "description": "Internal error (including a sync row with no registered adapter)",
             "content": {
               "application/json": {
                 "schema": {

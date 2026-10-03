@@ -6,6 +6,7 @@ import {
   CI_COMPOSE_PROJECT_NAME,
   dynamodbCiStartedFlagPath,
   integrationComposeEnv,
+  integrationDynamoEndpoint,
   teardownDynamodbCi,
 } from './dynamodb-ci-lifecycle.js';
 
@@ -27,6 +28,19 @@ describe('dynamodb CI lifecycle (CHR-163)', () => {
     });
     expect(env.COMPOSE_PROJECT_NAME).toBe(CI_COMPOSE_PROJECT_NAME);
     expect(CI_COMPOSE_PROJECT_NAME).toBe('gagnechris-ci');
+  });
+
+  it('targets the CI port 8001, not env.sh local dev on 8000 (CHR-199)', () => {
+    expect(
+      integrationDynamoEndpoint({
+        AWS_ENDPOINT_URL_DYNAMODB: 'http://127.0.0.1:8000',
+      }),
+    ).toBe('http://127.0.0.1:8001');
+    expect(
+      integrationDynamoEndpoint({
+        INTEGRATION_DYNAMODB_ENDPOINT: 'http://127.0.0.1:9100',
+      }),
+    ).toBe('http://127.0.0.1:9100');
   });
 
   it('stores the started flag under os.tmpdir, not the repo', () => {

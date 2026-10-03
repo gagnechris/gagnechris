@@ -1,11 +1,13 @@
+import type { Post } from '@gagnechris/shared';
 import {
   isFullRebuildScope,
   fullRebuildScope,
   type RebuildScope,
 } from '../rebuild-scope.js';
 import { mapWithConcurrency, PUT_CONCURRENCY } from '../concurrency.js';
+import { listItemToFeedPost, readPublishedListItems } from '../posts.js';
 import type { RebuildResult } from '../rebuild-result.js';
-import type { SiteStorage } from '../storage.js';
+import { postSlugsFromKeys, type SiteStorage } from '../storage.js';
 import { syncViewerRequestBlogSlugs } from '../viewer-request-slugs.js';
 import { getPublishTargets } from './registry.js';
 import type {
@@ -13,6 +15,7 @@ import type {
   PublishTarget,
   PublishTargetContext,
   PublishTargetRunResult,
+  PublishedPostsCatalog,
   RebuildSiteSources,
 } from './types.js';
 import { PUBLISH_RESULT_BOOLEAN_FLAGS } from './types.js';
@@ -104,6 +107,51 @@ export function finalizeInvalidationPaths(
   return [...new Set(paths)];
 }
 
+/**
+ * Previous feed entries (`blog/posts.json`) for live posts missing from the
+ * catalog, so their page, KVS entry, and feed entries survive (CHR-201):
+ * - corrupt PUBLISHED rows (any rebuild) — also recovers the live slug when
+ *   the row's own slug is the corrupt field;
+ * - stream rebuilds only: GSI lag — the page still exists and the batch is
+ *   not removing it. Full rebuilds trust the catalog for everything else.
+ */
+export async function retainLivePosts(
+  storage: SiteStorage,
+  scope: RebuildScope,
+  catalog: PublishedPostsCatalog,
+): Promise<Post[]> {
+  const corruptIds = new Set(catalog.corruptPostIds ?? []);
+  const full = isFullRebuildScope(scope);
+  if (full && corruptIds.size === 0) return [];
+
+  const previous = await readPublishedListItems(storage);
+  if (previous.length === 0) return [];
+
+  const catalogIds = new Set(catalog.posts.map((p) => p.id));
+  const catalogSlugs = new Set(catalog.posts.map((p) => p.slug));
+  const missing = previous.filter(
+    (item) => !catalogIds.has(item.id) && !catalogSlugs.has(item.slug),
+  );
+  const lagging = full
+    ? []
+    : missing.filter(
+        (item) =>
+          !corruptIds.has(item.id) && !scope.slugsToRemove.has(item.slug),
+      );
+  const livePages =
+    lagging.length > 0
+      ? new Set(postSlugsFromKeys(await storage.list('blog/')))
+      : new Set<string>();
+
+  return missing
+    .filter(
+      (item) =>
+        corruptIds.has(item.id) ||
+        (lagging.includes(item) && livePages.has(item.slug)),
+    )
+    .map(listItemToFeedPost);
+}
+
 export async function runPublishTargets(options: {
   scope?: RebuildScope;
   storage: SiteStorage;
@@ -125,7 +173,14 @@ export async function runPublishTargets(options: {
     ? await sources.listPublishedPosts()
     : { posts: [], corruptSlugs: [] as string[] };
   const published = catalog.posts;
-  const corruptPostSlugs = new Set(catalog.corruptSlugs);
+  const retainedPosts =
+    needsCatalog && scope.feeds
+      ? await retainLivePosts(storage, scope, catalog)
+      : [];
+  const corruptPostSlugs = new Set([
+    ...catalog.corruptSlugs,
+    ...retainedPosts.map((p) => p.slug),
+  ]);
 
   const ctx: PublishTargetContext = {
     scope,
@@ -134,6 +189,7 @@ export async function runPublishTargets(options: {
     sources,
     published,
     corruptPostSlugs,
+    retainedPosts,
   };
 
   const flags = emptyFlagAccumulator();

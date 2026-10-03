@@ -37,8 +37,6 @@ import {
   CreateTaskRequestSchema,
   DailyNoteGetResponseSchema,
   EmptyDailyNoteSchema,
-  FakeNoteEntitySchema,
-  FakeNoteSyncChangeSchema,
   ListNotesQuerySchema,
   ListTasksQuerySchema,
   NotebookAreaSchema,
@@ -53,6 +51,9 @@ import {
   TaskListResponseSchema,
   TaskSchema,
   TaskSyncChangeSchema,
+  UpgradeRequiredErrorResponseSchema,
+  ClientVersionHeadersSchema,
+  CLIENT_VERSION_HEADER,
   UpdateNoteRequestSchema,
   UpdateTaskRequestSchema,
   UpsertDailyNoteRequestSchema,
@@ -225,12 +226,14 @@ export function buildOpenApiDocument() {
   registry.register('ListTasksQuery', ListTasksQuerySchema);
   registry.register('NotebookSearchRequest', NotebookSearchRequestSchema);
   registry.register('NotebookSearchResponse', NotebookSearchResponseSchema);
-  registry.register('FakeNoteEntity', FakeNoteEntitySchema);
-  registry.register('FakeNoteSyncChange', FakeNoteSyncChangeSchema);
   registry.register('NoteSyncChange', NoteSyncChangeSchema);
   registry.register('TaskSyncChange', TaskSyncChangeSchema);
   registry.register('SyncChange', SyncChangeSchema);
   registry.register('SyncChangesResponse', SyncChangesResponseSchema);
+  registry.register(
+    'UpgradeRequiredErrorResponse',
+    UpgradeRequiredErrorResponseSchema,
+  );
 
   registry.registerPath({
     method: 'get',
@@ -892,11 +895,21 @@ export function buildOpenApiDocument() {
     summary: 'Changes since watermark for the authenticated user',
     tags: ['Notebook'],
     security: [{ bearerAuth: [] }],
-    request: { query: SyncChangesQuerySchema },
+    request: {
+      query: SyncChangesQuerySchema,
+      headers: ClientVersionHeadersSchema,
+    },
     responses: {
       200: ok(SyncChangesResponseSchema, 'Sync change feed page'),
       400: r400,
+      426: {
+        description: `Client build older than the server minimum (\`upgrade_required\`; header \`${CLIENT_VERSION_HEADER}\`)`,
+        ...jsonBody(UpgradeRequiredErrorResponseSchema),
+      },
       ...notebookAuth,
+      500: err(
+        'Internal error (including a sync row with no registered adapter)',
+      ),
     },
   });
 

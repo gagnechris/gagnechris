@@ -12,6 +12,8 @@ import {
   PreconditionFailedError,
   ResyncRequiredError,
   ServiceUnavailableError,
+  SyncAdapterMissingError,
+  UpgradeRequiredError,
 } from './data/errors.js';
 import { isExclusiveStartKeyValidationError } from './data/dynamo-errors.js';
 import { RateLimitExceededError } from './contact/rateLimit.js';
@@ -163,6 +165,13 @@ export function mapRouteError(
   if (error instanceof ResyncRequiredError) {
     return json(410, { error: 'resync_required', message: error.message });
   }
+  if (error instanceof UpgradeRequiredError) {
+    return json(426, {
+      error: 'upgrade_required',
+      message: error.message,
+      minClientVersion: error.minClientVersion,
+    });
+  }
   if (error instanceof PreconditionFailedError) {
     return json(412, {
       error: 'precondition_failed',
@@ -195,6 +204,16 @@ export function mapRouteError(
     return json(500, {
       error: 'data_integrity',
       message: 'Stored data failed validation',
+    });
+  }
+  if (error instanceof SyncAdapterMissingError) {
+    logger.error('Sync row has no registered adapter', {
+      changeType: error.changeType,
+    });
+    metrics.addMetric('SyncAdapterMissing', MetricUnit.Count, 1);
+    return json(500, {
+      error: 'sync_adapter_missing',
+      message: 'Sync feed cannot decode a stored change',
     });
   }
   if (error instanceof ServiceUnavailableError) {

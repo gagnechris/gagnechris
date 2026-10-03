@@ -37,6 +37,10 @@
     "./posts/repository": {
       "types": "./src/posts/repository.ts",
       "import": "./src/posts/repository.ts"
+    },
+    "./restore/copy-back": {
+      "types": "./src/restore/copy-back.ts",
+      "import": "./src/restore/copy-back.ts"
     }
   }
 }

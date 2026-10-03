@@ -8,7 +8,7 @@ import { ConflictError, PreconditionFailedError } from './errors.js';
 export type IfMatchExpectation =
   { kind: 'version'; version: number } | { kind: 'any' };
 
-function headerValue(
+export function headerValue(
   headers: Record<string, string | undefined> | undefined,
   name: string,
 ): string | undefined {
