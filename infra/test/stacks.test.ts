@@ -103,9 +103,24 @@ describe('stack Template assertions (CHR-136)', () => {
       Name: 'gagnechris-prod-backup-job-failures',
       EventPattern: Match.objectLike({
         source: ['aws.backup'],
-        detail: Match.objectLike({
-          state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
-        }),
+        detail: {
+          // Restore events use `status` and copy events only carry vault
+          // ARNs, so each event type needs its own branch to ever match.
+          $or: [
+            {
+              state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+              backupVaultArn: [Match.anyValue()],
+            },
+            {
+              status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+              backupVaultArn: [Match.anyValue()],
+            },
+            {
+              state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+              sourceBackupVaultArn: [Match.anyValue()],
+            },
+          ],
+        },
       }),
       Targets: [Match.objectLike({ Arn: Match.anyValue() })],
     });
