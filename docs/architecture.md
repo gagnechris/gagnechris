@@ -161,6 +161,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   - `If-Match: "<n>"` or weak `If-Match: W/"<n>"` — expect version `n`; mismatch → **412** (`precondition_failed`) with `currentVersion` + `current`
   - `If-Match: *` — resource must exist; server applies the mutation against the current version (missing → **404**)
   - Malformed `If-Match` → **400**
+  - Notebook note/task mutations build the new row from a **strongly consistent** read inside the repository (`mutateIfVersion` / `softDeleteIfVersion`) and always write `expected + 1`, so a lagging replica can never revert unsent fields or reuse a version (CHR-188)
   - Body-only `version` mismatch → **409** (`version_conflict`) with `currentVersion` + `current`
 - **409 `error` codes** (machine-readable): `version_conflict`, `deleted`, `payload_mismatch`, `slug_taken`, `daily_taken` (plus legacy `conflict`).
 

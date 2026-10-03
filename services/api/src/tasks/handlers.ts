@@ -16,7 +16,6 @@ import {
   jsonEntity,
   requireExpectedVersion,
   runVersionedMutation,
-  versionForWrite,
 } from '../data/versioned-route.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
@@ -70,10 +69,8 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
       handler: async (ctx, { params, body }) => {
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;
-        const existing = await tasks().getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
         const task = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().complete(ctx.userId!, params.id, version, existing),
+          tasks().complete(ctx.userId!, params.id, resolved.expected),
         );
         return jsonEntity(200, task, parseTask);
       },
@@ -88,10 +85,8 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
       handler: async (ctx, { params, body }) => {
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;
-        const existing = await tasks().getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
         const task = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().reopen(ctx.userId!, params.id, version, existing),
+          tasks().reopen(ctx.userId!, params.id, resolved.expected),
         );
         return jsonEntity(200, task, parseTask);
       },
@@ -117,15 +112,12 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
       handler: async (ctx, { params, body }) => {
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;
-        const existing = await tasks().getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
         const task = await runVersionedMutation(resolved.fromIfMatch, () =>
           tasks().updateFromRequest(
             ctx.userId!,
             params.id,
-            version,
+            resolved.expected,
             body,
-            existing,
           ),
         );
         return jsonEntity(200, task, parseTask);
@@ -141,16 +133,8 @@ export function createTaskRoutes(repo?: TasksRepository): RouteDef[] {
       handler: async (ctx, { params, body }) => {
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;
-        const existing = await tasks().getOrThrow(ctx.userId!, params.id);
-        const version = versionForWrite(resolved.expected, existing.version);
-        const now = new Date().toISOString();
         const tombstone = await runVersionedMutation(resolved.fromIfMatch, () =>
-          tasks().softDelete(ctx.userId!, params.id, version, {
-            ...existing,
-            version: existing.version + 1,
-            updatedAt: now,
-            deleted: true,
-          }),
+          tasks().deleteIfVersion(ctx.userId!, params.id, resolved.expected),
         );
         return jsonEntity(200, tombstone, parseTask);
       },
