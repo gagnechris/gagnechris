@@ -7,6 +7,13 @@ set -euo pipefail
 
 SINCE="${1:-}"
 
+# GNU date (CI) or BSD date (macOS). AWS CLI timestamps are UTC, so the first
+# 19 chars (YYYY-MM-DDTHH:MM:SS) are enough for the BSD fallback.
+to_epoch() {
+  date -u -d "$1" +%s 2>/dev/null ||
+    date -j -u -f '%Y-%m-%dT%H:%M:%S' "${1:0:19}" +%s
+}
+
 rows="$(aws cloudformation describe-stacks \
   --query "Stacks[?ends_with(StackName, '-prod')].[StackName,StackStatus,LastUpdatedTime]" \
   --output text)"
@@ -19,7 +26,7 @@ while IFS=$'\t' read -r name status updated; do
     continue
   fi
   if [ -n "${SINCE}" ] && [ -n "${updated}" ] && [ "${updated}" != "None" ]; then
-    updated_epoch="$(date -u -d "${updated}" +%s)"
+    updated_epoch="$(to_epoch "${updated}")"
     if [ "${updated_epoch}" -ge "${SINCE}" ]; then
       active+=("${name} updated ${updated}")
     fi

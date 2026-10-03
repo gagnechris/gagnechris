@@ -36,10 +36,14 @@ WEB_PATTERNS=(
 
 changed="$(git diff --name-only "${BASE}" "${HEAD}")"
 
+# Usage: matches <ignore-glob> <pattern>...  ('' ignores nothing)
 matches() {
-  local file pattern
+  local ignore="$1" file pattern
+  shift
   while IFS= read -r file; do
     [ -z "${file}" ] && continue
+    # shellcheck disable=SC2254 # ignore is intentionally a glob
+    if [ -n "${ignore}" ]; then case "${file}" in ${ignore}) continue ;; esac; fi
     for pattern in "$@"; do
       # shellcheck disable=SC2254 # pattern is intentionally a glob
       case "${file}" in
@@ -50,5 +54,6 @@ matches() {
   return 1
 }
 
-if matches "${CDK_PATTERNS[@]}"; then echo 'cdk=true'; else echo 'cdk=false'; fi
-if matches "${WEB_PATTERNS[@]}"; then echo 'web=true'; else echo 'web=false'; fi
+# Markdown (e.g. infra/RUNBOOK.md) never affects synth, so it doesn't redeploy CDK.
+if matches '*.md' "${CDK_PATTERNS[@]}"; then echo 'cdk=true'; else echo 'cdk=false'; fi
+if matches '' "${WEB_PATTERNS[@]}"; then echo 'web=true'; else echo 'web=false'; fi
