@@ -131,12 +131,13 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
         );
         const isCreate = 'exists' in existing && existing.exists === false;
         if (isCreate) {
-          const note = await notes().upsertDaily(
+          // Straight to the claim: re-reading here and updating whoever won
+          // would let two writers both get 200 and one silently overwrite.
+          const note = await notes().createDaily(
             ctx.userId!,
             params.area,
             params.date,
             body,
-            'any',
           );
           return jsonEntity(200, note, parseNote);
         }
