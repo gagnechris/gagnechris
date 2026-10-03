@@ -73,18 +73,21 @@ describe('notes repository (DynamoDB Local, CHR-40)', () => {
       tags: [],
       pinned: false,
     });
-    const dailyRace = await repo.createFromRequest(USER_A, {
-      id: DAILY_2,
-      area: 'work',
-      type: 'daily',
-      date: '2026-10-02',
-      title: 'Second',
-      bodyMarkdown: '',
-      tags: [],
-      pinned: false,
+    await expect(
+      repo.createFromRequest(USER_A, {
+        id: DAILY_2,
+        area: 'work',
+        type: 'daily',
+        date: '2026-10-02',
+        title: 'Second',
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+      }),
+    ).rejects.toMatchObject({
+      code: 'daily_taken',
+      current: { id: dailyA.id, title: 'First' },
     });
-    expect(dailyRace.id).toBe(dailyA.id);
-    expect(dailyRace.title).toBe('First');
 
     const listed = await repo.list(USER_A, {
       area: 'work',
@@ -106,5 +109,70 @@ describe('notes repository (DynamoDB Local, CHR-40)', () => {
     expect(feed.changes.map((c) => c.id).sort()).toEqual(
       [PAGE_A, dailyA.id].sort(),
     );
+  });
+
+  it('delete frees the daily slot; 10 concurrent creates give 1 winner and 9 daily_taken (CHR-187)', async () => {
+    const repo = createNotesRepository(
+      doc,
+      tableName,
+      () => '2026-10-02T10:00:00.000Z',
+    );
+    const daily = (id: string, title: string) =>
+      repo.createFromRequest(USER_A, {
+        id,
+        area: 'work',
+        type: 'daily',
+        date: '2026-10-05',
+        title,
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+      });
+
+    const first = await daily(DAILY_1, 'First');
+    await repo.deleteIfVersion(USER_A, first.id, first.version);
+    const empty = await repo.getDaily(USER_A, 'work', '2026-10-05');
+    expect(empty).toMatchObject({ exists: false });
+
+    const recreated = await daily(DAILY_2, 'Recreated');
+    expect(recreated.id).toBe(DAILY_2);
+    expect(await repo.getDaily(USER_A, 'work', '2026-10-05')).toMatchObject({
+      id: DAILY_2,
+    });
+
+    await expect(
+      repo.updateFromRequest(USER_A, DAILY_2, 1, { area: 'personal' }),
+    ).rejects.toMatchObject({ name: 'BadRequestError' });
+
+    const ids = Array.from(
+      { length: 10 },
+      (_, i) => `01ARZ3NDEKTSV4RRFFQ69G5FD${i}`,
+    );
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        repo.createFromRequest(USER_A, {
+          id,
+          area: 'personal',
+          type: 'daily',
+          date: '2026-10-06',
+          title: id,
+          bodyMarkdown: '',
+          tags: [],
+          pinned: false,
+        }),
+      ),
+    );
+    const won = results.filter((r) => r.status === 'fulfilled');
+    const lost = results.filter((r) => r.status === 'rejected');
+    expect(won).toHaveLength(1);
+    expect(lost).toHaveLength(9);
+    const winnerId = (won[0] as PromiseFulfilledResult<{ id: string }>).value
+      .id;
+    for (const r of lost) {
+      expect((r as PromiseRejectedResult).reason).toMatchObject({
+        code: 'daily_taken',
+        current: { id: winnerId },
+      });
+    }
   });
 });

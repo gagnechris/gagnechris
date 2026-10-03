@@ -43,6 +43,25 @@ function checkPutCondition(
   }
 }
 
+/** Conditions used on claim deletes (CHR-187): owner-pointer checks only. */
+function checkDeleteCondition(
+  store: Map<string, Record<string, unknown>>,
+  input: Record<string, unknown>,
+): void {
+  const cond = input.ConditionExpression as string | undefined;
+  if (!cond) return;
+  const existing = store.get(itemKey(input.Key as { pk: string; sk: string }));
+  const values = (input.ExpressionAttributeValues ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const pointsAtId = existing?.noteId === values[':id'];
+  const ok = cond.startsWith('attribute_not_exists(pk) OR')
+    ? !existing || pointsAtId
+    : existing !== undefined && pointsAtId;
+  if (!ok) throw { name: 'ConditionalCheckFailedException' };
+}
+
 export function createMemoryDoc(): {
   doc: DynamoDBDocumentClient;
   store: Map<string, Record<string, unknown>>;
@@ -74,15 +93,16 @@ export function createMemoryDoc(): {
     if (name === 'TransactWriteCommand') {
       const items = cmd.input.TransactItems as Array<{
         Put?: Record<string, unknown>;
+        Delete?: Record<string, unknown>;
       }>;
       // Validate all conditions first (transactional).
       const reasons: Array<{ Code?: string }> = items.map(() => ({}));
       let failed = false;
       for (let i = 0; i < items.length; i += 1) {
         const entry = items[i]!;
-        if (!entry.Put) continue;
         try {
-          checkPutCondition(store, entry.Put);
+          if (entry.Put) checkPutCondition(store, entry.Put);
+          if (entry.Delete) checkDeleteCondition(store, entry.Delete);
         } catch {
           reasons[i] = { Code: 'ConditionalCheckFailed' };
           failed = true;
@@ -95,6 +115,9 @@ export function createMemoryDoc(): {
         };
       }
       for (const entry of items) {
+        if (entry.Delete) {
+          store.delete(itemKey(entry.Delete.Key as { pk: string; sk: string }));
+        }
         if (!entry.Put) continue;
         const item = entry.Put.Item as Record<string, unknown>;
         store.set(itemKey({ pk: item.pk as string, sk: item.sk as string }), {
@@ -105,6 +128,7 @@ export function createMemoryDoc(): {
     }
 
     if (name === 'DeleteCommand') {
+      checkDeleteCondition(store, cmd.input);
       const key = cmd.input.Key as { pk: string; sk: string };
       store.delete(itemKey(key));
       return {};

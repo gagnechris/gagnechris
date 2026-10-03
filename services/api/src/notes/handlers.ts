@@ -2,6 +2,7 @@
  * Notebook Notes HTTP routes (CHR-40).
  */
 import { z } from 'zod';
+import { normalizeTags } from '@gagnechris/data';
 import {
   CalendarDateSchema,
   CreateNoteRequestSchema,
@@ -21,6 +22,8 @@ import {
   requireExpectedVersion,
   runVersionedMutation,
 } from '../data/versioned-route.js';
+import { parseIfMatch } from '../data/concurrency.js';
+import { ConflictError } from '../data/errors.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { notesRepository, type NotesRepository } from './repository.js';
@@ -33,6 +36,34 @@ const DailyParams = z.object({
 
 function parseNote(note: Note): Note {
   return NoteSchema.parse(note);
+}
+
+function hasExpectedVersion(
+  event: { headers?: Record<string, string | undefined> },
+  body: { version?: number },
+): boolean {
+  return (
+    body.version !== undefined || parseIfMatch(event.headers) !== undefined
+  );
+}
+
+/** A retried create of the same daily note (same id and content) is a no-op. */
+function noteMatchesUpsert(
+  note: Note,
+  body: {
+    title?: string;
+    bodyMarkdown?: string;
+    tags?: string[];
+    pinned?: boolean;
+  },
+): boolean {
+  return (
+    note.version === 1 &&
+    (body.title ?? '') === note.title &&
+    (body.bodyMarkdown ?? '') === note.bodyMarkdown &&
+    (body.pinned ?? false) === note.pinned &&
+    JSON.stringify(normalizeTags(body.tags ?? [])) === JSON.stringify(note.tags)
+  );
 }
 
 export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
@@ -108,6 +139,25 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
             'any',
           );
           return jsonEntity(200, note, parseNote);
+        }
+        // A writer still holding the empty placeholder (no version) lost the
+        // race to create this day: hand back the winner so it can merge
+        // instead of failing with 400 on every retry (CHR-187).
+        const current = existing as Note;
+        if (!hasExpectedVersion(ctx.event, body)) {
+          if (current.id === body.id && noteMatchesUpsert(current, body)) {
+            return jsonEntity(200, current, parseNote);
+          }
+          throw new ConflictError(
+            current.id === body.id
+              ? 'Daily note changed since it was created'
+              : 'Daily note already exists for this area and date',
+            {
+              code: current.id === body.id ? 'version_conflict' : 'daily_taken',
+              currentVersion: current.version,
+              current,
+            },
+          );
         }
         const resolved = requireExpectedVersion(ctx.event, body);
         if (!resolved.ok) return resolved.response;

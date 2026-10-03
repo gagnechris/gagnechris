@@ -307,7 +307,13 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 
-**Daily-note race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser resolves the claim's `noteId` and returns that existing note (idempotent at the day grain). Documented in `OwnerScopedVersionedEntityRepository` + DynamoDB Local tests.
+**Daily-note claim lifecycle (CHR-187):**
+
+- **Race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser (`POST /notes` or `PUT /notes/daily/...`) gets **409 `daily_taken`** with `current` (the winner) and `currentVersion`. Nothing is dropped silently.
+- **Client merge rule (web and iOS):** on `daily_taken`, keep the local draft and show a conflict. Then either reload and adopt `current`, or re-send your text as an update to `current.id` with `version: current.version` once the user chooses to merge. Never retry the create with the losing ULID.
+- **Placeholder writers:** `PUT /notes/daily/...` with no `version` or `If-Match` when the day already exists returns 409 (`daily_taken` for a different id, `version_conflict` for the same id with changed content). Re-sending the exact create (same id and content) returns 200 with the stored note.
+- **Delete frees the day:** soft-deleting a daily note removes its claim in the same transaction (only if the claim still points at that note). A claim left pointing at a tombstone by older data reads as empty on `GET`, and is freed on the next create.
+- **Area is immutable for daily notes:** `PUT /notes/{id}` with a different `area` on a daily note → **400** `fields.area=immutable`. Pages can still move.
 
 **No new GSIs** for Notes/Tasks core — GSI1–3 are already deployed.
 
