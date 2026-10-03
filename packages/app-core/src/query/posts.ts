@@ -69,7 +69,8 @@ export const useDeletePostMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deletePost(getClient(), id),
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      deletePost(getClient(), id, { version }),
     onSuccess: (post) => {
       setCachedPost(queryClient, post);
     },
