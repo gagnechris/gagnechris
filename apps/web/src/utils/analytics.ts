@@ -70,14 +70,28 @@ const trackNamedEvent = (
   }
 };
 
-export const trackBearsGameStart = (from: BearsGameFrom) => {
-  trackNamedEvent('bears_game_start', { from });
+export type BearsGame = 'camp' | 'wild';
+
+export const trackBearsGamePick = (game: BearsGame, from: BearsGameFrom) => {
+  trackNamedEvent('bears_game_pick', { game, from });
 };
 
-export const trackBearsGameComplete = (from: BearsGameFrom, score: number) => {
-  trackNamedEvent('bears_game_complete', { from, score, value: score });
+export const trackBearsGameStart = (game: BearsGame, from: BearsGameFrom) => {
+  trackNamedEvent('bears_game_start', { game, from });
 };
 
-export const trackBearsTipLinkClick = (from: BearsGameFrom) => {
-  trackNamedEvent('bears_tip_link_click', { from });
+export const trackBearsGameComplete = (
+  game: BearsGame,
+  from: BearsGameFrom,
+  score: number,
+) => {
+  trackNamedEvent('bears_game_complete', { game, from, score, value: score });
+};
+
+/** `game` is undefined for tip links on the landing page. */
+export const trackBearsTipLinkClick = (
+  from: BearsGameFrom,
+  game?: BearsGame,
+) => {
+  trackNamedEvent('bears_tip_link_click', { game, from });
 };

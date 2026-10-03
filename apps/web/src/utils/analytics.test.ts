@@ -4,6 +4,7 @@ import {
   trackEvent,
   trackResumeView,
   trackResumeDownload,
+  trackBearsGamePick,
   trackBearsGameStart,
   trackBearsGameComplete,
   trackBearsTipLinkClick,
@@ -103,29 +104,50 @@ describe('analytics utilities', () => {
   });
 
   describe('bears game events', () => {
-    test('tracks bears_game_start with from', () => {
-      trackBearsGameStart('footer');
+    test('tracks bears_game_pick with game and from', () => {
+      trackBearsGamePick('wild', 'contact');
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'bears_game_pick', {
+        game: 'wild',
+        from: 'contact',
+      });
+    });
+
+    test('tracks bears_game_start with game and from', () => {
+      trackBearsGameStart('camp', 'footer');
 
       expect(mockGtag).toHaveBeenCalledWith('event', 'bears_game_start', {
+        game: 'camp',
         from: 'footer',
       });
     });
 
-    test('tracks bears_game_complete with from and score', () => {
-      trackBearsGameComplete('resume', 42);
+    test('tracks bears_game_complete with game, from, and score', () => {
+      trackBearsGameComplete('camp', 'resume', 42);
 
       expect(mockGtag).toHaveBeenCalledWith('event', 'bears_game_complete', {
+        game: 'camp',
         from: 'resume',
         score: 42,
         value: 42,
       });
     });
 
-    test('tracks bears_tip_link_click with from', () => {
-      trackBearsTipLinkClick('404');
+    test('tracks bears_tip_link_click with game and from', () => {
+      trackBearsTipLinkClick('404', 'camp');
 
       expect(mockGtag).toHaveBeenCalledWith('event', 'bears_tip_link_click', {
+        game: 'camp',
         from: '404',
+      });
+    });
+
+    test('tracks landing tip link clicks without a game', () => {
+      trackBearsTipLinkClick('direct');
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'bears_tip_link_click', {
+        game: undefined,
+        from: 'direct',
       });
     });
   });
@@ -141,8 +163,9 @@ describe('analytics utilities', () => {
         trackEvent('test', 'test');
         trackResumeView();
         trackResumeDownload();
-        trackBearsGameStart('direct');
-        trackBearsGameComplete('direct', 0);
+        trackBearsGamePick('camp', 'direct');
+        trackBearsGameStart('camp', 'direct');
+        trackBearsGameComplete('camp', 'direct', 0);
         trackBearsTipLinkClick('direct');
       }).not.toThrow();
 
@@ -192,7 +215,7 @@ describe('analytics utilities', () => {
 
       trackPageView('/resume');
       trackEvent('click', 'link');
-      trackBearsGameStart('direct');
+      trackBearsGameStart('camp', 'direct');
 
       expect(mockGtag).not.toHaveBeenCalled();
     });

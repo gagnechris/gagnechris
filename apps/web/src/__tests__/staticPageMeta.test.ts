@@ -35,6 +35,12 @@ describe('staticPageMeta', () => {
     expect(outputRelativePath('dont-feed-the-bears')).toBe(
       'dont-feed-the-bears/index.html',
     );
+    expect(outputRelativePath('dont-feed-the-bears/camp')).toBe(
+      'dont-feed-the-bears/camp/index.html',
+    );
+    expect(outputRelativePath('dont-feed-the-bears/wild')).toBe(
+      'dont-feed-the-bears/wild/index.html',
+    );
   });
 
   it('applies resume meta without duplicating tags', () => {
@@ -68,13 +74,31 @@ describe('staticPageMeta', () => {
     expect(html).toContain(`content="${escapedDescription}"`);
   });
 
-  it('covers home, resume, contact, and dont-feed-the-bears', () => {
+  it('covers home, resume, contact, and the bears pages', () => {
     expect(STATIC_PAGE_META.map((p) => p.routePath).sort()).toEqual([
       '',
       'contact',
       'dont-feed-the-bears',
+      'dont-feed-the-bears/camp',
+      'dont-feed-the-bears/wild',
       'resume',
     ]);
+  });
+
+  it('gives each bears game its own canonical URL and title', () => {
+    for (const routePath of [
+      'dont-feed-the-bears/camp',
+      'dont-feed-the-bears/wild',
+    ] as const) {
+      const meta = STATIC_PAGE_META.find((p) => p.routePath === routePath)!;
+      const html = applyStaticPageMeta(shell, meta);
+      expect(html).toContain(
+        `<link rel="canonical" href="https://gagnechris.com/${routePath}" />`,
+      );
+      expect(html).toContain(
+        'content="https://gagnechris.com/og-dont-feed-the-bears.jpg"',
+      );
+    }
   });
 
   it('applies bears game meta with dedicated OG image', () => {

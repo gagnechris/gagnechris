@@ -60,6 +60,14 @@ const router = createBrowserRouter(
           load: () => import('./pages/DontFeedTheBears.tsx'),
         }),
         lazyRoute({
+          path: 'dont-feed-the-bears/camp',
+          load: () => import('./pages/bears/CampRules.tsx'),
+        }),
+        lazyRoute({
+          path: 'dont-feed-the-bears/wild',
+          load: () => import('./pages/bears/StayWild.tsx'),
+        }),
+        lazyRoute({
           path: 'auth/callback',
           load: () => import('./auth/AuthCallback.tsx'),
         }),
