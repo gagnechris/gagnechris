@@ -17,6 +17,26 @@ import type { EnvironmentConfig } from '../config/environments.js';
 /** Default CDK bootstrap qualifier (`cdk bootstrap` without --qualifier). */
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
+/**
+ * Log and trace reads denied to the read-only CI roles (CHR-196). Logs carry
+ * no note content today, but nothing enforces that, so diff/drift/lookup
+ * (which never read logs or traces) cannot fetch log events, run Insights
+ * queries, tail, unmask, or pull X-Ray traces. Metadata reads
+ * (DescribeLogGroups etc.) stay allowed.
+ */
+export const LOG_TRACE_READ_DENY_ACTIONS = [
+  'logs:GetLogEvents',
+  'logs:FilterLogEvents',
+  'logs:StartQuery',
+  'logs:GetQueryResults',
+  'logs:StartLiveTail',
+  'logs:GetLogRecord',
+  'logs:Unmask',
+  'xray:BatchGetTraces',
+  'xray:GetTraceSummaries',
+  'xray:GetTraceGraph',
+] as const;
+
 /** Actions denied so PR/diff/drift (and the CDK lookup role) cannot read CMS data. */
 export const PRIVATE_DATA_READ_DENY_ACTIONS = [
   'dynamodb:GetItem',
@@ -28,6 +48,7 @@ export const PRIVATE_DATA_READ_DENY_ACTIONS = [
   's3:GetObject',
   's3:GetObjectVersion',
   's3:GetObject*',
+  ...LOG_TRACE_READ_DENY_ACTIONS,
 ] as const;
 
 export interface CiDeployRoleStackProps extends StackProps {

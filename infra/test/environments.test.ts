@@ -304,6 +304,32 @@ describe('CiDeployRoleStack', () => {
       expect(json).toContain('dynamodb:PartiQLSelect');
       expect(json).toContain('s3:GetObject');
       expect(json).toContain('"Effect":"Deny"');
+      // CHR-196: logs and traces are denied alongside item/object reads.
+      const statements = (p.Properties?.PolicyDocument?.Statement ??
+        []) as Array<{
+        Sid?: string;
+        Effect?: string;
+        Action?: string | string[];
+        Resource?: string | string[];
+      }>;
+      const deny = statements.find((s) => s.Sid === 'DenyPrivateDataReads');
+      expect(deny?.Effect).toBe('Deny');
+      expect(deny?.Resource).toBe('*');
+      const denied = Array.isArray(deny?.Action) ? deny.Action : [deny?.Action];
+      for (const action of [
+        'logs:GetLogEvents',
+        'logs:FilterLogEvents',
+        'logs:StartQuery',
+        'logs:GetQueryResults',
+        'logs:StartLiveTail',
+        'logs:GetLogRecord',
+        'logs:Unmask',
+        'xray:BatchGetTraces',
+        'xray:GetTraceSummaries',
+        'xray:GetTraceGraph',
+      ]) {
+        expect(denied).toContain(action);
+      }
     }
     const lookupDeny = denyPolicies.find((p) =>
       JSON.stringify(p).includes(
@@ -552,7 +578,7 @@ describe('SiteStack', () => {
     template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
     template.resourceCountIs('AWS::CloudFront::Function', 2);
     template.resourceCountIs('AWS::CloudFront::KeyValueStore', 1);
-    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 2);
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 3); // site, admin, api (CHR-196)
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
@@ -1012,7 +1038,9 @@ describe('PublisherStack', () => {
     );
     const publisherPolicyJson = JSON.stringify(publisherPolicies);
     expect(publisherPolicyJson).toContain('dynamodb:GetRecords');
-    expect(publisherPolicyJson).toContain('dynamodb:PutItem');
+    // CHR-196: read-only table access; no writes.
+    expect(publisherPolicyJson).toContain('dynamodb:GetItem');
+    expect(publisherPolicyJson).not.toContain('dynamodb:PutItem');
     expect(publisherPolicyJson).toContain('s3:PutObject');
     expect(publisherPolicyJson).toContain('cloudfront:CreateInvalidation');
     expect(publisherPolicyJson).toContain('CloudFrontInvalidate');

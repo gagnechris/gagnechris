@@ -29,7 +29,7 @@ Concrete IDs and values: private note. Commands:
    `npx aws-cdk bootstrap aws://ACCOUNT/us-east-1 --profile gagnechris-admin`  
    (us-east-1 required for CloudFront certificates.)
 
-   **CHR-163:** `CiDeployRole-prod` attaches `DenyPrivateDataReads` (including `dynamodb:PartiQLSelect`) to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. Re-bootstrap is not required for that deny; deploying `CiDeployRole-prod` is enough. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
+   **CHR-163:** `CiDeployRole-prod` attaches `DenyPrivateDataReads` (including `dynamodb:PartiQLSelect`) to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. Re-bootstrap is not required for that deny; deploying `CiDeployRole-prod` is enough. **CHR-196** extends the same deny to CloudWatch Logs reads (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`) and X-Ray traces (`BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`); use the SSO `ReadOnly` / `Admin` profiles, not CI roles, to read logs. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
 
 ## CDK app (`infra/`)
 
@@ -203,6 +203,10 @@ AWS_PROFILE=gagnechris-admin npm run deploy:web
 Site depends on Api (CHR-149) so `/api` origin updates when the HttpApi is replaced. First-time bootstrap (circular SSM) is documented under **First-time / disaster-recovery bootstrap** above.
 
 SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
+
+Privacy (CHR-196, details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply; a secret origin header is the follow-up).
+
+Publisher IAM (CHR-196): read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`; `Query` on `gsi1` for `STATUS#published`). A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
 
 ## DynamoDB data plane (CHR-29)
 

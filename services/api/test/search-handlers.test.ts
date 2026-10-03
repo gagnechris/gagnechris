@@ -18,10 +18,10 @@ const TASK_ID = '01ARZ3NDEKTSV4RRFFQ48JMTC6';
 function adminEvent(
   method: string,
   path: string,
-  query?: Record<string, string>,
+  opts?: { body?: unknown; query?: Record<string, string> },
 ) {
   return makeEvent(method, path, {
-    query,
+    ...opts,
     jwtClaims: { sub: USER },
   });
 }
@@ -83,11 +83,14 @@ describe('search handlers (CHR-46)', () => {
 
     const res = await dispatchRoutes(
       routes,
-      adminEvent('GET', '/api/notebook/search', { q: 'ship' }),
-      'GET',
+      adminEvent('POST', '/api/notebook/search', { body: { q: 'ship' } }),
+      'POST',
       '/api/notebook/search',
     );
     expect(res?.statusCode).toBe(200);
+    // Search results are user data: never cached by the browser (CHR-196).
+    expect(res.headers?.['Cache-Control']).toBe('no-store');
+    expect(res.headers?.['X-Content-Type-Options']).toBe('nosniff');
     const body = JSON.parse(res!.body as string) as {
       notes: Array<{ id: string }>;
       tasks: Array<{ id: string; title: string }>;
@@ -95,5 +98,35 @@ describe('search handlers (CHR-46)', () => {
     expect(body.notes.some((n) => n.id === NOTE_ID)).toBe(true);
     expect(body.tasks.some((t) => t.id === TASK_ID)).toBe(true);
     expect(body.tasks[0]?.title).toMatch(/Ship/i);
+  });
+
+  it('rejects GET with q in the URL; search is POST-only (CHR-196)', async () => {
+    const routes = createSearchRoutes();
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent('GET', '/api/notebook/search', { query: { q: 'ship' } }),
+      'GET',
+      '/api/notebook/search',
+    );
+    expect(res.statusCode).toBe(405);
+    expect(res.headers?.Allow).toBe('POST');
+    expect(res.headers?.['Cache-Control']).toBe('no-store');
+  });
+
+  it('validates the JSON body', async () => {
+    const routes = createSearchRoutes();
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/search', {
+        body: { q: '', limit: 500 },
+      }),
+      'POST',
+      '/api/notebook/search',
+    );
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body as string) as {
+      fields: Record<string, string>;
+    };
+    expect(Object.keys(body.fields).sort()).toEqual(['limit', 'q']);
   });
 });

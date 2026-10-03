@@ -217,6 +217,40 @@ export class SiteStack extends Stack {
       },
     );
 
+    // /api/* JSON (CHR-196). The Lambda sets these on its own responses; the
+    // edge adds them to the ones API Gateway generates itself (JWT authorizer
+    // 401/403, throttling 429). Cache-Control does not override the origin.
+    const apiSecurityHeaders = new ResponseHeadersPolicy(
+      this,
+      'ApiSecurityHeaders',
+      {
+        responseHeadersPolicyName: `gagnechris-${config.name}-api-security-headers`,
+        comment: 'nosniff + HSTS on /api/*; no-store unless the API sets one',
+        securityHeadersBehavior: {
+          strictTransportSecurity: {
+            accessControlMaxAge: Duration.days(365),
+            includeSubdomains: true,
+            preload: true,
+            override: true,
+          },
+          contentTypeOptions: { override: true },
+          frameOptions: {
+            frameOption: HeadersFrameOption.DENY,
+            override: true,
+          },
+          referrerPolicy: {
+            referrerPolicy: HeadersReferrerPolicy.NO_REFERRER,
+            override: true,
+          },
+        },
+        customHeadersBehavior: {
+          customHeaders: [
+            { header: 'Cache-Control', value: 'no-store', override: false },
+          ],
+        },
+      },
+    );
+
     const viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const blogSlugsKvs = new KeyValueStore(this, 'BlogSlugsKvs', {
       keyValueStoreName: `gagnechris-${config.name}-blog-slugs`,
@@ -350,6 +384,7 @@ export class SiteStack extends Stack {
           cachePolicy: CachePolicy.CACHING_DISABLED,
           originRequestPolicy:
             OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          responseHeadersPolicy: apiSecurityHeaders,
         },
         '/media/*': {
           origin,

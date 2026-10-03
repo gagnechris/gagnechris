@@ -155,4 +155,104 @@ describe('api handler', () => {
       dispatch.mockRestore();
     }
   });
+
+  describe('response headers (CHR-196)', () => {
+    const headersOf = (result: unknown) =>
+      (result as { headers?: Record<string, string> }).headers ?? {};
+
+    it('public health: nosniff, no forced no-store', async () => {
+      const headers = headersOf(
+        await handler(
+          makeEvent('GET', '/api/health'),
+          {} as never,
+          () => undefined,
+        ),
+      );
+      expect(headers['X-Content-Type-Options']).toBe('nosniff');
+      expect(headers['Cache-Control']).toBeUndefined();
+    });
+
+    it('authenticated 200: no-store + nosniff', async () => {
+      const result = await handler(
+        makeEvent('GET', '/api/admin/me', {
+          jwtClaims: { sub: 'abc-123', email: 'admin@example.com' },
+        }),
+        {} as never,
+        () => undefined,
+      );
+      expect(result).toMatchObject({ statusCode: 200 });
+      expect(headersOf(result)).toMatchObject({
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Type': 'application/json',
+      });
+    });
+
+    it('router 401 and 403: no-store + nosniff', async () => {
+      const unauth = await handler(
+        makeEvent('GET', '/api/notebook/notes'),
+        {} as never,
+        () => undefined,
+      );
+      expect(unauth).toMatchObject({ statusCode: 401 });
+      expect(headersOf(unauth)).toMatchObject({
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      });
+
+      const forbidden = await handler(
+        makeEvent('POST', '/api/notebook/search', {
+          jwtClaims: { sub: 'abc-123' },
+          adminGroup: false,
+          body: { q: 'x' },
+        }),
+        {} as never,
+        () => undefined,
+      );
+      expect(forbidden).toMatchObject({ statusCode: 403 });
+      expect(headersOf(forbidden)).toMatchObject({
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      });
+    });
+
+    it('404, 405 and public-route errors: no-store + nosniff', async () => {
+      for (const event of [
+        makeEvent('GET', '/api/nope'),
+        makeEvent('DELETE', '/api/health'),
+        makeEvent('POST', '/api/contact', { body: {} }),
+      ]) {
+        const result = await handler(event, {} as never, () => undefined);
+        expect(
+          (result as { statusCode: number }).statusCode,
+        ).toBeGreaterThanOrEqual(400);
+        expect(headersOf(result)).toMatchObject({
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+        });
+      }
+    });
+
+    it('handled 500: no-store + nosniff', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const dispatch = vi
+        .spyOn(router, 'dispatchRoutes')
+        .mockRejectedValueOnce(new Error('forced'));
+      try {
+        const result = await handler(
+          makeEvent('GET', '/api/health'),
+          {} as never,
+          () => undefined,
+        );
+        expect(result).toMatchObject({ statusCode: 500 });
+        expect(headersOf(result)).toMatchObject({
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+        });
+      } finally {
+        dispatch.mockRestore();
+        errorSpy.mockRestore();
+      }
+    });
+  });
 });

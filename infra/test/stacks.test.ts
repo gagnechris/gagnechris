@@ -261,6 +261,42 @@ describe('stack Template assertions (CHR-136)', () => {
     });
   });
 
+  it('SiteStack /api/* sends nosniff and default no-store (CHR-196)', () => {
+    const template = siteTemplate();
+    template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: Match.objectLike({
+        Name: 'gagnechris-prod-api-security-headers',
+        SecurityHeadersConfig: Match.objectLike({
+          ContentTypeOptions: { Override: true },
+        }),
+        CustomHeadersConfig: {
+          Items: [
+            { Header: 'Cache-Control', Value: 'no-store', Override: false },
+          ],
+        },
+      }),
+    });
+    const policies = template.findResources(
+      'AWS::CloudFront::ResponseHeadersPolicy',
+    );
+    const apiPolicyId = Object.entries(policies).find(
+      ([, r]) =>
+        r.Properties?.ResponseHeadersPolicyConfig?.Name ===
+        'gagnechris-prod-api-security-headers',
+    )?.[0];
+    expect(apiPolicyId).toBeDefined();
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        CacheBehaviors: Match.arrayWith([
+          Match.objectLike({
+            PathPattern: '/api/*',
+            ResponseHeadersPolicyId: { Ref: apiPolicyId },
+          }),
+        ]),
+      }),
+    });
+  });
+
   it('SiteStack serves /admin and /auth with a strict CSP (CHR-193)', () => {
     const template = siteTemplate();
     const policies = template.findResources(
@@ -385,6 +421,69 @@ describe('stack Template assertions (CHR-136)', () => {
     });
     const mappings = template.findResources('AWS::Lambda::EventSourceMapping');
     expect(JSON.stringify(mappings)).not.toContain('ReportBatchItemFailures');
+
+    // CHR-196: read-only, key-scoped DynamoDB access.
+    const statements = Object.values(
+      template.findResources('AWS::IAM::Policy'),
+    ).flatMap(
+      (p) =>
+        (p.Properties?.PolicyDocument?.Statement ?? []) as Array<{
+          Sid?: string;
+          Effect?: string;
+          Action?: string | string[];
+          Resource?: unknown;
+          Condition?: Record<string, Record<string, unknown>>;
+        }>,
+    );
+    const dynamoActions = statements.flatMap((s) =>
+      (Array.isArray(s.Action) ? s.Action : [s.Action ?? '']).filter((a) =>
+        a.startsWith('dynamodb:'),
+      ),
+    );
+    expect(dynamoActions).toEqual(
+      expect.arrayContaining([
+        'dynamodb:GetItem',
+        'dynamodb:BatchGetItem',
+        'dynamodb:Query',
+      ]),
+    );
+    for (const action of dynamoActions) {
+      expect(action).not.toMatch(
+        /^dynamodb:(Put|Update|Delete|BatchWrite|PartiQL|Scan|ConditionCheck|\*)/,
+      );
+    }
+    const itemRead = statements.find(
+      (s) => s.Sid === 'PublisherReadPublishedItems',
+    );
+    expect(itemRead?.Condition).toEqual({
+      'ForAllValues:StringLike': {
+        'dynamodb:LeadingKeys': ['POST#*', 'HOME#*', 'RESUME#*'],
+      },
+    });
+    const indexQuery = statements.find(
+      (s) => s.Sid === 'PublisherQueryPublishedIndex',
+    );
+    expect(indexQuery?.Condition).toEqual({
+      'ForAllValues:StringLike': {
+        'dynamodb:LeadingKeys': ['STATUS#published'],
+      },
+    });
+    expect(JSON.stringify(indexQuery?.Resource)).toContain('/index/gsi1');
+    // Every table/index statement that reads items carries LeadingKeys.
+    for (const s of statements) {
+      const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
+      if (
+        actions.some((a) =>
+          [
+            'dynamodb:GetItem',
+            'dynamodb:BatchGetItem',
+            'dynamodb:Query',
+          ].includes(a ?? ''),
+        )
+      ) {
+        expect(JSON.stringify(s.Condition)).toContain('dynamodb:LeadingKeys');
+      }
+    }
   });
 
   it('ApiStack Lambda is arm64 Node 24 with powertools env', () => {

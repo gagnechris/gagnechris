@@ -643,14 +643,18 @@ export const ListTasksQuerySchema = z.object({
 
 export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
 
-/** Query params for `GET /notebook/search` (CHR-46). */
-export const NotebookSearchQuerySchema = z.object({
+/**
+ * JSON body for `POST /notebook/search` (CHR-46). A body, not a query
+ * string, so search terms never reach CloudFront or API Gateway access logs
+ * (CHR-196).
+ */
+export const NotebookSearchRequestSchema = z.object({
   q: z.string().trim().min(1).max(200),
   area: NotebookAreaSchema.optional(),
-  limit: z.coerce.number().int().positive().max(50).optional(),
+  limit: z.number().int().positive().max(50).optional(),
 });
 
-export type NotebookSearchQuery = z.infer<typeof NotebookSearchQuerySchema>;
+export type NotebookSearchRequest = z.infer<typeof NotebookSearchRequestSchema>;
 
 export const NotebookSearchHitSchema = z.object({
   type: z.enum(['note', 'task']),

@@ -19,6 +19,26 @@ import { isExclusiveStartKeyValidationError } from './data/dynamo-errors.js';
 import { RateLimitExceededError } from './contact/rateLimit.js';
 import { logger, metrics } from './observability.js';
 
+/**
+ * Browser-facing response headers (CHR-196): `nosniff` on every API response,
+ * `Cache-Control: no-store` on authenticated routes and errors so notebook
+ * JSON never lands in a browser disk cache. Public successes (health,
+ * contact, resume notify) keep whatever their handler set.
+ */
+export function withApiResponseHeaders(
+  response: APIGatewayProxyStructuredResultV2,
+  opts: { noStore: boolean },
+): APIGatewayProxyStructuredResultV2 {
+  return {
+    ...response,
+    headers: {
+      ...response.headers,
+      'X-Content-Type-Options': 'nosniff',
+      ...(opts.noStore ? { 'Cache-Control': 'no-store' } : {}),
+    },
+  };
+}
+
 export function json(
   statusCode: number,
   body: unknown,
