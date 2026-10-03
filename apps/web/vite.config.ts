@@ -89,23 +89,11 @@ export default defineConfig(({ mode, command }) => {
     build: {
       // Keep admin/editor chunks under the AC budget (CHR-178).
       chunkSizeWarningLimit: 500,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            // Shared lazy MarkdownEditor + CodeMirror core (CHR-178).
-            if (
-              id.includes('@codemirror/') ||
-              id.includes('@lezer/') ||
-              id.includes('@uiw/react-codemirror') ||
-              id.includes('@uiw/codemirror') ||
-              id.includes('/components/markdown/MarkdownEditor')
-            ) {
-              return 'markdown-editor';
-            }
-            return undefined;
-          },
-        },
-      },
+      // No manualChunks: under Vite 8 / Rolldown a manual `markdown-editor`
+      // group also captured React, so the public entry statically imported
+      // (and modulepreloaded) the whole CodeMirror chunk. The two
+      // `lazy(() => import('…/MarkdownEditor'))` call sites (Post +
+      // Notebook) already share one natural async chunk (CHR-178).
     },
     test: {
       environment: 'jsdom',

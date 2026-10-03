@@ -45,7 +45,7 @@ describe('Repeater', () => {
     await user.type(second, 'Kept');
     expect(second).toHaveValue('Kept');
 
-    await user.click(screen.getByRole('button', { name: 'Remove role row a' }));
+    await user.click(screen.getByRole('button', { name: 'Remove role 1' }));
     expect(screen.queryByLabelText('Title a')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Title b')).toHaveValue('Kept');
   });
@@ -66,7 +66,7 @@ describe('Repeater', () => {
     second.focus();
     expect(second).toHaveFocus();
 
-    await user.click(screen.getByRole('button', { name: 'Move up row b' }));
+    await user.click(screen.getByRole('button', { name: 'Move row 2 up' }));
 
     const moved = screen.getByLabelText('Title b');
     expect(moved).toHaveValue('Second');
