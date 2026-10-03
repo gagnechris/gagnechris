@@ -18,6 +18,7 @@ const workspaces = [
   'packages/app-core',
   'services/api',
   'services/publisher',
+  'services/restore-test',
   'infra',
 ];
 

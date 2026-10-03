@@ -119,6 +119,18 @@ describe('stack Template assertions (CHR-136)', () => {
               state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
               sourceBackupVaultArn: [Match.anyValue()],
             },
+            // CHR-198: restore-testing jobs, keyed on the plan ARN.
+            {
+              status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+              restoreTestingPlanArn: [
+                {
+                  'Fn::GetAtt': [
+                    Match.stringLikeRegexp('RestoreTestingPlan'),
+                    'RestoreTestingPlanArn',
+                  ],
+                },
+              ],
+            },
           ],
         },
       }),
