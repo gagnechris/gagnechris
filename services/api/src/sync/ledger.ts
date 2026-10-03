@@ -22,6 +22,11 @@ import {
 } from '../data/cursor.js';
 import { throwCursorValidation } from '../data/dynamo-errors.js';
 import {
+  PAGE_BYTE_BUDGET,
+  cursorKeyOf,
+  jsonByteLength,
+} from '../data/page-budget.js';
+import {
   ResyncRequiredError,
   SyncAdapterMissingError,
 } from '../data/errors.js';
@@ -99,10 +104,11 @@ export class SyncLedger {
 
     const pageLimit = limit ?? SYNC_DEFAULT_PAGE_LIMIT;
     const changes: SyncFeedChange[] = [];
+    let bytes = 0;
     let lastKey: Record<string, unknown> | undefined;
     // `limit` counts returned changes, not evaluated rows: keep reading while
     // skipped rows leave the page short (bounded by SYNC_MAX_QUERIES_PER_PAGE).
-    for (let round = 1; ; round += 1) {
+    rounds: for (let round = 1; ; round += 1) {
       let result;
       try {
         result = await this.doc.send(
@@ -130,8 +136,8 @@ export class SyncLedger {
         throwCursorValidation(error);
       }
 
-      for (const raw of result.Items ?? []) {
-        const item = raw as Record<string, unknown>;
+      const rows = (result.Items ?? []) as Record<string, unknown>[];
+      for (const [index, item] of rows.entries()) {
         const changeType = itemChangeType(item);
         if (!changeType) continue;
         const adapter = getSyncAdapter(changeType);
@@ -139,13 +145,24 @@ export class SyncLedger {
         // the client would advance past `nextSince` and never see the row.
         if (!adapter) throw new SyncAdapterMissingError(changeType);
         const change = adapter.toChange(item);
-        if (change) changes.push(change);
+        if (!change) continue;
+        const size = jsonByteLength(change);
+        if (changes.length > 0 && bytes + size > PAGE_BYTE_BUDGET) {
+          lastKey =
+            index > 0
+              ? cursorKeyOf(rows[index - 1]!, SYNC_GSI_CURSOR_KEYS)
+              : startKey;
+          break rounds;
+        }
+        bytes += size;
+        changes.push(change);
       }
 
       lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
       if (
         !lastKey ||
         changes.length >= pageLimit ||
+        bytes >= PAGE_BYTE_BUDGET ||
         round >= SYNC_MAX_QUERIES_PER_PAGE
       ) {
         break;

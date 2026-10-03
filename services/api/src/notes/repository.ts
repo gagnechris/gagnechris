@@ -28,6 +28,7 @@ import {
 } from '@gagnechris/shared';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
 import { BadRequestError } from '../data/errors.js';
+import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
@@ -353,8 +354,13 @@ export class NotesRepository {
       areas,
       query.cursor,
       query.limit ?? 50,
-      (area, cursor, remaining) =>
-        this.listArea(userId, area, { ...query, cursor, limit: remaining }),
+      (area, cursor, remaining, remainingBytes) =>
+        this.listArea(
+          userId,
+          area,
+          { ...query, cursor, limit: remaining },
+          remainingBytes,
+        ),
     );
   }
 
@@ -362,6 +368,7 @@ export class NotesRepository {
     userId: string,
     area: NotebookArea,
     query: ListNotesQuery,
+    byteBudget = PAGE_BYTE_BUDGET,
   ): Promise<{ items: Note[]; nextCursor?: string }> {
     const pk = keys.notebook.areaGsi1(userId, area);
     const values: Record<string, string> = { ':pk': pk };
@@ -393,6 +400,7 @@ export class NotesRepository {
       cursor: query.cursor,
       limit: query.limit,
       cursorPartition: { attr: 'gsi1pk', value: pk },
+      byteBudget,
       ...(sortLower
         ? {
             cursorSortBound: { attr: 'gsi1sk', lowerBoundInclusive: sortLower },
