@@ -866,6 +866,29 @@ describe('ApiStack', () => {
       AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-write-conflict-spike',
+      Namespace: 'gagnechris',
+      MetricName: 'WriteConflict',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-api' }),
+      ]),
+      Statistic: 'Sum',
+      Period: 900,
+      Threshold: 20,
+      EvaluationPeriods: 1,
+      AlarmActions: alarmActions,
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-latency-p95',
+      Namespace: 'AWS/ApiGateway',
+      MetricName: 'Latency',
+      ExtendedStatistic: 'p95',
+      Period: 300,
+      Threshold: 3000,
+      EvaluationPeriods: 3,
+      AlarmActions: alarmActions,
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
       Namespace: 'gagnechris',
       MetricName: 'SyncAdapterMissing',
@@ -962,6 +985,7 @@ describe('PublisherStack', () => {
       StartingPosition: 'LATEST',
       BatchSize: 10,
       BisectBatchOnFunctionError: true,
+      MaximumRetryAttempts: 3,
       FilterCriteria: {
         Filters: Match.anyValue(),
       },
@@ -983,6 +1007,7 @@ describe('PublisherStack', () => {
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-stream-dlq-depth',
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-resume-pdf-errors',

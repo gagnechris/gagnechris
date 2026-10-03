@@ -8,7 +8,11 @@ import {
 } from '../src/data/versioned-repository.js';
 import { assertCursorMatchesQuery, encodeCursor } from '../src/data/cursor.js';
 import { mapRouteError } from '../src/http.js';
-import { DataIntegrityError } from '../src/data/errors.js';
+import {
+  ConflictError,
+  DataIntegrityError,
+  PreconditionFailedError,
+} from '../src/data/errors.js';
 import { metrics } from '../src/observability.js';
 import { PostsRepository } from '../src/posts/repository.js';
 import { buildMetaItem } from '@gagnechris/data';
@@ -133,6 +137,19 @@ describe('correctness guards', () => {
       expect.anything(),
       1,
     );
+    spy.mockRestore();
+  });
+
+  it('mapRouteError counts 409 and 412 as WriteConflict (fails if removed)', () => {
+    const spy = vi.spyOn(metrics, 'addMetric');
+    expect(mapRouteError(new ConflictError('stale'))?.statusCode).toBe(409);
+    expect(
+      mapRouteError(new PreconditionFailedError('stale'))?.statusCode,
+    ).toBe(412);
+    const conflictCalls = spy.mock.calls.filter(
+      ([name]) => name === 'WriteConflict',
+    );
+    expect(conflictCalls).toHaveLength(2);
     spy.mockRestore();
   });
 

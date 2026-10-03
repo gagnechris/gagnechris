@@ -22,6 +22,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
 import { join } from 'node:path';
@@ -29,6 +30,7 @@ import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
+  POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
   ssmParameterName,
 } from '../config/constants.js';
@@ -298,6 +300,32 @@ export class ApiStack extends Stack {
         'Sync feed hit a change type with no registered adapter (500)',
       serviceName: API_SERVICE_NAME,
       metricName: 'SyncAdapterMissing',
+      alertsTopic,
+    });
+    // Notebook ops: a burst of 409/412s means autosave or sync is fighting
+    // itself (two devices, or a client bug), not a single stale tab.
+    metricAlarm(this, 'ApiWriteConflictSpike', {
+      alarmName: `gagnechris-${config.name}-api-write-conflict-spike`,
+      alarmDescription: 'API 409/412 write conflicts ≥ 20 in 15 minutes',
+      metric: new Metric({
+        namespace: POWERTOOLS_METRICS_NAMESPACE,
+        metricName: 'WriteConflict',
+        dimensionsMap: { service: API_SERVICE_NAME },
+        statistic: 'Sum',
+        period: Duration.minutes(15),
+      }),
+      threshold: 20,
+      alertsTopic,
+    });
+    metricAlarm(this, 'ApiLatencyP95', {
+      alarmName: `gagnechris-${config.name}-api-latency-p95`,
+      alarmDescription: 'API Gateway p95 latency ≥ 3 s for 15 minutes',
+      metric: this.httpApi.metricLatency({
+        period: Duration.minutes(5),
+        statistic: 'p95',
+      }),
+      threshold: 3000,
+      evaluationPeriods: 3,
       alertsTopic,
     });
     metricAlarm(this, 'ApiGateway5xx', {
