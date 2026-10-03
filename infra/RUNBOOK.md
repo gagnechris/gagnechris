@@ -69,6 +69,11 @@ Deploy order (CDK `addDependency` + props):
 
 Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM, not CloudFormation exports.
 
+**Removing a cross-stack reference:** The producer stack (for example Auth) deploys before the consumer (Api). If a single PR drops both the consumer's use and the producer's export, the producer tries to delete an export that is still imported. It then rolls back and blocks every later deploy (CHR-240, CHR-253). Do it in two deploys instead:
+
+1. Drop the consumer's use, but keep the export in the producer with `this.exportValue(<value>)`.
+2. Once `aws cloudformation list-imports --export-name <export>` reports no importers, remove the `exportValue` line.
+
 ### First-time / disaster-recovery bootstrap (two-pass)
 
 Site and Api each read an SSM parameter the other writes:
