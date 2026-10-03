@@ -1,6 +1,10 @@
-import { renderHook } from '@testing-library/react';
+import { EditorSelection } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { render, renderHook, waitFor } from '@testing-library/react';
+import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { VersionedEntityEditorOptions } from '@gagnechris/app-core';
+import MarkdownEditor from '../components/markdown/MarkdownEditor';
 import { useVersionedEntityEditor } from './useVersionedEntityEditor';
 
 vi.mock('react-router-dom', async () => {
@@ -128,26 +132,38 @@ describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
     cm.remove();
   });
 
-  test('⌘⏎ in the editor does not publish (shell skips; CM owns the key)', () => {
-    const cm = document.createElement('div');
-    cm.className = 'cm-editor';
-    const inner = document.createElement('div');
-    cm.appendChild(inner);
-    document.body.appendChild(cm);
+  test('⌘⏎ in the real MarkdownEditor neither publishes nor inserts a newline (CHR-178)', async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      createElement(MarkdownEditor, { value: 'hello', onChange }),
+    );
+    await waitFor(() => {
+      expect(container.querySelector('.cm-content')).toBeTruthy();
+    });
+    const view = EditorView.findFromDOM(
+      container.querySelector('.cm-content') as HTMLElement,
+    )!;
+    view.focus();
+    view.dispatch({ selection: EditorSelection.cursor(5) });
 
     renderHook(() => useVersionedEntityEditor(baseOptions));
 
-    const event = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      metaKey: true,
-      bubbles: true,
-      cancelable: true,
-    });
-    inner.dispatchEvent(event);
+    // CodeMirror's `Mod` is Ctrl outside macOS (jsdom); send both.
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }]) {
+      view.contentDOM.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          ...modifiers,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }
     expect(publishMock).not.toHaveBeenCalled();
-    // Shell must not preventDefault — MarkdownEditor consumes Mod-Enter (CHR-178).
-    expect(event.defaultPrevented).toBe(false);
-    cm.remove();
+    expect(view.state.doc.toString()).toBe('hello');
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test('⌘S saves when not busy', () => {

@@ -56,6 +56,23 @@ function typeSpace(view: EditorView) {
   );
 }
 
+/** Fire ⌘⏎ / Ctrl+Enter through CodeMirror's keymap (CHR-178). */
+function pressModEnter(
+  view: EditorView,
+  modifiers: { ctrlKey?: boolean; metaKey?: boolean },
+) {
+  const event = new KeyboardEvent('keydown', {
+    key: 'Enter',
+    code: 'Enter',
+    keyCode: 13,
+    ...modifiers,
+    bubbles: true,
+    cancelable: true,
+  });
+  view.contentDOM.dispatchEvent(event);
+  return event;
+}
+
 describe('MarkdownEditor scroll (CHR-111)', () => {
   let styleEl: HTMLStyleElement;
 
@@ -212,7 +229,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     );
   });
 
-  test('⌘⏎ does not insert a blank line (CHR-178)', async () => {
+  test('⌘⏎ / Ctrl+Enter does not insert a blank line (CHR-178)', async () => {
     const onChange = vi.fn();
     const { container } = render(
       <MarkdownEditor value="hello" onChange={onChange} />,
@@ -224,15 +241,14 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
       container.querySelector('.cm-content')!,
     )!;
     cmView.focus();
-    cmView.contentDOM.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        metaKey: true,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
+    cmView.dispatch({ selection: EditorSelection.cursor(5) });
+    // CodeMirror maps `Mod` to Meta on macOS and Ctrl elsewhere (jsdom is not
+    // macOS), so send both. A metaKey-only event never reaches `Mod-Enter`
+    // here, which made the previous version of this test pass vacuously.
+    const modEnter = pressModEnter(cmView, { ctrlKey: true });
+    pressModEnter(cmView, { metaKey: true });
+    // Handled (consumed) by our Mod-Enter binding, not insertBlankLine.
+    expect(modEnter.defaultPrevented).toBe(true);
     expect(cmView.state.doc.toString()).toBe('hello');
     expect(onChange).not.toHaveBeenCalled();
   });

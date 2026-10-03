@@ -157,3 +157,125 @@ describe('useVersionedDocEditor fake note (CHR-173)', () => {
     expect(result.current.dirty).toBe(false);
   });
 });
+
+describe('useVersionedDocEditor remote updates (CHR-178)', () => {
+  const setup = () => {
+    const store = new Map<string, FakeNote>([
+      ['n1', { id: 'n1', body: 'hello', version: 1 }],
+    ]);
+    let gate: Promise<void> | null = null;
+    const client = {} as ApiClient;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const key = ['notebook', 'notes', 'n1'] as const;
+    const noteResource = createVersionedResource<FakeNote, FakeNoteParams>({
+      queryKey: ({ id }) => ['notebook', 'notes', id] as const,
+      fetch: async (_c, { id }) => ({ ...store.get(id)! }),
+      update: async (_c, { id }, body) => {
+        if (gate) await gate;
+        const prev = store.get(id)!;
+        const next = {
+          ...prev,
+          body: String(body.body ?? prev.body),
+          version: prev.version + 1,
+        };
+        store.set(id, next);
+        return next;
+      },
+      setCache: (qc, entity) => {
+        qc.setQueryData(['notebook', 'notes', entity.id], entity);
+      },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(AppApiProvider, {
+        getClient: () => client,
+        children: createElement(QueryClientProvider, {
+          client: queryClient,
+          children,
+        }),
+      });
+    const { result } = renderHook(
+      () =>
+        useVersionedDocEditor({
+          resource: noteResource,
+          params: { id: 'n1' },
+          initialDraft: { body: '' },
+          toDraft: (n) => ({ body: n.body }),
+          getEntityId: (n) => n.id,
+          toPayload: (draft) => ({ body: draft.body }),
+          conflictMessage: 'Conflict — reload and try again.',
+          confirm: async () => true,
+        }),
+      { wrapper },
+    );
+    return {
+      result,
+      queryClient,
+      key,
+      setGate: (p: Promise<void> | null) => {
+        gate = p;
+      },
+    };
+  };
+
+  test('a clean editor adopts a newer remote version', async () => {
+    const { result, queryClient, key } = setup();
+    await waitUntil(() => !result.current.isLoading, 'hydrate');
+    expect(result.current.draft).toEqual({ body: 'hello' });
+
+    // Another device saved; we have no local edits.
+    act(() => {
+      queryClient.setQueryData(key, { id: 'n1', body: 'remote', version: 2 });
+    });
+    await waitUntil(
+      () => result.current.entity?.version === 2,
+      'cache update to render',
+    );
+    expect(result.current.draft).toEqual({ body: 'remote' });
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.saveError).toBeNull();
+    // Next save is bound to the adopted version, not the stale one.
+    expect(result.current.versionRef.current).toBe(2);
+  });
+
+  test('a refetch landing during our own PUT does not flash the conflict banner', async () => {
+    const { result, queryClient, key, setGate } = setup();
+    await waitUntil(() => !result.current.isLoading, 'hydrate');
+
+    let release!: () => void;
+    setGate(
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    act(() => {
+      result.current.updateDraft(() => ({ body: 'mine' }));
+    });
+    let saving!: Promise<unknown>;
+    act(() => {
+      saving = result.current.save();
+    });
+    await waitUntil(() => result.current.saveState === 'saving', 'saving');
+
+    // A refetch returns our own write (version 2) before onSaved runs.
+    act(() => {
+      queryClient.setQueryData(key, { id: 'n1', body: 'mine', version: 2 });
+    });
+    await waitUntil(
+      () => result.current.entity?.version === 2,
+      'cache update to render',
+    );
+    expect(result.current.saveState).toBe('saving');
+    expect(result.current.dirty).toBe(true);
+    expect(result.current.saveError).toBeNull();
+
+    await act(async () => {
+      release();
+      await saving;
+    });
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.draft).toEqual({ body: 'mine' });
+  });
+});
