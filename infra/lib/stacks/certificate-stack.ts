@@ -7,19 +7,20 @@ import {
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { APEX_DOMAIN } from '../config/constants.js';
+import { ADMIN_HOST, APEX_DOMAIN, NOTEBOOK_HOST } from '../config/constants.js';
 
 export interface CertificateStackProps extends StackProps {
   readonly config: EnvironmentConfig;
 }
 
 /**
- * Separate site and auth certs so changing one hostname never replaces the
- * other, which would break cross-stack exports.
+ * One cert per hostname group so changing one never replaces another, which
+ * would break cross-stack exports.
  */
 export class CertificateStack extends Stack {
   readonly certificate: ICertificate;
   readonly authCertificate: ICertificate;
+  readonly appHostsCertificate: ICertificate;
 
   constructor(scope: Construct, id: string, props: CertificateStackProps) {
     super(scope, id, props);
@@ -40,6 +41,12 @@ export class CertificateStack extends Stack {
       validation: CertificateValidation.fromDns(hostedZone),
     });
 
+    this.appHostsCertificate = new Certificate(this, 'AppHostsCertificate', {
+      domainName: ADMIN_HOST,
+      subjectAlternativeNames: [NOTEBOOK_HOST],
+      validation: CertificateValidation.fromDns(hostedZone),
+    });
+
     new CfnOutput(this, 'CertificateArn', {
       value: this.certificate.certificateArn,
       description:
@@ -50,6 +57,12 @@ export class CertificateStack extends Stack {
       value: this.authCertificate.certificateArn,
       description:
         'ACM certificate ARN (us-east-1) for Cognito auth.gagnechris.com.',
+    });
+
+    new CfnOutput(this, 'AppHostsCertificateArn', {
+      value: this.appHostsCertificate.certificateArn,
+      description:
+        'ACM certificate ARN (us-east-1) for CloudFront - admin and notebook hosts.',
     });
   }
 }

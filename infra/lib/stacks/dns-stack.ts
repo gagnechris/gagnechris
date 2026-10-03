@@ -12,7 +12,7 @@ import {
 } from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
-import { APEX_DOMAIN } from '../config/constants.js';
+import { ADMIN_HOST, APEX_DOMAIN, NOTEBOOK_HOST } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
 /** @deprecated Import from `../config/constants.js` instead. */
@@ -21,6 +21,8 @@ export { APEX_DOMAIN } from '../config/constants.js';
 export interface DnsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly distribution: IDistribution;
+  readonly adminDistribution: IDistribution;
+  readonly notebookDistribution: IDistribution;
   /** Tests only. Prod looks the zone up so nameservers are never replaced. */
   readonly hostedZone?: IHostedZone;
 }
@@ -73,6 +75,25 @@ export class DnsStack extends Stack {
       target: cfTarget,
       comment: 'www → CloudFront IPv6',
     });
+
+    for (const [id, host, distribution] of [
+      ['Admin', ADMIN_HOST, props.adminDistribution],
+      ['Notebook', NOTEBOOK_HOST, props.notebookDistribution],
+    ] as const) {
+      const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
+      new ARecord(this, `${id}A`, {
+        zone: this.hostedZone,
+        recordName: host,
+        target,
+        comment: `${host} → CloudFront`,
+      });
+      new AaaaRecord(this, `${id}Aaaa`, {
+        zone: this.hostedZone,
+        recordName: host,
+        target,
+        comment: `${host} → CloudFront IPv6`,
+      });
+    }
 
     new TxtRecord(this, 'ApexTxt', {
       zone: this.hostedZone,

@@ -51,25 +51,35 @@ import type { Construct } from 'constructs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { siteOrigins, ssmParameterName } from '../config/constants.js';
+import {
+  ADMIN_HOST,
+  NOTEBOOK_HOST,
+  siteOrigins,
+  ssmParameterName,
+} from '../config/constants.js';
+import { AppHost, distributionArn } from '../constructs/app-host.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface SiteStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly certificate: ICertificate;
+  /** admin. + notebook. */
+  readonly appHostsCertificate: ICertificate;
   readonly alertsTopic: ITopic;
 }
 
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
+  readonly adminHost: AppHost;
+  readonly notebookHost: AppHost;
   readonly blogSlugsKeyValueStoreArn: string;
 
   constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
 
-    const { config, certificate, alertsTopic } = props;
+    const { config, certificate, appHostsCertificate, alertsTopic } = props;
 
     const domainNames = [config.domainName, `www.${config.domainName}`];
 
@@ -125,7 +135,10 @@ export class SiteStack extends Stack {
       cors: [
         {
           allowedMethods: [HttpMethods.PUT, HttpMethods.GET, HttpMethods.HEAD],
-          allowedOrigins: siteOrigins(config.domainName),
+          allowedOrigins: [
+            ...siteOrigins(config.domainName),
+            `https://${ADMIN_HOST}`,
+          ],
           allowedHeaders: ['Content-Type', 'Content-Length'],
           exposedHeaders: ['ETag'],
           maxAge: 3600,
@@ -307,6 +320,24 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
+    // HTTP API id from SSM avoids Api→Site exports.
+    const apiBehavior = (): BehaviorOptions => ({
+      origin: new HttpOrigin(
+        `${StringParameter.valueForStringParameter(
+          this,
+          ssmParameterName(config.name, 'httpApiId'),
+        )}.execute-api.${Stack.of(this).region}.amazonaws.com`,
+        {
+          readTimeout: Duration.seconds(30),
+        },
+      ),
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      allowedMethods: AllowedMethods.ALLOW_ALL,
+      cachePolicy: CachePolicy.CACHING_DISABLED,
+      originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      responseHeadersPolicy: apiSecurityHeaders,
+    });
+
     const siteBehavior = (
       responseHeadersPolicy: ResponseHeadersPolicy,
     ): BehaviorOptions => ({
@@ -354,24 +385,7 @@ export class SiteStack extends Stack {
           cachePolicy: assetsCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
-        // HTTP API id from SSM avoids Api→Site exports.
-        '/api/*': {
-          origin: new HttpOrigin(
-            `${StringParameter.valueForStringParameter(
-              this,
-              ssmParameterName(config.name, 'httpApiId'),
-            )}.execute-api.${Stack.of(this).region}.amazonaws.com`,
-            {
-              readTimeout: Duration.seconds(30),
-            },
-          ),
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_ALL,
-          cachePolicy: CachePolicy.CACHING_DISABLED,
-          originRequestPolicy:
-            OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          responseHeadersPolicy: apiSecurityHeaders,
-        },
+        '/api/*': apiBehavior(),
         '/media/*': {
           origin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -386,6 +400,72 @@ export class SiteStack extends Stack {
       // /assets 403/404 into HTML. The viewer functions handle 404s instead.
     });
 
+    const appViewerRequestFn = new CloudFrontFunction(
+      this,
+      'AppViewerRequestFn',
+      {
+        functionName: `gagnechris-${config.name}-app-viewer-request`,
+        comment: 'SPA fallback for the admin and notebook hosts',
+        runtime: FunctionRuntime.JS_2_0,
+        code: FunctionCode.fromFile({
+          filePath: path.join(__dirname, '../cloudfront/app-viewer-request.js'),
+        }),
+      },
+    );
+
+    const appCsp = (connectSrc: string[]) =>
+      securityHeadersBehavior([
+        ...sharedCsp,
+        "script-src 'self'",
+        "img-src 'self' data:",
+        `connect-src ${["'self'", ...connectSrc].join(' ')}`,
+      ]);
+
+    const appHostCommon = {
+      config,
+      certificate: appHostsCertificate,
+      accessLogs,
+      alertsTopic,
+      viewerRequestFunction: appViewerRequestFn,
+      htmlCachePolicy,
+      assetsCachePolicy,
+    };
+
+    // In this stack, not its own, because /media/* reads the site bucket and
+    // the OAC SourceArn statement must live with that bucket's policy.
+    this.adminHost = new AppHost(this, 'AdminHost', {
+      ...appHostCommon,
+      appName: 'admin',
+      domainName: ADMIN_HOST,
+      securityHeadersBehavior: appCsp([cognitoOrigins, uploadOrigin]),
+      apiBehavior: apiBehavior(),
+      additionalBehaviors: (responseHeadersPolicy) => ({
+        '/media/*': {
+          origin: S3BucketOrigin.withOriginAccessControl(this.siteBucket, {
+            originAccessControl: oac,
+          }),
+          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+          cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+          compress: true,
+          cachePolicy: mediaCachePolicy,
+          responseHeadersPolicy,
+        },
+      }),
+      bucketParamKey: 'adminSiteBucketName',
+      distributionParamKey: 'adminDistributionId',
+    });
+
+    this.notebookHost = new AppHost(this, 'NotebookHost', {
+      ...appHostCommon,
+      appName: 'notebook',
+      domainName: NOTEBOOK_HOST,
+      securityHeadersBehavior: appCsp([cognitoOrigins]),
+      apiBehavior: apiBehavior(),
+      bucketParamKey: 'notebookSiteBucketName',
+      distributionParamKey: 'notebookDistributionId',
+    });
+
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
     this.siteBucket.addToResourcePolicy(
       new PolicyStatement({
@@ -395,7 +475,10 @@ export class SiteStack extends Stack {
         principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
         conditions: {
           StringEquals: {
-            'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${this.distribution.distributionId}`,
+            'AWS:SourceArn': [
+              distributionArn(this.distribution),
+              distributionArn(this.adminHost.distribution),
+            ],
           },
         },
       }),

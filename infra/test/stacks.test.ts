@@ -41,6 +41,7 @@ function siteTemplate(): Template {
     env: { account: config.account, region: config.region },
     config,
     certificate,
+    appHostsCertificate: certificate,
     alertsTopic,
   });
   applyStandardTags(site, config);
