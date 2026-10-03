@@ -10,6 +10,11 @@ export type PublishedPostsCatalog = {
   posts: Post[];
   /** Slugs whose PUBLISHED rows failed validation — preserve live pages. */
   corruptSlugs: string[];
+  /**
+   * Post ids whose PUBLISHED rows failed validation. Used to find their last
+   * published slug and feed entry in `blog/posts.json` (CHR-201).
+   */
+  corruptPostIds?: string[];
 };
 
 export type RebuildSiteSources = {
@@ -40,8 +45,16 @@ export type PublishTargetContext = {
   sources: RebuildSiteSources;
   /** Published posts (loaded once per rebuild when catalog is needed). */
   published: Post[];
-  /** Corrupt PUBLISHED post slugs — must not be deleted as orphans (CHR-160). */
+  /**
+   * Live post slugs missing from `published` (corrupt PUBLISHED rows, CHR-160;
+   * retained feed entries, CHR-201) — must not be deleted as orphans.
+   */
   corruptPostSlugs: ReadonlySet<string>;
+  /**
+   * Previous feed entries kept for live posts missing from `published`
+   * (CHR-201). Feeds only; their pages are never re-rendered.
+   */
+  retainedPosts: Post[];
 };
 
 export type PublishTargetRunResult = {

@@ -159,15 +159,42 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   };
 }
 
+/** PUBLISHED-row pk of a stream record (Keys first, then either image). */
+function streamPublishedPk(record: DynamoDBRecord): string | undefined {
+  for (const image of [
+    record.dynamodb?.Keys,
+    record.dynamodb?.NewImage,
+    record.dynamodb?.OldImage,
+  ]) {
+    if (!image) continue;
+    const item = unmarshall(
+      image as Parameters<typeof unmarshall>[0],
+    ) as StreamMeta;
+    if (item.sk !== SK_PUBLISHED) return undefined;
+    if (typeof item.pk === 'string') return item.pk;
+  }
+  return undefined;
+}
+
 /**
  * Unmarshalled PUBLISHED post NewImages from a stream batch. Used to merge
  * just-published posts into the catalog when GSI1 has not caught up (CHR-167).
+ *
+ * Only the last record per pk counts: a publish then unpublish in the same
+ * batch (INSERT then REMOVE) must not add the post back (CHR-201).
  */
 export function collectStreamPublishedPostItems(
   records: DynamoDBRecord[],
 ): unknown[] {
-  const items: unknown[] = [];
+  const lastByPk = new Map<string, DynamoDBRecord>();
   for (const record of records) {
+    const pk = streamPublishedPk(record);
+    if (pk) lastByPk.set(pk, record);
+  }
+
+  const items: unknown[] = [];
+  for (const record of lastByPk.values()) {
+    if (record.eventName === 'REMOVE') continue;
     const image = record.dynamodb?.NewImage;
     if (!image) continue;
     const item = unmarshall(
