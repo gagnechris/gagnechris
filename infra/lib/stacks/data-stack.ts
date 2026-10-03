@@ -19,7 +19,8 @@ import {
   Table,
   TableEncryption,
 } from 'aws-cdk-lib/aws-dynamodb';
-import { Schedule } from 'aws-cdk-lib/aws-events';
+import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import { SnsTopic } from 'aws-cdk-lib/aws-events-targets';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
@@ -99,6 +100,9 @@ export interface DataStackProps extends StackProps {
  * Single-table DynamoDB for Blog CMS posts and future Notebook entities.
  * Schema: `@gagnechris/data` {@link APP_TABLE}. Access patterns: docs/data-model.md
  */
+/** Rolling retention for AWS Backup recovery points (CHR-197). */
+export const BACKUP_RETENTION_DAYS = 7;
+
 export class DataStack extends Stack {
   readonly table: Table;
 
@@ -149,16 +153,17 @@ export class DataStack extends Stack {
 
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-    // AWS Backup beyond PITR (CHR-175): daily snapshots, 35-day retention,
-    // vault lock (governance window) so retention cannot be silently shortened.
+    // AWS Backup beyond PITR (CHR-175 / CHR-197): daily snapshots kept for a
+    // rolling 7 days. The vault lock is governance mode (no `changeableFor`):
+    // it blocks shortening retention or deleting recovery points early, but an
+    // admin can still change or remove it. Setting `changeableFor` would make
+    // it compliance mode, which becomes permanent once that window ends.
     const backupVault = new BackupVault(this, 'AppTableBackupVault', {
       backupVaultName: `gagnechris-${config.name}-app-table`,
       removalPolicy: RemovalPolicy.RETAIN,
       lockConfiguration: {
-        minRetention: Duration.days(7),
+        minRetention: Duration.days(BACKUP_RETENTION_DAYS),
         maxRetention: Duration.days(35),
-        // Governance: lock settings can still change for 3 days after enable.
-        changeableFor: Duration.days(3),
       },
     });
     NagSuppressions.addResourceSuppressions(backupVault, [
@@ -179,7 +184,7 @@ export class DataStack extends Stack {
             minute: '0',
             hour: '7',
           }),
-          deleteAfter: Duration.days(35),
+          deleteAfter: Duration.days(BACKUP_RETENTION_DAYS),
         }),
       ],
     });
@@ -202,6 +207,26 @@ export class DataStack extends Stack {
       ],
       true,
     );
+
+    // Failed, aborted, expired or partial backup/restore/copy jobs email the
+    // Guardrails topic (CHR-197).
+    new Rule(this, 'BackupJobFailureRule', {
+      ruleName: `gagnechris-${config.name}-backup-job-failures`,
+      description: 'AWS Backup job failed, aborted, expired or partial',
+      eventPattern: {
+        source: ['aws.backup'],
+        detailType: [
+          'Backup Job State Change',
+          'Restore Job State Change',
+          'Copy Job State Change',
+        ],
+        detail: {
+          state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+          backupVaultName: [backupVault.backupVaultName],
+        },
+      },
+      targets: [new SnsTopic(alertsTopic)],
+    });
 
     metricAlarm(this, 'AppTableSystemErrors', {
       alarmName: `gagnechris-${config.name}-dynamodb-system-errors`,

@@ -80,17 +80,34 @@ describe('stack Template assertions (CHR-136)', () => {
     });
 
     // CHR-175: AWS Backup plan selects the AppTable.
+    // CHR-197: governance lock (no ChangeableForDays → never permanent).
     template.hasResourceProperties('AWS::Backup::BackupVault', {
       BackupVaultName: 'gagnechris-prod-app-table',
-      LockConfiguration: Match.objectLike({
+      LockConfiguration: {
         MinRetentionDays: 7,
         MaxRetentionDays: 35,
-      }),
+      },
     });
     template.hasResourceProperties('AWS::Backup::BackupPlan', {
       BackupPlan: Match.objectLike({
         BackupPlanName: 'gagnechris-prod-app-table-daily',
+        BackupPlanRule: [
+          Match.objectLike({
+            RuleName: 'Daily',
+            Lifecycle: { DeleteAfterDays: 7 },
+          }),
+        ],
       }),
+    });
+    template.hasResourceProperties('AWS::Events::Rule', {
+      Name: 'gagnechris-prod-backup-job-failures',
+      EventPattern: Match.objectLike({
+        source: ['aws.backup'],
+        detail: Match.objectLike({
+          state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
+        }),
+      }),
+      Targets: [Match.objectLike({ Arn: Match.anyValue() })],
     });
     template.hasResourceProperties('AWS::Backup::BackupSelection', {
       BackupSelection: {
