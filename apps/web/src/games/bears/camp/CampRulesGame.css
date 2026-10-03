@@ -138,6 +138,31 @@
   cursor: default;
 }
 
+/*
+ * The site-wide button:hover recolors buttons and swaps their transform for a
+ * lift, which knocks these absolutely positioned pieces off their spot (and
+ * out from under the cursor, so they shake). Keep their own position and look.
+ */
+.camp-item:hover,
+.camp-bear:hover {
+  transform: translate(-50%, -50%);
+  box-shadow: none;
+}
+
+.camp-item:hover {
+  background-color: rgba(255, 255, 255, 0.75);
+}
+
+.camp-item--out:hover {
+  background-color: #fff8e6;
+  border-color: #8a6414;
+  box-shadow: 0 0 0 6px rgba(244, 185, 66, 0.25);
+}
+
+.camp-bear:hover {
+  background-color: transparent;
+}
+
 .camp-item:focus-visible,
 .camp-bear:focus-visible {
   outline: 3px solid #16191d;
@@ -325,6 +350,9 @@
 }
 
 .camp-link-btn:hover {
+  background-color: transparent;
+  box-shadow: none;
+  transform: none;
   text-decoration: underline;
 }
 
