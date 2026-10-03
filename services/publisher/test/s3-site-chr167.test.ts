@@ -414,6 +414,23 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
       await import('../src/viewer-request-slugs.js');
     const storage = memoryStorage();
     storage.objects.set(`blog/${liveSlug}/index.html`, '<html>old live</html>');
+    storage.objects.set(
+      'blog/posts.json',
+      JSON.stringify({
+        items: [
+          {
+            id: postId,
+            slug: liveSlug,
+            title: 'Old live title',
+            excerpt: 'old excerpt',
+            publishedAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            tags: [],
+            coverImage: null,
+          },
+        ],
+      }),
+    );
 
     await rebuildPublishedSite({ scope: feedsScope(), storage });
 
@@ -421,6 +438,149 @@ describe('CHR-167 publisher corrupt / GSI / quiet rebuild', () => {
       string[] | (() => Promise<string[]>);
     const slugs = typeof desired === 'function' ? await desired() : desired;
     expect(slugs).not.toContain('pending-rename');
+
+    // CHR-201: the last published slug (from posts.json) keeps its live page,
+    // KVS entry, and feed entries.
+    expect(slugs).toContain(liveSlug);
+    expect(storage.deletes).not.toContain(`blog/${liveSlug}/index.html`);
+    expect(await storage.read(`blog/${liveSlug}/index.html`)).toBe(
+      '<html>old live</html>',
+    );
+    const postsJson = JSON.parse(
+      (await storage.read('blog/posts.json')) ?? '{}',
+    ) as { items: Array<{ id: string; slug: string }> };
+    expect(postsJson.items).toEqual([
+      expect.objectContaining({ id: postId, slug: liveSlug }),
+    ]);
+    expect(await storage.read('rss.xml')).toContain(`/posts/${liveSlug}`);
+    expect(await storage.read('blog/index.html')).toContain('Old live title');
+  });
+
+  it('corrupt post keeps its previous rss, posts.json, and index entries', async () => {
+    const good = makePost('fine-post', '01FINE00000000000000000000');
+    const corrupt = makePost('keep-in-feeds', '01FEEDS0000000000000000000');
+    corrupt.publishedAt = '2026-02-01T00:00:00.000Z';
+
+    ddbSend.mockImplementation(
+      async (cmd: {
+        input?: {
+          IndexName?: string;
+          RequestItems?: Record<string, unknown>;
+        };
+      }) => {
+        if (cmd.input?.IndexName === 'gsi1') {
+          return { Items: [postMeta(good), postMeta(corrupt)] };
+        }
+        if (cmd.input?.RequestItems) {
+          const table = Object.keys(cmd.input.RequestItems)[0]!;
+          return {
+            Responses: {
+              [table]: [
+                postPublished(good),
+                // Missing title → corrupt.
+                postPublished(corrupt, { title: undefined }),
+              ],
+            },
+          };
+        }
+        return {};
+      },
+    );
+
+    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const storage = memoryStorage();
+    storage.objects.set(`blog/${corrupt.slug}/index.html`, '<html>live</html>');
+    storage.objects.set(
+      'blog/posts.json',
+      JSON.stringify({
+        items: [
+          {
+            id: corrupt.id,
+            slug: corrupt.slug,
+            title: 'Previously Published Title',
+            excerpt: 'prev',
+            publishedAt: corrupt.publishedAt,
+            updatedAt: corrupt.updatedAt,
+            tags: [],
+            coverImage: null,
+          },
+        ],
+      }),
+    );
+
+    await rebuildPublishedSite({ scope: feedsScope(), storage });
+
+    const postsJson = JSON.parse(
+      (await storage.read('blog/posts.json')) ?? '{}',
+    ) as { items: Array<{ slug: string; title: string }> };
+    // Newest first: the retained corrupt entry sorts by its publishedAt.
+    expect(postsJson.items.map((i) => i.slug)).toEqual([
+      corrupt.slug,
+      good.slug,
+    ]);
+    expect(postsJson.items[0]!.title).toBe('Previously Published Title');
+    const rss = (await storage.read('rss.xml')) ?? '';
+    expect(rss).toContain(`/posts/${corrupt.slug}`);
+    expect(rss).toContain('Previously Published Title');
+    expect(await storage.read('blog/index.html')).toContain(
+      'Previously Published Title',
+    );
+    // The page itself is not re-rendered from the feed entry.
+    expect(await storage.read(`blog/${corrupt.slug}/index.html`)).toBe(
+      '<html>live</html>',
+    );
+  });
+
+  it('getPublishedResume: corrupt row is corrupt (not missing), ConsistentRead', async () => {
+    ddbSend.mockResolvedValue({
+      Item: {
+        pk: 'RESUME',
+        sk: 'PUBLISHED',
+        entityType: 'resume',
+        status: 'published',
+        // Missing name / content → schema failure.
+      },
+    });
+    const { getPublishedResume } = await import('../src/s3-site.js');
+
+    await expect(getPublishedResume('test-table')).resolves.toEqual({
+      status: 'corrupt',
+    });
+    expect(addMetric).toHaveBeenCalledWith(
+      'DataIntegrityError',
+      expect.anything(),
+      1,
+    );
+    const get = ddbSend.mock.calls[0]![0] as {
+      input: { ConsistentRead?: boolean };
+    };
+    expect(get.input.ConsistentRead).toBe(true);
+  });
+
+  it('getPublishedHome: corrupt row is corrupt (not missing), ConsistentRead', async () => {
+    ddbSend.mockResolvedValue({
+      Item: {
+        pk: 'HOME',
+        sk: 'PUBLISHED',
+        entityType: 'home',
+        status: 'published',
+        // Missing name / title / about → schema failure.
+      },
+    });
+    const { getPublishedHome } = await import('../src/s3-site.js');
+
+    await expect(getPublishedHome('test-table')).resolves.toEqual({
+      status: 'corrupt',
+    });
+    expect(addMetric).toHaveBeenCalledWith(
+      'DataIntegrityError',
+      expect.anything(),
+      1,
+    );
+    const get = ddbSend.mock.calls[0]![0] as {
+      input: { ConsistentRead?: boolean };
+    };
+    expect(get.input.ConsistentRead).toBe(true);
   });
 
   it('quiet full rebuild: missing resume.pdf delete is not a change', async () => {

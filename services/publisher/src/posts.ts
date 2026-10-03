@@ -1,4 +1,8 @@
 import type { Post } from '@gagnechris/shared';
+import type { SiteStorage } from './storage.js';
+
+/** Feed list written by the posts-feeds target. */
+export const POSTS_JSON_KEY = 'blog/posts.json';
 
 export type PublishedListItem = {
   id: string;
@@ -21,5 +25,60 @@ export function toListItem(post: Post): PublishedListItem {
     updatedAt: post.updatedAt,
     tags: post.tags,
     coverImage: post.coverImage,
+  };
+}
+
+/** Newest first by publishedAt (falls back to updatedAt). */
+export function sortPostsNewestFirst<T extends Post>(posts: T[]): T[] {
+  return posts.sort((a, b) => {
+    const aTs = a.publishedAt ?? a.updatedAt;
+    const bTs = b.publishedAt ?? b.updatedAt;
+    return bTs.localeCompare(aTs);
+  });
+}
+
+/** Previously published feed entries; empty when missing or unreadable. */
+export async function readPublishedListItems(
+  storage: SiteStorage,
+): Promise<PublishedListItem[]> {
+  const raw = await storage.read(POSTS_JSON_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as { items?: unknown };
+    if (!Array.isArray(parsed.items)) return [];
+    return parsed.items.filter(
+      (item): item is PublishedListItem =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as PublishedListItem).id === 'string' &&
+        typeof (item as PublishedListItem).slug === 'string' &&
+        (item as PublishedListItem).slug !== '' &&
+        typeof (item as PublishedListItem).title === 'string' &&
+        typeof (item as PublishedListItem).updatedAt === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Feed-only Post from a previous list item (CHR-201). Feeds read only the
+ * list fields; the body is never rendered from this.
+ */
+export function listItemToFeedPost(item: PublishedListItem): Post {
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    excerpt: typeof item.excerpt === 'string' ? item.excerpt : '',
+    bodyMarkdown: '',
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    status: 'published',
+    publishedAt: item.publishedAt ?? null,
+    updatedAt: item.updatedAt,
+    coverImage: item.coverImage ?? null,
+    seo: null,
+    version: 0,
+    hasUnpublishedChanges: false,
   };
 }
