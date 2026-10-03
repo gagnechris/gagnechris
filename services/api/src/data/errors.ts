@@ -33,9 +33,13 @@ export class ConflictError extends Error {
       currentVersion?: number;
       current?: unknown;
       code?: ConflictCode;
+      cause?: unknown;
     },
   ) {
-    super(message);
+    super(
+      message,
+      opts?.cause === undefined ? undefined : { cause: opts.cause },
+    );
     this.name = 'ConflictError';
     this.currentVersion = opts?.currentVersion;
     this.current = opts?.current;

@@ -32,7 +32,7 @@ import {
   PRIMARY_CURSOR_KEYS,
 } from './cursor.js';
 import { throwCursorValidation } from './dynamo-errors.js';
-import { runDynamoWrite } from './dynamo-write.js';
+import { isTransactionConflict, runDynamoWrite } from './dynamo-write.js';
 import { cursorKeyOf, jsonByteLength } from './page-budget.js';
 import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
@@ -119,6 +119,16 @@ export type SyncEntityConfig<T extends VersionedEntity> = {
    */
   createPayloadHash: (entity: T) => string;
 };
+
+export const CREATE_TRANSACTION_CONFLICT_RETRIES = 4;
+
+/** Full jitter on 20, 40, 80, 160 ms so racing losers spread out. */
+function transactionConflictBackoffMs(attempt: number): number {
+  return Math.random() * 20 * 2 ** attempt;
+}
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export type UniqueClaimHook<T extends VersionedEntity> = {
   buildItems: (entity: T) => Array<{
@@ -407,7 +417,11 @@ export class VersionedRepository<
    * stored entity; the create claim keeps a deleted id from being reused
    * after the META row's TTL purge.
    */
-  async createIdempotent(entity: T, retried = false): Promise<T> {
+  async createIdempotent(
+    entity: T,
+    retried = false,
+    transactionConflicts = 0,
+  ): Promise<T> {
     const key = this.scope.keyOf(entity);
     const id = this.scope.idOf(entity);
     const label = this.config.conflictLabel;
@@ -415,6 +429,40 @@ export class VersionedRepository<
       return await this.create(entity);
     } catch (error) {
       const unique = this.config.uniqueClaim;
+      // Concurrent creates of one claim cancel each other with
+      // TransactionConflict on real DynamoDB (never on DynamoDB Local). Once
+      // the winner commits the loser can name it; until then, back off.
+      if (
+        error instanceof ConflictError &&
+        error.code === 'conflict' &&
+        isTransactionConflict(error.cause)
+      ) {
+        const holder = await unique?.resolveConflict?.(entity);
+        if (
+          unique &&
+          holder &&
+          this.scope.idOf(holder) !== id &&
+          !this.config.isDeleted?.(holder)
+        ) {
+          this.assertOwns(key, holder);
+          throw new ConflictError(
+            unique.conflictMessage ?? `Create conflict (${label})`,
+            {
+              code: unique.conflictCode,
+              currentVersion: holder.version,
+              current: holder,
+            },
+          );
+        }
+        if (transactionConflicts < CREATE_TRANSACTION_CONFLICT_RETRIES) {
+          await sleep(transactionConflictBackoffMs(transactionConflicts));
+          return this.createIdempotent(
+            entity,
+            retried,
+            transactionConflicts + 1,
+          );
+        }
+      }
       if (
         error instanceof ConflictError &&
         error.code !== 'conflict' &&
@@ -430,7 +478,7 @@ export class VersionedRepository<
             !retried
           ) {
             await unique.releaseStale(resolved);
-            return this.createIdempotent(entity, true);
+            return this.createIdempotent(entity, true, transactionConflicts);
           }
           // Return the winner so the client can merge rather than drop its write.
           throw new ConflictError(
@@ -446,7 +494,7 @@ export class VersionedRepository<
         if (!resolved) {
           if (!retried && unique.releaseOrphan) {
             await unique.releaseOrphan(entity);
-            return this.createIdempotent(entity, true);
+            return this.createIdempotent(entity, true, transactionConflicts);
           }
           throw error;
         }
@@ -466,16 +514,6 @@ export class VersionedRepository<
           throw new ConflictError(`${label} ${id} was deleted`, {
             code: 'deleted',
           });
-        }
-        // A transaction conflict with a concurrent create (not a failed
-        // condition) leaves nothing to compare against: retry once, which
-        // either wins or surfaces the claim holder.
-        if (
-          !retried &&
-          error instanceof ConflictError &&
-          error.code === 'conflict'
-        ) {
-          return this.createIdempotent(entity, true);
         }
         throw new ConflictError(`Create conflict (${label})`);
       }

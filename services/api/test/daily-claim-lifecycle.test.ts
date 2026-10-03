@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
@@ -6,6 +7,7 @@ import { dispatchRoutes, type RouteDef } from '../src/router.js';
 import { clearSyncEntities } from '../src/sync/registry.js';
 import { NotesRepository } from '../src/notes/repository.js';
 import { createNoteRoutes } from '../src/notes/handlers.js';
+import { CREATE_TRANSACTION_CONFLICT_RETRIES } from '../src/data/versioned-repository.js';
 
 const TABLE = 'gagnechris-daily-claim-test';
 const USER = 'user-daily-1';
@@ -221,5 +223,111 @@ describe('daily note claim lifecycle', () => {
       error: 'daily_taken',
       current: { id: D1, bodyMarkdown: 'winner' },
     });
+  });
+
+  /**
+   * Real DynamoDB cancels concurrent creates of one claim with
+   * TransactionConflict; the first `conflicts` writes by the loser fail that
+   * way, and `onConflict` lets the winner commit mid-race.
+   */
+  function contendedRoutes(
+    conflicts: number,
+    onConflict: (attempt: number, repo: NotesRepository) => Promise<void>,
+  ) {
+    const { doc } = createMemoryDoc();
+    const winnerRepo = new NotesRepository(
+      doc,
+      TABLE,
+      () => '2026-10-04T09:00:00.000Z',
+    );
+    let attempts = 0;
+    const contended = {
+      send: async (command: { constructor: { name: string } }) => {
+        if (
+          command.constructor.name === 'TransactWriteCommand' &&
+          attempts < conflicts
+        ) {
+          attempts += 1;
+          await onConflict(attempts, winnerRepo);
+          throw Object.assign(new Error('Transaction cancelled'), {
+            name: 'TransactionCanceledException',
+            CancellationReasons: [
+              { Code: 'None' },
+              { Code: 'None' },
+              { Code: 'TransactionConflict' },
+            ],
+          });
+        }
+        return doc.send(command as never);
+      },
+    } as unknown as DynamoDBDocumentClient;
+    const loserRepo = new NotesRepository(
+      contended,
+      TABLE,
+      () => '2026-10-04T09:00:00.000Z',
+    );
+    return {
+      routes: createNoteRoutes(loserRepo),
+      attempts: () => attempts,
+      winnerRepo,
+    };
+  }
+
+  const createWinner = (repo: NotesRepository) =>
+    repo.createDaily(USER, 'work', DAY, { id: D1, bodyMarkdown: 'winner' });
+
+  it('a loser that keeps hitting TransactionConflict gets daily_taken with the winner', async () => {
+    const { routes, attempts } = contendedRoutes(3, async (attempt, repo) => {
+      // The winner's transaction commits while the loser is backing off.
+      if (attempt === 2) await createWinner(repo);
+    });
+    const loser = await call(routes, 'PUT', DAILY_PATH, {
+      id: D2,
+      bodyMarkdown: 'loser',
+    });
+    expect(loser.status).toBe(409);
+    expect(loser.body).toMatchObject({
+      error: 'daily_taken',
+      currentVersion: 1,
+      current: { id: D1, bodyMarkdown: 'winner' },
+    });
+    expect(attempts()).toBe(2);
+  });
+
+  it('a TransactionConflict after the winner committed resolves to daily_taken at once', async () => {
+    const { routes, winnerRepo, attempts } = contendedRoutes(5, async () => {});
+    await createWinner(winnerRepo);
+    const loser = await call(routes, 'POST', '/api/notebook/notes', {
+      id: D2,
+      area: 'work',
+      type: 'daily',
+      date: DAY,
+      bodyMarkdown: 'loser',
+    });
+    expect(loser.status).toBe(409);
+    expect(loser.body).toMatchObject({
+      error: 'daily_taken',
+      current: { id: D1 },
+    });
+    expect(attempts()).toBe(1);
+  });
+
+  it('a TransactionConflict with no other writer retries and creates the note', async () => {
+    const { routes, attempts } = contendedRoutes(2, async () => {});
+    const created = await call(routes, 'PUT', DAILY_PATH, {
+      id: D2,
+      bodyMarkdown: 'mine',
+    });
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ id: D2, version: 1 });
+    expect(attempts()).toBe(2);
+  });
+
+  it('falls back to a plain conflict only once the retries run out', async () => {
+    const { routes, attempts } = contendedRoutes(100, async () => {});
+    const res = await call(routes, 'PUT', DAILY_PATH, { id: D2 });
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ error: 'conflict' });
+    expect(attempts()).toBe(1 + CREATE_TRANSACTION_CONFLICT_RETRIES);
   });
 });
