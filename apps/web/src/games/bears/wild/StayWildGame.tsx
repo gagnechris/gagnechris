@@ -50,6 +50,7 @@ import './StayWildGame.css';
 const GAME = 'wild';
 const MAX_FRAME_MS = 250;
 const EAT_TOAST_MS = 1_400;
+const HINT_TOAST_MS = 3_200;
 
 const CRUMB_COLOR: Readonly<Record<NaturalFoodKind, string>> = {
   greens: '#4f8a3a',
@@ -61,7 +62,12 @@ const CRUMB_COLOR: Readonly<Record<NaturalFoodKind, string>> = {
   apples: '#c2552d',
 };
 
-type EatToast = { id: number; text: string; tone: 'good' | 'bad' };
+type EatToast = { id: number; text: string; tone: 'good' | 'bad' | 'info' };
+
+const WARN_TEXT: Readonly<Record<'person' | 'dog', string>> = {
+  person: 'Camper ahead: wait until they look away, or take the high log.',
+  dog: 'Dog ahead: wait until it naps, or take the high log.',
+};
 
 const formatGain = (gain: number) =>
   Number.isInteger(gain) ? String(gain) : gain.toFixed(1);
@@ -86,6 +92,8 @@ function announce(event: WildEvent, state: WildState): string | null {
       return 'A camper clapped and shouted. Maple turned back.';
     case 'bark':
       return 'A dog barked. Maple turned back.';
+    case 'warn':
+      return WARN_TEXT[event.who];
     case 'car':
       return 'A car is coming. Maple waits at the edge of the road.';
     case 'level': {
@@ -190,6 +198,13 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
       for (const event of events) {
         const text = announce(event, s);
         if (text) setMessage(text);
+        if (event.type === 'warn') {
+          setEatToast({
+            id: performance.now(),
+            tone: 'info',
+            text: WARN_TEXT[event.who],
+          });
+        }
         if (event.type === 'eat' || event.type === 'campSnack') {
           const now = performance.now();
           const fx = effectsRef.current;
@@ -305,7 +320,10 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
 
   useEffect(() => {
     if (!eatToast) return;
-    const id = window.setTimeout(() => setEatToast(null), EAT_TOAST_MS);
+    const id = window.setTimeout(
+      () => setEatToast(null),
+      eatToast.tone === 'info' ? HINT_TOAST_MS : EAT_TOAST_MS,
+    );
     return () => window.clearTimeout(id);
   }, [eatToast]);
 
@@ -508,8 +526,9 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
                 </li>
                 <li>Sniff finds insects hidden under logs.</li>
                 <li>
-                  Campers clap and dogs bark to send her off. Wait for cars at
-                  the road.
+                  Campers clap and dogs bark to send her off. Slip past while
+                  they’re busy or napping, or take the high log around the
+                  campsite. Wait for cars at the road.
                 </li>
               </ul>
               <p className="wild-start__keys">

@@ -29,8 +29,16 @@ export type FoodSpot = {
 };
 
 export type CampFood = { id: string; kind: CampFoodKind; x: number };
-export type Person = { id: string; x: number };
-export type Dog = { id: string; x: number };
+/** Offsets stagger when each camper looks up and each dog wakes. */
+export type Person = { id: string; x: number; offsetMs?: number };
+export type Dog = { id: string; x: number; offsetMs?: number };
+
+/**
+ * A high fallen log Maple can walk along to skip a campsite. One-way: she can
+ * walk underneath and jump up through it, and only lands on it from above.
+ * `top` is its height above the ground.
+ */
+export type Platform = { x: number; w: number; top: number };
 export type Road = {
   id: string;
   x: number;
@@ -52,6 +60,7 @@ export type WildLevel = {
   length: number;
   timeMs: number;
   solids: Solid[];
+  platforms: Platform[];
   foods: FoodSpot[];
   camp: CampFood[];
   people: Person[];
@@ -138,6 +147,7 @@ export const WILD_LEVELS: readonly WildLevel[] = [
       { x: 2500, w: 150, h: 40, kind: 'log' },
       { x: 3900, w: 150, h: 40, kind: 'log' },
     ],
+    platforms: [{ x: 2620, w: 710, top: 150 }],
     foods: [
       ground('sp-g1', 'greens', 420),
       ground('sp-g2', 'greens', 760),
@@ -173,8 +183,10 @@ export const WILD_LEVELS: readonly WildLevel[] = [
     solids: [
       { x: 900, w: 150, h: 40, kind: 'log' },
       ...summerRocks,
+      { x: 2350, w: 150, h: 40, kind: 'log' },
       { x: 3500, w: 150, h: 40, kind: 'log' },
     ],
+    platforms: [{ x: 2470, w: 910, top: 150 }],
     foods: [
       ground('su-r1', 'roots', 520),
       ground('su-b1', 'berries', 700),
@@ -191,7 +203,7 @@ export const WILD_LEVELS: readonly WildLevel[] = [
     ],
     camp: [{ id: 'su-c1', kind: 'trash', x: 2750 }],
     people: [{ id: 'su-p1', x: 2950 }],
-    dogs: [{ id: 'su-d1', x: 3150 }],
+    dogs: [{ id: 'su-d1', x: 3150, offsetMs: 1_500 }],
     roads: [{ id: 'su-r1', x: 4400, w: 220, periodMs: 3_800, carMs: 1_400 }],
     decor: [
       { x: 600, kind: 'pine' },
@@ -209,8 +221,14 @@ export const WILD_LEVELS: readonly WildLevel[] = [
     timeMs: 45_000,
     solids: [
       { x: 1500, w: 150, h: 40, kind: 'log' },
+      { x: 2010, w: 140, h: 40, kind: 'log' },
       ...fallRocks,
+      { x: 3240, w: 140, h: 40, kind: 'log' },
       { x: 4000, w: 150, h: 40, kind: 'log' },
+    ],
+    platforms: [
+      { x: 2130, w: 660, top: 150 },
+      { x: 3360, w: 460, top: 150 },
     ],
     foods: [
       ground('fa-n1', 'beechnuts', 560),
@@ -221,8 +239,8 @@ export const WILD_LEVELS: readonly WildLevel[] = [
       ground('fa-o1', 'acorns', 1900),
       ground('fa-o2', 'acorns', 1980),
       onRock('fa-n4', 'beechnuts', fallRocks[0]!),
-      ground('fa-n5', 'beechnuts', 3300),
-      ground('fa-n6', 'beechnuts', 3380),
+      ground('fa-n5', 'beechnuts', 3110),
+      ground('fa-n6', 'beechnuts', 3170),
       ground('fa-i2', 'insects', 3940, true),
       ground('fa-a2', 'apples', 4500),
       ground('fa-o3', 'acorns', 4900),
@@ -231,8 +249,8 @@ export const WILD_LEVELS: readonly WildLevel[] = [
       { id: 'fa-c1', kind: 'cooler', x: 2350 },
       { id: 'fa-c2', kind: 'trash', x: 3700 },
     ],
-    people: [{ id: 'fa-p1', x: 2530 }],
-    dogs: [{ id: 'fa-d1', x: 3560 }],
+    people: [{ id: 'fa-p1', x: 2530, offsetMs: 800 }],
+    dogs: [{ id: 'fa-d1', x: 3560, offsetMs: 2_200 }],
     roads: [{ id: 'fa-r1', x: 4650, w: 220, periodMs: 3_400, carMs: 1_400 }],
     decor: [
       { x: 640, kind: 'beech' },
