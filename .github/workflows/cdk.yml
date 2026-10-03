@@ -24,6 +24,8 @@ env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
   ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL || 'ci-placeholder@example.com' }}
+  # Cognito admin-group member (CHR-195); empty → ALERTS_EMAIL.
+  ADMIN_USERNAME: ${{ vars.ADMIN_USERNAME }}
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
   VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
   VITE_COGNITO_AUTH_DOMAIN: auth.example.com

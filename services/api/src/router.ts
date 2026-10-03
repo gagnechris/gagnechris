@@ -174,6 +174,25 @@ export function pathRequiresAdminAuth(
   return false;
 }
 
+/** Cognito group every admin/notebook caller must belong to (CHR-195). */
+export const ADMIN_GROUP = 'admin';
+
+/**
+ * `cognito:groups` as a list. HTTP API JWT authorizers pass array claims as
+ * a bracketed string (`[admin other]`); arrays stringified by
+ * {@link claimsFromEvent} arrive comma-joined.
+ */
+export function claimGroups(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .trim()
+    .replace(/^\[/, '')
+    .replace(/\]$/, '')
+    .split(/[\s,]+/)
+    .map((group) => group.replace(/^"|"$/g, ''))
+    .filter(Boolean);
+}
+
 export function claimsFromEvent(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEventV2WithJWTAuthorizer,
 ): Record<string, string> | undefined {
@@ -271,6 +290,15 @@ async function invokeRoute(
     return json(401, {
       error: 'unauthorized',
       message: 'Missing JWT claims',
+    });
+  }
+  if (
+    route.auth === 'admin' &&
+    !claimGroups(ctx.claims?.['cognito:groups']).includes(ADMIN_GROUP)
+  ) {
+    return json(403, {
+      error: 'forbidden',
+      message: `Requires the ${ADMIN_GROUP} group`,
     });
   }
 

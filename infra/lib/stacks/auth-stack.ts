@@ -3,6 +3,8 @@ import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
   AccountRecovery,
   CfnManagedLoginBranding,
+  CfnUserPoolGroup,
+  CfnUserPoolUserToGroupAttachment,
   FeaturePlan,
   ManagedLoginVersion,
   Mfa,
@@ -26,9 +28,10 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
+  ADMIN_GROUP,
   APEX_DOMAIN,
   AUTH_DOMAIN as AUTH_DOMAIN_CONST,
-  DEV_ORIGINS,
+  DEV_ORIGIN,
   ssmParameterName,
 } from '../config/constants.js';
 
@@ -54,6 +57,8 @@ export class AuthStack extends Stack {
   readonly userPool: UserPool;
   readonly webClient: UserPoolClient;
   readonly iosClient: UserPoolClient;
+  /** Local Vite only; the API authorizer does not accept its tokens. */
+  readonly devClient: UserPoolClient;
   readonly domain: UserPoolDomain;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
@@ -115,11 +120,9 @@ export class AuthStack extends Stack {
       },
     ]);
 
-    const callbackUrls = [
-      `https://${APEX_DOMAIN}/auth/callback`,
-      `${DEV_ORIGINS[0]}/auth/callback`,
-    ];
-    const logoutUrls = [`https://${APEX_DOMAIN}/`, `${DEV_ORIGINS[0]}/`];
+    // Prod clients never trust localhost (CHR-195); local Vite uses devClient.
+    const callbackUrls = [`https://${APEX_DOMAIN}/auth/callback`];
+    const logoutUrls = [`https://${APEX_DOMAIN}/`];
 
     const clientCommon = {
       generateSecret: false,
@@ -157,6 +160,29 @@ export class AuthStack extends Stack {
       },
     });
 
+    this.devClient = this.userPool.addClient('DevClient', {
+      ...clientCommon,
+      userPoolClientName: 'dev-local',
+      oAuth: {
+        ...clientCommon.oAuth,
+        callbackUrls: [`${DEV_ORIGIN}/auth/callback`],
+        logoutUrls: [`${DEV_ORIGIN}/`],
+      },
+    });
+
+    // Admin and notebook routes require this group (CHR-195).
+    const adminGroup = new CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: ADMIN_GROUP,
+      description: 'Site owner: CMS and Notebook access',
+    });
+    new CfnUserPoolUserToGroupAttachment(this, 'AdminGroupMembership', {
+      userPoolId: this.userPool.userPoolId,
+      // Ref is the group name; it also orders the attachment after the group.
+      groupName: adminGroup.ref,
+      username: config.adminUsername,
+    });
+
     this.domain = this.userPool.addDomain('CustomDomain', {
       customDomain: {
         domainName: AUTH_DOMAIN,
@@ -174,6 +200,12 @@ export class AuthStack extends Stack {
     new CfnManagedLoginBranding(this, 'IosManagedLoginBranding', {
       userPoolId: this.userPool.userPoolId,
       clientId: this.iosClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
+    new CfnManagedLoginBranding(this, 'DevManagedLoginBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.devClient.userPoolClientId,
       useCognitoProvidedValues: true,
     });
 
@@ -211,6 +243,13 @@ export class AuthStack extends Stack {
       parameterName: ssmParameterName(config.name, 'cognitoIosClientId'),
       stringValue: this.iosClient.userPoolClientId,
       description: 'Cognito iOS app client ID (public, PKCE)',
+    });
+
+    new StringParameter(this, 'DevClientIdParam', {
+      parameterName: ssmParameterName(config.name, 'cognitoDevClientId'),
+      stringValue: this.devClient.userPoolClientId,
+      description:
+        'Cognito dev client ID (localhost only; not trusted by the API)',
     });
 
     new StringParameter(this, 'AuthDomainParam', {

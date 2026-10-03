@@ -25,6 +25,8 @@ const LOCAL_CLAIMS = {
   sub: 'local-dev-user',
   email: 'local@gagnechris.com',
   'cognito:username': 'local-admin',
+  // Same shape API Gateway passes array claims in (CHR-195).
+  'cognito:groups': '[admin]',
 };
 
 function readBody(req: IncomingMessage): Promise<Buffer> {

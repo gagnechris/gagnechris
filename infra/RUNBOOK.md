@@ -451,7 +451,14 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
-SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-auth-domain`.
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
+
+### Admin group and clients (CHR-195)
+
+- `/api/admin/*` and `/api/notebook/*` require the `admin` group in `cognito:groups`; any other pool user gets 403. CDK creates the group and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to it. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced.
+- After the first deploy, an ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
+- Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). Prod CORS (API + site bucket) has no localhost origins.
+- `dev-local` client: localhost:5173 callbacks only, for exercising managed login from local Vite. The API authorizer doesn't list it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools (CHR-180)
 
