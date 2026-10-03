@@ -5,4 +5,4 @@ services:
     image: amazon/dynamodb-local:2.5.2
     command: '-jar DynamoDBLocal.jar -sharedDb -inMemory'
     ports:
-      - '8000:8000'
+      - '${DYNAMODB_LOCAL_HOST_PORT:-8000}:8000'
