@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
@@ -67,6 +67,9 @@ describe('AdminLayout', () => {
   test('warns on unload only while unmounted editors still have saves queued', async () => {
     renderLayout();
     await screen.findByRole('navigation', { name: 'Admin' });
+    // The nav can be in the DOM a macrotask before React runs the effect
+    // that adds the listener; act() flushes pending effects.
+    await act(async () => {});
 
     const idle = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(idle);
