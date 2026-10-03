@@ -35,7 +35,7 @@ const health = defineRoute({
 const adminMe = defineRoute({
   method: 'GET',
   pattern: '/admin/me',
-  auth: 'admin',
+  auth: 'site-admin',
   metric: 'AdminMe',
   handler: async (ctx) => {
     const claims = ctx.claims!;

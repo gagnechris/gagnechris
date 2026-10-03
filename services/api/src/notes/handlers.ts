@@ -70,7 +70,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/notebook/notes',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'ListNotes',
       query: ListNotesQuerySchema,
       handler: async (ctx, { query }) => {
@@ -87,7 +87,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
     defineRoute({
       method: 'POST',
       pattern: '/notebook/notes',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'CreateNote',
       oversizedBody413: true,
       body: CreateNoteRequestSchema,
@@ -99,7 +99,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/notebook/notes/daily/:area/:date',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'GetDailyNote',
       params: DailyParams,
       handler: async (ctx, { params }) => {
@@ -118,7 +118,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
     defineRoute({
       method: 'PUT',
       pattern: '/notebook/notes/daily/:area/:date',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'UpsertDailyNote',
       oversizedBody413: true,
       params: DailyParams,
@@ -177,7 +177,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
     defineRoute({
       method: 'GET',
       pattern: '/notebook/notes/:id',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'GetNote',
       params: IdParams,
       handler: async (ctx, { params }) => {

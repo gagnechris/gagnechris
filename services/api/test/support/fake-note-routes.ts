@@ -49,7 +49,7 @@ export function createFakeNoteRoutes(
     defineRoute({
       method: 'POST',
       pattern: '/notebook/test-notes',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'CreateTestNote',
       body: z.object({
         id: UlidSchema,
@@ -68,7 +68,7 @@ export function createFakeNoteRoutes(
     defineRoute({
       method: 'GET',
       pattern: '/notebook/test-notes/:id',
-      auth: 'admin',
+      auth: 'notebook',
       metric: 'GetTestNote',
       params: IdParams,
       handler: async (ctx, { params }) => {

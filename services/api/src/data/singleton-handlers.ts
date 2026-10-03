@@ -28,7 +28,7 @@ export function createSingletonRoutes<T, TUpdate>(
     defineRoute({
       method: 'GET',
       pattern: base,
-      auth: 'admin',
+      auth: 'site-admin',
       metric: `Get_${base.replace(/\//g, '_')}`,
       handler: async () =>
         json(200, config.entitySchema.parse(await store().getOrCreate())),
@@ -36,7 +36,7 @@ export function createSingletonRoutes<T, TUpdate>(
     defineRoute({
       method: 'PUT',
       pattern: base,
-      auth: 'admin',
+      auth: 'site-admin',
       metric: `Put_${base.replace(/\//g, '_')}`,
       body: config.updateSchema,
       handler: async (_ctx, { body }) =>
@@ -45,7 +45,7 @@ export function createSingletonRoutes<T, TUpdate>(
     defineRoute({
       method: 'POST',
       pattern: `${base}/publish`,
-      auth: 'admin',
+      auth: 'site-admin',
       metric: `Publish_${base.replace(/\//g, '_')}`,
       body: ExpectedVersionRequestSchema,
       handler: async (_ctx, { body }) =>
@@ -57,7 +57,7 @@ export function createSingletonRoutes<T, TUpdate>(
     defineRoute({
       method: 'POST',
       pattern: `${base}/unpublish`,
-      auth: 'admin',
+      auth: 'site-admin',
       metric: `Unpublish_${base.replace(/\//g, '_')}`,
       body: ExpectedVersionRequestSchema,
       handler: async (_ctx, { body }) =>
@@ -69,7 +69,7 @@ export function createSingletonRoutes<T, TUpdate>(
     defineRoute({
       method: 'POST',
       pattern: `${base}/discard`,
-      auth: 'admin',
+      auth: 'site-admin',
       metric: `Discard_${base.replace(/\//g, '_')}`,
       body: ExpectedVersionRequestSchema,
       handler: async (_ctx, { body }) =>

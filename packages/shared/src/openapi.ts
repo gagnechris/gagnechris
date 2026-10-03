@@ -888,27 +888,58 @@ export function buildOpenApiDocument() {
   });
 
   const generator = new OpenApiGeneratorV3(registry.definitions);
-  return requireRequestBodies(
-    generator.generateDocument({
-      openapi: '3.0.3',
-      info: {
-        title: 'gagnechris API',
-        version: '0.3.0',
-        description:
-          'HTTP API for Blog CMS and Notebook admin. Same-origin via CloudFront /api/*. Shared DynamoDB single-table (docs/data-model.md).',
-      },
-      servers: [
-        { url: 'https://gagnechris.com', description: 'Production' },
-        {
-          url: 'http://localhost:8787',
-          description: 'Local API (services/api/local/server.ts)',
+  return addPrefixForbidden(
+    requireRequestBodies(
+      generator.generateDocument({
+        openapi: '3.0.3',
+        info: {
+          title: 'gagnechris API',
+          version: '0.3.0',
+          description:
+            'HTTP API for Blog CMS and Notebook admin. Same-origin via CloudFront /api/*. Shared DynamoDB single-table (docs/data-model.md).',
         },
-      ],
-    }),
+        servers: [
+          { url: 'https://gagnechris.com', description: 'Production' },
+          {
+            url: 'http://localhost:8787',
+            description: 'Local API (services/api/local/server.ts)',
+          },
+        ],
+      }),
+    ),
   );
 }
 
 type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>;
+
+export const PREFIX_FORBIDDEN_DESCRIPTIONS = {
+  '/api/admin':
+    'Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)',
+  '/api/notebook':
+    'Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)',
+} as const;
+
+/** The router applies the same 403 rule to every route under a prefix, so it is documented per prefix, not per route. */
+function addPrefixForbidden(doc: OpenApiDocument): OpenApiDocument {
+  for (const [path, pathItem] of Object.entries(doc.paths ?? {})) {
+    const prefix = Object.keys(PREFIX_FORBIDDEN_DESCRIPTIONS).find(
+      (p) => path === p || path.startsWith(`${p}/`),
+    ) as keyof typeof PREFIX_FORBIDDEN_DESCRIPTIONS | undefined;
+    if (!prefix) continue;
+    for (const [method, op] of Object.entries(pathItem)) {
+      if (!op || typeof op !== 'object' || !('responses' in op)) continue;
+      const unauthorized = op.responses['401'];
+      if (!unauthorized || '$ref' in unauthorized) {
+        throw new Error(`${method.toUpperCase()} ${path} has no inline 401`);
+      }
+      op.responses['403'] = {
+        ...unauthorized,
+        description: PREFIX_FORBIDDEN_DESCRIPTIONS[prefix],
+      };
+    }
+  }
+  return doc;
+}
 
 /**
  * Otherwise openapi-typescript makes `body` optional and a mutation called

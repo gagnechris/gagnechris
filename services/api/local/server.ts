@@ -1,5 +1,5 @@
-// Injects claims only when the matched route declares `auth: 'admin'`, so
-// public routes still exercise the missing-auth path.
+// Injects claims only when the matched route is protected, shaped for that
+// route's app, so public routes still exercise the missing-auth path.
 import { createServer, type IncomingMessage } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -10,9 +10,9 @@ import type {
 import { handler } from '../src/handler.js';
 import { isPublishRelevantAdminMutation } from '@gagnechris/data';
 import { rebuildPublishedSite } from '@gagnechris/publisher/s3-site';
-import { pathRequiresAdminAuth } from '../src/router.js';
+import { routeAuthForPath } from '../src/router.js';
 import { routes } from '../src/routes.js';
-import { localClaims } from './claims.js';
+import { applyLocalAuthEnv, localClaims } from './claims.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
 
@@ -44,7 +44,7 @@ function buildEvent(
     contentType.startsWith('image/') ||
     contentType.startsWith('application/octet-stream');
 
-  const injectClaims = pathRequiresAdminAuth(routes, url.pathname);
+  const auth = routeAuthForPath(routes, url.pathname);
 
   return {
     version: '2.0',
@@ -70,11 +70,11 @@ function buildEvent(
       stage: '$default',
       time: new Date().toISOString(),
       timeEpoch: Date.now(),
-      ...(injectClaims
+      ...(auth
         ? {
             authorizer: {
               jwt: {
-                claims: localClaims(headers.authorization),
+                claims: localClaims(headers.authorization, auth),
                 scopes: [],
               },
             },
@@ -122,6 +122,8 @@ async function maybeRebuild(method: string, path: string, status: number) {
 if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {
   throw new Error('Refusing to start local API against gagnechris-prod');
 }
+
+applyLocalAuthEnv();
 
 const server = createServer(async (req, res) => {
   try {

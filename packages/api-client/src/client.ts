@@ -13,7 +13,7 @@ export type CreateApiClientOptions = {
   baseUrl: string;
   getToken?: TokenProvider;
   /**
-   * Retries 403 too: a token minted before the user joined the admin group
+   * Retries 403 too: a token minted before the user joined a group
    * lacks the new `cognito:groups` until refreshed.
    */
   retryOnUnauthorized?: boolean;
