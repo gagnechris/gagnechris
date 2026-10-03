@@ -62,9 +62,9 @@ describe('api handler', () => {
     expect(headers['Access-Control-Allow-Origin']).toBeUndefined();
   });
 
-  it('handled 500 emits HandlerError with EMF namespace/service (CHR-168)', async () => {
+  it('handled 500 emits HandlerError with EMF namespace/service', async () => {
     // Powertools Logger/Metrics write through their own Console bound to
-    // process.stdout/stderr, so console.* spies never see their output (CHR-201).
+    // process.stdout/stderr, so console.* spies never see their output.
     const stdout: string[] = [];
     const stderr: string[] = [];
     const stdoutSpy = vi
@@ -134,7 +134,7 @@ describe('api handler', () => {
     expect(output).not.toMatch(/reserved key/i);
   });
 
-  it('response-schema ZodError returns 500 not 400 (CHR-168)', async () => {
+  it('response-schema ZodError returns 500 not 400', async () => {
     const dispatch = vi
       .spyOn(router, 'dispatchRoutes')
       .mockImplementation(async () => {
@@ -156,7 +156,7 @@ describe('api handler', () => {
     }
   });
 
-  describe('response headers (CHR-196)', () => {
+  describe('response headers', () => {
     const headersOf = (result: unknown) =>
       (result as { headers?: Record<string, string> }).headers ?? {};
 

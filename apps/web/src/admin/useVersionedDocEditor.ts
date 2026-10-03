@@ -5,10 +5,7 @@ import {
 import { browserRetrySignals } from './browserRetrySignals';
 import { useVersionedDocShell } from './useVersionedDocShell';
 
-/**
- * Web shell around app-core non-publishable editors: injects `window.confirm`
- * and wires leave guards + ⌘S via `useVersionedDocShell` (no ⌘⏎ publish).
- */
+/** For non-publishable docs: no ⌘⏎ publish. */
 export function useVersionedDocEditor<
   TEntity extends { version: number },
   TDraft,

@@ -1,4 +1,4 @@
-# Local E2E stack (CHR-75)
+# Local E2E stack
 
 Run the Blog CMS API + publisher against **DynamoDB Local** and a filesystem site root. No AWS profile, no `gagnechris-prod`, no CloudFront.
 
@@ -32,7 +32,7 @@ One terminal:
 npm run local:dev
 ```
 
-This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API and `/blog` → static origin (same as prod CloudFront Option B).
+This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API, and `/__site` and `/resume.pdf` → static origin (which applies the prod CloudFront viewer-request routing).
 
 Open `http://localhost:5173/admin`. After publish, **View live** / `/posts/<slug>` uses the Vite SPA (with HMR). `PostPage` loads publisher HTML via `/__site/posts/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
@@ -63,7 +63,7 @@ The publisher reads a pristine `_shell.html` template (never the home
 prerender in `index.html`) when building other pages. `npm run e2e:local`
 asserts both halves: `/` has the home prerender and `/posts/<slug>` does not.
 
-Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain available if you want to run pieces separately.
+Lower-level scripts (`local:up`, `local:api`, `local:site`, …) run the pieces separately.
 
 ### Safety
 
@@ -76,7 +76,7 @@ Lower-level scripts (`local:up`, `local:api`, `local:site`, …) remain availabl
 | `VITE_AUTH_MODE=local` | Fake session in Vite; **production `vite build` fails** if set     |
 | Lambda bundle          | Entry is only `services/api/src/handler.ts` — no auth bypass there |
 
-Prod admin still: `npm run dev:prod-api` (explicit + banner).
+Prod admin: `npm run dev:prod-api` (explicit + banner).
 
 ## Layout
 
@@ -92,4 +92,4 @@ Prod admin still: `npm run dev:prod-api` (explicit + banner).
 | `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request        |
 | `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored) |
 
-Publisher uses `SITE_STORAGE=filesystem` locally; prod Lambda still uses S3 + CloudFront invalidation.
+Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation.

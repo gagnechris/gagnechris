@@ -30,7 +30,6 @@ const TestProviders = ({ children, queryClient }: ProvidersProps) => {
   );
 };
 
-/** Wrap UI that already has its own router with an optional QueryClient. */
 export const QueryClientTestProvider = ({
   children,
   queryClient,

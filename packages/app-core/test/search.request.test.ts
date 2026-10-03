@@ -2,7 +2,7 @@ import { createApiClient } from '@gagnechris/api-client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { searchNotebook } from '../src/query/api.js';
 
-describe('notebook search request (CHR-196)', () => {
+describe('notebook search request', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });

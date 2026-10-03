@@ -24,7 +24,7 @@ type NoteItem = {
   createHash?: string;
 };
 
-describe('CHR-170 correctness guards', () => {
+describe('correctness guards', () => {
   it('assertCursorMatchesQuery rejects foreign partition / sort bound', () => {
     expect(() =>
       assertCursorMatchesQuery(
@@ -64,7 +64,7 @@ describe('CHR-170 correctness guards', () => {
     ).not.toThrow();
   });
 
-  it('getRawItem uses ConsistentRead so createHash is not dropped (CHR-170)', async () => {
+  it('getRawItem uses ConsistentRead so createHash is not dropped', async () => {
     const send = vi
       .fn()
       .mockResolvedValueOnce({
@@ -209,7 +209,7 @@ describe('CHR-170 correctness guards', () => {
   });
 });
 
-describe('CHR-170 ConsistentRead on publishable mutation pre-reads', () => {
+describe('ConsistentRead on publishable mutation pre-reads', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });

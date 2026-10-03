@@ -57,19 +57,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface SiteStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** ACM cert in us-east-1 covering apex and www. */
   readonly certificate: ICertificate;
-  /** Guardrails alerts topic for 5xx alarms. */
   readonly alertsTopic: ITopic;
 }
 
-/**
- * Private S3 origin + CloudFront (OAC, security headers, Option B path rewrite).
- */
 export class SiteStack extends Stack {
   readonly siteBucket: Bucket;
   readonly distribution: Distribution;
-  /** KVS ARN for published blog slugs (publisher UpdateKeys; CHR-115). */
   readonly blogSlugsKeyValueStoreArn: string;
 
   constructor(scope: Construct, id: string, props: SiteStackProps) {
@@ -120,7 +114,6 @@ export class SiteStack extends Stack {
       serverAccessLogsPrefix: 's3-site/',
       removalPolicy: config.statefulRemovalPolicy,
       autoDeleteObjects: config.statefulRemovalPolicy === RemovalPolicy.DESTROY,
-      // Expire noncurrent versions so versioning cannot grow unbound (CHR-175).
       lifecycleRules: [
         {
           id: 'ExpireNoncurrentVersions',
@@ -128,7 +121,7 @@ export class SiteStack extends Stack {
           noncurrentVersionExpiration: Duration.days(90),
         },
       ],
-      // Browser PUTs for admin media uploads (CHR-31).
+      // Browser PUTs for admin media uploads.
       cors: [
         {
           allowedMethods: [HttpMethods.PUT, HttpMethods.GET, HttpMethods.HEAD],
@@ -151,7 +144,7 @@ export class SiteStack extends Stack {
 
     const region = Stack.of(this).region;
     const cognitoOrigins = `https://auth.${config.domainName} https://cognito-idp.${region}.amazonaws.com`;
-    // Presigned media PUTs go to this bucket's regional host only (CHR-193).
+    // Presigned media PUTs go to this bucket's regional host only.
     const uploadOrigin = `https://${this.siteBucket.bucketRegionalDomainName}`;
     const sharedCsp = [
       "default-src 'self'",
@@ -194,14 +187,12 @@ export class SiteStack extends Stack {
         ...sharedCsp,
         "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
         "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
-        // Cognito: managed-login token endpoint + IdP APIs (admin Amplify auth).
         `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com ${cognitoOrigins} ${uploadOrigin}`,
       ]),
     });
 
-    // /admin and /auth documents: no inline script, no Google hosts, and only
-    // our API, Cognito and the media bucket for fetches (CHR-193). spa.html
-    // ships without the GA snippet so nothing here needs 'unsafe-inline'.
+    // spa.html ships without the GA snippet, so /admin and /auth need no
+    // 'unsafe-inline' and no Google hosts.
     const adminSecurityHeaders = new ResponseHeadersPolicy(
       this,
       'AdminSecurityHeaders',
@@ -217,9 +208,9 @@ export class SiteStack extends Stack {
       },
     );
 
-    // /api/* JSON (CHR-196). The Lambda sets these on its own responses; the
-    // edge adds them to the ones API Gateway generates itself (JWT authorizer
-    // 401/403, throttling 429). Cache-Control does not override the origin.
+    // The Lambda sets these itself; the edge covers responses API Gateway
+    // generates (JWT authorizer 401/403, throttling 429). Cache-Control does
+    // not override the origin.
     const apiSecurityHeaders = new ResponseHeadersPolicy(
       this,
       'ApiSecurityHeaders',
@@ -285,7 +276,6 @@ export class SiteStack extends Stack {
       }),
     });
 
-    // Long cache for Vite hashed assets under /assets/*
     const assetsCachePolicy = new CachePolicy(this, 'AssetsCachePolicy', {
       cachePolicyName: `gagnechris-${config.name}-assets`,
       comment: 'Immutable hashed assets',
@@ -296,7 +286,7 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
-    // Long cache for uploaded media under /media/* (unique keys; CHR-31).
+    // Media keys are unique per upload, so a long cache is safe.
     const mediaCachePolicy = new CachePolicy(this, 'MediaCachePolicy', {
       cachePolicyName: `gagnechris-${config.name}-media`,
       comment: 'Long cache for /media/* uploads',
@@ -307,7 +297,6 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
-    // Short TTL for HTML / SPA shell
     const htmlCachePolicy = new CachePolicy(this, 'HtmlCachePolicy', {
       cachePolicyName: `gagnechris-${config.name}-html`,
       comment: 'Short cache for HTML and SPA routes',
@@ -318,9 +307,6 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
-    // HTML/SPA behavior: viewer-request routes /admin|/auth to spa.html,
-    // unknowns to 404.html (CHR-102/115). Admin paths reuse it with the
-    // strict policy.
     const siteBehavior = (
       responseHeadersPolicy: ResponseHeadersPolicy,
     ): BehaviorOptions => ({
@@ -368,7 +354,7 @@ export class SiteStack extends Stack {
           cachePolicy: assetsCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
-        // HTTP API id from SSM (Api stack writes it). Avoids Api→Site exports.
+        // HTTP API id from SSM avoids Api→Site exports.
         '/api/*': {
           origin: new HttpOrigin(
             `${StringParameter.valueForStringParameter(
@@ -397,9 +383,7 @@ export class SiteStack extends Stack {
         },
       },
       // No distribution-wide errorResponses: they would rewrite /api and
-      // /assets 403/404 into HTML. Default-behavior viewer-request routes
-      // unknowns to /404.html (and /admin|/auth to /spa.html); viewer-response
-      // forces HTTP 404 for /404.html and replaces S3 XML errors with HTML.
+      // /assets 403/404 into HTML. The viewer functions handle 404s instead.
     });
 
     // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
@@ -452,7 +436,6 @@ export class SiteStack extends Stack {
     alarm.addAlarmAction(new SnsAction(alertsTopic));
     alarm.addOkAction(new SnsAction(alertsTopic));
 
-    // CI reads these for web deploy (no hard-coded bucket/distribution IDs).
     new StringParameter(this, 'SiteBucketParam', {
       parameterName: ssmParameterName(config.name, 'siteBucketName'),
       stringValue: this.siteBucket.bucketName,
@@ -471,8 +454,7 @@ export class SiteStack extends Stack {
     new StringParameter(this, 'BlogSlugsKvsArnParam', {
       parameterName: ssmParameterName(config.name, 'blogSlugsKvsArn'),
       stringValue: this.blogSlugsKeyValueStoreArn,
-      description:
-        'CloudFront KeyValueStore ARN for published blog slugs (CHR-115)',
+      description: 'CloudFront KeyValueStore ARN for published blog slugs',
     });
 
     new CfnOutput(this, 'SiteBucketName', {

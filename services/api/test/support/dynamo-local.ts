@@ -18,7 +18,7 @@ import { integrationDynamoEndpoint } from './dynamodb-ci-lifecycle.js';
 
 export const localDynamoEndpoint = integrationDynamoEndpoint();
 
-/** Integration tables must use this prefix so we never touch gagnechris-local. */
+/** Guarantees tests never touch gagnechris-local. */
 export const INTEGRATION_TABLE_PREFIX = 'gagnechris-it-';
 
 export function assertIntegrationTableName(tableName: string): void {
@@ -68,10 +68,7 @@ function createTableInput(tableName: string) {
   };
 }
 
-/**
- * Create an ephemeral per-file table. Ignores DATA_TABLE_NAME so sourcing
- * scripts/local/env.sh cannot point tests at gagnechris-local (CHR-151).
- */
+/** Ignores DATA_TABLE_NAME so sourcing scripts/local/env.sh cannot point tests at gagnechris-local. */
 export async function createEphemeralIntegrationTable(
   fileSlug: string,
 ): Promise<string> {
@@ -103,7 +100,6 @@ export async function deleteIntegrationTable(tableName: string): Promise<void> {
   );
 }
 
-/** True if the named table currently exists (for leave-local-untouched checks). */
 export async function tableExists(tableName: string): Promise<boolean> {
   const client = createLocalDynamoClient();
   try {
@@ -143,7 +139,6 @@ async function batchWriteAll(
   }
 }
 
-/** Delete all items in an integration table (per-test isolation). */
 export async function truncateTable(
   doc: DynamoDBDocumentClient,
   tableName: string,

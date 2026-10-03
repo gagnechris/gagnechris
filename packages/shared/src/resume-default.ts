@@ -1,10 +1,7 @@
 import type { Resume } from './schemas.js';
 import { SITE_AUTHOR_NAME } from './site-config.js';
 
-/**
- * Seed + fallback resume. Mirrors the pre-CMS `apps/web/src/pages/Resume.tsx`
- * copy so the public page never blanks before the first publish.
- */
+/** Fallback so the public page never blanks before the first publish. */
 export const DEFAULT_RESUME: Resume = {
   name: SITE_AUTHOR_NAME,
   pdfPath: '/resume.pdf',

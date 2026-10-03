@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Apply GitHub Environment protection from scripts/github-environments.json.
 # Requires gh auth with admin on the repo. Uses Python (jq may be x86-only).
 set -euo pipefail
 
@@ -124,7 +123,6 @@ for env in cfg["environments"]:
             f"  -> id={created.get('id')} name={created.get('name')} type={created.get('type')}"
         )
 
-    # Refresh and remove extras that are not in the desired set.
     for policy in list_branch_policies(name):
         key = (policy["name"], policy.get("type", "branch"))
         if key in desired_keys:

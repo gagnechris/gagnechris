@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { localToday } from './calendarDates';
 
 /**
- * Local `yyyy-mm-dd` that rolls over at midnight and when the tab comes back,
- * so pages left open overnight do not keep yesterday as "today" (CHR-189).
+ * Rolls over at midnight and when the tab comes back, so pages left open
+ * overnight do not keep yesterday as "today".
  */
 export function useLocalToday(): string {
   const [today, setToday] = useState(localToday);

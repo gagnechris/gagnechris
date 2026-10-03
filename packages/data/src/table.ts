@@ -1,7 +1,4 @@
-/**
- * Single-table DynamoDB schema shared by CDK DataStack and local bootstrap.
- * Add GSIs / key attributes here only — both consumers read this module.
- */
+/** Add GSIs / key attributes here only: CDK and the local bootstrap both read this module. */
 
 import { GSI1_NAME, GSI2_NAME, GSI3_NAME } from './keys.js';
 
@@ -19,15 +16,11 @@ export interface TableIndexDefinition {
   readonly partitionKey: TableKeyAttribute;
   readonly sortKey: TableKeyAttribute;
   readonly projectionType: DynamoProjectionType;
-  /**
-   * Non-key attributes copied into an `INCLUDE` index. Required (non-empty)
-   * for `INCLUDE`, and must be omitted for `ALL` / `KEYS_ONLY`.
-   */
+  /** Required (non-empty) for `INCLUDE`; must be omitted for `ALL` / `KEYS_ONLY`. */
   readonly nonKeyAttributes?: readonly string[];
 }
 
 export interface AppTableDefinition {
-  /** Suffix after `gagnechris-` (env name). */
   readonly namePrefix: 'gagnechris';
   readonly partitionKey: TableKeyAttribute;
   readonly sortKey: TableKeyAttribute;
@@ -66,7 +59,6 @@ export const APP_TABLE: AppTableDefinition = {
   ],
 };
 
-/** Attribute definitions required by the table keys + all GSIs (CreateTable). */
 export function appTableAttributeDefinitions(
   def: AppTableDefinition = APP_TABLE,
 ): ReadonlyArray<{
@@ -94,12 +86,9 @@ export function appTableName(envName: string): string {
 }
 
 /**
- * Offline baseline of GSIs last verified in production (names + key schema +
- * projection). Keep this independent of `APP_TABLE` so a PR can add one GSI
- * without bumping the baseline in the same change. After a successful
- * single-GSI deploy, bump this list to match `APP_TABLE` (see
- * `infra/RUNBOOK.md`). CI also compares `APP_TABLE` to the live table via
- * `scripts/check-deployed-gsi.ts` (CHR-174).
+ * Independent of `APP_TABLE` so a PR can add one GSI without bumping the
+ * baseline in the same change. Bump it after a successful single-GSI deploy
+ * (see `infra/RUNBOOK.md`).
  */
 export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
   {
@@ -122,11 +111,7 @@ export const LAST_DEPLOYED_GSIS: readonly TableIndexDefinition[] = [
   },
 ];
 
-/**
- * DynamoDB `Projection` for a GSI (CreateTable / UpdateTable shape). Both the
- * CDK DataStack and the local bootstrap use this so projection, including
- * `INCLUDE` non-key attributes, cannot diverge between local and prod (CHR-200).
- */
+/** Shared by CDK and the local bootstrap so projections cannot diverge between local and prod. */
 export function gsiProjection(gsi: TableIndexDefinition): {
   ProjectionType: DynamoProjectionType;
   NonKeyAttributes?: string[];
@@ -169,10 +154,8 @@ function gsiDefinitionEqual(
 }
 
 /**
- * Guard for Notebook / schema PRs: CloudFormation rejects updates that
- * create or delete more than one GSI on the same table in one deploy.
- * Key-schema or projection changes on an existing index count as delete +
- * create (two ops) and therefore always fail this check.
+ * CloudFormation rejects updates that create or delete more than one GSI in
+ * one deploy; changing an existing index's keys or projection counts as two.
  */
 export function assertSafeGsiUpdate(
   previous: readonly TableIndexDefinition[],
@@ -201,7 +184,6 @@ export function assertSafeGsiUpdate(
     }
   }
 
-  // A key-schema / projection change requires delete + recreate (two GSI ops).
   const changeCount = added.length + removed.length + redefined.length * 2;
 
   if (changeCount > 1) {
@@ -224,7 +206,6 @@ export function assertSafeGsiUpdate(
   }
 }
 
-/** Assert `APP_TABLE` is a safe single step from a previous GSI set. */
 export function assertAppTableGsiUpdateSafe(
   previous: readonly TableIndexDefinition[],
 ): void {
@@ -247,10 +228,6 @@ type DescribeGlobalSecondaryIndex = {
   Projection?: { ProjectionType?: string; NonKeyAttributes?: string[] };
 };
 
-/**
- * Map a `DescribeTable` (or equivalent) response into `TableIndexDefinition`s
- * for `assertSafeGsiUpdate`.
- */
 export function tableIndexesFromDescribeTable(input: {
   GlobalSecondaryIndexes?: DescribeGlobalSecondaryIndex[];
   AttributeDefinitions?: DescribeAttributeDefinition[];

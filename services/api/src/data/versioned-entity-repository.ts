@@ -1,7 +1,3 @@
-/**
- * Generic optimistic-concurrency entity store (CHR-129 / CHR-153 / CHR-161 / CHR-162).
- * Optional sync config writes sparse GSI keys on META (one row per entity).
- */
 import {
   GetCommand,
   PutCommand,
@@ -50,13 +46,7 @@ export type SyncEntityConfig<T extends VersionedEntity> = {
   /** Stable change-feed type (e.g. `fakeNote`). Stored as `entityType` on META. */
   changeType: string;
   userIdOf: (entity: T) => string;
-  /**
-   * Hash of create payload fields (`sha256:…` via `hashCreateFields`, never
-   * the fields themselves; CHR-192). Stored as `createHash` on the live META
-   * row only.
-   * Retries with the same id but a different hash throw ConflictError (409);
-   * matching hash is idempotent. Required when sync is configured (CHR-162).
-   */
+  /** Must hash via `hashCreateFields`, never store the fields themselves. */
   createPayloadHash: (entity: T) => string;
 };
 
@@ -65,26 +55,14 @@ export type VersionedEntityConfig<
   TItem extends Record<string, unknown>,
 > = {
   conflictLabel: string;
-  /** Primary key for a single entity. */
   keyForId: (id: string) => { pk: string; sk: string };
-  /** Extract domain id from an entity (for create Put). */
   idOf: (entity: T) => string;
   toEntity: (item: TItem) => T;
   toItem: (entity: T) => TItem;
-  /** True when the entity should be treated as soft-deleted / missing. */
   isDeleted?: (entity: T) => boolean;
   nowIso?: () => string;
-  /** Required cursor key names for queryPage (defaults to primary keys). */
   cursorKeyNames?: readonly string[];
-  /**
-   * Per-index cursor key sets (CHR-169). Used when `queryPage` omits
-   * `cursorKeyNames` but sets `IndexName`.
-   */
   cursorKeysByIndex?: Readonly<Record<string, readonly string[]>>;
-  /**
-   * When set, every write stamps `entityType` + `syncPk` / `syncSk` on the META
-   * item so the sparse sync GSI returns one latest row per entity (CHR-153).
-   */
   sync?: SyncEntityConfig<T>;
 };
 
@@ -127,11 +105,7 @@ export class VersionedEntityRepository<
     }
   }
 
-  /**
-   * Attach sparse sync GSI keys + entityType when sync is configured.
-   * `entityType` is always stamped from `sync.changeType` so feed adapters work
-   * even when `toItem` omits it (CHR-162).
-   */
+  /** `entityType` is always stamped so feed adapters work even when `toItem` omits it. */
   protected toStoredItem(
     entity: T,
     opts?: { ttl?: number; createHash?: string },
@@ -178,7 +152,6 @@ export class VersionedEntityRepository<
     return entity;
   }
 
-  /** Like get, but returns soft-deleted entities (for idempotent-create / conflicts). */
   async getIncludingDeleted(
     id: string,
     opts?: { consistentRead?: boolean },
@@ -201,7 +174,7 @@ export class VersionedEntityRepository<
       new GetCommand({
         TableName: this.tableName,
         Key: this.config.keyForId(id),
-        // Consistent so createHash is not dropped after a fresh create (CHR-170).
+        // Consistent so createHash is not dropped after a fresh create.
         ConsistentRead: true,
       }),
     );
@@ -297,11 +270,6 @@ export class VersionedEntityRepository<
     return entity;
   }
 
-  /**
-   * Client-ULID create: retries with the same id are idempotent when the
-   * stored createHash matches; mismatch, tombstone, or create-claim after
-   * META TTL purge → ConflictError (CHR-162).
-   */
   async createIdempotent(entity: T): Promise<T> {
     const id = this.config.idOf(entity);
     try {
@@ -342,8 +310,8 @@ export class VersionedEntityRepository<
         const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        // Legacy rows without createHash cannot prove create-time identity
-        // (hashing current state is unsafe after updates) — CHR-172.
+        // Rows without createHash cannot prove create-time identity
+        // (hashing current state is unsafe after updates).
         if (!createHashMatches(storedHash, requestHash)) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
@@ -359,10 +327,6 @@ export class VersionedEntityRepository<
     }
   }
 
-  /**
-   * Replace the item when `expectedVersion` matches. Throws ConflictError with
-   * `current` / `currentVersion` when the condition fails.
-   */
   async updateIfVersion(
     id: string,
     expectedVersion: number,
@@ -390,11 +354,7 @@ export class VersionedEntityRepository<
     return next;
   }
 
-  /**
-   * Soft-delete via caller-supplied tombstone entity (must bump version).
-   * Sets DynamoDB TTL when sync is configured so the GSI row expires with META.
-   * The create claim outlives the tombstone (CHR-162).
-   */
+  /** The tombstone must bump version. The create claim outlives the tombstone. */
   async softDelete(
     id: string,
     expectedVersion: number,
@@ -414,8 +374,8 @@ export class VersionedEntityRepository<
               {
                 Put: {
                   TableName: this.tableName,
-                  // No createHash on tombstones: a deleted id never replays
-                  // (CHR-192), so its content fingerprint isn't kept.
+                  // No createHash on tombstones: a deleted id never replays,
+                  // so its content fingerprint isn't kept.
                   Item: this.toStoredItem(tombstone, { ttl }),
                   ConditionExpression: VERSION_MATCH_CONDITION,
                   ExpressionAttributeValues:
@@ -452,20 +412,12 @@ export class VersionedEntityRepository<
     return tombstone;
   }
 
-  /**
-   * Query with opaque cursor pagination (follows LastEvaluatedKey).
-   * Prefer per-call `cursorKeyNames` (or `cursorKeysByIndex[IndexName]`) when
-   * a repository queries more than one index (CHR-169).
-   */
   async queryPage(
     input: Omit<QueryCommandInput, 'TableName' | 'ExclusiveStartKey'> & {
       cursor?: string;
       limit?: number;
-      /** Override cursor key set for this query (takes precedence). */
       cursorKeyNames?: readonly string[];
-      /** Bind cursor to the queried partition (CHR-170). */
       cursorPartition?: { attr: string; value: string };
-      /** Bind cursor sort key to a range lower bound (CHR-170). */
       cursorSortBound?: { attr: string; lowerBoundInclusive: string };
     },
   ): Promise<QueryPage<T>> {

@@ -4,7 +4,7 @@ import {
   INTEGRATION_TABLE_PREFIX,
 } from './support/dynamo-local.js';
 
-describe('assertIntegrationTableName (CHR-151)', () => {
+describe('assertIntegrationTableName', () => {
   it('allows gagnechris-it- prefix', () => {
     expect(() =>
       assertIntegrationTableName(`${INTEGRATION_TABLE_PREFIX}posts-abcd`),

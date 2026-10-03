@@ -7,9 +7,8 @@ import {
 } from '@gagnechris/app-core';
 
 /**
- * Complete / reopen with a visible error. The mutations already roll back
- * their optimistic patch; this surfaces why instead of failing silently and
- * leaving an unhandled rejection (CHR-189).
+ * The mutations already roll back their optimistic patch; this surfaces the
+ * error instead of leaving an unhandled rejection.
  */
 export function useTaskToggle() {
   const completeMutation = useCompleteTaskMutation();

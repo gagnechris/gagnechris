@@ -1,24 +1,9 @@
 #!/usr/bin/env bash
-# Manual PITR restore rehearsal into a tagged scratch table (CHR-175 / CHR-198).
-#
-# Run from the manual "PITR restore rehearsal" workflow (pitr-rehearsal.yml) or
-# break-glass locally. Never runs on deploy: the weekly AWS Backup restore test
-# (Data-prod) is the scheduled proof. Does not touch gagnechris-prod beyond
-# reading keys + version/updatedAt.
-#
-# - Restores to a FIXED point in time (the source's latest restorable time,
-#   captured once up front), not --use-latest-restorable-time.
-# - Verifies content that is stable at that time: a sample of rows whose
-#   updatedAt is older than the restore point (minus a margin) must exist in
-#   the restore with the same version/updatedAt, plus the singleton rows.
-#   No live-count compare, so autosaves / TTL expiry during the run cannot
-#   cause a false mismatch.
-# - Keeps the prod encryption (AWS-managed KMS key aws/dynamodb) via
-#   --sse-specification-override, and tags the scratch table.
-# - A trap deletes the scratch table on EVERY exit (success, failure, timeout,
-#   Ctrl-C) unless KEEP_TARGET=1. A kept table is tagged keep=true and the
-#   daily leftover check alarms on it after 24 h.
-# - Prints counts only: never item content or keys (Actions logs are visible).
+# Only reads keys + version/updatedAt from gagnechris-prod.
+# - Restores to a fixed point and only compares rows older than it, so writes
+#   or TTL expiry during the run cannot cause a false mismatch.
+# - A trap deletes the scratch table on every exit unless KEEP_TARGET=1.
+# - Prints counts only, never item content or keys: Actions logs are visible.
 #
 # Env: SOURCE_TABLE (gagnechris-prod), AWS_REGION (us-east-1), KEEP_TARGET (0),
 #      FORCE_FAIL (0; 1 fails after verification to prove cleanup),
@@ -126,7 +111,6 @@ echo "Region:        ${REGION}"
 [[ "${TARGET}" == "${SOURCE}-restore-"* ]] ||
   fail "target must be named ${SOURCE}-restore-*"
 
-# 1) Fix the restore point once, up front.
 LATEST="$(aws dynamodb describe-continuous-backups --table-name "${SOURCE}" \
   --region "${REGION}" \
   --query 'ContinuousBackupsDescription.PointInTimeRecoveryDescription.LatestRestorableDateTime' \
@@ -135,8 +119,6 @@ RESTORE_EPOCH="$(date -u -d "${LATEST}" +%s)" || fail "cannot parse ${LATEST}"
 RESTORE_AT="$(date -u -d "@${RESTORE_EPOCH}" +%Y-%m-%dT%H:%M:%SZ)"
 log "Restore point (fixed): ${RESTORE_AT}"
 
-# 2) Sample rows that have not changed since well before the restore point.
-#    Projection = keys + version/updatedAt only (no content).
 aws dynamodb scan --table-name "${SOURCE}" --region "${REGION}" \
   --projection-expression 'pk, sk, #v, updatedAt' \
   --expression-attribute-names '{"#v":"version"}' \
@@ -155,8 +137,7 @@ STABLE_TOTAL="$(jq --argjson cutoff "${CUTOFF}" '[.Items[]
 log "Stable rows at restore point: ${STABLE_TOTAL}; sampled ${SAMPLED}"
 [[ "${SAMPLED}" -gt 0 ]] || fail "no rows older than the restore point to sample"
 
-# 3) Restore with the prod encryption (SSEType=KMS without a key id = the
-#    AWS-managed aws/dynamodb key, matching TableEncryption.AWS_MANAGED).
+# SSEType=KMS without a key id is the AWS-managed key, matching prod.
 log "Starting PITR restore to ${RESTORE_AT}..."
 CREATED=1
 aws dynamodb restore-table-to-point-in-time \
@@ -177,7 +158,6 @@ done
 tag_target
 log "ACTIVE and tagged after $(($(date -u +%s) - START_EPOCH)) s."
 
-# 4) Verify.
 SSE="$(aws dynamodb describe-table --table-name "${TARGET}" --region "${REGION}" \
   --query 'Table.SSEDescription.SSEType' --output text)"
 [[ "${SSE}" == "KMS" ]] || fail "restored table SSEType=${SSE}, expected KMS"

@@ -1,0 +1,12 @@
+---
+description: Sparse code comments; docs state only what currently exists
+alwaysApply: true
+---
+
+# Comments and docs
+
+- Comment only a non-obvious why: a constraint, a workaround, a surprising decision, an invariant that is easy to break.
+- Never narrate what code does, restate a name, or explain the change being made.
+- No ticket ids, PR numbers, or history in comments, test names, or messages. History lives in git and Linear.
+- Docs (`README.md`, `docs/`, `infra/RUNBOOK.md`, `CLAUDE.md`) describe what exists now and how to use it. No stories, no "we decided", no ticket references, no changelogs or run logs.
+- When behavior changes, rewrite the affected doc text to the new current state instead of appending a note.

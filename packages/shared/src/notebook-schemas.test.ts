@@ -13,7 +13,7 @@ import {
 const ts = '2026-10-02T12:00:00.000Z';
 const ulid = '01ARZ3NDEKTSV4RRFFQ48JMCZC';
 
-describe('Notebook schemas (CHR-39)', () => {
+describe('Notebook schemas', () => {
   it('accepts a daily note and rejects missing date', () => {
     const daily = NoteSchema.parse({
       id: ulid,
@@ -79,7 +79,7 @@ describe('Notebook schemas (CHR-39)', () => {
     const task = CreateTaskRequestSchema.parse({
       id: ulid,
       area: 'work',
-      title: 'Ship CHR-39',
+      title: 'Ship it',
     });
     expect(task.priority).toBe('med');
     expect(task.status).toBe('todo');
@@ -89,7 +89,7 @@ describe('Notebook schemas (CHR-39)', () => {
         id: ulid,
         userId: 'sub-1',
         area: 'work',
-        title: 'Ship CHR-39',
+        title: 'Ship it',
         description: '',
         priority: 'high',
         status: 'in_progress',
@@ -141,11 +141,11 @@ describe('Notebook schemas (CHR-39)', () => {
     expect('entity' in taskChange).toBe(false);
   });
 
-  it('lists only production change types (no fakeNote fixture) (CHR-202)', () => {
+  it('lists only production change types (no fakeNote fixture)', () => {
     expect([...SYNC_CHANGE_TYPES].sort()).toEqual(['note', 'task']);
   });
 
-  it('rejects a live change without entity (CHR-202)', () => {
+  it('rejects a live change without entity', () => {
     const result = SyncChangeSchema.safeParse({
       type: 'task',
       id: ulid,
@@ -156,7 +156,7 @@ describe('Notebook schemas (CHR-39)', () => {
     expect(result.success).toBe(false);
   });
 
-  describe('decodeSyncChangesResponse (CHR-202)', () => {
+  describe('decodeSyncChangesResponse', () => {
     const tombstone = (type: string) => ({
       type,
       id: ulid,
@@ -175,9 +175,7 @@ describe('Notebook schemas (CHR-39)', () => {
         nextCursor: 'abc',
         nextSince: ts,
       };
-      // The strict schema rejects the whole page …
       expect(SyncChangesResponseSchema.safeParse(page).success).toBe(false);
-      // … the lenient decoder keeps the known changes.
       const decoded = decodeSyncChangesResponse(page);
       expect(decoded.changes.map((c) => c.type)).toEqual(['note', 'task']);
       expect(decoded.skippedTypes).toEqual(['calendarEvent']);

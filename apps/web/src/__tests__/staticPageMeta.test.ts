@@ -104,7 +104,7 @@ describe('staticPageMeta', () => {
     expect(html).toContain('<div id="root"></div>');
   });
 
-  it('strips GA from spa.html for the strict admin CSP (CHR-193)', () => {
+  it('strips GA from spa.html for the strict admin CSP', () => {
     const withGa = shell.replace(
       '</head>',
       `    <!-- Google Analytics -->
@@ -130,7 +130,7 @@ describe('staticPageMeta', () => {
     );
   });
 
-  it('adds installable PWA tags to spa.html (CHR-48)', () => {
+  it('adds installable PWA tags to spa.html', () => {
     const html = applySpaShellMeta(shell);
     expect(html).toContain('rel="manifest" href="/manifest.json"');
     expect(html).toContain('rel="apple-touch-icon"');

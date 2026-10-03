@@ -9,7 +9,6 @@ export type TodayTaskBuckets = {
   tomorrow: Task[];
 };
 
-/** Partition open/done tasks for the Today dashboard (CHR-45). */
 export function bucketTodayTasks(
   tasks: Task[],
   today: string,
@@ -59,7 +58,6 @@ export function bucketTodayTasks(
   };
 }
 
-/** Show tomorrow preview at/after 18:00 local time. */
 export function showTomorrowPreview(
   now: Date = new Date(),
   hour = 18,

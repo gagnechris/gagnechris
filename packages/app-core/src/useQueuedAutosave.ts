@@ -11,11 +11,9 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 export type AutosaveResult<TEntity> =
   { ok: true; entity: TEntity } | { ok: false; status: number; error?: string };
 
-/** Outcome of an explicit `save()` flush (CHR-124). */
 export type FlushResult = 'clean' | 'pending' | 'error';
 
 type Options<TDraft, TEntity> = {
-  /** Latest draft; also used as the debounce dependency. */
   draft: TDraft | null | undefined;
   dirty: boolean;
   setDirty: (dirty: boolean) => void;
@@ -27,46 +25,30 @@ type Options<TDraft, TEntity> = {
     draft: TDraft,
     version: number,
   ) => Promise<AutosaveResult<TEntity>>;
-  /** Update entity metadata (version, updatedAt, status, seo). Do not replace the draft here. */
+  /** Do not replace the draft here. */
   onSaved: (entity: TEntity) => void;
   conflictMessage: string;
-  /**
-   * Optional 409 `error` code → message map. Callers that care about a specific
-   * conflict (e.g. posts and `slug_taken`) pass the message; the generic hook
-   * has no post-specific defaults (CHR-173).
-   */
   conflictMessages?: Record<string, string>;
-  /** Defaults to `globalThis` timers (no `window`). */
   timers?: Timers;
-  /**
-   * Extra "try again now" signals for retryable failures (network / 5xx),
-   * e.g. the browser `online` event. Backoff retries run regardless (CHR-189).
-   */
   retrySignals?: RetrySignals;
-  /** Backoff schedule for retryable failures; last entry repeats. */
+  /** Last entry repeats. */
   retryDelaysMs?: readonly number[];
 };
 
-/** 413 from a notebook write: a field is over its limit (CHR-192). */
 export const TOO_LARGE_MESSAGE = `Too large to save: notes and descriptions are limited to ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB, titles to ${NOTEBOOK_TITLE_MAX_LENGTH} characters and tags to ${NOTEBOOK_TAGS_MAX}.`;
 
 const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 
-/** Network errors (0), rate limits and server errors are worth retrying. */
 const isRetryableStatus = (status: number) =>
   status === 0 || status === 408 || status === 429 || status >= 500;
 
 /**
- * Single-flight autosave with a latest-draft queue.
- * After a successful save, callers must not clobber the live draft with a
- * normalized server response — only update version / metadata via `onSaved`.
- * Dirty clears only when nothing was typed since the request that just finished.
+ * Callers must not clobber the live draft with the normalized server response;
+ * only update version / metadata via `onSaved`.
  *
- * Call `setAutosaveHeld(true)` while Publish/Unpublish/Discard is in flight so
- * debounced autosaves do not race the version bump (CHR-121). Explicit `save()`
- * still runs (flush-before-publish). When hold stops the loop with unsaved
- * edits, `save()` returns `'pending'` and `getLastSavedGen()` reflects only
- * what was actually persisted (CHR-124).
+ * Hold autosave while Publish/Unpublish/Discard is in flight so debounced saves
+ * do not race the version bump. Explicit `save()` still runs; if hold stops it
+ * with unsaved edits it returns `'pending'`.
  */
 export function useQueuedAutosave<TDraft, TEntity>({
   draft,
@@ -86,9 +68,8 @@ export function useQueuedAutosave<TDraft, TEntity>({
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  /** Re-render token so debounce effect cancels when hold flips. */
+  /** State, not a ref, so the debounce effect cancels when hold flips. */
   const [held, setHeld] = useState(false);
-  /** Consecutive retryable failures; > 0 arms the retry loop (CHR-189). */
   const [retryAttempt, setRetryAttempt] = useState(0);
 
   const draftRef = useRef(draft);
@@ -207,9 +188,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
             break;
           }
 
-          // Edits (or a queued save) landed while the request was in flight.
-          // If Publish holds autosave, stop looping — flush after hold lifts.
-          // Do not report clean: pending text is not on the server (CHR-124).
+          // Do not report clean: the pending text is not on the server.
           if (heldRef.current) {
             setDirtyRef.current(true);
             setSaveState('idle');
@@ -244,9 +223,8 @@ export function useQueuedAutosave<TDraft, TEntity>({
     return () => timersRef.current.clearTimeout(handle);
   }, [dirty, draft, debounceMs, enabled, save, held]);
 
-  // After a retryable failure the debounce above will not fire again until the
-  // next edit, so retry on a backoff timer and on any injected signal (e.g.
-  // back online) until a save lands or a non-retryable error stops it.
+  // The debounce will not fire again until the next edit, so retryable
+  // failures need their own loop.
   const retrySignalsRef = useRef(retrySignals);
   useEffect(() => {
     retrySignalsRef.current = retrySignals;
@@ -267,8 +245,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     };
   }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save]);
 
-  // Unmount (route change, editor re-keyed by date/area) cancels the debounce
-  // timer above; flush unsaved edits instead of dropping them (CHR-189).
+  // Unmount cancels the debounce timer; flush instead of dropping edits.
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -294,19 +271,11 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setSaveState,
     bumpEdit,
     setAutosaveHeld,
-    /**
-     * Resolve when any in-flight PUT chain finishes (or immediately if idle).
-     * Delete joins this so DELETE cannot race an autosave PUT (CHR-165).
-     */
+    /** Delete joins this so DELETE cannot race an autosave PUT. */
     awaitInFlight,
-    /** Current edit generation — use to detect typing during publish/unpublish. */
     getEditGen: () => editGenRef.current,
-    /** Edit generation of the draft last successfully persisted. */
     getLastSavedGen: () => lastSavedGenRef.current,
-    /**
-     * Treat the current draft as clean (e.g. after Discard restores server
-     * content) so a following Publish does not see a stale lastSavedGen.
-     */
+    /** After Discard restores server content, so a following Publish does not see a stale lastSavedGen. */
     markClean: () => {
       lastSavedGenRef.current = editGenRef.current;
       setDirtyRef.current(false);

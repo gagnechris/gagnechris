@@ -63,7 +63,7 @@ describe('publisher render', () => {
     expect(html).toContain('<strong>bold</strong>');
   });
 
-  it('publishes script-bearing markdown inert (CHR-193)', () => {
+  it('publishes script-bearing markdown inert', () => {
     const html = renderPostPage(
       shell,
       samplePost({
@@ -304,7 +304,7 @@ describe('publisher render', () => {
     expect(rss).toContain(
       '<link>https://gagnechris.com/posts/hello-world</link>',
     );
-    // Legacy guid so feed readers don't re-list existing posts (CHR-206).
+    // Old guid so feed readers don't re-list existing posts.
     expect(rss).toContain(
       '<guid>https://gagnechris.com/blog/hello-world</guid>',
     );

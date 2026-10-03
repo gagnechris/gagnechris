@@ -23,7 +23,6 @@ type NoteItem = {
   deleted?: boolean;
 };
 
-/** ~30 lines of config for a non-publishable versioned entity (CHR-129 AC). */
 function createNotesRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   return new VersionedEntityRepository<Note, NoteItem>(
     {
@@ -126,7 +125,7 @@ describe('VersionedEntityRepository (fake note)', () => {
     } satisfies Partial<ConflictError>);
   });
 
-  it('refuses to recreate a hard-deleted item (CHR-161)', async () => {
+  it('refuses to recreate a hard-deleted item', async () => {
     send
       // getRawItem (preserve createHash) — item already gone
       .mockResolvedValueOnce({})
@@ -303,7 +302,7 @@ describe('VersionedEntityRepository queryPage tombstones', () => {
   });
 });
 
-describe('VersionedEntityRepository queryPage corrupt rows (CHR-160)', () => {
+describe('VersionedEntityRepository queryPage corrupt rows', () => {
   it('skips corrupt rows in queryPage (Zod → DataIntegrityError)', async () => {
     const send = vi.fn().mockResolvedValueOnce({
       Items: [

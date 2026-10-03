@@ -1,7 +1,6 @@
 import type { Post } from '@gagnechris/shared';
 import type { SiteStorage } from './storage.js';
 
-/** Feed list written by the posts-feeds target. */
 export const POSTS_JSON_KEY = 'blog/posts.json';
 
 export type PublishedListItem = {
@@ -28,7 +27,6 @@ export function toListItem(post: Post): PublishedListItem {
   };
 }
 
-/** Newest first by publishedAt (falls back to updatedAt). */
 export function sortPostsNewestFirst<T extends Post>(posts: T[]): T[] {
   return posts.sort((a, b) => {
     const aTs = a.publishedAt ?? a.updatedAt;
@@ -37,7 +35,6 @@ export function sortPostsNewestFirst<T extends Post>(posts: T[]): T[] {
   });
 }
 
-/** Previously published feed entries; empty when missing or unreadable. */
 export async function readPublishedListItems(
   storage: SiteStorage,
 ): Promise<PublishedListItem[]> {
@@ -61,10 +58,7 @@ export async function readPublishedListItems(
   }
 }
 
-/**
- * Feed-only Post from a previous list item (CHR-201). Feeds read only the
- * list fields; the body is never rendered from this.
- */
+/** Feeds read only the list fields; the body is never rendered from this. */
 export function listItemToFeedPost(item: PublishedListItem): Post {
   return {
     id: item.id,

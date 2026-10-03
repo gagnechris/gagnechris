@@ -2,39 +2,25 @@ import createClient, { type Middleware } from 'openapi-fetch';
 import type { paths } from './schema.js';
 
 export type TokenProviderOptions = {
-  /** When true, the provider should refresh (e.g. Amplify forceRefresh). */
   forceRefresh?: boolean;
 };
 
-/**
- * Returns a bearer token for authenticated requests, or null/undefined to skip.
- * Callers may pass `{ forceRefresh: true }` after a 401 (CHR-177).
- */
 export type TokenProvider = (
   options?: TokenProviderOptions,
 ) => Promise<string | null | undefined>;
 
 export type CreateApiClientOptions = {
   baseUrl: string;
-  /** When omitted, no Authorization header is set (public routes). */
   getToken?: TokenProvider;
   /**
-   * When true (default if `getToken` is set), a single 401 or 403 response
-   * triggers `getToken({ forceRefresh: true })` and one retry of the same
-   * request. 403 covers a token minted before the user joined the admin
-   * group (CHR-195): a refreshed token carries the new `cognito:groups`.
+   * Retries 403 too: a token minted before the user joined the admin group
+   * lacks the new `cognito:groups` until refreshed.
    */
   retryOnUnauthorized?: boolean;
 };
 
-/** Marks a request that already consumed the single 401 retry. */
 const RETRIED_HEADER = 'x-gagnechris-auth-retried';
 
-/**
- * Typed OpenAPI client for `/api/*`.
- * Web passes an Amplify-based `getToken`; React Native will pass Amplify-RN /
- * SecureStore; public callers omit `getToken`.
- */
 export const createApiClient = ({
   baseUrl,
   getToken,
@@ -45,7 +31,7 @@ export const createApiClient = ({
     return client;
   }
 
-  /** Clones taken in onRequest so POST bodies survive a 401 retry. */
+  // Cloned up front so POST bodies survive a retry.
   const clones = new Map<string, globalThis.Request>();
 
   const authMiddleware: Middleware = {
@@ -76,7 +62,7 @@ export const createApiClient = ({
       } else {
         headers.delete('Authorization');
       }
-      // options.fetch is the raw fetch — set the refreshed token explicitly.
+      // options.fetch bypasses middleware, so the refreshed token is set here.
       return options.fetch(new globalThis.Request(clone, { headers }));
     },
   };

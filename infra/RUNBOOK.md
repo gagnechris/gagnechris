@@ -29,7 +29,7 @@ Concrete IDs and values: private note. Commands:
    `npx aws-cdk bootstrap aws://ACCOUNT/us-east-1 --profile gagnechris-admin`  
    (us-east-1 required for CloudFront certificates.)
 
-   **CHR-163:** `CiDeployRole-prod` attaches `DenyPrivateDataReads` (including `dynamodb:PartiQLSelect`) to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. Re-bootstrap is not required for that deny; deploying `CiDeployRole-prod` is enough. **CHR-196** extends the same deny to CloudWatch Logs reads (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`) and X-Ray traces (`BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`); use the SSO `ReadOnly` / `Admin` profiles, not CI roles, to read logs. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
+   `CiDeployRole-prod` attaches `DenyPrivateDataReads` to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. The deny covers DynamoDB data reads (including `dynamodb:PartiQLSelect`), CloudWatch Logs reads (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`) and X-Ray traces (`BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Deploying `CiDeployRole-prod` applies it; no re-bootstrap is needed. Use the SSO `ReadOnly` / `Admin` profiles, not CI roles, to read logs. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
 
 ## CDK app (`infra/`)
 
@@ -52,13 +52,13 @@ After deploying Guardrails:
 3. `aws budgets describe-budgets --account-id "$CDK_DEFAULT_ACCOUNT" --profile gagnechris-readonly`
 4. Optional test: `aws sns publish --topic-arn … --subject "gagnechris alert test" --message "ping" --profile gagnechris-admin` and confirm the email arrives.
 
-If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `AWS::SNS::Subscription` (deleted outside CFN), redeploy Guardrails so `AlertsEmailV2` recreates it (CHR-159), then confirm the email again.
+If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `AWS::SNS::Subscription` (deleted outside CFN), redeploy Guardrails so `AlertsEmailV2` recreates it, then confirm the email again.
 
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
-### Stack dependency order (CHR-149)
+### Stack dependency order
 
-Steady-state deploy order (CDK `addDependency` + props):
+Deploy order (CDK `addDependency` + props):
 
 1. Certificate, Guardrails, Data, Email, Auth
 2. **Api** (reads SSM `site-bucket-name`; writes `http-api-id`)
@@ -67,7 +67,7 @@ Steady-state deploy order (CDK `addDependency` + props):
 5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
 6. CiDeployRole
 
-Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM so Site exports used only by Publisher can drop after Publisher no longer imports them.
+Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM, not CloudFormation exports.
 
 ### First-time / disaster-recovery bootstrap (two-pass)
 
@@ -116,7 +116,7 @@ If CloudFormation reports a resource already exists, **do not delete it by hand*
 
 Ask before any production change that is not a stack deploy.
 
-## GitHub Actions OIDC (CHR-19 / CHR-137)
+## GitHub Actions OIDC
 
 CI assumes short-lived roles (no AWS keys in GitHub).
 
@@ -133,7 +133,7 @@ gh variable set AWS_DRIFT_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-
 gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 ```
 
-2. Lock the GitHub `prod` environment to `main` only (CHR-60):
+2. Lock the GitHub `prod` environment to `main` only:
 
 ```bash
 bash scripts/apply-github-environments.sh
@@ -146,37 +146,36 @@ bash scripts/apply-branch-protection.sh
 ```
 
 4. Workflows:
-   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs; includes `apps/web/**` and `packages/**`). Shared setup via `.github/actions/setup` (Node from `.nvmrc`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit (CHR-149).
+   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs; includes `apps/web/**` and `packages/**`). Shared setup via `.github/actions/setup` (Node from `.nvmrc`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit.
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR (`CDK diff (PR)`):** `cdk synth` + `check:deployed-gsi` (early warning) + `cdk diff` (diff role); sticky PR comment.
      - **main deploy:** runs only after CI succeeds (`workflow_run`), as two jobs that share concurrency group `cdk-prod` (never cancels in flight):
-       - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run** (CHR-200). `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`, CHR-149) to decide CDK and/or web. Docs-only merges skip deploy.
+       - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK and/or web, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy.
        - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all`, PITR rehearsal, `scripts/deploy-web.sh`, and finally writes `deployed-sha`. `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
-     - **Supply chain (CHR-200):** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write` installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
-     - **CHR-149 dry-run note (2026-10, no live cancel required):** the path-filter base is SSM `deployed-sha` (plan job, `Resolve deployed SHA`). A cancelled infra build therefore cannot strand changes behind a later docs-only commit — the next successful CI still diffs against the last deployed SHA. Live cancel→docs-only exercise left as optional ops confirmation.
-     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift` (separate from deploy, CHR-176: sharing `cdk-prod` would let a queued drift run cancel a pending deploy). Instead, `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran (CHR-200). SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
+     - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write` installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
+     - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
 Prod only — there is no staging environment.
 
-## DNS and TLS (CHR-21)
+## DNS and TLS
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → CloudFront aliases (CHR-25 cutover); iCloud TXT/DKIM in `Dns-prod` (MX/DMARC deferred — CHR-63).
+- Apex/www → CloudFront aliases; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
 - ACM site cert (`SiteCertificateV2`: apex + www) and a separate auth cert (`auth.gagnechris.com`) in **us-east-1** via `Certificate-prod` (DNS validation). Separate certs avoid replacing one when the other changes (cross-stack export).
-- DNSSEC deferred (cost).
+- DNSSEC is not enabled (cost).
 
 ```bash
 export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --require-approval never
 ```
 
-## Static site (CHR-22)
+## Static site
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Cognito auth domain / IdP + the site bucket for uploads; a stricter no-inline, no-GA policy on `/admin*` and `/auth*`, CHR-193), viewer-request function (www→apex with query string; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`; CHR-135), `/media/*`.
+- Security headers (HSTS, CSP for GA4 + Cognito auth domain / IdP + the site bucket for uploads; a stricter no-inline, no-GA policy on `/admin*` and `/auth*`), viewer-request function (www→apex with query string; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
 - Custom domains: apex and www only (no staging alias).
-- No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published slugs into a CloudFront KeyValueStore after each rebuild (CHR-115; function code stays CDK-managed).
+- No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published slugs into a CloudFront KeyValueStore after each rebuild (function code stays CDK-managed).
 - 5xx alarm publishes to the Guardrails alerts topic.
 
 ```bash
@@ -184,7 +183,7 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --require-approval never
 ```
 
-## Web deploy pipeline (CHR-23)
+## Web deploy pipeline
 
 On merge to `main`, after CDK deploy, CI builds `apps/web`, syncs to the Site bucket (SSM `/gagnechris/prod/site-bucket-name`), and invalidates CloudFront (`/gagnechris/prod/cloudfront-distribution-id`). **Prod only**.
 
@@ -196,30 +195,30 @@ Manual / local:
 AWS_PROFILE=gagnechris-admin npm run deploy:web
 ```
 
-## HTTP API (CHR-28 / CHR-30)
+## HTTP API
 
-`Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`; CHR-135). Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts CRUD uses the shared `Data-prod` table (`DATA_TABLE_NAME`); Notebook will share the same table with different key prefixes (`docs/data-model.md`).
+`Api-prod`: HTTP API + Lambda. CloudFront `/api/*` is defined on **Site-prod** (SSM `http-api-id`). Cognito JWT on `/api/admin/*` and `/api/notebook/*`. Posts and Notebook share the `Data-prod` table (`DATA_TABLE_NAME`) with different key prefixes (`docs/data-model.md`).
 
-Site depends on Api (CHR-149) so `/api` origin updates when the HttpApi is replaced. First-time bootstrap (circular SSM) is documented under **First-time / disaster-recovery bootstrap** above.
+Site depends on Api so `/api` origin updates when the HttpApi is replaced. First-time bootstrap (circular SSM) is documented under **First-time / disaster-recovery bootstrap** above.
 
 SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
-Privacy (CHR-196, details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply; a secret origin header is the follow-up).
+Privacy (details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply).
 
-Publisher IAM (CHR-196): read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`; `Query` on `gsi1` for `STATUS#published`). A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
+Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`; `Query` on `gsi1` for `STATUS#published`). A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
 
-## DynamoDB data plane (CHR-29)
+## DynamoDB data plane
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
 
 **GSI updates (one index per deploy):** CloudFormation allows at most one GSI create or delete per table update. Key-schema or projection changes count as delete + create and must be split across deploys.
 
-CI enforces this two ways (CHR-174):
+CI enforces this two ways:
 
 1. **Offline:** `assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)` runs in DataStack synth and in `@gagnechris/data` unit tests. `LAST_DEPLOYED_GSIS` is **independent** of `APP_TABLE` — a PR may add one GSI to `APP_TABLE` without bumping the baseline.
-2. **Live (deploy job, CHR-200; also PR CDK diff as an early warning):** `npm run check:deployed-gsi` `DescribeTable`s `gagnechris-prod` and compares to `APP_TABLE`, so bumping `LAST_DEPLOYED_GSIS` in the same PR cannot hide a multi-GSI change. The deploy job runs it right before `cdk deploy` and stops on failure, so the guard holds even though `CDK diff (PR)` is not a required check.
+2. **Live (deploy job; also PR CDK diff as an early warning):** `npm run check:deployed-gsi` `DescribeTable`s `gagnechris-prod` and compares to `APP_TABLE`, so bumping `LAST_DEPLOYED_GSIS` in the same PR cannot hide a multi-GSI change. The deploy job runs it right before `cdk deploy` and stops on failure, so the guard holds even though `CDK diff (PR)` is not a required check.
 
-**Projection:** `projectionType` (and, for `INCLUDE`, `nonKeyAttributes`) in `APP_TABLE` reach both `DataStack` and the local bootstrap through `gsiProjection()` (CHR-200). Before CHR-200 CDK ignored `projectionType` and always synthesized `ALL`; every deployed index is `ALL`, so the template did not change. `INCLUDE` without attributes, or attributes on `ALL` / `KEYS_ONLY`, fails synth. Changing `nonKeyAttributes` on an existing index counts as delete + create.
+**Projection:** `projectionType` (and, for `INCLUDE`, `nonKeyAttributes`) in `APP_TABLE` reach both `DataStack` and the local bootstrap through `gsiProjection()`. Every deployed index is `ALL`. `INCLUDE` without attributes, or attributes on `ALL` / `KEYS_ONLY`, fails synth. Changing `nonKeyAttributes` on an existing index counts as delete + create.
 
 ### Notebook / multi-index rollout
 
@@ -231,16 +230,16 @@ When Notebook (or any feature) needs several new indexes:
 4. Bump `LAST_DEPLOYED_GSIS` in `@gagnechris/data` to match `APP_TABLE` (names, key attributes, **and** projection) in a follow-up commit/PR (or the next index PR).
 5. Repeat for each additional index. Never add two GSIs (or delete one and create another) in the same deploy.
 
-**CHR-153 / CHR-163 / CHR-174:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` currently matches that set and lags `APP_TABLE` by at most one intentional create.
+Sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed. `LAST_DEPLOYED_GSIS` lags `APP_TABLE` by at most one intentional create.
 
-### Backups beyond PITR (CHR-175 / CHR-197)
+### Backups beyond PITR
 
 In addition to DynamoDB PITR (35 days, same-region):
 
-- **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`) and a rolling **7-day** retention (`DeleteAfterDays=7`); older recovery points expire automatically. Points created before CHR-197 keep their original 35-day lifecycle and age out on their own.
+- **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`) and a rolling **7-day** retention (`DeleteAfterDays=7`); older recovery points expire automatically.
 - **Vault lock is governance mode** (`MinRetentionDays=7`, `MaxRetentionDays=35`, no `ChangeableForDays`). It stops recovery points being deleted or shortened below 7 days, but an admin can change or remove it (`aws backup delete-backup-vault-lock-configuration`). Never add `changeableFor` in CDK: that is compliance mode, which becomes permanent when its window ends.
 - **Alerts:** EventBridge rule `gagnechris-prod-backup-job-failures` sends Backup, restore and copy jobs that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL` to the Guardrails topic. The pattern has one `$or` branch per event type because their fields differ: restore events report `status` (not `state`) and have only `backupVaultArn`, and copy events only have `sourceBackupVaultArn` / `destinationBackupVaultArn`.
-- **Off-site copy: not enabled (decision, CHR-197).** PITR and AWS Backup are both same-account, same-region. A cross-region copy needs DynamoDB "advanced backup features" (`aws backup update-region-settings`) plus a copy rule; for a table this small storage is pennies a month, but it adds a second vault to manage. Revisit if the Notebook grows or the account itself is the risk (then a separate backup account matters more than a second region).
+- **Off-site copy: not enabled.** PITR and AWS Backup are both same-account, same-region. A cross-region copy needs DynamoDB "advanced backup features" (`aws backup update-region-settings`) plus a copy rule; for a table this small storage is pennies a month, but it adds a second vault to manage. If the account itself is the risk, a separate backup account matters more than a second region.
 - Site bucket: versioning on + lifecycle expires noncurrent versions after 90 days.
 
 Verify (read-only):
@@ -254,9 +253,9 @@ AWS_PROFILE=gagnechris-readonly aws backup list-recovery-points-by-backup-vault 
   --query 'RecoveryPoints[].[CreationDate,Status,Lifecycle.DeleteAfterDays]'
 ```
 
-Restore proof no longer runs on deploys (CHR-198). It is the weekly restore testing plan below; manual restores use the PITR rehearsal workflow or the "Restore my notes" steps.
+Restore proof is the weekly restore testing plan below; manual restores use the PITR rehearsal workflow or the "Restore my notes" steps.
 
-### Weekly restore testing (CHR-198)
+### Weekly restore testing
 
 AWS Backup restore testing proves the vault restores, with content checks, and cleans up after itself. All of it is in `Data-prod` (`infra/lib/constructs/restore-testing.ts`):
 
@@ -265,7 +264,7 @@ AWS Backup restore testing proves the vault restores, with content checks, and c
 - **Validation window: 4 h.** AWS Backup deletes the restored table once a validation result is reported or the window closes, whatever the result. DynamoDB has no tag-on-restore, so AWS deletes it by its `awsbackup-restore-test-` name. Never rename it.
 - **Validator** Lambda `gagnechris-prod-restore-test` (`services/restore-test`), triggered by rule `gagnechris-prod-restore-test-validate` (`Restore Job State Change`, `COMPLETED`, this plan's ARN). It scans the restored table and checks that the table is not empty, every item has string `pk`/`sk`, every item with a known `entityType` (post, home, resume, contact, note, task, daily claim) parses with its `@gagnechris/data` schema and sits under the key the key builders produce, and `HOME#current`/`RESUME#current` META exist. It then calls `PutRestoreValidationResult` with `SUCCESSFUL` or `FAILED`. Messages and logs carry keys and schema paths only, never content. A scan error is reported as `FAILED` rather than retried. IAM: `dynamodb:Scan`/`DescribeTable` on `table/awsbackup-restore-test-*` only, `DescribeTable` on `table/gagnechris-*-restore-*`, `ListTables`, and `backup:PutRestoreValidationResult`. It has no access to `gagnechris-prod`.
 - **Leftover check:** the same Lambda runs daily at `12:00 UTC` (rule `gagnechris-prod-restore-leftover-check`). It lists tables named `awsbackup-restore-test-*`, `gagnechris-<env>-restore-*` or `gagnechris-<env>-backup-restore-*` that are older than 24 h, and emits `LeftoverRestoreTables`. Each one is a full copy of prod, private notes included, with no deletion protection, PITR, Backup or alarms.
-- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check failed), `gagnechris-prod-restore-leftover-tables` (scratch table older than 24 h; re-alerts daily until it is deleted), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which now also matches restore jobs of the restore testing plan that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL`.
+- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check failed), `gagnechris-prod-restore-leftover-tables` (scratch table older than 24 h; re-alerts daily until it is deleted), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which also matches restore jobs of the restore testing plan that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL`.
 
 Verify (read-only):
 
@@ -284,7 +283,7 @@ aws dynamodb list-tables \
 
 Run the leftover check on demand (needs `lambda:InvokeFunction`): `aws lambda invoke --function-name gagnechris-prod-restore-test --cli-binary-format raw-in-base64-out --payload '{"action":"leftoverCheck"}' /tmp/leftover.json && cat /tmp/leftover.json`.
 
-On `restore-validation-failed`: read the job's `ValidationStatusMessage` (command above) and the `/aws/lambda/gagnechris-prod-restore-test` logs. The scratch table is already being deleted. Fix the data or the validator, and record the outcome in the rehearsal log. On `restore-leftover-tables`: check the table's tags (`purpose`, `created-by`), then `aws dynamodb delete-table --table-name <name>` (admin).
+On `restore-validation-failed`: read the job's `ValidationStatusMessage` (command above) and the `/aws/lambda/gagnechris-prod-restore-test` logs. The scratch table is already being deleted. Fix the data or the validator, and record the outcome in the Linear ticket. On `restore-leftover-tables`: check the table's tags (`purpose`, `created-by`), then `aws dynamodb delete-table --table-name <name>` (admin).
 
 ### Manual PITR rehearsal (scratch table)
 
@@ -296,7 +295,7 @@ Actions → **PITR restore rehearsal** (`pitr-rehearsal.yml`; manual only, one r
 - A `trap` deletes the scratch table on **every** exit (success, mismatch, ACTIVE timeout, cancel), waiting for `ACTIVE` first because a restoring table cannot be deleted. With `keep_target=1` the table is kept and tagged `keep=true`, and the leftover alarm fires after 24 h. Delete it by hand.
 - `force_failure=1` fails after verification, to prove the cleanup.
 
-It still uses the deploy role. A least-privilege rehearsal role is a follow-up.
+It runs with the deploy role.
 
 ### Restore my notes (item-level copy-back)
 
@@ -354,7 +353,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
    | `skip-source-deleted` | Already deleted at the restore point; pick an earlier `AT`                                                             |
    | warning on a task     | Its linked note will not be live; restore the note too (`--ids`)                                                       |
 
-4. **Apply:** re-run with `--apply` (admin profile). Each row is one transaction: the META row, rebuilt with the shared builders (list GSIs, sync `syncSk` at the copy-back time, `createHash` kept and hashed if it is a pre-CHR-192 plaintext value, no `ttl`), plus the owner create claim and, for daily notes, the day claim when it is free. Every write is conditional on the live version read during the plan, so an edit made in between shows as `conflict` (exit 2) and is never overwritten; re-run the dry run. The script refuses any target other than `gagnechris-prod` / `gagnechris-local`, a source equal to the target, and a live table as the source.
+4. **Apply:** re-run with `--apply` (admin profile). Each row is one transaction: the META row, rebuilt with the shared builders (list GSIs, sync `syncSk` at the copy-back time, `createHash` kept and hashed if it is a plaintext value, no `ttl`), plus the owner create claim and, for daily notes, the day claim when it is free. Every write is conditional on the live version read during the plan, so an edit made in between shows as `conflict` (exit 2) and is never overwritten; re-run the dry run. The script refuses any target other than `gagnechris-prod` / `gagnechris-local`, a source equal to the target, and a live table as the source.
 
 5. **Check** the notes in the app (clients pick them up on the next sync poll). Then **delete the scratch table** and confirm nothing is left:
 
@@ -364,7 +363,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
      --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"   # []
    ```
 
-Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integration.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the log below.
+Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integration.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the Linear ticket.
 
 ### Full-table disaster recovery (stop and ask Chris first)
 
@@ -372,7 +371,7 @@ Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integ
 
 **Recover into the CDK-managed table instead of swapping it:**
 
-1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it.
+1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it in the Linear ticket.
 2. Restore a scratch copy from before the damage (step 2 above).
 3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
 4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `HOME#`, `RESUME#`, `CONTACT#`) have no versioned clients, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
@@ -393,7 +392,7 @@ Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integ
 
 If the table itself is gone (only possible after someone removed deletion protection), restore the PITR or vault backup as a scratch table, then re-create `gagnechris-prod` through CDK, not by restoring under the live name. The stack's state, stream export and alarms must come from CloudFormation; see **Adopting existing resources (`cdk import`)** and plan it with Chris. Then copy back as above. Neither full-table path has been rehearsed in prod.
 
-### Notebook human export (CHR-47)
+### Notebook human export
 
 Distinct from PITR / AWS Backup: the admin Notebook chrome **Export** button downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` while signed in.
 
@@ -407,29 +406,9 @@ Archive layout:
 
 **Do not use this for:** restoring the DynamoDB table. There is no import-from-export path that rebuilds `gagnechris-prod`. Table recovery is a scratch restore plus copy-back (**Restore my notes** / **Full-table disaster recovery** above).
 
-Optional later (not required for core Notebook): scheduled weekly markdown/JSON dump to a versioned S3 prefix under the reserved `notebook/*` site-bucket exclude.
+### createHash migration
 
-#### Restore rehearsal log
-
-Weekly restore tests are recorded by AWS Backup (`list-restore-jobs` above). Log manual PITR rehearsals, vault restores and copy-backs here.
-
-| Date (UTC) | Operator       | Source count | Restored table                          | Restored count | Duration | Notes                                                                                         |
-| ---------- | -------------- | ------------ | --------------------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------- |
-| 2026-10-02 | CI             | 14           | gagnechris-prod-restore-20261002130416  | 14             | 237s     | [Actions run 37010497085](https://github.com/gagnechris/gagnechris/actions/runs/37010497085)  |
-| 2026-10-03 | Chris (Claude) | 17           | gagnechris-prod-backup-restore-20261003 | 17             | 338s     | AWS Backup, restore job 74890aff-107b-4a9d-aa1b-c9d519afa04f; scratch table deleted (CHR-197) |
-
-**CHR-162 cleanup (optional, one-off):** pre-CHR-153 append-only ledger rows (`pk=SYNC#<userId>`, `sk=TS#…`) and spike `FIXTURE#…` META items may still exist in prod. They are harmless — the sparse GSI3 only returns items that have `syncPk`/`syncSk` — but can be deleted with a targeted scan/batch-write if desired:
-
-```bash
-# Inspect only (readonly). Adjust filter as needed; do not run deletes without review.
-AWS_PROFILE=gagnechris-readonly aws dynamodb scan \
-  --table-name gagnechris-prod --region us-east-1 \
-  --filter-expression 'begins_with(pk, :sync) OR begins_with(pk, :fix)' \
-  --expression-attribute-values '{":sync":{"S":"SYNC#"},":fix":{"S":"FIXTURE#"}}' \
-  --max-items 25
-```
-
-**CHR-192 createHash migration (one-off, after the CHR-192 deploy):** rows written before CHR-192 hold plaintext note/task text in `createHash`. `scripts/migrate-create-hash.mjs` rewrites live META values to `sha256:<hex>` (what the API now computes, so replays still match) and removes `createHash` from tombstones and create claims. It prints counts only, and writes are conditional on the old value.
+`scripts/migrate-create-hash.mjs` finds rows whose `createHash` holds plaintext note/task text instead of a hash. It rewrites live META values to `sha256:<hex>` (what the API computes, so replays still match) and removes `createHash` from tombstones and create claims. It prints counts only, and writes are conditional on the old value.
 
 ```bash
 AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs           # dry run: counts
@@ -437,30 +416,30 @@ AWS_PROFILE=<deploy/admin profile> node scripts/migrate-create-hash.mjs --apply
 AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs --verify  # exit 2 if any remain
 ```
 
-PITR (35 days) and AWS Backup recovery points keep the old plaintext until their retention expires; restored copies from before the migration contain it too.
+PITR (35 days) and AWS Backup recovery points keep any plaintext values until their retention expires, and restored copies from before a migration run contain them too.
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
-Legacy post import (CHR-36): `docs/migrate-posts.md` (`npm run migrate:posts`).
+Legacy post import: `docs/migrate-posts.md` (`npm run migrate:posts`).
 
-Media uploads (CHR-31): admin `POST /api/admin/media/upload-url` returns a
+Media uploads: admin `POST /api/admin/media/upload-url` returns a
 presigned PUT for `media/*` on the site bucket; CloudFront serves `/media/*`
 with a long cache. Paste/drop images in the post editor inserts
 `![alt](/media/...)`.
 
-## Transactional email / SES (CHR-38)
+## Transactional email / SES
 
 `Email-prod`: SES domain identity for `gagnechris.com` (DKIM + MAIL FROM
 `bounce.gagnechris.com`), plus an email identity for `ALERTS_EMAIL` so sandbox
 can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
-(`p=none`) is published; full receiving MX remains CHR-63.
+(`p=none`) is published; there is no receiving MX.
 
 `Api-prod` public routes:
 
 - `POST /api/contact` — contact form (persists `CONTACT#<ulid>` first; honeypot `hp_field`; 3/IP/hour + global SES daily cap)
 - `POST /api/resume/download` — anonymous resume-download notify (IP/day dedupe; shared SES daily cap)
 
-Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`. SES sandbox is ~200/day; app cap is 100/day (CHR-98).
+Notify inbox = `ALERTS_EMAIL`. From = `noreply@gagnechris.com`. SES sandbox is ~200/day; app cap is 100/day.
 
 ### Leave the SES sandbox (one-time)
 
@@ -489,7 +468,7 @@ Smoke contact (after deploy + DNS):
 ```bash
 curl -sS -X POST https://gagnechris.com/api/contact \
   -H 'Content-Type: application/json' \
-  -d '{"name":"Smoke","email":"you@example.com","message":"CHR-98 smoke","hp_field":"","formStartedAt":0}'
+  -d '{"name":"Smoke","email":"you@example.com","message":"smoke test","hp_field":"","formStartedAt":0}'
 ```
 
 ```bash
@@ -497,11 +476,11 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
 ```
 
-## Publisher (CHR-34 / CHR-134 / CHR-149)
+## Publisher
 
 `Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
 
-**CHR-168 alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (CHR-202: a sync row type with no registered adapter; the feed returns 500 until `services/api/src/sync/adapters.ts` lists it), publisher `DataIntegrityError` (+ existing resume-pdf / kvs-sync), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
+**Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `services/api/src/sync/adapters.ts` lists it), publisher `DataIntegrityError`, resume-pdf and kvs-sync, API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 
 Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
@@ -541,24 +520,24 @@ export ALERTS_EMAIL='you@example.com'
 AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-approval never
 ```
 
-## Cognito auth (CHR-27)
+## Cognito auth
 
 `Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `ios` clients (authorization code + PKCE).
 
 SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
 
-### Admin group and clients (CHR-195)
+### Admin group and clients
 
 - `/api/admin/*` and `/api/notebook/*` require the `admin` group in `cognito:groups`; any other pool user gets 403. CDK creates the group and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to it. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced.
-- After the first deploy, an ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
+- An ID token minted before you joined the group has no `cognito:groups`. The API client refreshes the token and retries once on 403. If admin still shows 403, sign out and back in.
 - Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173 callbacks only, for exercising managed login from local Vite. The API authorizer doesn't list it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
-### Orphan / leftover user pools (CHR-180)
+### Orphan / leftover user pools
 
-Out-of-IaC Cognito pools may exist from earlier experiments (for example a
-deletion-protected `gagnechris-prod` pool created minutes before the live
-stack pool, or a 2019 `notes-user-pool`). **Do not delete or import them
+Cognito pools outside CDK may exist in the account (for example a
+deletion-protected `gagnechris-prod` pool that is not the stack pool, or
+`notes-user-pool`). **Do not delete or import them
 without asking Chris first.** Inventory with the readonly profile only:
 
 ```bash
@@ -596,13 +575,13 @@ aws cognito-idp admin-set-user-password \
 
 Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://gagnechris.com/auth/callback`).
 
-## Admin shell (CHR-32)
+## Admin shell
 
 SPA routes `/admin/*` (lazy-loaded) and `/auth/callback`. Cognito managed login via Amplify (`signInWithRedirect`, auth code + PKCE). Web build reads Cognito IDs from SSM in `scripts/deploy-web.sh` (`VITE_COGNITO_*`). Local: copy `apps/web/.env.example` to `.env.local`.
 
 Reach admin by opening `https://gagnechris.com/admin` (no public login link). API calls send the Cognito **ID token** (HTTP API JWT `aud` = web client id).
 
-## HTTP API (CHR-28)
+## HTTP API runtime and contract
 
 `Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizer on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
@@ -625,19 +604,19 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 # Expect: 401 without Authorization header
 ```
 
-## Local E2E (CHR-75)
+## Local E2E
 
 For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/local-e2e.md](../docs/local-e2e.md)**. Day-to-day admin: `npm run local:dev`. Smoke: `npm run e2e:local`.
 
 ## Existing resources (CDK decisions)
 
-| Resource                                  | Decision                                                                  |
-| ----------------------------------------- | ------------------------------------------------------------------------- |
-| Route 53 hosted zone for the site domain  | **Look up** in CDK (`HostedZone.fromLookup`). Do not recreate.            |
-| Other Route 53 zones outside this project | **Leave alone.**                                                          |
-| Existing ACM certs for the site domain    | **Replace via CDK** when the certificate stack lands; keep until cutover. |
-| Legacy IAM users                          | No access keys after bootstrap; disable/delete when SSO-only is enough.   |
-| `CDKToolkit` in us-east-1                 | Created by bootstrap.                                                     |
+| Resource                                  | Decision                                                                |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| Route 53 hosted zone for the site domain  | **Look up** in CDK (`HostedZone.fromLookup`). Do not recreate.          |
+| Other Route 53 zones outside this project | **Leave alone.**                                                        |
+| Existing ACM certs for the site domain    | Managed by `Certificate-prod`.                                          |
+| Legacy IAM users                          | No access keys after bootstrap; disable/delete when SSO-only is enough. |
+| `CDKToolkit` in us-east-1                 | Created by bootstrap.                                                   |
 
 ## Agent notes
 

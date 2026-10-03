@@ -1,4 +1,4 @@
-# Resume PDF fonts (CHR-97)
+# Resume PDF fonts
 
 Inter Regular + Bold (`Inter-*.ttf`) are embedded by the publisher via
 `@pdf-lib/fontkit` so resume PDFs support Unicode beyond WinAnsi.

@@ -11,7 +11,6 @@ export type VersionedDocEntity = {
 
 export type VersionedDocDeleteOptions = {
   confirm: string;
-  /** Receives the editor's current entity version (CHR-186). */
   mutate: (version: number) => Promise<void>;
   onDeleted: () => void;
 };
@@ -23,36 +22,21 @@ export type VersionedDocEditorOptions<
 > = {
   resource: VersionedResource<TEntity, TParams>;
   params: TParams;
-  /** When false, queries/mutations stay idle (e.g. missing note id). */
   enabled?: boolean;
   initialDraft: TDraft;
   toDraft: (entity: TEntity) => TDraft;
-  /** Stable id so remounted cache rows re-hydrate once per entity. */
+  /** Lets remounted cache rows re-hydrate once per entity. */
   getEntityId: (entity: TEntity) => string;
   toPayload: (draft: TDraft, entity: TEntity) => Record<string, unknown>;
   conflictMessage: string;
-  /**
-   * Optional 409 `error` code → message map (e.g. posts pass
-   * `{ slug_taken: 'That slug is already taken…' }`).
-   */
   conflictMessages?: Record<string, string>;
   confirm: ConfirmFn;
-  /** Fallback when the query error is not an ApiError. */
   loadErrorFallback?: string;
-  /** Soft-delete. Runs inside autosave hold. */
   delete?: VersionedDocDeleteOptions;
-  /** Extra work on first hydrate (e.g. mark slug as manual). */
   onHydrate?: (entity: TEntity) => void;
-  /** "Network may be back" signals for autosave retry (web: `online`). */
   retrySignals?: RetrySignals;
 };
 
-/**
- * Platform-neutral versioned document editor: hydrate-once, version binding,
- * performSave, autosave, remote-conflict detection, and delete-with-hold.
- * No draft/publish status required — Notebook notes use this directly (CHR-173).
- * Publishable entities layer `useDraftPublishEditor` / `useVersionedEntityEditor`.
- */
 export function useVersionedDocEditor<
   TEntity extends VersionedDocEntity,
   TDraft,
@@ -212,8 +196,8 @@ export function useVersionedDocEditor<
     hydratedId === getEntityIdRef.current(entity!) &&
     dirty &&
     entity!.version > boundVersion &&
-    // Ignore refetches that land while our own PUT is in flight — otherwise the
-    // conflict banner flashes until onSaved bumps boundVersion (CHR-165).
+    // Ignore refetches that land while our own PUT is in flight; otherwise the
+    // conflict banner flashes until onSaved bumps boundVersion.
     saveState !== 'saving';
   const displayError = remoteConflict ? conflictMessage : saveError;
 
@@ -239,12 +223,12 @@ export function useVersionedDocEditor<
     if (!deleteOpts || !enabled || busyRef.current) return;
     if (!(await confirm(deleteOpts.confirm))) return;
     await withHold(async () => {
-      // Wait out any in-flight autosave PUT first so DELETE sends the version
-      // that save produced, not the one before it (CHR-165 / CHR-186).
+      // Wait out any in-flight autosave PUT so DELETE sends the version that save
+      // produced, not the one before it.
       await awaitInFlight();
       try {
         await deleteOpts.mutate(versionRef.current);
-        // Clear dirty before navigation so leave-guards do not prompt (CHR-158).
+        // Clear dirty before navigation so leave-guards do not prompt.
         markClean();
         suppressLeaveGuardRef.current = true;
         deleteOpts.onDeleted();
@@ -304,7 +288,6 @@ export function useVersionedDocEditor<
     suppressLeaveGuardRef,
     bumpEdit,
     versionRef,
-    /** Shared hold for publish/unpublish/discard layers (CHR-173). */
     withHold,
     isBusy: () => busyRef.current,
     onEntityMeta: onSaved,

@@ -25,10 +25,8 @@ import { fileURLToPath } from 'node:url';
 import { Construct, type IConstruct } from 'constructs';
 import { POWERTOOLS_METRICS_NAMESPACE } from '../config/constants.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-/** Monorepo root (`package-lock.json`, service entrypoints). */
 export const REPO_ROOT = join(__dirname, '../../..');
 
-/** Default esbuild externals: rely on the Lambda Node.js AWS SDK v3 runtime. */
 export const DEFAULT_EXTERNAL_MODULES = ['@aws-sdk/*'] as const;
 
 export interface NodeLambdaProps extends Omit<
@@ -56,10 +54,7 @@ export interface LambdaFailureDestinationProps {
   readonly retentionPeriod?: Duration;
 }
 
-/**
- * SQS on-failure destination for Lambda stream event sources and async
- * invokes, plus an alarm that re-notifies when new messages are sent.
- */
+/** Alarms on messages sent, not depth, so each new failure re-notifies. */
 export class LambdaFailureDestination extends Construct {
   readonly queue: Queue;
   readonly streamDestination: SqsDlq;
@@ -112,10 +107,6 @@ export class LambdaFailureDestination extends Construct {
   }
 }
 
-/**
- * Shared Node.js Lambda. Errors alarm id is `${id without Function}LambdaErrors`
- * at stack scope (ApiFunction → ApiLambdaErrors).
- */
 export class NodeLambda extends NodejsFunction {
   readonly errorsAlarm: Alarm;
   readonly throttlesAlarm: Alarm;

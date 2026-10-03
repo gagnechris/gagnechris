@@ -32,7 +32,7 @@ function adminEvent(
   });
 }
 
-describe('notes handlers (CHR-40)', () => {
+describe('notes handlers', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -152,7 +152,7 @@ describe('notes handlers (CHR-40)', () => {
     expect(upsert?.statusCode).toBe(200);
     expect(JSON.parse(upsert!.body as string).id).toBe(DAILY_ID);
 
-    // The loser learns who won instead of silently getting the winner (CHR-187).
+    // The loser learns who won instead of silently getting the winner.
     await expect(
       repo.createFromRequest(USER, {
         id: DAILY_ID_2,

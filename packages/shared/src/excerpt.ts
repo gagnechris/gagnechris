@@ -1,4 +1,3 @@
-/** Collapse whitespace and truncate on a word boundary for meta descriptions. */
 export const textExcerpt = (text: string, max = 200): string => {
   const flat = text.replace(/\s+/g, ' ').trim();
   if (flat.length <= max) return flat;

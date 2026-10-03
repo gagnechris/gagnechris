@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Refuse a rollback deploy (CHR-149 / CHR-200): HEAD must descend from the
-# last deployed SHA. If the deployed SHA is not in this clone, fetch it from
-# origin; if it still cannot be found, or is not an ancestor of HEAD, fail
-# instead of silently deploying everything.
-#
+# Refuse a rollback deploy. An unknown deployed SHA fails rather than
+# deploying everything.
 # Usage: scripts/ci/check-deploy-ancestry.sh <deployedSha> <headSha>
 set -euo pipefail
 

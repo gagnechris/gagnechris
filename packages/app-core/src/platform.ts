@@ -1,6 +1,6 @@
 /**
- * Injectable timers so hooks never touch `window` (CHR-140).
- * Timer handle types are local so app-core needs no DOM lib (CHR-164).
+ * Injectable so hooks never touch `window`; handle types are local so
+ * app-core needs no DOM lib.
  */
 export type TimerHandle = number;
 
@@ -23,17 +23,7 @@ export const defaultTimers: Timers = {
   clearTimeout: (handle) => globalTimers.clearTimeout(handle),
 };
 
-/**
- * Injectable confirm (web: `window.confirm`; tests: mock).
- *
- * Async because React Native's `Alert.alert` is callback-based; the web shell
- * wraps the synchronous `window.confirm` in a resolved promise (CHR-150).
- */
+/** Async because React Native's `Alert.alert` is callback-based. */
 export type ConfirmFn = (message: string) => Promise<boolean>;
 
-/**
- * Subscribe `retry` to "the network may be back" signals (web: `online`,
- * window focus, tab visible). Returns an unsubscribe. Injected so app-core
- * never touches `window` (CHR-189).
- */
 export type RetrySignals = (retry: () => void) => () => void;

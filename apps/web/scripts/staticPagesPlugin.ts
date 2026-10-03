@@ -17,12 +17,7 @@ const appRoot = path.resolve(
   '..',
 );
 
-/**
- * After Vite emits dist/index.html, write per-route shells with page meta
- * (home, /resume, /contact) so LinkedIn/Slack previews are correct (CHR-37).
- * Also emits /spa.html (admin/auth), /404.html (CHR-102), and /_shell.html
- * (pristine publisher template — never overwritten by home prerender; CHR-104).
- */
+/** Per-route shells carry page meta so LinkedIn/Slack previews are correct. */
 export function staticPagesPlugin(): Plugin {
   return {
     name: 'static-page-meta',
@@ -62,7 +57,7 @@ export function staticPagesPlugin(): Plugin {
 
 /**
  * Dev server parity with CloudFront: /admin and /auth get the shell without
- * GA4, like prod's /spa.html (CHR-194).
+ * GA4, like prod's /spa.html.
  */
 export function devSpaShellPlugin(): Plugin {
   return {

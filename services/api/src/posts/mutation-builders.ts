@@ -1,7 +1,4 @@
-/**
- * Transaction item builders for post draft mutations (CHR-129 / CHR-161).
- * Keep slug/tag side-effects out of the generic Publishable layer.
- */
+// Keeps slug/tag side-effects out of the generic Publishable layer.
 import type { Post } from '@gagnechris/shared';
 import {
   VERSION_MATCH_CONDITION,
@@ -204,7 +201,6 @@ export type DraftMutationPlan = {
   slugClaimIndexes: number[];
 };
 
-/** Assemble the full TransactWrite item list for a draft mutation. */
 export function buildDraftMutationItems(
   tableName: string,
   before: Post,

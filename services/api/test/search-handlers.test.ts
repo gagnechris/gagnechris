@@ -38,7 +38,7 @@ describe('rankTextFields', () => {
   });
 });
 
-describe('search handlers (CHR-46)', () => {
+describe('search handlers', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -88,7 +88,7 @@ describe('search handlers (CHR-46)', () => {
       '/api/notebook/search',
     );
     expect(res?.statusCode).toBe(200);
-    // Search results are user data: never cached by the browser (CHR-196).
+    // Search results are user data: never cached by the browser.
     expect(res.headers?.['Cache-Control']).toBe('no-store');
     expect(res.headers?.['X-Content-Type-Options']).toBe('nosniff');
     const body = JSON.parse(res!.body as string) as {
@@ -100,7 +100,7 @@ describe('search handlers (CHR-46)', () => {
     expect(body.tasks[0]?.title).toMatch(/Ship/i);
   });
 
-  it('rejects GET with q in the URL; search is POST-only (CHR-196)', async () => {
+  it('rejects GET with q in the URL; search is POST-only', async () => {
     const routes = createSearchRoutes();
     const res = await dispatchRoutes(
       routes,

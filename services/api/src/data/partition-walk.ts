@@ -1,12 +1,4 @@
-/**
- * Page across several DynamoDB partitions in a fixed order (CHR-185).
- *
- * Multi-area / multi-status lists used to merge one page per partition and
- * return no cursor, silently dropping everything past the first page. This
- * walks partitions sequentially and returns a composite cursor
- * `{ p: partitionIndex, k?: innerCursor }`, so every item is returned exactly
- * once across pages. Results are grouped by partition, not globally sorted.
- */
+// Results are grouped by partition, not globally sorted.
 
 type PartitionPage<T> = { items: T[]; nextCursor?: string };
 
@@ -52,12 +44,7 @@ function decodeComposite(
   }
 }
 
-/**
- * Fill up to `limit` items by walking `partitions` in order, resuming from
- * `cursor`. `fetchPage(partition, innerCursor, remaining)` queries one
- * partition; it may return fewer items than asked (post-filters) as long as
- * `nextCursor` advances.
- */
+/** `fetchPage` may return fewer items than asked (post-filters) as long as `nextCursor` advances. */
 export async function walkPartitions<P, T>(
   partitions: readonly P[],
   cursor: string | undefined,

@@ -156,10 +156,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
     });
   }
 
-  /**
-   * Persist META (+ slug bookkeeping). Optionally sync the PUBLISHED snapshot
-   * and public tag index. Publisher rebuilds only on PUBLISHED stream events.
-   */
+  /** Publisher rebuilds only on PUBLISHED stream events. */
   private async writeDraftMutation(
     before: Post,
     after: Post,
@@ -213,8 +210,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   ): Promise<{ items: Post[]; nextCursor?: string }> {
     const statuses: PostStatus[] = status
       ? [status]
-      : // Published first so admin "all" pages surface live posts before drafts
-        // (CHR-161). Status filter still queries a single GSI partition.
+      : // Published first so admin "all" pages surface live posts before drafts.
         ['published', 'draft'];
     if (statuses.length === 1) {
       return this.listSingleStatus(statuses[0]!, opts);
@@ -342,7 +338,6 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
     return items;
   }
 
-  /** BatchGet PUBLISHED snapshots (chunks of 100); retries UnprocessedKeys (CHR-120). */
   private async batchGetPublished(
     postIds: string[],
   ): Promise<Map<string, Post>> {

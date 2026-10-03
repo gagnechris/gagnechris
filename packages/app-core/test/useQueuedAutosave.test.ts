@@ -7,7 +7,6 @@ import {
 import { defaultTimers } from '../src/platform.js';
 import { act, renderHook, useState } from './renderHook.js';
 
-/** flushMicrotasks + optional timer advance without jsdom waitFor. */
 const flush = async () => {
   await act(async () => {
     await Promise.resolve();
@@ -173,7 +172,7 @@ describe('useQueuedAutosave', () => {
     expect(versionRef.current).toBe(3);
   });
 
-  test('held flush with edits mid-save returns pending, not clean (CHR-124)', async () => {
+  test('held flush with edits mid-save returns pending, not clean', async () => {
     const resolvers: Array<
       (value: { ok: true; entity: { version: number } }) => void
     > = [];
@@ -227,7 +226,7 @@ describe('useQueuedAutosave', () => {
     expect(result.current.getEditGen()).toBe(1);
   });
 
-  test('hold suppresses debounced autosave until released (CHR-121)', async () => {
+  test('hold suppresses debounced autosave until released', async () => {
     vi.useFakeTimers();
     const performSave = vi.fn(async (_draft: string, version: number) => ({
       ok: true as const,
@@ -296,7 +295,7 @@ describe('useQueuedAutosave', () => {
     vi.useRealTimers();
   });
 
-  test('markClean aligns lastSavedGen after discard (CHR-145)', () => {
+  test('markClean aligns lastSavedGen after discard', () => {
     const versionRef = { current: 1 };
     const { result } = renderHook(() => {
       const [draft, setDraft] = useState('a');
@@ -336,7 +335,7 @@ describe('useQueuedAutosave', () => {
   });
 });
 
-test('slug_taken 409 shows slug-taken message, not conflictMessage (CHR-160)', async () => {
+test('slug_taken 409 shows slug-taken message, not conflictMessage', async () => {
   const performSave = vi.fn(async () => ({
     ok: false as const,
     status: 409,
@@ -371,7 +370,7 @@ test('slug_taken 409 shows slug-taken message, not conflictMessage (CHR-160)', a
   expect(result.current.saveError).not.toContain('Reload');
 });
 
-describe('useQueuedAutosave recovery (CHR-189)', () => {
+describe('useQueuedAutosave recovery', () => {
   const renderEdited = (
     performSave: (
       draft: string,

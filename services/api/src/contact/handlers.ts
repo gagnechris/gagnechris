@@ -14,7 +14,6 @@ import { json } from '../http.js';
 import { logger, metrics } from '../observability.js';
 import { defineRoute, type RouteDef } from '../router.js';
 
-/** Minimum ms between form open and submit (bots often submit instantly). */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
 
 function sourceIp(event: APIGatewayProxyEventV2): string {
@@ -28,22 +27,15 @@ function honeypotTriggered(body: {
   return body.hp_field.trim().length > 0 || body.website.trim().length > 0;
 }
 
-/**
- * Best-effort anti-bot timing (CHR-114 / CHR-122).
- *
- * `elapsedMs` is client-controlled — a bot can omit it or send a large value
- * and skip this check. IP + SES rate limits remain the hard caps. A signed
- * server-issued token would make this authoritative if spam ever warrants it.
- */
+/** Best-effort only: `elapsedMs` is client-controlled; IP + SES rate limits are the hard caps. */
 function tooFastSubmit(body: {
   elapsedMs?: number;
   formStartedAt?: number;
 }): boolean {
-  // Prefer client-measured duration (no clock skew across machines).
+  // Client-measured duration avoids clock skew across machines.
   if (body.elapsedMs !== undefined) {
     return body.elapsedMs < MIN_CONTACT_SUBMIT_MS;
   }
-  // Legacy clients: best-effort using formStartedAt vs server clock.
   if (body.formStartedAt === undefined) return false;
   const elapsed = Date.now() - body.formStartedAt;
   return elapsed >= 0 && elapsed < MIN_CONTACT_SUBMIT_MS;
@@ -87,7 +79,7 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
       body: ContactRequestSchema,
       handler: async (ctx, { body: parsed }) => {
         if (honeypotTriggered(parsed) || tooFastSubmit(parsed)) {
-          // Spam / autofill trap — pretend success without persisting or sending.
+          // Honeypot: pretend success so bots get no signal.
           return json(200, ContactResponseSchema.parse({ ok: true }));
         }
 
@@ -150,7 +142,7 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
           });
         }
 
-        // SES succeeded — never fail the visitor if Dynamo status update fails.
+        // Never fail the visitor after SES succeeded.
         await tryUpdateEmailStatus(contacts, saved.contactId, 'sent');
 
         return json(200, ContactResponseSchema.parse({ ok: true }));
@@ -167,7 +159,6 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
         const ip = sourceIp(ctx.event);
         const firstToday = await rates.claimResumeNotifyIp(ip);
         if (!firstToday) {
-          // Already notified for this IP today — succeed without another SES send.
           return json(
             200,
             ResumeDownloadNotifyResponseSchema.parse({ ok: true }),
@@ -178,7 +169,6 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
           await rates.consumeSesSend();
         } catch (error) {
           if (error instanceof RateLimitExceededError) {
-            // Dedupe already claimed; skip email quietly under global cap.
             return json(
               200,
               ResumeDownloadNotifyResponseSchema.parse({ ok: true }),
@@ -203,7 +193,7 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
             ].join('\n'),
           });
         } catch {
-          // Resume notify is best-effort; download already happened client-side.
+          // Best-effort; the download already happened client-side.
           return json(
             200,
             ResumeDownloadNotifyResponseSchema.parse({ ok: true }),

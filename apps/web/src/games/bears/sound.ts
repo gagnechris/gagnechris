@@ -1,5 +1,3 @@
-/** Tiny Web Audio blips for Don't Feed the Bears (off until the player toggles). */
-
 type Tone = {
   freq: number;
   durationMs: number;
@@ -59,7 +57,6 @@ function playTones(tones: Tone[]): void {
   });
 }
 
-/** Short bright blip when an attractant is secured. */
 export function playSecureSound(): void {
   playTones([
     { freq: 520, durationMs: 70, type: 'triangle', gain: 0.07 },
@@ -67,7 +64,6 @@ export function playSecureSound(): void {
   ]);
 }
 
-/** Soft low thud when a bear gets a snack. */
 export function playFailSound(): void {
   playTones([
     { freq: 110, durationMs: 180, type: 'sine', gain: 0.1 },
@@ -75,7 +71,6 @@ export function playFailSound(): void {
   ]);
 }
 
-/** Light success chime when the camp is fully secured. */
 export function playSuccessSound(): void {
   playTones([
     { freq: 440, durationMs: 90, type: 'sine', gain: 0.06 },

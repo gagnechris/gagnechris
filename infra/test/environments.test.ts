@@ -193,7 +193,6 @@ describe('GuardrailsStack', () => {
       IncludeGlobalServiceEvents: true,
     });
 
-    // Account BPA is applied via AwsCustomResource (S3 Control API).
     template.resourceCountIs('Custom::AWS', 1);
 
     template.hasResourceProperties('AWS::AccessAnalyzer::Analyzer', {
@@ -271,7 +270,7 @@ describe('CiDeployRoleStack', () => {
     const policyJson = JSON.stringify(diffPolicy);
     expect(policyJson).toContain('cdk-*-lookup-role-*');
     expect(policyJson).toContain('sts:AssumeRole');
-    // Must not allow AssumeRole on * (admin escalation via bootstrap deploy role).
+    // AssumeRole on * would escalate to admin via the bootstrap deploy role.
     const statements = (diffPolicy?.Properties?.PolicyDocument?.Statement ??
       []) as Array<{
       Action?: string | string[];
@@ -296,7 +295,6 @@ describe('CiDeployRoleStack', () => {
     const denyPolicies = policies.filter((p) =>
       JSON.stringify(p).includes('DenyPrivateDataReads'),
     );
-    // Diff + drift + bootstrap lookup role (closes AssumeRole hop).
     expect(denyPolicies.length).toBeGreaterThanOrEqual(3);
     for (const p of denyPolicies) {
       const json = JSON.stringify(p);
@@ -304,7 +302,6 @@ describe('CiDeployRoleStack', () => {
       expect(json).toContain('dynamodb:PartiQLSelect');
       expect(json).toContain('s3:GetObject');
       expect(json).toContain('"Effect":"Deny"');
-      // CHR-196: logs and traces are denied alongside item/object reads.
       const statements = (p.Properties?.PolicyDocument?.Statement ??
         []) as Array<{
         Sid?: string;
@@ -496,7 +493,6 @@ describe('AuthStack', () => {
 
     template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 3);
 
-    // Prod clients never trust localhost; only the dev client does (CHR-195).
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'web',
       CallbackURLs: ['https://gagnechris.com/auth/callback'],
@@ -578,7 +574,7 @@ describe('SiteStack', () => {
     template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
     template.resourceCountIs('AWS::CloudFront::Function', 2);
     template.resourceCountIs('AWS::CloudFront::KeyValueStore', 1);
-    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 3); // site, admin, api (CHR-196)
+    template.resourceCountIs('AWS::CloudFront::ResponseHeadersPolicy', 3);
 
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
@@ -589,7 +585,6 @@ describe('SiteStack', () => {
       },
     });
 
-    // No staging DNS on the site stack.
     const records = template.findResources('AWS::Route53::RecordSet');
     expect(Object.keys(records)).toHaveLength(0);
 
@@ -606,7 +601,6 @@ describe('SiteStack', () => {
       DatapointsToAlarm: 2,
       AlarmActions: alarmActions,
     });
-    // Viewer-request function is associated with the blog-slugs KeyValueStore (CHR-115 / CHR-180).
     const cfFunctions = template.findResources('AWS::CloudFront::Function');
     const viewerRequest = Object.values(cfFunctions).find((resource) => {
       const name = (resource.Properties as { Name?: string } | undefined)?.Name;
@@ -623,7 +617,6 @@ describe('SiteStack', () => {
       Name: '/gagnechris/prod/site-bucket-name',
       Type: 'String',
     });
-    // /api/* owned by Site (CHR-135), not Api→Site export.
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: Match.objectLike({
         CacheBehaviors: Match.arrayWith([
@@ -767,7 +760,6 @@ describe('ApiStack', () => {
       },
     });
 
-    // Web + iOS only: the dev-local client's tokens are rejected (CHR-195).
     const authorizers = template.findResources('AWS::ApiGatewayV2::Authorizer');
     const audiences = Object.values(authorizers).map(
       (r) =>
@@ -777,8 +769,7 @@ describe('ApiStack', () => {
     expect(audiences).toHaveLength(1);
     expect(audiences[0]).toHaveLength(2);
     expect(JSON.stringify(audiences[0])).not.toMatch(/DevClient/);
-    // Access-log DestinationArn must be the log-group ARN without `:*` (CHR-159).
-    // formatArn(COLON_RESOURCE_NAME) — not AttrArn, which always ends in `:*`.
+    // API Gateway stores DestinationArn without `:*`; anything else drifts.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
     const destArn = stage?.Properties?.AccessLogSettings?.DestinationArn;
@@ -790,8 +781,6 @@ describe('ApiStack', () => {
       AuthorizerType: 'JWT',
     });
 
-    // JWT prefix contract on the synthesized template (CHR-171): catches
-    // authorizer shorthand and unauthenticated routes under /api/admin|/notebook.
     const expectedJwtRouteKeys = new Set([
       'ANY /api/admin',
       'ANY /api/admin/{proxy+}',
@@ -830,7 +819,6 @@ describe('ApiStack', () => {
     expect(jwtRouteKeys.sort()).toEqual([...expectedJwtRouteKeys].sort());
     expect(publicRouteKeys.sort()).toEqual([...expectedPublicRouteKeys].sort());
 
-    // Notebook route throttle overrides (CHR-172).
     const stageResources = template.findResources('AWS::ApiGatewayV2::Stage');
     const stageProps = Object.values(stageResources)[0]?.Properties as {
       RouteSettings?: Record<string, { ThrottlingRateLimit?: number }>;
@@ -896,7 +884,6 @@ describe('ApiStack', () => {
       Name: '/gagnechris/prod/http-api-id',
     });
 
-    // IAM scoping (CHR-180): DynamoDB + S3 media put are resource-scoped, not *.
     const apiPolicies = Object.values(
       template.findResources('AWS::IAM::Policy'),
     );
@@ -950,7 +937,6 @@ describe('PublisherStack', () => {
 
     const template = Template.fromStack(publisher);
     const alarmActions = alertsTopicAlarmActions(alertsTopic);
-    // Site bucket / distribution / KVS come from SSM, not Site exports (CHR-149).
     const rendered = JSON.stringify(template.toJSON());
     expect(rendered).not.toMatch(/ImportValue":"[^"]*Site/);
     expect(rendered).toContain('/gagnechris/prod/site-bucket-name');
@@ -1021,7 +1007,6 @@ describe('PublisherStack', () => {
       Name: '/gagnechris/prod/publisher-function-name',
     });
 
-    // Prove the ESM OnFailure destination is the stream-failures queue (CHR-134).
     const esms = template.findResources('AWS::Lambda::EventSourceMapping');
     const queues = template.findResources('AWS::SQS::Queue');
     const esm = Object.values(esms)[0];
@@ -1031,14 +1016,12 @@ describe('PublisherStack', () => {
       ?.Destination as { 'Fn::GetAtt'?: string[] } | undefined;
     expect(onFailureDest?.['Fn::GetAtt']?.[0]).toBe(queueLogicalId);
 
-    // IAM scoping (CHR-180): table/stream/S3/CF grants are present and scoped.
-    // (CDK stream ListStreams may use Resource *; table CRUD must not.)
+    // CDK's stream ListStreams may use Resource *; table access must not.
     const publisherPolicies = Object.values(
       template.findResources('AWS::IAM::Policy'),
     );
     const publisherPolicyJson = JSON.stringify(publisherPolicies);
     expect(publisherPolicyJson).toContain('dynamodb:GetRecords');
-    // CHR-196: read-only table access; no writes.
     expect(publisherPolicyJson).toContain('dynamodb:GetItem');
     expect(publisherPolicyJson).not.toContain('dynamodb:PutItem');
     expect(publisherPolicyJson).toContain('s3:PutObject');

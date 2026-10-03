@@ -55,7 +55,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>gagnechris</Text>
-      <Text style={styles.subtitle}>Mobile spike (CHR-142)</Text>
+      <Text style={styles.subtitle}>Mobile spike</Text>
       <Text style={styles.meta}>API: {apiBaseUrl}</Text>
 
       {loading ? (
@@ -90,7 +90,7 @@ export default function App() {
 }
 
 // `space`, `text`, and `radius` tokens are px numbers, so RN consumes them
-// directly — no duplicated scale in this file (CHR-150).
+// directly.
 const styles = StyleSheet.create({
   container: {
     flex: 1,

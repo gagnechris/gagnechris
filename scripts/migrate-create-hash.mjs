@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 /**
- * One-off CHR-192 migration: replace plaintext `createHash` values.
- *
- * Before CHR-192, `createHash` held the NUL-joined create fields (note body,
- * task description, ...) on the META row and on the sync create claim, and
- * deletes copied it onto the tombstone. This script:
- *   - live META rows: rewrites the value to `sha256:<hex>` of the old string
- *     (exactly what the API now computes, so idempotent replays still match);
- *   - tombstones and create claims: removes `createHash` (never read there).
- *
- * Dry run by default; prints counts only, never values. Writes are
- * conditional on the old value so a concurrent API write is never clobbered.
+ * Replaces plaintext `createHash` values (NUL-joined create fields) with
+ * `sha256:<hex>` of the same string, so idempotent replays still match, and
+ * removes it from tombstones and create claims where it is never read.
+ * Writes are conditional on the old value so a concurrent API write is never
+ * clobbered. Dry run by default; prints counts only, never values.
  *
  *   AWS_PROFILE=<deploy or admin profile> node scripts/migrate-create-hash.mjs
  *   AWS_PROFILE=<...> node scripts/migrate-create-hash.mjs --apply
@@ -38,7 +32,7 @@ const doc = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
 const hashJoined = (joined) =>
   PREFIX + createHash('sha256').update(joined).digest('hex');
 
-/** Matches `isDeleted` for notes/tasks (soft-delete tombstones). */
+/** Must match `isDeleted` for notes/tasks. */
 const isTombstone = (item) => item.deleted === true;
 const isClaim = (item) => item.entityType === 'syncCreateClaim';
 

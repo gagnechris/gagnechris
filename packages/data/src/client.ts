@@ -3,7 +3,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
 let docClient: DynamoDBDocumentClient | undefined;
 
-/** SDK owns throttle retries; callers only classify conflicts (CHR-126). */
+/** SDK owns throttle retries; callers only classify conflicts. */
 export const DYNAMO_MAX_ATTEMPTS = 3;
 
 export function getDocClient(): DynamoDBDocumentClient {
@@ -18,7 +18,6 @@ export function getDocClient(): DynamoDBDocumentClient {
   return docClient;
 }
 
-/** Override for tests. */
 export function setDocClient(client: DynamoDBDocumentClient | undefined): void {
   docClient = client;
 }

@@ -1,6 +1,3 @@
-/**
- * DynamoDB Local acceptance tests for Tasks API (CHR-43).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SyncLedger } from '../../src/sync/ledger.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
@@ -21,7 +18,7 @@ const TASK_2 = '01ARZ3NDEKTSV4RRFFQ69G5TA2';
 const TASK_3 = '01ARZ3NDEKTSV4RRFFQ69G5TA3';
 const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5NO1';
 
-describe('tasks repository (DynamoDB Local, CHR-43)', () => {
+describe('tasks repository (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 

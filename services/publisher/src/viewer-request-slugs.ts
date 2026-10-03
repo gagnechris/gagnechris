@@ -1,8 +1,5 @@
-/**
- * Sync published blog slugs into a CloudFront KeyValueStore so the
- * viewer-request function can allowlist /blog/<slug> without rewriting
- * function code (CHR-115 / CHR-119).
- */
+// A KeyValueStore lets the viewer-request function allowlist /blog/<slug>
+// without rewriting function code.
 import '@aws-sdk/signature-v4a';
 import {
   CloudFrontKeyValueStoreClient,
@@ -21,10 +18,8 @@ const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 /** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
 export const BLOG_SLUG_SYNCED_KEY = '__synced__';
 
-/** Combined puts+deletes per UpdateKeys call (API page size / safety bound). */
 export const KVS_UPDATE_BATCH_SIZE = 50;
 
-/** Retries for ConflictException / transient API failures (CHR-119). */
 export const KVS_SYNC_MAX_ATTEMPTS = 3;
 
 const kvs = new CloudFrontKeyValueStoreClient({});
@@ -34,7 +29,6 @@ export type SlugKeyDiff = {
   deletes: DeleteKeyRequestListItem[];
 };
 
-/** Injectable client for unit tests (concurrent sync / ETag race). */
 export type BlogSlugKvsClient = {
   describeETag: (kvsArn: string) => Promise<string>;
   listKeys: (kvsArn: string) => Promise<string[]>;
@@ -55,10 +49,6 @@ export class KvsSyncError extends Error {
   }
 }
 
-/**
- * Diff desired published slugs against keys already in the KVS.
- * Always ensures the __synced__ sentinel is present after sync.
- */
 export function diffBlogSlugKeys(
   existingKeys: Iterable<string>,
   slugs: string[],
@@ -89,7 +79,6 @@ export function diffBlogSlugKeys(
   return { puts, deletes };
 }
 
-/** Split puts/deletes into batches that fit one UpdateKeys call. */
 export function batchSlugKeyDiff(
   diff: SlugKeyDiff,
   batchSize = KVS_UPDATE_BATCH_SIZE,
@@ -173,10 +162,8 @@ function defaultSleep(ms: number): Promise<void> {
 }
 
 /**
- * One describe → list → resolve-desired → update cycle.
- * ETag is taken before ListKeys so IfMatch covers the list→update window (CHR-119).
- * Desired slugs are resolved after describe/list so a stale republish-all list
- * cannot delete a concurrently published slug (CHR-123).
+ * Resolved after describe/list so a stale republish-all list cannot delete a
+ * concurrently published slug.
  */
 export type DesiredSlugs = string[] | (() => Promise<string[]>);
 
@@ -216,10 +203,6 @@ export type SyncBlogSlugsOptions = {
   sleep?: (ms: number) => Promise<void>;
 };
 
-/**
- * Replace the KVS allowlist with the current published slugs.
- * Retries the full describe→list→update cycle on conflict / transient errors.
- */
 export async function syncBlogSlugsWithClient(
   kvsArn: string,
   slugs: DesiredSlugs,
@@ -265,13 +248,7 @@ export async function syncBlogSlugsWithClient(
   );
 }
 
-/**
- * Replace the KVS allowlist with the current published slugs.
- * No-ops locally and when BLOG_SLUGS_KVS_ARN is unset.
- * Does not modify CloudFront Function code.
- * Throws {@link KvsSyncError} after retries so the stream can retry (CHR-119).
- * Pass a thunk for `slugs` to re-read Dynamo immediately before the KVS diff (CHR-123).
- */
+/** Throws {@link KvsSyncError} after retries so the stream can retry. */
 export async function syncViewerRequestBlogSlugs(
   slugs: DesiredSlugs,
   options?: SyncBlogSlugsOptions,

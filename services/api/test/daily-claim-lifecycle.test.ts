@@ -1,6 +1,3 @@
-/**
- * Daily-note claim lifecycle through the real routes (CHR-187).
- */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { keys } from '@gagnechris/data';
 import { createMemoryDoc } from './support/memory-doc.js';
@@ -52,7 +49,7 @@ async function call(
   };
 }
 
-describe('daily note claim lifecycle (CHR-187)', () => {
+describe('daily note claim lifecycle', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();

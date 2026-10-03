@@ -2,7 +2,6 @@ import { Marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
 /**
- * Shared markdown → HTML for editor preview and the publisher Lambda.
  * A local instance (no global `marked.setOptions`) keeps this module free of
  * import side effects, so public pages that only use other render helpers
  * don't bundle marked or the sanitizer.
@@ -10,10 +9,8 @@ import sanitizeHtml from 'sanitize-html';
 const markdown = /* @__PURE__ */ new Marked({ gfm: true, breaks: false });
 
 /**
- * Allowlist for rendered markdown (CHR-193): the tags marked emits plus inert
- * extras. No scripts, iframes, event handlers, inline styles, or
- * `javascript:` / `data:` URLs, so pasted HTML can't run in the admin or on
- * published pages.
+ * No scripts, iframes, event handlers, inline styles, or `javascript:` /
+ * `data:` URLs, so pasted HTML can't run in the admin or on published pages.
  */
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
@@ -51,7 +48,6 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   },
 };
 
-/** Strip anything that could run script from rendered HTML (CHR-193). */
 export const sanitizeRenderedHtml = (html: string): string =>
   sanitizeHtml(html, SANITIZE_OPTIONS);
 

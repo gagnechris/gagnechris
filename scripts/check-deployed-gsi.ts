@@ -1,10 +1,7 @@
 /**
- * Compare APP_TABLE GSIs to the live prod table (CHR-174).
- *
- * CloudFormation allows at most one GSI create/delete per update. Unit tests
- * guard against LAST_DEPLOYED_GSIS, but that constant can be bumped in the same
- * PR as an unsafe multi-GSI change. This script DescribeTables the deployed
- * table so PR CDK diff fails before deploy.
+ * CloudFormation allows at most one GSI create/delete per update, and the
+ * LAST_DEPLOYED_GSIS unit-test guard can be bumped in the same PR, so compare
+ * against the live table.
  *
  * Usage (needs ReadOnly/describe on the table):
  *   npx tsx scripts/check-deployed-gsi.ts

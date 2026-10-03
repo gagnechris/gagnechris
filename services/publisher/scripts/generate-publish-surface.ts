@@ -1,10 +1,3 @@
-/**
- * Derive CloudFront Option B prefixes and local-dev publish-relevance routes
- * from the publisher target registry (CHR-179).
- *
- * Run: `npm run publish-surface:generate`
- * CI:  `npm run publish-surface:check`
- */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

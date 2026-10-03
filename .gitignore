@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Local E2E publisher filesystem root (CHR-75)
+# Local E2E publisher filesystem root
 .local-site
 
 # CDK

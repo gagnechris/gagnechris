@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SYNC_CHANGE_TYPES } from '@gagnechris/shared';
 
-describe('sync adapter registration (CHR-172 / CHR-202)', () => {
+describe('sync adapter registration', () => {
   it('a cold import of the production route table registers every SyncChangeSchema type', async () => {
     // Fresh module graph: no repository constructed, no test setup registered.
     vi.resetModules();

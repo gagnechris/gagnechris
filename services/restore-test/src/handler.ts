@@ -1,15 +1,3 @@
-/**
- * Restore-test Lambda (CHR-198). Two triggers:
- *
- * 1. EventBridge `Restore Job State Change` (status COMPLETED) for the AWS
- *    Backup restore testing plan: scan the restored `awsbackup-restore-test-*`
- *    table, check content, and report SUCCESSFUL / FAILED with
- *    PutRestoreValidationResult. Reporting ends the validation window, so AWS
- *    Backup deletes the scratch table either way.
- * 2. Daily EventBridge schedule (or `{ "action": "leftoverCheck" }`): count
- *    restore scratch tables older than the age limit and emit
- *    `LeftoverRestoreTables` (alarmed in Data-prod).
- */
 import {
   BackupClient,
   PutRestoreValidationResultCommand,
@@ -123,7 +111,6 @@ function defaultDeps(): RestoreTestDeps {
 
 let deps: RestoreTestDeps | undefined;
 
-/** Test hook: inject fake clients (undefined restores the real ones). */
 export function setRestoreTestDepsForTests(
   next: RestoreTestDeps | undefined,
 ): void {

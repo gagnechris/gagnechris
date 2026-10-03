@@ -54,7 +54,6 @@ function AdminChrome({ user }: { user: AuthUser }) {
   );
 }
 
-/** Lazy-loaded admin layout root (RequireAuth + chrome + Query). */
 export default function AdminLayout() {
   return (
     <RequireAuth>

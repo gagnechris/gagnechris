@@ -1,6 +1,6 @@
-# Migrate legacy posts into the CMS (CHR-36)
+# Import legacy posts into the CMS
 
-One-time import of the old bundled `src/posts` markdown into DynamoDB. Fixtures live under `scripts/migrate-posts/fixtures/` (recovered from git after CHR-35 removed the in-repo copies).
+`npm run migrate:posts` (`scripts/migrate-posts.ts`) imports the markdown posts in `scripts/migrate-posts/fixtures/` into DynamoDB.
 
 | Fixture                              | Status    | Slug             |
 | ------------------------------------ | --------- | ---------------- |
@@ -44,5 +44,3 @@ Then verify:
 curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/posts/welcome/
 curl -sS https://gagnechris.com/posts/posts.json | head -c 400
 ```
-
-`src/posts/`, `frontmatter.ts`, and the hand-written `public/sitemap.xml` were already removed in CHR-35.

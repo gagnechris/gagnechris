@@ -26,7 +26,7 @@ describe('parseTaskQuickAdd', () => {
     });
   });
 
-  test('keeps due words inside a title (CHR-189)', () => {
+  test('keeps due words inside a title', () => {
     expect(parseTaskQuickAdd('Plan for Today show', '2026-10-02')).toEqual({
       title: 'Plan for Today show',
       priority: 'med',

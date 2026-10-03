@@ -7,7 +7,7 @@ import {
 import { noteCreatePayloadHash } from '../src/notes/repository.js';
 import { taskCreatePayloadHash } from '../src/tasks/repository.js';
 
-describe('create-payload hash (CHR-192)', () => {
+describe('create-payload hash', () => {
   const fields = ['user', 'work', 'page', '', 'Title', 'secret body', '', '0'];
 
   it('stores a sha256 digest, not the fields', () => {

@@ -23,26 +23,20 @@ export type VersionedEntityEditorOptions<
 > = {
   resource: DraftPublishResource<TEntity, TParams>;
   params: TParams;
-  /** When false, queries/mutations stay idle (e.g. missing post id). */
   enabled?: boolean;
   initialDraft: TDraft;
   toDraft: (entity: TEntity) => TDraft;
-  /** Stable id so remounted cache rows re-hydrate once per entity. */
+  /** Lets remounted cache rows re-hydrate once per entity. */
   getEntityId: (entity: TEntity) => string;
   toPayload: (draft: TDraft, entity: TEntity) => Record<string, unknown>;
   conflictMessage: string;
-  /** Shown on 409 `slug_taken` (posts). */
   slugTakenMessage?: string;
   confirm: ConfirmFn;
   unpublishConfirm: string;
   discardConfirm: string;
-  /** Fallback when the query error is not an ApiError. */
   loadErrorFallback?: string;
-  /** Optional soft-delete (posts). Runs inside autosave hold. */
   delete?: DraftPublishDeleteOptions;
-  /** Extra work on first hydrate (e.g. mark slug as manual). */
   onHydrate?: (entity: TEntity) => void;
-  /** "Network may be back" signals for autosave retry (web: `online`). */
   retrySignals?: RetrySignals;
 };
 
@@ -58,11 +52,7 @@ export type VersionedEntityActionBarProps = {
   onSave: () => void;
 };
 
-/**
- * Draft/publish versioned editor for post / home / resume: layers publish
- * lifecycle on `useVersionedDocEditor` (CHR-158 / CHR-173). Non-publishable
- * entities should call `useVersionedDocEditor` directly.
- */
+/** Non-publishable entities should call `useVersionedDocEditor` directly. */
 export function useVersionedEntityEditor<
   TEntity extends VersionedEditorEntity,
   TDraft,

@@ -1,10 +1,6 @@
-/**
- * If-Match / ETag helpers for Notebook optimistic concurrency (CHR-141 / CHR-162 / CHR-171).
- */
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ConflictError, PreconditionFailedError } from './errors.js';
 
-/** Parsed `If-Match` expectation. */
 export type IfMatchExpectation =
   { kind: 'version'; version: number } | { kind: 'any' };
 
@@ -22,11 +18,6 @@ export function headerValue(
   return entry?.[1];
 }
 
-/**
- * Parse `If-Match` as a versioned entity expectation.
- * Accepts `"3"`, `W/"3"`, and `*` (resource must exist; any version).
- * Absent / empty → `undefined`. Present but malformed → {@link SyntaxError} (HTTP 400).
- */
 export function parseIfMatch(
   headers: Record<string, string | undefined> | undefined,
 ): IfMatchExpectation | undefined {
@@ -34,11 +25,9 @@ export function parseIfMatch(
   if (raw == null || raw === '') return undefined;
   const trimmed = raw.trim();
   if (trimmed === '*') return { kind: 'any' };
-  // Multi-etag lists are not supported for versioned entities.
   if (trimmed.includes(',')) {
     throw new SyntaxError('Invalid If-Match header');
   }
-  // Strip optional weak validator prefix then surrounding quotes.
   const stripped = trimmed.replace(/^W\//i, '').replace(/^"|"$/g, '');
   if (!/^\d+$/.test(stripped)) {
     throw new SyntaxError('Invalid If-Match header');
@@ -50,7 +39,6 @@ export function parseIfMatch(
   return { kind: 'version', version: n };
 }
 
-/** Parse `If-Match` as an integer entity version (`*` → undefined). */
 export function parseIfMatchVersion(
   headers: Record<string, string | undefined> | undefined,
 ): number | undefined {
@@ -59,15 +47,10 @@ export function parseIfMatchVersion(
 }
 
 export type ExpectedVersionResolution = {
-  /** Concrete version, `any` for `If-Match: *`, or missing. */
   expected?: number | 'any';
   fromIfMatch: boolean;
 };
 
-/**
- * Prefer `If-Match` over body `version`. Used by Notebook mutation routes.
- * Propagates {@link SyntaxError} from malformed If-Match.
- */
 export function resolveExpectedVersion(
   event: APIGatewayProxyEventV2,
   body: { version?: number },
@@ -85,7 +68,6 @@ export function resolveExpectedVersion(
   return { expected: undefined, fromIfMatch: false };
 }
 
-/** Map a version ConflictError to 412 when the client sent If-Match. */
 export function mapVersionConflict(
   error: unknown,
   fromIfMatch: boolean,

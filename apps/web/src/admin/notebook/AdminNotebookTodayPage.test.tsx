@@ -23,7 +23,7 @@ type DailyNote = {
 };
 
 const state = vi.hoisted(() => ({
-  /** Other (area, date) daily notes, keyed `area:date` (CHR-189). */
+  /** Other (area, date) daily notes, keyed `area:date`. */
   others: {} as Record<string, DailyNote>,
   /** When true, PUT fails like a dropped connection. */
   offline: false,
@@ -180,7 +180,7 @@ vi.mock('../../api/client', () => ({
       }
       const prev = state.note;
       // Mirrors the API: a placeholder save (no version) after someone else
-      // created the day gets 409 daily_taken with the winner (CHR-187).
+      // created the day gets 409 daily_taken with the winner.
       if (prev && body.version === undefined && body.id !== prev.id) {
         return {
           data: undefined,
@@ -260,7 +260,6 @@ describe('AdminNotebookTodayPage', () => {
     const user = userEvent.setup();
     const { unmount } = renderToday();
 
-    // Not today's date, so the heading names the day (CHR-189).
     expect(
       await screen.findByRole('heading', { level: 1, name: /Oct 2, 2026/ }),
     ).toBeInTheDocument();
@@ -316,7 +315,7 @@ describe('AdminNotebookTodayPage', () => {
     expect(editor).toHaveValue('base local');
   });
 
-  test('saves typed text when the date changes before autosave (CHR-189)', async () => {
+  test('saves typed text when the date changes before autosave', async () => {
     const user = userEvent.setup();
     renderToday();
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
@@ -333,7 +332,7 @@ describe('AdminNotebookTodayPage', () => {
     ).toBeInTheDocument();
   });
 
-  test('saves typed text when the area changes before autosave (CHR-189)', async () => {
+  test('saves typed text when the area changes before autosave', async () => {
     const user = userEvent.setup();
     renderToday();
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
@@ -347,7 +346,7 @@ describe('AdminNotebookTodayPage', () => {
     expect(state.others['personal:2026-10-02']).toBeUndefined();
   });
 
-  test('retries a failed save when the browser comes back online (CHR-189)', async () => {
+  test('retries a failed save when the browser comes back online', async () => {
     const user = userEvent.setup();
     state.offline = true;
     renderToday();

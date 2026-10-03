@@ -17,9 +17,8 @@ import AppWithTracking from './components/AppWithTracking.tsx';
 import { LazyFallback } from './components/LazyFallback.tsx';
 import { lazyRoute } from './routing/lazyRoute';
 
-// HydrateFallback must be a static route property (sibling to `lazy`), not returned
-// from lazy(). React Router skips HydrateFallback from lazy() during initial hydration,
-// which is what triggers the console warning on /admin.
+// HydrateFallback must be a static route property (sibling to `lazy`): React
+// Router skips one returned from lazy() during initial hydration and warns on /admin.
 const router = createBrowserRouter(
   [
     {
@@ -43,7 +42,7 @@ const router = createBrowserRouter(
           path: 'posts/:slug',
           element: <PostPage />,
         },
-        // CloudFront 301s /blog in prod; this covers local dev (CHR-206).
+        // CloudFront 301s /blog in prod; this covers local dev.
         {
           path: 'blog',
           element: <Navigate to="/posts" replace />,

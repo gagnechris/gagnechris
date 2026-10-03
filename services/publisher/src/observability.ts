@@ -1,6 +1,3 @@
-/**
- * Shared Powertools Logger / Metrics for the publisher Lambda (CHR-160).
- */
 import { Logger } from '@aws-lambda-powertools/logger';
 import { Metrics } from '@aws-lambda-powertools/metrics';
 import {

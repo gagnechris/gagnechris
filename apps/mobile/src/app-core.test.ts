@@ -13,9 +13,9 @@ import { describe, expect, it } from 'vitest';
  * `apps/mobile` has its own lockfile and its own React / react-query, while
  * app-core resolves the workspace-root copies. Rendering an app-core hook with
  * this app's renderer only works while a single instance of each is loaded: a
- * second copy leaves its hook dispatcher null and throws (CHR-150 / CHR-173).
+ * second copy leaves its hook dispatcher null and throws.
  */
-describe('app-core hooks under the mobile React (CHR-150)', () => {
+describe('app-core hooks under the mobile React', () => {
   it('runs useQueuedAutosave with one React instance', () => {
     const states: string[] = [];
 
@@ -45,7 +45,7 @@ describe('app-core hooks under the mobile React (CHR-150)', () => {
   });
 });
 
-describe('app-core query hooks under mobile react-query (CHR-173)', () => {
+describe('app-core query hooks under mobile react-query', () => {
   it('runs createVersionedResource.useQuery with one QueryClientProvider', () => {
     type Note = { id: string; body: string; version: number };
     const resource = createVersionedResource<Note, { id: string }>({

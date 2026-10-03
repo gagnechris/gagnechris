@@ -23,7 +23,6 @@ export type VersionedResourceConfig<
     params: TParams,
     body: ExpectedVersionRequest & Record<string, unknown>,
   ) => Promise<TEntity>;
-  /** Optional soft-delete (notes, posts). Sends the expected version (CHR-186). */
   delete?: (
     client: ApiClient,
     params: TParams,
@@ -32,10 +31,7 @@ export type VersionedResourceConfig<
   setCache: (queryClient: QueryClient, entity: TEntity) => void;
 };
 
-/**
- * Query + cache + update (+ optional delete) for any versioned entity.
- * Publishable entities layer `createDraftPublishResource` on top (CHR-173).
- */
+/** Publishable entities layer `createDraftPublishResource` on top. */
 export function createVersionedResource<
   TEntity extends VersionedEntity,
   TParams,

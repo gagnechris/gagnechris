@@ -1,7 +1,3 @@
-/**
- * Multi-partition lists page completely (CHR-185), memory-doc version.
- * The DynamoDB Local twin lives in test/integration/list-paging.integration.test.ts.
- */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
@@ -32,7 +28,7 @@ const TABLE = 'gagnechris-paging-test';
 const N = 150;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-describe('multi-partition list paging (CHR-185)', () => {
+describe('multi-partition list paging', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();

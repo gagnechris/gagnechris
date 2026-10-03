@@ -46,7 +46,7 @@ const publishedPost = (): Post => ({
   hasUnpublishedChanges: false,
 });
 
-describe('rebuildPublishedSite corrupt rows (CHR-160)', () => {
+describe('rebuildPublishedSite corrupt rows', () => {
   let root: string;
   const prevTable = process.env.DATA_TABLE_NAME;
 
@@ -140,7 +140,7 @@ describe('rebuildPublishedSite corrupt rows (CHR-160)', () => {
     ).rejects.toThrow();
   });
 
-  it('no-op full rebuild with a published resume puts nothing and invalidates nothing (CHR-201)', async () => {
+  it('no-op full rebuild with a published resume puts nothing and invalidates nothing', async () => {
     const fs = createFilesystemSiteStorage(root);
     const puts: string[] = [];
     const deletes: string[] = [];

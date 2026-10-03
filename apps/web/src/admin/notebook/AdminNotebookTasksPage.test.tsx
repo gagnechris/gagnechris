@@ -39,7 +39,7 @@ vi.mock('../../api/client', () => ({
       },
     ) => {
       if (path === '/api/notebook/tasks') {
-        // Honour the filters the UI sends, like the API (CHR-185).
+        // Honour the filters the UI sends, like the API.
         const q = init?.params?.query ?? {};
         return {
           data: {
@@ -157,7 +157,7 @@ function renderTasks() {
   );
 }
 
-describe('AdminNotebookTasksPage (CHR-44)', () => {
+describe('AdminNotebookTasksPage', () => {
   beforeEach(() => {
     localStorage.clear();
     state.tasks = [];
@@ -188,12 +188,12 @@ describe('AdminNotebookTasksPage (CHR-44)', () => {
     await waitFor(() => {
       expect(state.tasks[0]?.status).toBe('done');
     });
-    // Completed loads lazily when expanded (CHR-185).
+    // Completed loads lazily when expanded.
     await user.click(screen.getByText('Completed'));
     expect(await screen.findByText(/Completed \(1\)/)).toBeInTheDocument();
   });
 
-  test('120 done past-due tasks do not hide 3 open tasks (CHR-185)', async () => {
+  test('120 done past-due tasks do not hide 3 open tasks', async () => {
     const mk = (i: number, status: Task['status'], dueDate: string): Task => ({
       id: `01TASKPILE${String(i).padStart(16, '0')}`,
       userId: 'u1',

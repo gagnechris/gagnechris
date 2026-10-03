@@ -40,25 +40,15 @@ export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly userPool: IUserPool;
   readonly webClient: IUserPoolClient;
-  /** Optional second audience (iOS client). */
   readonly iosClient?: IUserPoolClient;
   readonly alertsTopic: ITopic;
-  /** Shared single-table (posts + future Notebook). */
   readonly dataTable: ITable;
-  /** SES domain identity for contact / resume notifications (CHR-38). */
   readonly emailIdentity: IEmailIdentity;
-  /**
-   * SES identity for the notify inbox. Required in sandbox because SendEmail
-   * authorizes the destination identity as well as the From domain.
-   */
+  /** Required in the SES sandbox: SendEmail also authorizes the destination identity. */
   readonly notifyEmailIdentity: IEmailIdentity;
-  /** Verified From address (e.g. noreply@apex). */
   readonly fromEmail: string;
 }
 
-/**
- * HTTP API + Lambda behind CloudFront /api/* with Cognito JWT on admin routes.
- */
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
   readonly apiFunction: NodeLambda;
@@ -77,7 +67,7 @@ export class ApiStack extends Stack {
       fromEmail,
     } = props;
 
-    // Site bucket name via SSM (Site writes it; avoids Site↔Api CFN exports).
+    // Via SSM to avoid Site↔Api CFN exports.
     const siteBucketName = StringParameter.valueForStringParameter(
       this,
       ssmParameterName(config.name, 'siteBucketName'),
@@ -100,7 +90,7 @@ export class ApiStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api`,
       iam5NagReason:
-        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity (CHR-31 / CHR-38).',
+        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity.',
       iam5NagAppliesTo: [
         'Resource::*',
         'Action::s3:Abort*',
@@ -117,10 +107,9 @@ export class ApiStack extends Stack {
     });
 
     dataTable.grantReadWriteData(this.apiFunction);
-    // Presigned PUT only — objects are read via CloudFront OAC.
+    // Presigned PUT only; objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.apiFunction);
-    // Sandbox SendEmail also checks the destination identity ARN.
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
 
     const audiences = [webClient.userPoolClientId];
@@ -146,8 +135,7 @@ export class ApiStack extends Stack {
       apiName: `gagnechris-${config.name}`,
       description: 'Blog CMS API (JWT on /api/admin/* and /api/notebook/*)',
       corsPreflight: {
-        // API Gateway stores AllowHeaders lowercase; keep template aligned
-        // to avoid nightly drift (CHR-149).
+        // API Gateway stores these lowercase; anything else shows as drift.
         allowHeaders: ['authorization', 'content-type', 'if-match'],
         allowMethods: [
           CorsHttpMethod.GET,
@@ -158,7 +146,6 @@ export class ApiStack extends Stack {
           CorsHttpMethod.OPTIONS,
         ],
         allowOrigins: siteOrigins(config.domainName),
-        // Lowercase to match AllowHeaders storage (CHR-171).
         exposeHeaders: ['etag'],
         maxAge: Duration.days(1),
       },
@@ -179,8 +166,8 @@ export class ApiStack extends Stack {
         format: AccessLogFormat.jsonWithStandardFields(),
       },
     });
-    // API Gateway stores DestinationArn without the `:*` suffix. LogGroup
-    // AttrArn always ends in `:*`, so build the ARN without it (CHR-159).
+    // API Gateway stores DestinationArn without the `:*` suffix that LogGroup
+    // AttrArn always has, so the template would drift.
     const cfnStage = defaultStage.node.defaultChild as CfnStage;
     cfnStage.addPropertyOverride(
       'AccessLogSettings.DestinationArn',
@@ -191,9 +178,9 @@ export class ApiStack extends Stack {
         arnFormat: ArnFormat.COLON_RESOURCE_NAME,
       }),
     );
-    // Notebook sync gets a higher ceiling than public contact/resume so a
-    // contact spike is less likely to starve offline catch-up (CHR-172).
-    // Gateway 429 bodies are still `{"message":…}` (not ErrorResponse).
+    // Notebook sync gets a higher ceiling so a contact spike is less likely
+    // to starve offline catch-up. Gateway 429 bodies are `{"message":…}`, not
+    // ErrorResponse.
     cfnStage.addPropertyOverride('RouteSettings', {
       'ANY /api/notebook/{proxy+}': {
         ThrottlingRateLimit: 50,
@@ -241,7 +228,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-APIG4',
           reason:
-            'POST /api/contact is public (contact form); spam mitigated by honeypot, per-IP DynamoDB rate limits, and API stage throttle (CHR-98).',
+            'POST /api/contact is public (contact form); spam mitigated by honeypot, per-IP DynamoDB rate limits, and API stage throttle.',
         },
       ],
       true,
@@ -258,7 +245,7 @@ export class ApiStack extends Stack {
         {
           id: 'AwsSolutions-APIG4',
           reason:
-            'POST /api/resume/download is a public anonymous notify ping; no PII; IP/day dedupe + SES daily cap + stage throttle (CHR-98).',
+            'POST /api/resume/download is a public anonymous notify ping; no PII; IP/day dedupe + SES daily cap + stage throttle.',
         },
       ],
       true,
@@ -289,9 +276,7 @@ export class ApiStack extends Stack {
       authorizer: jwtAuthorizer,
     });
 
-    // /api/* CloudFront behavior lives in SiteStack (SSM http-api-id).
-
-    // Handled 500s never increment Lambda Errors — alarm on EMF instead (CHR-168).
+    // Handled 500s never increment Lambda Errors, so alarm on EMF.
     emfServiceAlarm(this, 'ApiHandlerErrors', {
       alarmName: `gagnechris-${config.name}-api-handler-errors`,
       alarmDescription:
@@ -310,7 +295,7 @@ export class ApiStack extends Stack {
     emfServiceAlarm(this, 'ApiSyncAdapterMissing', {
       alarmName: `gagnechris-${config.name}-api-sync-adapter-missing`,
       alarmDescription:
-        'Sync feed hit a change type with no registered adapter (500, CHR-202)',
+        'Sync feed hit a change type with no registered adapter (500)',
       serviceName: API_SERVICE_NAME,
       metricName: 'SyncAdapterMissing',
       alertsTopic,

@@ -1,11 +1,3 @@
-/**
- * "Restore my notes" copy-back rehearsal on DynamoDB Local (CHR-198).
- *
- * Seeds a live table through the real repositories, snapshots it into a
- * scratch "restore" table, damages the live table (deletes, edits, a purged
- * row, a re-taken day), then plans and applies a copy-back and checks the
- * result through the same repositories and sync feed clients use.
- */
 import { DeleteCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -40,7 +32,7 @@ const DAILY_G = '01ARZ3NDEKTSV4RRFFQ69G5CG1'; // deleted daily → undelete + cl
 const TASK_T = '01ARZ3NDEKTSV4RRFFQ69G5CT1'; // linked to A, deleted → undelete
 const OTHER_N = '01ARZ3NDEKTSV4RRFFQ69G5CO1'; // another owner: never touched
 
-describe('restore copy-back (DynamoDB Local, CHR-198)', () => {
+describe('restore copy-back (DynamoDB Local)', () => {
   const doc = createLocalDocClient();
   let live: string;
   let scratch: string;
@@ -125,7 +117,6 @@ describe('restore copy-back (DynamoDB Local, CHR-198)', () => {
       tags: [],
     });
 
-    // Restore point.
     await snapshotLiveIntoScratch();
 
     // Damage after the restore point.
@@ -216,12 +207,10 @@ describe('restore copy-back (DynamoDB Local, CHR-198)', () => {
     expect(await notes.get(OWNER, DAILY_B)).toMatchObject({
       bodyMarkdown: 'overwritten B',
     });
-    // Lists see restored rows (GSI1 keys rebuilt).
     const list = await notes.list(OWNER, { area: 'work' });
     expect(list.items.map((n) => n.id)).toEqual(
       expect.arrayContaining([PAGE_A, PAGE_F]),
     );
-    // Other owner untouched.
     expect(await notes.get(OTHER, OTHER_N)).toBeUndefined();
 
     // Clients polling since before the copy-back see the restored versions.

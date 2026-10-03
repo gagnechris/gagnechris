@@ -1,4 +1,4 @@
-/** Merge editor SEO title/description with fields the form does not edit (e.g. ogImage). */
+/** Preserves fields the form does not edit (e.g. ogImage). */
 export function mergeEditorSeo(
   existing:
     | { title?: string; description?: string; ogImage?: string }

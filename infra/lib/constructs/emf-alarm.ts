@@ -11,10 +11,7 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import type { Construct } from 'constructs';
 import { POWERTOOLS_METRICS_NAMESPACE } from '../config/constants.js';
 
-/**
- * CloudWatch alarm on a Powertools EMF custom metric (CHR-168).
- * Dimensions match the Lambda `POWERTOOLS_SERVICE_NAME` default `service` dim.
- */
+/** Powertools emits a `service` dimension from POWERTOOLS_SERVICE_NAME. */
 export function emfServiceAlarm(
   scope: Construct,
   id: string,
@@ -40,7 +37,6 @@ export function emfServiceAlarm(
   });
 }
 
-/** Sum ≥ 1 in 5 minutes → SNS, missing data not breaching. */
 export function metricAlarm(
   scope: Construct,
   id: string,

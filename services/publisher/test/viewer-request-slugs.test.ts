@@ -77,7 +77,7 @@ describe('batchSlugKeyDiff', () => {
   });
 });
 
-describe('syncBlogSlugsOnce / concurrent sync (CHR-119)', () => {
+describe('syncBlogSlugsOnce / concurrent sync', () => {
   function createInMemoryKvs(initialKeys: string[] = []) {
     let etag = 'etag-1';
     const keys = new Set(initialKeys);
@@ -187,7 +187,7 @@ describe('syncBlogSlugsOnce / concurrent sync (CHR-119)', () => {
     expect(sleep).toHaveBeenCalledTimes(2);
   });
 
-  it('re-resolves desired slugs after list so concurrent publishes are kept (CHR-123)', async () => {
+  it('re-resolves desired slugs after list so concurrent publishes are kept', async () => {
     // Republish-all started with [a]; meanwhile stream published b into KVS.
     // Stale desired [a] would delete b — thunk must return [a,b] after list.
     const store = createInMemoryKvs([BLOG_SLUG_SYNCED_KEY, 'a', 'b']);

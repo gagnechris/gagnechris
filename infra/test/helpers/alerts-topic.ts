@@ -3,11 +3,9 @@ import { Template } from 'aws-cdk-lib/assertions';
 import type { CfnTopic, Topic } from 'aws-cdk-lib/aws-sns';
 
 /**
- * Exact `AlarmActions` for an alarm whose stack imports `topic` from another
- * stack, the way every app stack imports the Guardrails alerts topic (CHR-200).
- * Call it after `Template.fromStack(consumer)` so the cross-stack export
- * exists. It fails unless exactly one export of `topic`'s stack is `Ref` of
- * that topic, so an alarm wired to any other ARN no longer matches.
+ * Call after `Template.fromStack(consumer)` so the cross-stack export exists.
+ * Requires exactly one export that is `Ref` of the topic, so an alarm wired to
+ * any other ARN does not match.
  */
 export function alertsTopicAlarmActions(
   topic: Topic,

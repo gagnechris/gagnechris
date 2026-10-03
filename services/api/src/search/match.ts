@@ -1,7 +1,3 @@
-/**
- * In-memory notebook search helpers (CHR-46).
- */
-
 export type MatchRange = { start: number; end: number };
 
 export type RankedHit = {
@@ -15,7 +11,6 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Build a short snippet around the first case-insensitive match of `q`. */
 export function snippetAround(
   text: string,
   q: string,

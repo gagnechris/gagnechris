@@ -17,7 +17,7 @@ describe('SaveIndicator', () => {
     expect(el).toHaveAttribute('data-state', 'saving');
   });
 
-  test('exposes a polite live status region (CHR-178)', () => {
+  test('exposes a polite live status region', () => {
     render(<SaveIndicator saveState="saved" dirty={false} />);
     const status = screen.getByRole('status');
     expect(status).toHaveAttribute('aria-live', 'polite');

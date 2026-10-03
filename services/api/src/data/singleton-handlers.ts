@@ -12,14 +12,12 @@ export type SingletonRepo<T, TUpdate> = {
 };
 
 export type SingletonRouteConfig<T, TUpdate> = {
-  /** Path after stripping `/api`, e.g. `/admin/home`. */
   basePath: string;
   entitySchema: ZodType<T>;
   updateSchema: ZodType<TUpdate>;
   createRepo: () => SingletonRepo<T, TUpdate>;
 };
 
-/** Route table entries for a singleton entity (home / resume). */
 export function createSingletonRoutes<T, TUpdate>(
   config: SingletonRouteConfig<T, TUpdate>,
   repo?: SingletonRepo<T, TUpdate>,

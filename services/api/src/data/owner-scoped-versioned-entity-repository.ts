@@ -1,8 +1,3 @@
-/**
- * Owner-scoped optimistic-concurrency store (CHR-169).
- * All reads/writes take `(userId, id)`; keys and create claims include the owner.
- * Posts stay on {@link VersionedEntityRepository} (id-only keys).
- */
 import {
   GetCommand,
   PutCommand,
@@ -49,33 +44,18 @@ export type OwnerScopedSyncConfig<T extends VersionedEntity> =
   SyncEntityConfig<T>;
 
 export type UniqueClaimHook<T extends VersionedEntity> = {
-  /**
-   * Extra TransactWrite Put items after META (+ owner create claim when sync
-   * is configured). Each item should use `attribute_not_exists(pk)` when it is
-   * a uniqueness claim.
-   */
   buildItems: (entity: T) => Array<{
     Put: {
       Item: Record<string, unknown>;
       ConditionExpression?: string;
     };
   }>;
-  /** Indexes into the array returned by `buildItems` that are unique claims. */
   claimIndexes: readonly number[];
   conflictCode: 'slug_taken' | 'daily_taken';
   conflictMessage?: string;
-  /**
-   * When a unique claim conflicts during `createIdempotent`, look up the
-   * entity holding the claim. A live holder with a different id makes the
-   * create fail with `conflictCode` and `current` (CHR-187). Return
-   * `undefined` to rethrow the original conflict.
-   */
+  /** Return `undefined` to rethrow the original conflict. */
   resolveConflict?: (entity: T) => Promise<T | undefined>;
-  /**
-   * Transaction items that free the claim when `entity` is soft-deleted, so
-   * the slot can be reused (CHR-187). Each should only remove a claim that
-   * still points at `entity`.
-   */
+  /** Each should only remove a claim that still points at `entity`. */
   releaseItems?: (entity: T) => Array<{
     Delete: {
       Key: Record<string, unknown>;
@@ -84,10 +64,7 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
       ExpressionAttributeValues?: Record<string, unknown>;
     };
   }>;
-  /**
-   * Free a claim still held by a tombstone (rows deleted before claims were
-   * released on delete). Called once before retrying the create (CHR-187).
-   */
+  /** Frees a claim still held by a tombstone (rows deleted before claims were released on delete). */
   releaseStale?: (holder: T) => Promise<void>;
 };
 
@@ -96,7 +73,6 @@ export type OwnerScopedVersionedEntityConfig<
   TItem extends Record<string, unknown>,
 > = {
   conflictLabel: string;
-  /** Primary key for a single entity owned by `userId`. */
   keyForId: (userId: string, id: string) => { pk: string; sk: string };
   idOf: (entity: T) => string;
   userIdOf: (entity: T) => string;
@@ -107,11 +83,10 @@ export type OwnerScopedVersionedEntityConfig<
   cursorKeyNames?: readonly string[];
   cursorKeysByIndex?: Readonly<Record<string, readonly string[]>>;
   sync?: OwnerScopedSyncConfig<T>;
-  /** Extra unique claims on create (e.g. daily note per area/date). */
   uniqueClaim?: UniqueClaimHook<T>;
 };
 
-/** GSI attribute names stripped from tombstones so list indexes stay clean. */
+/** Stripped from tombstones so list indexes stay clean. */
 const GSI_LIST_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
 
 function stripListGsiKeys<TItem extends Record<string, unknown>>(
@@ -378,11 +353,6 @@ export class OwnerScopedVersionedEntityRepository<
     return entity;
   }
 
-  /**
-   * Client-ULID create with owner + optional unique-claim resolution.
-   * Daily-note races: first claim wins; loser returns the existing winner
-   * when `uniqueClaim.resolveConflict` is configured (CHR-169).
-   */
   async createIdempotent(entity: T, retried = false): Promise<T> {
     const userId = this.config.userIdOf(entity);
     const id = this.config.idOf(entity);
@@ -408,7 +378,7 @@ export class OwnerScopedVersionedEntityRepository<
             return this.createIdempotent(entity, true);
           }
           // Different ULID lost the claim: tell the client who won so it can
-          // merge instead of silently dropping its write (CHR-187).
+          // merge instead of silently dropping its write.
           throw new ConflictError(
             unique.conflictMessage ??
               `Create conflict (${this.config.conflictLabel})`,
@@ -443,7 +413,7 @@ export class OwnerScopedVersionedEntityRepository<
         }
         // A transaction conflict with a concurrent create (not a failed
         // condition) leaves nothing to compare against: retry once, which
-        // either wins or surfaces the claim holder (CHR-187).
+        // either wins or surfaces the claim holder.
         if (
           !retried &&
           error instanceof ConflictError &&
@@ -472,8 +442,8 @@ export class OwnerScopedVersionedEntityRepository<
         const requestHash = hashFn(entity);
         const storedHash =
           typeof raw.createHash === 'string' ? raw.createHash : undefined;
-        // Legacy rows without createHash cannot prove create-time identity
-        // (hashing current state is unsafe after updates) — CHR-172.
+        // Rows without createHash cannot prove create-time identity
+        // (hashing current state is unsafe after updates).
         if (!createHashMatches(storedHash, requestHash)) {
           throw new ConflictError(
             `${this.config.conflictLabel} ${id} already exists with a different payload`,
@@ -489,10 +459,7 @@ export class OwnerScopedVersionedEntityRepository<
     }
   }
 
-  /**
-   * Strongly consistent read of a live entity for a read-modify-write
-   * (CHR-188). Returns the stored row too so `createHash` is preserved.
-   */
+  /** Returns the stored row too so `createHash` is preserved. */
   protected async readForWrite(
     userId: string,
     id: string,
@@ -510,12 +477,9 @@ export class OwnerScopedVersionedEntityRepository<
   }
 
   /**
-   * Versioned read-modify-write (CHR-188). `build` receives a strongly
-   * consistent read, so fields the caller did not change can never revert to
-   * a stale replica's values. `expected: 'any'` (If-Match `*`) resolves to the
-   * version just read. The written version is always `expected + 1`, so the
-   * write condition and the new version agree and no two contents share a
-   * version.
+   * `build` receives a strongly consistent read, so fields the caller did not
+   * change can never revert to a stale replica's values. The written version is
+   * always `expected + 1`, so no two contents share a version.
    */
   async mutateIfVersion(
     userId: string,
@@ -532,7 +496,6 @@ export class OwnerScopedVersionedEntityRepository<
     return this.putIfVersion(userId, id, expectedVersion, next, raw);
   }
 
-  /** Soft-delete counterpart of {@link mutateIfVersion} (CHR-188). */
   async softDeleteIfVersion(
     userId: string,
     id: string,
@@ -548,10 +511,7 @@ export class OwnerScopedVersionedEntityRepository<
     return this.softDelete(userId, id, expectedVersion, tombstone);
   }
 
-  /**
-   * Low-level conditional put of a caller-built entity. Prefer
-   * {@link mutateIfVersion}, which builds `next` from a consistent read.
-   */
+  /** Prefer {@link mutateIfVersion}, which builds `next` from a consistent read. */
   async updateIfVersion(
     userId: string,
     id: string,
@@ -623,8 +583,8 @@ export class OwnerScopedVersionedEntityRepository<
               {
                 Put: {
                   TableName: this.tableName,
-                  // No createHash on tombstones: a deleted id never replays
-                  // (CHR-192), so its content fingerprint isn't kept.
+                  // No createHash on tombstones: a deleted id never replays,
+                  // so its content fingerprint isn't kept.
                   Item: this.toStoredItem(tombstone, { ttl }),
                   ConditionExpression: VERSION_MATCH_CONDITION,
                   ExpressionAttributeValues:
@@ -632,7 +592,7 @@ export class OwnerScopedVersionedEntityRepository<
                 },
               },
               // Extend create-claim TTL from delete time so it always outlives
-              // the tombstone (CHR-172).
+              // the tombstone.
               ...(sync && claimTtl !== undefined
                 ? [
                     {

@@ -4,9 +4,6 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { ensureAmplifyConfigured } from './config';
 
-/**
- * Completes the Cognito managed-login PKCE exchange, then sends the admin home.
- */
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);

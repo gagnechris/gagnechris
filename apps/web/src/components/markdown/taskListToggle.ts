@@ -6,10 +6,7 @@ import {
 } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
-/**
- * GFM task list marker: `- [ ]` / `- [x]` (also `*` / `+`).
- * Negative lookahead avoids matching markdown links like `- [x](url)`.
- */
+/** Negative lookahead avoids matching markdown links like `- [x](url)`. */
 const TASK_LINE = /^(\s*[-*+]\s+)\[([ xX])\](?!\()/;
 
 export type TaskCheckbox = {
@@ -42,7 +39,6 @@ export function isStrictlyInsideTaskBox(
   return pos > task.boxFrom && pos < task.boxTo;
 }
 
-/** Toggle `- [ ]` ↔ `- [x]` when `pos` is on that line (optionally only inside the brackets). */
 export function toggleTaskAtPos(
   view: EditorView,
   pos: number,
@@ -71,13 +67,8 @@ function toggleTaskNearSelection(view: EditorView): boolean {
 }
 
 /**
- * Opt-in click / keyboard toggle for markdown task-list checkboxes (CHR-148).
- * Pass via `MarkdownEditor` `extensions={[taskListToggle()]}` (e.g. Notebook).
- * The blog editor leaves this off so typing `- [ ] ` inserts spaces normally.
- *
- * - Click strictly inside `[ ]` / `[x]` toggles
- * - Space while the cursor is strictly inside the brackets toggles
- * - Mod-Shift-x toggles the task on the current line (avoids ⌘⏎ / basicSetup clash)
+ * Opt-in: the blog editor leaves this off so typing `- [ ] ` inserts spaces
+ * normally. Mod-Shift-x avoids clashing with ⌘⏎ / basicSetup.
  */
 export function taskListToggle(): Extension {
   return [

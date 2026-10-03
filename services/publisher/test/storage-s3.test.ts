@@ -34,7 +34,7 @@ function sentCommands(): string[] {
   );
 }
 
-describe('S3 site storage delete (CHR-167 / CHR-201)', () => {
+describe('S3 site storage delete', () => {
   const prevBucket = process.env.SITE_BUCKET_NAME;
 
   beforeEach(() => {

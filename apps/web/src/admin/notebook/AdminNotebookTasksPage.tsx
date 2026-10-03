@@ -70,7 +70,7 @@ export default function AdminNotebookTasksPage() {
   if (due === 'overdue') listQuery.dueBefore = today;
 
   // Default view reads open tasks only; Completed loads when expanded, so a
-  // pile of done tasks can never push open ones off the page (CHR-185).
+  // pile of done tasks can never push open ones off the page.
   const tasksQuery = useTasksQuery(
     status ? listQuery : { ...listQuery, open: true },
   );

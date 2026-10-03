@@ -26,7 +26,6 @@ const variantClass: Record<Variant, string> = {
   danger: 'admin-btn admin-btn--danger',
 };
 
-/** Admin button / link built on `admin-btn` tokens. */
 export function Button({
   variant = 'default',
   href,

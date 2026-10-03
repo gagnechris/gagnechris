@@ -9,11 +9,9 @@ import './PostPage.css';
 interface PostData {
   title: string;
   date: string;
-  /** HTML from publisher prerender (shared markdown → HTML). */
   contentHtml: string;
 }
 
-/** Load a CMS-published post from Option B static HTML (`blog/<slug>/index.html`). */
 async function loadPublishedPost(slug: string): Promise<PostData | null> {
   const response = await fetch(publishedPostPageUrl(slug), {
     headers: { Accept: 'text/html' },

@@ -7,7 +7,7 @@ import {
 const NOW = new Date('2026-10-03T12:00:00.000Z');
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 
-describe('leftover restore tables (CHR-198)', () => {
+describe('leftover restore tables', () => {
   it('matches only restore scratch names', () => {
     for (const name of [
       'awsbackup-restore-test-1a2b',

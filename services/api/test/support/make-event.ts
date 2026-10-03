@@ -4,15 +4,11 @@ export type MakeEventOptions = {
   body?: unknown;
   query?: Record<string, string>;
   jwtClaims?: Record<string, string>;
-  /**
-   * Add `cognito:groups: [admin]` to `jwtClaims` like API Gateway passes it
-   * (CHR-195). Default true; set false to test a non-admin token.
-   */
+  /** Default true; set false to test a non-admin token. */
   adminGroup?: boolean;
   headers?: Record<string, string>;
 };
 
-/** Minimal APIGateway HTTP API v2 event for handler tests. */
 export function makeEvent(
   method: string,
   path: string,
@@ -54,7 +50,6 @@ export function makeEvent(
   } as APIGatewayProxyEventV2;
 }
 
-/** Contact route tests only need body + IP on a stub event. */
 export function makeEventWithBody(
   body: unknown,
   ip = '127.0.0.1',

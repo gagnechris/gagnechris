@@ -30,16 +30,10 @@ import type { EnvironmentConfig } from '../config/environments.js';
 
 export interface GuardrailsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** Monthly cost budget in USD (default $20). */
   readonly monthlyBudgetUsd?: number;
-  /** Days before CloudTrail objects expire (default 90). */
   readonly trailRetentionDays?: number;
 }
 
-/**
- * Cost and security baseline: SNS alerts, Budgets, CloudTrail, account S3 BPA,
- * and IAM Access Analyzer.
- */
 export class GuardrailsStack extends Stack {
   readonly alertsTopic: Topic;
 
@@ -53,9 +47,8 @@ export class GuardrailsStack extends Stack {
       displayName: `gagnechris-${config.name}-alerts`,
       enforceSSL: true,
     });
-    // Explicit CfnSubscription (new logical id) recreates the SNS subscription
-    // after it was deleted outside CloudFormation while CFN still tracked the
-    // old EmailSubscription resource (CHR-159). Confirm the SNS email after deploy.
+    // Keep this logical id: the subscription behind the previous id was deleted
+    // outside CloudFormation. A new id needs the SNS email confirmed again.
     new CfnSubscription(this, 'AlertsEmailV2', {
       topicArn: this.alertsTopic.topicArn,
       protocol: 'email',
@@ -134,7 +127,7 @@ export class GuardrailsStack extends Stack {
       isMultiRegionTrail: true,
       includeGlobalServiceEvents: true,
       enableFileValidation: true,
-      // Skip CloudWatch Logs delivery to limit cost; S3 + validation is enough.
+      // Cost: S3 + file validation is enough.
       sendToCloudWatchLogs: false,
       managementEvents: ReadWriteType.ALL,
     });
@@ -182,7 +175,7 @@ export class GuardrailsStack extends Stack {
       ],
     });
 
-    // No native CFN type for account-level S3 BPA — call S3 Control via SDK.
+    // No native CFN type for account-level S3 BPA.
     const accountBpa = new AwsCustomResource(
       this,
       'AccountS3BlockPublicAccess',

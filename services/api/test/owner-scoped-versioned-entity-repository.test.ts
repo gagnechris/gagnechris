@@ -68,7 +68,7 @@ function createRepo(doc: { send: ReturnType<typeof vi.fn> }) {
   );
 }
 
-describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
+describe('OwnerScopedVersionedEntityRepository', () => {
   const send = vi.fn();
   const repo = createRepo({ send });
 
@@ -181,7 +181,7 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
     expect(send.mock.calls[0]![0]).toBeInstanceOf(QueryCommand);
   });
 
-  it('mutateIfVersion reads consistently and always writes expected + 1 (CHR-188)', async () => {
+  it('mutateIfVersion reads consistently and always writes expected + 1', async () => {
     const stored = {
       pk: keys.notebook.note.meta('a', 'n1').pk,
       sk: 'META',
@@ -216,7 +216,7 @@ describe('OwnerScopedVersionedEntityRepository (CHR-169)', () => {
     expect(put.input.ExpressionAttributeValues[':v']).toBe(2);
   });
 
-  it('mutateIfVersion on a tombstone is 404 (CHR-188)', async () => {
+  it('mutateIfVersion on a tombstone is 404', async () => {
     send.mockResolvedValueOnce({
       Item: {
         pk: keys.notebook.note.meta('a', 'n1').pk,

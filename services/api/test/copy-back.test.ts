@@ -7,7 +7,7 @@ import {
   planCopyBack,
 } from '../src/restore/copy-back.js';
 
-describe('copy-back table guard (CHR-198)', () => {
+describe('copy-back table guard', () => {
   it('allows scratch → prod and scratch → local', () => {
     expect(() =>
       assertCopyBackTables('gagnechris-prod-restore-1', 'gagnechris-prod'),

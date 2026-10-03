@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Copy selected Notebook notes/tasks from a scratch restore table back into
- * the live table (CHR-198). Dry run by default; `--apply` writes.
+ * the live table. Dry run by default; `--apply` writes.
  *
  *   npx tsx scripts/restore-copy-back.ts \
  *     --source gagnechris-prod-restore-20261003 --target gagnechris-prod \

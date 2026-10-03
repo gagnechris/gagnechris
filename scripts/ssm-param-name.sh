@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Print full SSM parameter path from infra/lib/config/ssm-params.json.
 # Usage: scripts/ssm-param-name.sh <envName> <camelCaseKey>
 set -euo pipefail
 

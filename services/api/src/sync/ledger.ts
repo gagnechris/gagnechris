@@ -1,7 +1,4 @@
-/**
- * Per-user sync change feed over the sparse sync GSI (CHR-153 / CHR-172).
- * One META row per entity; no N+1 GetItem; watermark + overlap for clock skew.
- */
+// Watermark + overlap window absorbs clock skew.
 import {
   QueryCommand,
   type DynamoDBDocumentClient,
@@ -30,13 +27,9 @@ import {
 } from '../data/errors.js';
 import { getSyncAdapter, type SyncFeedChange } from './registry.js';
 
-/** ExclusiveStartKey shape for the sync GSI (base keys + index keys). */
 export const SYNC_GSI_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
 
-/**
- * Cursor attribute binding it to the query's `since` lower bound (empty when
- * the cursor was minted without `since`); stripped before Dynamo (CHR-202).
- */
+/** Binds a cursor to the query's `since` lower bound; stripped before Dynamo. */
 const SYNC_CURSOR_SINCE_ATTR = 'boundSince';
 
 const SYNC_CURSOR_KEYS = [
@@ -44,11 +37,7 @@ const SYNC_CURSOR_KEYS = [
   SYNC_CURSOR_SINCE_ATTR,
 ] as const;
 
-/**
- * Upper bound on Dynamo queries per page when rows are skipped (corrupt rows
- * whose adapter returns undefined), so `limit` counts returned changes
- * without letting a bad partition run the Lambda to its timeout (CHR-202).
- */
+/** Stops a partition of skipped (corrupt) rows from running the Lambda to its timeout. */
 export const SYNC_MAX_QUERIES_PER_PAGE = 5;
 
 export type SyncChangesPage = {
@@ -82,7 +71,6 @@ export class SyncLedger {
     const watermarkAt = this.nowIso();
     const { since, cursor, limit } = query;
     if (since !== undefined) {
-      // Validate / normalize early so bad client clocks fail as 400.
       const normalized = normalizeSyncSince(since);
       const horizon = syncResyncHorizonIso(new Date(watermarkAt));
       if (Date.parse(normalized) < Date.parse(horizon)) {

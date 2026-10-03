@@ -1,7 +1,3 @@
-/**
- * Canonical API route table (CHR-127).
- * Add a route: one entry here (or in a module export) + a handler.
- */
 import {
   AdminMeResponseSchema,
   API_SERVICE_NAME,
@@ -52,10 +48,9 @@ const adminMe = defineRoute({
   },
 });
 
-// Explicit, not a repository import side effect (CHR-202).
+// Explicit, not a repository import side effect.
 registerProductionSyncAdapters();
 
-/** All HTTP routes for the Lambda entrypoint. */
 export const routes: RouteDef[] = [
   health,
   adminMe,

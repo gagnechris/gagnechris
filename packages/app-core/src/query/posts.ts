@@ -58,13 +58,9 @@ export const useCreatePostMutation = () => {
   });
 };
 
-/** Apply a successful save into Query caches. */
 export const useSetPostCache = postResource.useSetCache;
 
-/**
- * Soft-delete. Uses setCachedPost (not removeQueries) so an open editor does
- * not flash Loading / GET the deleted post (CHR-158).
- */
+/** setCachedPost, not removeQueries, so an open editor does not flash Loading or refetch. */
 export const useDeletePostMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# One-command local admin: DynamoDB Local + API + static site + Vite.
 # Usage: npm run local:dev
 set -euo pipefail
 
@@ -111,8 +110,7 @@ if curl -sf "http://127.0.0.1:${LOCAL_API_PORT}/api/health" >/dev/null 2>&1; the
   echo "==> Local API already running on :${LOCAL_API_PORT}"
 else
   echo "==> Start local API on :${LOCAL_API_PORT} (tsx watch)"
-  # watch so handler/route changes (e.g. new admin APIs) reload without a full
-  # local:dev restart — otherwise Vite shows 404 against a stale process.
+  # Without watch, new routes 404 against a stale process until restart.
   npx tsx watch --clear-screen=false services/api/local/server.ts &
   API_PID=$!
   STARTED_API=1

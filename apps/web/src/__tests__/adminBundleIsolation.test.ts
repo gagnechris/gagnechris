@@ -27,7 +27,6 @@ describe('public entry bundle isolation', () => {
     );
     expect(lazyRouteSource).toMatch(/HydrateFallback:\s*LazyFallback/);
     expect(lazyRouteSource).toMatch(/\blazy\b/);
-    // Admin tree + public lazy pages should use the helper (not hand-rolled).
     const lazyRouteCalls = mainSource.match(/lazyRoute\(/g);
     expect(lazyRouteCalls?.length).toBeGreaterThanOrEqual(8);
   });

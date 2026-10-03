@@ -1,8 +1,3 @@
-/**
- * Opaque pagination cursor helpers (CHR-129 / CHR-152 / CHR-160).
- * Cursor is base64url(JSON of DynamoDB LastEvaluatedKey).
- */
-
 export function encodeCursor(
   lastEvaluatedKey: Record<string, unknown> | undefined,
 ): string | undefined {
@@ -14,10 +9,6 @@ export function encodeCursor(
   );
 }
 
-/**
- * Decode an opaque cursor. When `requiredKeys` is set, the key set must match
- * exactly and every value must be a string. Throws SyntaxError → HTTP 400.
- */
 export function decodeCursor(
   cursor: string | undefined,
   requiredKeys?: readonly string[],
@@ -47,34 +38,22 @@ export function decodeCursor(
   }
 }
 
-/** Primary-table ExclusiveStartKey shape. */
 export const PRIMARY_CURSOR_KEYS = ['pk', 'sk'] as const;
 
-/** GSI1 ExclusiveStartKey shape (base table keys + index keys). */
 export const GSI1_CURSOR_KEYS = ['pk', 'sk', 'gsi1pk', 'gsi1sk'] as const;
 
-/** GSI2 ExclusiveStartKey shape (base table keys + index keys). */
 export const GSI2_CURSOR_KEYS = ['pk', 'sk', 'gsi2pk', 'gsi2sk'] as const;
 
-/** GSI3 ExclusiveStartKey shape (sync feed). */
 export const GSI3_CURSOR_KEYS = ['pk', 'sk', 'syncPk', 'syncSk'] as const;
 
-/**
- * Ensure a decoded ExclusiveStartKey belongs to the queried partition
- * (and optional sort lower bound). Throws SyntaxError → HTTP 400 (CHR-170).
- */
 export function assertCursorMatchesQuery(
   key: Record<string, unknown> | undefined,
   opts: {
     partitionAttr: string;
     partitionValue: string;
-    /** When set, the cursor sort key must be ≥ this bound (inclusive). */
     sortAttr?: string;
     sortLowerBoundInclusive?: string;
-    /**
-     * Query parameter the cursor was minted for (CHR-202); the cursor must
-     * carry the same value, so it cannot be replayed under a different query.
-     */
+    /** Stops a cursor from being replayed under a different query. */
     binding?: { attr: string; value: string };
   },
 ): void {

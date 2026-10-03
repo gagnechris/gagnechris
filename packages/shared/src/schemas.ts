@@ -20,13 +20,11 @@ export type AdminMeResponse = z.infer<typeof AdminMeResponseSchema>;
 export const ErrorResponseSchema = z.object({
   error: z.string(),
   message: z.string().optional(),
-  /** Per-field Zod issue codes (e.g. `{ email: "invalid_format" }`). */
   fields: z.record(z.string(), z.string()).optional(),
 });
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
-/** 409 conflict body with optional current entity for client reconciliation. */
 export const ConflictErrorResponseSchema = ErrorResponseSchema.extend({
   error: z.enum([
     'conflict',
@@ -42,7 +40,6 @@ export const ConflictErrorResponseSchema = ErrorResponseSchema.extend({
 
 export type ConflictErrorResponse = z.infer<typeof ConflictErrorResponseSchema>;
 
-/** 412 body when If-Match version mismatches (CHR-171). */
 export const PreconditionFailedErrorResponseSchema = ErrorResponseSchema.extend(
   {
     error: z.literal('precondition_failed'),
@@ -59,7 +56,6 @@ export const PostStatusSchema = z.enum(['draft', 'published', 'deleted']);
 
 export type PostStatus = z.infer<typeof PostStatusSchema>;
 
-/** Shared publish lifecycle fields for Post / Home / Resume (CHR-128). */
 export const PublishableFieldsSchema = z.object({
   status: PostStatusSchema,
   publishedAt: z.string().datetime({ offset: true }).nullable(),
@@ -95,7 +91,6 @@ export type Post = z.infer<typeof PostSchema>;
 
 export const PostListResponseSchema = z.object({
   items: z.array(PostSchema),
-  /** Opaque cursor for the next page (absent when no more items). */
   nextCursor: z.string().min(1).optional(),
 });
 
@@ -126,7 +121,6 @@ export const UpdatePostRequestSchema = z.object({
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
 
-/** Query params for `GET /admin/posts` (API + OpenAPI — CHR-154 / CHR-171). */
 export const ListPostsQuerySchema = z.object({
   status: PostStatusSchema.optional().describe('Filter by post status'),
   cursor: z
@@ -145,7 +139,6 @@ export const ListPostsQuerySchema = z.object({
 
 export type ListPostsQuery = z.infer<typeof ListPostsQuerySchema>;
 
-/** Body for publish / unpublish / discard / delete (CHR-129). */
 export const ExpectedVersionRequestSchema = z.object({
   version: z.number().int().nonnegative(),
 });
@@ -154,7 +147,6 @@ export type ExpectedVersionRequest = z.infer<
   typeof ExpectedVersionRequestSchema
 >;
 
-/** Allowed Content-Type values for admin media uploads (CHR-31). */
 export const MEDIA_CONTENT_TYPES = [
   'image/jpeg',
   'image/png',
@@ -166,7 +158,7 @@ export const MediaContentTypeSchema = z.enum(MEDIA_CONTENT_TYPES);
 
 export type MediaContentType = z.infer<typeof MediaContentTypeSchema>;
 
-/** Max upload size enforced via signed Content-Length (10 MiB). */
+/** Enforced via the signed Content-Length. */
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
 
 export const MediaUploadUrlRequestSchema = z.object({
@@ -207,17 +199,14 @@ export const ContactRequestSchema = z.object({
     .min(1, 'Message is required')
     .max(10_000, 'Message is too long'),
   /**
-   * Honeypot — must be empty. Non-semantic name resists autofill (CHR-98).
-   * Legacy `website` still accepted so old bots keep triggering the trap.
+   * Honeypot: must be empty. Non-semantic name resists autofill; `website` is
+   * still accepted so old bots keep triggering the trap.
    */
   hp_field: z.string().max(200).optional().default(''),
   website: z.string().max(200).optional().default(''),
-  /**
-   * Client-measured time from form open to submit (performance.now delta).
-   * Preferred over formStartedAt — avoids server/browser clock skew (CHR-114).
-   */
+  /** Preferred over formStartedAt: a client-side delta avoids clock skew. */
   elapsedMs: z.number().int().nonnegative().optional(),
-  /** @deprecated Prefer elapsedMs. Client form-open time (ms since epoch). */
+  /** @deprecated Prefer elapsedMs. */
   formStartedAt: z.number().int().nonnegative().optional(),
 });
 
@@ -300,7 +289,6 @@ export const UpdateResumeRequestSchema = z.object({
 export type UpdateResumeRequest = z.infer<typeof UpdateResumeRequestSchema>;
 
 export const ResumeDownloadNotifyRequestSchema = z.object({
-  /** Optional client context (no PII required). */
   referrer: z.string().max(500).optional(),
 });
 
@@ -317,9 +305,8 @@ export type ResumeDownloadNotifyResponse = z.infer<
 >;
 
 /**
- * Crockford ULID (26 chars) — client-generated for idempotent creates (CHR-141).
- * Uppercase pattern with no `/i` flag so OpenAPI emits a valid ECMA-262 pattern
- * (CHR-171). Input is normalized to uppercase before the regex check.
+ * No `/i` flag so OpenAPI emits a valid ECMA-262 pattern; input is
+ * uppercased before the regex check.
  */
 export const ULID_PATTERN = '^[0-7][0-9A-HJKMNP-TV-Z]{25}$';
 
@@ -328,7 +315,6 @@ export const UlidSchema = z.preprocess(
   z.string().regex(new RegExp(ULID_PATTERN), 'Must be a ULID'),
 );
 
-/** Calendar day in the owner's local notebook sense (`yyyy-mm-dd`). */
 export const CALENDAR_DATE_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
 
 export const CalendarDateSchema = z
@@ -353,16 +339,13 @@ export const TaskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
 
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
-/**
- * Notebook write limits (CHR-192): well under DynamoDB's 400 KB item cap so
- * an oversized note is a clear 413, never a 500 from the table.
- */
+/** Well under DynamoDB's 400 KB item cap so oversize is a 413, not a 500. */
 export const NOTEBOOK_TEXT_MAX_BYTES = 100_000;
 export const NOTEBOOK_TITLE_MAX_LENGTH = 300;
 export const NOTEBOOK_TAG_MAX_LENGTH = 50;
 export const NOTEBOOK_TAGS_MAX = 50;
 
-/** UTF-8 byte length without TextEncoder (works in React Native too). */
+/** Avoids TextEncoder so it works in React Native. */
 export function utf8ByteLength(value: string): number {
   let bytes = 0;
   for (let i = 0; i < value.length; i += 1) {
@@ -377,7 +360,6 @@ export function utf8ByteLength(value: string): number {
   return bytes;
 }
 
-/** Markdown body / task description capped by UTF-8 size. */
 const NotebookTextSchema = z
   .string()
   .superRefine((value, ctx) => {
@@ -400,17 +382,13 @@ const NotebookTagsSchema = z
   .array(z.string().max(NOTEBOOK_TAG_MAX_LENGTH))
   .max(NOTEBOOK_TAGS_MAX);
 
-/**
- * Notebook note API entity (CHR-39). Soft-deleted rows keep `deleted: true`
- * for the sync tombstone window; list indexes omit them.
- */
+/** Soft-deleted rows keep `deleted: true` for the sync tombstone window. */
 export const NoteSchema = z
   .object({
     id: z.string().min(1),
     userId: z.string().min(1),
     area: NotebookAreaSchema,
     type: NoteTypeSchema,
-    /** Required when `type` is `daily`; null for freeform pages. */
     date: CalendarDateSchema.nullable(),
     title: z.string(),
     bodyMarkdown: z.string(),
@@ -477,10 +455,7 @@ export const CreateNoteRequestSchema = z
 
 export type CreateNoteRequest = z.infer<typeof CreateNoteRequestSchema>;
 
-/**
- * PUT note body. `version` may be omitted when `If-Match` carries the
- * expectation (CHR-186); the route still requires one of the two.
- */
+/** `version` may come from `If-Match` instead; one of the two is required. */
 export const UpdateNoteRequestSchema = z.object({
   version: z.number().int().nonnegative().optional(),
   title: NotebookTitleSchema.optional(),
@@ -492,7 +467,6 @@ export const UpdateNoteRequestSchema = z.object({
 
 export type UpdateNoteRequest = z.infer<typeof UpdateNoteRequestSchema>;
 
-/** Query params for `GET /notebook/notes` (CHR-40). */
 export const ListNotesQuerySchema = z.object({
   area: NotebookAreaSchema.optional().describe('Filter by Work or Personal'),
   from: CalendarDateSchema.optional().describe(
@@ -518,7 +492,6 @@ export const ListNotesQuerySchema = z.object({
 
 export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
 
-/** Empty daily-note placeholder when no claim exists yet (CHR-40 GET daily). */
 export const EmptyDailyNoteSchema = z.object({
   exists: z.literal(false),
   userId: z.string().min(1),
@@ -534,7 +507,6 @@ export const EmptyDailyNoteSchema = z.object({
 
 export type EmptyDailyNote = z.infer<typeof EmptyDailyNoteSchema>;
 
-/** GET daily: persisted Note or empty draft placeholder. */
 export const DailyNoteGetResponseSchema = z.union([
   NoteSchema,
   EmptyDailyNoteSchema,
@@ -542,7 +514,6 @@ export const DailyNoteGetResponseSchema = z.union([
 
 export type DailyNoteGetResponse = z.infer<typeof DailyNoteGetResponseSchema>;
 
-/** PUT /notebook/notes/daily/{area}/{date} body (CHR-40). */
 export const UpsertDailyNoteRequestSchema = z.object({
   id: UlidSchema.describe('Client ULID used when creating the daily note'),
   version: z.number().int().nonnegative().optional(),
@@ -556,10 +527,7 @@ export type UpsertDailyNoteRequest = z.infer<
   typeof UpsertDailyNoteRequestSchema
 >;
 
-/**
- * Notebook task API entity (CHR-39). `dueDate` is a calendar day; undated
- * tasks sort separately from due/overdue ranges in Dynamo (UPDATED# prefix).
- */
+/** Undated tasks sort separately from due ranges in Dynamo (UPDATED# prefix). */
 export const TaskSchema = z.object({
   id: UlidSchema,
   userId: z.string().min(1),
@@ -601,10 +569,7 @@ export const CreateTaskRequestSchema = z.object({
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
 
-/**
- * PUT task body. `version` may be omitted when `If-Match` carries the
- * expectation (CHR-186); the route still requires one of the two.
- */
+/** `version` may come from `If-Match` instead; one of the two is required. */
 export const UpdateTaskRequestSchema = z.object({
   version: z.number().int().nonnegative().optional(),
   area: NotebookAreaSchema.optional(),
@@ -619,7 +584,6 @@ export const UpdateTaskRequestSchema = z.object({
 
 export type UpdateTaskRequest = z.infer<typeof UpdateTaskRequestSchema>;
 
-/** Query params for `GET /notebook/tasks` (CHR-43). */
 export const ListTasksQuerySchema = z.object({
   area: NotebookAreaSchema.optional(),
   status: TaskStatusSchema.optional(),
@@ -643,11 +607,7 @@ export const ListTasksQuerySchema = z.object({
 
 export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
 
-/**
- * JSON body for `POST /notebook/search` (CHR-46). A body, not a query
- * string, so search terms never reach CloudFront or API Gateway access logs
- * (CHR-196).
- */
+/** A body, not a query string, so terms stay out of CDN and API access logs. */
 export const NotebookSearchRequestSchema = z.object({
   q: z.string().trim().min(1).max(200),
   area: NotebookAreaSchema.optional(),
@@ -662,7 +622,6 @@ export const NotebookSearchHitSchema = z.object({
   area: NotebookAreaSchema,
   title: z.string(),
   snippet: z.string(),
-  /** Character ranges into `snippet` for client highlighting. */
   matches: z.array(
     z.object({
       start: z.number().int().nonnegative(),
@@ -683,11 +642,8 @@ export type NotebookSearchResponse = z.infer<
 >;
 
 /**
- * Sync change wire types (CHR-172 / CHR-39 / CHR-202). Discriminated by `type`
- * so generated clients type `entity` per change type, then by `deleted`: a
- * live change (`deleted: false`) always carries `entity`; a tombstone does not.
- * Test-only change types (e.g. the `fakeNote` fixture) build their schema with
- * {@link syncChangeSchemaFor} in test support and never join this union.
+ * Discriminated by `type` so generated clients type `entity` per change type.
+ * Test-only change types use {@link syncChangeSchemaFor} and never join this union.
  */
 export function syncChangeSchemaFor<T extends string, E extends z.ZodType>(
   type: T,
@@ -722,7 +678,6 @@ export type SyncChange = z.infer<typeof SyncChangeSchema>;
 
 export type SyncChangeType = SyncChange['type'];
 
-/** Every production sync change type (the `SyncChangeSchema` discriminator). */
 export const SYNC_CHANGE_TYPES: readonly SyncChangeType[] =
   SyncChangeSchema.options.map(
     (variant) => variant.options[0].shape.type.value,
@@ -731,25 +686,19 @@ export const SYNC_CHANGE_TYPES: readonly SyncChangeType[] =
 export const SyncChangesResponseSchema = z.object({
   changes: z.array(SyncChangeSchema),
   nextCursor: z.string().min(1).optional(),
-  /**
-   * Server watermark (ISO-8601). Opaque to clients except that it must be
-   * echoed as `since` on the next poll (CHR-172).
-   */
+  /** Opaque to clients except that it must be echoed as `since` on the next poll. */
   nextSince: z.string().datetime({ offset: true }),
 });
 
 export type SyncChangesResponse = z.infer<typeof SyncChangesResponseSchema>;
 
 export type DecodedSyncChangesPage = SyncChangesResponse & {
-  /** `type` of each change skipped because this client does not know it. */
   skippedTypes: string[];
 };
 
 /**
- * Lenient client decoder for a sync page (CHR-202). Changes whose `type` this
- * build does not know (added by a newer server) are skipped and reported in
- * `skippedTypes` instead of failing the whole page; known types and the page
- * envelope are still validated strictly (throws ZodError).
+ * Unknown change types (from a newer server) are skipped and reported rather
+ * than failing the whole page; everything else is validated strictly.
  */
 export function decodeSyncChangesResponse(
   input: unknown,
@@ -776,7 +725,7 @@ export function decodeSyncChangesResponse(
   };
 }
 
-/** Default page size when `limit` is omitted (avoids ~1 MB Dynamo pages). */
+/** Small enough to avoid ~1 MB Dynamo pages. */
 export const SYNC_DEFAULT_PAGE_LIMIT = 50;
 
 export const SyncChangesQuerySchema = z.object({
@@ -803,22 +752,14 @@ export const SyncChangesQuerySchema = z.object({
 
 export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;
 
-/**
- * Client build version header on sync requests (CHR-202), `MAJOR.MINOR.PATCH`.
- * Absent → allowed (web / existing clients); below
- * {@link SYNC_MIN_CLIENT_VERSION} → 426 `upgrade_required`.
- */
+/** Absent is allowed (web); below {@link SYNC_MIN_CLIENT_VERSION} is a 426. */
 export const CLIENT_VERSION_HEADER = 'x-gagnechris-client-version';
 
-/**
- * Oldest client build the sync contract still serves. Raise it (and deploy)
- * to force upgrades / kill-switch a broken client release.
- */
+/** Raise it (and deploy) to force upgrades or kill-switch a broken client release. */
 export const SYNC_MIN_CLIENT_VERSION = '0.0.0';
 
 const CLIENT_VERSION_RE = /^(\d{1,9})\.(\d{1,9})\.(\d{1,9})$/;
 
-/** Parse `MAJOR.MINOR.PATCH` (no pre-release/build suffix); undefined if malformed. */
 export function parseClientVersion(
   raw: string,
 ): [number, number, number] | undefined {
@@ -827,7 +768,6 @@ export function parseClientVersion(
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
 
-/** True when `version` is at or above `minimum` (both `MAJOR.MINOR.PATCH`). */
 export function isClientVersionSupported(
   version: [number, number, number],
   minimum: [number, number, number],
@@ -848,7 +788,6 @@ export const ClientVersionHeadersSchema = z.object({
     ),
 });
 
-/** 426 body when the client build is older than the server minimum (CHR-202). */
 export const UpgradeRequiredErrorResponseSchema = ErrorResponseSchema.extend({
   error: z.literal('upgrade_required'),
   minClientVersion: z.string(),

@@ -5,7 +5,7 @@ import LegacyPostRedirect from './LegacyPostRedirect';
 const ShowPath = () => <p>{useLocation().pathname}</p>;
 
 describe('LegacyPostRedirect', () => {
-  it('sends /blog/:slug to /posts/:slug (CHR-206)', () => {
+  it('sends /blog/:slug to /posts/:slug', () => {
     render(
       <MemoryRouter initialEntries={['/blog/welcome']}>
         <Routes>

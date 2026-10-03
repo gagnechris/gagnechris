@@ -8,7 +8,6 @@ const LINKS = [
 ] as const;
 
 type PublicNavProps = {
-  /** Path segment to mark as current (e.g. "/posts"). */
   current?: string;
 };
 

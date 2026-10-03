@@ -7,7 +7,7 @@ type Task = { id: string; done: boolean };
 const markDone = (tasks: Task[] | undefined, { id }: { id: string }) =>
   tasks?.map((t) => (t.id === id ? { ...t, done: true } : t));
 
-describe('optimisticMutationHandlers (CHR-131)', () => {
+describe('optimisticMutationHandlers', () => {
   test('applies optimistic update and rolls back on error', async () => {
     const queryClient = new QueryClient();
     const queryKey = ['admin', 'tasks', 'list'] as const;
@@ -36,7 +36,7 @@ describe('optimisticMutationHandlers (CHR-131)', () => {
   });
 });
 
-describe('optimisticMutationHandlers multi-key (CHR-158)', () => {
+describe('optimisticMutationHandlers multi-key', () => {
   test('updates two lists and rolls both back on error', async () => {
     const queryClient = new QueryClient();
     const todayKey = ['admin', 'today', 'tasks'] as const;

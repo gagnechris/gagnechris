@@ -1,7 +1,6 @@
 /**
- * Single optimistic-concurrency write condition for versioned entities (CHR-161).
- * Requires the item to exist — prevents recreating a hard-deleted row.
- * Missing `version` is treated as 0 so legacy rows remain updatable (CHR-170).
+ * Requires the item to exist so a hard-deleted row is never recreated.
+ * Missing `version` is treated as 0 so rows written without one remain updatable.
  */
 import { isOptimisticLockConflict } from '@gagnechris/data';
 import { ConflictError, type ConflictCode } from './errors.js';
@@ -10,7 +9,6 @@ import { runDynamoWrite } from './dynamo-write.js';
 export const VERSION_MATCH_CONDITION =
   'attribute_exists(pk) AND (version = :v OR (attribute_not_exists(version) AND :v = :zero))' as const;
 
-/** Expression attribute values for {@link VERSION_MATCH_CONDITION}. */
 export function versionMatchValues(
   expectedVersion: number,
 ): Record<string, number> {
@@ -36,12 +34,8 @@ export async function throwVersionConflict<T extends { version: number }>(
 const UNIQUE_CLAIM_CODES = new Set(['slug_taken', 'daily_taken']);
 
 /**
- * Run a Dynamo write; on optimistic conflict, re-read current and throw
- * ConflictError with `current` / `currentVersion` (one shared re-read path).
- *
  * When a unique-claim failure coincides with a version failure on
- * `versionItemIndex`, prefer the version conflict (with `current`) over
- * `slug_taken` / `daily_taken` without `current` (CHR-170).
+ * `versionItemIndex`, the version conflict wins so the client gets `current`.
  */
 export async function runVersionedWrite<TResult>(
   write: () => Promise<TResult>,

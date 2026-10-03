@@ -25,7 +25,6 @@ export class ContactRepository {
     private readonly tableName: string = requireTableName(),
   ) {}
 
-  /** Persist a contact message before attempting SES (CHR-98). */
   async save(input: SaveContactInput): Promise<ContactMsgItem> {
     const contactId = ulid();
     const createdAt = new Date().toISOString();

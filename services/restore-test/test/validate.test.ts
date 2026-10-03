@@ -10,7 +10,7 @@ import { healthyItems, pagedScan } from './fixtures.js';
 
 const TABLE = 'awsbackup-restore-test-abc123';
 
-describe('validateRestoredTable (CHR-198)', () => {
+describe('validateRestoredTable', () => {
   it('passes a healthy restore across scan pages', async () => {
     const scan = pagedScan(healthyItems(), 2);
     const result = await validateRestoredTable(scan, TABLE);

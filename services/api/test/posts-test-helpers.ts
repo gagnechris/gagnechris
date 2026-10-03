@@ -1,4 +1,3 @@
-/** Test-only Dynamo helpers for posts (CHR-129 — kept out of production module). */
 import {
   DeleteCommand,
   PutCommand,

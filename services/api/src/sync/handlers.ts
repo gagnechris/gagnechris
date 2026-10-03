@@ -16,17 +16,11 @@ import { SyncLedger } from './ledger.js';
 export type SyncRouteOptions = {
   /** Oldest accepted `x-gagnechris-client-version` (tests). */
   minClientVersion?: string;
-  /**
-   * Response contract (tests widen it with fixture change types; production
-   * always validates against `SyncChangesResponseSchema`).
-   */
+  /** Tests widen it with fixture change types. */
   responseSchema?: { parse: (page: unknown) => unknown };
 };
 
-/**
- * Enforce the min-client-version kill switch (CHR-202). Absent header →
- * allowed (web / pre-header clients); malformed → 400; older → 426.
- */
+/** Absent header is allowed so web clients without it keep working. */
 export function assertClientVersionSupported(
   event: APIGatewayProxyEventV2,
   minimum: string,

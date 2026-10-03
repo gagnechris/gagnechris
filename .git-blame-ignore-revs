@@ -1,3 +1,3 @@
 # Formatting-only commits for `git blame --ignore-revs-file`.
-# Only list SHAs that exist on main (CHR-156). Prefer rebase-merge for
+# Only list SHAs that exist on main. Prefer rebase-merge for
 # formatting-only commits so a real SHA can be recorded here.

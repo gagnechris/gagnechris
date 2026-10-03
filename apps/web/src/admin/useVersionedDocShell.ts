@@ -6,17 +6,10 @@ export type VersionedDocShellOptions = {
   busy: boolean;
   saveRef: { current: () => unknown };
   suppressLeaveGuardRef: { current: boolean };
-  /**
-   * When set, ⌘⏎ triggers publish (draft/publish editors). Omit for
-   * non-publishable docs such as Notebook notes (CHR-173).
-   */
+  /** Omit for non-publishable docs such as Notebook notes (no ⌘⏎ publish). */
   publishRef?: { current: () => unknown };
 };
 
-/**
- * Web shell around versioned doc editors: leave guards, beforeunload, and ⌘S.
- * ⌘⏎ is optional via `publishRef`.
- */
 export function useVersionedDocShell({
   dirty,
   busy,
@@ -40,7 +33,7 @@ export function useVersionedDocShell({
       !suppressLeaveGuardRef.current &&
       currentLocation.pathname !== nextLocation.pathname,
   );
-  // Save first, then leave; only ask when the save did not land (CHR-189).
+  // Save first, then leave; only ask when the save did not land.
   const handlingRef = useRef(false);
   useEffect(() => {
     if (blocker.state !== 'blocked' || handlingRef.current) return;
@@ -70,7 +63,7 @@ export function useVersionedDocShell({
       if (meta && event.key.toLowerCase() === 's') {
         event.preventDefault();
         // Ignore ⌘S while publish/unpublish/discard/delete hold is active
-        // so a PUT cannot race with the in-flight version bump (CHR-158).
+        // so a PUT cannot race with the in-flight version bump.
         if (busy) return;
         void saveRef.current();
         return;

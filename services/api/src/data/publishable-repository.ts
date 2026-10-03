@@ -1,7 +1,3 @@
-/**
- * Publishable layer on VersionedEntityRepository (CHR-129 / CHR-152 / CHR-161).
- * One publish/unpublish/discard implementation for keyed + singleton entities.
- */
 import {
   BatchGetCommand,
   GetCommand,
@@ -329,7 +325,6 @@ export class PublishableRepository<
     return this.publishLoaded(loaded, expectedVersion, options);
   }
 
-  /** Publish from an already-loaded draft/published pair (avoids a second read). */
   async publishLoaded(
     loaded: LoadedPair<T>,
     expectedVersion: number,
@@ -457,7 +452,6 @@ export type PublishableSingletonConfig<
   mergeUpdate: (existing: T, input: TUpdate) => T;
 };
 
-/** Thin singleton façade — does not re-implement publish/unpublish/discard. */
 export class PublishableSingletonRepository<
   T extends PublishableEntity,
   TItem extends Record<string, unknown>,
@@ -523,7 +517,6 @@ export class PublishableSingletonRepository<
     return seeded;
   }
 
-  /** Load draft+published, seeding a draft row when missing. */
   private async loadOrCreate(): Promise<LoadedPair<T>> {
     const loaded = await this.store.loadDraftAndPublished(this.singletonId, {
       consistentRead: true,

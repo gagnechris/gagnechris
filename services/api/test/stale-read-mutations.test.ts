@@ -1,8 +1,5 @@
-/**
- * Lost-update guard (CHR-188): mutations must build from a strongly
- * consistent read. The doc client below serves eventually consistent
- * GetItem calls from a lagging snapshot, like a DynamoDB replica would.
- */
+// Eventually consistent GetItem calls are served from a lagging snapshot,
+// like a DynamoDB replica would.
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
@@ -44,7 +41,6 @@ function createLaggingDoc() {
   } as unknown as DynamoDBDocumentClient;
   return {
     doc,
-    /** Freeze what eventually consistent reads return from now on. */
     lag: () => {
       snapshot = new Map(
         [...store].map(([k, v]) => [k, structuredClone(v)] as const),
@@ -77,7 +73,7 @@ async function call(
   };
 }
 
-describe('mutations read consistently (CHR-188)', () => {
+describe('mutations read consistently', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();

@@ -1,4 +1,3 @@
-/** Optimistic concurrency failed when the client sent `If-Match` (CHR-141). */
 export class PreconditionFailedError extends Error {
   readonly currentVersion?: number;
   readonly current?: unknown;
@@ -14,7 +13,6 @@ export class PreconditionFailedError extends Error {
   }
 }
 
-/** Machine-readable conflict codes returned on 409 bodies (CHR-171). */
 export type ConflictCode =
   | 'conflict'
   | 'version_conflict'
@@ -45,7 +43,6 @@ export class ConflictError extends Error {
   }
 }
 
-/** Request is well-formed but not allowed for this entity (HTTP 400). */
 export class BadRequestError extends Error {
   readonly fields?: Record<string, string>;
 
@@ -63,7 +60,7 @@ export class NotFoundError extends Error {
   }
 }
 
-/** Client sync watermark is older than the tombstone retention horizon (CHR-172). */
+/** Client sync watermark is older than the tombstone retention horizon. */
 export class ResyncRequiredError extends Error {
   constructor(message: string) {
     super(message);
@@ -71,7 +68,6 @@ export class ResyncRequiredError extends Error {
   }
 }
 
-/** Client build is older than the sync contract's minimum (HTTP 426, CHR-202). */
 export class UpgradeRequiredError extends Error {
   readonly minClientVersion: string;
 
@@ -82,11 +78,7 @@ export class UpgradeRequiredError extends Error {
   }
 }
 
-/**
- * A sync GSI row has a `changeType` with no registered adapter (CHR-202).
- * Maps to HTTP 500 + `SyncAdapterMissing` metric: skipping the row while
- * advancing `nextSince` would make clients miss it permanently.
- */
+/** A 500, not a skip: advancing `nextSince` past the row would make clients miss it permanently. */
 export class SyncAdapterMissingError extends Error {
   readonly changeType: string;
 
@@ -97,7 +89,6 @@ export class SyncAdapterMissingError extends Error {
   }
 }
 
-/** DynamoDB throttling exhausted retries (CHR-120). */
 export class ServiceUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -105,10 +96,7 @@ export class ServiceUnavailableError extends Error {
   }
 }
 
-/**
- * Stored item failed schema validation (CHR-152).
- * Maps to HTTP 500 — not a client validation error.
- */
+/** HTTP 500, not a client validation error. */
 export class DataIntegrityError extends Error {
   readonly pk?: string;
   readonly sk?: string;

@@ -32,7 +32,7 @@ export type DailyNoteResourceParams = {
   date: string;
 };
 
-/** Stable client ULIDs for empty daily placeholders until first successful upsert. */
+/** Kept until the first successful upsert so re-renders reuse one client id. */
 const pendingDailyIds = new Map<string, string>();
 
 const pendingDailyKey = (area: NotebookArea, date: string) => `${area}:${date}`;
@@ -127,7 +127,6 @@ export const useNotesQuery = (filters: ListNotesQuery = {}) => {
   });
 };
 
-/** Dates that have a daily note in `[from, to]` (for calendar dots). */
 export const useDailyNoteDatesQuery = (
   area: NotebookArea | undefined,
   from: string,

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# CHR-75 local E2E: DynamoDB Local → API wrapper → publisher → static server.
-# Does not use AWS profiles or touch gagnechris-prod.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -96,7 +94,6 @@ wait_http() {
 }
 
 wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API"
-# Static server returns 404 for missing paths with 200 only for files — probe index.
 for i in $(seq 1 40); do
   code="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${LOCAL_SITE_PORT}/" || true)"
   if [[ "${code}" == "200" ]]; then
@@ -132,14 +129,14 @@ echo "${HTML}" | grep -q 'property="og:title"'
 echo "${HTML}" | grep -q 'class="blog-post-prerender"'
 echo "${HTML}" | grep -q 'Local body'
 
-echo "==> Legacy /blog URL 301s to /posts (CHR-206)"
+echo "==> Legacy /blog URL 301s to /posts"
 LEGACY_LOCATION="$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "${SITE}/blog/${SLUG}")"
 if [[ "${LEGACY_LOCATION}" != "301 ${SITE}/posts/${SLUG}" ]]; then
   echo "Expected 301 to /posts/${SLUG}, got ${LEGACY_LOCATION}" >&2
   exit 1
 fi
 
-echo "==> Seed home as draft, publish, assert prerender (CHR-96)"
+echo "==> Seed home as draft, publish, assert prerender"
 HOME_JSON="$(curl -sS "${API}/api/admin/home")"
 node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='draft'){console.error('expected draft seed',h);process.exit(1)}" "${HOME_JSON}"
 HOME_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${HOME_JSON}")"

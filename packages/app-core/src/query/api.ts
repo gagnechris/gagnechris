@@ -27,7 +27,6 @@ export type TaskPriority = Task['priority'];
 
 export class ApiError extends Error {
   readonly status: number;
-  /** Machine-readable error code from the API body (e.g. `slug_taken`). */
   readonly error?: string;
 
   constructor(message: string, status: number, error?: string) {
@@ -50,7 +49,6 @@ function errorCodeFromBody(body: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined;
 }
 
-/** Unwrap an OpenAPI client result or throw `ApiError` (exported for new resources). */
 export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
     throw new ApiError(
@@ -62,7 +60,6 @@ export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   return result.data;
 };
 
-/** Non-throwing shape for useDraftPublishEditor. */
 export type MutateResult<T> = {
   data?: T;
   error?: unknown;
@@ -100,7 +97,6 @@ export const fetchPostsPage = async (
   };
 };
 
-/** Follows `nextCursor` until exhausted (CHR-152). */
 export const fetchPosts = async (client: ApiClient): Promise<Post[]> => {
   const all: Post[] = [];
   let cursor: string | undefined;
@@ -383,9 +379,9 @@ export type ListTasksQuery = {
   dueOn?: string;
   dueBefore?: string;
   noteId?: string;
-  /** Only todo + in_progress (ignored when `status` is set) — CHR-185. */
+  /** Ignored when `status` is set. */
   open?: boolean;
-  /** Caller's local day for overdue ranking (CHR-185). */
+  /** Caller's local day, so overdue ranking follows their timezone. */
   today?: string;
   cursor?: string;
   limit?: number;
@@ -487,8 +483,7 @@ export const searchNotebook = async (
   client: ApiClient,
   query: NotebookSearchQuery,
 ): Promise<NotebookSearchResponse> => {
-  // POST body, not a query string: search terms stay out of URLs and
-  // access logs (CHR-196).
+  // POST body, not a query string: search terms stay out of URLs and access logs.
   const result = await client.POST('/api/notebook/search', {
     body: query,
   });

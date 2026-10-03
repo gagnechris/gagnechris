@@ -8,7 +8,6 @@ export type IntegrationCtx = {
   readonly posts: PostsRepository;
 };
 
-/** Shared context for DynamoDB Local integration suites (Notebook can extend). */
 export function makeCtx(
   doc: DynamoDBDocumentClient,
   tableName: string,
@@ -24,7 +23,6 @@ export type MakePostInput = Partial<CreatePostRequest> & {
   title?: string;
 };
 
-/** Create a draft post with sensible defaults. */
 export async function makePost(
   ctx: IntegrationCtx,
   input: MakePostInput = {},

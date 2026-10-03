@@ -1,7 +1,3 @@
-/**
- * Test-only synced entity used to prove owner-scoped repository + sync
- * config is enough to appear in the change feed (CHR-153 / CHR-162 / CHR-169).
- */
 import {
   GSI1_NAME,
   GSI2_NAME,
@@ -60,7 +56,6 @@ export const FakeNoteSyncChangeSchema = syncChangeSchemaFor(
   FakeNoteEntitySchema,
 );
 
-/** Production sync page contract widened with the fixture change type. */
 export const TestSyncChangesResponseSchema = SyncChangesResponseSchema.extend({
   changes: z.array(
     z.discriminatedUnion('type', [
@@ -134,11 +129,7 @@ export function toFakeNoteEntity(item: FakeNoteItem): FakeNote {
   };
 }
 
-/**
- * Deliberately omits `entityType` — the base `toStoredItem` must stamp it from
- * sync.changeType so the feed still sees the row (CHR-162 AC).
- * Tombstones omit GSI1/GSI2 (stripped again in toStoredItem for safety).
- */
+/** Deliberately omits `entityType`: the base `toStoredItem` must stamp it so the feed still sees the row. */
 export function toFakeNoteItem(entity: FakeNote): FakeNoteItem {
   const { pk, sk } = keys.notebook.note.meta(entity.userId, entity.id);
   const item: FakeNoteItem = {
@@ -186,7 +177,6 @@ export function fakeNoteToChange(
   return change;
 }
 
-/** Registers the fixture adapter (repositories never register adapters). */
 export function registerFakeNoteSync(): void {
   registerSyncEntity({
     changeType: FAKE_NOTE_CHANGE_TYPE,
@@ -224,11 +214,6 @@ function dailyNoteClaimHook(
     claimIndexes: [0],
     conflictCode: 'daily_taken',
     conflictMessage: 'Daily note already exists for this area and date',
-    /**
-     * Two offline devices creating the same `(area, date)` with different
-     * ULIDs: first writer wins; the loser gets a `daily_taken` conflict
-     * carrying the winner (CHR-187).
-     */
     resolveConflict: async (entity) => {
       if (!entity.area || !entity.noteDate) return undefined;
       const claim = await doc.send(

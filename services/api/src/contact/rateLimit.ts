@@ -14,12 +14,9 @@ import {
   ttlEndOfUtcHour,
 } from '@gagnechris/data';
 
-/** Contact form: max posts per source IP per UTC hour. */
 export const CONTACT_PER_IP_PER_HOUR = 3;
 
-/**
- * Shared SES send budget for contact + resume notify (well under sandbox 200/day).
- */
+/** Shared by contact + resume notify; well under the SES sandbox 200/day. */
 export const SES_GLOBAL_DAILY_CAP = 100;
 
 export class RateLimitExceededError extends Error {
@@ -31,10 +28,6 @@ export class RateLimitExceededError extends Error {
   }
 }
 
-/**
- * Atomically increments a DynamoDB counter when under `max`.
- * Returns true when the increment succeeded; false when already at/over max.
- */
 export async function tryIncrementCounter(input: {
   doc: DynamoDBDocumentClient;
   tableName: string;
@@ -79,7 +72,6 @@ export class RateLimiter {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Reserve one contact submission for this IP (hourly window). */
   async consumeContactIp(ip: string): Promise<void> {
     const at = this.now();
     const ok = await tryIncrementCounter({
@@ -97,10 +89,7 @@ export class RateLimiter {
     }
   }
 
-  /**
-   * Reserve one SES send against the global daily cap.
-   * Call only when about to send mail (after persistence / dedupe).
-   */
+  /** Call only when about to send mail (after persistence / dedupe). */
   async consumeSesSend(): Promise<void> {
     const at = this.now();
     const ok = await tryIncrementCounter({
@@ -118,10 +107,6 @@ export class RateLimiter {
     }
   }
 
-  /**
-   * Resume IP/day dedupe: returns true if this is the first notify today
-   * (caller should send email), false if already notified.
-   */
   async claimResumeNotifyIp(ip: string): Promise<boolean> {
     const at = this.now();
     return tryIncrementCounter({

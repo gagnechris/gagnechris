@@ -182,7 +182,7 @@ function Contact() {
           className="contact-form"
           autoComplete="on"
         >
-          {/* Honeypot — nonsemantic name resists autofill (CHR-98). */}
+          {/* Honeypot — nonsemantic name resists autofill. */}
           <div className="hp-field" aria-hidden="true">
             <label htmlFor="hp_field">Leave blank</label>
             <input

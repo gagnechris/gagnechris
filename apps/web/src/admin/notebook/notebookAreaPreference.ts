@@ -19,7 +19,6 @@ export function isNotebookAreaFilter(
   return value === 'work' || value === 'personal' || value === 'all';
 }
 
-/** Read persisted area filter; invalid/missing → default Work. */
 export function readNotebookAreaFilter(): NotebookAreaFilter {
   try {
     const raw = localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY);
@@ -38,7 +37,6 @@ export function writeNotebookAreaFilter(filter: NotebookAreaFilter): void {
   }
 }
 
-/** Map UI filter to optional Notes/Tasks list `area` query param. */
 export function areaQueryParam(
   filter: NotebookAreaFilter,
 ): NotebookArea | undefined {

@@ -12,10 +12,7 @@ import {
   type UpdateResumeRequest,
 } from '@gagnechris/app-core';
 
-/**
- * Re-exports types + ApiError for admin pages. Call sites must use
- * `useGetApiClient()` / resource hooks — no createApiClient() wrappers (CHR-158).
- */
+/** Call sites use `useGetApiClient()` / resource hooks, not createApiClient() wrappers. */
 export {
   ApiError,
   asMutateResult,

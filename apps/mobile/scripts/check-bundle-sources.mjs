@@ -1,13 +1,7 @@
 /**
- * Guard the exported iOS bundle against type-only modules and zod major
- * mismatches (CHR-150 / CHR-164).
- *
- * `zod` ships `external.js` next to `external.d.ts`; a resolver that remaps
- * `.js` → `.d.ts` bundles the declaration, which has no runtime. The export
- * still succeeds, so the sourcemap is the only place the mistake is visible.
- *
- * Shared is typechecked against zod ^4, but Metro can still resolve Expo CLI's
- * transitive zod 3 — require `zod/v4/` paths and reject `zod/v3/`.
+ * A resolver that remaps zod's `.js` to `.d.ts` bundles a declaration with no
+ * runtime and the export still succeeds, so the sourcemap is the only place it
+ * shows. Shared targets zod 4, but Metro can still resolve Expo CLI's zod 3.
  *
  * Usage: node scripts/check-bundle-sources.mjs <export-dir>
  */
