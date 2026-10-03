@@ -101,7 +101,7 @@ describe('useVersionedDocEditor fake note (CHR-173)', () => {
           delete: {
             confirm: 'Delete this note?',
             mutate: async () => {
-              await noteResource.delete!(client, { id: 'n1' });
+              await noteResource.delete!(client, { id: 'n1' }, { version: 1 });
             },
             onDeleted,
           },

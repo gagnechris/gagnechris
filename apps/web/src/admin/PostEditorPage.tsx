@@ -80,8 +80,8 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     onHydrate: () => setSlugManual(true),
     delete: {
       confirm: 'Soft-delete this post? You can recover it later via the API.',
-      mutate: async () => {
-        await deleteMutation.mutateAsync(postId);
+      mutate: async (version) => {
+        await deleteMutation.mutateAsync({ id: postId, version });
       },
       onDeleted: () => {
         void navigate('/admin');

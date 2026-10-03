@@ -141,7 +141,7 @@ describe('multi-partition list paging (CHR-185)', () => {
     }
     for (let i = 0; i < 3; i += 1) {
       await repo.createFromRequest(PAGING_USER, {
-        id: testUlid('O', i),
+        id: testUlid('P', i),
         area: i === 0 ? 'personal' : 'work',
         title: `today ${i}`,
         description: '',

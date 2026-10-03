@@ -633,7 +633,10 @@ export function buildOpenApiDocument() {
     security: [{ bearerAuth: [] }],
     request: { params: DailyNoteParamsSchema },
     responses: {
-      200: ok(DailyNoteGetResponseSchema, 'Daily note or empty draft'),
+      200: okWithEtag(
+        DailyNoteGetResponseSchema,
+        'Daily note (with ETag) or empty draft (no ETag)',
+      ),
       400: r400,
       ...adminAuth,
     },
@@ -929,20 +932,47 @@ export function buildOpenApiDocument() {
   });
 
   const generator = new OpenApiGeneratorV3(registry.definitions);
-  return generator.generateDocument({
-    openapi: '3.0.3',
-    info: {
-      title: 'gagnechris API',
-      version: '0.3.0',
-      description:
-        'HTTP API for Blog CMS and Notebook admin. Same-origin via CloudFront /api/*. Shared DynamoDB single-table (docs/data-model.md).',
-    },
-    servers: [
-      { url: 'https://gagnechris.com', description: 'Production' },
-      {
-        url: 'http://localhost:8787',
-        description: 'Local API (services/api/local/server.ts)',
+  return requireRequestBodies(
+    generator.generateDocument({
+      openapi: '3.0.3',
+      info: {
+        title: 'gagnechris API',
+        version: '0.3.0',
+        description:
+          'HTTP API for Blog CMS and Notebook admin. Same-origin via CloudFront /api/*. Shared DynamoDB single-table (docs/data-model.md).',
       },
-    ],
-  });
+      servers: [
+        { url: 'https://gagnechris.com', description: 'Production' },
+        {
+          url: 'http://localhost:8787',
+          description: 'Local API (services/api/local/server.ts)',
+        },
+      ],
+    }),
+  );
+}
+
+type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>;
+
+/**
+ * Mark every declared JSON body `required` (CHR-186). Otherwise
+ * openapi-typescript makes `body` optional and a mutation called without its
+ * body (e.g. a delete with no expected version) still typechecks. Notebook
+ * routes also accept `If-Match` alone, but typed clients send the body.
+ */
+function requireRequestBodies(doc: OpenApiDocument): OpenApiDocument {
+  for (const pathItem of Object.values(doc.paths ?? {})) {
+    for (const op of Object.values(pathItem)) {
+      if (
+        op &&
+        typeof op === 'object' &&
+        'requestBody' in op &&
+        op.requestBody &&
+        !('$ref' in op.requestBody)
+      ) {
+        op.requestBody.required = true;
+      }
+    }
+  }
+  return doc;
 }
