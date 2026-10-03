@@ -84,7 +84,8 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 | Variable                             | Default / notes                                       |
 | ------------------------------------ | ----------------------------------------------------- |
-| `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:8000`                               |
+| `DYNAMODB_LOCAL_HOST_PORT`           | `8000` (host port Compose publishes)                  |
+| `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:${DYNAMODB_LOCAL_HOST_PORT}`        |
 | `DATA_TABLE_NAME`                    | `gagnechris-local` (refuses `gagnechris-prod`)        |
 | `SITE_BUCKET_NAME`                   | Repo `.local-site/` filesystem “bucket”               |
 | `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                       |
@@ -92,11 +93,13 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
 
+`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` or `npm run e2e:local` against a running container works (CHR-199).
+
 ### Integration tests (CHR-151 / CHR-163)
 
 `npm run test:integration -w @gagnechris/api` **ignores** `DATA_TABLE_NAME`. Each file creates an ephemeral `gagnechris-it-*` table and deletes it afterward, so sourcing `env.sh` and running tests will not wipe `gagnechris-local`. Tables that do not start with `gagnechris-it-` are refused.
 
-Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
+Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000 (CHR-199). Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
 
 ### CDK / deploy
 
@@ -118,7 +121,7 @@ lsof -iTCP:8000 -sTCP:LISTEN
 
 Use the stable Compose project name (`gagnechris`) so worktrees share one Local instance, or stop the conflicting container/process. Override with `DYNAMODB_LOCAL_HOST_PORT` / `AWS_ENDPOINT_URL_DYNAMODB` / Compose port mapping only if you need a second instance.
 
-GitHub Actions API integration uses Compose project `gagnechris-ci` on host port **8001** (`docker-compose.ci.yml`) so a long-running CI container does not block `npm run local:dev` on **8000**.
+API integration (in CI and locally) uses Compose project `gagnechris-ci` on host port **8001** only: `docker-compose.ci.yml` replaces the base ports with `ports: !override` (Compose 2.24.4+), so it never also binds **8000** and cannot block `npm run local:dev` (CHR-199). If an old `gagnechris-ci-dynamodb-1` still holds 8000 from before this change, remove it with `docker rm -f gagnechris-ci-dynamodb-1`.
 
 ### Admin still hits Cognito locally
 

@@ -14,9 +14,9 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APP_TABLE, appTableAttributeDefinitions } from '@gagnechris/data';
+import { integrationDynamoEndpoint } from './dynamodb-ci-lifecycle.js';
 
-export const localDynamoEndpoint =
-  process.env.AWS_ENDPOINT_URL_DYNAMODB ?? 'http://127.0.0.1:8000';
+export const localDynamoEndpoint = integrationDynamoEndpoint();
 
 /** Integration tables must use this prefix so we never touch gagnechris-local. */
 export const INTEGRATION_TABLE_PREFIX = 'gagnechris-it-';

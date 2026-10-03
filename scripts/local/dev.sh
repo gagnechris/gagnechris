@@ -36,7 +36,7 @@ wait_dynamodb() {
       import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
       const c = new DynamoDBClient({
         region: 'us-east-1',
-        endpoint: process.env.AWS_ENDPOINT_URL_DYNAMODB || 'http://127.0.0.1:8000',
+        endpoint: process.env.AWS_ENDPOINT_URL_DYNAMODB,
         credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
       });
       await c.send(new ListTablesCommand({}));
@@ -45,7 +45,7 @@ wait_dynamodb() {
     fi
     sleep 0.5
   done
-  echo "DynamoDB Local did not become ready on :8000" >&2
+  echo "DynamoDB Local did not become ready at ${AWS_ENDPOINT_URL_DYNAMODB}" >&2
   exit 1
 }
 
