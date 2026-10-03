@@ -1,0 +1,137 @@
+import { Navigate, type RouteObject } from 'react-router-dom';
+import App from './App.tsx';
+import Resume from './pages/Resume.tsx';
+import PostsIndex from './pages/PostsIndex.tsx';
+import PostPage from './pages/PostPage.tsx';
+import Contact from './pages/Contact.tsx';
+import NotFound from './pages/NotFound.tsx';
+import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
+import AppWithTracking from './components/AppWithTracking.tsx';
+import { LazyFallback } from './components/LazyFallback.tsx';
+import { lazyRoute } from './routing/lazyRoute';
+
+// HydrateFallback must be a static route property (sibling to `lazy`): React
+// Router skips one returned from lazy() during initial hydration and warns on /admin.
+// admin and auth are caseSensitive so /ADMIN can't boot the admin app under the
+// public CSP (CloudFront's /admin* behaviour is case-sensitive).
+export const routes: RouteObject[] = [
+  {
+    path: '/',
+    element: <AppWithTracking />,
+    HydrateFallback: LazyFallback,
+    children: [
+      {
+        index: true,
+        element: <App />,
+      },
+      {
+        path: 'resume',
+        element: <Resume />,
+      },
+      {
+        path: 'posts',
+        element: <PostsIndex />,
+      },
+      {
+        path: 'posts/:slug',
+        element: <PostPage />,
+      },
+      // CloudFront 301s /blog in prod; this covers local dev.
+      {
+        path: 'blog',
+        element: <Navigate to="/posts" replace />,
+      },
+      {
+        path: 'blog/:slug',
+        element: <LegacyPostRedirect />,
+      },
+      {
+        path: 'contact',
+        element: <Contact />,
+      },
+      lazyRoute({
+        path: 'dont-feed-the-bears',
+        load: () => import('./pages/DontFeedTheBears.tsx'),
+      }),
+      lazyRoute({
+        path: 'dont-feed-the-bears/camp',
+        load: () => import('./pages/bears/CampRules.tsx'),
+      }),
+      lazyRoute({
+        path: 'dont-feed-the-bears/wild',
+        load: () => import('./pages/bears/StayWild.tsx'),
+      }),
+      lazyRoute({
+        path: 'auth/callback',
+        caseSensitive: true,
+        load: () => import('./auth/AuthCallback.tsx'),
+      }),
+      lazyRoute({
+        path: 'admin',
+        caseSensitive: true,
+        load: () => import('./admin/AdminLayout.tsx'),
+        children: [
+          lazyRoute({
+            index: true,
+            load: () => import('./admin/AdminPostsPage.tsx'),
+          }),
+          lazyRoute({
+            path: 'posts',
+            load: () => import('./admin/AdminPostsPage.tsx'),
+          }),
+          lazyRoute({
+            path: 'posts/:postId',
+            load: () => import('./admin/PostEditorPage.tsx'),
+          }),
+          lazyRoute({
+            path: 'home',
+            load: () => import('./admin/AdminHomePage.tsx'),
+          }),
+          lazyRoute({
+            path: 'resume',
+            load: () => import('./admin/AdminResumePage.tsx'),
+          }),
+          lazyRoute({
+            path: 'notebook',
+            load: () => import('./admin/AdminNotebookLayout.tsx'),
+            children: [
+              {
+                index: true,
+                element: <Navigate to="today" replace />,
+              },
+              lazyRoute({
+                path: 'today',
+                load: () =>
+                  import('./admin/notebook/AdminNotebookTodayPage.tsx'),
+              }),
+              lazyRoute({
+                path: 'notes',
+                load: () =>
+                  import('./admin/notebook/AdminNotebookNotesPage.tsx'),
+              }),
+              lazyRoute({
+                path: 'notes/:id',
+                load: () =>
+                  import('./admin/notebook/AdminNotebookNotePage.tsx'),
+              }),
+              lazyRoute({
+                path: 'tasks',
+                load: () =>
+                  import('./admin/notebook/AdminNotebookTasksPage.tsx'),
+              }),
+              lazyRoute({
+                path: 'tasks/:id',
+                load: () =>
+                  import('./admin/notebook/AdminNotebookTaskPage.tsx'),
+              }),
+            ],
+          }),
+        ],
+      }),
+      {
+        path: '*',
+        element: <NotFound />,
+      },
+    ],
+  },
+];
