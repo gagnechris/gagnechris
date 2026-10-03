@@ -20,17 +20,14 @@ type FakeNote = {
 
 type FakeNoteParams = { id: string };
 
-const flush = async () => {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-};
-
 const waitUntil = async (predicate: () => boolean, label: string) => {
   for (let i = 0; i < 100; i++) {
     if (predicate()) return;
-    await flush();
+    // Yield a macrotask too: React Query batches notifications on a timer, so
+    // microtask flushes alone can starve under load.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   }
   throw new Error(`Timed out waiting for ${label}`);
 };
@@ -173,14 +170,16 @@ describe('useVersionedDocEditor remote updates (CHR-178)', () => {
       queryKey: ({ id }) => ['notebook', 'notes', id] as const,
       fetch: async (_c, { id }) => ({ ...store.get(id)! }),
       update: async (_c, { id }, body) => {
-        if (gate) await gate;
         const prev = store.get(id)!;
         const next = {
           ...prev,
           body: String(body.body ?? prev.body),
           version: prev.version + 1,
         };
+        // The server commits first; the gate only delays the response, so a
+        // refetch while gated sees our own write (as in production).
         store.set(id, next);
+        if (gate) await gate;
         return next;
       },
       setCache: (qc, entity) => {
@@ -259,8 +258,8 @@ describe('useVersionedDocEditor remote updates (CHR-178)', () => {
     await waitUntil(() => result.current.saveState === 'saving', 'saving');
 
     // A refetch returns our own write (version 2) before onSaved runs.
-    act(() => {
-      queryClient.setQueryData(key, { id: 'n1', body: 'mine', version: 2 });
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: key });
     });
     await waitUntil(
       () => result.current.entity?.version === 2,
