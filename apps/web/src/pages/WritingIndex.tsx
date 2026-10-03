@@ -4,11 +4,11 @@ import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import {
   fetchPublishedPosts,
   type PublishedPostListItem,
-} from '../blog/publishedPosts';
+} from '../writing/publishedPosts';
 import PublicNav from '../components/PublicNav';
-import './BlogIndex.css';
+import './WritingIndex.css';
 
-function BlogIndex() {
+function WritingIndex() {
   const [posts, setPosts] = useState<PublishedPostListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ function BlogIndex() {
 
   if (loading) {
     return (
-      <div className="blog-index">
+      <div className="writing-index">
         <title>Writing - Chris Gagne</title>
         <link
           rel="alternate"
@@ -62,7 +62,7 @@ function BlogIndex() {
   }
 
   return (
-    <div className="blog-index">
+    <div className="writing-index">
       <title>Writing - Chris Gagne</title>
       <link rel="canonical" href="https://gagnechris.com/writing" />
       <link
@@ -115,4 +115,4 @@ function BlogIndex() {
   );
 }
 
-export default BlogIndex;
+export default WritingIndex;

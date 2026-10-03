@@ -80,7 +80,7 @@ describe('publish target registry', () => {
       expect(registrySource).toContain(`./targets/${stem}.target.js`);
     }
     expect(ids).toEqual(
-      ['blog-feeds', 'home', 'post-orphans', 'post-pages', 'resume'].sort(),
+      ['writing-feeds', 'home', 'post-orphans', 'post-pages', 'resume'].sort(),
     );
     expect(registrySource).not.toContain('definePublishTarget');
     expect(registrySource).not.toContain('registry-self-test');

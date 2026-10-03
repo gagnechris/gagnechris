@@ -1,10 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
-import { publishedPostPageUrl } from '../blog/publishedPosts';
+import { publishedPostPageUrl } from '../writing/publishedPosts';
 import PublicNav from '../components/PublicNav';
 import NotFound from './NotFound';
-import './BlogPost.css';
+import './WritingPost.css';
 
 interface PostData {
   title: string;
@@ -46,7 +46,7 @@ async function loadPublishedPost(slug: string): Promise<PostData | null> {
   };
 }
 
-function BlogPost() {
+function WritingPost() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ function BlogPost() {
 
   if (loading) {
     return (
-      <div className="blog-post">
+      <div className="writing-post">
         <header>
           <Link to="/writing" className="back-link">
             ← Back to Writing
@@ -108,7 +108,7 @@ function BlogPost() {
   const dateAttr = postDateAttribute(post.date);
 
   return (
-    <div className="blog-post">
+    <div className="writing-post">
       <title>{`${post.title} - Chris Gagne`}</title>
       <link rel="canonical" href={`https://gagnechris.com/writing/${slug}`} />
       <link
@@ -144,4 +144,4 @@ function BlogPost() {
   );
 }
 
-export default BlogPost;
+export default WritingPost;

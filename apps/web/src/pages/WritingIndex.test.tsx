@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import BlogIndex from './BlogIndex';
+import WritingIndex from './WritingIndex';
 
-describe('BlogIndex', () => {
+describe('WritingIndex', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -34,7 +34,7 @@ describe('BlogIndex', () => {
 
     render(
       <MemoryRouter>
-        <BlogIndex />
+        <WritingIndex />
       </MemoryRouter>,
     );
 
@@ -63,7 +63,7 @@ describe('BlogIndex', () => {
 
     render(
       <MemoryRouter>
-        <BlogIndex />
+        <WritingIndex />
       </MemoryRouter>,
     );
 

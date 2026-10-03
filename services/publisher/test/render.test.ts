@@ -11,7 +11,7 @@ import {
   buildJsonLd,
   buildRssXml,
   buildSitemapXml,
-  renderBlogIndexPage,
+  renderWritingIndexPage,
   renderHomePage,
   renderPostPage,
   renderResumePage,
@@ -96,7 +96,7 @@ describe('publisher render', () => {
       '<link rel="canonical" href="https://gagnechris.com/writing/hello-world" />',
     );
 
-    const index = renderBlogIndexPage(shell, [samplePost()]);
+    const index = renderWritingIndexPage(shell, [samplePost()]);
     expect(index.match(/rel="canonical"/g)).toHaveLength(1);
     expect(index).toContain(
       '<link rel="canonical" href="https://gagnechris.com/writing" />',
@@ -195,7 +195,7 @@ describe('publisher render', () => {
     expect(homeWithOg).toContain('/media/home-og.jpg');
 
     // Other pages must start from the pristine shell, not the home output.
-    const blog = renderBlogIndexPage(shell, [samplePost()]);
+    const blog = renderWritingIndexPage(shell, [samplePost()]);
     expect(blog).not.toContain('/media/home-og.jpg');
     expect(blog).not.toContain('home-page-prerender');
     expect(blog).toContain(
@@ -216,8 +216,8 @@ describe('publisher render', () => {
     const homeB = renderHomePage(shell, DEFAULT_HOME);
     expect(homeB).toBe(homeA);
 
-    const blogA = renderBlogIndexPage(shell, [samplePost()]);
-    const blogB = renderBlogIndexPage(shell, [samplePost()]);
+    const blogA = renderWritingIndexPage(shell, [samplePost()]);
+    const blogB = renderWritingIndexPage(shell, [samplePost()]);
     expect(blogB).toBe(blogA);
 
     const resumeA = renderResumePage(shell, DEFAULT_RESUME);

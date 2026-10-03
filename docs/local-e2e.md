@@ -34,7 +34,7 @@ npm run local:dev
 
 This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a publisher shell, runs the API wrapper (`:8787`) and static origin (`:4177`), rebuilds published HTML, and starts Vite with `VITE_AUTH_MODE=local`. Vite proxies `/api` → API and `/blog` → static origin (same as prod CloudFront Option B).
 
-Open `http://localhost:5173/admin`. After publish, **View live** / `/writing/<slug>` uses the Vite SPA (with HMR). `BlogPost` loads publisher HTML via `/__site/writing/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
+Open `http://localhost:5173/admin`. After publish, **View live** / `/writing/<slug>` uses the Vite SPA (with HMR). `WritingPost` loads publisher HTML via `/__site/writing/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
 Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
 

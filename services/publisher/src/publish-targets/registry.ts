@@ -9,7 +9,7 @@
  * updates CloudFront + local publish-relevance (CHR-166 / CHR-179).
  */
 import type { PublishTarget } from './types.js';
-import blogFeedsTarget from './targets/blog-feeds.target.js';
+import writingFeedsTarget from './targets/writing-feeds.target.js';
 import homeTarget from './targets/home.target.js';
 import postOrphansTarget from './targets/post-orphans.target.js';
 import postPagesTarget from './targets/post-pages.target.js';
@@ -18,7 +18,7 @@ import resumeTarget from './targets/resume.target.js';
 export const publishTargets: readonly PublishTarget[] = [
   postOrphansTarget,
   postPagesTarget,
-  blogFeedsTarget,
+  writingFeedsTarget,
   resumeTarget,
   homeTarget,
 ];

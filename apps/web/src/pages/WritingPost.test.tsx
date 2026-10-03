@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import BlogPost from './BlogPost';
+import WritingPost from './WritingPost';
 
-describe('BlogPost', () => {
+describe('WritingPost', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -30,7 +30,7 @@ describe('BlogPost', () => {
     render(
       <MemoryRouter initialEntries={['/writing/cms-post']}>
         <Routes>
-          <Route path="/writing/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<WritingPost />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -70,7 +70,7 @@ describe('BlogPost', () => {
     render(
       <MemoryRouter initialEntries={['/writing/welcome']}>
         <Routes>
-          <Route path="/writing/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<WritingPost />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -93,7 +93,7 @@ describe('BlogPost', () => {
     render(
       <MemoryRouter initialEntries={['/writing/missing']}>
         <Routes>
-          <Route path="/writing/:slug" element={<BlogPost />} />
+          <Route path="/writing/:slug" element={<WritingPost />} />
         </Routes>
       </MemoryRouter>,
     );

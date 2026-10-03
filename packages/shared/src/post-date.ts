@@ -17,7 +17,7 @@ export const postDateAttribute = (iso: string | null | undefined): string => {
 };
 
 /**
- * Human-readable publish date in UTC. Shared by BlogIndex, BlogPost, and
+ * Human-readable publish date in UTC. Shared by WritingIndex, WritingPost, and
  * publisher prerender so client and static HTML always agree.
  */
 export const formatPostDate = (iso: string | null | undefined): string => {

@@ -114,7 +114,7 @@ export const renderPostPage = (shellHtml: string, post: Post): string => {
   return html;
 };
 
-export const renderBlogIndexPage = (
+export const renderWritingIndexPage = (
   shellHtml: string,
   posts: Post[],
 ): string => {
