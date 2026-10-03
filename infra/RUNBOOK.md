@@ -224,13 +224,44 @@ When Notebook (or any feature) needs several new indexes:
 
 **CHR-153 / CHR-163 / CHR-174:** sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed; `LAST_DEPLOYED_GSIS` currently matches that set and lags `APP_TABLE` by at most one intentional create.
 
-### Backups beyond PITR (CHR-175)
+### Backups beyond PITR (CHR-175 / CHR-197)
 
 In addition to DynamoDB PITR (35 days, same-region):
 
-- **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`), 35-day retention, and vault lock (`MinRetentionDays=7`, `MaxRetentionDays=35`, 3-day changeable window).
-- Cross-region / cross-account copy is a follow-up; do not rely on a second region yet.
+- **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`) and a rolling **7-day** retention (`DeleteAfterDays=7`); older recovery points expire automatically. Points created before CHR-197 keep their original 35-day lifecycle and age out on their own.
+- **Vault lock is governance mode** (`MinRetentionDays=7`, `MaxRetentionDays=35`, no `ChangeableForDays`). It stops recovery points being deleted or shortened below 7 days, but an admin can change or remove it (`aws backup delete-backup-vault-lock-configuration`). Never add `changeableFor` in CDK: that is compliance mode, which becomes permanent when its window ends.
+- **Alerts:** EventBridge rule `gagnechris-prod-backup-job-failures` sends Backup, restore and copy jobs that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL` to the Guardrails topic.
+- **Off-site copy: not enabled (decision, CHR-197).** PITR and AWS Backup are both same-account, same-region. A cross-region copy needs DynamoDB "advanced backup features" (`aws backup update-region-settings`) plus a copy rule; for a table this small storage is pennies a month, but it adds a second vault to manage. Revisit if the Notebook grows or the account itself is the risk (then a separate backup account matters more than a second region).
 - Site bucket: versioning on + lifecycle expires noncurrent versions after 90 days.
+
+Verify (read-only):
+
+```bash
+AWS_PROFILE=gagnechris-readonly aws backup describe-backup-vault \
+  --backup-vault-name gagnechris-prod-app-table --region us-east-1
+# Governance: no LockDate. A LockDate means compliance mode with that deadline.
+AWS_PROFILE=gagnechris-readonly aws backup list-recovery-points-by-backup-vault \
+  --backup-vault-name gagnechris-prod-app-table --region us-east-1 \
+  --query 'RecoveryPoints[].[CreationDate,Status,Lifecycle.DeleteAfterDays]'
+```
+
+Restore test (scratch table; delete it afterwards):
+
+```bash
+RP_ARN=$(aws backup list-recovery-points-by-backup-vault \
+  --backup-vault-name gagnechris-prod-app-table --region us-east-1 \
+  --query 'max_by(RecoveryPoints,&CreationDate).RecoveryPointArn' --output text)
+aws backup start-restore-job --region us-east-1 \
+  --recovery-point-arn "$RP_ARN" \
+  --iam-role-arn "<AppTableSelection role ARN>" \
+  --metadata TargetTableName=gagnechris-prod-backup-restore-$(date -u +%Y%m%d)
+aws backup describe-restore-job --restore-job-id <id> --region us-east-1
+aws dynamodb describe-table --table-name gagnechris-prod-backup-restore-<date> \
+  --query 'Table.ItemCount'
+aws dynamodb delete-table --table-name gagnechris-prod-backup-restore-<date>
+```
+
+Record each restore test in the rehearsal log table below, with "AWS Backup" in Notes.
 
 ### PITR restore + cut-over (scratch rehearsal)
 
