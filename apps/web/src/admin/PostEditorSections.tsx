@@ -10,7 +10,6 @@ import MarkdownPreview from '../components/markdown/MarkdownPreview';
 import { Field, TextArea, TextInput } from '../ui/Field';
 import '../components/markdown/markdown.css';
 
-/** Shared lazy chunk for CodeMirror (Post + future Notebook) — CHR-178. */
 const MarkdownEditor = lazy(
   () => import('../components/markdown/MarkdownEditor'),
 );

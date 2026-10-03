@@ -8,7 +8,6 @@ on:
     workflows: [CI]
     types: [completed]
   schedule:
-    # Nightly drift check (08:00 UTC)
     - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
@@ -24,7 +23,7 @@ env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
   ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL || 'ci-placeholder@example.com' }}
-  # Cognito admin-group member (CHR-195); empty → ALERTS_EMAIL.
+  # Cognito admin-group member; empty falls back to ALERTS_EMAIL.
   ADMIN_USERNAME: ${{ vars.ADMIN_USERNAME }}
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
   VITE_COGNITO_WEB_CLIENT_ID: ciplaceholderclientid00000000
@@ -49,7 +48,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # id-token is job-wide, so install scripts stay off (CHR-200).
+      # id-token is job-wide, so install scripts stay off.
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -64,10 +63,9 @@ jobs:
       - name: CDK synth
         run: npm run cdk -- synth --quiet
 
-      # Live GSI guard: Compare APP_TABLE to DescribeTable so bumping
-      # LAST_DEPLOYED_GSIS in the same PR cannot hide a multi-GSI change (CHR-174).
-      # Early warning only: the deploy job runs the same check before
-      # `cdk deploy` (CHR-200).
+      # Compares against the live table so bumping LAST_DEPLOYED_GSIS in the
+      # same PR cannot hide a multi-GSI change. Early warning only: the deploy
+      # job runs the same check.
       - name: Assert GSI update vs deployed table
         run: npm run check:deployed-gsi
 
@@ -108,19 +106,11 @@ jobs:
           header: cdk-diff
           path: cdk-diff-comment.md
 
-  # Main deploy is three jobs (CHR-200):
-  #   plan   - deployed-SHA read, rollback refusal, path filter. Read-only
-  #            planning role; runs only SHA-pinned official actions, git, bash
-  #            and the AWS CLI (no npm, no third-party action).
-  #   deploy - installs with `npm ci --ignore-scripts` BEFORE the deploy role,
-  #            so no dependency install script ever runs in a job that can mint
-  #            a GitHub OIDC token.
-  # `id-token: write` is job-wide: every step of such a job can request an OIDC
-  # token, and the deploy and drift roles both trust `environment:prod`. So the
-  # rule is per job, not per step: no install scripts and no tag-pinned or
-  # third-party action in any job with `id-token: write`.
-  # plan and deploy share `cdk-prod`, so a plan never reads deployed-sha while
-  # another run's deploy is still in flight.
+  # `id-token: write` is job-wide and the deploy and drift roles both trust
+  # `environment:prod`, so no job with it may run install scripts or a
+  # tag-pinned / third-party action. plan therefore runs no npm at all.
+  # plan and deploy share `cdk-prod` so a plan never reads deployed-sha while
+  # another run's deploy is in flight.
   plan:
     name: Plan deploy (main)
     if: >
@@ -158,11 +148,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Path filters compare against the last SHA that actually finished a
-      # deploy (SSM deployed-sha), not HEAD~1. Otherwise an infra commit whose
-      # CI was cancelled is invisible to a later docs-only push and never
-      # deploys (CHR-149). ParameterNotFound (first deploy) deploys everything;
-      # any other SSM error fails (CHR-200).
+      # Diff against the last SHA that finished a deploy, not HEAD~1, so an
+      # infra commit whose CI was cancelled is not skipped by a later push.
       - name: Resolve deployed SHA
         id: base
         env:
@@ -215,10 +202,9 @@ jobs:
           ref: ${{ needs.plan.outputs.head_sha }}
           persist-credentials: false
 
-      # All installs happen here, before any credential step, and with
-      # install scripts off (CHR-200). esbuild and Rollup resolve their
-      # platform binaries from optionalDependencies, so synth (NodejsFunction
-      # bundling) and the Vite build work without postinstall.
+      # Install before any credential step, with install scripts off. esbuild
+      # and Rollup get platform binaries from optionalDependencies, so bundling
+      # and the Vite build work without postinstall.
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -250,9 +236,8 @@ jobs:
             exit 1
           fi
 
-      # Live GSI guard (CHR-174 / CHR-200): compare APP_TABLE to DescribeTable
-      # right before deploy, so bumping LAST_DEPLOYED_GSIS in the same PR
-      # cannot slip a multi-GSI change through to CloudFormation.
+      # CloudFormation rejects more than one GSI change per update; compare
+      # against the live table since LAST_DEPLOYED_GSIS can be bumped in the PR.
       - name: Assert GSI update vs deployed table
         if: needs.plan.outputs.cdk == 'true'
         run: npm run check:deployed-gsi
@@ -263,10 +248,6 @@ jobs:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never
 
-      # No restore rehearsal here (CHR-198): a deploy never restores a table.
-      # Restore proof is the weekly AWS Backup restore testing plan in Data-prod
-      # (auto-deleted scratch table + content validator); the manual
-      # `pitr-rehearsal.yml` workflow covers PITR. See infra/RUNBOOK.md.
       - name: Build, sync to S3, invalidate CloudFront
         run: bash scripts/deploy-web.sh
         env:
@@ -297,9 +278,8 @@ jobs:
       id-token: write
     environment: prod
     concurrency:
-      # Separate from deploy so nightly drift never queues behind or blocks
-      # deploy (CHR-176): in a shared group a queued drift run would cancel a
-      # pending deploy. Overlap is detected instead (CHR-200), see below.
+      # Separate from cdk-prod: in a shared group a queued drift run would
+      # cancel a pending deploy. Overlap is detected in the steps instead.
       group: cdk-drift
       cancel-in-progress: false
     steps:
@@ -308,8 +288,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # This job holds `environment:prod` + id-token, which the deploy role
-      # also trusts, so install scripts stay off (CHR-200).
+      # environment:prod + id-token is also trusted by the deploy role.
       - name: Setup
         uses: ./.github/actions/setup
         with:

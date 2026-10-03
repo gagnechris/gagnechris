@@ -5508,7 +5508,7 @@ export interface paths {
         put?: never;
         /**
          * Search notes and tasks for the authenticated user
-         * @description Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs (CHR-196).
+         * @description Search terms travel in the JSON body, never the URL, so they stay out of CloudFront and API Gateway access logs.
          */
         post: {
             parameters: {

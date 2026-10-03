@@ -1,6 +1,3 @@
-/**
- * Notebook Notes HTTP routes (CHR-40).
- */
 import { z } from 'zod';
 import { normalizeTags } from '@gagnechris/data';
 import {
@@ -144,7 +141,7 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
         }
         // A writer still holding the empty placeholder (no version) lost the
         // race to create this day: hand back the winner so it can merge
-        // instead of failing with 400 on every retry (CHR-187).
+        // instead of failing with 400 on every retry.
         const current = existing as Note;
         if (!hasExpectedVersion(ctx.event, body)) {
           if (current.id === body.id && noteMatchesUpsert(current, body)) {
@@ -227,8 +224,4 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
   ];
 }
 
-/**
- * Prod route table export. Repositories are built lazily per request; sync
- * adapters are registered by `sync/adapters.ts` via routes.ts (CHR-202).
- */
 export const noteRoutes: RouteDef[] = createNoteRoutes();

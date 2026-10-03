@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Decide which parts of prod to deploy from the files changed since the last
-# deployed SHA (CHR-149). Prints `cdk=<bool>` and `web=<bool>` lines for
-# $GITHUB_OUTPUT. Plain git + bash, so the credentialed plan job runs no
-# third-party action (CHR-200). Patterns are bash `case` globs (`*` also
-# matches `/`).
-#
+# Plain git + bash so the credentialed plan job runs no third-party action.
+# Patterns are bash `case` globs (`*` also matches `/`).
 # Usage: scripts/ci/deploy-paths.sh <baseSha> <headSha>
 set -euo pipefail
 

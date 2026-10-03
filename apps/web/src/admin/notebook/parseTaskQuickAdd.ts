@@ -11,10 +11,7 @@ const PRIORITY_TOKEN = /(?:^|\s)!(high|med|low)(?=\s|$)/i;
 /** Due words count only at the end, so "Plan for Today show" keeps its title. */
 const TRAILING_DUE_TOKEN = /(?:^|\s)(today|tomorrow)$/i;
 
-/**
- * Parse quick-add text: strip `!high|!med|!low` anywhere and a trailing
- * `today|tomorrow` (CHR-189); the remainder is the title.
- */
+/** Strips `!high|!med|!low` anywhere and a trailing `today|tomorrow`; the rest is the title. */
 export function parseTaskQuickAdd(
   input: string,
   today = localToday(),

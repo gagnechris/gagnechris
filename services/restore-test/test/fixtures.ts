@@ -56,7 +56,6 @@ export function healthyItems(): Record<string, unknown>[] {
   ];
 }
 
-/** Scan fake that returns `items` in pages of `pageSize`. */
 export function pagedScan(
   items: Record<string, unknown>[],
   pageSize = 3,

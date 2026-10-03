@@ -14,15 +14,11 @@ import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
-/** Default CDK bootstrap qualifier (`cdk bootstrap` without --qualifier). */
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
 /**
- * Log and trace reads denied to the read-only CI roles (CHR-196). Logs carry
- * no note content today, but nothing enforces that, so diff/drift/lookup
- * (which never read logs or traces) cannot fetch log events, run Insights
- * queries, tail, unmask, or pull X-Ray traces. Metadata reads
- * (DescribeLogGroups etc.) stay allowed.
+ * Logs carry no note content, but nothing enforces that, and the read-only CI
+ * roles never need log or trace contents. Metadata reads stay allowed.
  */
 export const LOG_TRACE_READ_DENY_ACTIONS = [
   'logs:GetLogEvents',
@@ -37,7 +33,6 @@ export const LOG_TRACE_READ_DENY_ACTIONS = [
   'xray:GetTraceGraph',
 ] as const;
 
-/** Actions denied so PR/diff/drift (and the CDK lookup role) cannot read CMS data. */
 export const PRIVATE_DATA_READ_DENY_ACTIONS = [
   'dynamodb:GetItem',
   'dynamodb:BatchGetItem',
@@ -53,11 +48,8 @@ export const PRIVATE_DATA_READ_DENY_ACTIONS = [
 
 export interface CiDeployRoleStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** Guardrails alerts topic — drift role may publish failure notices. */
   readonly alertsTopic: ITopic;
-  /** GitHub org/owner (default gagnechris). */
   readonly githubOwner?: string;
-  /** GitHub repository name (default gagnechris). */
   readonly githubRepo?: string;
 }
 
@@ -70,10 +62,6 @@ function denyPrivateDataReadsStatement(): PolicyStatement {
   });
 }
 
-/**
- * GitHub Actions OIDC provider plus deploy (main), diff (PR), and drift roles.
- * No long-lived AWS keys in GitHub — short-lived tokens only.
- */
 export class CiDeployRoleStack extends Stack {
   readonly deployRole: Role;
   readonly diffRole: Role;
@@ -95,7 +83,6 @@ export class CiDeployRoleStack extends Stack {
       'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
     };
 
-    // Deploy: pushes to main, or jobs that use the `prod` GitHub Environment.
     this.deployRole = new Role(this, 'DeployRole', {
       roleName: `gagnechris-${props.config.name}-gha-deploy`,
       description: `CDK deploy from GitHub Actions (${repoPath} main/prod).`,
@@ -114,7 +101,6 @@ export class CiDeployRoleStack extends Stack {
       ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'),
     );
 
-    // Diff: pull_request workflows only (read-only).
     this.diffRole = new Role(this, 'DiffRole', {
       roleName: `gagnechris-${props.config.name}-gha-diff`,
       description: `CDK diff from GitHub Actions PRs (${repoPath}).`,
@@ -129,10 +115,9 @@ export class CiDeployRoleStack extends Stack {
     this.diffRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
     );
-    // Deny item/object reads so PR diffs cannot pull future private Notebook data.
     this.diffRole.addToPolicy(denyPrivateDataReadsStatement());
-    // cdk diff needs the bootstrap lookup role only — never deploy/cfn-exec
-    // (those trust the whole account; AssumeRole * would escalate to admin).
+    // Never deploy/cfn-exec: those trust the whole account, so AssumeRole *
+    // would escalate to admin.
     this.diffRole.addToPolicy(
       new PolicyStatement({
         sid: 'CdkLookupAssumeRole',
@@ -144,7 +129,6 @@ export class CiDeployRoleStack extends Stack {
       }),
     );
 
-    // Drift: nightly / manual via `prod` environment — CFN drift + read, not deploy.
     this.driftRole = new Role(this, 'DriftRole', {
       roleName: `gagnechris-${props.config.name}-gha-drift`,
       description: `CDK drift from GitHub Actions (${repoPath} prod).`,
@@ -186,9 +170,8 @@ export class CiDeployRoleStack extends Stack {
     );
     props.alertsTopic.grantPublish(this.driftRole);
 
-    // Close the lookup-role hop: bootstrap lookup roles ship ReadOnlyAccess
-    // without DenyPrivateDataReads. Attach the same Deny to the default
-    // qualifier lookup role so assuming it cannot read CMS data either.
+    // Bootstrap lookup roles ship ReadOnlyAccess without the Deny, so
+    // assuming one would otherwise bypass it.
     const lookupRoleArn = `arn:aws:iam::${props.config.account}:role/cdk-${CDK_DEFAULT_BOOTSTRAP_QUALIFIER}-lookup-role-${props.config.account}-${props.config.region}`;
     const bootstrapLookupRole = Role.fromRoleArn(
       this,
@@ -204,7 +187,7 @@ export class CiDeployRoleStack extends Stack {
         {
           id: 'AwsSolutions-IAM5',
           reason:
-            'DenyPrivateDataReads on the CDK bootstrap lookup role uses Resource * / s3:GetObject* so assuming the lookup role cannot read private CMS data (CHR-163).',
+            'DenyPrivateDataReads on the CDK bootstrap lookup role uses Resource * / s3:GetObject* so assuming the lookup role cannot read private CMS data.',
           appliesTo: ['Resource::*', 'Action::s3:GetObject*'],
         },
       ],

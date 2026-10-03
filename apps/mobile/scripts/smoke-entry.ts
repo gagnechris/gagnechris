@@ -1,15 +1,7 @@
 /**
- * Entry for `bundle-smoke.mjs`: exercises the shared Zod runtime through the
- * real Metro resolver. Bundling alone proved nothing in CHR-142 — the crash was
- * a type-only `.d.ts` standing in for `zod`'s runtime, which only shows up when
- * a schema is actually evaluated (CHR-150). CHR-164 also asserts Zod 4 so Expo
- * CLI's transitive zod 3 cannot silently win resolution. CHR-173 also pulls
- * app-core (including `createVersionedResource.useQuery`) through Metro.
- *
- * Hook rendering is covered by `src/app-core.test.ts` under vitest (where
- * `act` / dual-package dedupe work). The iOS Metro react build used here does
- * not export `act`, so smoke asserts the resource + query hook are resolvable
- * and that `fetch` runs.
+ * A type-only `.d.ts` standing in for zod's runtime only fails when a schema is
+ * evaluated, so this runs one. The iOS Metro react build does not export `act`,
+ * so hook rendering is tested in `src/app-core.test.ts` instead.
  */
 import { z } from 'zod';
 import type { ApiClient } from '@gagnechris/api-client';

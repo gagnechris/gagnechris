@@ -1,6 +1,3 @@
-/**
- * Notebook Tasks HTTP routes (CHR-43).
- */
 import { z } from 'zod';
 import {
   CreateTaskRequestSchema,
@@ -35,7 +32,6 @@ export function createTaskRoutes(
   const tasks = () => repo ?? tasksRepository();
   const notes = () => notesRepo ?? notesRepository();
 
-  /** 400 unless `noteId` is a live note owned by the caller (CHR-186). */
   const checkLinkedNote = async (
     userId: string,
     noteId: string | null | undefined,
@@ -81,7 +77,6 @@ export function createTaskRoutes(
         return jsonEntity(201, task, parseTask);
       },
     }),
-    // Literal segments before :id (complete/reopen).
     defineRoute({
       method: 'POST',
       pattern: '/notebook/tasks/:id/complete',
@@ -139,7 +134,7 @@ export function createTaskRoutes(
         // Only a changed link is checked: the web resends noteId on every
         // save, and a task whose note was later deleted must stay editable.
         // This read only gates validation; the write itself is built from a
-        // consistent read in the repository (CHR-188).
+        // consistent read in the repository.
         if (body.noteId != null) {
           const existing = await tasks().getOrThrow(ctx.userId!, params.id);
           if (body.noteId !== existing.noteId) {

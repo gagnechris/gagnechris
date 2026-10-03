@@ -1,12 +1,8 @@
 import { useEffect } from 'react';
 
 /**
- * Publishes iOS Safari visualViewport metrics as CSS variables on `:root`
- * so sticky bars and editor panes can clear the on-screen keyboard (CHR-148).
- *
- * - `--vv-height`: layout viewport height accounting for the keyboard
- * - `--vv-offset-top`: visualViewport.offsetTop (URL bar / scroll offset)
- * - `--keyboard-inset-bottom`: overlap of the keyboard with the layout viewport
+ * iOS Safari visualViewport metrics as CSS variables, so sticky bars and
+ * editor panes can clear the on-screen keyboard.
  */
 export function useVisualViewportCssVars(): void {
   useEffect(() => {

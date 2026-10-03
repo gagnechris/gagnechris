@@ -4,7 +4,7 @@ inputs:
   ignore-scripts:
     description: >-
       'true' runs `npm ci --ignore-scripts`, so no dependency install script
-      runs. Required in every job with `id-token: write` (CHR-200).
+      runs. Required in every job with `id-token: write`.
     required: false
     default: 'false'
 runs:

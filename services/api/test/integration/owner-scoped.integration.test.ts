@@ -1,6 +1,3 @@
-/**
- * DynamoDB Local acceptance tests for owner-scoped repository (CHR-169).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GSI1_NAME,
@@ -37,7 +34,7 @@ const NOTE_B = '01ARZ3NDEKTSV4RRFFQ69G5FB1';
 const DAILY_ULID_1 = '01ARZ3NDEKTSV4RRFFQ69G5FC0';
 const DAILY_ULID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FC1';
 
-describe('owner-scoped repository (DynamoDB Local, CHR-169)', () => {
+describe('owner-scoped repository (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 
@@ -153,8 +150,6 @@ describe('owner-scoped repository (DynamoDB Local, CHR-169)', () => {
         '2026-10-02T10:00:00.000Z',
       ),
     );
-    // First writer wins; the loser gets daily_taken with the winner so it can
-    // merge instead of silently losing its write (CHR-187).
     await expect(
       repo.createIdempotent(
         buildFakeNote(

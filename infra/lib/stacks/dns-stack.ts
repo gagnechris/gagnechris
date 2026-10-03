@@ -20,19 +20,11 @@ export { APEX_DOMAIN } from '../config/constants.js';
 
 export interface DnsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
-  /** CloudFront distribution for apex and www (CHR-25 cutover). */
   readonly distribution: IDistribution;
-  /**
-   * Optional zone override for unit tests. Production uses
-   * `HostedZone.fromLookup` so nameservers are never replaced.
-   */
+  /** Tests only. Prod looks the zone up so nameservers are never replaced. */
   readonly hostedZone?: IHostedZone;
 }
 
-/**
- * Looks up the existing Route 53 hosted zone and defines all non-system
- * records in code (CloudFront site + iCloud mail).
- */
 export class DnsStack extends Stack {
   readonly hostedZone: IHostedZone;
 
@@ -49,12 +41,10 @@ export class DnsStack extends Stack {
       new CloudFrontTarget(props.distribution),
     );
 
-    // Allow Amazon ACM to issue for this zone (and wildcards).
     new CaaAmazonRecord(this, 'CaaAmazon', {
       zone: this.hostedZone,
     });
 
-    // Apex → CloudFront.
     new ARecord(this, 'ApexA', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
@@ -69,7 +59,7 @@ export class DnsStack extends Stack {
       comment: 'Apex → CloudFront IPv6',
     });
 
-    // www → CloudFront (viewer-request function 301s to apex).
+    // The viewer-request function 301s www to apex.
     new ARecord(this, 'WwwA', {
       zone: this.hostedZone,
       recordName: `www.${APEX_DOMAIN}`,
@@ -84,7 +74,6 @@ export class DnsStack extends Stack {
       comment: 'www → CloudFront IPv6',
     });
 
-    // iCloud custom email domain + SES outbound (CHR-38).
     new TxtRecord(this, 'ApexTxt', {
       zone: this.hostedZone,
       recordName: APEX_DOMAIN,
@@ -104,7 +93,7 @@ export class DnsStack extends Stack {
       comment: 'iCloud DKIM',
     });
 
-    // Soft DMARC until CHR-63 finalizes receiving / reporting.
+    // Monitor-only DMARC until receiving and reporting are set up.
     new TxtRecord(this, 'DmarcTxt', {
       zone: this.hostedZone,
       recordName: `_dmarc.${APEX_DOMAIN}`,
@@ -112,9 +101,6 @@ export class DnsStack extends Stack {
       values: ['v=DMARC1; p=none;'],
       comment: 'DMARC monitor mode (CHR-38 / CHR-63)',
     });
-
-    // MX deferred (CHR-63): waiting on confirmation that iCloud Mail
-    // for @gagnechris.com should be enabled.
 
     new CfnOutput(this, 'HostedZoneId', {
       value: this.hostedZone.hostedZoneId,

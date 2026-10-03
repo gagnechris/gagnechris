@@ -1,7 +1,3 @@
-/**
- * Test-only Notebook mutation routes that exercise If-Match / ETag (CHR-162 / CHR-171).
- * Not registered in the prod route table — uses src helpers (no copied logic).
- */
 import { z } from 'zod';
 import { UlidSchema } from '@gagnechris/shared';
 import { defineRoute, type RouteDef } from '../../src/router.js';

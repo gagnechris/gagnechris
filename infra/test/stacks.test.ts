@@ -48,7 +48,7 @@ function siteTemplate(): Template {
   return Template.fromStack(site);
 }
 
-describe('stack Template assertions (CHR-136)', () => {
+describe('stack Template assertions', () => {
   it('DataStack matches APP_TABLE keys and GSIs', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
@@ -84,8 +84,7 @@ describe('stack Template assertions (CHR-136)', () => {
       ),
     });
 
-    // CHR-175: AWS Backup plan selects the AppTable.
-    // CHR-197: governance lock (no ChangeableForDays → never permanent).
+    // No ChangeableForDays: compliance mode would become permanent.
     template.hasResourceProperties('AWS::Backup::BackupVault', {
       BackupVaultName: 'gagnechris-prod-app-table',
       LockConfiguration: {
@@ -124,7 +123,6 @@ describe('stack Template assertions (CHR-136)', () => {
               state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
               sourceBackupVaultArn: [Match.anyValue()],
             },
-            // CHR-198: restore-testing jobs, keyed on the plan ARN.
             {
               status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
               restoreTestingPlanArn: [
@@ -152,7 +150,7 @@ describe('stack Template assertions (CHR-136)', () => {
     });
   });
 
-  it('DataStack passes GSI projectionType and nonKeyAttributes through (CHR-200)', () => {
+  it('DataStack passes GSI projectionType and nonKeyAttributes through', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ProjectionAssertDeps', {
@@ -244,7 +242,6 @@ describe('stack Template assertions (CHR-136)', () => {
     template.hasResourceProperties('AWS::CloudFront::KeyValueStore', {
       Name: 'gagnechris-prod-blog-slugs',
     });
-    // CHR-175: noncurrent version lifecycle on the versioned site bucket.
     template.hasResourceProperties('AWS::S3::Bucket', {
       VersioningConfiguration: { Status: 'Enabled' },
       LifecycleConfiguration: {
@@ -261,7 +258,7 @@ describe('stack Template assertions (CHR-136)', () => {
     });
   });
 
-  it('SiteStack /api/* sends nosniff and default no-store (CHR-196)', () => {
+  it('SiteStack /api/* sends nosniff and default no-store', () => {
     const template = siteTemplate();
     template.hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
       ResponseHeadersPolicyConfig: Match.objectLike({
@@ -297,7 +294,7 @@ describe('stack Template assertions (CHR-136)', () => {
     });
   });
 
-  it('SiteStack serves /admin and /auth with a strict CSP (CHR-193)', () => {
+  it('SiteStack serves /admin and /auth with a strict CSP', () => {
     const template = siteTemplate();
     const policies = template.findResources(
       'AWS::CloudFront::ResponseHeadersPolicy',
@@ -422,7 +419,6 @@ describe('stack Template assertions (CHR-136)', () => {
     const mappings = template.findResources('AWS::Lambda::EventSourceMapping');
     expect(JSON.stringify(mappings)).not.toContain('ReportBatchItemFailures');
 
-    // CHR-196: read-only, key-scoped DynamoDB access.
     const statements = Object.values(
       template.findResources('AWS::IAM::Policy'),
     ).flatMap(
@@ -469,7 +465,6 @@ describe('stack Template assertions (CHR-136)', () => {
       },
     });
     expect(JSON.stringify(indexQuery?.Resource)).toContain('/index/gsi1');
-    // Every table/index statement that reads items carries LeadingKeys.
     for (const s of statements) {
       const actions = Array.isArray(s.Action) ? s.Action : [s.Action];
       if (

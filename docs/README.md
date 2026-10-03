@@ -1,6 +1,6 @@
 # gagnechris.com
 
-Personal site and headless CMS for [gagnechris.com](https://gagnechris.com): statically prerendered public pages, an admin UI with Cognito passkeys, draft → publish for posts / home / resume, and a Notebook (coming).
+Personal site and headless CMS for [gagnechris.com](https://gagnechris.com): statically prerendered public pages, an admin UI with Cognito passkeys, draft → publish for posts / home / resume, and a private Notebook (daily notes, pages, tasks, search, and export).
 
 > GitHub profile intro lives in the root [`README.md`](../README.md) (this special `username/username` repo). GitHub prefers `.github/README.md` over the root for **both** the profile and the repo page, so project docs stay here under `docs/` instead.
 
@@ -50,7 +50,7 @@ npm run e2e:local
 
 ```
 apps/web/              React/Vite site + admin
-services/api/          Lambda HTTP API (posts, home, resume, contact, auth)
+services/api/          Lambda HTTP API (posts, home, resume, notebook, contact, auth)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 packages/shared/       Domain schemas/types; `/render`, `/openapi` subpaths
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
@@ -73,8 +73,8 @@ docs/                  Architecture, development, data model, E2E
 | [development.md](./development.md)                       | Setup, local stack, tests, env vars, troubleshooting       |
 | [data-model.md](./data-model.md)                         | Single-table DynamoDB keys and entities                    |
 | [local-e2e.md](./local-e2e.md)                           | Local DynamoDB + API + publisher smoke / day-to-day admin  |
-| [migrate-posts.md](./migrate-posts.md)                   | One-shot migration of posts into DynamoDB                  |
-| [mobile.md](./mobile.md)                                 | Expo spike, auth/offline decisions (CHR-177)               |
+| [migrate-posts.md](./migrate-posts.md)                   | Import the legacy markdown posts into DynamoDB             |
+| [mobile.md](./mobile.md)                                 | Expo app: install layout, auth setup, CI bundle checks     |
 | [adr/0001-passkey-rp-id.md](./adr/0001-passkey-rp-id.md) | Passkey RP ID stays `auth.gagnechris.com`                  |
 | [../infra/RUNBOOK.md](../infra/RUNBOOK.md)               | Production AWS operations                                  |
 

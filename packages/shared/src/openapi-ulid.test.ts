@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildOpenApiDocument } from './openapi.js';
 import { ULID_PATTERN, UlidSchema } from './schemas.js';
 
-describe('UlidSchema OpenAPI pattern (CHR-171)', () => {
+describe('UlidSchema OpenAPI pattern', () => {
   it('ULID_PATTERN is valid ECMA-262 without a trailing /i flag', () => {
     expect(ULID_PATTERN).toBe('^[0-7][0-9A-HJKMNP-TV-Z]{25}$');
     expect(ULID_PATTERN.endsWith('/i')).toBe(false);
@@ -29,7 +29,6 @@ describe('UlidSchema OpenAPI pattern (CHR-171)', () => {
     expect(schema.pattern).toBe(ULID_PATTERN);
     expect(schema.pattern?.endsWith('/i')).toBe(false);
 
-    // Every pattern in the document must be a valid RegExp without /i leakage.
     const json = JSON.stringify(doc);
     const patterns = [...json.matchAll(/"pattern"\s*:\s*"([^"]*)"/g)].map(
       (m) => m[1]!,

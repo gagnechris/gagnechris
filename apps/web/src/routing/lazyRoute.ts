@@ -9,7 +9,6 @@ import { LazyFallback } from '../components/LazyFallback';
 type LazyComponentModule = { default: ComponentType };
 
 type LazyRouteBase = {
-  /** Dynamic import that resolves to a default-exported route component. */
   load: () => Promise<LazyComponentModule>;
   children?: RouteObject[];
 };
@@ -24,10 +23,7 @@ type LazyPathRoute = LazyRouteBase & {
   path: string;
 };
 
-/**
- * Build a React Router lazy route with a static HydrateFallback sibling.
- * RR skips HydrateFallback returned from lazy() during initial hydration.
- */
+/** RR skips HydrateFallback returned from lazy() during initial hydration, so it sits beside `lazy`. */
 export function lazyRoute(opts: LazyIndexRoute): IndexRouteObject;
 export function lazyRoute(opts: LazyPathRoute): NonIndexRouteObject;
 export function lazyRoute(

@@ -5,30 +5,20 @@ export const ENVIRONMENT_NAMES = ['prod'] as const;
 
 export type EnvironmentName = (typeof ENVIRONMENT_NAMES)[number];
 
-/** Only prod is supported (no staging — cost and DNS collision risk). */
+/** No staging: cost and DNS collision risk. */
 export const ACTIVE_ENVIRONMENT: EnvironmentName = 'prod';
 
-/** CloudFront, ACM (us-east-1), and this app's stacks all live here. */
 export const STACK_REGION = 'us-east-1' as const;
 
 export interface EnvironmentConfig {
   readonly name: EnvironmentName;
-  /** AWS account ID — resolved from the environment, never committed. */
   readonly account: string;
   readonly region: typeof STACK_REGION;
-  /** Apex or site hostname for this environment. */
   readonly domainName: string;
-  /** Removal policy for stateful resources (buckets, tables, user pools). */
   readonly statefulRemovalPolicy: RemovalPolicy;
-  /**
-   * Email for SNS alerts and AWS Budgets notifications.
-   * From `ALERTS_EMAIL` or CDK context `alertsEmail` — never commit the value.
-   */
+  /** Never commit the value. */
   readonly alertsEmail: string;
-  /**
-   * Cognito username (sign-in email) added to the `admin` group (CHR-195).
-   * From `ADMIN_USERNAME`; defaults to {@link alertsEmail}. Never commit it.
-   */
+  /** Cognito username added to the `admin` group. Never commit it. */
   readonly adminUsername: string;
 }
 
@@ -36,11 +26,6 @@ const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
   prod: APEX_DOMAIN,
 };
 
-/**
- * Resolve the target AWS account without committing it to the repo.
- * Prefer `CDK_ACCOUNT`; otherwise use `CDK_DEFAULT_ACCOUNT` (set by the CDK CLI
- * when credentials are available).
- */
 export function resolveAccountId(env: NodeJS.ProcessEnv = process.env): string {
   const account = env.CDK_ACCOUNT ?? env.CDK_DEFAULT_ACCOUNT;
   if (!account) {
@@ -51,10 +36,6 @@ export function resolveAccountId(env: NodeJS.ProcessEnv = process.env): string {
   return account;
 }
 
-/**
- * Resolve the alerts inbox without committing it.
- * Prefer `ALERTS_EMAIL`; otherwise CDK context `-c alertsEmail=...`.
- */
 export function resolveAlertsEmail(
   contextValue: unknown,
   env: NodeJS.ProcessEnv = process.env,

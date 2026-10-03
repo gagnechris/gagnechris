@@ -116,7 +116,7 @@ describe('App', () => {
     );
   });
 
-  test('tracks Quick Links LinkedIn and GitHub clicks (CHR-125)', () => {
+  test('tracks Quick Links LinkedIn and GitHub clicks', () => {
     renderWithProviders(<App />);
 
     fireEvent.click(
@@ -138,7 +138,7 @@ describe('App', () => {
     );
   });
 
-  test('Quick Links internal routes use SPA Links (CHR-125)', async () => {
+  test('Quick Links internal routes use SPA Links', async () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
 

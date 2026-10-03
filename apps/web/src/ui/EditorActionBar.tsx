@@ -5,7 +5,6 @@ import { SaveIndicator } from './SaveIndicator';
 import { StatusBadge } from './StatusBadge';
 
 export type EditorActionBarProps = {
-  /** Leading status row content (back link, page title, etc.). */
   leading?: ReactNode;
   status: 'draft' | 'published' | 'deleted';
   hasUnpublishedChanges: boolean;
@@ -17,11 +16,9 @@ export type EditorActionBarProps = {
   onUnpublish: () => void;
   onDiscard: () => void;
   onSave: () => void;
-  /** Optional extra actions (e.g. Delete). */
   extraActions?: ReactNode;
 };
 
-/** Shared sticky Publish / Unpublish / Discard / Save bar for draft editors. */
 export function EditorActionBar({
   leading,
   status,

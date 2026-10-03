@@ -6,7 +6,7 @@ import {
   resumeContentEqual,
 } from '../src/items.js';
 
-describe('contentEqual deep equality (CHR-161)', () => {
+describe('contentEqual deep equality', () => {
   it('postContentEqual ignores seo map key order', () => {
     expect(
       postContentEqual(

@@ -97,7 +97,6 @@ function toCdkStreamViewType(
   }
 }
 
-/** App-table operations we actually use (CHR-168 DynamoDB alarms). */
 const APP_TABLE_OPERATIONS = [
   Operation.GET_ITEM,
   Operation.PUT_ITEM,
@@ -114,24 +113,15 @@ const APP_TABLE_OPERATIONS = [
 export interface DataStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly alertsTopic: ITopic;
-  /**
-   * Table schema. Defaults to `@gagnechris/data` {@link APP_TABLE}; tests pass
-   * a variant to prove GSI options (projection) reach the template.
-   */
+  /** Tests only; defaults to {@link APP_TABLE}. */
   readonly tableDefinition?: AppTableDefinition;
 }
 
-/**
- * Single-table DynamoDB for Blog CMS posts and future Notebook entities.
- * Schema: `@gagnechris/data` {@link APP_TABLE}. Access patterns: docs/data-model.md
- */
-/** Rolling retention for AWS Backup recovery points (CHR-197). */
 export const BACKUP_RETENTION_DAYS = 7;
 const BACKUP_FAILURE_STATES = ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'];
 
 export class DataStack extends Stack {
   readonly table: Table;
-  /** Weekly AWS Backup restore test + validator (CHR-198). */
   readonly restoreTesting: AppTableRestoreTesting;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
@@ -140,9 +130,7 @@ export class DataStack extends Stack {
     const { config, alertsTopic } = props;
     const def = props.tableDefinition ?? APP_TABLE;
 
-    // Offline guard at synth time (CHR-174). The deploy job also runs
-    // `npm run check:deployed-gsi` against the live table before
-    // `cdk deploy` (CHR-200).
+    // Offline guard only; `check:deployed-gsi` compares against the live table.
     assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, def.globalSecondaryIndexes);
 
     this.table = new Table(this, 'AppTable', {
@@ -167,8 +155,7 @@ export class DataStack extends Stack {
     });
 
     for (const gsi of def.globalSecondaryIndexes) {
-      // Same projection the local bootstrap uses (CHR-200); throws on an
-      // INCLUDE without attributes or attributes on ALL / KEYS_ONLY.
+      // Shared with the local bootstrap so both create identical indexes.
       const projection = gsiProjection(gsi);
       this.table.addGlobalSecondaryIndex({
         indexName: gsi.indexName,
@@ -189,11 +176,9 @@ export class DataStack extends Stack {
 
     this.table.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
-    // AWS Backup beyond PITR (CHR-175 / CHR-197): daily snapshots kept for a
-    // rolling 7 days. The vault lock is governance mode (no `changeableFor`):
-    // it blocks shortening retention or deleting recovery points early, but an
-    // admin can still change or remove it. Setting `changeableFor` would make
-    // it compliance mode, which becomes permanent once that window ends.
+    // Governance-mode lock (no `changeableFor`): an admin can still change or
+    // remove it. Setting `changeableFor` makes it compliance mode, which
+    // becomes permanent once that window ends.
     const backupVault = new BackupVault(this, 'AppTableBackupVault', {
       backupVaultName: `gagnechris-${config.name}-app-table`,
       removalPolicy: RemovalPolicy.RETAIN,
@@ -206,7 +191,7 @@ export class DataStack extends Stack {
       {
         id: 'AwsSolutions-BACKUP1',
         reason:
-          'Vault uses AWS-owned key; customer-managed KMS is a follow-up if Notebook data classification requires it (CHR-175).',
+          'Vault uses AWS-owned key; customer-managed KMS is a follow-up if Notebook data classification requires it.',
       },
     ]);
 
@@ -234,7 +219,7 @@ export class DataStack extends Stack {
         {
           id: 'AwsSolutions-IAM4',
           reason:
-            'AWS Backup selection uses the AWS-managed Backup/Restore service-role policies required by the Backup service; custom least-privilege replicas drift from AWS updates (CHR-175).',
+            'AWS Backup selection uses the AWS-managed Backup/Restore service-role policies required by the Backup service; custom least-privilege replicas drift from AWS updates.',
           appliesTo: [
             'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup',
             'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores',
@@ -244,8 +229,6 @@ export class DataStack extends Stack {
       true,
     );
 
-    // Weekly restore test from the vault, content-validated, auto-deleted
-    // (CHR-198). Replaces the PITR rehearsal that ran on every deploy.
     this.restoreTesting = new AppTableRestoreTesting(this, 'RestoreTesting', {
       config,
       table: this.table,
@@ -253,12 +236,9 @@ export class DataStack extends Stack {
       alertsTopic,
     });
 
-    // Failed, aborted, expired or partial backup/restore/copy jobs email the
-    // Guardrails topic (CHR-197). The three event types name their fields
-    // differently: restore jobs report `status` (not `state`) and carry no
-    // `backupVaultName`, and copy jobs only name the source/destination vault
-    // ARNs. Hence one `$or` branch per type, keyed on fields each one has.
-    // Restore-testing jobs also match on their plan ARN (CHR-198).
+    // The event types name their fields differently: restore jobs report
+    // `status` (not `state`) and carry no vault name, and copy jobs only name
+    // source/destination vault ARNs. Hence one `$or` branch per shape.
     new Rule(this, 'BackupJobFailureRule', {
       ruleName: `gagnechris-${config.name}-backup-job-failures`,
       description: 'AWS Backup job failed, aborted, expired or partial',
@@ -297,8 +277,7 @@ export class DataStack extends Stack {
 
     metricAlarm(this, 'AppTableSystemErrors', {
       alarmName: `gagnechris-${config.name}-dynamodb-system-errors`,
-      alarmDescription:
-        'DynamoDB AppTable SystemErrors ≥ 1 in 5 minutes (CHR-168)',
+      alarmDescription: 'DynamoDB AppTable SystemErrors ≥ 1 in 5 minutes',
       metric: this.table.metricSystemErrorsForOperations({
         operations: APP_TABLE_OPERATIONS,
         period: Duration.minutes(5),
@@ -308,8 +287,7 @@ export class DataStack extends Stack {
     });
     metricAlarm(this, 'AppTableThrottledRequests', {
       alarmName: `gagnechris-${config.name}-dynamodb-throttled-requests`,
-      alarmDescription:
-        'DynamoDB AppTable ThrottledRequests ≥ 1 in 5 minutes (CHR-168)',
+      alarmDescription: 'DynamoDB AppTable ThrottledRequests ≥ 1 in 5 minutes',
       metric: this.table.metricThrottledRequestsForOperations({
         operations: APP_TABLE_OPERATIONS,
         period: Duration.minutes(5),
@@ -331,7 +309,7 @@ export class DataStack extends Stack {
     new StringParameter(this, 'TableStreamArnParam', {
       parameterName: ssmParameterName(config.name, 'dataTableStreamArn'),
       stringValue: this.table.tableStreamArn!,
-      description: 'DynamoDB stream ARN for the publisher (CHR-34)',
+      description: 'DynamoDB stream ARN for the publisher',
     });
 
     new CfnOutput(this, 'TableName', {

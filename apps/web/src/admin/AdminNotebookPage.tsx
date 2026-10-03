@@ -15,10 +15,7 @@ function sectionFromPath(pathname: string): string {
   return 'Notebook';
 }
 
-/**
- * Lightweight placeholder used by layout unit tests (real Today/Notes/Tasks
- * pages are wired in `main.tsx`).
- */
+/** Placeholder for layout unit tests; the real pages are wired in `main.tsx`. */
 export default function AdminNotebookPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
   const { id } = useParams<{ id?: string }>();

@@ -71,7 +71,7 @@ describe('posts HTTP handlers', () => {
     expect(result.statusCode).toBe(201);
   });
 
-  it('returns 500 data_integrity for corrupt PUBLISHED (CHR-160)', async () => {
+  it('returns 500 data_integrity for corrupt PUBLISHED', async () => {
     vi.mocked(repo.getById).mockRejectedValue(
       new DataIntegrityError('Corrupt stored Post', {
         pk: `POST#${samplePost.id}`,

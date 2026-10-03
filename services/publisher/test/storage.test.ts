@@ -72,7 +72,7 @@ describe('filesystem site storage', () => {
     expect(await storage.readShell()).toBe('<html>pristine</html>');
   });
 
-  it('delete returns false when the key is already absent (CHR-167)', async () => {
+  it('delete returns false when the key is already absent', async () => {
     const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);

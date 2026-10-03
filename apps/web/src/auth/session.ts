@@ -7,7 +7,6 @@ import {
 import { ensureAmplifyConfigured } from './config';
 
 export type AuthUser = {
-  /** Preferred display label (email when available). */
   label: string;
   userId: string;
 };

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Copy apps/web production build into the local publisher site root.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -20,8 +19,7 @@ if [[ ! -f "${DIST}/_shell.html" ]]; then
   exit 1
 fi
 
-# Preserve existing blog/ artifacts; refresh shell + assets from dist
-# (includes pristine _shell.html for the publisher; CHR-104).
+# Keep publisher output (blog/, sitemap, rss) that is not in dist.
 rsync -a --delete \
   --exclude 'blog/' \
   --exclude 'sitemap.xml' \

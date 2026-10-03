@@ -152,7 +152,7 @@ describe('HomeRepository', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('maps TransactionConflict cancellation to a 409 conflict (CHR-120)', async () => {
+  it('maps TransactionConflict cancellation to a 409 conflict', async () => {
     const draft: Home = {
       ...stored,
       about: 'Edited about',
@@ -182,7 +182,7 @@ describe('HomeRepository', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('retries BatchGet UnprocessedKeys before treating PUBLISHED as missing (CHR-120)', async () => {
+  it('retries BatchGet UnprocessedKeys before treating PUBLISHED as missing', async () => {
     let batchCalls = 0;
     const { doc, send } = mockDoc(async (command) => {
       if (command.constructor.name === 'BatchGetCommand') {
@@ -297,7 +297,7 @@ describe('HomeRepository', () => {
     expect(home.version).toBe(6);
   });
 
-  it('does not write PUBLISHED when META is published but snapshot is missing (CHR-146)', async () => {
+  it('does not write PUBLISHED when META is published but snapshot is missing', async () => {
     const puts: unknown[] = [];
     const { doc, send } = mockDoc(
       mockPair(buildHomeMetaItem(stored), undefined, async (command) => {

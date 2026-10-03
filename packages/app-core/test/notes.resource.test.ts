@@ -6,7 +6,7 @@ import {
 } from '../src/query/notes.js';
 import { isEmptyDailyNote } from '../src/query/api.js';
 
-describe('daily note placeholders (CHR-42)', () => {
+describe('daily note placeholders', () => {
   test('emptyDailyPlaceholder reuses the same ULID per area/date', () => {
     const a = emptyDailyPlaceholder('work', '2026-10-02', 'user-1');
     const b = emptyDailyPlaceholder('work', '2026-10-02', 'user-1');

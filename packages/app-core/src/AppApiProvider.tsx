@@ -5,7 +5,6 @@ type GetApiClient = () => ApiClient;
 
 const ApiClientContext = createContext<GetApiClient | null>(null);
 
-/** Provides the app's OpenAPI client factory (Amplify on web, SecureStore on RN). */
 export function AppApiProvider({
   getClient,
   children,

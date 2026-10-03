@@ -3,7 +3,7 @@ import { HealthResponseSchema } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { apiBaseUrl, localDevToken } from './config';
 
-describe('mobile spike imports (CHR-142)', () => {
+describe('mobile imports', () => {
   it('resolves @gagnechris/shared domain schemas', () => {
     const parsed = HealthResponseSchema.parse({
       status: 'ok',

@@ -1,7 +1,3 @@
-/**
- * Shared If-Match / ETag helpers for versioned Notebook mutations (CHR-171).
- * Fake-note routes and future note/task handlers should use these — no copied logic.
- */
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
@@ -20,10 +16,6 @@ export type ExpectedVersionErr = {
   response: APIGatewayProxyStructuredResultV2;
 };
 
-/**
- * Parse If-Match (or body.version). Malformed If-Match → 400.
- * Missing expectation → 400 with a clear message.
- */
 export function requireExpectedVersion(
   event: APIGatewayProxyEventV2,
   body: { version?: number },
@@ -54,7 +46,6 @@ export function requireExpectedVersion(
   }
 }
 
-/** Resolve `If-Match: *` to the current server version for write calls. */
 export function versionForWrite(
   expected: number | 'any',
   currentVersion: number,
@@ -62,7 +53,6 @@ export function versionForWrite(
   return expected === 'any' ? currentVersion : expected;
 }
 
-/** Run a versioned mutation; If-Match conflicts become 412. */
 export async function runVersionedMutation<T>(
   fromIfMatch: boolean,
   fn: () => Promise<T>,
@@ -74,7 +64,6 @@ export async function runVersionedMutation<T>(
   }
 }
 
-/** JSON + strong ETag from an entity `version`. */
 export function jsonEntity<T extends { version: number }>(
   statusCode: number,
   entity: T,

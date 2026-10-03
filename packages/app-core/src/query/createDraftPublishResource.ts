@@ -42,11 +42,7 @@ export type DraftPublishLifecycleMutators<TEntity> = {
   discard: (body: ExpectedVersionRequest) => Promise<MutateResult<TEntity>>;
 };
 
-/**
- * Versioned resource plus publish / unpublish / discard mutators for post /
- * home / resume. Non-publishable entities use `createVersionedResource` alone
- * (CHR-173).
- */
+/** Non-publishable entities use `createVersionedResource` alone. */
 export function createDraftPublishResource<
   TEntity extends VersionedEntity,
   TParams,

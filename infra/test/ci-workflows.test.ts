@@ -1,8 +1,3 @@
-/**
- * Supply-chain and deploy-guard invariants for GitHub Actions (CHR-200).
- * Parses the workflow YAML and runs the deploy helper scripts against stub
- * `aws` binaries and throwaway git repos. No network, no AWS.
- */
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
@@ -77,7 +72,7 @@ function stepIndex(job: Job, predicate: (step: Step) => boolean): number {
 const isCredentialStep = (s: Step) =>
   s.uses?.startsWith('aws-actions/configure-aws-credentials@') ?? false;
 
-describe('GitHub Actions supply chain (CHR-200)', () => {
+describe('GitHub Actions supply chain', () => {
   it('pins every remote action to a full commit SHA', () => {
     const offenders: string[] = [];
     const pinned = /^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/;
@@ -146,7 +141,7 @@ describe('GitHub Actions supply chain (CHR-200)', () => {
   });
 });
 
-describe('deploy job guards (CHR-200)', () => {
+describe('deploy job guards', () => {
   const deploy = cdk.jobs.deploy!;
 
   it('runs check:deployed-gsi after credentials and before cdk deploy', () => {
@@ -196,20 +191,17 @@ describe('deploy job guards (CHR-200)', () => {
   });
 });
 
-// --- helper scripts -------------------------------------------------------
-
 const tmpRoots: string[] = [];
 afterAll(() => {
   for (const dir of tmpRoots) rmSync(dir, { recursive: true, force: true });
 });
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'chr200-'));
+  const dir = mkdtempSync(join(tmpdir(), 'ci-workflows-'));
   tmpRoots.push(dir);
   return dir;
 }
 
-/** A stub `aws` that prints $FAKE_AWS_STDOUT / $FAKE_AWS_STDERR, exits $FAKE_AWS_EXIT. */
 function stubAwsPath(): string {
   const bin = join(tempDir(), 'bin');
   mkdirSync(bin);
@@ -244,7 +236,7 @@ function runScript(
   };
 }
 
-describe('read-deployed-sha.sh (CHR-200)', () => {
+describe('read-deployed-sha.sh', () => {
   const PATH = stubAwsPath();
   const sha = 'a'.repeat(40);
 
@@ -289,7 +281,7 @@ describe('read-deployed-sha.sh (CHR-200)', () => {
   });
 });
 
-describe('prod-stack-activity.sh (CHR-200)', () => {
+describe('prod-stack-activity.sh', () => {
   const PATH = stubAwsPath();
 
   it('is quiet when no stack is updating', () => {
@@ -332,7 +324,7 @@ describe('prod-stack-activity.sh (CHR-200)', () => {
   });
 });
 
-describe('check-deploy-ancestry.sh and deploy-paths.sh (CHR-200)', () => {
+describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
   const repo = tempDir();
   const git = (...args: string[]) =>
     execFileSync('git', args, {

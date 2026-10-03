@@ -88,7 +88,6 @@ describe('publish target registry', () => {
 
   it('builds and invalidates a new page from one target file + one registry entry', async () => {
     const storage = memoryStorage();
-    // Own entity in touchedEntityTypes — no rebuild-scope.ts boolean; target owns /now*.
     const targets = [...publishTargets, nowPageTarget];
 
     const result = await runPublishTargets({
@@ -126,7 +125,6 @@ describe('publish target registry', () => {
     expect(storage.puts).toEqual(['now/index.html']);
     expect(result.invalidated).toEqual(['/now*']);
     expect(storage.invalidations[0]).toEqual(['/now*']);
-    // Surface metadata lives on the target — codegen, not a third hand edit.
     expect(nowPageTarget.optionBPaths).toEqual(['/now']);
     expect(nowPageTarget.adminMutationPrefixes).toEqual(['/api/admin/now']);
   });

@@ -1,8 +1,3 @@
-/**
- * Acceptance check (CHR-156 / CHR-164 / CHR-180): banned imports and Node/DOM
- * globals into RN-facing packages fail lint.
- * Run: `npm run check:platform-neutral-lint`
- */
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -54,7 +49,7 @@ const fixtures = [
     rule: 'no-restricted-imports',
   },
   {
-    // New shared domain file (not a hardcoded allowlist name) must still ban node:*.
+    // A new shared domain file (not in any allowlist) must still be covered.
     dir: 'packages/shared/src',
     source: `import fs from 'node:fs';\nexport const x = fs;\n`,
     expect: 'node:',

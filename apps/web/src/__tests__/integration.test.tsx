@@ -45,7 +45,7 @@ describe('Integration Tests', () => {
       expect(mockTrackEvent).toHaveBeenCalledTimes(2);
     });
 
-    test('tracks Quick Links LinkedIn and GitHub clicks (CHR-125)', () => {
+    test('tracks Quick Links LinkedIn and GitHub clicks', () => {
       renderWithProviders(<App />);
 
       fireEvent.click(

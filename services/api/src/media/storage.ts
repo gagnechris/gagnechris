@@ -27,7 +27,6 @@ function getS3(): S3Client {
   return s3Client;
 }
 
-/** Test helper. */
 export function setS3Client(client: S3Client | undefined): void {
   s3Client = client;
 }
@@ -111,10 +110,6 @@ export async function createMediaUploadUrl(
   };
 }
 
-/**
- * Local filesystem PUT target (SITE_STORAGE=filesystem only).
- * Writes under SITE_BUCKET_NAME which is the .local-site root.
- */
 export async function writeLocalMediaObject(
   key: string,
   body: Buffer,

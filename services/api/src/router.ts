@@ -1,7 +1,3 @@
-/**
- * Declarative API router (CHR-127 / CHR-154).
- * Path patterns use `/admin/...` (no `/api` prefix); incoming `/api/*` is stripped.
- */
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -31,7 +27,6 @@ export type AuthMode = 'public' | 'admin';
 export type RouteCtx = {
   event: APIGatewayProxyEventV2;
   method: string;
-  /** Canonical path (trailing slash stripped, `/api` prefix removed). */
   path: string;
   claims: Record<string, string> | undefined;
   userId: string | undefined;
@@ -61,20 +56,14 @@ export type RouteHandler<
 
 export type RouteDef = {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  /** Pattern relative to site root after stripping `/api`, e.g. `/admin/posts/:id`. */
   pattern: string;
   auth: AuthMode;
-  /** Metric name (defaults to a slug of method+pattern). */
   metric?: string;
   params?: ZodType;
   query?: ZodType;
   body?: ZodType;
-  /** When true, skip JSON body parse (binary PUT). */
   rawBody?: boolean;
-  /**
-   * Body fields over their max return 413 `payload_too_large` instead of 400
-   * (CHR-192). Set on notebook writes, whose limits guard the item size.
-   */
+  /** Set on notebook writes, whose field limits guard the DynamoDB item size. */
   oversizedBody413?: boolean;
   handler: RouteHandler;
 };
@@ -85,10 +74,6 @@ type InferOrDefault<T extends ZodType | undefined, TDefault> = [T] extends [
   ? z.infer<T>
   : TDefault;
 
-/**
- * Build a `RouteDef` with handler input inferred from zod schemas (CHR-154).
- * Use this instead of casting `params` / `query` / `body` inside handlers.
- */
 export function defineRoute<
   TParams extends ZodType | undefined = undefined,
   TQuery extends ZodType | undefined = undefined,
@@ -112,7 +97,6 @@ export function defineRoute<
   return def as RouteDef;
 }
 
-/** Thrown when a path segment fails `decodeURIComponent` (malformed % escape). */
 export class MalformedPathError extends Error {
   constructor(message = 'Malformed path encoding') {
     super(message);
@@ -132,7 +116,6 @@ export function normalizePath(rawPath: string): string {
   return rawPath.replace(/\/$/, '') || '/';
 }
 
-/** Strip `/api` so `/api/admin/posts` and `/admin/posts` share one pattern. */
 export function canonicalPath(rawPath: string): string {
   const normalized = normalizePath(rawPath);
   if (normalized === '/api') return '/';
@@ -140,25 +123,16 @@ export function canonicalPath(rawPath: string): string {
   return normalized;
 }
 
-/**
- * API Gateway JWT authorizer prefixes (must stay aligned with
- * `infra/lib/stacks/api-stack.ts`). Admin route patterns must live under these.
- */
+/** Must stay aligned with `infra/lib/stacks/api-stack.ts`; admin routes must live under these. */
 export const API_GATEWAY_JWT_PREFIXES = ['/admin', '/notebook'] as const;
 
-/** True when a canonical path is under an API Gateway JWT-protected prefix. */
 export function isJwtProtectedPath(path: string): boolean {
   return API_GATEWAY_JWT_PREFIXES.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 
-/**
- * Whether any route matching this path declares `auth: 'admin'` (for local
- * claim injection — mirrors JWT gate without duplicating prefixes).
- * Malformed `%` escapes are treated as non-matches so the handler can return
- * 400 (CHR-166); do not throw here.
- */
+/** Malformed `%` escapes are non-matches so the handler can return 400; do not throw here. */
 export function pathRequiresAdminAuth(
   routes: readonly RouteDef[],
   rawPath: string,
@@ -175,13 +149,11 @@ export function pathRequiresAdminAuth(
   return false;
 }
 
-/** Cognito group every admin/notebook caller must belong to (CHR-195). */
 export const ADMIN_GROUP = 'admin';
 
 /**
- * `cognito:groups` as a list. HTTP API JWT authorizers pass array claims as
- * a bracketed string (`[admin other]`); arrays stringified by
- * {@link claimsFromEvent} arrive comma-joined.
+ * HTTP API JWT authorizers pass array claims as a bracketed string
+ * (`[admin other]`); arrays stringified by {@link claimsFromEvent} arrive comma-joined.
  */
 export function claimGroups(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -217,10 +189,6 @@ export function claimsFromEvent(
   return out;
 }
 
-/**
- * Match `/admin/posts/:id` or `/admin/media/objects/:key+` against a path.
- * Returns params or null. Throws {@link MalformedPathError} on bad % escapes.
- */
 export function matchPattern(
   pattern: string,
   path: string,
@@ -251,7 +219,6 @@ export function matchPattern(
   return null;
 }
 
-/** Higher = more literal segments (prefer `/tasks/today` over `/tasks/:id`). */
 export function patternSpecificity(pattern: string): number {
   return pattern
     .split('/')
@@ -335,7 +302,6 @@ async function invokeRoute(
     route.method === 'PUT' ||
     route.method === 'PATCH'
   ) {
-    // Handlers that parse themselves still get a raw object when no schema.
     body = parseBody(ctx.event);
   }
 
@@ -354,22 +320,11 @@ async function invokeRoute(
   return route.handler(ctx, { params: typedParams, query, body });
 }
 
-/**
- * Convert a router pattern to an OpenAPI path (`/admin/posts/:id` →
- * `/api/admin/posts/{id}`; `:key+` → `{key}`).
- */
 export function routePatternToOpenApiPath(pattern: string): string {
   const openApi = pattern.replace(/:([A-Za-z_][A-Za-z0-9_]*)\+?/g, '{$1}');
   return `/api${openApi}`;
 }
 
-/**
- * Dispatch a request against a route table.
- * Known path + wrong method → 405 (with `Allow`); unknown path → 404.
- * When multiple patterns match, prefer more literal segments (CHR-154).
- * Every response gets `nosniff`; non-public routes and errors (including the
- * router's own 401/403/404/405) also get `Cache-Control: no-store` (CHR-196).
- */
 export async function dispatchRoutes(
   routes: readonly RouteDef[],
   event: APIGatewayProxyEventV2,
@@ -455,7 +410,6 @@ async function dispatchMatched(
   );
   const { route, params } = methodMatches[0]!;
   onMatch(route);
-  // Per-route metric name only (no redundant `route` dimension) — CHR-154.
   defaultMetrics.addMetric(metricName(route), MetricUnit.Count, 1);
 
   try {

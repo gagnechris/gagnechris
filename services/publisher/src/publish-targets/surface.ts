@@ -1,10 +1,3 @@
-/**
- * Publish-surface helpers derived from registered targets (CHR-179).
- * Codegen (`scripts/generate-publish-surface.ts`) emits CloudFront Option B
- * prefixes and local-dev admin mutation routes from these collectors so a new
- * page only needs a target file + registry entry.
- */
-
 import type { PublishTarget } from './types.js';
 
 /** Vite-built public pages that are not publisher targets. */
@@ -50,7 +43,6 @@ export function collectAdminSoftDeletePrefixes(
   return [...prefixes].sort();
 }
 
-/** All Option B prefixes: publisher-owned + static Vite pages. */
 export function allOptionBPrefixes(
   targets: readonly PublishTarget[],
 ): string[] {

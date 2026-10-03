@@ -40,8 +40,8 @@ type FakeKvs = {
 };
 
 function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
-  // CloudFront Functions expose handler(event); eval in a sandbox.
-  // Strip CF `import` and stub `cf.kvs()` (override / fail-open / fake store).
+  // The `cloudfront` import only exists at the edge, so strip it and stub
+  // `cf.kvs()`.
   const kvsFactory =
     fakeKvs === undefined
       ? `function () { throw new Error('kvs unavailable in unit tests'); }`
@@ -140,7 +140,7 @@ describe('viewer-request CloudFront Function', () => {
     expect(locationOf(res)).toBe('https://gagnechris.com/?tag=a&tag=b');
   });
 
-  it('redirects legacy /blog URLs to /posts with the query string (CHR-206)', async () => {
+  it('redirects legacy /blog URLs to /posts with the query string', async () => {
     const cases: Array<[string, string]> = [
       ['/blog', '/posts'],
       ['/blog/', '/posts/'],
@@ -243,7 +243,7 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/blog/anything/index.html');
   });
 
-  describe('KVS allowlist (CHR-119)', () => {
+  describe('KVS allowlist', () => {
     function createCountingKvs(
       store: Record<string, boolean>,
       opts?: {
@@ -343,7 +343,7 @@ describe('viewer-request CloudFront Function', () => {
       expect(calls).toEqual(['anything', '__synced__']);
     });
 
-    it('rejects reserved __synced__ and over-long slugs without querying KVS (CHR-123)', async () => {
+    it('rejects reserved __synced__ and over-long slugs without querying KVS', async () => {
       const { kvs, calls } = createCountingKvs({
         __synced__: true,
         welcome: true,
@@ -377,7 +377,7 @@ describe('viewer-request CloudFront Function', () => {
       expect(calls).toEqual([]);
     });
 
-    it('routes a max-length published slug (CHR-145)', async () => {
+    it('routes a max-length published slug', async () => {
       const maxSlug = 'a'.repeat(MAX_SLUG_LENGTH);
       const { kvs, calls } = createCountingKvs({
         __synced__: true,
@@ -427,9 +427,8 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/dont-feed-the-bears/index.html');
   });
 
-  it('serves /now via Option B when a target registers the path (CHR-179)', async () => {
-    // Production registry has no /now; a new page target adds optionBPaths: ['/now']
-    // and codegen updates OPTION_B_PREFIXES. Simulate that registration here.
+  it('serves /now via Option B when a target registers the path', async () => {
+    // Simulates codegen after a page target adds optionBPaths: ['/now'].
     api.setOptionBPrefixesForTests([
       '/blog',
       '/contact',
@@ -533,7 +532,7 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/media/photo.png');
   });
 
-  it('passes through /.well-known/* (AASA / webauthn; CHR-177)', async () => {
+  it('passes through /.well-known/* (AASA / webauthn)', async () => {
     expect(
       (
         (await runHandler({

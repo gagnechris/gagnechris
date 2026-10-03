@@ -1,7 +1,3 @@
-/**
- * Run async work over `items` with at most `limit` in flight.
- * Preserves completion (not start) order only for returned values.
- */
 export async function mapWithConcurrency<T, R>(
   items: readonly T[],
   limit: number,
@@ -24,5 +20,4 @@ export async function mapWithConcurrency<T, R>(
   return results;
 }
 
-/** Shared S3 put concurrency for publisher artifact writes. */
 export const PUT_CONCURRENCY = 8;

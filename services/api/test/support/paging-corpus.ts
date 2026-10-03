@@ -1,7 +1,3 @@
-/**
- * Shared corpus + full-walk helpers for list paging tests (CHR-185).
- * Used by the memory-doc unit test and the DynamoDB Local integration test.
- */
 import { expect } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { makeEvent } from './make-event.js';
@@ -16,7 +12,6 @@ const AREAS = ['work', 'personal'] as const;
 const STATUSES = ['todo', 'in_progress', 'done'] as const;
 const PRIORITIES = ['low', 'med', 'high'] as const;
 
-/** Deterministic Crockford ULID: fixed prefix + base32 counter. */
 export function testUlid(prefix: string, n: number): string {
   const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   let s = '';
@@ -33,7 +28,6 @@ function dayFromIndex(i: number): string {
   return new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
 }
 
-/** The corpus definition, for computing expected ids per filter. */
 export function corpusNote(i: number) {
   return {
     id: testUlid('N', i),
@@ -101,7 +95,6 @@ export async function seedPagingCorpus(
   };
 }
 
-/** Follow nextCursor through the HTTP route until exhausted. */
 export async function walkRoute(
   routes: RouteDef[],
   path: string,

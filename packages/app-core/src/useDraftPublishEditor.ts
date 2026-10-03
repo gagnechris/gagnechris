@@ -8,24 +8,20 @@ type MutateResult<TEntity> = {
   response: { status: number };
 };
 
-/** Subset of `useQueuedAutosave` return used by the publish flow. */
 export type DraftPublishAutosave = {
   save: () => Promise<FlushResult>;
   setSaveState: (state: SaveState) => void;
   setSaveError: (message: string | null) => void;
   getEditGen: () => number;
   getLastSavedGen: () => number;
-  /** Align lastSavedGen after Discard so Publish does not look falsely dirty. */
   markClean: () => void;
   setAutosaveHeld: (held: boolean) => void;
-  /** Wait for an in-flight PUT chain (no-op when idle). */
   awaitInFlight: () => Promise<FlushResult>;
 };
 
 /** @deprecated Prefer `VersionedDocDeleteOptions` from `useVersionedDocEditor`. */
 export type DraftPublishDeleteOptions = {
   confirm: string;
-  /** Receives the editor's current entity version (CHR-186). */
   mutate: (version: number) => Promise<void>;
   onDeleted: () => void;
 };
@@ -41,9 +37,8 @@ export type DraftPublishEditorOptions<TEntity> = {
   setDirty: (dirty: boolean) => void;
   versionRef: { current: number };
   getVersion: (entity: TEntity) => number;
-  /** Update entity metadata only — never replace the live draft. */
+  /** Never replace the live draft here. */
   onEntityMeta: (entity: TEntity) => void;
-  /** Replace draft from the server entity (discard). */
   onReplaceDraft: (entity: TEntity) => void;
   publish: () => Promise<MutateResult<TEntity>>;
   unpublish: () => Promise<MutateResult<TEntity>>;
@@ -51,23 +46,12 @@ export type DraftPublishEditorOptions<TEntity> = {
   unpublishConfirm: string;
   discardConfirm: string;
   enabled?: boolean;
-  /** Injected async confirm (web wraps `window.confirm`). No DOM default. */
   confirm: ConfirmFn;
-  /**
-   * Shared hold from `useVersionedDocEditor` so publish and delete cannot race
-   * (CHR-173). Required when layered on the doc editor.
-   */
+  /** Shared with `useVersionedDocEditor` so publish and delete cannot race. */
   hold: DraftPublishHold;
 };
 
-/**
- * Publish / Unpublish / Discard flow layered on `useVersionedDocEditor`
- * (CHR-124 / CHR-132 / CHR-158 / CHR-173): uses the shared hold so autosave
- * cannot race the version bump.
- *
- * Navigation leave-guards, beforeunload, and keyboard shortcuts stay in the
- * web (or RN) shell — this hook has no `window` / `document` usage.
- */
+/** Leave-guards and keyboard shortcuts stay in the shell; this hook has no DOM usage. */
 export function useDraftPublishEditor<TEntity>({
   autosave,
   dirty,
@@ -124,8 +108,8 @@ export function useDraftPublishEditor<TEntity>({
         const flush = await save();
         if (flush === 'error') return;
       }
-      // Baseline is what is actually on the server after the flush — not the
-      // edit gen at click time (pending text typed during an in-flight save).
+      // Baseline is what is on the server after the flush, not the edit gen at
+      // click time (text may have been typed during an in-flight save).
       const baselineGen = getLastSavedGen();
       const { data, error, response } = await publish();
       if (error || !data) {
@@ -182,8 +166,7 @@ export function useDraftPublishEditor<TEntity>({
     if (!enabled || isBusy()) return;
     if (!(await confirm(discardConfirm))) return;
     await withHold(async () => {
-      // Discard reads server draft — wait out any in-flight autosave PUT first
-      // so we do not race a 409 / false conflict banner (CHR-178).
+      // Wait out any in-flight autosave PUT so Discard does not race into a 409.
       await awaitInFlight();
       const { data, error, response } = await discard();
       if (error || !data) {
@@ -213,7 +196,6 @@ export function useDraftPublishEditor<TEntity>({
     runPublish,
     runUnpublish,
     runDiscard,
-    /** Exposed so the host can wire ⌘S / ⌘⏎ without DOM inside this package. */
     saveRef,
     publishRef,
   };

@@ -12,7 +12,7 @@ nvm use
 npm ci
 
 # Only for the Expo app: it sits outside the root workspaces with its own
-# lockfile so web / API / infra work never installs React Native (CHR-150).
+# lockfile so web / API / infra work never installs React Native.
 npm ci --prefix apps/mobile
 ```
 
@@ -32,7 +32,7 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 
 Open [http://localhost:5173/admin](http://localhost:5173/admin). Vite proxies `/api` → local API and `/__site` → the static origin (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
 
-**Admin PWA (CHR-48):** production `/spa.html` (CloudFront `/admin/*`) ships `manifest.json` + `/icons/*` for iPhone Add to Home Screen (`display: standalone`, start at `/admin/notebook`). Vite serves the same files from `apps/web/public/` in local dev; offline caching is optional and not enabled yet.
+**Admin PWA:** production `/spa.html` (CloudFront `/admin/*`) ships `manifest.json` + `/icons/*` for iPhone Add to Home Screen (`display: standalone`, start at `/admin/notebook`). Vite serves the same files from `apps/web/public/` in local dev. There is no offline cache.
 
 More detail: [local-e2e.md](./local-e2e.md).
 
@@ -69,16 +69,16 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 ### Vite (`apps/web`)
 
-| Variable                     | Notes                                                                                                                        |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                                                                         |
-| `VITE_COGNITO_WEB_CLIENT_ID` | Real Cognito auth; locally the `dev-local` client (SSM `cognito-dev-client-id`), whose tokens the prod API rejects (CHR-195) |
-| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                                                                          |
-| `VITE_API_BASE_URL`          | Optional; default same-origin                                                                                                |
-| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                                                                           |
-| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)                                                                   |
-| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                             |
-| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                          |
+| Variable                     | Notes                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `VITE_COGNITO_USER_POOL_ID`  | Required for real Cognito admin auth                                                                               |
+| `VITE_COGNITO_WEB_CLIENT_ID` | Real Cognito auth; locally the `dev-local` client (SSM `cognito-dev-client-id`), whose tokens the prod API rejects |
+| `VITE_COGNITO_AUTH_DOMAIN`   | Cognito domain host                                                                                                |
+| `VITE_API_BASE_URL`          | Optional; default same-origin                                                                                      |
+| `VITE_API_TARGET`            | Dev only: set `prod` to proxy `/api` to production                                                                 |
+| `VITE_LOCAL_API_ORIGIN`      | Dev only: local API origin (set by `scripts/local/env.sh`)                                                         |
+| `VITE_LOCAL_SITE_ORIGIN`     | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                   |
+| `VITE_AUTH_MODE`             | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                |
 
 ### Local stack (`scripts/local/env.sh`)
 
@@ -93,13 +93,13 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
 
-`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` or `npm run e2e:local` against a running container works (CHR-199).
+`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` or `npm run e2e:local` against a running container works.
 
-### Integration tests (CHR-151 / CHR-163)
+### Integration tests
 
 `npm run test:integration -w @gagnechris/api` **ignores** `DATA_TABLE_NAME`. Each file creates an ephemeral `gagnechris-it-*` table and deletes it afterward, so sourcing `env.sh` and running tests will not wipe `gagnechris-local`. Tables that do not start with `gagnechris-it-` are refused.
 
-Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000 (CHR-199). Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
+Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000. Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
 
 ### CDK / deploy
 
@@ -121,7 +121,7 @@ lsof -iTCP:8000 -sTCP:LISTEN
 
 Use the stable Compose project name (`gagnechris`) so worktrees share one Local instance, or stop the conflicting container/process. Override with `DYNAMODB_LOCAL_HOST_PORT` / `AWS_ENDPOINT_URL_DYNAMODB` / Compose port mapping only if you need a second instance.
 
-API integration (in CI and locally) uses Compose project `gagnechris-ci` on host port **8001** only: `docker-compose.ci.yml` replaces the base ports with `ports: !override` (Compose 2.24.4+), so it never also binds **8000** and cannot block `npm run local:dev` (CHR-199). If an old `gagnechris-ci-dynamodb-1` still holds 8000 from before this change, remove it with `docker rm -f gagnechris-ci-dynamodb-1`.
+API integration (in CI and locally) uses Compose project `gagnechris-ci` on host port **8001** only: `docker-compose.ci.yml` replaces the base ports with `ports: !override` (Compose 2.24.4+), so it never also binds **8000** and cannot block `npm run local:dev`. If a `gagnechris-ci-dynamodb-1` container is holding 8000, remove it with `docker rm -f gagnechris-ci-dynamodb-1`.
 
 ### Admin still hits Cognito locally
 

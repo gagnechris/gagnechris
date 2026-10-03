@@ -1,7 +1,3 @@
-/**
- * Owner-scoped Notebook notes (CHR-40).
- * Uses OwnerScopedVersionedEntityRepository + CHR-39 mappers/keys.
- */
 import {
   DeleteCommand,
   GetCommand,
@@ -273,7 +269,7 @@ export class NotesRepository {
     return this.base.softDelete(userId, id, expectedVersion, tombstone);
   }
 
-  /** Tombstone built from a consistent read (CHR-188). */
+  /** Tombstone built from a consistent read. */
   deleteIfVersion(
     userId: string,
     id: string,
@@ -309,10 +305,7 @@ export class NotesRepository {
     return this.createIdempotent(note);
   }
 
-  /**
-   * Apply only the fields in `body` to a consistent read (CHR-188), so a
-   * stale replica can never revert content or reuse a version.
-   */
+  /** Applies `body` to a consistent read so a stale replica can never revert content or reuse a version. */
   async updateFromRequest(
     userId: string,
     id: string,
@@ -321,7 +314,7 @@ export class NotesRepository {
   ): Promise<Note> {
     return this.base.mutateIfVersion(userId, id, expected, (existing, now) => {
       // The (area, date) claim is what makes a daily note unique; moving it
-      // to another area would leave two dailies for one day (CHR-187).
+      // to another area would leave two dailies for one day.
       if (
         existing.type === 'daily' &&
         body.area !== undefined &&
@@ -352,13 +345,11 @@ export class NotesRepository {
       ? [query.area]
       : ['work', 'personal'];
 
-    // Single-area path supports opaque cursors; multi-area merges one page each.
     if (areas.length === 1) {
       return this.listArea(userId, areas[0]!, query);
     }
 
-    // Walk areas in order with a composite cursor so nothing is dropped
-    // past the first page (CHR-185).
+    // Composite cursor so nothing is dropped past the first page.
     return walkPartitions(
       areas,
       query.cursor,
@@ -438,7 +429,7 @@ export class NotesRepository {
           consistentRead: true,
         })
       : undefined;
-    // A claim left behind by a deleted note (pre-CHR-187) reads as free.
+    // A claim left behind by a deleted note reads as free.
     if (!held || held.deleted) {
       return {
         exists: false,
@@ -456,10 +447,6 @@ export class NotesRepository {
     return held;
   }
 
-  /**
-   * Upsert today's (or any) daily note. Creates with claim when missing;
-   * updates the claim winner when present.
-   */
   async upsertDaily(
     userId: string,
     area: NotebookArea,
@@ -496,7 +483,6 @@ export class NotesRepository {
   }
 }
 
-/** Default singleton so sync adapter registers on cold start. */
 let defaultNotesRepo: NotesRepository | undefined;
 
 export function notesRepository(): NotesRepository {
@@ -504,7 +490,6 @@ export function notesRepository(): NotesRepository {
   return defaultNotesRepo;
 }
 
-/** Test helper — force a fresh repo against an injected client/table. */
 export function createNotesRepository(
   doc: DynamoDBDocumentClient,
   tableName: string,

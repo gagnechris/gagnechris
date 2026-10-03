@@ -29,7 +29,6 @@ const ROOT_EMPTY_RE = /<div id="root"><\/div>/i;
 const ROOT_PRERENDERED_RE =
   /<div id="root"><!--prerender:start-->[\s\S]*?<!--prerender:end--><\/div>/i;
 
-/** Put prerendered markup in `#root`, replacing a previous prerender if any. */
 const injectPrerender = (shellHtml: string, body: string): string => {
   const root = `<div id="root">${PRERENDER_OPEN}${body}${PRERENDER_CLOSE}</div>`;
   return ROOT_PRERENDERED_RE.test(shellHtml)
@@ -37,15 +36,15 @@ const injectPrerender = (shellHtml: string, body: string): string => {
     : shellHtml.replace(ROOT_EMPTY_RE, () => root);
 };
 
-/** Public posts path; S3 keys stay under `blog/` (CHR-206). */
+/** S3 keys stay under `blog/`. */
 export const POSTS_PATH = '/posts';
 
 export const postCanonicalUrl = (slug: string): string =>
   `https://${APEX}${POSTS_PATH}/${slug}`;
 
 /**
- * Pre-CHR-206 post URL. RSS guids keep it so feed readers don't re-list every
- * post as new; CloudFront 301s it to the canonical URL.
+ * RSS guids keep the `/blog/` URL so feed readers don't re-list every post as
+ * new; CloudFront 301s it to the canonical URL.
  */
 export const legacyPostUrl = (slug: string): string =>
   `https://${APEX}/blog/${slug}`;
@@ -89,7 +88,6 @@ export const buildArticleHtml = (post: Post): string => {
 </article>`.trim();
 };
 
-/** Inject post meta + prerendered article into the Vite site shell from S3. */
 export const renderPostPage = (shellHtml: string, post: Post): string => {
   const title = escapeHtml(post.seo?.title || `${post.title} - Chris Gagne`);
   const description = escapeHtml(
@@ -169,7 +167,6 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   return html;
 };
 
-/** Placeholder when the resume singleton is draft / missing (CHR-103). */
 export const renderResumeUnavailablePage = (shellHtml: string): string => {
   const title = 'Resume - Chris Gagne';
   const description = 'Resume available on request.';
@@ -188,10 +185,7 @@ export const renderResumeUnavailablePage = (shellHtml: string): string => {
   return html;
 };
 
-/**
- * Home document: publisher writes prerendered markup to `index.html` from the
- * pristine `_shell.html` template (never reads index.html back as the shell).
- */
+/** `shellHtml` must be the pristine `_shell.html`, never index.html read back. */
 export const renderHomePage = (shellHtml: string, home: Home): string => {
   const title = escapeHtml(home.seo?.title || `${home.name} - ${home.title}`);
   const description = escapeHtml(
@@ -215,10 +209,7 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
 
 export const buildSitemapXml = (
   posts: Post[],
-  /**
-   * Extra post slugs to keep in the sitemap when their PUBLISHED rows are
-   * corrupt (CHR-167). HTML is preserved; the slug must stay discoverable.
-   */
+  /** Slugs whose PUBLISHED rows are corrupt: HTML is preserved, so they must stay discoverable. */
   extraSlugs: readonly string[] = [],
 ): string => {
   const staticPaths = ['/', POSTS_PATH, '/resume', '/contact'];

@@ -51,7 +51,7 @@ const seed = <T>(qc: QueryClient, key: readonly unknown[], items: T[]) =>
 const itemsOf = <T>(qc: QueryClient, key: readonly unknown[]) =>
   qc.getQueryData<Pages<T>>(key)?.pages.flatMap((p) => p.items) ?? [];
 
-describe('setCachedNote respects list filters (CHR-189)', () => {
+describe('setCachedNote respects list filters', () => {
   test('saving a daily note leaves the Pages list and other calendars alone', () => {
     const qc = new QueryClient();
     const pagesKey = queryKeys.notes.list({ area: 'work', type: 'page' });
@@ -123,7 +123,7 @@ describe('setCachedNote respects list filters (CHR-189)', () => {
   });
 });
 
-describe('setCachedTask respects list filters (CHR-189)', () => {
+describe('setCachedTask respects list filters', () => {
   test('a completed task leaves open lists and joins done lists', () => {
     const qc = new QueryClient();
     const openKey = queryKeys.tasks.list({

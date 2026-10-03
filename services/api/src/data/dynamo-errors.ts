@@ -1,7 +1,3 @@
-/**
- * DynamoDB client error helpers for HTTP mapping (CHR-170).
- */
-
 function errorName(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
   const name = (error as { name?: unknown }).name;
@@ -18,10 +14,6 @@ function errorMessage(error: unknown): string {
   return typeof message === 'string' ? message : '';
 }
 
-/**
- * True when DynamoDB rejected ExclusiveStartKey as incompatible with the query
- * (wrong partition / sort bound). Map to HTTP 400.
- */
 export function isExclusiveStartKeyValidationError(error: unknown): boolean {
   if (errorName(error) !== 'ValidationException') return false;
   const message = errorMessage(error).toLowerCase();
@@ -32,7 +24,6 @@ export function isExclusiveStartKeyValidationError(error: unknown): boolean {
   );
 }
 
-/** Re-throw as SyntaxError so {@link mapRouteError} returns 400. */
 export function throwCursorValidation(error: unknown): never {
   if (isExclusiveStartKeyValidationError(error)) {
     throw new SyntaxError('Invalid pagination cursor');

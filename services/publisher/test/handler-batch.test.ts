@@ -193,7 +193,7 @@ function kvsSlugs(): string[] {
   return syncSlugs.mock.calls[0]![0] as string[];
 }
 
-describe('publisher handler stream batches (CHR-201)', () => {
+describe('publisher handler stream batches', () => {
   const prevTable = process.env.DATA_TABLE_NAME;
 
   beforeEach(() => {

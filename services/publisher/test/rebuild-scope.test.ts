@@ -46,7 +46,7 @@ function metaImage(fields: {
 }
 
 describe('collectRebuildScope', () => {
-  it('ignores unknown PUBLISHED entity types (CHR-128 allowlist)', () => {
+  it('ignores unknown PUBLISHED entity types', () => {
     const records: DynamoDBRecord[] = [
       {
         eventID: '1',
@@ -70,7 +70,7 @@ describe('collectRebuildScope', () => {
     expect(streamNeedsRebuild(records, prodTargets)).toBe(false);
   });
 
-  it('rebuilds when a registered target claims the touched entity type (CHR-179)', () => {
+  it('rebuilds when a registered target claims the touched entity type', () => {
     const records: DynamoDBRecord[] = [
       {
         eventID: '1',
@@ -93,7 +93,7 @@ describe('collectRebuildScope', () => {
     );
   });
 
-  it('does not treat missing entityType as a post unless pk is POST# (CHR-167)', () => {
+  it('does not treat missing entityType as a post unless pk is POST#', () => {
     const nonPost: DynamoDBRecord[] = [
       {
         eventID: '1',

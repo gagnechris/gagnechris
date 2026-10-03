@@ -5,10 +5,6 @@ import {
 import { browserRetrySignals } from './browserRetrySignals';
 import { useVersionedDocShell } from './useVersionedDocShell';
 
-/**
- * Web shell around app-core draft/publish editors: injects `window.confirm`
- * and wires leave guards + ⌘S / ⌘⏎ via `useVersionedDocShell` (CHR-173).
- */
 export function useVersionedEntityEditor<
   TEntity extends {
     version: number;

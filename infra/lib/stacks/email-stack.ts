@@ -8,22 +8,16 @@ import { APEX_DOMAIN } from '../config/constants.js';
 export interface EmailStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   /**
-   * Optional zone override for unit tests. Production uses
-   * `HostedZone.fromLookup` so Email does not depend on Dns (CHR-149:
-   * avoids Site → Api → Email → Dns → Site cycle).
+   * Tests only. Prod looks the zone up so Email does not depend on Dns, which
+   * would create a Site → Api → Email → Dns → Site cycle.
    */
   readonly hostedZone?: IHostedZone;
 }
 
-/**
- * SES domain identity for transactional mail (contact form, resume pings).
- * DKIM CNAMEs are created on the hosted zone. SPF is updated in DnsStack.
- */
+/** SPF lives in DnsStack. */
 export class EmailStack extends Stack {
   readonly emailIdentity: EmailIdentity;
-  /** Verified From address used by the API Lambda. */
   readonly fromEmail: string;
-  /** Alerts inbox identity (sandbox delivery target). */
   readonly notifyEmailIdentity: EmailIdentity;
 
   constructor(scope: Construct, id: string, props: EmailStackProps) {

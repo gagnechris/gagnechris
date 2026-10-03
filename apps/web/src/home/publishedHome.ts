@@ -1,4 +1,3 @@
-/** Client loader for the publisher-prerendered home page in `index.html`. */
 import { DEFAULT_HOME, renderHomeAboutHtml } from '@gagnechris/shared/render';
 
 export type HomeView = {

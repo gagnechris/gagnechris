@@ -32,7 +32,7 @@ const listItems = (queryClient: QueryClient): Post[] => {
   return data?.pages.flatMap((p) => p.items) ?? [];
 };
 
-describe('post cache helpers (CHR-131)', () => {
+describe('post cache helpers', () => {
   test('setCachedPost upserts list + detail; deleted status drops from list', () => {
     const queryClient = new QueryClient();
     setCachedPost(queryClient, draftPost);
@@ -60,7 +60,7 @@ describe('post cache helpers (CHR-131)', () => {
     );
   });
 
-  test('setCachedPost keeps a newer version when a stale write arrives (CHR-147)', () => {
+  test('setCachedPost keeps a newer version when a stale write arrives', () => {
     const queryClient = new QueryClient();
     const v2 = { ...draftPost, version: 2, title: 'Newer' };
     setCachedPost(queryClient, v2);
@@ -72,7 +72,7 @@ describe('post cache helpers (CHR-131)', () => {
   });
 });
 
-describe('home/resume cache helpers (CHR-147)', () => {
+describe('home/resume cache helpers', () => {
   test('setCachedHome/Resume ignore lower versions', () => {
     const queryClient = new QueryClient();
     const homeV2 = {

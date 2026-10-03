@@ -1,9 +1,7 @@
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { createElement, useState, type ReactNode } from 'react';
 
-/**
- * Minimal renderHook for plain Node (no jsdom) via react-test-renderer.
- */
+/** Plain Node (no jsdom), so react-test-renderer instead of testing-library. */
 export function renderHook<TResult>(
   callback: () => TResult,
   options?: { wrapper?: (props: { children: ReactNode }) => ReactNode },

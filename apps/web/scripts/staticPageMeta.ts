@@ -1,8 +1,3 @@
-/**
- * Build-time HTML meta for static marketing routes (CHR-37 / CHR-95).
- * Uses shared HTML helpers so `$`-safe replace stays in one place (CHR-107).
- */
-
 import {
   escapeHtml,
   escapeRegExp,
@@ -15,7 +10,6 @@ export type StaticPageMeta = {
   routePath: '' | 'resume' | 'contact' | 'dont-feed-the-bears';
   title: string;
   description: string;
-  /** Site-absolute path to OG/Twitter image (defaults to /og-image.jpg). */
   ogImagePath?: string;
 };
 
@@ -87,7 +81,6 @@ function absoluteOgImage(meta: StaticPageMeta): string {
   return `${APEX}${meta.ogImagePath.startsWith('/') ? '' : '/'}${meta.ogImagePath}`;
 }
 
-/** Apply per-page title, description, OG/Twitter, and canonical to a Vite shell. */
 export function applyStaticPageMeta(
   shellHtml: string,
   meta: StaticPageMeta,
@@ -115,7 +108,6 @@ export function applyStaticPageMeta(
   return html;
 }
 
-/** Insert or replace a `<link …>` by `rel` (CHR-48 PWA). */
 function upsertLinkRel(html: string, rel: string, attrs: string): string {
   const tag = `<link rel="${rel}" ${attrs} />`;
   const re = new RegExp(
@@ -129,9 +121,8 @@ function upsertLinkRel(html: string, rel: string, attrs: string): string {
 }
 
 /**
- * Neutral SPA shell for /admin and /auth (CHR-102). Empty #root, noindex,
- * no Home canonical — avoids flashing the Home prerender before React mounts.
- * Installable PWA meta + manifest for Add to Home Screen (CHR-48).
+ * Empty #root and no Home canonical, so the Home prerender never flashes
+ * before React mounts.
  */
 export function applySpaShellMeta(shellHtml: string): string {
   const title = 'Notebook';
@@ -173,7 +164,7 @@ export function applySpaShellMeta(shellHtml: string): string {
 
 /**
  * Drop the GA4 loader and inline gtag bootstrap. /admin and /auth are served
- * under a strict CSP with no inline scripts or Google hosts (CHR-193), and
+ * under a strict CSP with no inline scripts or Google hosts, and
  * the private area shouldn't report page views anyway.
  */
 export function removeAnalytics(html: string): string {
@@ -189,7 +180,7 @@ export function removeAnalytics(html: string): string {
     );
 }
 
-/** Static NotFound markup injected into #root for crawlers (CHR-102). */
+/** Static NotFound markup in #root for crawlers. */
 export const NOT_FOUND_PRERENDER = `<!--prerender:start--><div class="not-found">
   <header>
     <h1>Page not found</h1>
@@ -219,9 +210,6 @@ function removeMeta(
   return html.replace(re, () => '');
 }
 
-/**
- * Prerendered /404.html: NotFound markup, noindex, no Home canonical (CHR-102).
- */
 export function applyNotFoundPageMeta(shellHtml: string): string {
   const title = 'Page Not Found - Chris Gagne';
   const description = 'That URL does not match a page on this site.';

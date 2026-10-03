@@ -143,14 +143,11 @@ describe('tick', () => {
 
   test('timer expiry without habituation is success', () => {
     const rng = createSeededRng(99);
-    // Secure everything except keep phase via direct tick with no bears:
-    // use a tiny round and immediate secure-all path via timer with no open targets.
     let state = createInitialState({
       rng,
       tipIndex: 0,
       roundDurationMs: 500,
     });
-    // Secure all so bears cannot spawn / habituate.
     for (const a of state.attractants) {
       state = secureAttractant(state, a.id);
     }
@@ -158,21 +155,12 @@ describe('tick', () => {
   });
 
   test('elapsed timer alone can succeed when attractants stay unsecured but no bear arrives', () => {
-    // Force no spawns by jumping elapsed via a state that never reaches spawn
-    // before duration — use empty spawn by securing between ticks is hard;
-    // instead tick with a rng that still spawns, but secure attractants as soon
-    // as bears appear so we prove the timer path in isolation:
     const short = createInitialState({
       rng: () => 0,
       tipIndex: 0,
       roundDurationMs: 200,
     });
-    // Manually craft: tick from a state with no unsecured attractants left mid-round
-    // without going through secureAttractant's success — actually secureAttractant
-    // always sets success. Test timer on a playing state with all still open but
-    // speedScale 0 so bears never move/reach, and spawn still happens.
-    // Better approach: patch by securing none, use speedScale 0, and advance past duration.
-    // Bears spawn but never reach (speed 0).
+    // Bears spawn but never reach food at speed 0.
     const end = playUntil(short, (s) => s.phase !== 'playing', {
       rng: () => 0,
       speedScale: 0,

@@ -20,7 +20,7 @@ function baseResult(overrides: Partial<RebuildResult> = {}): RebuildResult {
   };
 }
 
-describe('recordPublishMetrics (CHR-179)', () => {
+describe('recordPublishMetrics', () => {
   it('emits ResumePdfError when resumePdfFailed is true', () => {
     const addMetric = vi.fn();
     const metrics = {

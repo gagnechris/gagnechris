@@ -1,6 +1,3 @@
-/**
- * DynamoDB Local acceptance tests for Notes API (CHR-40).
- */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SyncLedger } from '../../src/sync/ledger.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
@@ -20,7 +17,7 @@ const PAGE_A = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const DAILY_1 = '01ARZ3NDEKTSV4RRFFQ69G5FC0';
 const DAILY_2 = '01ARZ3NDEKTSV4RRFFQ69G5FC1';
 
-describe('notes repository (DynamoDB Local, CHR-40)', () => {
+describe('notes repository (DynamoDB Local)', () => {
   let tableName: string;
   const doc = createLocalDocClient();
 
@@ -113,7 +110,7 @@ describe('notes repository (DynamoDB Local, CHR-40)', () => {
     );
   });
 
-  it('delete frees the daily slot; 10 concurrent creates give 1 winner and 9 daily_taken (CHR-187)', async () => {
+  it('delete frees the daily slot; 10 concurrent creates give 1 winner and 9 daily_taken', async () => {
     const repo = createNotesRepository(
       doc,
       tableName,

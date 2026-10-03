@@ -18,26 +18,19 @@ export type MarkdownEditorHandle = {
 type MarkdownEditorProps = {
   value: string;
   onChange: (value: string) => void;
-  /** Accessible name for the editor surface. */
   label?: string;
   readOnly?: boolean;
-  /**
-   * Upload image files from paste/drop; return public paths like `/media/...`.
-   * When omitted, paste/drop of images is ignored.
-   */
+  /** Returns public paths like `/media/...`; when omitted, image paste/drop is ignored. */
   onUploadImages?: (files: File[]) => Promise<string[]>;
   /**
-   * Extra CodeMirror extensions (merged after built-ins).
-   * Memoize this array (and `keymap`) — a new reference reconfigures CodeMirror
+   * Memoize this array (and `keymap`): a new reference reconfigures CodeMirror
    * on every render and can reset scroll/selection.
-   * Opt-in task checkboxes: `extensions={[taskListToggle()]}`.
    */
   extensions?: Extension[];
-  /** Extra key bindings (higher precedence than defaults). Memoize like `extensions`. */
+  /** Memoize like `extensions`. */
   keymap?: readonly KeyBinding[];
-  /** Show line numbers in the gutter. @default true */
+  /** @default true */
   lineNumbers?: boolean;
-  /** Placeholder when the document is empty. */
   placeholder?: string;
   onBlur?: () => void;
 };
@@ -72,9 +65,6 @@ function insertMarkdownAtCursor(view: EditorView, markdownSnippets: string[]) {
   });
 }
 
-/**
- * Reusable markdown source editor (CodeMirror 6). Notebook can reuse this.
- */
 const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   function MarkdownEditor(
     {
@@ -109,9 +99,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
     }));
 
     const extensions = useMemo(() => {
-      // Plaintext CodeMirror (no @codemirror/lang-markdown / @lezer/markdown —
-      // that package alone is ~550 kB minified). Preview pane still renders
-      // markdown; keeping the shared editor chunk under 500 kB (CHR-178).
+      // Plaintext CodeMirror: @codemirror/lang-markdown alone is ~550 kB
+      // minified, and the shared editor chunk must stay under 500 kB.
       const base: Extension[] = [
         history(),
         EditorView.lineWrapping,
@@ -120,7 +109,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         // Accessible name on the real textbox (.cm-content), not only the wrapper.
         EditorView.contentAttributes.of({ 'aria-label': label }),
         // ⌘⏎ / Ctrl+Enter: no-op in the body (shell skips publish; consume so
-        // CodeMirror's insertBlankLine does not add a newline) — CHR-178.
+        // CodeMirror's insertBlankLine does not add a newline).
         Prec.highest(
           cmKeymap.of([
             {

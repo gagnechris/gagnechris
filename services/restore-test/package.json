@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "AWS Backup restore-test validator and leftover scratch-table check (CHR-198).",
+  "description": "AWS Backup restore-test validator and leftover scratch-table check.",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

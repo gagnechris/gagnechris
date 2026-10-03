@@ -1,16 +1,4 @@
-/**
- * Content checks for a table restored by the AWS Backup restore testing plan
- * (CHR-198). Pure logic over an injected Scan so it is unit-testable; the
- * Lambda handler wires in the real DocumentClient.
- *
- * Checks (never logs or reports item content, only keys and issue paths):
- * - the table name is a restore-test scratch name (never the live table)
- * - the table is not empty
- * - every item has non-empty string `pk` / `sk`
- * - items with a known `entityType` parse with the `@gagnechris/data` item
- *   schema and sit under the key the key builders would produce
- * - the singleton rows (home + resume META) are present
- */
+// Never logs or reports item content, only keys and issue paths.
 import type { z } from 'zod';
 import {
   ContactMsgItemSchema,
@@ -36,16 +24,12 @@ import {
   taskPk,
 } from '@gagnechris/data';
 
-/** AWS Backup names DynamoDB restore-test tables `awsbackup-restore-test-<random>`. */
 export const RESTORE_TEST_TABLE_PREFIX = 'awsbackup-restore-test-';
 
-/** Stop scanning after this many items (the table is small; this is a guard). */
 export const DEFAULT_MAX_SCAN_ITEMS = 50_000;
 
-/** Keep the PutRestoreValidationResult message short. */
 export const MAX_MESSAGE_LENGTH = 900;
 
-/** Problems listed in the message; the rest are counted. */
 const MAX_LISTED_PROBLEMS = 10;
 
 export type ScanPage = {
@@ -77,7 +61,6 @@ type EntityRule = {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
-/** Rules keyed by the `entityType` discriminator stored on each item. */
 const ENTITY_RULES: Record<string, EntityRule> = {
   post: {
     schema: PostMetaItemSchema,
@@ -118,7 +101,6 @@ const ENTITY_RULES: Record<string, EntityRule> = {
   },
 };
 
-/** Rows every restored table must contain (seeded singletons). */
 export const REQUIRED_KEYS: ReadonlyArray<{ pk: string; sk: string }> = [
   keys.singleton.home.meta(),
   keys.singleton.resume.meta(),
@@ -131,7 +113,6 @@ export function isRestoreTestTableName(name: string): boolean {
   );
 }
 
-/** `arn:aws:dynamodb:us-east-1:123:table/name` → `name`. */
 export function tableNameFromArn(arn: string | undefined): string | undefined {
   if (!arn) return undefined;
   const match = /:table\/([^/]+)$/.exec(arn);
@@ -142,7 +123,6 @@ function keyLabel(item: Record<string, unknown>): string {
   return `${str(item.pk) || '?'}/${str(item.sk) || '?'}`;
 }
 
-/** Returns a problem description, or undefined when the item is fine. */
 export function checkItem(item: Record<string, unknown>): string | undefined {
   if (typeof item.pk !== 'string' || item.pk.length === 0) {
     return 'item without a string pk';
@@ -198,7 +178,6 @@ export function finalize(
   return { ...withStatus, message: buildMessage(withStatus) };
 }
 
-/** Scan the restored table and check its content. */
 export async function validateRestoredTable(
   scan: ScanFn,
   tableName: string,

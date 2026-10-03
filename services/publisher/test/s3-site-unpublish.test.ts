@@ -42,13 +42,13 @@ const publishedResume = (): Resume => ({
   },
 });
 
-describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
+describe('rebuildPublishedSite unpublish cleanup', () => {
   let root: string;
   const prevTable = process.env.DATA_TABLE_NAME;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'publisher-unpublish-'));
-    // Publisher reads pristine _shell.html (CHR-104); index.html is home output.
+    // Publisher reads pristine _shell.html; index.html is home output.
     await writeFile(join(root, '_shell.html'), SHELL);
     await writeFile(join(root, 'index.html'), SHELL);
     process.env.DATA_TABLE_NAME = 'gagnechris-test';
@@ -66,7 +66,6 @@ describe('rebuildPublishedSite unpublish cleanup (CHR-103)', () => {
     const storage = createFilesystemSiteStorage(root);
     const resume = publishedResume();
 
-    // First publish.
     await rebuildPublishedSite({
       storage,
       sources: {

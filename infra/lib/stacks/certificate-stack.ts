@@ -14,15 +14,11 @@ export interface CertificateStackProps extends StackProps {
 }
 
 /**
- * ACM certificates in us-east-1 (CloudFront + Cognito custom domains).
- * Site and auth use separate certs so changing one hostname never replaces
- * the other (which would break cross-stack exports).
- * Zone lookup stays in this stack so DNS validation records create correctly.
+ * Separate site and auth certs so changing one hostname never replaces the
+ * other, which would break cross-stack exports.
  */
 export class CertificateStack extends Stack {
-  /** Apex + www for CloudFront. */
   readonly certificate: ICertificate;
-  /** `auth.gagnechris.com` for Cognito managed login. */
   readonly authCertificate: ICertificate;
 
   constructor(scope: Construct, id: string, props: CertificateStackProps) {
@@ -32,8 +28,7 @@ export class CertificateStack extends Stack {
       domainName: APEX_DOMAIN,
     });
 
-    // Construct id SiteCertificateV2 kept after CHR-73 rotation (legacy
-    // SiteCertificate with staging SAN was removed once Site cut over).
+    // Renaming the construct id would replace the certificate.
     this.certificate = new Certificate(this, 'SiteCertificateV2', {
       domainName: APEX_DOMAIN,
       subjectAlternativeNames: [`www.${APEX_DOMAIN}`],

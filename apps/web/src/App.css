@@ -1,8 +1,7 @@
-/* App Layout and Styles — home page only (CHR-109).
-   Bare `header`/`main`/`footer` selectors used to leak the home
-   profile-photo layout onto every public page.
-   Admin routes render .admin-shell and opt out of the 1000px reading
-   card so the CMS can use wide screens (CHR-108). */
+/* Home page only: bare `header`/`main`/`footer` selectors would leak the
+   profile-photo layout onto every public page. Admin routes render
+   .admin-shell and opt out of the 1000px reading card so the CMS can use
+   wide screens. */
 
 #root:not(:has(.admin-shell)) {
   max-width: 1000px;

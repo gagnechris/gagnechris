@@ -58,7 +58,7 @@ const task: Task = {
   deleted: false,
 };
 
-describe('Notebook Dynamo items (CHR-39)', () => {
+describe('Notebook Dynamo items', () => {
   it('builds owner-scoped daily note META with DATE# GSI1', () => {
     const item = buildNoteMetaItem(dailyNote);
     expect(item.pk).toBe('USER#sub-1#NOTE#01ARZ3NDEKTSV4RRFFQ48JMCZC');

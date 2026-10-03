@@ -1,7 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    # Workspace lockfile at the repo root covers apps/web and later packages.
     directory: /
     schedule:
       interval: weekly

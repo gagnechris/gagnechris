@@ -1,8 +1,5 @@
-/**
- * Notebook search HTTP routes (CHR-46). POST with a JSON body so search
- * terms never appear in a URL, and so never in CloudFront or API Gateway
- * access logs (CHR-196).
- */
+// POST with a JSON body so search terms never appear in a URL, and so never
+// in CloudFront or API Gateway access logs.
 import {
   NotebookSearchRequestSchema,
   NotebookSearchResponseSchema,

@@ -10,7 +10,6 @@ import { useCallback, useRef, useState as useReactState } from 'react';
 
 type Entity = { version: number; body: string };
 
-/** Minimal hold matching `useVersionedDocEditor.withHold` for unit tests. */
 function useTestHold(enabled = true): DraftPublishHold & { busy: boolean } {
   const [busy, setBusy] = useReactState(false);
   const busyRef = useRef(false);
@@ -31,7 +30,7 @@ function useTestHold(enabled = true): DraftPublishHold & { busy: boolean } {
   return { withHold, isBusy: () => busyRef.current, busy };
 }
 
-describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
+describe('useDraftPublishEditor discard then publish', () => {
   test('edit → discard → publish leaves clean with no extra save', async () => {
     const confirm = vi.fn(async () => true);
     const performSave = vi.fn(async (_draft: string, version: number) => ({
@@ -125,7 +124,7 @@ describe('useDraftPublishEditor discard then publish (CHR-145)', () => {
   });
 });
 
-describe('useDraftPublishEditor async confirm (CHR-150)', () => {
+describe('useDraftPublishEditor async confirm', () => {
   const stubAutosave = (): DraftPublishAutosave => ({
     save: async () => 'clean',
     setSaveState: () => {},
@@ -210,7 +209,7 @@ describe('useDraftPublishEditor async confirm (CHR-150)', () => {
   });
 });
 
-describe('useDraftPublishEditor discard awaits in-flight PUT (CHR-178)', () => {
+describe('useDraftPublishEditor discard awaits in-flight PUT', () => {
   test('awaitInFlight resolves before discard mutate', async () => {
     const order: string[] = [];
     let releaseInFlight!: (value: 'clean') => void;

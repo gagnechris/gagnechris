@@ -1,6 +1,7 @@
-# Mobile (Expo) — CHR-142 spike
+# Mobile (Expo)
 
-Minimal Expo app that proves monorepo packages resolve **and run** under Metro.
+Expo app that runs the monorepo client packages under Metro. Its screen calls
+`GET /api/health` and `GET /api/admin/home` against the configured API.
 
 This app is not part of the root npm workspaces and has its own lockfile, so its
 dependencies install separately. See `docs/mobile.md`.
@@ -42,8 +43,9 @@ npm run check:bundle    # no .d.ts; zod/v4 present; no zod/v3
 npm run smoke:bundle    # Metro bundle + zod v4 smoke in Node
 ```
 
-`expo export` succeeding is not evidence on its own: the original resolver
-bundled `zod`'s `.d.ts` files and the app crashed at module load (CHR-150).
+`expo export` succeeding is not evidence on its own: a resolver that maps
+`zod`'s `.js` files to `.d.ts` still exports, and the app crashes at module load.
+`check:bundle` and `smoke:bundle` catch that.
 
 ## Metro
 

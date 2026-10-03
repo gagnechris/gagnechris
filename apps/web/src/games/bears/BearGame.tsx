@@ -240,7 +240,6 @@ function BearGlyph() {
 type ViewMode = 'play' | 'tips';
 
 type BearGameProps = {
-  /** Soft entry source from `?from=` (CHR-94). */
   from?: string;
 };
 

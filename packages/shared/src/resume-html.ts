@@ -57,10 +57,8 @@ export const renderResumeSectionsHtml = (content: ResumeContent): string =>
     educationSection(content.education),
   ].join('');
 
-/** Full prerendered article the publisher writes and the SPA reads back. */
 export const renderResumePrerenderHtml = (resume: Resume): string =>
   `<article class="resume-page-prerender" data-name="${escapeHtml(resume.name)}" data-pdf="${escapeHtml(resume.pdfPath)}"><header><div class="name-section"><h1>${escapeHtml(resume.name)}</h1></div></header><main>${renderResumeSectionsHtml(resume.content)}</main></article>`;
 
-/** Meta-description fallback when `seo.description` is unset. */
 export const resumeSummaryExcerpt = (summary: string, max = 200): string =>
   textExcerpt(summary, max);

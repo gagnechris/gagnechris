@@ -1,6 +1,3 @@
-/**
- * Shared corrupt-row logging for list/query paths (CHR-160 / CHR-170).
- */
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { DataIntegrityError } from './errors.js';
 import { logger, metrics } from '../observability.js';

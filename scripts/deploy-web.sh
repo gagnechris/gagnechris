@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Build apps/web and sync to the prod Site bucket, then invalidate CloudFront.
-# Bucket / distribution IDs come from SSM (written by Site-prod) — nothing hard-coded.
-#
-# Publisher-owned paths are never deleted: /blog/*, /resume/*, /home/*, /media/*,
-# /notebook/* (reserved; CHR-175), sitemap.xml, rss.xml
 set -euo pipefail
 
 ENV_NAME="${ENV_NAME:-prod}"
@@ -32,7 +27,6 @@ DISTRIBUTION_ID="$(aws ssm get-parameter \
 
 echo "Deploying web → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 
-# Bake Cognito public config into the SPA (SSM from Auth stack).
 export VITE_COGNITO_USER_POOL_ID="$(aws ssm get-parameter \
   --name "$(ssm_name cognitoUserPoolId)" \
   --region "${AWS_REGION}" \
@@ -58,14 +52,13 @@ if [ ! -f "${DIST}/index.html" ]; then
   exit 1
 fi
 
-# Pristine Vite shell for the publisher (emitted by staticPagesPlugin before home
-# meta is applied). Never overwritten by home prerender — see CHR-104.
+# The publisher renders from this pristine shell; index.html gets prerendered over.
 if [ ! -f "${DIST}/_shell.html" ]; then
   echo "Missing build output: ${DIST}/_shell.html" >&2
   exit 1
 fi
 
-# 1) Hashed Vite assets — long cache, upload before HTML.
+# Upload hashed assets before the HTML that references them.
 if [ -d "${DIST}/assets" ]; then
   aws s3 sync "${DIST}/assets/" "s3://${BUCKET}/assets/" \
     --region "${AWS_REGION}" \
@@ -73,13 +66,8 @@ if [ -d "${DIST}/assets" ]; then
     --metadata-directive REPLACE
 fi
 
-# 2) Rest of the site. --delete cleans removed app files but never touches
-#    Option B publisher paths (exclude applies to deletes too).
-#    resume/index.html is publisher-owned once the resume is published; the
-#    previously deployed meta shell stays until then (SPA renders DEFAULT_RESUME).
-#    index.html is the home document (publisher may prerender into it). _shell.html
-#    is the pristine template the publisher reads (CHR-104). spa.html serves /admin|/auth.
-#    home/* holds last-published.json so unpublished Home survives deploys (CHR-103).
+# Excludes also protect publisher-owned paths from --delete. home/* holds
+# last-published.json so an unpublished Home survives deploys.
 aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
@@ -95,8 +83,8 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
 
-# Extensionless Apple / WebAuthn association files need application/json (CHR-177).
-# S3 content-type guessing often picks binary/octet-stream without an extension.
+# Extensionless Apple / WebAuthn association files need application/json; S3
+# guesses binary/octet-stream.
 if [ -d "${DIST}/.well-known" ]; then
   while IFS= read -r -d '' well_known; do
     key=".well-known/${well_known#"${DIST}/.well-known/"}"
@@ -115,9 +103,8 @@ aws cloudfront create-invalidation \
   --region "${AWS_REGION}" \
   --query 'Invalidation.Id' --output text
 
-# 3) Re-render publisher-owned pages against the new HTML shell (CHR-34).
-#    aws lambda invoke exits 0 even when the function throws — check FunctionError
-#    so a failed republish-all fails CI instead of leaving an empty home shell.
+# Re-render publisher pages against the new shell. `aws lambda invoke` exits 0
+# even when the function throws, so check FunctionError.
 PUBLISHER_FN="$(aws ssm get-parameter \
   --name "$(ssm_name publisherFunctionName)" \
   --region "${AWS_REGION}" \

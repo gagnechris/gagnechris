@@ -6,7 +6,6 @@ type Props = {
   dirty: boolean;
 };
 
-/** Autosave status text (`admin-save-indicator`). */
 export function SaveIndicator({ saveState, dirty }: Props) {
   return (
     <span

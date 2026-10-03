@@ -46,14 +46,13 @@ describe('@gagnechris/data keys', () => {
     expect(() => parsePostMetaItem({ entityType: 'post' })).toThrow();
   });
 
-  it('builds sync GSI and create-claim keys (CHR-153 / CHR-162)', () => {
+  it('builds sync GSI and create-claim keys', () => {
     expect(syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
       '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
     expect(keys.sync.sk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
       '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
-    // Offset / no-ms normalize to the same UTC-ms key prefix.
     expect(syncSk('2026-09-28T12:00:00Z', 'note', 'n1')).toBe(
       syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1'),
     );
@@ -69,7 +68,7 @@ describe('@gagnechris/data keys', () => {
     });
   });
 
-  it('builds owner-scoped Notebook keys (CHR-169)', () => {
+  it('builds owner-scoped Notebook keys', () => {
     expect(keys.notebook.note.meta('sub-1', '01ABC')).toEqual({
       pk: 'USER#sub-1#NOTE#01ABC',
       sk: SK_META,
@@ -102,12 +101,12 @@ describe('@gagnechris/data keys', () => {
     });
   });
 
-  it('sync overlap is at least the API Lambda timeout (CHR-162)', () => {
+  it('sync overlap is at least the API Lambda timeout', () => {
     expect(SYNC_OVERLAP_MS).toBeGreaterThanOrEqual(API_LAMBDA_TIMEOUT_MS);
     expect(SYNC_CREATE_CLAIM_TTL_DAYS).toBeGreaterThan(SYNC_TOMBSTONE_TTL_DAYS);
   });
 
-  it('syncResyncHorizonIso is TTL minus margin and overlap before now (CHR-202)', () => {
+  it('syncResyncHorizonIso is TTL minus margin and overlap before now', () => {
     const at = new Date('2026-10-02T12:00:00.000Z');
     const horizon = syncResyncHorizonIso(at);
     expect(Date.parse(horizon)).toBe(

@@ -1,7 +1,4 @@
-/**
- * Client loader for publisher-generated `/posts/posts.json` (Option B).
- * CloudFront serves `/posts/*` from the `blog/` S3 prefix (CHR-206).
- */
+/** CloudFront serves `/posts/*` from the `blog/` S3 prefix. */
 
 export type PublishedPostListItem = {
   id: string;
@@ -30,7 +27,6 @@ export function publishedPostPageUrl(slug: string): string {
   return localSite ? `/__site${path}` : path;
 }
 
-/** Published posts only; empty slug excluded (CHR-71). */
 export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   const response = await fetch(publishedPostsUrl(), {
     headers: { Accept: 'application/json' },

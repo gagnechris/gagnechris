@@ -1,4 +1,3 @@
-/** Client loader for publisher-generated `resume/index.html` (Option B). */
 import {
   DEFAULT_RESUME,
   renderResumeSectionsHtml,
@@ -8,7 +7,7 @@ export type ResumeView = {
   name: string;
   pdfPath: string;
   bodyHtml: string;
-  /** True when the publisher wrote the unpublish placeholder (CHR-103). */
+  /** True when the publisher wrote the unpublish placeholder. */
   unavailable?: boolean;
 };
 

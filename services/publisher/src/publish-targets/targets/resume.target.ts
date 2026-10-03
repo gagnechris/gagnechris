@@ -20,7 +20,7 @@ const target: PublishTarget = {
     const { shell, sources } = ctx;
     const lookup = await sources.getPublishedResume();
     if (lookup.status === 'corrupt') {
-      // Preserve live HTML + PDF; do not treat as unpublished (CHR-160).
+      // Preserve live HTML + PDF; do not treat as unpublished.
       return {};
     }
     if (lookup.status === 'ok') {

@@ -46,7 +46,7 @@ function adminEvent(
   });
 }
 
-describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
+describe('sync feed', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -71,7 +71,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     );
   }
 
-  it('stale since returns 410 resync_required (CHR-172)', async () => {
+  it('stale since returns 410 resync_required', async () => {
     const now = '2026-10-02T12:00:00.000Z';
     const stale = new Date(
       Date.parse(now) - (SYNC_TOMBSTONE_TTL_DAYS + 2) * 86_400_000,
@@ -86,7 +86,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     });
   });
 
-  it('since older than TTL minus margin returns 410; just inside returns 200 (CHR-202)', async () => {
+  it('since older than TTL minus margin returns 410; just inside returns 200', async () => {
     const now = '2026-10-02T12:00:00.000Z';
     const horizonMs = Date.parse(syncResyncHorizonIso(new Date(now)));
     // The horizon sits inside the TTL window: tombstones written at or after
@@ -95,7 +95,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
       Date.parse(now) - SYNC_TOMBSTONE_TTL_DAYS * 86_400_000,
     );
 
-    // 30.5 days: tombstones may already be purged (used to return 200).
+    // 30.5 days: tombstones may already be purged.
     const halfDayPastTtl = new Date(
       Date.parse(now) - (SYNC_TOMBSTONE_TTL_DAYS + 0.5) * 86_400_000,
     ).toISOString();
@@ -138,7 +138,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     expect(offset.changes.map((c) => c.id)).toEqual(
       utcMs.changes.map((c) => c.id),
     );
-    // Regression: raw string compare of `22:00:00Z` vs `22:00:00.500Z` used to skip.
+    // A raw string compare of `22:00:00Z` vs `22:00:00.500Z` would skip this row.
     expect(noMs.changes[0]!.updatedAt).toBe('2026-09-28T22:00:00.500Z');
   });
 
@@ -154,7 +154,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
     expect(first.nextSince).toBe('2026-09-28T22:00:02.000Z');
 
     // Write stamped at t=100 (before watermark) commits after the poll.
-    // 6s lag used to miss with 5s overlap; 15s overlap covers Lambda timeout.
+    // The 15s overlap covers the Lambda timeout.
     const repo = createFakeNotesRepo(
       doc,
       TABLE,
@@ -433,7 +433,7 @@ describe('sync feed (CHR-153 / CHR-162 / CHR-172)', () => {
   });
 });
 
-describe('sync contract hardening (CHR-202)', () => {
+describe('sync contract hardening', () => {
   const NOW = '2026-09-28T13:00:00.000Z';
   const STAMPS = [
     '2026-09-28T10:00:00.000Z',
@@ -647,7 +647,7 @@ describe('sync contract hardening (CHR-202)', () => {
   });
 });
 
-describe('If-Match / ETag routes (CHR-162)', () => {
+describe('If-Match / ETag routes', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
@@ -752,7 +752,7 @@ describe('If-Match / ETag routes (CHR-162)', () => {
     expect(res?.statusCode).toBe(404);
   });
 
-  it('malformed If-Match returns 400 (CHR-171)', async () => {
+  it('malformed If-Match returns 400', async () => {
     const { doc } = createMemoryDoc();
     const repo = createFakeNotesRepo(doc, TABLE);
     await repo.createIdempotent(
@@ -778,7 +778,7 @@ describe('If-Match / ETag routes (CHR-162)', () => {
   });
 });
 
-describe('prod routes exclude fixture notes (CHR-153)', () => {
+describe('prod routes exclude fixture notes', () => {
   it('routes table has sync but no fixture-notes paths', async () => {
     const { routes } = await import('../src/routes.js');
     const patterns = routes.map((r) => `${r.method} ${r.pattern}`);

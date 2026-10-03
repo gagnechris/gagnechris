@@ -23,7 +23,6 @@ const target: PublishTarget = {
   },
   async run(ctx) {
     const { shell, published, corruptPostSlugs, retainedPosts } = ctx;
-    // Live posts missing from the catalog keep their feed entries (CHR-201).
     const feedPosts =
       retainedPosts.length > 0
         ? sortPostsNewestFirst([...published, ...retainedPosts])

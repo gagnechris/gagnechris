@@ -9,8 +9,8 @@ declare global {
 export const GA_MEASUREMENT_ID = 'G-CDG30T24XY';
 
 /**
- * gtag is only loaded on public pages (spa.html strips it), but never report
- * from /admin or /auth even if it is present (CHR-194).
+ * spa.html strips gtag, but never report from /admin or /auth even if it is
+ * present.
  */
 const canTrack = () =>
   typeof window !== 'undefined' &&
@@ -58,7 +58,6 @@ export const trackResumeDownload = () => {
   trackEvent('download', 'resume', 'resume_download_direct');
 };
 
-/** Soft entry sources for Don't Feed the Bears (CHR-94). */
 export type BearsGameFrom =
   'resume' | 'contact' | '404' | 'footer' | 'direct' | string;
 

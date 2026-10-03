@@ -5,12 +5,11 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
-/** ESLint 10-compatible resolver (legacy `node` peer is optional and wrong interface). */
+// The `node` resolver peer implements the wrong interface for ESLint 10.
 const importXResolverSettings = {
   'import-x/resolver-next': [createNodeResolver()],
 };
 
-/** Ban relative imports that leave a workspace into another (CHR-138). */
 const crossWorkspaceRelativePatterns = [
   {
     group: [
@@ -32,7 +31,6 @@ const crossWorkspaceRelativePatterns = [
   },
 ];
 
-/** Sibling package folders under packages/ (relative cross-package; CHR-180). */
 const siblingPackageRelativePatterns = [
   {
     group: [
@@ -53,7 +51,7 @@ const siblingPackageRelativePatterns = [
       '../../tokens/**',
     ],
     message:
-      'Import workspace packages by name (e.g. @gagnechris/shared), not via relative sibling paths (CHR-180).',
+      'Import workspace packages by name (e.g. @gagnechris/shared), not via relative sibling paths.',
   },
 ];
 
@@ -61,14 +59,13 @@ const noCrossWorkspaceRelativeImports = {
   'no-restricted-imports': [
     'error',
     {
-      // Sibling bans (`../data`, …) apply only to packages/* (platform-neutral
-      // block) — services/api has a local src/data/ folder (CHR-180).
+      // Sibling bans (`../data`, …) apply only to packages/*: services/api has
+      // its own local src/data/ folder.
       patterns: crossWorkspaceRelativePatterns,
     },
   ],
 };
 
-/** Platform-neutral RN-facing packages must not pull Node / web / AWS SDKs (CHR-156 / CHR-180). */
 const platformNeutralRestrictedImports = {
   'no-restricted-imports': [
     'error',
@@ -76,48 +73,41 @@ const platformNeutralRestrictedImports = {
       paths: [
         {
           name: 'react-dom',
-          message:
-            'Platform-neutral packages must not import react-dom (CHR-156).',
+          message: 'Platform-neutral packages must not import react-dom.',
         },
         {
           name: 'aws-amplify',
-          message:
-            'Platform-neutral packages must not import aws-amplify (CHR-156).',
+          message: 'Platform-neutral packages must not import aws-amplify.',
         },
         {
           name: 'marked',
           message:
-            'Platform-neutral packages must not import marked (CHR-180). Use shared/render at the app boundary.',
+            'Platform-neutral packages must not import marked. Use shared/render at the app boundary.',
         },
         {
           name: '@gagnechris/data',
           message:
-            'Platform-neutral packages must not import @gagnechris/data (CHR-180).',
+            'Platform-neutral packages must not import @gagnechris/data.',
         },
         {
           name: 'fs',
-          message:
-            'Platform-neutral packages must not import Node builtins (CHR-180).',
+          message: 'Platform-neutral packages must not import Node builtins.',
         },
         {
           name: 'crypto',
-          message:
-            'Platform-neutral packages must not import Node builtins (CHR-180).',
+          message: 'Platform-neutral packages must not import Node builtins.',
         },
         {
           name: 'path',
-          message:
-            'Platform-neutral packages must not import Node builtins (CHR-180).',
+          message: 'Platform-neutral packages must not import Node builtins.',
         },
         {
           name: 'os',
-          message:
-            'Platform-neutral packages must not import Node builtins (CHR-180).',
+          message: 'Platform-neutral packages must not import Node builtins.',
         },
         {
           name: 'child_process',
-          message:
-            'Platform-neutral packages must not import Node builtins (CHR-180).',
+          message: 'Platform-neutral packages must not import Node builtins.',
         },
       ],
       patterns: [
@@ -125,38 +115,33 @@ const platformNeutralRestrictedImports = {
         ...siblingPackageRelativePatterns,
         {
           group: ['node:*'],
-          message:
-            'Platform-neutral packages must not import node:* builtins (CHR-156).',
+          message: 'Platform-neutral packages must not import node:* builtins.',
         },
         {
           group: ['@aws-sdk', '@aws-sdk/*'],
-          message:
-            'Platform-neutral packages must not import @aws-sdk/* (CHR-156).',
+          message: 'Platform-neutral packages must not import @aws-sdk/*.',
         },
         {
           group: ['aws-amplify/*'],
-          message:
-            'Platform-neutral packages must not import aws-amplify (CHR-156).',
+          message: 'Platform-neutral packages must not import aws-amplify.',
         },
         {
           group: ['@codemirror', '@codemirror/*'],
-          message:
-            'Platform-neutral packages must not import @codemirror/* (CHR-156).',
+          message: 'Platform-neutral packages must not import @codemirror/*.',
         },
         {
           group: ['react-dom/*'],
-          message:
-            'Platform-neutral packages must not import react-dom (CHR-156).',
+          message: 'Platform-neutral packages must not import react-dom.',
         },
         {
           group: ['@gagnechris/shared/*'],
           message:
-            'RN-facing packages must import @gagnechris/shared (domain root) only — not /render or /openapi (CHR-164).',
+            'RN-facing packages must import @gagnechris/shared (domain root) only — not /render or /openapi.',
         },
         {
           group: ['@gagnechris/data/*'],
           message:
-            'Platform-neutral packages must not import @gagnechris/data (CHR-180).',
+            'Platform-neutral packages must not import @gagnechris/data.',
         },
         {
           group: [
@@ -172,79 +157,74 @@ const platformNeutralRestrictedImports = {
             './resume-html',
           ],
           message:
-            'Shared domain must not import render/html/markdown helpers (CHR-180). Keep them in the render entry.',
+            'Shared domain must not import render/html/markdown helpers. Keep them in the render entry.',
         },
       ],
     },
   ],
 };
 
-/** Node / DOM globals that must not sneak into platform-neutral packages (CHR-164 / CHR-180). */
 const platformNeutralRestrictedGlobals = {
   'no-restricted-globals': [
     'error',
     {
       name: 'process',
       message:
-        'Platform-neutral packages must not use process (CHR-164). Inject env at the app boundary.',
+        'Platform-neutral packages must not use process. Inject env at the app boundary.',
     },
     {
       name: 'Buffer',
-      message: 'Platform-neutral packages must not use Buffer (CHR-164).',
+      message: 'Platform-neutral packages must not use Buffer.',
     },
     {
       name: 'window',
       message:
-        'Platform-neutral packages must not use window (CHR-164). Inject platform APIs.',
+        'Platform-neutral packages must not use window. Inject platform APIs.',
     },
     {
       name: 'document',
       message:
-        'Platform-neutral packages must not use document (CHR-164). Inject platform APIs.',
+        'Platform-neutral packages must not use document. Inject platform APIs.',
     },
     {
       name: 'localStorage',
       message:
-        'Platform-neutral packages must not use localStorage (CHR-164). Inject storage.',
+        'Platform-neutral packages must not use localStorage. Inject storage.',
     },
     {
       name: 'sessionStorage',
       message:
-        'Platform-neutral packages must not use sessionStorage (CHR-180). Inject storage.',
+        'Platform-neutral packages must not use sessionStorage. Inject storage.',
     },
     {
       name: 'navigator',
       message:
-        'Platform-neutral packages must not use navigator (CHR-180). Inject platform APIs.',
+        'Platform-neutral packages must not use navigator. Inject platform APIs.',
     },
     {
       name: 'location',
       message:
-        'Platform-neutral packages must not use location (CHR-180). Inject platform APIs.',
+        'Platform-neutral packages must not use location. Inject platform APIs.',
     },
   ],
 };
 
-/** Extra syntax bans for platform-neutral packages (CHR-180). */
 const platformNeutralRestrictedSyntax = {
   'no-restricted-syntax': [
     'error',
     {
       selector: 'ImportExpression[source.value=/^node:/]',
-      message:
-        'Platform-neutral packages must not dynamically import node:* (CHR-180).',
+      message: 'Platform-neutral packages must not dynamically import node:*.',
     },
     {
       selector:
         "MemberExpression[object.name='globalThis'][property.name='process']",
-      message:
-        'Platform-neutral packages must not use globalThis.process (CHR-180).',
+      message: 'Platform-neutral packages must not use globalThis.process.',
     },
     {
       selector:
         "MemberExpression[object.name='globalThis'][property.name='window']",
-      message:
-        'Platform-neutral packages must not use globalThis.window (CHR-180).',
+      message: 'Platform-neutral packages must not use globalThis.window.',
     },
   ],
 };
@@ -256,7 +236,6 @@ const unusedVarsRule = {
   ],
 };
 
-/** Shared domain sources — everything under src/ except render / openapi / scripts / tests (CHR-164). */
 const sharedDomainIgnores = [
   'packages/shared/src/**/*.test.ts',
   'packages/shared/src/render.ts',
@@ -358,7 +337,7 @@ export default tseslint.config(
     },
     settings: {
       ...importXResolverSettings,
-      // Avoid parsing react-native Flow sources for cycle detection (CHR-164).
+      // react-native ships Flow sources the parser cannot read.
       'import-x/ignore': ['node_modules'],
     },
     rules: {

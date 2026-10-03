@@ -1,12 +1,7 @@
 /**
- * Build a Metro bundle with this app's real `metro.config.js` and execute it in
- * Node (CHR-150).
- *
- * `expo export` only proves the graph can be walked; the CHR-142 crash was a
- * module that resolved to a type-only `.d.ts`, so it bundled fine and threw at
- * module load. This bundles a tiny entry that evaluates shared Zod schemas, and
- * runs it. RN core init and polyfills are dropped so plain Node is enough —
- * nothing here touches native modules.
+ * `expo export` only proves the graph can be walked: a module that resolves to
+ * a type-only `.d.ts` bundles fine and throws at load, so this executes the
+ * bundle. RN core init and polyfills are dropped so plain Node is enough.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';

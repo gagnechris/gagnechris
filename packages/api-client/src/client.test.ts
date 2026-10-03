@@ -20,11 +20,10 @@ describe('createApiClient', () => {
       getToken,
     });
     expect(client.GET).toBeTypeOf('function');
-    // Provider is only invoked on requests; constructing the client must not call it.
     expect(getToken).not.toHaveBeenCalled();
   });
 
-  it('retries once on 401 with getToken({ forceRefresh: true }) (CHR-177)', async () => {
+  it('retries once on 401 with getToken({ forceRefresh: true })', async () => {
     const getToken = vi
       .fn()
       .mockResolvedValueOnce('stale-token')
@@ -103,7 +102,7 @@ describe('createApiClient', () => {
     expect(getToken).toHaveBeenCalledTimes(2);
   });
 
-  it('retries once on 403 so a refreshed token can carry new groups (CHR-195)', async () => {
+  it('retries once on 403 so a refreshed token can carry new groups', async () => {
     const getToken = vi.fn(async (opts?: { forceRefresh?: boolean }) =>
       opts?.forceRefresh ? 'fresh-token' : 'stale-token',
     );

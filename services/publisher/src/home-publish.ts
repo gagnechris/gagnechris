@@ -2,8 +2,7 @@ import type { Home } from '@gagnechris/shared';
 import type { SiteStorage } from './storage.js';
 
 /**
- * Publisher-owned snapshot of the last successfully published Home.
- * Survives web deploys (excluded from s3 sync) so unpublished Home can be
+ * Survives web deploys (excluded from s3 sync) so an unpublished Home can be
  * re-injected into a fresh Vite shell instead of falling back to DEFAULT_HOME.
  */
 export const HOME_LAST_PUBLISHED_KEY = 'home/last-published.json';

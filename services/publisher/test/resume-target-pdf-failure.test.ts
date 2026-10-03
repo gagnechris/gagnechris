@@ -51,7 +51,7 @@ function memoryStorage(): SiteStorage & { puts: string[] } {
   };
 }
 
-describe('resume target PDF failure (CHR-166)', () => {
+describe('resume target PDF failure', () => {
   beforeEach(() => {
     buildResumePdfArtifact.mockReset();
     buildResumePdfArtifact.mockResolvedValue({ ok: false });

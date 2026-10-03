@@ -1,8 +1,4 @@
-/**
- * The API must never log request bodies or query values (CHR-196). Runs the
- * real Lambda handler (Powertools logger + metrics) against memory-backed
- * notebook routes and captures everything written to stdout/stderr/console.
- */
+// The API must never log request bodies or query values.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
@@ -80,7 +76,7 @@ async function call(
   return result as { statusCode: number; body: string };
 }
 
-describe('request logging privacy (CHR-196)', () => {
+describe('request logging privacy', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();

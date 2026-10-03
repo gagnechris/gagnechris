@@ -1,5 +1,3 @@
-/** Vermont Fish & Wildlife bear-safety tips used by the Don't Feed the Bears game. */
-
 export const BEAR_GUIDANCE_URL =
   'https://vtfishandwildlife.com/learn-more/living-with-wildlife/living-with-black-bears';
 
@@ -11,8 +9,8 @@ export type BearTip = {
 };
 
 /**
- * Careful paraphrases of Vermont Fish & Wildlife living-with-black-bears guidance.
- * Prefer linking out over inventing legal specifics or exact fines.
+ * Paraphrases of Vermont Fish & Wildlife guidance; link out rather than
+ * inventing legal specifics or exact fines.
  */
 export const BEAR_TIPS: readonly BearTip[] = [
   {

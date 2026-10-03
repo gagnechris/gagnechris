@@ -14,7 +14,6 @@ export type PageMetaInput = {
   articlePublishedTime?: string;
 };
 
-/** Replace shell `<head>` SEO tags (title, OG, Twitter, canonical, optional JSON-LD). */
 export function applyPageMeta(shellHtml: string, meta: PageMetaInput): string {
   let html = shellHtml;
   html = html.replace(

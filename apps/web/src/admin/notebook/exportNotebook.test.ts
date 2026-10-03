@@ -23,7 +23,7 @@ const note = (overrides: Partial<Note> = {}): Note => ({
   ...overrides,
 });
 
-describe('exportNotebook (CHR-47)', () => {
+describe('exportNotebook', () => {
   test('renders markdown with frontmatter', () => {
     const md = noteToMarkdown(note());
     expect(md).toContain('id: 01ARZ3NDEKTSV4RRFFQ48JMNO2');

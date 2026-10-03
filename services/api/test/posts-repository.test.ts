@@ -28,7 +28,6 @@ const draft: Post = {
   hasUnpublishedChanges: false,
 };
 
-/** BatchGet responses used by PublishableRepository.loadDraftAndPublished. */
 function batchGetResponses(...items: Record<string, unknown>[]) {
   return {
     Responses: {
@@ -257,7 +256,7 @@ describe('PostsRepository', () => {
     expect(sks.sort()).toEqual(['META', 'PUBLISHED']);
   });
 
-  it('multi-status list pages published then draft with no drops/duplicates (CHR-161)', async () => {
+  it('multi-status list pages published then draft with no drops/duplicates', async () => {
     const draftA = buildMetaItem(draft);
     const publishedPost: Post = {
       ...draft,
@@ -351,7 +350,7 @@ describe('PostsRepository', () => {
     );
   });
 
-  it('list does not flag unpublished when META is published but snapshot is missing (CHR-146)', async () => {
+  it('list does not flag unpublished when META is published but snapshot is missing', async () => {
     const publishedMeta: Post = {
       ...draft,
       status: 'published',
@@ -448,7 +447,7 @@ describe('PostsRepository', () => {
   });
 });
 
-describe('PostsRepository cursor + published integrity (CHR-160)', () => {
+describe('PostsRepository cursor + published integrity', () => {
   it('rejects non-string pk in GSI cursor', async () => {
     const repo = new PostsRepository(
       mockDocClient(async () => ({ Items: [] })),
@@ -506,7 +505,7 @@ describe('PostsRepository cursor + published integrity (CHR-160)', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    // Admin "all" lists published then draft (CHR-161); i:0 must be STATUS#published.
+    // Admin "all" lists published then draft; i:0 must be STATUS#published.
     const bad = encodeCursor({
       i: 0,
       lek: {

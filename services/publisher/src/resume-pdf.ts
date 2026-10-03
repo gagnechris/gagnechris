@@ -18,7 +18,6 @@ const COLOR_RULE = rgb(0.75, 0.78, 0.82);
 const FONT_REGULAR = 'Inter-Regular.ttf';
 const FONT_BOLD = 'Inter-Bold.ttf';
 
-/** Replacement when Inter has no glyph (e.g. emoji). */
 const MISSING_GLYPH = '?';
 
 type DrawCtx = {
@@ -90,10 +89,7 @@ function getRegularFontkit(): FontkitFont {
   return cachedRegularFontkit;
 }
 
-/**
- * Drop / replace code points Inter cannot draw so embedFont(subset) + drawText
- * never throw on emoji or rare symbols.
- */
+/** embedFont(subset) + drawText throw on code points Inter cannot draw. */
 export function sanitizeResumePdfText(text: string): string {
   const fk = getRegularFontkit();
   let out = '';
@@ -204,30 +200,24 @@ function drawBullet(ctx: DrawCtx, text: string): void {
   }
 }
 
-/** Stable public path for the publisher-generated resume PDF. */
 export const RESUME_PDF_KEY = 'resume.pdf';
 export const RESUME_PDF_PUBLIC_PATH = '/resume.pdf';
-/** Suggested download filename (S3 Content-Disposition + client download attr). */
 export const RESUME_PDF_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';
 export const RESUME_PDF_CONTENT_DISPOSITION = `attachment; filename="${RESUME_PDF_DOWNLOAD_FILENAME}"`;
 
-/** Stable PDF creation / modification date: publishedAt, else updatedAt. */
 function resumePdfDate(resume: Resume): Date {
   const date = new Date(resume.publishedAt ?? resume.updatedAt);
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
-/**
- * Build a multi-page US Letter PDF from structured resume content (pdf-lib).
- * Uses embedded Inter (Unicode) with subsetting — not WinAnsi standard fonts.
- */
+/** Embedded Inter, not WinAnsi standard fonts, so Unicode text renders. */
 export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   doc.setTitle(`${sanitizeResumePdfText(resume.name)} — Resume`);
   doc.setAuthor(sanitizeResumePdfText(resume.name));
   // pdf-lib stamps "now" by default; pin the dates so an unchanged resume
-  // renders identical bytes and a no-op rebuild skips the put (CHR-201).
+  // renders identical bytes and a no-op rebuild skips the put.
   const stamp = resumePdfDate(resume);
   doc.setCreationDate(stamp);
   doc.setModificationDate(stamp);
@@ -325,10 +315,7 @@ export type ResumePdfArtifactResult =
     }
   | { ok: false };
 
-/**
- * Build the resume.pdf publish artifact. On failure, log and return `{ ok: false }`
- * so the caller can keep any existing S3 object and set `resumePdfFailed`.
- */
+/** Returns `{ ok: false }` on failure so the caller can keep the existing S3 object. */
 export async function buildResumePdfArtifact(
   resume: Resume,
   render: typeof renderResumePdf = renderResumePdf,
