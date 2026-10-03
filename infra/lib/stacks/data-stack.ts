@@ -102,6 +102,7 @@ export interface DataStackProps extends StackProps {
  */
 /** Rolling retention for AWS Backup recovery points (CHR-197). */
 export const BACKUP_RETENTION_DAYS = 7;
+const BACKUP_FAILURE_STATES = ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'];
 
 export class DataStack extends Stack {
   readonly table: Table;
@@ -209,7 +210,10 @@ export class DataStack extends Stack {
     );
 
     // Failed, aborted, expired or partial backup/restore/copy jobs email the
-    // Guardrails topic (CHR-197).
+    // Guardrails topic (CHR-197). The three event types name their fields
+    // differently: restore jobs report `status` (not `state`) and carry no
+    // `backupVaultName`, and copy jobs only name the source/destination vault
+    // ARNs. Hence one `$or` branch per type, keyed on fields each one has.
     new Rule(this, 'BackupJobFailureRule', {
       ruleName: `gagnechris-${config.name}-backup-job-failures`,
       description: 'AWS Backup job failed, aborted, expired or partial',
@@ -221,8 +225,20 @@ export class DataStack extends Stack {
           'Copy Job State Change',
         ],
         detail: {
-          state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
-          backupVaultName: [backupVault.backupVaultName],
+          $or: [
+            {
+              state: BACKUP_FAILURE_STATES,
+              backupVaultArn: [backupVault.backupVaultArn],
+            },
+            {
+              status: BACKUP_FAILURE_STATES,
+              backupVaultArn: [backupVault.backupVaultArn],
+            },
+            {
+              state: BACKUP_FAILURE_STATES,
+              sourceBackupVaultArn: [backupVault.backupVaultArn],
+            },
+          ],
         },
       },
       targets: [new SnsTopic(alertsTopic)],
