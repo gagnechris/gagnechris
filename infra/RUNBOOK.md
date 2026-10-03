@@ -419,6 +419,18 @@ AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs --verify  #
 
 PITR (35 days) and AWS Backup recovery points keep any plaintext values until their retention expires, and restored copies from before a migration run contain them too.
 
+### Orphaned daily-note claims
+
+`scripts/scan-orphan-daily-claims.mjs` counts daily-note claims (`USER#…#DAILY#<area>#<date>`) whose holder note META row is missing or a tombstone. The API frees these on the next create of that day, so they are harmless once deployed; the script cleans them up ahead of time. It only runs against `gagnechris-prod` or `gagnechris-local` (`DATA_TABLE_NAME`, default prod) and prints counts only (`claims`, `live`, `holderMissing`, `holderDeleted`, `malformed`, `released`, `conditionFailed`), never ids, dates or content. `--apply` deletes each orphaned claim conditional on its `noteId` being unchanged.
+
+```bash
+AWS_PROFILE=gagnechris-readonly node scripts/scan-orphan-daily-claims.mjs           # dry run: counts
+AWS_PROFILE=<deploy/admin profile> node scripts/scan-orphan-daily-claims.mjs --apply
+AWS_PROFILE=gagnechris-readonly node scripts/scan-orphan-daily-claims.mjs --verify  # exit 2 if any remain
+```
+
+`conditionFailed > 0` on `--apply` (exit 1) means a claim changed mid-run; re-run it. `malformed` claims (no `userId` or `noteId`) are counted but never touched.
+
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
 Legacy post import: `docs/migrate-posts.md` (`npm run migrate:posts`).

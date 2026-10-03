@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { buildDailyNoteClaimItem, keys } from '@gagnechris/data';
 import { SyncLedger } from '../../src/sync/ledger.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
@@ -168,5 +170,74 @@ describe('notes repository (DynamoDB Local)', () => {
         current: { id: winnerId },
       });
     }
+  });
+
+  it('delete releases the claim row; an orphaned claim gives the day to exactly one of 10 racers', async () => {
+    const repo = new NotesRepository(
+      doc,
+      tableName,
+      () => '2026-10-02T10:00:00.000Z',
+    );
+    const DAY = '2026-10-07';
+    const claimKey = keys.notebook.dailyClaim(USER_A, 'work', DAY);
+    const readClaim = async () =>
+      (
+        await doc.send(
+          new GetCommand({
+            TableName: tableName,
+            Key: claimKey,
+            ConsistentRead: true,
+          }),
+        )
+      ).Item;
+    const daily = (id: string) =>
+      repo.createFromRequest(USER_A, {
+        id,
+        area: 'work',
+        type: 'daily',
+        date: DAY,
+        title: id,
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+      });
+
+    const first = await daily(DAILY_1);
+    expect(await readClaim()).toMatchObject({ noteId: DAILY_1 });
+    await repo.deleteIfVersion(USER_A, first.id, first.version);
+    expect(await readClaim()).toBeUndefined();
+
+    // A claim left behind whose tombstone has since been purged.
+    await doc.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: buildDailyNoteClaimItem(USER_A, 'work', DAY, DAILY_1),
+      }),
+    );
+    await doc.send(
+      new DeleteCommand({
+        TableName: tableName,
+        Key: keys.notebook.note.meta(USER_A, DAILY_1),
+      }),
+    );
+
+    const ids = Array.from(
+      { length: 10 },
+      (_, i) => `01ARZ3NDEKTSV4RRFFQ69G5FE${i}`,
+    );
+    const results = await Promise.allSettled(ids.map((id) => daily(id)));
+    const won = results.filter((r) => r.status === 'fulfilled');
+    const lost = results.filter((r) => r.status === 'rejected');
+    expect(won).toHaveLength(1);
+    expect(lost).toHaveLength(9);
+    const winnerId = (won[0] as PromiseFulfilledResult<{ id: string }>).value
+      .id;
+    for (const r of lost) {
+      expect((r as PromiseRejectedResult).reason).toMatchObject({
+        code: 'daily_taken',
+        current: { id: winnerId },
+      });
+    }
+    expect(await readClaim()).toMatchObject({ noteId: winnerId });
   });
 });

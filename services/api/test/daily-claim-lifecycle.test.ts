@@ -56,17 +56,22 @@ describe('daily note claim lifecycle', () => {
   });
 
   it('deleting a daily note frees the day for a new one', async () => {
-    const { routes } = setup();
+    const { routes, store } = setup();
     const created = await call(routes, 'PUT', DAILY_PATH, {
       id: D1,
       bodyMarkdown: 'first',
     });
     expect(created.status).toBe(200);
+    const claimKey = keys.notebook.dailyClaim(USER, 'work', DAY);
+    expect(store.has(`${claimKey.pk}\0${claimKey.sk}`)).toBe(true);
 
     const deleted = await call(routes, 'DELETE', `/api/notebook/notes/${D1}`, {
       version: 1,
     });
     expect(deleted.status).toBe(200);
+    // The delete itself must free the claim: once the tombstone is purged
+    // nothing else knows the day was ever taken.
+    expect(store.has(`${claimKey.pk}\0${claimKey.sk}`)).toBe(false);
 
     const empty = await call(routes, 'GET', DAILY_PATH);
     expect(empty.body).toMatchObject({ exists: false, version: 0 });
@@ -103,6 +108,47 @@ describe('daily note claim lifecycle', () => {
     });
     expect(viaPut.status).toBe(200);
     expect(viaPut.body).toMatchObject({ id: D2, deleted: false });
+  });
+
+  it('a claim whose holder row is gone (purged tombstone) does not block the day', async () => {
+    const { routes, store } = setup();
+    await call(routes, 'PUT', DAILY_PATH, { id: D1, bodyMarkdown: 'old' });
+    const claimKey = keys.notebook.dailyClaim(USER, 'work', DAY);
+    const metaKey = keys.notebook.note.meta(USER, D1);
+    store.delete(`${metaKey.pk}\0${metaKey.sk}`);
+
+    expect((await call(routes, 'GET', DAILY_PATH)).body).toMatchObject({
+      exists: false,
+    });
+    const viaPut = await call(routes, 'PUT', DAILY_PATH, {
+      id: D2,
+      bodyMarkdown: 'new',
+    });
+    expect(viaPut.status).toBe(200);
+    expect(viaPut.body).toMatchObject({ id: D2, bodyMarkdown: 'new' });
+    expect(store.get(`${claimKey.pk}\0${claimKey.sk}`)).toMatchObject({
+      noteId: D2,
+    });
+
+    const OTHER_DAY = '2026-10-05';
+    const otherClaim = keys.notebook.dailyClaim(USER, 'work', OTHER_DAY);
+    store.set(`${otherClaim.pk}\0${otherClaim.sk}`, {
+      ...otherClaim,
+      entityType: 'dailyNoteClaim',
+      userId: USER,
+      area: 'work',
+      date: OTHER_DAY,
+      noteId: PAGE,
+    });
+    const viaPost = await call(routes, 'POST', '/api/notebook/notes', {
+      id: D3,
+      area: 'work',
+      type: 'daily',
+      date: OTHER_DAY,
+      bodyMarkdown: 'post',
+    });
+    expect(viaPost.status).toBe(201);
+    expect(viaPost.body).toMatchObject({ id: D3 });
   });
 
   it("a daily note's area cannot change; a page's can", async () => {

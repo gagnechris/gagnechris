@@ -142,6 +142,8 @@ export type UniqueClaimHook<T extends VersionedEntity> = {
   }>;
   /** Frees a claim still held by a tombstone; the create is then retried once. */
   releaseStale?: (holder: T) => Promise<void>;
+  /** Frees a claim whose holder row is gone; the create is then retried once. */
+  releaseOrphan?: (entity: T) => Promise<void>;
 };
 
 export type VersionedRepositoryConfig<
@@ -441,6 +443,10 @@ export class VersionedRepository<
         }
         // Same ULID falls through to createHash idempotency below.
         if (!resolved) {
+          if (!retried && unique.releaseOrphan) {
+            await unique.releaseOrphan(entity);
+            return this.createIdempotent(entity, true);
+          }
           throw error;
         }
       } else if (error instanceof ConflictError && error.code !== 'conflict') {
