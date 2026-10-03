@@ -76,6 +76,7 @@ docs/                  Architecture, development, data model, E2E
 | [migrate-posts.md](./migrate-posts.md)                   | Import the legacy markdown posts into DynamoDB             |
 | [mobile.md](./mobile.md)                                 | Expo app: install layout, auth setup, CI bundle checks     |
 | [adr/0001-passkey-rp-id.md](./adr/0001-passkey-rp-id.md) | Passkey RP ID stays `auth.gagnechris.com`                  |
+| [design/bears-2.0/](./design/bears-2.0/README.md)        | Don't Feed the Bears 2.0 artboards, tuning, prototype code |
 | [../infra/RUNBOOK.md](../infra/RUNBOOK.md)               | Production AWS operations                                  |
 
 ## Contributions
