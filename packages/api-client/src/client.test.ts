@@ -102,4 +102,27 @@ describe('createApiClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(getToken).toHaveBeenCalledTimes(2);
   });
+
+  it('retries once on 403 so a refreshed token can carry new groups (CHR-195)', async () => {
+    const getToken = vi.fn(async (opts?: { forceRefresh?: boolean }) =>
+      opts?.forceRefresh ? 'fresh-token' : 'stale-token',
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('forbidden', { status: 403 }))
+      .mockResolvedValueOnce(new Response('forbidden', { status: 403 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createApiClient({
+      baseUrl: 'https://example.com',
+      getToken,
+    });
+
+    const { response } = await client.GET('/api/health');
+    expect(response.status).toBe(403);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0].headers.get('Authorization')).toBe(
+      'Bearer fresh-token',
+    );
+  });
 });

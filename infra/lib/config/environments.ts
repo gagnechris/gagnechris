@@ -25,6 +25,11 @@ export interface EnvironmentConfig {
    * From `ALERTS_EMAIL` or CDK context `alertsEmail` — never commit the value.
    */
   readonly alertsEmail: string;
+  /**
+   * Cognito username (sign-in email) added to the `admin` group (CHR-195).
+   * From `ADMIN_USERNAME`; defaults to {@link alertsEmail}. Never commit it.
+   */
+  readonly adminUsername: string;
 }
 
 const DOMAIN_BY_ENV: Record<EnvironmentName, string> = {
@@ -81,12 +86,14 @@ export function getEnvironment(
   env: NodeJS.ProcessEnv = process.env,
   alertsEmailContext?: unknown,
 ): EnvironmentConfig {
+  const alertsEmail = resolveAlertsEmail(alertsEmailContext, env);
   return {
     name,
     account: resolveAccountId(env),
     region: STACK_REGION,
     domainName: DOMAIN_BY_ENV[name],
     statefulRemovalPolicy: RemovalPolicy.RETAIN,
-    alertsEmail: resolveAlertsEmail(alertsEmailContext, env),
+    alertsEmail,
+    adminUsername: env.ADMIN_USERNAME?.trim() || alertsEmail,
   };
 }

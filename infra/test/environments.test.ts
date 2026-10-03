@@ -467,7 +467,38 @@ describe('AuthStack', () => {
       ManagedLoginVersion: 2,
     });
 
-    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 2);
+    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 3);
+
+    // Prod clients never trust localhost; only the dev client does (CHR-195).
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'web',
+      CallbackURLs: ['https://gagnechris.com/auth/callback'],
+      LogoutURLs: ['https://gagnechris.com/'],
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'ios',
+      CallbackURLs: [
+        'https://gagnechris.com/auth/callback',
+        'gagnechris://auth/callback',
+      ],
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'dev-local',
+      CallbackURLs: ['http://localhost:5173/auth/callback'],
+      LogoutURLs: ['http://localhost:5173/'],
+    });
+    expect(JSON.stringify(template.toJSON())).not.toContain('localhost:3000');
+
+    template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+      GroupName: 'admin',
+    });
+    template.hasResourceProperties(
+      'AWS::Cognito::UserPoolUserToGroupAttachment',
+      { GroupName: 'admin', Username: config.adminUsername },
+    );
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/gagnechris/prod/cognito-dev-client-id',
+    });
 
     template.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'A',
@@ -698,17 +729,24 @@ describe('ApiStack', () => {
       Name: 'gagnechris-prod',
       ProtocolType: 'HTTP',
       CorsConfiguration: {
-        AllowOrigins: [
-          'https://gagnechris.com',
-          'http://localhost:5173',
-          'http://localhost:3000',
-        ],
+        AllowOrigins: ['https://gagnechris.com'],
         AllowHeaders: ['authorization', 'content-type', 'if-match'],
         AllowMethods: Match.arrayWith(['GET', 'OPTIONS']),
         ExposeHeaders: ['etag'],
         MaxAge: 86400,
       },
     });
+
+    // Web + iOS only: the dev-local client's tokens are rejected (CHR-195).
+    const authorizers = template.findResources('AWS::ApiGatewayV2::Authorizer');
+    const audiences = Object.values(authorizers).map(
+      (r) =>
+        (r as { Properties: { JwtConfiguration: { Audience: unknown[] } } })
+          .Properties.JwtConfiguration.Audience,
+    );
+    expect(audiences).toHaveLength(1);
+    expect(audiences[0]).toHaveLength(2);
+    expect(JSON.stringify(audiences[0])).not.toMatch(/DevClient/);
     // Access-log DestinationArn must be the log-group ARN without `:*` (CHR-159).
     // formatArn(COLON_RESOURCE_NAME) — not AttrArn, which always ends in `:*`.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');

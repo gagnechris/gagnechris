@@ -132,7 +132,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 
 - Production admin: Cognito Hosted UI / passkeys (`VITE_COGNITO_*`). Callback at `/auth/callback`.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API authorizer validates Cognito JWTs for `/api/admin/*` and `/api/notebook/*` routes.
+- API authorizer validates Cognito JWTs (web and iOS client audiences) for `/api/admin/*` and `/api/notebook/*` routes; the router then requires the `admin` group in `cognito:groups` (403 otherwise, CHR-195).
 - Tokens live in Amplify `CookieStorage` (JS-readable, domain `gagnechris.com`, 30 days, refresh token included). HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and a strict CSP on `/admin` and `/auth` (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) is the remaining lever; it trades for more frequent sign-ins (CHR-193).
 - Local API (`services/api/local/server.ts`) injects fake JWT claims when the matched route has `auth: 'admin'` (via `pathRequiresAdminAuth`) — same rule as production route auth, not a hard-coded path prefix. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
