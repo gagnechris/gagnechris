@@ -19,7 +19,6 @@ import {
   SYNC_CREATE_CLAIM_TTL_DAYS,
   ttlDaysFromNow,
 } from '@gagnechris/data';
-import type { SyncChange } from '@gagnechris/shared';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
 import { logCorruptStoredItem } from './corrupt-item.js';
@@ -38,7 +37,6 @@ import {
   throwVersionConflict,
   versionMatchValues,
 } from './version-condition.js';
-import { registerSyncEntity } from '../sync/registry.js';
 import { createHashMatches } from './create-hash.js';
 
 export { VERSION_MATCH_CONDITION } from './version-condition.js';
@@ -60,11 +58,6 @@ export type SyncEntityConfig<T extends VersionedEntity> = {
    * matching hash is idempotent. Required when sync is configured (CHR-162).
    */
   createPayloadHash: (entity: T) => string;
-  /**
-   * Feed adapter — registered automatically when the repository is constructed
-   * (CHR-172). Maps a projected META item to a SyncChange.
-   */
-  toChange: (item: Record<string, unknown>) => SyncChange | undefined;
 };
 
 export type VersionedEntityConfig<
@@ -108,15 +101,7 @@ export class VersionedEntityRepository<
     protected readonly config: VersionedEntityConfig<T, TItem>,
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
-  ) {
-    // Derive feed adapters from repository sync config (CHR-172).
-    if (config.sync) {
-      registerSyncEntity({
-        changeType: config.sync.changeType,
-        toChange: config.sync.toChange,
-      });
-    }
-  }
+  ) {}
 
   protected now(): string {
     return this.config.nowIso?.() ?? new Date().toISOString();
