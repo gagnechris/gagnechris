@@ -10,7 +10,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
    - `/blog` and `/blog/*` → 301 to the same path under `/posts`
    - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
-   - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`
+   - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/dont-feed-the-bears/camp` and `/dont-feed-the-bears/wild` are served from their own `index.html`.
    - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
    - `/admin/*` and `/auth/*` → `/spa.html` (neutral SPA shell, not the home prerender)
    - Other extensionless paths → `/404.html`
@@ -79,7 +79,10 @@ target wakes the real handler). Declare `optionBPaths` and
 those into the CloudFront Option B allowlist and local-dev
 `isPublishRelevantAdminMutation` routes (`publish-surface:check` guards drift).
 Vite-only pages (`/contact`, `/dont-feed-the-bears`) stay in
-`STATIC_OPTION_B_PREFIXES`. `collectRebuildScope` records every PUBLISHED
+`STATIC_OPTION_B_PREFIXES`. The Vite build writes an `index.html` for every
+entry in `STATIC_PAGE_META` (`apps/web/scripts/staticPageMeta.ts`), including
+nested pages under a prefix such as `/dont-feed-the-bears/camp`; a nested route
+without an entry there has no object behind its Option B rewrite. `collectRebuildScope` records every PUBLISHED
 `entityType` in `touchedEntityTypes`; unknown types do not set home/resume/feeds.
 
 Invalidation is target-owned: a body-only post edit that does not change feed

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import mainSource from '../main.tsx?raw';
 import lazyRouteSource from '../routing/lazyRoute.ts?raw';
+import landingSource from '../pages/DontFeedTheBears.tsx?raw';
 
 describe('public entry bundle isolation', () => {
   test('main.tsx does not statically import Amplify or admin modules', () => {
@@ -12,9 +13,17 @@ describe('public entry bundle isolation', () => {
     expect(mainSource).toMatch(/import\('\.\/auth\/AuthCallback/);
   });
 
-  test('dont-feed-the-bears is lazy-loaded and not a static import', () => {
+  test('bears pages are lazy-loaded and not static imports', () => {
     expect(mainSource).not.toMatch(/from ['"].*DontFeedTheBears/);
+    expect(mainSource).not.toMatch(/from ['"].*pages\/bears\//);
     expect(mainSource).toMatch(/import\(\s*'\.\/pages\/DontFeedTheBears/);
+    expect(mainSource).toMatch(/import\(\s*'\.\/pages\/bears\/CampRules/);
+    expect(mainSource).toMatch(/import\(\s*'\.\/pages\/bears\/StayWild/);
+  });
+
+  test('the bears landing page loads neither game', () => {
+    expect(landingSource).not.toMatch(/BearGame/);
+    expect(landingSource).not.toMatch(/pages\/bears\//);
   });
 
   // RR skips HydrateFallback returned from lazy() during initial hydration, so
