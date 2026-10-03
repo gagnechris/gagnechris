@@ -15,6 +15,7 @@ import {
   AttributeType,
   BillingMode,
   Operation,
+  ProjectionType,
   StreamViewType,
   Table,
   TableEncryption,
@@ -29,8 +30,11 @@ import {
   APP_TABLE,
   LAST_DEPLOYED_GSIS,
   appTableName,
-  assertAppTableGsiUpdateSafe,
+  assertSafeGsiUpdate,
+  gsiProjection,
+  type AppTableDefinition,
   type DynamoAttributeTypeCode,
+  type DynamoProjectionType,
 } from '@gagnechris/data';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
@@ -46,6 +50,21 @@ function toCdkAttrType(code: DynamoAttributeTypeCode): AttributeType {
       return AttributeType.BINARY;
     default: {
       const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
+}
+
+function toCdkProjectionType(type: DynamoProjectionType): ProjectionType {
+  switch (type) {
+    case 'ALL':
+      return ProjectionType.ALL;
+    case 'KEYS_ONLY':
+      return ProjectionType.KEYS_ONLY;
+    case 'INCLUDE':
+      return ProjectionType.INCLUDE;
+    default: {
+      const _exhaustive: never = type;
       return _exhaustive;
     }
   }
@@ -94,6 +113,11 @@ const APP_TABLE_OPERATIONS = [
 export interface DataStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly alertsTopic: ITopic;
+  /**
+   * Table schema. Defaults to `@gagnechris/data` {@link APP_TABLE}; tests pass
+   * a variant to prove GSI options (projection) reach the template.
+   */
+  readonly tableDefinition?: AppTableDefinition;
 }
 
 /**
@@ -110,12 +134,13 @@ export class DataStack extends Stack {
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props);
 
-    // Offline guard at synth time (CHR-174). PR CDK also runs
-    // `npm run check:deployed-gsi` against the live table.
-    assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS);
-
     const { config, alertsTopic } = props;
-    const def = APP_TABLE;
+    const def = props.tableDefinition ?? APP_TABLE;
+
+    // Offline guard at synth time (CHR-174). The deploy job also runs
+    // `npm run check:deployed-gsi` against the live table before
+    // `cdk deploy` (CHR-200).
+    assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, def.globalSecondaryIndexes);
 
     this.table = new Table(this, 'AppTable', {
       tableName: appTableName(config.name),
@@ -139,6 +164,9 @@ export class DataStack extends Stack {
     });
 
     for (const gsi of def.globalSecondaryIndexes) {
+      // Same projection the local bootstrap uses (CHR-200); throws on an
+      // INCLUDE without attributes or attributes on ALL / KEYS_ONLY.
+      const projection = gsiProjection(gsi);
       this.table.addGlobalSecondaryIndex({
         indexName: gsi.indexName,
         partitionKey: {
@@ -149,6 +177,10 @@ export class DataStack extends Stack {
           name: gsi.sortKey.name,
           type: toCdkAttrType(gsi.sortKey.type),
         },
+        projectionType: toCdkProjectionType(projection.ProjectionType),
+        ...(projection.NonKeyAttributes
+          ? { nonKeyAttributes: projection.NonKeyAttributes }
+          : {}),
       });
     }
 

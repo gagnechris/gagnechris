@@ -17,6 +17,7 @@ import {
   APP_TABLE,
   appTableAttributeDefinitions,
   appTableName,
+  gsiProjection,
 } from '@gagnechris/data';
 
 const tableName = process.env.DATA_TABLE_NAME || appTableName('local');
@@ -59,7 +60,7 @@ function createTableInput() {
         { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
         { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
       ],
-      Projection: { ProjectionType: gsi.projectionType },
+      Projection: gsiProjection(gsi),
     })),
   };
 }
@@ -100,7 +101,7 @@ async function ensureMissingGsis(existingIndexNames: Set<string>) {
                 },
                 { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
               ],
-              Projection: { ProjectionType: gsi.projectionType },
+              Projection: gsiProjection(gsi),
             },
           },
         ],

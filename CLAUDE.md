@@ -34,7 +34,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Local E2E: `npm run e2e:local`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → S3 sync → CloudFront invalidation)
-- CI: lint/typecheck/test/build/synth; OIDC CDK diff on PRs, deploy on main, nightly drift
+- CI: lint/typecheck/test/build/synth; OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift. Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (CHR-200; `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke (CHR-82)**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete)
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 

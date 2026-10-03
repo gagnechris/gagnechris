@@ -45,13 +45,18 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # id-token is job-wide, so install scripts stay off (CHR-200).
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          ignore-scripts: 'true'
 
       - name: Configure AWS credentials (diff role)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_DIFF_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -61,6 +66,8 @@ jobs:
 
       # Live GSI guard: Compare APP_TABLE to DescribeTable so bumping
       # LAST_DEPLOYED_GSIS in the same PR cannot hide a multi-GSI change (CHR-174).
+      # Early warning only: the deploy job runs the same check before
+      # `cdk deploy` (CHR-200).
       - name: Assert GSI update vs deployed table
         run: npm run check:deployed-gsi
 
@@ -96,15 +103,26 @@ jobs:
 
       - name: Post diff comment
         if: ${{ !cancelled() && hashFiles('cdk-diff-comment.md') != '' }}
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: cdk-diff
           path: cdk-diff-comment.md
 
-  # Single job for CDK + web so they cannot interleave across pushes
-  # (GitHub keeps only one pending job per concurrency group).
-  deploy:
-    name: CDK + web deploy (main)
+  # Main deploy is three jobs (CHR-200):
+  #   plan   - deployed-SHA read, rollback refusal, path filter. Read-only
+  #            planning role; runs only SHA-pinned official actions, git, bash
+  #            and the AWS CLI (no npm, no third-party action).
+  #   deploy - installs with `npm ci --ignore-scripts` BEFORE the deploy role,
+  #            so no dependency install script ever runs in a job that can mint
+  #            a GitHub OIDC token.
+  # `id-token: write` is job-wide: every step of such a job can request an OIDC
+  # token, and the deploy and drift roles both trust `environment:prod`. So the
+  # rule is per job, not per step: no install scripts and no tag-pinned or
+  # third-party action in any job with `id-token: write`.
+  # plan and deploy share `cdk-prod`, so a plan never reads deployed-sha while
+  # another run's deploy is still in flight.
+  plan:
+    name: Plan deploy (main)
     if: >
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
@@ -112,28 +130,30 @@ jobs:
        github.event.workflow_run.head_branch == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
+    # Planning (drift) role trusts `environment:prod`.
     environment: prod
     concurrency:
       group: cdk-prod
       cancel-in-progress: false
+    outputs:
+      head_sha: ${{ steps.base.outputs.head_sha }}
+      base_sha: ${{ steps.base.outputs.base_sha }}
+      cdk: ${{ steps.filter.outputs.cdk }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Deploy the commit CI validated (workflow_run), not a floating main tip.
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
-      # Path filters and ancestry checks use ReadOnly creds only — third-party
-      # actions must not run while the AdministratorAccess deploy role is loaded (CHR-176).
-      # Drift role trusts `environment:prod` (diff role is PR-only).
       - name: Configure AWS credentials (planning role)
-        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -141,123 +161,104 @@ jobs:
       # Path filters compare against the last SHA that actually finished a
       # deploy (SSM deployed-sha), not HEAD~1. Otherwise an infra commit whose
       # CI was cancelled is invisible to a later docs-only push and never
-      # deploys (CHR-149).
-      - name: Resolve path-filter base
-        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
-        id: path_base
+      # deploys (CHR-149). ParameterNotFound (first deploy) deploys everything;
+      # any other SSM error fails (CHR-200).
+      - name: Resolve deployed SHA
+        id: base
+        env:
+          HEAD_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
-          DEPLOYED_SHA_PARAM="$(bash scripts/ssm-param-name.sh prod deployedSha)"
-          echo "DEPLOYED_SHA_PARAM=${DEPLOYED_SHA_PARAM}" >> "$GITHUB_ENV"
-          set +e
-          DEPLOYED=$(aws ssm get-parameter \
-            --name "${DEPLOYED_SHA_PARAM}" \
-            --query 'Parameter.Value' \
-            --output text 2>/dev/null)
-          code=$?
-          set -e
-          HEAD="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
-          echo "head_sha=${HEAD}" >> "$GITHUB_OUTPUT"
-          if [ "$code" -ne 0 ] || [ -z "$DEPLOYED" ] || [ "$DEPLOYED" = "None" ]; then
-            echo "No deployed-sha in SSM; deploying everything."
-            echo "deploy_all=true" >> "$GITHUB_OUTPUT"
-            echo "sha=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if ! git cat-file -e "${DEPLOYED}^{commit}" 2>/dev/null; then
-            echo "deployed-sha ${DEPLOYED} not in this clone; deploying everything."
-            echo "deploy_all=true" >> "$GITHUB_OUTPUT"
-            echo "sha=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "Path-filter base = last deployed SHA ${DEPLOYED}"
-          echo "deploy_all=false" >> "$GITHUB_OUTPUT"
-          echo "sha=${DEPLOYED}" >> "$GITHUB_OUTPUT"
+          BASE="$(bash scripts/ci/read-deployed-sha.sh prod)"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "base_sha=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "Deploy head ${HEAD_SHA}; last deployed ${BASE:-(none)}"
 
       - name: Refuse rollback deploy
-        if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
-        run: |
-          HEAD="${{ steps.path_base.outputs.head_sha }}"
-          BASE="${{ steps.path_base.outputs.sha }}"
-          if [ "${{ steps.path_base.outputs.deploy_all }}" = "true" ] || [ -z "$BASE" ]; then
-            echo "Skipping ancestry check (no deployed base)."
-            exit 0
-          fi
-          if ! git merge-base --is-ancestor "$BASE" "$HEAD"; then
-            echo "Refusing deploy: ${HEAD} is not a descendant of deployed ${BASE}." >&2
-            exit 1
-          fi
-          echo "Deploy head ${HEAD} descends from deployed ${BASE}."
+        if: steps.base.outputs.base_sha != ''
+        env:
+          BASE: ${{ steps.base.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.base.outputs.head_sha }}
+        run: bash scripts/ci/check-deploy-ancestry.sh "${BASE}" "${HEAD_SHA}"
 
       - name: Path filter
-        if: github.event_name == 'workflow_run' && steps.path_base.outputs.deploy_all != 'true'
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: filter
-        with:
-          base: ${{ steps.path_base.outputs.sha }}
-          ref: ${{ github.event.workflow_run.head_sha }}
-          filters: |
-            cdk:
-              - 'infra/**'
-              - 'services/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.base.json'
-              - '.nvmrc'
-              - '.github/workflows/cdk.yml'
-              - '.github/actions/setup/**'
-            web:
-              - 'apps/web/**'
-              - 'packages/api-client/**'
-              - 'packages/app-core/**'
-              - 'packages/shared/**'
-              - 'packages/tokens/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.base.json'
-              - '.nvmrc'
-              - 'scripts/deploy-web.sh'
-              - '.github/workflows/cdk.yml'
-              - '.github/actions/setup/**'
+        env:
+          BASE: ${{ steps.base.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.base.outputs.head_sha }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ] || [ -z "${BASE}" ]; then
+            echo "Manual deploy or no deployed-sha: deploying everything."
+            printf 'cdk=true\nweb=true\n' | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bash scripts/ci/deploy-paths.sh "${BASE}" "${HEAD_SHA}" | tee -a "$GITHUB_OUTPUT"
 
-      - name: Configure AWS credentials (deploy role)
-        if: >
-          (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch') &&
-          (
-            github.event_name == 'workflow_dispatch' ||
-            steps.path_base.outputs.deploy_all == 'true' ||
-            steps.filter.outputs.cdk == 'true' ||
-            steps.filter.outputs.web == 'true'
-          )
-        uses: aws-actions/configure-aws-credentials@v6
+  deploy:
+    name: CDK + web deploy (main)
+    needs: plan
+    if: needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    environment: prod
+    # Single job for CDK + web so they cannot interleave across pushes
+    # (GitHub keeps only one pending job per concurrency group).
+    concurrency:
+      group: cdk-prod
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          ref: ${{ needs.plan.outputs.head_sha }}
+          persist-credentials: false
 
+      # All installs happen here, before any credential step, and with
+      # install scripts off (CHR-200). esbuild and Rollup resolve their
+      # platform binaries from optionalDependencies, so synth (NodejsFunction
+      # bundling) and the Vite build work without postinstall.
       - name: Setup
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          steps.path_base.outputs.deploy_all == 'true' ||
-          steps.filter.outputs.cdk == 'true' ||
-          steps.filter.outputs.web == 'true'
         uses: ./.github/actions/setup
+        with:
+          ignore-scripts: 'true'
 
       - name: Require ALERTS_EMAIL
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          steps.path_base.outputs.deploy_all == 'true' ||
-          steps.filter.outputs.cdk == 'true'
+        if: needs.plan.outputs.cdk == 'true'
         run: |
           if [ -z "${{ vars.ALERTS_EMAIL }}" ]; then
             echo "Set repository variable ALERTS_EMAIL before deploying."
             exit 1
           fi
 
+      - name: Configure AWS credentials (deploy role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Plan and deploy share `cdk-prod`, so this should never trip. It keeps
+      # the rollback check honest if the parameter moved between the jobs.
+      - name: Confirm deployed SHA unchanged since plan
+        env:
+          PLANNED_BASE: ${{ needs.plan.outputs.base_sha }}
+        run: |
+          CURRENT="$(bash scripts/ci/read-deployed-sha.sh prod)"
+          if [ "${CURRENT}" != "${PLANNED_BASE}" ]; then
+            echo "Refusing deploy: deployed-sha is now '${CURRENT}', plan saw '${PLANNED_BASE}'. Re-run the deploy." >&2
+            exit 1
+          fi
+
+      # Live GSI guard (CHR-174 / CHR-200): compare APP_TABLE to DescribeTable
+      # right before deploy, so bumping LAST_DEPLOYED_GSIS in the same PR
+      # cannot slip a multi-GSI change through to CloudFormation.
+      - name: Assert GSI update vs deployed table
+        if: needs.plan.outputs.cdk == 'true'
+        run: npm run check:deployed-gsi
+
       - name: CDK deploy
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          steps.path_base.outputs.deploy_all == 'true' ||
-          steps.filter.outputs.cdk == 'true'
+        if: needs.plan.outputs.cdk == 'true'
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never
@@ -266,11 +267,7 @@ jobs:
       # deploys so Backup/PITR stay proven; does not rename gagnechris-prod.
       - name: PITR restore rehearsal
         if: >
-          success() && (
-            github.event_name == 'workflow_dispatch' ||
-            steps.path_base.outputs.deploy_all == 'true' ||
-            steps.filter.outputs.cdk == 'true'
-          )
+          success() && needs.plan.outputs.cdk == 'true'
         run: |
           chmod +x scripts/rehearse-pitr-restore.sh
           scripts/rehearse-pitr-restore.sh | tee pitr-rehearsal.log
@@ -279,37 +276,24 @@ jobs:
 
       - name: Upload PITR rehearsal log
         if: >
-          always() && (
-            github.event_name == 'workflow_dispatch' ||
-            steps.path_base.outputs.deploy_all == 'true' ||
-            steps.filter.outputs.cdk == 'true'
-          )
-        uses: actions/upload-artifact@v4
+          always() && needs.plan.outputs.cdk == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pitr-rehearsal-log
           path: pitr-rehearsal.log
           if-no-files-found: ignore
 
       - name: Build, sync to S3, invalidate CloudFront
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          steps.path_base.outputs.deploy_all == 'true' ||
-          steps.filter.outputs.web == 'true' ||
-          steps.filter.outputs.cdk == 'true'
         run: bash scripts/deploy-web.sh
         env:
           ENV_NAME: prod
 
       - name: Record deployed SHA
-        if: >
-          success() && (
-            github.event_name == 'workflow_dispatch' ||
-            steps.path_base.outputs.deploy_all == 'true' ||
-            steps.filter.outputs.cdk == 'true' ||
-            steps.filter.outputs.web == 'true'
-          )
+        if: success()
+        env:
+          SHA: ${{ needs.plan.outputs.head_sha }}
         run: |
-          SHA="${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+          DEPLOYED_SHA_PARAM="$(bash scripts/ssm-param-name.sh prod deployedSha)"
           aws ssm put-parameter \
             --name "${DEPLOYED_SHA_PARAM}" \
             --type String \
@@ -329,24 +313,52 @@ jobs:
       id-token: write
     environment: prod
     concurrency:
-      # Separate from deploy so nightly drift never queues behind or blocks deploy (CHR-176).
+      # Separate from deploy so nightly drift never queues behind or blocks
+      # deploy (CHR-176): in a shared group a queued drift run would cancel a
+      # pending deploy. Overlap is detected instead (CHR-200), see below.
       group: cdk-drift
       cancel-in-progress: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # This job holds `environment:prod` + id-token, which the deploy role
+      # also trusts, so install scripts stay off (CHR-200).
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          ignore-scripts: 'true'
 
       - name: Configure AWS credentials (drift role)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # A deploy mid-update would make drift detection fail or report
+      # half-applied state. Skip (no alert) while any prod stack is updating.
+      - name: Check for a deploy in progress
+        id: before
+        run: |
+          echo "started=$(date -u +%s)" >> "$GITHUB_OUTPUT"
+          set +e
+          bash scripts/ci/prod-stack-activity.sh
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "busy=false" >> "$GITHUB_OUTPUT" ;;
+            3)
+              echo "::warning::Prod stacks are updating; skipping drift this run."
+              echo "busy=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *) exit "$code" ;;
+          esac
+
       - name: CDK drift
         id: drift
+        if: steps.before.outputs.busy == 'false'
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: |
@@ -355,10 +367,34 @@ jobs:
           code=${PIPESTATUS[0]}
           set -e
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          if [ "$code" -ne 0 ]; then
-            echo "Drift detected or drift command failed."
-            exit "$code"
+
+      # If a deploy touched any prod stack while drift ran, the result is not
+      # trustworthy either way: warn instead of alerting.
+      - name: Evaluate drift
+        if: steps.before.outputs.busy == 'false'
+        env:
+          DRIFT_EXIT: ${{ steps.drift.outputs.exit_code }}
+          STARTED: ${{ steps.before.outputs.started }}
+        run: |
+          if [ "$DRIFT_EXIT" = "0" ]; then
+            echo "No drift."
+            exit 0
           fi
+          set +e
+          bash scripts/ci/prod-stack-activity.sh "$STARTED"
+          code=$?
+          set -e
+          case "$code" in
+            0)
+              echo "Drift detected or drift command failed (exit ${DRIFT_EXIT})."
+              exit 1
+              ;;
+            3)
+              echo "::warning::A deploy changed prod stacks during drift; result discarded."
+              exit 0
+              ;;
+            *) exit "$code" ;;
+          esac
 
       - name: Notify SNS on failure
         if: failure()

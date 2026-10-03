@@ -5,7 +5,11 @@ import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
-import { APP_TABLE, PUBLISH_STREAM_SK } from '@gagnechris/data';
+import {
+  APP_TABLE,
+  PUBLISH_STREAM_SK,
+  type TableIndexDefinition,
+} from '@gagnechris/data';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { ApiStack } from '../lib/stacks/api-stack.js';
@@ -14,6 +18,7 @@ import { DataStack } from '../lib/stacks/data-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
+import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -135,6 +140,81 @@ describe('stack Template assertions (CHR-136)', () => {
     });
   });
 
+  it('DataStack passes GSI projectionType and nonKeyAttributes through (CHR-200)', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'ProjectionAssertDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const alertsTopic = new Topic(deps, 'Alerts', { enforceSSL: true });
+    const gsi4: TableIndexDefinition = {
+      indexName: 'gsi4',
+      partitionKey: { name: 'gsi4pk', type: 'S' },
+      sortKey: { name: 'gsi4sk', type: 'S' },
+      projectionType: 'KEYS_ONLY',
+    };
+    const data = new DataStack(app, 'Data-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      alertsTopic,
+      tableDefinition: {
+        ...APP_TABLE,
+        globalSecondaryIndexes: [...APP_TABLE.globalSecondaryIndexes, gsi4],
+      },
+    });
+    const indexes = Template.fromStack(data).findResources(
+      'AWS::DynamoDB::Table',
+    );
+    const gsis = Object.values(indexes)[0]!.Properties
+      .GlobalSecondaryIndexes as Array<{
+      IndexName: string;
+      Projection: { ProjectionType: string; NonKeyAttributes?: string[] };
+    }>;
+    const projectionOf = (name: string) =>
+      gsis.find((g) => g.IndexName === name)?.Projection;
+    expect(projectionOf('gsi4')).toEqual({ ProjectionType: 'KEYS_ONLY' });
+    for (const gsi of APP_TABLE.globalSecondaryIndexes) {
+      expect(projectionOf(gsi.indexName)).toEqual({
+        ProjectionType: gsi.projectionType,
+      });
+    }
+
+    const includeApp = new App();
+    const includeDeps = new Stack(includeApp, 'IncludeAssertDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const includeData = new DataStack(includeApp, 'Data-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      alertsTopic: new Topic(includeDeps, 'Alerts', { enforceSSL: true }),
+      tableDefinition: {
+        ...APP_TABLE,
+        globalSecondaryIndexes: [
+          ...APP_TABLE.globalSecondaryIndexes,
+          {
+            ...gsi4,
+            projectionType: 'INCLUDE',
+            nonKeyAttributes: ['title', 'updatedAt'],
+          },
+        ],
+      },
+    });
+    Template.fromStack(includeData).hasResourceProperties(
+      'AWS::DynamoDB::Table',
+      {
+        GlobalSecondaryIndexes: Match.arrayWith([
+          Match.objectLike({
+            IndexName: 'gsi4',
+            Projection: {
+              ProjectionType: 'INCLUDE',
+              NonKeyAttributes: ['title', 'updatedAt'],
+            },
+          }),
+        ]),
+      },
+    );
+  });
+
   it('SiteStack has /api/* and /media/* behaviors', () => {
     const template = siteTemplate();
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
@@ -243,6 +323,7 @@ describe('stack Template assertions (CHR-136)', () => {
     applyStandardTags(publisher, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
     const template = Template.fromStack(publisher);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
 
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       FilterCriteria: {
@@ -284,7 +365,7 @@ describe('stack Template assertions (CHR-136)', () => {
       AlarmName: 'gagnechris-prod-publisher-data-integrity',
       Namespace: 'gagnechris',
       MetricName: 'DataIntegrityError',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
@@ -343,6 +424,7 @@ describe('stack Template assertions (CHR-136)', () => {
     applyStandardTags(api, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
     const template = Template.fromStack(api);
+    const alarmActions = alertsTopicAlarmActions(alertsTopic);
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
@@ -360,17 +442,17 @@ describe('stack Template assertions (CHR-136)', () => {
       AlarmName: 'gagnechris-prod-api-handler-errors',
       Namespace: 'gagnechris',
       MetricName: 'HandlerError',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-data-integrity',
       Namespace: 'gagnechris',
       MetricName: 'DataIntegrityError',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
-      AlarmActions: Match.anyValue(),
+      AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-throttles',

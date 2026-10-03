@@ -62,7 +62,7 @@ docs/                  Architecture, development, data model, E2E
 
 - One Linear ticket → one branch → one PR into `main` (prefer the issue `gitBranchName`)
 - CI on PRs: lint, typecheck (all workspaces), tests, build, CDK diff; Local E2E required
-- Merge to `main` deploys via OIDC only after CI succeeds (CDK + web sync + CloudFront invalidation; path-filtered against last deployed SHA in SSM — see `infra/RUNBOOK.md`)
+- Merge to `main` deploys via OIDC only after CI succeeds (CDK + web sync + CloudFront invalidation; path-filtered against last deployed SHA in SSM; the deploy job refuses rollbacks, SSM read errors and multi-GSI changes — see `infra/RUNBOOK.md`)
 - Infrastructure only through CDK — no console edits to production
 
 ## Docs index

@@ -97,6 +97,7 @@ export {
   appTableName,
   assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
+  gsiProjection,
   tableIndexesFromDescribeTable,
   type AppTableDefinition,
   type DynamoAttributeTypeCode,
