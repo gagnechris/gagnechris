@@ -12,8 +12,8 @@ import {
 } from '@gagnechris/app-core';
 import { ApiError } from './query/api';
 import { NEW_PROJECT_NAME, newProjectSlug } from './projectDraft';
-import { Button } from '../workspace/ui/Button';
-import { StatusBadge } from '../workspace/ui/StatusBadge';
+import { Button } from '../kit/Button';
+import { StatusBadge } from '../kit/StatusBadge';
 import './projects.css';
 
 const errorMessage = (err: unknown, fallback: string) =>

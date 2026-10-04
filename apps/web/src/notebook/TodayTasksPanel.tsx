@@ -7,14 +7,15 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import { createUlid } from '../lib/ulid';
-import { addLocalDays, formatLocalDate } from './calendarDates';
-import { parseTaskQuickAdd } from './parseTaskQuickAdd';
+import { addLocalDays, formatLocalDate } from '../kit/calendarDates';
+import { parseTaskQuickAdd } from '../kit/tasks/parseTaskQuickAdd';
+import { TaskRow } from '../kit/tasks/TaskRow';
 import { useTaskToggle } from './useTaskToggle';
 import {
   bucketTodayTasks,
   showTomorrowPreview,
   todayProgress,
-} from './todayTaskBuckets';
+} from '../kit/tasks/todayTaskBuckets';
 
 type Props = {
   area: NotebookArea | undefined;
@@ -217,45 +218,19 @@ function TaskSection({
       ) : (
         <ul className="admin-post-list">
           {tasks.map((task) => (
-            <li key={task.id} className="admin-post-list__item">
-              <div
-                className="admin-post-list__link"
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={task.status === 'done'}
-                  onChange={() => onToggle(task)}
-                  aria-label={
-                    task.status === 'done'
-                      ? `Reopen ${task.title}`
-                      : `Complete ${task.title}`
-                  }
-                />
-                <Link
-                  to={`/tasks/${task.id}`}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    textDecoration: 'none',
-                    color: 'inherit',
-                  }}
-                >
-                  <span className="admin-post-list__title">
-                    {task.title}
-                    <span className="admin-badge">{task.priority}</span>
-                  </span>
-                  <span className="admin-post-list__meta">
-                    {task.area}
-                    {task.dueDate ? ` · ${task.dueDate}` : ''}
-                  </span>
-                </Link>
-              </div>
-            </li>
+            <TaskRow
+              key={task.id}
+              task={task}
+              onToggle={() => onToggle(task)}
+              to={`/tasks/${task.id}`}
+              variant="today"
+              meta={
+                <>
+                  {task.area}
+                  {task.dueDate ? ` · ${task.dueDate}` : ''}
+                </>
+              }
+            />
           ))}
         </ul>
       )}

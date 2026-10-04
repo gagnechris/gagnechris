@@ -53,7 +53,10 @@ afterwards:
    301s against it
 4. One Vite dev server per app (public, admin, Notebook) with
    `VITE_AUTH_MODE=local`, each on its own port, so each app is its own
-   origin as in prod
+   origin as in prod. The public one sets `VITE_DEMO_FIXTURE=posts`, so a
+   project with `demo: 'posts'` loads the test-only fixture demo there
+   (`tests/public-project-page.spec.ts` checks that it loads lazily, resets,
+   and makes no `/api` or third-party requests)
 5. Production builds of the admin and Notebook apps (`vite build` into
    `e2e/.stack/<run>/dist-*`, real Amplify, Cognito settings from
    `E2E_COGNITO` in `e2e/stack.ts`) served by `vite preview`.

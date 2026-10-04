@@ -6,9 +6,9 @@ import {
   useDeleteProjectMutation,
   useGetApiClient,
 } from '@gagnechris/app-core';
-import { Button } from '../workspace/ui/Button';
+import { Button } from '../kit/Button';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
-import { MarkdownBodyEditor } from './MarkdownBodyEditor';
+import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { ProjectEditorFields } from './ProjectEditorFields';
 import { publicUrl } from './publicUrl';
 import {

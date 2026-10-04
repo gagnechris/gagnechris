@@ -1,4 +1,5 @@
-import type { Task, TaskPriority, TaskStatus } from '@gagnechris/app-core';
+import type { Task } from '@gagnechris/app-core';
+import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
 
 export type TaskDraft = {
   title: string;

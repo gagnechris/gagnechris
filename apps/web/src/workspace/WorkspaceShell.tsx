@@ -6,6 +6,7 @@ import RequireAuth from './auth/RequireAuth';
 import { signOutUser, type AuthUser } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
+import '../kit/kit.css';
 import './workspace.css';
 
 type WorkspaceShellProps = {

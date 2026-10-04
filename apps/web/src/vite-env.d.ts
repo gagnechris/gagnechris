@@ -25,6 +25,8 @@ interface ImportMetaEnv {
    * Dev only: fake signed-in session (no Cognito). Production builds fail if set.
    */
   readonly VITE_AUTH_MODE?: string;
+  /** Dev server only: a demo id whose Try it slot loads the test fixture demo. */
+  readonly VITE_DEMO_FIXTURE?: string;
   /** Origin the admin links to for public pages; set in vite.config.ts. */
   readonly VITE_PUBLIC_SITE_ORIGIN: string;
 }

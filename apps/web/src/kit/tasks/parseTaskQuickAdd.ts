@@ -1,5 +1,5 @@
-import type { TaskPriority } from '@gagnechris/app-core';
-import { addLocalDays, localToday } from './calendarDates';
+import type { TaskPriority } from '@gagnechris/shared';
+import { addLocalDays, localToday } from '../calendarDates';
 
 export type ParsedTaskQuickAdd = {
   title: string;

@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { Field, TextArea, TextInput } from '../workspace/ui/Field';
+import { Field, TextArea, TextInput } from '../kit/Field';
 import { Repeater } from '../workspace/ui/Repeater';
 import {
   emptyEducation,

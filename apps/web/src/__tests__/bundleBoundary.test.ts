@@ -32,6 +32,12 @@ describe('public bundle boundary', () => {
     );
   });
 
+  it('fails the build when a kit module imports app-core', async () => {
+    await expect(bundle('kit-imports-app-core.ts')).rejects.toThrow(
+      /Public bundle contains signed-in or auth modules:[\s\S]*packages\/app-core\//,
+    );
+  });
+
   it.each([
     '/repo/apps/web/src/admin/AdminLayout.tsx',
     '/repo/apps/web/src/admin/ProjectEditorPage.tsx',
@@ -52,6 +58,8 @@ describe('public bundle boundary', () => {
   it.each([
     '/repo/apps/web/src/pages/PostPage.tsx',
     '/repo/apps/web/src/lib/ulid.ts',
+    '/repo/apps/web/src/kit/Button.tsx',
+    '/repo/apps/web/src/kit/demo/DemoFrame.tsx',
     '/repo/packages/shared/src/render.ts',
     '/repo/packages/shared/src/projects.ts',
     '/repo/node_modules/react-router/dist/index.mjs',

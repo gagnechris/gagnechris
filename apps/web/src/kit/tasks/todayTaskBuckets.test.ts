@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import type { Task } from '@gagnechris/app-core';
+import type { Task } from '@gagnechris/shared';
 import {
   bucketTodayTasks,
   showTomorrowPreview,

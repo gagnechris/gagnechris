@@ -5,8 +5,8 @@ import {
   PROJECT_STAGE_LABELS,
   sortProjectsByOrder,
 } from '@gagnechris/shared';
-import { Field, TextArea, TextInput } from '../workspace/ui/Field';
-import { MarkdownBodyEditor } from './MarkdownBodyEditor';
+import { Field, TextArea, TextInput } from '../kit/Field';
+import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 
 export type PostDraftFields = {
   title: string;

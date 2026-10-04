@@ -17,8 +17,8 @@ import {
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
-import { Button } from '../workspace/ui/Button';
-import { Field, Select, TextArea, TextInput } from '../workspace/ui/Field';
+import { Button } from '../kit/Button';
+import { Field, Select, TextArea, TextInput } from '../kit/Field';
 import { Repeater } from '../workspace/ui/Repeater';
 import {
   addStackItems,

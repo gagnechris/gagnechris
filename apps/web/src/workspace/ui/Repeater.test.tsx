@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
-import { Field, TextInput } from './Field';
+import { Field, TextInput } from '../../kit/Field';
 import { Repeater } from './Repeater';
 import { newRepeaterId } from './repeaterId';
 

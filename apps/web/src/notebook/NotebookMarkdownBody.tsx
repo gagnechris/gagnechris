@@ -1,11 +1,9 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
-import { taskListToggle } from '../workspace/markdown/taskListToggle';
-import MarkdownPreview from '../workspace/markdown/MarkdownPreview';
-import '../workspace/markdown/markdown.css';
+import { taskListToggle } from '../kit/markdown/taskListToggle';
+import MarkdownPreview from '../kit/markdown/MarkdownPreview';
+import '../kit/markdown/markdown.css';
 
-const MarkdownEditor = lazy(
-  () => import('../workspace/markdown/MarkdownEditor'),
-);
+const MarkdownEditor = lazy(() => import('../kit/markdown/MarkdownEditor'));
 
 type Props = {
   value: string;

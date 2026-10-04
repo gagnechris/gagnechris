@@ -110,7 +110,7 @@ export default function NotebookSearchPalette({
         <div className="notebook-search__toolbar">
           <input
             ref={inputRef}
-            className="admin-input notebook-search__input"
+            className="admin-input"
             type="search"
             role="combobox"
             aria-label="Search notes and tasks"

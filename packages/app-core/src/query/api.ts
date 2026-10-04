@@ -27,8 +27,6 @@ export type ExpectedVersionRequest =
   components['schemas']['ExpectedVersionRequest'];
 export type NotebookArea = Note['area'];
 export type NoteType = Note['type'];
-export type TaskStatus = Task['status'];
-export type TaskPriority = Task['priority'];
 
 export class ApiError extends Error {
   readonly status: number;

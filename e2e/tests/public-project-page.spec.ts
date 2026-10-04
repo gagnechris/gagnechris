@@ -235,4 +235,109 @@ test.describe('the Try it slot', () => {
   });
 });
 
+test.describe('a demo in the Try it slot', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
+  const FIXTURE = '/src/__tests__/fixtures/demo/FixtureDemo.tsx';
+
+  test('loads near the viewport, runs without the API or other origins, and resets from the keyboard', async ({
+    page,
+    seed,
+    prefix,
+    request,
+    browserName,
+  }) => {
+    // Safari moves focus only between text fields on plain Tab.
+    const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+    const origin = requireEnv('E2E_PUBLIC_URL');
+    const slug = `${prefix}-fixture`;
+    await publishProject(seed, {
+      name: `Fixture ${prefix}`,
+      slug,
+      stage: 'live',
+      bodyMarkdown: BODY,
+      demo: 'posts',
+      previewImage: `/media/projects/${prefix}.png`,
+    });
+    await expect
+      .poll(async () =>
+        (await request.get(`${site()}/projects/${slug}`)).status(),
+      )
+      .toBe(200);
+
+    const requests: URL[] = [];
+    page.on('request', (req) => requests.push(new URL(req.url())));
+    await page.setViewportSize({ width: 1280, height: 120 });
+    await page.goto(`${origin}/projects/${slug}`);
+    const slot = page.getByRole('region', { name: 'Try it' });
+    await expect(slot.locator('img')).toHaveAttribute(
+      'src',
+      `/media/projects/${prefix}.png`,
+    );
+    await page.waitForLoadState('networkidle');
+    expect(requests.some((u) => u.pathname === FIXTURE)).toBe(false);
+
+    await slot.scrollIntoViewIfNeeded();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const reset = slot.getByRole('button', { name: 'Reset' });
+    await expect(reset).toBeVisible();
+    expect(requests.some((u) => u.pathname === FIXTURE)).toBe(true);
+    await expect(slot.locator('img')).toHaveCount(0);
+    await expect(
+      slot.getByText('Sample data, runs in your browser, nothing is saved'),
+    ).toBeVisible();
+    expect(
+      await slot
+        .locator('.demo-frame')
+        .evaluate((el) => getComputedStyle(el).fontFamily),
+    ).toMatch(/^Inter\b/);
+
+    const fromInteraction = requests.length;
+    const add = slot.getByRole('textbox', { name: /Add a task/ });
+    const open = slot.getByRole('checkbox', {
+      name: 'Complete Seeded open task',
+    });
+    await reset.focus();
+    await page.keyboard.press(tab);
+    await expect(add).toBeFocused();
+    await page.keyboard.type('Call Sam !high');
+    await page.keyboard.press('Enter');
+    await expect(
+      slot.getByRole('checkbox', { name: 'Complete Call Sam' }),
+    ).toBeVisible();
+    await page.keyboard.press(tab);
+    await expect(slot.getByRole('button', { name: 'Add' })).toBeFocused();
+    await page.keyboard.press(tab);
+    await expect(open).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(
+      slot.getByRole('checkbox', { name: 'Reopen Seeded open task' }),
+    ).toBeChecked();
+
+    for (let i = 0; i < 3; i++) await page.keyboard.press(`Shift+${tab}`);
+    await expect(reset).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(slot.getByRole('checkbox')).toHaveCount(2);
+    await expect(open).not.toBeChecked();
+    await expect(
+      slot.getByRole('checkbox', { name: 'Reopen Seeded done task' }),
+    ).toBeChecked();
+    await expect(add).toHaveValue('');
+    await page.waitForLoadState('networkidle');
+
+    const pageOrigin = new URL(origin).origin;
+    expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
+    expect(
+      requests
+        .slice(fromInteraction)
+        .filter((u) => u.origin === pageOrigin)
+        .map(String),
+    ).toEqual([]);
+  });
+});
+
 const prefixOf = (slug: string) => slug.replace(/-project$/, '');

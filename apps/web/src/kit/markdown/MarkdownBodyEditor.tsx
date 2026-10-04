@@ -1,10 +1,8 @@
 import { lazy, Suspense } from 'react';
-import MarkdownPreview from '../workspace/markdown/MarkdownPreview';
-import '../workspace/markdown/markdown.css';
+import MarkdownPreview from './MarkdownPreview';
+import './markdown.css';
 
-const MarkdownEditor = lazy(
-  () => import('../workspace/markdown/MarkdownEditor'),
-);
+const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 
 type Props = {
   value: string;

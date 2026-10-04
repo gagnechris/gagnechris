@@ -114,6 +114,7 @@ type ManifestChunk = {
 
 /** Vite manifest `src` paths are relative to apps/web. */
 export const DEMO_SRC_DIR = 'src/demos/';
+const TEST_SRC_DIR = 'src/__tests__/';
 
 /**
  * Every demo under `src/demos/<id>/index.tsx` must be its own lazy chunk that
@@ -140,6 +141,12 @@ export function demoChunkProblems(
     const src = manifest[key]?.src ?? key;
     if (src.startsWith(DEMO_SRC_DIR)) {
       problems.push(`${src} is statically imported by the public entry`);
+    }
+  }
+  for (const [key, chunk] of Object.entries(manifest)) {
+    const src = chunk.src ?? key;
+    if (src.startsWith(TEST_SRC_DIR)) {
+      problems.push(`${src} is test-only but has a chunk in the build`);
     }
   }
   for (const src of demoEntries) {

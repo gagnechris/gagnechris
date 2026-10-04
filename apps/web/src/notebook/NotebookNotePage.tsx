@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { noteResource, useDeleteNoteMutation } from '@gagnechris/app-core';
-import { Field, TextInput } from '../workspace/ui/Field';
+import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';

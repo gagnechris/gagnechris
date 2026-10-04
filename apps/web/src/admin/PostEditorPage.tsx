@@ -7,7 +7,7 @@ import {
   useGetApiClient,
   useProjectsQuery,
 } from '@gagnechris/app-core';
-import { Button } from '../workspace/ui/Button';
+import { Button } from '../kit/Button';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';
 import {

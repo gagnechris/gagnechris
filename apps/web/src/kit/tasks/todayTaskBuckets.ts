@@ -1,24 +1,26 @@
-import type { Task } from '@gagnechris/app-core';
-import { addLocalDays } from './calendarDates';
+import type { Task } from '@gagnechris/shared';
+import { addLocalDays } from '../calendarDates';
 
-export type TodayTaskBuckets = {
-  overdue: Task[];
-  dueToday: Task[];
-  inProgress: Task[];
-  doneToday: Task[];
-  tomorrow: Task[];
+type BucketTask = Pick<Task, 'deleted' | 'dueDate' | 'status'>;
+
+export type TodayTaskBuckets<T extends BucketTask = BucketTask> = {
+  overdue: T[];
+  dueToday: T[];
+  inProgress: T[];
+  doneToday: T[];
+  tomorrow: T[];
 };
 
-export function bucketTodayTasks(
-  tasks: Task[],
+export function bucketTodayTasks<T extends BucketTask>(
+  tasks: T[],
   today: string,
-): TodayTaskBuckets {
+): TodayTaskBuckets<T> {
   const tomorrow = addLocalDays(today, 1);
-  const overdue: Task[] = [];
-  const dueToday: Task[] = [];
-  const inProgress: Task[] = [];
-  const doneToday: Task[] = [];
-  const tomorrowTasks: Task[] = [];
+  const overdue: T[] = [];
+  const dueToday: T[] = [];
+  const inProgress: T[] = [];
+  const doneToday: T[] = [];
+  const tomorrowTasks: T[] = [];
 
   for (const task of tasks) {
     if (task.deleted) continue;
