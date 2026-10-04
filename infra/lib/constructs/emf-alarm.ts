@@ -1,6 +1,7 @@
 import { Duration } from 'aws-cdk-lib';
 import {
   Alarm,
+  CfnAlarm,
   ComparisonOperator,
   Metric,
   TreatMissingData,
@@ -60,6 +61,40 @@ export function metricAlarm(
     comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
     treatMissingData: TreatMissingData.NOT_BREACHING,
   });
+  alarm.addAlarmAction(new SnsAction(props.alertsTopic));
+  return alarm;
+}
+
+/**
+ * Alarms when a metric that should arrive at least once per `period` stops:
+ * missing data breaches. The warm-up keeps a new alarm quiet until its first
+ * datapoint (CloudWatch allows at most 2 days).
+ */
+export function heartbeatAlarm(
+  scope: Construct,
+  id: string,
+  props: {
+    readonly alarmName: string;
+    readonly alarmDescription: string;
+    readonly metric: IMetric;
+    readonly alertsTopic: ITopic;
+    readonly evaluationPeriods: number;
+    readonly warmUpMinutes: number;
+  },
+): Alarm {
+  const alarm = new Alarm(scope, id, {
+    alarmName: props.alarmName,
+    alarmDescription: props.alarmDescription,
+    metric: props.metric,
+    threshold: 1,
+    evaluationPeriods: props.evaluationPeriods,
+    datapointsToAlarm: props.evaluationPeriods,
+    comparisonOperator: ComparisonOperator.LESS_THAN_THRESHOLD,
+    treatMissingData: TreatMissingData.BREACHING,
+  });
+  (alarm.node.defaultChild as CfnAlarm).warmUpConfiguration = {
+    warmUpPeriodDurationInMinutes: props.warmUpMinutes,
+  };
   alarm.addAlarmAction(new SnsAction(props.alertsTopic));
   return alarm;
 }

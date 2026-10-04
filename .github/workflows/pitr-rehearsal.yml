@@ -43,10 +43,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Configure AWS credentials (deploy role)
+      - name: Require the rehearsal role
+        env:
+          ROLE_ARN: ${{ vars.AWS_PITR_REHEARSAL_ROLE_ARN }}
+        run: |
+          [[ "${ROLE_ARN}" == *':role/gagnechris-prod-gha-pitr-rehearsal' ]] || {
+            echo "::error::Set repo variable AWS_PITR_REHEARSAL_ROLE_ARN to the CiDeployRole-prod output PitrRehearsalRoleArn (RUNBOOK GitHub Actions OIDC)."
+            exit 1
+          }
+
+      # Scoped role, never the deploy role: restore gagnechris-prod, read keys
+      # and versions only, and touch nothing but gagnechris-prod-restore-*.
+      - name: Configure AWS credentials (PITR rehearsal role)
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_PITR_REHEARSAL_ROLE_ARN }}
+          role-duration-seconds: 5400
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Rehearse PITR restore

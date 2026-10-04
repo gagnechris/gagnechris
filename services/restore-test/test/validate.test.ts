@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COUNT_FLOOR_ENTITY_TYPES,
   MAX_MESSAGE_LENGTH,
+  SCHEMA_CHECKED_ENTITY_TYPES,
   checkItem,
+  minRestoredCount,
   isRestoreTestTableName,
   tableNameFromArn,
   validateRestoredTable,
 } from '../src/validate.js';
-import { healthyItems, pagedScan } from './fixtures.js';
+import { RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES } from '@gagnechris/shared';
+import { TS, fakeCount, healthyItems, noteAt, pagedScan } from './fixtures.js';
 
 const TABLE = 'awsbackup-restore-test-abc123';
 
@@ -79,6 +83,119 @@ describe('validateRestoredTable', () => {
     );
     expect(result.message.length).toBeLessThanOrEqual(MAX_MESSAGE_LENGTH);
     expect(result.message).toMatch(/\+\d+ more/);
+  });
+});
+
+describe('count floor', () => {
+  const SOURCE = 'gagnechris-prod';
+  // Fixture rows are stamped TS (2026-10-01T12:00Z); the restore point is later.
+  const RESTORE_POINT = new Date('2026-10-02T07:00:00.000Z');
+  const BEFORE = '2026-10-02T06:00:00.000Z';
+  const AFTER = '2026-10-02T08:00:00.000Z';
+  const floor = (source: Record<string, unknown>[]) => ({
+    count: fakeCount(source),
+    sourceTable: SOURCE,
+    restorePoint: RESTORE_POINT,
+  });
+  const extraNotes = (ts: string, n: number) =>
+    Array.from({ length: n }, (_, i) => noteAt(`01PAGE${i}`, ts));
+
+  it('fails a restore with fewer notes than the source had at the restore point', async () => {
+    const source = [...healthyItems(), ...extraNotes(BEFORE, 2)];
+    const restored = healthyItems();
+    const result = await validateRestoredTable(pagedScan(restored), TABLE, {
+      floor: floor(source),
+    });
+    expect(result.status).toBe('FAILED');
+    expect(result.problems).toEqual([
+      expect.stringMatching(
+        /^note count 1 below floor 3 \(3 in gagnechris-prod before /,
+      ),
+    ]);
+    expect(result.message).not.toContain('private text');
+  });
+
+  it('fails a restore that lost every note', async () => {
+    const source = healthyItems();
+    const restored = healthyItems().filter((i) => i.entityType !== 'note');
+    const result = await validateRestoredTable(pagedScan(restored), TABLE, {
+      floor: floor(source),
+    });
+    expect(result.status).toBe('FAILED');
+    expect(result.problems[0]).toMatch(/^note count 0 below floor 1 /);
+  });
+
+  it('ignores rows created or edited after the restore point', async () => {
+    const source = [...healthyItems(), ...extraNotes(AFTER, 5)];
+    const result = await validateRestoredTable(
+      pagedScan(healthyItems()),
+      TABLE,
+      { floor: floor(source) },
+    );
+    expect(result.status).toBe('SUCCESSFUL');
+    expect(result.message).toContain('counts at floor');
+  });
+
+  it('allows a 10% shortfall on larger types only', async () => {
+    const source = [...healthyItems(), ...extraNotes(BEFORE, 19)];
+    const restored = [...healthyItems(), ...extraNotes(BEFORE, 17)];
+    const result = await validateRestoredTable(pagedScan(restored), TABLE, {
+      floor: floor(source),
+    });
+    expect(result.status).toBe('SUCCESSFUL');
+    expect([0, 1, 2, 3, 10, 20].map(minRestoredCount)).toEqual([
+      0, 1, 2, 3, 9, 18,
+    ]);
+  });
+
+  it('passes a near-empty source', async () => {
+    const singletons = healthyItems().filter(
+      (i) => i.entityType === 'home' || i.entityType === 'resume',
+    );
+    const result = await validateRestoredTable(pagedScan(singletons), TABLE, {
+      floor: floor(singletons),
+    });
+    expect(result.status).toBe('SUCCESSFUL');
+  });
+
+  it('counts the source with Select COUNT on metadata attributes only', async () => {
+    const f = floor(healthyItems());
+    await validateRestoredTable(pagedScan(healthyItems()), TABLE, { floor: f });
+    expect(f.count.calls.length).toBeGreaterThan(0);
+    for (const call of f.count.calls) {
+      expect(call.TableName).toBe(SOURCE);
+      expect(call.Select).toBe('COUNT');
+      for (const name of Object.values(call.ExpressionAttributeNames)) {
+        expect(RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES).toContain(name);
+      }
+    }
+    expect(
+      new Set(f.count.calls.map((c) => c.ExpressionAttributeValues[':t'])),
+    ).toEqual(new Set(COUNT_FLOOR_ENTITY_TYPES));
+    // Settle margin: 5 min before the restore point.
+    expect(f.count.calls[0]!.ExpressionAttributeValues[':cut']).toBe(
+      '2026-10-02T06:55:00.000Z',
+    );
+  });
+
+  it('skips the floor when the restored scan was truncated', async () => {
+    const f = floor(healthyItems());
+    const result = await validateRestoredTable(
+      pagedScan(healthyItems(), 2),
+      TABLE,
+      { maxItems: 2, floor: f },
+    );
+    expect(result.status).toBe('FAILED');
+    expect(f.count.calls).toHaveLength(0);
+  });
+
+  it('floors every schema-checked type that has a timestamp', () => {
+    expect(TS < RESTORE_POINT.toISOString()).toBe(true);
+    expect(
+      SCHEMA_CHECKED_ENTITY_TYPES.filter(
+        (t) => !COUNT_FLOOR_ENTITY_TYPES.includes(t),
+      ),
+    ).toEqual(['dailyNoteClaim']);
   });
 });
 

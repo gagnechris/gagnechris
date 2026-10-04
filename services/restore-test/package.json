@@ -5,6 +5,12 @@
   "license": "MIT",
   "type": "module",
   "description": "AWS Backup restore-test validator and leftover scratch-table check.",
+  "exports": {
+    "./validate": {
+      "types": "./src/validate.ts",
+      "import": "./src/validate.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

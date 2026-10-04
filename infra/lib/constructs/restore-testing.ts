@@ -4,7 +4,7 @@ import {
   CfnRestoreTestingSelection,
   type IBackupVault,
 } from 'aws-cdk-lib/aws-backup';
-import type { Alarm } from 'aws-cdk-lib/aws-cloudwatch';
+import { Metric, type Alarm } from 'aws-cdk-lib/aws-cloudwatch';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
@@ -18,9 +18,14 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { join } from 'node:path';
-import { RESTORE_TEST_SERVICE_NAME } from '../config/constants.js';
+import {
+  POWERTOOLS_METRICS_NAMESPACE,
+  RESTORE_TEST_METRICS,
+  RESTORE_TEST_SERVICE_NAME,
+  RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
+} from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { emfServiceAlarm } from './emf-alarm.js';
+import { emfServiceAlarm, heartbeatAlarm } from './emf-alarm.js';
 import { NodeLambda, REPO_ROOT } from './node-lambda.js';
 
 /** AWS Backup picks this name itself and deletes the table by it. */
@@ -44,6 +49,10 @@ export class AppTableRestoreTesting extends Construct {
   readonly validator: NodeLambda;
   readonly validationFailedAlarm: Alarm;
   readonly leftoverTablesAlarm: Alarm;
+  readonly staleRecoveryPointAlarm: Alarm;
+  readonly validationMissingAlarm: Alarm;
+  readonly advancedBackupDisabledAlarm: Alarm;
+  readonly backupCheckNotRunningAlarm: Alarm;
 
   constructor(
     scope: Construct,
@@ -58,7 +67,13 @@ export class AppTableRestoreTesting extends Construct {
     this.restoreRole = new Role(this, 'RestoreRole', {
       roleName: `${prefix}-restore-testing`,
       description: 'AWS Backup restore testing of the app table',
-      assumedBy: new ServicePrincipal('backup.amazonaws.com'),
+      // IfExists: AWS Backup does not document setting aws:SourceAccount when
+      // it assumes a restore role, and a missing key must not fail the test.
+      assumedBy: new ServicePrincipal('backup.amazonaws.com', {
+        conditions: {
+          StringEqualsIfExists: { 'aws:SourceAccount': stack.account },
+        },
+      }),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName(
           'service-role/AWSBackupServiceRolePolicyForRestores',
@@ -121,7 +136,7 @@ export class AppTableRestoreTesting extends Construct {
       alertsTopic,
       alarmNamePrefix: `${prefix}-restore-test`,
       iam5NagReason:
-        'Reads only restore scratch tables by name pattern (awsbackup-restore-test-*, gagnechris-*-restore-*); ListTables and backup:PutRestoreValidationResult have no resource-level scoping; X-Ray uses the managed tracing wildcard.',
+        'Reads only restore scratch tables by name pattern (awsbackup-restore-test-*, gagnechris-*-restore-*); ListTables, backup:PutRestoreValidationResult, DescribeRestoreJob, ListRestoreJobs and DescribeRegionSettings have no resource-level scoping; X-Ray uses the managed tracing wildcard.',
       iam5NagAppliesTo: [
         'Resource::*',
         {
@@ -134,6 +149,11 @@ export class AppTableRestoreTesting extends Construct {
       },
       environment: {
         LEFTOVER_MAX_AGE_HOURS: String(LEFTOVER_MAX_AGE_HOURS),
+        SOURCE_TABLE_NAME: table.tableName,
+        SOURCE_TABLE_ARN: table.tableArn,
+        BACKUP_VAULT_NAME: backupVault.backupVaultName,
+        RESTORE_TESTING_PLAN_NAME: planName,
+        RESTORE_TESTING_PLAN_ARN: this.plan.attrRestoreTestingPlanArn,
       },
     });
 
@@ -158,11 +178,45 @@ export class AppTableRestoreTesting extends Construct {
         resources: ['*'],
       }),
     );
+    // COUNT returns no items, and the attribute allow-list keeps filters off
+    // note text, so the validator can count the live table but never read it.
+    this.validator.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'CountSourceTable',
+        actions: ['dynamodb:Scan'],
+        resources: [table.tableArn],
+        conditions: {
+          StringEquals: { 'dynamodb:Select': 'COUNT' },
+          'ForAllValues:StringEquals': {
+            'dynamodb:Attributes': [...RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES],
+          },
+        },
+      }),
+    );
     this.validator.addToRolePolicy(
       new PolicyStatement({
         sid: 'ReportRestoreValidation',
-        actions: ['backup:PutRestoreValidationResult'],
+        actions: [
+          'backup:PutRestoreValidationResult',
+          'backup:DescribeRestoreJob',
+          'backup:ListRestoreJobs',
+          'backup:DescribeRegionSettings',
+        ],
         resources: ['*'],
+      }),
+    );
+    this.validator.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'ReadBackupFreshness',
+        actions: ['backup:ListRecoveryPointsByBackupVault'],
+        resources: [backupVault.backupVaultArn],
+      }),
+    );
+    this.validator.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'ReadRestoreTestingPlan',
+        actions: ['backup:GetRestoreTestingPlan'],
+        resources: [this.plan.attrRestoreTestingPlanArn],
       }),
     );
 
@@ -183,7 +237,8 @@ export class AppTableRestoreTesting extends Construct {
 
     new Rule(this, 'LeftoverCheckRule', {
       ruleName: `${prefix}-restore-leftover-check`,
-      description: 'Daily check for restore scratch tables older than 24 h',
+      description:
+        'Daily check: leftover restore scratch tables, recovery point age, last successful restore test, advanced backup setting',
       schedule: Schedule.cron({ minute: '0', hour: '12' }),
       targets: [
         new LambdaFunction(this.validator, {
@@ -201,7 +256,7 @@ export class AppTableRestoreTesting extends Construct {
         alarmDescription:
           'AWS Backup restore test restored the app table but content validation FAILED (see restore-test logs)',
         serviceName: RESTORE_TEST_SERVICE_NAME,
-        metricName: 'RestoreValidationFailed',
+        metricName: RESTORE_TEST_METRICS.validationFailed,
         alertsTopic,
       },
     );
@@ -213,8 +268,66 @@ export class AppTableRestoreTesting extends Construct {
         alarmDescription:
           'A restore scratch table (awsbackup-restore-test-* or gagnechris-*-restore-*) is older than 24 h: a full copy of prod is lying around. Delete it (RUNBOOK)',
         serviceName: RESTORE_TEST_SERVICE_NAME,
-        metricName: 'LeftoverRestoreTables',
+        metricName: RESTORE_TEST_METRICS.leftoverTables,
         alertsTopic,
+      },
+    );
+
+    // The daily check emits these every run, 0 or 1; like the leftover alarm
+    // they re-alert daily until fixed.
+    this.staleRecoveryPointAlarm = emfServiceAlarm(
+      stack,
+      'StaleRecoveryPointAlarm',
+      {
+        alarmName: `${prefix}-backup-recovery-point-stale`,
+        alarmDescription:
+          'Newest COMPLETED recovery point of the app table in the Backup vault is 26 h old or missing: daily backups have stopped (RUNBOOK Backups)',
+        serviceName: RESTORE_TEST_SERVICE_NAME,
+        metricName: RESTORE_TEST_METRICS.staleRecoveryPoint,
+        alertsTopic,
+      },
+    );
+    this.validationMissingAlarm = emfServiceAlarm(
+      stack,
+      'RestoreValidationMissingAlarm',
+      {
+        alarmName: `${prefix}-restore-validation-missing`,
+        alarmDescription:
+          'No restore test of the app table validated SUCCESSFUL in 8 days: the plan did not run, found no recovery point, or the validator never ran (RUNBOOK Weekly restore testing)',
+        serviceName: RESTORE_TEST_SERVICE_NAME,
+        metricName: RESTORE_TEST_METRICS.validationMissing,
+        alertsTopic,
+      },
+    );
+    this.advancedBackupDisabledAlarm = emfServiceAlarm(
+      stack,
+      'AdvancedBackupDisabledAlarm',
+      {
+        alarmName: `${prefix}-backup-advanced-dynamodb-off`,
+        alarmDescription:
+          'AWS Backup advanced features for DynamoDB are off in this Region: new backups are DynamoDB-managed, outside the vault key and vault lock (RUNBOOK Backups)',
+        serviceName: RESTORE_TEST_SERVICE_NAME,
+        metricName: RESTORE_TEST_METRICS.advancedBackupDisabled,
+        alertsTopic,
+      },
+    );
+    this.backupCheckNotRunningAlarm = heartbeatAlarm(
+      stack,
+      'BackupCheckNotRunningAlarm',
+      {
+        alarmName: `${prefix}-backup-check-not-running`,
+        alarmDescription:
+          'The daily restore-test backup check has not completed for 2 days, so the stale-backup and missing-restore-test alarms cannot fire (see restore-test logs)',
+        metric: new Metric({
+          namespace: POWERTOOLS_METRICS_NAMESPACE,
+          metricName: RESTORE_TEST_METRICS.backupCheckCompleted,
+          dimensionsMap: { service: RESTORE_TEST_SERVICE_NAME },
+          statistic: 'Sum',
+          period: Duration.days(1),
+        }),
+        alertsTopic,
+        evaluationPeriods: 2,
+        warmUpMinutes: 2 * 24 * 60,
       },
     );
   }

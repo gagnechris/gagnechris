@@ -42,6 +42,20 @@ export type ScanFn = (input: {
   ExclusiveStartKey?: Record<string, unknown>;
 }) => Promise<ScanPage>;
 
+export type CountInput = {
+  TableName: string;
+  Select: 'COUNT';
+  FilterExpression: string;
+  ExpressionAttributeNames: Record<string, string>;
+  ExpressionAttributeValues: Record<string, unknown>;
+  ExclusiveStartKey?: Record<string, unknown>;
+};
+
+export type CountFn = (input: CountInput) => Promise<{
+  Count?: number;
+  LastEvaluatedKey?: Record<string, unknown>;
+}>;
+
 export type ValidationStatus = 'SUCCESSFUL' | 'FAILED';
 
 export type ValidationResult = {
@@ -50,6 +64,7 @@ export type ValidationResult = {
   itemCount: number;
   schemaChecked: number;
   problems: string[];
+  floorChecked?: boolean;
 };
 
 type KeyCheck = (item: Record<string, unknown>) => boolean;
@@ -100,6 +115,91 @@ const ENTITY_RULES: Record<string, EntityRule> = {
       i.sk === dailyNoteClaimSk(),
   },
 };
+
+export const SCHEMA_CHECKED_ENTITY_TYPES: readonly string[] =
+  Object.keys(ENTITY_RULES);
+
+/**
+ * Types whose rows carry `createdAt` or `updatedAt`, so the source can say
+ * which rows provably existed at the restore point. Daily claims have neither.
+ */
+export const COUNT_FLOOR_ENTITY_TYPES: readonly string[] = [
+  'post',
+  'home',
+  'resume',
+  'contact',
+  'note',
+  'task',
+];
+
+export const COUNT_FLOOR_FRACTION = 0.9;
+
+/** Covers API writes whose timestamp is stamped before they commit. */
+export const COUNT_FLOOR_SETTLE_MS = 5 * 60_000;
+
+export function minRestoredCount(existedAtRestorePoint: number): number {
+  return Math.ceil(existedAtRestorePoint * COUNT_FLOOR_FRACTION);
+}
+
+export type CountFloor = {
+  count: CountFn;
+  sourceTable: string;
+  restorePoint: Date;
+};
+
+export async function countSourceRowsExistingAt(
+  count: CountFn,
+  sourceTable: string,
+  entityType: string,
+  cutoffIso: string,
+): Promise<number> {
+  let total = 0;
+  let startKey: Record<string, unknown> | undefined;
+  do {
+    const page = await count({
+      TableName: sourceTable,
+      Select: 'COUNT',
+      // A row written at or before the cutoff existed at the restore point.
+      FilterExpression: '#t = :t AND (#c <= :cut OR #u <= :cut)',
+      ExpressionAttributeNames: {
+        '#t': 'entityType',
+        '#c': 'createdAt',
+        '#u': 'updatedAt',
+      },
+      ExpressionAttributeValues: { ':t': entityType, ':cut': cutoffIso },
+      ...(startKey ? { ExclusiveStartKey: startKey } : {}),
+    });
+    total += page.Count ?? 0;
+    startKey = page.LastEvaluatedKey;
+  } while (startKey);
+  return total;
+}
+
+export async function countFloorProblems(
+  floor: CountFloor,
+  restoredByType: ReadonlyMap<string, number>,
+): Promise<string[]> {
+  const cutoffIso = new Date(
+    floor.restorePoint.getTime() - COUNT_FLOOR_SETTLE_MS,
+  ).toISOString();
+  const problems: string[] = [];
+  for (const entityType of COUNT_FLOOR_ENTITY_TYPES) {
+    const existed = await countSourceRowsExistingAt(
+      floor.count,
+      floor.sourceTable,
+      entityType,
+      cutoffIso,
+    );
+    const restored = restoredByType.get(entityType) ?? 0;
+    const min = minRestoredCount(existed);
+    if (restored < min) {
+      problems.push(
+        `${entityType} count ${restored} below floor ${min} (${existed} in ${floor.sourceTable} before ${cutoffIso})`,
+      );
+    }
+  }
+  return problems;
+}
 
 export const REQUIRED_KEYS: ReadonlyArray<{ pk: string; sk: string }> = [
   keys.singleton.home.meta(),
@@ -155,7 +255,7 @@ export function isSchemaChecked(item: Record<string, unknown>): boolean {
 function buildMessage(result: Omit<ValidationResult, 'message'>): string {
   const head =
     result.status === 'SUCCESSFUL'
-      ? `OK: ${result.itemCount} items, ${result.schemaChecked} schema-checked, singletons present`
+      ? `OK: ${result.itemCount} items, ${result.schemaChecked} schema-checked, singletons present${result.floorChecked ? ', counts at floor' : ''}`
       : `FAILED: ${result.problems.length} problem(s) in ${result.itemCount} items`;
   if (result.problems.length === 0) return head;
   const listed = result.problems.slice(0, MAX_LISTED_PROBLEMS).join('; ');
@@ -181,7 +281,7 @@ export function finalize(
 export async function validateRestoredTable(
   scan: ScanFn,
   tableName: string,
-  opts: { maxItems?: number } = {},
+  opts: { maxItems?: number; floor?: CountFloor } = {},
 ): Promise<ValidationResult> {
   if (!isRestoreTestTableName(tableName)) {
     return finalize({
@@ -196,6 +296,7 @@ export async function validateRestoredTable(
   const problems: string[] = [];
   const seen = new Set<string>();
   const required = new Set(REQUIRED_KEYS.map((k) => `${k.pk}/${k.sk}`));
+  const restoredByType = new Map<string, number>();
   let itemCount = 0;
   let schemaChecked = 0;
   let startKey: Record<string, unknown> | undefined;
@@ -207,6 +308,8 @@ export async function validateRestoredTable(
     for (const item of page.Items ?? []) {
       itemCount += 1;
       if (isSchemaChecked(item)) schemaChecked += 1;
+      const entityType = str(item.entityType);
+      restoredByType.set(entityType, (restoredByType.get(entityType) ?? 0) + 1);
       const problem = checkItem(item);
       if (problem) problems.push(problem);
       const label = keyLabel(item);
@@ -224,5 +327,15 @@ export async function validateRestoredTable(
   for (const key of required) {
     if (!seen.has(key)) problems.push(`missing required row ${key}`);
   }
-  return finalize({ itemCount, schemaChecked, problems });
+  // A truncated scan undercounts every type; its own problem is enough.
+  const floor = startKey ? undefined : opts.floor;
+  if (floor) {
+    problems.push(...(await countFloorProblems(floor, restoredByType)));
+  }
+  return finalize({
+    itemCount,
+    schemaChecked,
+    problems,
+    ...(floor ? { floorChecked: true } : {}),
+  });
 }
