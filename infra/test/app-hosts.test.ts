@@ -196,6 +196,36 @@ describe('app hosts: DNS', () => {
   });
 });
 
+describe('apex CloudFront: hashed fonts', () => {
+  it('serves /fonts/* exactly like /assets/*, on the immutable assets cache policy', () => {
+    const apex = distributionFor('gagnechris.com');
+    const fonts = behavior(apex, '/fonts/*');
+    const assets = behavior(apex, '/assets/*');
+    expect(fonts).toBeDefined();
+    expect(fonts).toEqual({ ...assets, PathPattern: '/fonts/*' });
+
+    const [policyId, policy] = Object.entries(
+      resourcesOf(built.site, 'AWS::CloudFront::CachePolicy'),
+    ).find(
+      ([, p]) =>
+        p.Properties.CachePolicyConfig.Name === 'gagnechris-prod-assets',
+    )!;
+    expect(fonts!.CachePolicyId).toEqual({ Ref: policyId });
+    expect(policy.Properties.CachePolicyConfig).toMatchObject({
+      MinTTL: 31536000,
+      DefaultTTL: 31536000,
+      MaxTTL: 31536000,
+    });
+    expect(fonts!.TargetOriginId).toEqual(
+      apex.DefaultCacheBehavior.TargetOriginId,
+    );
+    expect(fonts!.ResponseHeadersPolicyId).toEqual(
+      apex.DefaultCacheBehavior.ResponseHeadersPolicyId,
+    );
+    expect(fonts!.FunctionAssociations).toBeUndefined();
+  });
+});
+
 describe('app hosts: CloudFront', () => {
   it('serves each host from its own distribution on the app-hosts cert', () => {
     for (const host of ['admin.gagnechris.com', 'notebook.gagnechris.com']) {
