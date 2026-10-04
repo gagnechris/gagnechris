@@ -1,9 +1,31 @@
 import { Link } from 'react-router-dom';
-import { useState, FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ContactRequestSchema } from '@gagnechris/shared';
+import {
+  CONTACT_HEADING,
+  CONTACT_INTRO,
+} from '@gagnechris/shared/public-pages';
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
+
+// The header must stay byte-identical to `renderContactPrerenderBodyHtml`
+// (coldLoadParity.test.tsx); the form is added below it.
+
+type FieldName = 'name' | 'email' | 'message';
+
+const FIELDS: readonly {
+  name: FieldName;
+  label: string;
+  type?: 'text' | 'email';
+  autoComplete: string;
+}[] = [
+  { name: 'name', label: 'Name', type: 'text', autoComplete: 'name' },
+  { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
+  { name: 'message', label: 'Message', autoComplete: 'off' },
+];
+
+type FieldErrors = Partial<Record<FieldName, string>>;
 
 const FIELD_CODE_MESSAGES: Record<string, string> = {
   too_small: 'This field is required',
@@ -12,6 +34,9 @@ const FIELD_CODE_MESSAGES: Record<string, string> = {
   invalid_string: 'Enter a valid value',
   invalid_type: 'Enter a valid value',
 };
+
+const SEND_FAILED = 'Your message wasn’t sent. Please try again.';
+const RATE_LIMITED = 'Too many messages. Please wait a bit and try again.';
 
 function friendlyFieldMessage(field: string, code: string): string {
   if (
@@ -23,53 +48,86 @@ function friendlyFieldMessage(field: string, code: string): string {
   return FIELD_CODE_MESSAGES[code] ?? 'Please check this field';
 }
 
+const isField = (key: string): key is FieldName =>
+  FIELDS.some((f) => f.name === key);
+
+const fieldsSummary = (count: number): string =>
+  count === 1
+    ? 'Please fix the highlighted field.'
+    : `Please fix the ${count} highlighted fields.`;
+
+const errorId = (name: FieldName) => `contact-${name}-error`;
+
 function Contact() {
   // Client-only elapsed clock — avoids comparing browser Date.now to server time.
   const [formOpenedAt] = useState(() => performance.now());
-  const [formData, setFormData] = useState({
+  const [values, setValues] = useState<Record<FieldName, string>>({
     name: '',
     email: '',
     message: '',
-    hp_field: '',
   });
+  const [hpField, setHpField] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [status, setStatus] = useState('');
+  const fieldRefs = useRef<
+    Partial<Record<FieldName, HTMLInputElement | HTMLTextAreaElement | null>>
+  >({});
+  const pendingFocus = useRef<FieldName | null>(null);
+  const successRef = useRef<HTMLHeadingElement>(null);
 
-  const validateForm = () => {
+  // After the render that sets aria-describedby, so the error is read on focus.
+  useEffect(() => {
+    const field = pendingFocus.current;
+    if (!field) return;
+    pendingFocus.current = null;
+    fieldRefs.current[field]?.focus();
+  });
+
+  useEffect(() => {
+    if (submitted) successRef.current?.focus();
+  }, [submitted]);
+
+  const showFieldErrors = (errors: FieldErrors) => {
+    const invalid = FIELDS.filter((f) => errors[f.name]);
+    setFieldErrors(errors);
+    setStatus(fieldsSummary(invalid.length));
+    pendingFocus.current = invalid[0]?.name ?? null;
+  };
+
+  const validate = () => {
     const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt));
     const parsed = ContactRequestSchema.safeParse({
-      name: formData.name,
-      email: formData.email,
-      message: formData.message,
-      hp_field: formData.hp_field,
+      ...values,
+      hp_field: hpField,
       elapsedMs,
     });
-    if (parsed.success) {
-      setErrors({});
-      return parsed.data;
-    }
-    const newErrors: { [key: string]: string } = {};
+    if (parsed.success) return parsed.data;
+    const errors: FieldErrors = {};
     for (const issue of parsed.error.issues) {
-      const key = issue.path.length > 0 ? String(issue.path[0]) : 'submit';
-      if (!(key in newErrors)) {
-        newErrors[key] = issue.message;
-      }
+      const key = String(issue.path[0] ?? '');
+      if (isField(key) && !errors[key]) errors[key] = issue.message;
     }
-    setErrors(newErrors);
+    if (Object.keys(errors).length > 0) {
+      showFieldErrors(errors);
+    } else {
+      setFieldErrors({});
+      setStatus(SEND_FAILED);
+    }
     return null;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
-    const body = validateForm();
-    if (!body) {
-      return;
-    }
+    const body = validate();
+    if (!body) return;
 
+    setFieldErrors({});
+    setStatus('');
     setSubmitting(true);
-
     try {
       const client = createPublicApiClient();
       const { error, response } = await client.POST('/api/contact', { body });
@@ -80,33 +138,25 @@ function Contact() {
         return;
       }
 
-      const fieldErrors: { [key: string]: string } = {};
-      if (error.fields) {
-        for (const [key, code] of Object.entries(error.fields)) {
-          fieldErrors[key] = friendlyFieldMessage(
+      const errors: FieldErrors = {};
+      for (const [key, code] of Object.entries(error.fields ?? {})) {
+        if (isField(key)) {
+          errors[key] = friendlyFieldMessage(
             key,
             typeof code === 'string' ? code : 'invalid',
           );
         }
       }
-      let message =
-        error.message ?? 'Failed to send message. Please try again.';
-      if (response.status === 429) {
-        message =
-          error.message ||
-          'Too many submissions. Please wait a bit and try again.';
-      }
-      if (Object.keys(fieldErrors).length > 0) {
-        setErrors({
-          ...fieldErrors,
-          ...(error.message ? { submit: message } : {}),
-        });
+      if (Object.keys(errors).length > 0) {
+        showFieldErrors(errors);
+      } else if (response.status === 429) {
+        setStatus(error.message || RATE_LIMITED);
       } else {
-        setErrors({ submit: message });
+        setStatus(error.message || SEND_FAILED);
       }
     } catch (err) {
       console.error('Form submission error:', err);
-      setErrors({ submit: 'Failed to send message. Please try again.' });
+      setStatus(SEND_FAILED);
     } finally {
       setSubmitting(false);
     }
@@ -116,159 +166,111 @@ function Contact() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
+    if (!isField(name)) return;
+    setValues((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
-
-  if (submitted) {
-    return (
-      <div className="contact-page">
-        <title>Thank You - Chris Gagne</title>
-        <header>
-          <h1>Contact</h1>
-        </header>
-        <main>
-          <div className="success-message">
-            <h2>Thank You!</h2>
-            <p>
-              Your message has been sent successfully. I'll get back to you as
-              soon as possible.
-            </p>
-            <p className="contact-bear-nudge">
-              While you wait —{' '}
-              <Link to="/dont-feed-the-bears?from=contact">
-                Don't Feed the Bears
-              </Link>
-              ?
-            </p>
-            <Link to="/" className="btn-home">
-              Return to Home
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="contact-page">
       <title>Contact - Chris Gagne</title>
       <link rel="canonical" href="https://gagnechris.com/contact" />
-      <header>
-        <h1>Contact</h1>
+      <header className="contact-page__header">
+        <h1>{CONTACT_HEADING}</h1>
+        <p className="contact-page__intro">{CONTACT_INTRO}</p>
       </header>
       <main>
-        <div className="contact-intro">
-          <p>
-            Have a question or want to get in touch? Fill out the form below and
-            I'll get back to you as soon as possible.
-          </p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="contact-form"
-          autoComplete="on"
-        >
-          {/* Honeypot — nonsemantic name resists autofill. */}
-          <div className="hp-field" aria-hidden="true">
-            <label htmlFor="hp_field">Leave blank</label>
-            <input
-              type="text"
-              id="hp_field"
-              name="hp_field"
-              value={formData.hp_field}
-              onChange={handleChange}
-              tabIndex={-1}
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="name">
-              Name <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={errors.name ? 'error' : ''}
-              aria-required="true"
-              aria-invalid={!!errors.name}
-              aria-describedby={errors.name ? 'name-error' : undefined}
-            />
-            {errors.name && (
-              <span id="name-error" className="error-message" role="alert">
-                {errors.name}
-              </span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">
-              Email <span className="required">*</span>
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'error' : ''}
-              aria-required="true"
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'email-error' : undefined}
-            />
-            {errors.email && (
-              <span id="email-error" className="error-message" role="alert">
-                {errors.email}
-              </span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="message">
-              Message <span className="required">*</span>
-            </label>
-            <textarea
-              id="message"
-              name="message"
-              rows={6}
-              value={formData.message}
-              onChange={handleChange}
-              className={errors.message ? 'error' : ''}
-              aria-required="true"
-              aria-invalid={!!errors.message}
-              aria-describedby={errors.message ? 'message-error' : undefined}
-            />
-            {errors.message && (
-              <span id="message-error" className="error-message" role="alert">
-                {errors.message}
-              </span>
-            )}
-          </div>
-
-          {errors.submit && (
-            <div className="form-error" role="alert">
-              {errors.submit}
+        {submitted ? (
+          <section className="contact-success" aria-labelledby="contact-sent">
+            <h2 id="contact-sent" ref={successRef} tabIndex={-1}>
+              Thanks, your message is on its way.
+            </h2>
+            <p>I’ll reply to the email address you gave.</p>
+            <ul className="contact-success__links">
+              <li>
+                <Link to="/" discover="none">
+                  Back to Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/dont-feed-the-bears?from=contact" discover="none">
+                  Don’t feed the bears while you wait
+                </Link>
+              </li>
+            </ul>
+          </section>
+        ) : (
+          <form
+            onSubmit={handleSubmit}
+            className="contact-form"
+            autoComplete="on"
+            noValidate
+          >
+            {/* Honeypot — nonsemantic name resists autofill. */}
+            <div className="hp-field" aria-hidden="true">
+              <label htmlFor="hp_field">Leave blank</label>
+              <input
+                type="text"
+                id="hp_field"
+                name="hp_field"
+                value={hpField}
+                onChange={(e) => setHpField(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
             </div>
-          )}
 
-          <button type="submit" className="submit-button" disabled={submitting}>
-            {submitting ? 'Sending...' : 'Send Message'}
-          </button>
-        </form>
+            {FIELDS.map(({ name, label, type, autoComplete }) => {
+              const error = fieldErrors[name];
+              const props = {
+                id: name,
+                name,
+                value: values[name],
+                onChange: handleChange,
+                autoComplete,
+                'aria-required': true,
+                'aria-invalid': error ? true : undefined,
+                'aria-describedby': error ? errorId(name) : undefined,
+              } as const;
+              const ref = (
+                el: HTMLInputElement | HTMLTextAreaElement | null,
+              ) => {
+                fieldRefs.current[name] = el;
+              };
+              return (
+                <div className="contact-field" key={name}>
+                  <label htmlFor={name}>{label}</label>
+                  {type ? (
+                    <input {...props} type={type} ref={ref} />
+                  ) : (
+                    <textarea {...props} rows={7} ref={ref} />
+                  )}
+                  {error ? (
+                    <p className="contact-field__error" id={errorId(name)}>
+                      {error}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            <p className="contact-form__status" role="alert">
+              {status ? (
+                <span className="contact-form__message">{status}</span>
+              ) : null}
+            </p>
+
+            <button
+              type="submit"
+              className="contact-form__submit"
+              aria-disabled={submitting || undefined}
+            >
+              {submitting ? 'Sending…' : 'Send message'}
+            </button>
+          </form>
+        )}
       </main>
     </div>
   );

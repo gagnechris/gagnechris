@@ -42,6 +42,8 @@
     "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
     "publish-surface:generate": "npm run publish-surface:generate -w @gagnechris/publisher",
     "publish-surface:check": "npm run publish-surface:generate && git diff --exit-code -- infra/lib/cloudfront/viewer-request-function.js packages/data/src/publish-admin-routes.generated.ts",
+    "not-found:generate": "tsx apps/web/scripts/generateNotFoundFunction.ts",
+    "not-found:check": "npm run not-found:generate && git diff --exit-code -- infra/lib/cloudfront/viewer-response-function.js",
     "mobile": "npm start --prefix apps/mobile",
     "check:rn-bundles": "tsx scripts/check-rn-bundles.ts",
     "check:web-shells": "tsx apps/web/scripts/checkWebShells.ts",

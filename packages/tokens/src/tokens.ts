@@ -58,6 +58,7 @@ export const tokens = {
     ink: '#16191d',
     inkSoft: '#4a515a',
     link: primary[700],
+    error: '#b42318',
   },
   font: {
     sans: "'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",

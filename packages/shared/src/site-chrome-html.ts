@@ -39,7 +39,7 @@ export const siteNavCurrent = (pathname: string): SiteNavHref | null =>
     ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
   )?.href ?? null;
 
-export const siteFooterCopy = (year: number): string =>
+export const siteFooterCopy = (year: number | string): string =>
   `© ${year} ${SITE_AUTHOR_NAME}`;
 
 /*
@@ -64,7 +64,9 @@ export const renderSiteHeaderHtml = (
   `</ul></nav></header>`;
 
 /** Year is fixed at publish time; the SPA renders the live year. */
-export const renderSiteFooterHtml = (year = new Date().getFullYear()): string =>
+export const renderSiteFooterHtml = (
+  year: number | string = new Date().getFullYear(),
+): string =>
   `<footer class="site-footer">` +
   `<p class="site-footer__copy">${escapeHtml(siteFooterCopy(year))}</p>` +
   `<ul class="site-footer__links">` +
@@ -78,6 +80,6 @@ export const renderSiteFooterHtml = (year = new Date().getFullYear()): string =>
 export const renderSitePageHtml = (
   current: SiteNavHref | null,
   bodyHtml: string,
-  year?: number,
+  year?: number | string,
 ): string =>
   `${renderSiteHeaderHtml(current)}${bodyHtml}${renderSiteFooterHtml(year)}`;

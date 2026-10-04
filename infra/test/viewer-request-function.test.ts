@@ -620,6 +620,14 @@ describe('viewer-request CloudFront Function', () => {
         })) as CfRequest
       ).uri,
     ).toBe('/404.html');
+    expect(
+      (
+        (await runHandler({
+          uri: '/projects/x',
+          headers: { host: { value: 'gagnechris.com' } },
+        })) as CfRequest
+      ).uri,
+    ).toBe('/404.html');
   });
 
   it('keeps / as the home index.html shell', async () => {

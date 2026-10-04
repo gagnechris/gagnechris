@@ -8,6 +8,10 @@ import {
   renderResumeUnavailablePrerenderHtml,
   renderSitePageHtml,
 } from '@gagnechris/shared/render';
+import {
+  NOT_FOUND_PRERENDER,
+  staticPagePrerender,
+} from '../../scripts/staticPageMeta';
 
 vi.mock('../utils/analytics');
 
@@ -78,6 +82,16 @@ const PRERENDERS: Record<string, string> = {
   }),
 };
 
+/** The markers are replaced along with everything else in `#root`. */
+const withoutMarkers = (html: string): string =>
+  html.replace(/<!--prerender:(start|end)-->/g, '');
+
+const BEARS_PAGES = {
+  '/dont-feed-the-bears': '../pages/DontFeedTheBears.tsx',
+  '/dont-feed-the-bears/camp': '../pages/bears/CampRules.tsx',
+  '/dont-feed-the-bears/wild': '../pages/bears/StayWild.tsx',
+} as const;
+
 const text = (el: Element): string =>
   (el.textContent ?? '').replace(/\s+/g, ' ').trim();
 
@@ -87,6 +101,7 @@ const text = (el: Element): string =>
  * Fetch never settles, so anything on screen came from the first render.
  */
 async function coldLoad(path: string, prerender: string) {
+  window.history.replaceState(null, '', path);
   document.body.innerHTML = `<div id="root">${prerender}</div>`;
   const root = document.getElementById('root')!;
   const before = { text: text(root), html: root.innerHTML };
@@ -128,7 +143,9 @@ describe('cold load: first React render matches the prerender', () => {
     unmount = undefined;
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    for (const page of Object.values(BEARS_PAGES)) vi.doUnmock(page);
     document.body.innerHTML = '';
+    window.history.replaceState(null, '', '/');
   });
 
   test.each(Object.entries(PRERENDERS))('%s', async (path, prerender) => {
@@ -195,4 +212,80 @@ describe('cold load: first React render matches the prerender', () => {
     expect(text(loaded.root)).not.toContain('Hello World');
     expect(fetch).toHaveBeenCalledWith('/posts/other-post/', expect.anything());
   });
+  test.each(['/no-such-page', '/posts/missing', '/contact/typo'])(
+    '%s served the 404 page: same DOM, no section current, no fetch',
+    async (path) => {
+      const prerender = withoutMarkers(NOT_FOUND_PRERENDER);
+      const loaded = await coldLoad(path, prerender);
+      unmount = loaded.unmount;
+
+      expect(loaded.root.innerHTML).toBe(prerender);
+      expect(loaded.root.querySelector('[aria-current]')).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  test('/contact keeps the prerendered chrome and heading, and adds the form below', async () => {
+    const prerender = withoutMarkers(staticPagePrerender('contact')!);
+    const loaded = await coldLoad('/contact', prerender);
+    unmount = loaded.unmount;
+
+    const before = document.createElement('div');
+    before.innerHTML = prerender;
+    for (const selector of [
+      'header.site-header',
+      '.contact-page__header',
+      'footer.site-footer',
+    ]) {
+      expect(loaded.root.querySelector(selector)!.outerHTML).toBe(
+        before.querySelector(selector)!.outerHTML,
+      );
+    }
+    expect(loaded.root.firstElementChild!.outerHTML).toBe(
+      before.firstElementChild!.outerHTML,
+    );
+    expect(
+      loaded.root.querySelector('.contact-page__header')!.nextElementSibling!
+        .tagName,
+    ).toBe('MAIN');
+    expect(loaded.root.querySelector('form')).not.toBeNull();
+  });
+
+  test.each(Object.entries(BEARS_PAGES))(
+    '%s: first render is the chrome-only prerender while the chunk loads',
+    async (path, page) => {
+      vi.doMock(page, () => new Promise(() => {}));
+      const prerender = withoutMarkers(
+        staticPagePrerender(path.slice(1) as 'dont-feed-the-bears')!,
+      );
+      const loaded = await coldLoad(path, prerender);
+      unmount = loaded.unmount;
+
+      expect(loaded.root.innerHTML).toBe(prerender);
+      expect(text(loaded.root)).not.toMatch(/Loading/);
+    },
+  );
+
+  test.each(Object.keys(BEARS_PAGES))(
+    '%s: the chrome does not change when the page arrives',
+    async (path) => {
+      const prerender = withoutMarkers(
+        staticPagePrerender(path.slice(1) as 'dont-feed-the-bears')!,
+      );
+      const loaded = await coldLoad(path, prerender);
+      unmount = loaded.unmount;
+
+      await vi.waitFor(() =>
+        expect(loaded.root.querySelector('h1')).not.toBeNull(),
+      );
+      const before = document.createElement('div');
+      before.innerHTML = prerender;
+      expect(loaded.root.firstElementChild!.outerHTML).toBe(
+        before.firstElementChild!.outerHTML,
+      );
+      expect(loaded.root.lastElementChild!.outerHTML).toBe(
+        before.lastElementChild!.outerHTML,
+      );
+    },
+  );
 });

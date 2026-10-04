@@ -4,6 +4,12 @@ import {
   replaceMeta,
   upsertCanonical,
 } from '@gagnechris/shared/html';
+import {
+  NOT_FOUND_TEXT,
+  NOT_FOUND_TITLE,
+  renderContactPrerenderBodyHtml,
+  renderNotFoundBodyHtml,
+} from '@gagnechris/shared/public-pages';
 import { renderSitePageHtml } from '@gagnechris/shared/site-chrome';
 import {
   BEARS_PAGE_META,
@@ -106,26 +112,37 @@ export function applyStaticPageMeta(
   html = replaceMeta(html, 'name', 'twitter:description', description);
   html = replaceMeta(html, 'name', 'twitter:image', image);
   html = upsertCanonical(html, url);
+  const body = staticPagePrerender(meta.routePath);
+  if (body) html = injectRoot(html, body);
   return html;
 }
 
-/** Mirrors `src/pages/NotFound.tsx` inside the site chrome. */
-export const NOT_FOUND_PRERENDER = `<!--prerender:start-->${renderSitePageHtml(
-  null,
-  '<div class="not-found">' +
-    '<header><h1>Page not found</h1></header>' +
-    '<main>' +
-    '<p>That URL does not match a page on this site.</p>' +
-    '<p class="not-found-bear">Lost in the woods? <a class="tap-target-link" href="/dont-feed-the-bears?from=404">Don&#39;t feed the bears</a> while you find your way.</p>' +
-    '<ul class="not-found-links">' +
-    '<li><a href="/">Home</a></li>' +
-    '<li><a href="/posts">Posts</a></li>' +
-    '<li><a href="/resume">Resume</a></li>' +
-    '<li><a href="/contact">Contact</a></li>' +
-    '</ul>' +
-    '</main>' +
-    '</div>',
-)}<!--prerender:end-->`;
+const prerender = (html: string): string =>
+  `<!--prerender:start-->${html}<!--prerender:end-->`;
+
+/** `src/pages/NotFound.tsx` inside the site chrome. */
+export const NOT_FOUND_PRERENDER = prerender(
+  renderSitePageHtml(null, renderNotFoundBodyHtml()),
+);
+
+/*
+ * Home and Resume are prerendered by the publisher. The bears pages are lazy
+ * chunks whose fallback renders nothing, so their first React render is the
+ * chrome alone, the same as this.
+ */
+export function staticPagePrerender(
+  routePath: StaticPageMeta['routePath'],
+): string | null {
+  if (routePath === 'contact') {
+    return prerender(
+      renderSitePageHtml('/contact', renderContactPrerenderBodyHtml()),
+    );
+  }
+  if (routePath.startsWith('dont-feed-the-bears')) {
+    return prerender(renderSitePageHtml(null, ''));
+  }
+  return null;
+}
 
 function removeMeta(
   html: string,
@@ -140,8 +157,8 @@ function removeMeta(
 }
 
 export function applyNotFoundPageMeta(shellHtml: string): string {
-  const title = 'Page Not Found - Chris Gagne';
-  const description = 'That URL does not match a page on this site.';
+  const title = NOT_FOUND_TITLE;
+  const description = NOT_FOUND_TEXT;
   let html = shellHtml;
   html = html.replace(
     /<title>[\s\S]*?<\/title>/i,

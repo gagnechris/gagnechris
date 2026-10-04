@@ -1,7 +1,8 @@
+/* Heading follows the Posts specs in docs/design/public-redesign/README.md; the game below is unchanged. */
 .bears-game-page {
   max-width: 1040px;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding-inline: var(--site-gutter);
 }
 
 .bears-game-page__header {
@@ -9,25 +10,42 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 .bears-game-page__back {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-size: var(--text-base, 1rem);
-  font-weight: 600;
-  color: var(--primary-700);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.bears-game-page__back-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.bears-game-page__back:hover {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.bears-game-page__back:hover .bears-game-page__back-label {
+  text-decoration-thickness: 2px;
 }
 
 .bears-game-page__header h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-3xl);
+  font-size: 2.5rem;
+  font-weight: 500;
   line-height: 1.1;
-  color: var(--neutral-900);
+  letter-spacing: -0.01em;
 }
 
 .bears-game-page__actions {
@@ -36,12 +54,8 @@
   gap: var(--space-2);
 }
 
-@media (max-width: 640px) {
-  .bears-game-page {
-    padding: var(--space-4);
-  }
-
+@media (max-width: 480px) {
   .bears-game-page__header h1 {
-    font-size: var(--text-2xl);
+    font-size: 2rem;
   }
 }

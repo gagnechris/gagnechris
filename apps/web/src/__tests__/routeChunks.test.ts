@@ -39,7 +39,9 @@ describe('route chunks', () => {
   // it must be a static sibling of `lazy`.
   test('lazy routes declare HydrateFallback statically via lazyRoute()', () => {
     expect(routesSource).toMatch(/HydrateFallback:\s*LazyFallback/);
-    expect(lazyRouteSource).toMatch(/HydrateFallback:\s*LazyFallback/);
+    expect(lazyRouteSource).toMatch(
+      /HydrateFallback = opts\.fallback \?\? LazyFallback/,
+    );
     expect(lazyRouteSource).toMatch(/\blazy\b/);
     for (const source of [
       routesSource,

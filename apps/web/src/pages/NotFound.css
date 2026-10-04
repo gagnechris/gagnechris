@@ -1,58 +1,76 @@
-.not-found header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-8);
-}
-
+/* Specs in docs/design/public-redesign/README.md (404). Also inlined into the CloudFront fallback page. */
 .not-found h1 {
   margin: 0;
-  font-size: var(--text-4xl);
-  color: var(--neutral-900);
-  font-weight: 600;
+  font-size: 3.75rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
-.not-found main p {
-  color: var(--neutral-600);
-  margin-bottom: var(--space-6);
+.not-found__text {
+  margin: 17px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-ink-soft);
 }
 
-.not-found-bear {
-  margin-bottom: var(--space-6);
-}
-
-.not-found-bear a {
-  color: var(--primary-700);
-  text-decoration: none;
-}
-
-.not-found-bear a:hover {
-  color: var(--primary-500);
-  text-decoration: underline;
-}
-
-.not-found-links {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.not-found__links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-4);
+  gap: 0 var(--space-6);
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.not-found-links a {
+.not-found__links a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: var(--space-2) var(--space-3);
-  color: var(--primary-700);
-  text-decoration: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
   font-weight: 500;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
-.not-found-links a:hover {
-  color: var(--primary-500);
+.not-found__links a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.not-found__bears {
+  margin: 28px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+}
+
+.not-found__bears a {
+  font-weight: 400;
+  color: var(--color-link);
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.not-found__bears a:hover {
+  text-decoration-thickness: 2px;
+}
+
+@media (max-width: 480px) {
+  .not-found h1 {
+    font-size: 2.5rem;
+  }
+
+  .not-found__text {
+    font-size: 1.25rem;
+  }
+
+  .not-found__bears {
+    font-size: 1.0625rem;
+  }
 }

@@ -7,11 +7,13 @@ import Contact from './pages/Contact.tsx';
 import NotFound from './pages/NotFound.tsx';
 import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
 import AppWithTracking from './components/AppWithTracking.tsx';
-import { LazyFallback } from './components/LazyFallback.tsx';
+import { EmptyFallback, LazyFallback } from './components/LazyFallback.tsx';
 import { lazyRoute } from './routing/lazyRoute';
 
 // HydrateFallback must be a static route property (sibling to `lazy`): React
-// Router skips one returned from lazy() during initial hydration.
+// Router skips one returned from lazy() during initial hydration. The bears
+// pages' fallback is empty so the first render matches their chrome-only
+// prerender.
 export const routes: RouteObject[] = [
   {
     path: '/',
@@ -50,14 +52,17 @@ export const routes: RouteObject[] = [
       lazyRoute({
         path: 'dont-feed-the-bears',
         load: () => import('./pages/DontFeedTheBears.tsx'),
+        fallback: EmptyFallback,
       }),
       lazyRoute({
         path: 'dont-feed-the-bears/camp',
         load: () => import('./pages/bears/CampRules.tsx'),
+        fallback: EmptyFallback,
       }),
       lazyRoute({
         path: 'dont-feed-the-bears/wild',
         load: () => import('./pages/bears/StayWild.tsx'),
+        fallback: EmptyFallback,
       }),
       {
         path: '*',

@@ -1,39 +1,40 @@
 import { Link } from 'react-router-dom';
+import {
+  NOT_FOUND_BEARS,
+  NOT_FOUND_HEADING,
+  NOT_FOUND_LINKS,
+  NOT_FOUND_TEXT,
+  NOT_FOUND_TITLE,
+} from '@gagnechris/shared/public-pages';
 import './NotFound.css';
+
+// Markup must stay byte-identical to `renderNotFoundBodyHtml`, which is also
+// the Vite 404.html prerender and the CloudFront fallback (NotFound.test.tsx).
 
 function NotFound() {
   return (
-    <div className="not-found">
-      <title>Page Not Found - Chris Gagne</title>
+    <main className="not-found">
+      <title>{NOT_FOUND_TITLE}</title>
       <meta name="robots" content="noindex" />
-      <header>
-        <h1>Page not found</h1>
-      </header>
-      <main>
-        <p>That URL does not match a page on this site.</p>
-        <p className="not-found-bear">
-          Lost in the woods?{' '}
-          <Link to="/dont-feed-the-bears?from=404" className="tap-target-link">
-            Don't feed the bears
-          </Link>{' '}
-          while you find your way.
-        </p>
-        <ul className="not-found-links">
-          <li>
-            <Link to="/">Home</Link>
+      <h1>{NOT_FOUND_HEADING}</h1>
+      <p className="not-found__text">{NOT_FOUND_TEXT}</p>
+      <ul className="not-found__links">
+        {NOT_FOUND_LINKS.map(({ label, href }) => (
+          <li key={href}>
+            <Link to={href} discover="none">
+              {label}
+            </Link>
           </li>
-          <li>
-            <Link to="/posts">Posts</Link>
-          </li>
-          <li>
-            <Link to="/resume">Resume</Link>
-          </li>
-          <li>
-            <Link to="/contact">Contact</Link>
-          </li>
-        </ul>
-      </main>
-    </div>
+        ))}
+      </ul>
+      <p className="not-found__bears">
+        {NOT_FOUND_BEARS.before}
+        <Link to={NOT_FOUND_BEARS.href} discover="none">
+          {NOT_FOUND_BEARS.label}
+        </Link>
+        {NOT_FOUND_BEARS.after}
+      </p>
+    </main>
   );
 }
 

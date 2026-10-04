@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import PostArticle from '../posts/PostArticle';
 import {
@@ -6,6 +6,7 @@ import {
   loadPublishedPost,
   type PostView,
 } from '../posts/publishedPost';
+import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
 import NotFound from './NotFound';
 import './PostPage.css';
 
@@ -13,7 +14,9 @@ type Loaded = { slug: string; post: PostView | null };
 
 function PostPage() {
   const { slug = '' } = useParams<{ slug: string }>();
+  const { pathname } = useLocation();
   const [loaded, setLoaded] = useState<Loaded | null>(() => {
+    if (coldLoadedNotFound(pathname)) return { slug, post: null };
     const post = slug ? documentPostView(slug) : null;
     return post ? { slug, post } : null;
   });
