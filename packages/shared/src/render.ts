@@ -10,14 +10,22 @@ export {
   upsertMeta,
 } from './html.js';
 export {
+  HOME_ALL_POSTS_LABEL,
+  HOME_LINKS_SENTENCE,
+  HOME_RECENT_POSTS_HEADING,
+  HOME_RECENT_POSTS_HEADING_ID,
+  HOME_RECENT_POSTS_LIMIT,
   homeAboutExcerpt,
-  HOME_QUICK_LINKS,
+  homePostHref,
   renderHomeAboutHtml,
-  renderHomeAboutSectionHtml,
   renderHomeBodyHtml,
+  renderHomeLinksSentenceHtml,
   renderHomePrerenderHtml,
-  renderHomeQuickLinksHtml,
-  type SiteChromeLink,
+  renderHomeRecentPostsHtml,
+  selectHomeRecentPosts,
+  type HomeLink,
+  type HomeLinksSegment,
+  type HomeRecentPost,
 } from './home-html.js';
 export {
   POSTS_INDEX_EMPTY_TEXT,

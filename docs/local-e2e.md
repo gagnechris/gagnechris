@@ -146,8 +146,11 @@ About Me copy. Like the resume, the first `GET` seeds a **draft** and does not
 rebuild. Publish writes the `PUBLISHED` snapshot so `.local-site/index.html`
 gets the `home-page-prerender` article. The public page at
 `http://localhost:5173/` fetches `/__site/` and falls back to `DEFAULT_HOME`.
-Quick Links come from shared `HOME_QUICK_LINKS`, and the site header and footer
-from `@gagnechris/shared/site-chrome` (React JSX + publisher HTML).
+Publishing, unpublishing or deleting a post also rebuilds `.local-site/index.html`
+so its Recent posts list stays current; this works before Home is ever
+published (the page renders `DEFAULT_HOME`). The hero links sentence comes from
+shared `HOME_LINKS_SENTENCE`, and the site header and footer from
+`@gagnechris/shared/site-chrome` (React JSX + publisher HTML).
 
 The publisher reads a pristine `_shell.html` template (never the home
 prerender in `index.html`) when building other pages. `npm run e2e:local`

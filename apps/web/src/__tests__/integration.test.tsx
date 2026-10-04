@@ -18,14 +18,14 @@ describe('Integration Tests', () => {
   });
 
   describe('External Link Tracking', () => {
-    test('tracks Quick Links LinkedIn and GitHub clicks', () => {
+    test('tracks the hero LinkedIn and GitHub link clicks', () => {
       renderWithProviders(<App />);
 
       fireEvent.click(
-        document.querySelector('#quick-links a[href*="linkedin"]')!,
+        document.querySelector('p.home-hero__links a[href*="linkedin"]')!,
       );
       fireEvent.click(
-        document.querySelector('#quick-links a[href*="github.com"]')!,
+        document.querySelector('p.home-hero__links a[href*="github.com"]')!,
       );
 
       expect(mockTrackEvent).toHaveBeenCalledWith(
@@ -71,10 +71,7 @@ describe('Integration Tests', () => {
       renderWithProviders(<App />);
 
       expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
-      expect(screen.getByText('About Me')).toBeInTheDocument();
-      expect(screen.getByText('Quick Links')).toBeInTheDocument();
-
-      expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'resume' })).toBeInTheDocument();
       expect(
         screen.getAllByRole('link', { name: 'LinkedIn' }).length,
       ).toBeGreaterThanOrEqual(1);
@@ -83,7 +80,7 @@ describe('Integration Tests', () => {
       ).toBeGreaterThanOrEqual(1);
 
       const linkedInLink = document.querySelector(
-        '#quick-links a[href*="linkedin"]',
+        'p.home-hero__links a[href*="linkedin"]',
       )!;
       expect(linkedInLink).toHaveAttribute(
         'href',
@@ -92,7 +89,7 @@ describe('Integration Tests', () => {
       expect(linkedInLink).toHaveAttribute('target', '_blank');
 
       const githubLink = document.querySelector(
-        '#quick-links a[href*="github.com"]',
+        'p.home-hero__links a[href*="github.com"]',
       )!;
       expect(githubLink).toHaveAttribute(
         'href',

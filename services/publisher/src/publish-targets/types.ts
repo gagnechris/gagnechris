@@ -38,7 +38,7 @@ export type PublishTargetContext = {
   published: Post[];
   /** Live post slugs missing from `published`; must not be deleted as orphans. */
   corruptPostSlugs: ReadonlySet<string>;
-  /** Feeds only; their pages are never re-rendered. */
+  /** Feeds and Home Recent posts only; their pages are never re-rendered. */
   retainedPosts: Post[];
 };
 

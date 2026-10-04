@@ -212,16 +212,6 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(result.invalidated.sort()).toEqual(['/', '/index.html']);
     expect(renderResumePdf).not.toHaveBeenCalled();
     expect(syncViewerRequestBlogSlugs).not.toHaveBeenCalled();
-    expect(
-      ddbSend.mock.calls.some(
-        (call) =>
-          call[0] &&
-          typeof call[0] === 'object' &&
-          'input' in call[0] &&
-          (call[0] as { input?: { IndexName?: string } }).input?.IndexName ===
-            'gsi1',
-      ),
-    ).toBe(false);
   });
 
   it('single-post scope puts only that post + feeds among 50 published', async () => {

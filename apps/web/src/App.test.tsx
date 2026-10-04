@@ -1,7 +1,12 @@
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
+import {
+  DEFAULT_HOME,
+  renderHomeBodyHtml,
+  renderHomePrerenderHtml,
+  type HomeRecentPost,
+} from '@gagnechris/shared/render';
 import App from './App';
 import { renderWithProviders } from './test-utils';
 import * as analytics from './utils/analytics';
@@ -10,14 +15,69 @@ vi.mock('./utils/analytics');
 
 const mockTrackEvent = vi.mocked(analytics.trackEvent);
 
-const stubFetch = (impl: () => Promise<unknown>) =>
-  vi.stubGlobal('fetch', vi.fn(impl));
+const publishedHome = {
+  ...DEFAULT_HOME,
+  name: 'Christopher Gagne',
+  title: 'Engineering Director',
+  about: 'Published about copy.',
+  status: 'published' as const,
+  publishedAt: '2026-09-27T00:00:00.000Z',
+};
+
+const listItem = (n: number, publishedAt: string) => ({
+  id: `0${n}`,
+  slug: `post-${n}`,
+  title: `Post ${n}`,
+  excerpt: n === 2 ? '' : `Excerpt ${n}.`,
+  publishedAt,
+  updatedAt: publishedAt,
+  tags: [],
+  coverImage: null,
+});
+
+const POSTS = [
+  listItem(1, '2026-01-10T00:00:00.000Z'),
+  listItem(4, '2026-04-10T00:00:00.000Z'),
+  listItem(2, '2026-02-10T00:00:00.000Z'),
+  listItem(3, '2026-03-10T00:00:00.000Z'),
+];
+
+const RECENT: HomeRecentPost[] = [4, 3, 2].map((n) => {
+  const { id, slug, title, excerpt, publishedAt } = POSTS.find(
+    (p) => p.id === `0${n}`,
+  )!;
+  return { id, slug, title, excerpt, publishedAt };
+});
+
+/** Routes `/` to a Home prerender and `/posts/posts.json` to `items`. */
+const stubSite = (opts: {
+  home?: typeof publishedHome | null;
+  items?: unknown[] | null;
+}) =>
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/posts/posts.json') {
+        return opts.items
+          ? { ok: true, json: async () => ({ items: opts.items }) }
+          : { ok: false, status: 404 };
+      }
+      if (url === '/' && opts.home) {
+        return {
+          ok: true,
+          text: async () =>
+            `<!DOCTYPE html><html><body>${renderHomePrerenderHtml(opts.home!)}</body></html>`,
+        };
+      }
+      return { ok: false, status: 404 };
+    }),
+  );
 
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
-    stubFetch(async () => ({ ok: false, status: 404 }));
+    stubSite({});
   });
 
   afterEach(() => {
@@ -25,27 +85,21 @@ describe('App', () => {
     vi.unstubAllEnvs();
   });
 
-  test('renders all main sections', () => {
-    renderWithProviders(<App />);
-
-    expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
-    expect(screen.getByText('About Me')).toBeInTheDocument();
-    expect(screen.getByText('Quick Links')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
-    expect(
-      screen.getAllByRole('link', { name: 'LinkedIn' }).length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByRole('link', { name: 'GitHub' }).length,
-    ).toBeGreaterThanOrEqual(1);
-  });
-
-  test('falls back to DEFAULT_HOME when nothing is published yet', () => {
+  test('renders the hero and the inline links sentence', () => {
     renderWithProviders(<App />);
 
     expect(
       screen.getByRole('heading', { level: 1, name: 'Chris Gagne' }),
     ).toBeInTheDocument();
+    expect(document.querySelector('.home-hero__links')?.textContent).toBe(
+      'Read my posts, see my resume, or find me on LinkedIn and GitHub.',
+    );
+    expect(screen.queryByText('Quick Links')).toBeNull();
+  });
+
+  test('falls back to DEFAULT_HOME when nothing is published yet', () => {
+    renderWithProviders(<App />);
+
     expect(screen.getByText('Engineering Leader')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -54,43 +108,73 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  test('hydrates header and about copy from the published prerender', async () => {
-    stubFetch(async () => ({
-      ok: true,
-      text: async () =>
-        `<!DOCTYPE html><html><body>${renderHomePrerenderHtml({
-          name: 'Christopher Gagne',
-          title: 'Engineering Director',
-          about: 'Published about copy.',
-          status: 'published',
-          publishedAt: '2026-09-27T00:00:00.000Z',
-          updatedAt: '2026-09-27T00:00:00.000Z',
-          seo: null,
-          version: 2,
-          hasUnpublishedChanges: false,
-        })}</body></html>`,
-    }));
+  test('on client navigation loads Home from / and Recent posts from posts.json', async () => {
+    stubSite({ home: publishedHome, items: POSTS });
 
     renderWithProviders(<App />);
 
     expect(
       await screen.findByText('Published about copy.'),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Christopher Gagne' }),
-    ).toBeInTheDocument();
     expect(screen.getByText('Engineering Director')).toBeInTheDocument();
-    // Quick Links are in the prerender and stay after hydrate.
     expect(
-      screen.getAllByRole('link', { name: 'LinkedIn' }).length,
-    ).toBeGreaterThanOrEqual(1);
+      await screen.findByRole('heading', { level: 2, name: 'Recent posts' }),
+    ).toBeInTheDocument();
+    const titles = [...document.querySelectorAll('.home-post__title a')].map(
+      (a) => [a.textContent, a.getAttribute('href')],
+    );
+    expect(titles).toEqual([
+      ['Post 4', '/posts/post-4'],
+      ['Post 3', '/posts/post-3'],
+      ['Post 2', '/posts/post-2'],
+    ]);
+    expect(screen.getByText('April 10, 2026')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'All posts' })).toHaveAttribute(
+      'href',
+      '/posts',
+    );
+    expect(fetch).toHaveBeenCalledWith('/posts/posts.json', expect.anything());
   });
 
-  test('tracks Quick Links LinkedIn and GitHub clicks', () => {
+  test('has no Recent posts heading when there are no posts', async () => {
+    stubSite({ home: publishedHome, items: [] });
+
+    renderWithProviders(<App />);
+
+    expect(
+      await screen.findByText('Published about copy.'),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/posts/posts.json',
+        expect.anything(),
+      ),
+    );
+    expect(screen.queryByText('Recent posts')).toBeNull();
+    expect(document.querySelector('.home-section')).toBeNull();
+  });
+
+  test('renders the same markup as the publisher prerender', async () => {
+    stubSite({ home: publishedHome, items: POSTS });
+
+    const { container } = renderWithProviders(<App />);
+    await screen.findByText('Published about copy.');
+    await screen.findByText('Post 4');
+
+    const expected = new DOMParser().parseFromString(
+      renderHomeBodyHtml(publishedHome, RECENT),
+      'text/html',
+    ).body.firstElementChild!;
+    expect(container.querySelector('main.home-page')!.outerHTML).toBe(
+      expected.outerHTML,
+    );
+  });
+
+  test('tracks the hero LinkedIn and GitHub clicks', () => {
     renderWithProviders(<App />);
 
     fireEvent.click(
-      document.querySelector('#quick-links a[href*="linkedin"]')!,
+      document.querySelector('.home-hero__links a[href*="linkedin"]')!,
     );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
@@ -99,7 +183,7 @@ describe('App', () => {
     );
 
     fireEvent.click(
-      document.querySelector('#quick-links a[href*="github.com"]')!,
+      document.querySelector('.home-hero__links a[href*="github.com"]')!,
     );
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'click',
@@ -108,56 +192,40 @@ describe('App', () => {
     );
   });
 
-  test('Quick Links internal routes use SPA Links', async () => {
+  test('hero posts and resume links are SPA links', async () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
 
-    for (const name of ['Resume', 'Posts', 'Contact'] as const) {
+    for (const [name, href] of [
+      ['posts', '/posts'],
+      ['resume', '/resume'],
+    ] as const) {
       const link = screen.getByRole('link', { name });
-      expect(link.tagName).toBe('A');
-      // react-router Link still renders <a>; ensure no target=_blank full reload.
       expect(link).not.toHaveAttribute('target');
-      expect(link.getAttribute('href')).toMatch(
-        name === 'Resume'
-          ? '/resume'
-          : name === 'Posts'
-            ? '/posts'
-            : '/contact',
-      );
+      expect(link).toHaveAttribute('href', href);
     }
 
-    await user.click(screen.getByRole('link', { name: 'Resume' }));
+    await user.click(screen.getByRole('link', { name: 'resume' }));
     expect(window.location.pathname).toBe('/resume');
   });
 
-  test('LinkedIn link has correct attributes', () => {
+  test('LinkedIn and GitHub open in a new tab', () => {
     renderWithProviders(<App />);
 
-    const linkedInLink = document.querySelector(
-      '#quick-links a[href*="linkedin"]',
-    );
-    expect(linkedInLink).toHaveAttribute(
-      'href',
-      'https://www.linkedin.com/in/christophergagne/',
-    );
-    expect(linkedInLink).toHaveAttribute('target', '_blank');
-    expect(linkedInLink).toHaveAttribute('rel', 'noopener noreferrer');
-  });
-
-  test('GitHub link has correct attributes', () => {
-    renderWithProviders(<App />);
-
-    const githubLink = document.querySelector(
-      '#quick-links a[href*="github.com"]',
-    );
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/gagnechris');
-    expect(githubLink).toHaveAttribute('target', '_blank');
-    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
+    for (const [name, href] of [
+      ['LinkedIn', 'https://www.linkedin.com/in/christophergagne/'],
+      ['GitHub', 'https://github.com/gagnechris'],
+    ] as const) {
+      const link = screen.getByRole('link', { name });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
   });
 
   test('leaves the profile photo to the site header', () => {
     const { container } = renderWithProviders(<App />);
-    expect(container.querySelector('header.home-header')).toBeTruthy();
+    expect(container.querySelector('header.home-hero')).toBeTruthy();
     expect(container.querySelector('.home-page img')).toBeNull();
   });
 });
