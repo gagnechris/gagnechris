@@ -13,6 +13,7 @@ import { ProjectEditorFields } from './ProjectEditorFields';
 import {
   emptyProjectDraft,
   hasProjectDraftErrors,
+  hasProjectPublishErrors,
   isPlaceholderSlug,
   projectDraftFromProject,
   projectPayload,
@@ -88,9 +89,10 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
   });
 
   const draftInvalid = hasProjectDraftErrors(draft);
+  const publishInvalid = hasProjectPublishErrors(draft);
 
   const guardedPublish = async () => {
-    if (draftInvalid) {
+    if (publishInvalid) {
       setPublishBlocked(true);
       return;
     }
@@ -187,7 +189,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
         }
       />
 
-      {publishBlocked && draftInvalid ? (
+      {publishBlocked && publishInvalid ? (
         <p className="admin-panel__error" role="alert">
           Not published: fix the highlighted fields first.
         </p>

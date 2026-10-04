@@ -5,6 +5,7 @@ import {
   PROJECT_STACK_MAX,
   ProjectHrefSchema,
   ProjectLinkSchema,
+  projectPublishFieldErrors,
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
@@ -126,6 +127,20 @@ export const hasProjectDraftErrors = (draft: ProjectDraftFields): boolean =>
     const errors = projectLinkErrors(link);
     return errors.label !== undefined || errors.url !== undefined;
   });
+
+/** Not a save error: drafts may have a demo without an image, published projects may not. */
+export const projectPreviewImageError = (
+  draft: ProjectDraftFields,
+): string | undefined =>
+  projectPublishFieldErrors({
+    demo: draft.demo || null,
+    previewImage: draft.previewImage,
+  }).previewImage
+    ? 'Add a preview image: a project with a demo needs one to publish.'
+    : undefined;
+
+export const hasProjectPublishErrors = (draft: ProjectDraftFields): boolean =>
+  hasProjectDraftErrors(draft) || projectPreviewImageError(draft) !== undefined;
 
 /** Adds chips from typed text (comma-separated), skipping blanks and duplicates. */
 export const addStackItems = (stack: string[], text: string): string[] => {

@@ -147,7 +147,10 @@ the publisher's static `/projects` pages.
 #### `PROJECT#<projectId>` / `PUBLISHED` — live snapshot
 
 Same content attrs, no GSI1 keys. Written on publish, deleted on unpublish and
-soft delete. The publisher reads only these rows (`ConsistentRead`), after
+soft delete. A draft may have a `demo` with no `previewImage`, but publishing
+it is a 400 with `fields.previewImage = 'required_with_demo'`
+(`projectPublishFieldErrors` in `packages/shared/src/projects.ts`, which the
+admin editor uses to block Publish too). The publisher reads only these rows (`ConsistentRead`), after
 listing ids from GSI1 `PROJECT_STATUS#published`.
 
 #### `PROJECT_SLUG#<slug>` / `PROJECT` and `PROJECT_SLUG#<oldSlug>` / `REDIRECT`

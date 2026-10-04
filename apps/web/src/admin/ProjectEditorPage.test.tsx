@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -362,6 +368,89 @@ describe('ProjectEditorPage preview image', () => {
     expect(
       screen.queryByRole('img', { name: 'Preview image' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ProjectEditorPage demo without a preview image', () => {
+  const HINT =
+    'Add a preview image: a project with a demo needs one to publish.';
+  const BLOCKED = 'Not published: fix the highlighted fields first.';
+  const publishCalls = () =>
+    post.mock.calls.filter(([path]) => String(path).endsWith('/{id}/publish'));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('shows the hint and blocks Publish and Mod-Enter until an image is added', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 200 })),
+    );
+    post.mockImplementation(async (path: string) =>
+      path === '/api/admin/media/upload-url'
+        ? ok({
+            uploadUrl: 'https://bucket.test/media/2026/10/x.png?sig=1',
+            publicPath: '/media/2026/10/x.png',
+            headers: { 'Content-Type': 'image/png' },
+            expiresAt: '2026-10-04T01:00:00.000Z',
+          })
+        : ok({ ...baseProject, status: 'published', version: 2 }),
+    );
+    renderEditor();
+    await screen.findByDisplayValue('Notebook');
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Demo'), 'notebook');
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Upload preview image'),
+    ).toHaveAccessibleDescription(HINT);
+    await save(user);
+    expect(lastPutBody()).toMatchObject({
+      demo: 'notebook',
+      previewImage: null,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByText(BLOCKED)).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(publishCalls()).toHaveLength(0);
+
+    await user.upload(
+      screen.getByLabelText('Upload preview image'),
+      new File(['png'], 'preview.png', { type: 'image/png' }),
+    );
+    await screen.findByRole('img', { name: 'Preview image' });
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+    expect(screen.queryByText(BLOCKED)).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
+    await waitFor(() => expect(publishCalls()).toHaveLength(1));
+  });
+
+  test('clearing the demo unblocks Publish', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue(
+      ok({ ...baseProject, status: 'published', version: 2 }),
+    );
+    renderEditor({ ...baseProject, demo: 'posts' });
+    await screen.findByDisplayValue('Notebook');
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByText(BLOCKED)).toBeInTheDocument();
+    expect(publishCalls()).toHaveLength(0);
+
+    await user.selectOptions(screen.getByLabelText('Demo'), '');
+    expect(screen.queryByText(HINT)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await waitFor(() => expect(publishCalls()).toHaveLength(1));
   });
 });
 

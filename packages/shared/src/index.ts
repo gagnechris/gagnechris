@@ -88,6 +88,7 @@ export {
   projectHasPage,
   projectPagePath,
   projectPreview,
+  projectPublishFieldErrors,
   projectStageText,
   selectHomeProjects,
   sortProjectsByOrder,
@@ -99,4 +100,5 @@ export {
   type ProjectMiniNode,
   type ProjectPageView,
   type ProjectPreview,
+  type ProjectPublishFieldErrors,
 } from './projects.js';

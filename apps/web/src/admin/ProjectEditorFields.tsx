@@ -26,6 +26,7 @@ import {
   projectHrefError,
   projectLinkErrors,
   projectOrderError,
+  projectPreviewImageError,
   type ProjectDraftFields,
 } from './projectDraft';
 
@@ -117,6 +118,7 @@ export function ProjectEditorFields({
       <div className="admin-project-card">
         <PreviewImageField
           value={draft.previewImage}
+          requiredError={projectPreviewImageError(draft)}
           onChange={(path) => setField('previewImage', path)}
           onUpload={onUploadPreview}
         />
@@ -272,15 +274,18 @@ function StageControl({
 
 function PreviewImageField({
   value,
+  requiredError,
   onChange,
   onUpload,
 }: {
   value: string;
+  requiredError: string | undefined;
   onChange: (path: string) => void;
   onUpload: (file: File) => Promise<string>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+  const requiredErrorId = useId();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -325,6 +330,8 @@ function PreviewImageField({
             type="file"
             accept={MEDIA_CONTENT_TYPES.join(',')}
             aria-label="Upload preview image"
+            aria-invalid={requiredError ? true : undefined}
+            aria-describedby={requiredError ? requiredErrorId : undefined}
             disabled={uploading}
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -341,6 +348,11 @@ function PreviewImageField({
       {error ? (
         <span className="admin-field-error" role="alert">
           {error}
+        </span>
+      ) : null}
+      {requiredError ? (
+        <span id={requiredErrorId} className="admin-field-error">
+          {requiredError}
         </span>
       ) : null}
       <span className="admin-hint">
