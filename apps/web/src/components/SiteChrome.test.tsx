@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   createMemoryRouter,
@@ -12,6 +12,7 @@ import {
   type SiteNavHref,
 } from '@gagnechris/shared/site-chrome';
 import { routes } from '../routes';
+import { trackEvent } from '../utils/analytics';
 import { SiteFooter, SiteHeader } from './SiteChrome';
 
 vi.mock('../utils/analytics');
@@ -45,6 +46,52 @@ describe('SiteHeader', () => {
     expect(mountedMarkup(<SiteHeader current={current} />)).toBe(
       renderSiteHeaderHtml(current),
     );
+  });
+});
+
+describe('SiteHeader menu', () => {
+  const renderMenu = () => {
+    render(
+      <MemoryRouter initialEntries={['/posts']}>
+        <SiteHeader current="/posts" />
+      </MemoryRouter>,
+    );
+    const button = screen.getByLabelText('Menu', { selector: 'summary' });
+    return { button, menu: button.closest('details')! };
+  };
+
+  test('the button opens and closes it', () => {
+    const { button, menu } = renderMenu();
+    expect(button).toHaveAttribute('aria-controls', 'site-menu');
+    expect(document.getElementById('site-menu')).not.toBeNull();
+    expect(button).not.toHaveAttribute('role');
+    expect(button).not.toHaveAttribute('aria-expanded');
+    fireEvent.click(button);
+    expect(menu.open).toBe(true);
+    fireEvent.click(button);
+    expect(menu.open).toBe(false);
+    expect(button).not.toHaveAttribute('aria-expanded');
+  });
+
+  test('following a link closes it', () => {
+    const { button, menu } = renderMenu();
+    fireEvent.click(button);
+    fireEvent.click(
+      within(menu).getByRole('link', { name: 'Posts', hidden: true }),
+    );
+    expect(menu.open).toBe(false);
+  });
+
+  test.each([
+    ['LinkedIn', 'linkedin'],
+    ['GitHub', 'github'],
+  ])('%s sends the external link click event', (name, id) => {
+    const { button, menu } = renderMenu();
+    fireEvent.click(button);
+    const link = within(menu).getByRole('link', { name, hidden: true });
+    expect(link).toHaveAttribute('target', '_blank');
+    fireEvent.click(link);
+    expect(trackEvent).toHaveBeenCalledWith('click', 'external_link', id);
   });
 });
 

@@ -246,22 +246,35 @@
   color: var(--neutral-600);
 }
 
+/* Phone · Post (reading). */
 @media (max-width: 480px) {
   .post-page {
     --post-body-size: 1.1875rem;
   }
 
   .post-header {
-    margin-bottom: 36px;
+    margin-bottom: 22px;
+  }
+
+  .post-meta {
+    margin-bottom: 8px;
   }
 
   .post-page h1 {
-    font-size: 2.5rem;
+    font-size: 2.625rem;
   }
 
   .post-excerpt {
-    margin-top: 18px;
+    margin-top: 9px;
     font-size: 1.25rem;
+  }
+
+  .post-content {
+    line-height: 1.65;
+  }
+
+  .post-content p {
+    margin-bottom: 1em;
   }
 
   .post-content h2 {
