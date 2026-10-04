@@ -145,7 +145,7 @@ gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 bash scripts/apply-github-environments.sh
 ```
 
-3. Require CI checks on `main` (includes Local E2E). PRs don't have to be up to date with `main` (`strict_required_status_checks_policy: false`), so two PRs that are green alone can break `main` together. That can't reach prod (deploy waits for CI on `main`), and **Main CI alert** (`.github/workflows/main-ci-alert.yml`) emails the alerts topic through the drift role when CI or Mobile fails on a push to `main`. Fix forward with a PR:
+3. Require CI checks on `main` (includes Local E2E). PRs don't have to be up to date with `main` (`strict_required_status_checks_policy: false`), so two PRs that are green alone can break `main` together. That can't reach prod (deploy waits for CI on `main`), and **Main CI alert** (`.github/workflows/main-ci-alert.yml`) emails the alerts topic through the drift role when CI or Mobile fails on a push to `main`, or when the CI-triggered CDK run (`Plan deploy (main)` or `CDK + web deploy (main)`) fails. See [Deploy alerts](#deploy-alerts). Fix forward with a PR:
 
 ```bash
 bash scripts/apply-branch-protection.sh
@@ -163,6 +163,23 @@ bash scripts/apply-branch-protection.sh
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
 Prod only — there is no staging environment.
+
+### Deploy alerts
+
+Both workflows publish to the Guardrails alerts topic (SSM `alerts-topic-arn`) with the read-only drift role in environment `prod`. That role already trusts `environment:prod`, reads SSM through `ReadOnlyAccess` and may publish to the topic, so neither needs an IAM change. Neither runs npm.
+
+- **Red main or failed deploy** (`.github/workflows/main-ci-alert.yml`): runs on every completed CI, Mobile and CDK run. A credential-free `Decide` job runs `scripts/ci/main-alert-decision.sh`; only when it says `alert=true` does the `Alert on red main` job take the drift role and publish.
+  - Alerts: CI or Mobile `failure` / `timed_out` / `startup_failure` on a `push` to `main` (subject `gagnechris main is red: ...`), and CDK runs triggered by CI (`workflow_run`) on `main` that end the same way (subject `gagnechris prod deploy failed: ...`).
+  - Never alerts: `cancelled` (a late run replaced by a newer one), `skipped` (CDK after a PR's CI or after a red CI), PR branches, scheduled CDK drift (it alerts by itself) and dispatched CDK runs.
+  - Test the publish path: `gh workflow run main-ci-alert.yml -f simulate=CDK` sends a `[test] gagnechris prod deploy failed` email. It only publishes; nothing deploys.
+- **Deploy lag** (`.github/workflows/deploy-lag-alert.yml`): hourly at `:23`, plus `workflow_dispatch`. It checks out `main`, reads SSM `deployed-sha`, and runs `scripts/ci/deploy-lag.sh <deployed> <main>`:
+  - `deployed-sha` equals `main`, or is ahead of the checked-out `main` (a deploy finished mid-check): no alert.
+  - Every undeployed change is docs-only per `scripts/ci/deploy-paths.sh`: no alert, however old. Docs-only merges never write `deployed-sha`.
+  - Otherwise the age is the committer (merge) time of the oldest undeployed first-parent commit that `deploy-paths.sh` would deploy. It alerts (`gagnechris prod is behind main`) once that is over 2 hours. Late CI delivery and a normal deploy fit well inside that.
+  - `deployed-sha` missing, unknown to the repository, or not an ancestor of `main`: alerts immediately. The plan job's rollback check refuses every deploy in that state, so prod cannot catch up by itself.
+  - If the check itself fails (for example an SSM error), it publishes `gagnechris deploy lag check failed`.
+  - It re-alerts every hour until prod catches up. To fix: open the CDK runs on `main` (`gh run list --workflow cdk.yml --branch main --limit 10`), re-run the failed one, or `gh workflow run cdk.yml -f mode=deploy`.
+  - Check it live: `gh workflow run deploy-lag-alert.yml` (expect a green run, `alert=false` in the log while prod is current), or `gh workflow run deploy-lag-alert.yml -f test_alert=true` to also email a `[test]` copy of the current result.
 
 ## DNS and TLS
 
