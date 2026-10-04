@@ -101,6 +101,28 @@
   box-shadow: 0 12px 32px rgb(15 23 42 / 6%);
 }
 
+/* A split demo draws its own panes; its note sits on the label row, at the measure's right edge. */
+.project-demo:has(.demo-frame--split) {
+  position: relative;
+}
+
+.project-demo__stage:has(> .demo-frame--split) {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.project-demo .demo-frame__note--label {
+  position: absolute;
+  top: 0;
+  right: calc(
+    var(--site-gutter) +
+      max(0px, (100% - 2 * var(--site-gutter) - var(--project-measure)) / 2)
+  );
+}
+
 .project-demo .project-preview {
   height: 444px;
   padding: 28px;
@@ -296,6 +318,15 @@
   margin-block: 0;
   font-family: var(--font-sans);
   color: var(--neutral-600);
+}
+
+/* Too narrow to share the label row. */
+@media (max-width: 760px) {
+  .project-demo .demo-frame__note--label {
+    position: static;
+    margin: -4px 0 12px;
+    line-height: 1.4;
+  }
 }
 
 /* Phone · Project Notebook demo. */

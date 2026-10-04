@@ -1,0 +1,309 @@
+/* Specs in docs/design/public-redesign/README.md (Posts demo). */
+.posts-demo__panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.posts-demo__pane {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 444px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 6%);
+}
+
+.posts-demo__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) 10px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.posts-demo__editor .posts-demo__bar {
+  min-height: 55px;
+  padding: 0 14px;
+}
+
+.posts-demo__bar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--neutral-600);
+}
+
+.posts-demo__status {
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* One chip: Draft, Published or Unpublished changes. */
+.posts-demo__status .admin-badge--published:has(+ .admin-badge--unpublished) {
+  display: none;
+}
+
+.posts-demo__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.posts-demo__actions .admin-btn {
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+}
+
+.posts-demo__editor-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 16px;
+  background: var(--neutral-50);
+}
+
+/* The title input is the field's label visually; the label stays for screen readers. */
+.posts-demo__editor .admin-field > span:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.posts-demo__editor .admin-field .posts-demo__title {
+  min-width: 0;
+  padding: 9px 12px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.posts-demo__editor .admin-field .admin-hint {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--neutral-600);
+  overflow-wrap: anywhere;
+}
+
+.posts-demo__editor .markdown-editor {
+  flex: 1;
+  min-height: 0;
+  border-color: var(--neutral-300);
+}
+
+.posts-demo__editor .markdown-editor .cm-content {
+  padding: 10px 4px;
+}
+
+.posts-demo__editor-body > .admin-hint {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.posts-demo__path {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--neutral-600);
+  overflow-wrap: anywhere;
+}
+
+.posts-demo__page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px 24px 8px;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+}
+
+/* The public site's own markup, at pane scale. */
+.posts-demo__site .home-section {
+  margin: 0;
+}
+
+.posts-demo__site .home-section__head {
+  padding-bottom: 10px;
+}
+
+.demo-frame .posts-demo__site .home-section__label {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.posts-demo__site .home-section__more {
+  display: none;
+}
+
+.posts-demo__site .home-post {
+  padding: 12px 0 10px;
+}
+
+.demo-frame .posts-demo__site :is(h1, h2, h3, h4) {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.posts-demo__site .home-post__title {
+  font-size: 1.375rem;
+}
+
+.demo-frame .posts-demo__site .home-post__title a {
+  color: var(--color-ink);
+}
+
+.posts-demo__site .home-post__date {
+  margin-top: 2px;
+  font-size: 0.75rem;
+}
+
+.posts-demo__html[data-flash] .home-post[data-id='demo-post'] {
+  animation: posts-demo-flash 2.4s ease-out;
+}
+
+/* The shadow widens the highlight past the text without moving the row. */
+@keyframes posts-demo-flash {
+  0%,
+  35% {
+    background: var(--primary-100);
+    box-shadow:
+      -8px 0 var(--primary-100),
+      8px 0 var(--primary-100);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow:
+      -8px 0 transparent,
+      8px 0 transparent;
+  }
+}
+
+.posts-demo__site .post-page {
+  --post-body-size: 1rem;
+
+  max-width: none;
+  padding: 0;
+}
+
+.posts-demo__site .post-header {
+  margin-bottom: 20px;
+}
+
+.posts-demo__site .post-meta {
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+}
+
+.demo-frame .posts-demo__site .post-page h1 {
+  font-size: 1.875rem;
+}
+
+.posts-demo__site .post-content {
+  line-height: 1.6;
+}
+
+.posts-demo__site .post-content h2 {
+  font-size: 1.375rem;
+}
+
+.posts-demo__site .post-content h3 {
+  font-size: 1.1875rem;
+}
+
+.demo-frame .posts-demo__site :is(.post-content, .post-author) a {
+  color: var(--color-link);
+}
+
+.posts-demo__site .post-author {
+  margin-top: 28px;
+  padding-top: 12px;
+  font-size: 0.875rem;
+}
+
+.posts-demo__missing {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.posts-demo__views {
+  display: flex;
+  gap: var(--space-2);
+  padding: 12px 24px 18px;
+}
+
+.posts-demo__view {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  background: white;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--neutral-700);
+  cursor: pointer;
+}
+
+.posts-demo__view[aria-pressed='true'] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: white;
+}
+
+.posts-demo__caption {
+  box-sizing: border-box;
+  max-width: var(--project-measure, 680px);
+  margin: 14px auto 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+/* Stacked, editor first. */
+@media (max-width: 760px) {
+  .posts-demo__panes {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .posts-demo__editor {
+    height: auto;
+  }
+
+  .posts-demo__editor .markdown-editor {
+    flex: none;
+    height: 220px;
+    min-height: 0;
+  }
+
+  .posts-demo__site {
+    height: auto;
+  }
+
+  .posts-demo__page {
+    overflow: visible;
+  }
+
+  .posts-demo__caption {
+    margin-top: 12px;
+  }
+}

@@ -42,3 +42,8 @@
     var(--neutral-100) 100%
   );
 }
+
+.demo-frame__note--label {
+  font-size: 0.8125rem;
+  line-height: 1;
+}

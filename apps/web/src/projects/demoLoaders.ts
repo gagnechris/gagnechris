@@ -16,7 +16,9 @@ type DemoLoaders = Partial<Record<ProjectDemo, () => Promise<DemoModule>>>;
  * page whose `demo` names it; `check:web-shells` fails the build if one is
  * reachable from the entry. A demo with no loader keeps its preview.
  */
-const loaders: DemoLoaders = {};
+const loaders: DemoLoaders = {
+  posts: () => import('../demos/posts'),
+};
 
 const fixtureId = import.meta.env.VITE_DEMO_FIXTURE;
 // Dev server only (the e2e stack sets it): a test fixture stands in for one

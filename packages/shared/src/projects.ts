@@ -179,7 +179,7 @@ export const projectStageText = (
   (project.stageNote ? ` · ${project.stageNote}` : '');
 
 export const PROJECTS_INDEX_INTRO =
-  'Things I’m building, mostly for myself, in the open.';
+  'Things I’m building, mostly for myself, in the open. Most of them sit behind a login, so some pages have a demo you can play with.';
 
 export const PROJECTS_INDEX_EMPTY_TEXT =
   'Nothing to show yet. The first project is on its way.';

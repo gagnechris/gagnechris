@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, requireEnv, test, type Seed } from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
@@ -255,7 +255,7 @@ test.describe('a demo in the Try it slot', () => {
       slug,
       stage: 'live',
       bodyMarkdown: BODY,
-      demo: 'posts',
+      demo: 'notebook',
       previewImage: `/media/projects/${prefix}.png`,
     });
     await expect
@@ -337,6 +337,214 @@ test.describe('a demo in the Try it slot', () => {
         .filter((u) => u.origin === pageOrigin)
         .map(String),
     ).toEqual([]);
+  });
+});
+
+test.describe('the Posts demo on the built site', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
+  const DEMO = 'src/demos/posts/index.tsx';
+  const CODEMIRROR = 'src/kit/markdown/MarkdownEditor.tsx';
+
+  type Manifest = Record<
+    string,
+    { file: string; imports?: string[]; dynamicImports?: string[] }
+  >;
+
+  const staticFiles = (manifest: Manifest, key: string): Set<string> => {
+    const files = new Set<string>();
+    const queue = [key];
+    while (queue.length) {
+      const chunk = manifest[queue.pop()!]!;
+      if (files.has(`/${chunk.file}`)) continue;
+      files.add(`/${chunk.file}`);
+      queue.push(...(chunk.imports ?? []));
+    }
+    return files;
+  };
+
+  const publishPostsDemo = async (
+    seed: Seed,
+    prefix: string,
+    request: APIRequestContext,
+  ) => {
+    const slug = `${prefix}-posts-demo`;
+    await publishProject(seed, {
+      name: `Posts ${prefix}`,
+      slug,
+      stage: 'live',
+      bodyMarkdown: BODY,
+      demo: 'posts',
+      previewImage: `/media/projects/${prefix}.png`,
+    });
+    await expect
+      .poll(async () =>
+        (await request.get(`${site()}/projects/${slug}`)).status(),
+      )
+      .toBe(200);
+    return slug;
+  };
+
+  test('lazy-loads CodeMirror, keeps the live copy until Publish, renders sanitised markup, and makes no /api requests', async ({
+    page,
+    seed,
+    prefix,
+    request,
+  }) => {
+    const manifest = (await (
+      await request.get(`${site()}/.vite/manifest.json`)
+    ).json()) as Manifest;
+    const demoFile = `/${manifest[DEMO]!.file}`;
+    const editorFile = `/${manifest[CODEMIRROR]!.file}`;
+    // CodeMirror is its own chunk behind the demo, not part of it.
+    expect(manifest[DEMO]!.dynamicImports).toContain(CODEMIRROR);
+    expect(staticFiles(manifest, DEMO).has(editorFile)).toBe(false);
+    expect(staticFiles(manifest, 'index.html').has(editorFile)).toBe(false);
+
+    const slug = await publishPostsDemo(seed, prefix, request);
+    const requests: URL[] = [];
+    page.on('request', (req) => requests.push(new URL(req.url())));
+    page.on('dialog', (dialog) => {
+      throw new Error(`a script ran: ${dialog.message()}`);
+    });
+    await page.setViewportSize({ width: 1280, height: 120 });
+    await page.goto(`${site()}/projects/${slug}`);
+    const slot = page.getByRole('region', { name: 'Try it' });
+    await expect(slot.locator('img')).toHaveAttribute(
+      'src',
+      `/media/projects/${prefix}.png`,
+    );
+    await page.waitForLoadState('networkidle');
+    const fetched = (path: string) => requests.some((u) => u.pathname === path);
+    expect(fetched(demoFile)).toBe(false);
+    expect(fetched(editorFile)).toBe(false);
+
+    await slot.scrollIntoViewIfNeeded();
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    const editor = slot.getByRole('region', { name: 'Editor' });
+    const publicSite = slot.getByRole('region', { name: 'Public site' });
+    const body = editor.getByRole('textbox', { name: 'Body' });
+    await expect(body).toBeVisible();
+    expect(fetched(demoFile)).toBe(true);
+    expect(fetched(editorFile)).toBe(true);
+
+    const note = slot.getByText(
+      'Write on the left, publish, watch the right. Nothing is saved.',
+    );
+    const label = slot.getByRole('heading', { name: 'Try it' });
+    expect(
+      Math.abs((await note.boundingBox())!.y - (await label.boundingBox())!.y),
+    ).toBeLessThan(4);
+    const caption = slot.locator('.posts-demo__caption');
+    await expect(caption).toHaveText(/^Draft: only the editor sees it/);
+    await expect(publicSite.locator('.home-post__title')).toHaveText([
+      'Welcome',
+    ]);
+
+    const fromInteraction = requests.length;
+    await body.click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type(
+      '\n\nSafe <script>alert(1)</script> and [a link](javascript:alert(2)).',
+    );
+    await editor.getByRole('button', { name: 'Publish' }).click();
+    await expect(caption).toHaveText(/^Published\. In the real system/);
+    await expect(publicSite.locator('.home-post__title')).toHaveText([
+      'Hello from the demo',
+      'Welcome',
+    ]);
+    await publicSite.getByRole('button', { name: 'Post page' }).click();
+    const article = publicSite.locator(
+      '.post-page article.blog-post-prerender',
+    );
+    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+      'Hello from the demo',
+    );
+    await expect(article.locator('.post-content h2')).toHaveText(
+      'What happens next',
+    );
+    await expect(article.locator('.post-content')).toContainText('Safe');
+    await expect(article.locator('script')).toHaveCount(0);
+    await expect(
+      article.getByText('a link', { exact: true }),
+    ).not.toHaveAttribute('href');
+    expect(
+      await article.evaluate((el) => getComputedStyle(el).fontFamily),
+    ).toMatch(/^Newsreader\b/);
+
+    const title = editor.getByRole('textbox', { name: /^Title/ });
+    await title.fill('Hello again');
+    await expect(editor.getByText('Unpublished changes')).toBeVisible();
+    await expect(caption).toHaveText(/^Unpublished changes/);
+    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+      'Hello from the demo',
+    );
+    await editor.getByRole('button', { name: 'Publish changes' }).click();
+    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+      'Hello again',
+    );
+    await expect(editor.getByText('Unpublished changes')).toHaveCount(0);
+
+    await slot.getByRole('button', { name: 'Reset' }).click();
+    await expect(caption).toHaveText(/^Draft/);
+    await expect(title).toHaveValue('Hello from the demo');
+    await page.waitForLoadState('networkidle');
+
+    const pageOrigin = new URL(site()).origin;
+    expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
+    // Fonts for a weight the page hadn't used yet are the only fetches left.
+    expect(
+      requests
+        .slice(fromInteraction)
+        .filter(
+          (u) => u.origin === pageOrigin && !u.pathname.endsWith('.woff2'),
+        )
+        .map(String),
+    ).toEqual([]);
+  });
+
+  test('on a phone the panes stack, editor first, with no sideways scroll', async ({
+    page,
+    seed,
+    prefix,
+    request,
+  }) => {
+    const slug = await publishPostsDemo(seed, prefix, request);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${site()}/projects/${slug}`);
+    const slot = page.getByRole('region', { name: 'Try it' });
+    await slot.scrollIntoViewIfNeeded();
+    const editor = slot.getByRole('region', { name: 'Editor' });
+    const publicSite = slot.getByRole('region', { name: 'Public site' });
+    await expect(editor.getByRole('textbox', { name: 'Body' })).toBeVisible();
+    await expect(
+      slot.getByText(
+        'Write on the left, publish, watch the right. Nothing is saved.',
+      ),
+    ).toBeVisible();
+
+    const e = (await editor.boundingBox())!;
+    const p = (await publicSite.boundingBox())!;
+    expect(p.y).toBeGreaterThanOrEqual(e.y + e.height);
+    expect(Math.abs(p.x - e.x)).toBeLessThan(1);
+    expect(e.width).toBeGreaterThan(300);
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(0);
+
+    await editor.getByRole('button', { name: 'Publish' }).click();
+    await publicSite.getByRole('button', { name: 'Post page' }).click();
+    await expect(publicSite.getByRole('heading', { level: 1 })).toHaveText(
+      'Hello from the demo',
+    );
   });
 });
 
