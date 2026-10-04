@@ -1,52 +1,86 @@
-/* Specs in docs/design/public-redesign/README.md (404). Also inlined into the CloudFront fallback page. */
+/* Specs in docs/design/public-redesign/README.md (404). Also inlined into the CloudFront fallback page; design values live in the variables below. */
+.not-found {
+  --not-found-title-size: 3.75rem;
+  --not-found-text-size: 1.3125rem;
+  --not-found-label-gap: 10px;
+  --not-found-text-gap: 20px;
+  --not-found-list-gap: 28px;
+  --not-found-row-height: 56px;
+  --not-found-row-size: 1.5rem;
+  --not-found-bears-gap: 18px;
+}
+
+.not-found__label {
+  margin: 0 0 var(--not-found-label-gap);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  color: var(--neutral-600);
+}
+
 .not-found h1 {
   margin: 0;
-  font-size: 3.75rem;
+  font-size: var(--not-found-title-size);
   line-height: 1.1;
-  letter-spacing: -0.01em;
 }
 
 .not-found__text {
-  margin: 17px 0 0;
+  margin: var(--not-found-text-gap) 0 0;
   font-family: var(--font-serif);
-  font-size: 1.5rem;
-  font-style: italic;
-  line-height: 1.4;
-  color: var(--color-ink-soft);
+  font-size: var(--not-found-text-size);
+  line-height: 1.5;
+  color: #2b3138;
 }
 
 .not-found__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-6);
-  margin: 28px 0 0;
+  margin: var(--not-found-list-gap) 0 0;
   padding: 0;
+  border-top: 1px solid var(--color-ink);
   list-style: none;
 }
 
+.not-found__links li {
+  border-bottom: 1px solid var(--neutral-200);
+}
+
 .not-found__links a {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  min-height: 44px;
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: 500;
-  color: var(--color-link);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  justify-content: space-between;
+  min-height: var(--not-found-row-height);
+  font-family: var(--font-serif);
+  font-size: var(--not-found-row-size);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.not-found__links a::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-right: 10px;
+  border-top: 1.5px solid var(--neutral-400);
+  border-right: 1.5px solid var(--neutral-400);
+  transform: rotate(45deg);
 }
 
 .not-found__links a:hover {
-  text-decoration-thickness: 2px;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
 .not-found__bears {
-  margin: 28px 0 0;
-  font-family: var(--font-serif);
-  font-size: 1.1875rem;
-  line-height: 1.6;
-  color: var(--color-ink-soft);
+  margin: var(--not-found-bears-gap) 0 0;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-ink);
 }
 
 .not-found__bears a {
@@ -54,7 +88,7 @@
   color: var(--color-link);
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.18em;
+  text-underline-offset: 3px;
 }
 
 .not-found__bears a:hover {
@@ -62,15 +96,11 @@
 }
 
 @media (max-width: 480px) {
-  .not-found h1 {
-    font-size: 2.5rem;
-  }
-
-  .not-found__text {
-    font-size: 1.25rem;
-  }
-
-  .not-found__bears {
-    font-size: 1.0625rem;
+  .not-found {
+    --not-found-title-size: 2.75rem;
+    --not-found-text-size: 1.1875rem;
+    --not-found-label-gap: 4px;
+    --not-found-text-gap: 12px;
+    --not-found-list-gap: 24px;
   }
 }

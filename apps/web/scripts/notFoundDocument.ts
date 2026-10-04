@@ -5,7 +5,7 @@ import { Features, transform } from 'lightningcss';
 import postcss, { type ChildNode, type Container, type Root } from 'postcss';
 import { escapeHtml } from '@gagnechris/shared/html';
 import {
-  NOT_FOUND_TEXT,
+  NOT_FOUND_DESCRIPTION,
   NOT_FOUND_TITLE,
   renderNotFoundBodyHtml,
 } from '@gagnechris/shared/public-pages';
@@ -53,12 +53,19 @@ const markupVocabulary = (html: string) => ({
     [...html.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1]!.split(/\s+/)),
   ),
   ids: new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]!)),
+  attributes: new Set(
+    [...html.matchAll(/\s([a-z-]+)=/g)].map((m) => m[1]!.toLowerCase()),
+  ),
 });
 
 type Vocabulary = ReturnType<typeof markupVocabulary>;
 
-/** Pseudo-classes and attributes are ignored, so `a:hover` counts when there is an `a`. */
+/** Pseudo-classes are ignored, so `a:hover` counts when there is an `a`; an attribute only has to appear somewhere. */
 function selectorMatches(selector: string, vocab: Vocabulary): boolean {
+  const attributes = [...selector.matchAll(/\[\s*([\w-]+)/g)].map((m) =>
+    m[1]!.toLowerCase(),
+  );
+  if (!attributes.every((a) => vocab.attributes.has(a))) return false;
   const bare = selector
     .replace(/\[[^\]]*\]/g, '')
     .replace(/::?[\w-]+(\([^)]*\))?/g, '');
@@ -116,7 +123,8 @@ function dropOverridden(container: Container): void {
 
 /*
  * Substitutes custom properties with their values. One stays a variable when a
- * media query redefines it, or when repeating its value would cost more bytes.
+ * media query or a second rule redefines it, or when repeating its value would
+ * cost more bytes.
  */
 function inlineCustomProperties(root: Root): void {
   const values = new Map<string, string>();
@@ -127,8 +135,11 @@ function inlineCustomProperties(root: Root): void {
       refs.set(name!, (refs.get(name!) ?? 0) + 1);
     }
     if (!decl.prop.startsWith('--')) return;
+    const earlier = values.get(decl.prop);
     if (decl.parent?.parent?.type === 'atrule') keep.add(decl.prop);
-    else values.set(decl.prop, decl.value);
+    else if (earlier !== undefined && earlier !== decl.value) {
+      keep.add(decl.prop);
+    } else values.set(decl.prop, decl.value);
   });
   const resolve = (value: string, depth = 0): string =>
     depth > 10
@@ -161,6 +172,37 @@ function inlineCustomProperties(root: Root): void {
   });
 }
 
+/** Short names for the custom properties that stay. */
+function renameCustomProperties(root: Root): void {
+  const names = new Map<string, string>();
+  const short = (name: string) => {
+    if (!names.has(name)) names.set(name, `--v${names.size.toString(36)}`);
+    return names.get(name)!;
+  };
+  root.walkDecls((decl) => {
+    if (decl.prop.startsWith('--')) decl.prop = short(decl.prop);
+    decl.value = decl.value.replace(
+      VAR_REF,
+      (_whole, name: string) => `var(${short(name)}`,
+    );
+  });
+}
+
+/** Drops faces for a style nothing uses, such as the italic. */
+function dropUnusedFontFaces(root: Root): void {
+  const styles = new Set(['normal']);
+  root.walkDecls('font-style', (decl) => {
+    if (decl.parent?.type !== 'atrule') styles.add(decl.value);
+  });
+  root.walkAtRules('font-face', (face) => {
+    let style = 'normal';
+    face.walkDecls('font-style', (decl) => {
+      style = decl.value;
+    });
+    if (!styles.has(style)) face.remove();
+  });
+}
+
 function dropEmpty(root: Root): void {
   root.walkRules((rule) => {
     if (!rule.nodes.length) rule.remove();
@@ -182,6 +224,8 @@ export function notFoundCriticalCss(rootHtml: string): string {
   }
   dropOverridden(root);
   inlineCustomProperties(root);
+  renameCustomProperties(root);
+  dropUnusedFontFaces(root);
   dropEmpty(root);
   const { code } = transform({
     filename: 'not-found.css',
@@ -203,7 +247,7 @@ export function renderNotFoundDocumentHtml(
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<title>${escapeHtml(NOT_FOUND_TITLE)}</title>` +
     `<meta name="robots" content="noindex">` +
-    `<meta name="description" content="${escapeHtml(NOT_FOUND_TEXT)}">` +
+    `<meta name="description" content="${escapeHtml(NOT_FOUND_DESCRIPTION)}">` +
     `<link rel="icon" type="image/svg+xml" href="/cg-icon.svg">` +
     `<style>${notFoundCriticalCss(root)}</style>` +
     `</head><body>${root}</body></html>`
