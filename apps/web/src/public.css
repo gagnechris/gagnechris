@@ -52,6 +52,12 @@
   background-color: white;
 }
 
+/* Not in index.css: in the admin and Notebook editors a focus or scroll-into-view
+   would animate, and a click that lands mid-scroll hits whatever moved under it. */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: white;
   color: var(--color-ink);
