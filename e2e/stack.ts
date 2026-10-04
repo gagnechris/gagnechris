@@ -288,10 +288,10 @@ export async function startStack(): Promise<Stack> {
           '--strictPort',
         ],
         webDir,
-        // The public dev server's `posts` Try it slot loads the test fixture demo.
+        // The public dev server's `notebook` Try it slot loads the test fixture demo.
         {
           WEB_APP: app,
-          VITE_DEMO_FIXTURE: app === 'public' ? 'posts' : undefined,
+          VITE_DEMO_FIXTURE: app === 'public' ? 'notebook' : undefined,
         },
       );
       return waitFor(`Vite ${app}`, `${url(port)}/`, (s) => s === 200, logs);

@@ -181,6 +181,14 @@ describe('cold load: first React render matches the prerender', () => {
       'fetch',
       vi.fn(() => new Promise(() => {})),
     );
+    // A Try it slot below the fold: its demo chunk must not race the first render.
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
   });
 
   afterEach(() => {
