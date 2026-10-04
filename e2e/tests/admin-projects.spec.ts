@@ -15,12 +15,17 @@ const acceptDialogs = (page: Page) =>
 const saved = (page: Page) =>
   expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 
+// Not a Save click: autosave can land first, and then Save is rightly
+// disabled. The shortcut saves whatever is still pending, or nothing.
+const saveNow = (page: Page) => page.keyboard.press('ControlOrMeta+S');
+
 test('create, edit, upload a preview, publish, unpublish and delete a project', async ({
   page,
   apps,
   signIn,
   prefix,
   request,
+  seed,
 }) => {
   acceptDialogs(page);
   await signIn();
@@ -29,6 +34,7 @@ test('create, edit, upload a preview, publish, unpublish and delete a project', 
 
   await page.getByRole('button', { name: 'New project' }).click();
   await expect(page).toHaveURL(/\/projects\/[0-9A-Z]{26}$/);
+  const id = new URL(page.url()).pathname.split('/').pop()!;
 
   const name = `${prefix} Side Quest`;
   const slug = `${prefix}-side-quest`;
@@ -54,8 +60,20 @@ test('create, edit, upload a preview, publish, unpublish and delete a project', 
     .poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBe(1);
 
-  await page.getByRole('button', { name: 'Save' }).click();
+  await saveNow(page);
   await saved(page);
+  const { data: stored } = await seed.api.GET('/api/admin/projects/{id}', {
+    params: { path: { id } },
+  });
+  expect(stored).toMatchObject({
+    name,
+    slug,
+    stage: 'building',
+    stack: ['React'],
+    links: [{ label: 'Repo', url: 'https://github.com/x' }],
+    bodyMarkdown: '## Why\n\nFun.',
+    previewImage: expect.stringMatching(/^\/media\/.+\.png$/),
+  });
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unpublish' })).toBeVisible();
@@ -114,7 +132,7 @@ test('a taken slug shows the slug-taken message', async ({
   await expect(page).toHaveURL(/\/projects\/[0-9A-Z]{26}$/);
 
   await page.getByLabel(/^Slug/).fill(taken);
-  await page.getByRole('button', { name: 'Save' }).click();
+  await saveNow(page);
   await expect(
     page.getByText('That slug is already taken. Choose a different slug.'),
   ).toBeVisible();
