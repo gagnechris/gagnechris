@@ -1,4 +1,4 @@
-import { useEffect, type FormEvent, type RefObject } from 'react';
+import { useEffect, useId, type FormEvent, type RefObject } from 'react';
 import type { components } from '@gagnechris/api-client';
 import {
   MAX_SLUG_LENGTH,
@@ -103,6 +103,7 @@ function PostProjectsField({
   selected: readonly string[];
   onChange: (ids: string[]) => void;
 }) {
+  const hintId = useId();
   const toggle = (id: string, on: boolean) =>
     onChange(
       on ? [...selected, id] : selected.filter((existing) => existing !== id),
@@ -135,12 +136,15 @@ function PostProjectsField({
   }
 
   return (
-    <fieldset className="admin-field admin-field--full admin-post-projects">
-      <legend>Projects</legend>
-      {options}
-      <span className="admin-hint">
-        Published posts show up in each tagged project’s Build log.
+    <fieldset
+      className="admin-field admin-field--full admin-post-projects"
+      aria-describedby={hintId}
+    >
+      <legend>Part of project</legend>
+      <span id={hintId} className="admin-hint">
+        Lists this post in the project’s Build log. Not the same as Tags.
       </span>
+      {options}
     </fieldset>
   );
 }
