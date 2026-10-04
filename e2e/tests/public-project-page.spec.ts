@@ -110,7 +110,9 @@ test.describe('a project page', () => {
       page,
     }) => {
       await page.goto(`${origin()}/posts/${first}`);
-      await expect(page.locator('.post-part-of')).toHaveText(`Part of ${name}`);
+      await expect(page.locator('.post-part-of')).toHaveText(
+        `Part of the ${name} project`,
+      );
       await markDocument(page);
 
       await page.locator('.post-part-of').getByRole('link', { name }).click();

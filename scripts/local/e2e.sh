@@ -313,7 +313,7 @@ curl -sS -X POST "${API}/api/admin/posts/${TAGGED_ID}/publish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${TAGGED_VERSION}}" >/dev/null
 curl -sS "${SITE}/projects/${SLUG}" | grep -q "<a class=\"project-build-log__link\" href=\"/posts/${SLUG}-log\"><h3 class=\"project-build-log__title\">Local E2E Build Log</h3>"
-curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "<p class=\"post-part-of\">Part of <a class=\"post-part-of__project\" href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a></p>"
+curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "<p class=\"post-part-of\">Part of the <a class=\"post-part-of__project\" href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a> project</p>"
 
 echo "==> Renaming the project slug keeps the Build log and Part of"
 PROJECT_SLUG="${SLUG}-renamed"
