@@ -5,8 +5,12 @@ import {
 } from '@gagnechris/shared';
 import { newRepeaterId } from '../workspace/ui/repeaterId';
 
+export type RoleDates = { start: string; end: string | null };
+
 export type ExperienceDraft = {
   id: string;
+  /** Dates on the server when the draft was loaded; null for a new or undated role. */
+  loadedDates: RoleDates | null;
   title: string;
   company: string;
   start: string;
@@ -39,6 +43,7 @@ export type ResumeDraftFields = {
 
 export const emptyExperience = (): ExperienceDraft => ({
   id: newRepeaterId(),
+  loadedDates: null,
   title: '',
   company: '',
   start: '',
@@ -76,6 +81,9 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   competenciesText: resume.content.competencies.join('\n'),
   experience: resume.content.experience.map((item) => ({
     id: newRepeaterId(),
+    loadedDates: item.start
+      ? { start: item.start, end: item.end ?? null }
+      : null,
     title: item.title,
     company: item.company,
     start: item.start ?? '',
@@ -108,6 +116,8 @@ const parseCutoffYear = (text: string): number | undefined => {
   return year >= 1900 && year <= 2100 ? year : undefined;
 };
 
+export const resumeRoleEndId = (roleId: string) => `resume-role-${roleId}-end`;
+
 export const END_BEFORE_START = 'End is before start';
 
 export const experienceRangeError = (
@@ -121,20 +131,30 @@ export const experienceRangeError = (
 export const hasExperienceRangeError = (draft: ResumeDraftFields): boolean =>
   draft.experience.some((item) => experienceRangeError(item) !== undefined);
 
-// Dates the server would reject (end without start, end before start) are left
-// out of the payload so autosave cannot loop on a 400; the draft keeps them.
+type SavedDatesLookup = (item: ExperienceDraft) => RoleDates | null;
+
+const loadedDatesOnly: SavedDatesLookup = (item) => item.loadedDates;
+
+// Dates the server would reject (end without start, end before start) never go
+// into the payload, so autosave cannot loop on a 400; the draft keeps them. An
+// end before start sends the role's saved dates instead, so the stored draft
+// (and anything published from it) never loses them.
 const experienceFromDraft = (
   item: ExperienceDraft,
+  savedDates: SavedDatesLookup,
 ): ResumeContent['experience'][number] => {
   const start = validMonth(item.start);
   const end = start && !item.present ? validMonth(item.end) : undefined;
   const note = item.note.trim();
+  const dates = experienceRangeError(item)
+    ? savedDates(item)
+    : start
+      ? { start, end: end ?? null }
+      : null;
   return {
     title: item.title.trim(),
     company: item.company.trim(),
-    ...(start && !experienceRangeError(item)
-      ? { start, end: end ?? null }
-      : {}),
+    ...(dates ?? {}),
     ...(note ? { note } : {}),
     bullets: parseResumeLines(item.bulletsText),
   };
@@ -142,6 +162,7 @@ const experienceFromDraft = (
 
 export const resumeContentFromDraft = (
   draft: ResumeDraftFields,
+  savedDates: SavedDatesLookup = loadedDatesOnly,
 ): ResumeContent => {
   const headline = draft.headline.trim();
   const earlierRolesThrough = parseCutoffYear(draft.earlierRolesThroughText);
@@ -150,7 +171,9 @@ export const resumeContentFromDraft = (
     ...(earlierRolesThrough !== undefined ? { earlierRolesThrough } : {}),
     summary: draft.summary.trim(),
     competencies: parseResumeLines(draft.competenciesText),
-    experience: draft.experience.map(experienceFromDraft),
+    experience: draft.experience.map((item) =>
+      experienceFromDraft(item, savedDates),
+    ),
     skills: parseResumeLines(draft.skillsText),
     education: draft.education.map((item) => ({
       title: item.title.trim(),
@@ -161,5 +184,36 @@ export const resumeContentFromDraft = (
         ? { degreeDetail: item.degreeDetail.trim() }
         : {}),
     })),
+  };
+};
+
+/**
+ * Remembers the dates each role last sent, so a role whose range turns invalid
+ * keeps sending them rather than the dates it was loaded with.
+ */
+export const createResumeContentBuilder = () => {
+  const sent = new Map<string, RoleDates | null>();
+  const savedDates: SavedDatesLookup = (item) =>
+    sent.has(item.id) ? sent.get(item.id)! : item.loadedDates;
+  return {
+    savedDates,
+    preview: (draft: ResumeDraftFields) =>
+      resumeContentFromDraft(draft, savedDates),
+    payload: (draft: ResumeDraftFields) => {
+      const content = resumeContentFromDraft(draft, savedDates);
+      draft.experience.forEach((item, index) => {
+        const role = content.experience[index]!;
+        sent.set(
+          item.id,
+          role.start ? { start: role.start, end: role.end ?? null } : null,
+        );
+      });
+      return content;
+    },
+    /** Roles in error with no saved dates to fall back on would publish undated. */
+    undatedRangeErrors: (draft: ResumeDraftFields) =>
+      draft.experience.filter(
+        (item) => experienceRangeError(item) !== undefined && !savedDates(item),
+      ),
   };
 };

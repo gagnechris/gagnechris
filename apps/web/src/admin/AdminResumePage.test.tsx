@@ -260,7 +260,7 @@ describe('AdminResumePage structured dates', () => {
     );
   });
 
-  test('an end before start keeps the typed value, shows a linked error, leaves the dates out of the PUT and is not reported as saved', async () => {
+  test('an end before start keeps the typed value, shows a linked error, sends the saved dates and is not reported as saved', async () => {
     renderResume();
     await screen.findByLabelText('Headline (current role)');
     const end = screen.getAllByLabelText(/^End month/)[1]!;
@@ -278,9 +278,9 @@ describe('AdminResumePage structured dates', () => {
     await vi.advanceTimersByTimeAsync(950);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     const role = lastPutContent().experience[1]!;
-    expect(role).not.toHaveProperty('start');
-    expect(role).not.toHaveProperty('end');
     expect(role).toMatchObject({
+      start: '2014-09',
+      end: '2015-04',
       company: 'Viacom',
       note: 'contract, concurrent',
     });
@@ -304,6 +304,30 @@ describe('AdminResumePage structured dates', () => {
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('Saved'),
     );
+  });
+
+  test('an end before start after a saved edit sends the newer saved dates', async () => {
+    renderResume();
+    await screen.findByLabelText('Headline (current role)');
+    const end = screen.getAllByLabelText(/^End month/)[1]!;
+
+    fireEvent.change(end, { target: { value: '2015-08' } });
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Saved'),
+    );
+
+    fireEvent.change(end, { target: { value: '2013-01' } });
+    expect(
+      document.getElementById(end.getAttribute('aria-describedby')!),
+    ).toHaveTextContent('The last saved dates are kept until this is fixed.');
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(lastPutContent().experience[1]).toMatchObject({
+      start: '2014-09',
+      end: '2015-08',
+    });
   });
 
   test('saving round-trips edited dates, note, headline and cut-off', async () => {
@@ -367,5 +391,125 @@ describe('AdminResumePage structured dates', () => {
       expect(lastPutContent().experience[1]).toMatchObject({ end: null }),
     );
     expect(screen.getAllByLabelText(/^End month/)[1]).toBeDisabled();
+  });
+});
+
+describe('AdminResumePage publish with an end before start', () => {
+  const dated = {
+    ...baseResume,
+    hasUnpublishedChanges: true,
+    content: {
+      ...baseResume.content,
+      experience: [
+        {
+          title: 'Architect',
+          company: 'Viacom',
+          start: '2014-09',
+          end: '2015-04',
+          bullets: ['Built'],
+        },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: structuredClone(dated),
+      error: undefined,
+      response: { status: 200 },
+    });
+    put.mockImplementation((_path: string, { body }: { body: unknown }) =>
+      Promise.resolve({
+        data: {
+          ...structuredClone(dated),
+          ...(body as object),
+          version: 2,
+        },
+        error: undefined,
+        response: { status: 200 },
+      }),
+    );
+    post.mockResolvedValue({
+      data: {
+        ...structuredClone(dated),
+        version: 3,
+        hasUnpublishedChanges: false,
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  const putBodies = () =>
+    put.mock.calls.map(
+      (call) =>
+        (call[1] as { body: { content: typeof dated.content } }).body.content,
+    );
+
+  test('publishing a role that has saved dates publishes a draft that still has them', async () => {
+    const user = userEvent.setup();
+    renderResume();
+    const end = await screen.findByDisplayValue('2015-04');
+
+    fireEvent.change(end, { target: { value: '2013-01' } });
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }));
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put.mock.invocationCallOrder[0]).toBeLessThan(
+      post.mock.invocationCallOrder[0]!,
+    );
+    expect(putBodies()[0]!.experience[0]).toMatchObject({
+      start: '2014-09',
+      end: '2015-04',
+    });
+    expect(post.mock.calls[0]![1]).toMatchObject({ body: { version: 2 } });
+    expect(end).toHaveValue('2013-01');
+  });
+
+  test('publish is blocked while a new role with no saved dates has an end before start', async () => {
+    const user = userEvent.setup();
+    renderResume();
+    await screen.findByDisplayValue('2015-04');
+
+    await user.click(screen.getByRole('button', { name: 'Add role' }));
+    const start = screen.getAllByLabelText('Start month')[1]!;
+    const end = screen.getAllByLabelText(/^End month/)[1]!;
+    fireEvent.change(start, { target: { value: '2020-05' } });
+    fireEvent.change(end, { target: { value: '2020-01' } });
+    expect(
+      document.getElementById(end.getAttribute('aria-describedby')!),
+    ).toHaveTextContent(
+      'Dates for this role are not saved until this is fixed.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      /Not published: .* End month before its Start month/,
+    );
+    expect(end).toHaveFocus();
+    const link = screen.getByRole('link', { name: 'Fix End month' });
+    expect(link).toHaveAttribute('href', `#${end.id}`);
+
+    screen.getAllByLabelText('Start month')[0]!.focus();
+    await user.click(link);
+    expect(end).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(post).not.toHaveBeenCalled();
+
+    fireEvent.change(end, { target: { value: '2020-06' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Publish changes' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(putBodies()[put.mock.calls.length - 1]!.experience[1]).toMatchObject(
+      {
+        start: '2020-05',
+        end: '2020-06',
+      },
+    );
   });
 });
