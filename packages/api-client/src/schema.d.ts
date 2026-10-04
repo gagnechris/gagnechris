@@ -347,8 +347,6 @@ export interface paths {
                 /** @description Created */
                 201: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -501,8 +499,6 @@ export interface paths {
                 /** @description Post */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -623,14 +619,11 @@ export interface paths {
                 };
             };
         };
-        /** Update post (optimistic concurrency via version / If-Match) */
+        /** Update post (optimistic concurrency via version) */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path: {
                     /** @description Post id (ULID) */
                     id: string;
@@ -660,8 +653,6 @@ export interface paths {
                 /** @description Updated */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -759,24 +750,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -823,10 +796,7 @@ export interface paths {
         delete: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path: {
                     /** @description Post id (ULID) */
                     id: string;
@@ -844,8 +814,6 @@ export interface paths {
                 /** @description Soft-deleted */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -943,24 +911,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1020,10 +970,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path: {
                     /** @description Post id (ULID) */
                     id: string;
@@ -1041,8 +988,6 @@ export interface paths {
                 /** @description Published */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -1140,24 +1085,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1218,10 +1145,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path: {
                     /** @description Post id (ULID) */
                     id: string;
@@ -1239,8 +1163,6 @@ export interface paths {
                 /** @description Unpublished (draft) */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -1338,24 +1260,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -1416,10 +1320,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path: {
                     /** @description Post id (ULID) */
                     id: string;
@@ -1437,8 +1338,6 @@ export interface paths {
                 /** @description Draft restored from published snapshot */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -1536,24 +1435,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -2985,8 +2866,6 @@ export interface paths {
                 /** @description Home */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3072,14 +2951,11 @@ export interface paths {
                 };
             };
         };
-        /** Update home content (optimistic concurrency via version / If-Match) */
+        /** Update home content (optimistic concurrency via version) */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -3102,8 +2978,6 @@ export interface paths {
                 /** @description Updated */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3181,24 +3055,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3260,10 +3116,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -3278,8 +3131,6 @@ export interface paths {
                 /** @description Published */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3357,24 +3208,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3435,10 +3268,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -3453,8 +3283,6 @@ export interface paths {
                 /** @description Unpublished (draft) */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3532,24 +3360,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3610,10 +3420,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -3628,8 +3435,6 @@ export interface paths {
                 /** @description Draft restored from published snapshot */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3707,24 +3512,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -3792,8 +3579,6 @@ export interface paths {
                 /** @description Resume */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3904,14 +3689,11 @@ export interface paths {
                 };
             };
         };
-        /** Update resume (optimistic concurrency via version / If-Match) */
+        /** Update resume (optimistic concurrency via version) */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -3959,8 +3741,6 @@ export interface paths {
                 /** @description Updated */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -4063,24 +3843,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -4142,10 +3904,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -4160,8 +3919,6 @@ export interface paths {
                 /** @description Published */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -4264,24 +4021,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -4342,10 +4081,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -4360,8 +4096,6 @@ export interface paths {
                 /** @description Unpublished (draft) */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -4464,24 +4198,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;
@@ -4542,10 +4258,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
-                    "if-match"?: string;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
@@ -4560,8 +4273,6 @@ export interface paths {
                 /** @description Draft restored from published snapshot */
                 200: {
                     headers: {
-                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
-                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -4664,24 +4375,6 @@ export interface paths {
                         "application/json": {
                             /** @enum {string} */
                             error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
-                            message?: string;
-                            fields?: {
-                                [key: string]: string;
-                            };
-                            currentVersion?: number;
-                            current?: unknown;
-                        };
-                    };
-                };
-                /** @description Precondition failed (`If-Match` version mismatch) */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @enum {string} */
-                            error: "precondition_failed";
                             message?: string;
                             fields?: {
                                 [key: string]: string;

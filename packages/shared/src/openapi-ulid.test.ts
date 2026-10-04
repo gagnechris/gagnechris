@@ -44,12 +44,19 @@ describe('UlidSchema OpenAPI pattern', () => {
 
   it('412 responses use PreconditionFailed schema with current', () => {
     const doc = buildOpenApiDocument();
+    const putNote = doc.paths?.['/api/notebook/notes/{id}']?.put;
+    expect(putNote?.responses?.['412']).toBeDefined();
+    expect(
+      putNote?.parameters?.some((p) => 'name' in p && p.name === 'if-match'),
+    ).toBe(true);
+    expect(putNote?.responses?.['200']?.headers?.ETag).toBeDefined();
+
     const putPost = doc.paths?.['/api/admin/posts/{id}']?.put;
-    expect(putPost?.responses?.['412']).toBeDefined();
+    expect(putPost?.responses?.['412']).toBeUndefined();
     expect(
       putPost?.parameters?.some((p) => 'name' in p && p.name === 'if-match'),
-    ).toBe(true);
-    expect(putPost?.responses?.['200']?.headers?.ETag).toBeDefined();
+    ).toBe(false);
+    expect(putPost?.responses?.['200']?.headers?.ETag).toBeUndefined();
 
     const syncGet = doc.paths?.['/api/notebook/sync/changes']?.get;
     expect(syncGet?.responses?.['412']).toBeUndefined();
