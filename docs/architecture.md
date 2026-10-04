@@ -15,23 +15,32 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 - Each app's routes start at its host root (`admin.gagnechris.com/posts/<id>`, `notebook.gagnechris.com/today`). The admin and Notebook builds write their shell as `index.html`.
 - `src/workspace/` holds what both signed-in apps share: auth, the query provider, versioned-doc hooks, the leave guard, the lazy `MarkdownEditor`, UI primitives, chrome (`WorkspaceShell`) and CSS. ESLint zones stop public code importing `src/admin`, `src/notebook`, `src/workspace`, Amplify, app-core or TanStack Query, and stop admin and Notebook importing each other.
 - **Bundle boundary:** the public build runs `bundleBoundaryPlugin` (`apps/web/scripts/bundleBoundaryPlugin.ts`). In `generateBundle` it checks every chunk's `moduleIds` and fails the build on any module under `src/{admin,notebook,workspace,auth}/`, `aws-amplify` / `@aws-amplify/*`, app-core or `@tanstack/react-query`. The public build has no admin entry, so its whole output is the reachable graph.
-- **Shell check:** `npm run check:web-shells` (CI, after `npm run build`, and in `deploy-web.sh`) fails if the admin or Notebook shell references GA or has an inline or non-bundled `<script>`, if `dist/index.html` or `dist/_shell.html` lost GA, if the public build emits `spa.html`, `manifest.json` or `icons/`, or if the Notebook manifest isn't scoped to `/`.
+- **Shell check:** `npm run check:web-shells` (CI, after `npm run build`, and in `deploy-web.sh`) fails if the admin or Notebook shell references GA or has an inline or non-bundled `<script>`, if `dist/index.html` or `dist/_shell.html` lost GA, or if the Notebook manifest isn't scoped to `/`.
+- **Leftover sign-in sweep:** on every load the public bundle deletes `CognitoIdentityServiceProvider.*` keys from the apex `localStorage` and expires `CognitoIdentityServiceProvider.*` cookies, both on `Domain=gagnechris.com` and host-only (`src/utils/legacyAuthSweep.ts`). The public site never signs in, so any such key is stale.
 
 ## Request flow
 
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
-   - First segment a case or percent-encoding variant of `admin` / `auth` (`/ADMIN/notebook`, `/%61dmin`) → 301 to the lowercase segment, rest of path and query kept. Only that segment changes.
-   - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA + webauthn)
+   - Old apex app URLs → **301** with `Cache-Control: max-age=86400`. Segments match case-insensitively and percent-decoded (`/ADMIN/Notebook`, `/%61dmin`):
+
+     | From                                     | To                                    | Query   |
+     | ---------------------------------------- | ------------------------------------- | ------- |
+     | `/admin/notebook`, `/admin/notebook/<p>` | `https://notebook.gagnechris.com/<p>` | kept    |
+     | `/admin`, `/admin/<p>`                   | `https://admin.gagnechris.com/<p>`    | kept    |
+     | `/auth`, `/auth/<p>`                     | `https://notebook.gagnechris.com/`    | dropped |
+
+     `/auth*` drops the query so an OAuth `code` or `state` never reaches another host.
+
+   - `/api/*`, `/media/*`, and `/.well-known/*` → pass through (API Gateway / media / AASA + webauthn). `/.well-known/*` is never redirected: Apple fetches AASA without following redirects.
    - `/blog` and `/blog/*` → 301 to the same path under `/posts`
    - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
    - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/dont-feed-the-bears/camp` and `/dont-feed-the-bears/wild` are served from their own `index.html`.
    - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
-   - `/admin/*` and `/auth/*` → `/spa.html`: the frozen legacy admin shell from before the app split, which `deploy-web.sh` never overwrites or deletes (see Media, deploy excludes, and backups)
    - Other extensionless paths → `/404.html`
 3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404
-4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, `spa.html`)
+4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
 5. **API Gateway → Lambda API** for CRUD, publish, Notebook, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
@@ -158,7 +167,7 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - `redirectToSignIn` stores the current path in `sessionStorage`; `/auth/callback` returns there (same-app paths only) or to the app's home.
 - Sign-out is per app: `signOut()` revokes that app's refresh token (`RevokeToken`) and ends the managed-login session via `/logout`. The other app stays signed in. Global sign-out isn't used: `GlobalSignOut` needs the `aws.cognito.signin.user.admin` scope, which the clients don't request.
 - Local: `VITE_AUTH_MODE=local` fakes a signed-in session; production builds refuse this flag.
-- API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts the `admin-web` client, `/api/notebook/*` the `notebook-web` client, and both accept the legacy `web` client while `LEGACY_WEB_AUTH` is on. The iOS client is in neither audience until the app ships with universal-link callbacks. A token from another client gets a gateway **401**. The web sends the ID token.
+- API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts only the `admin-web` client and `/api/notebook/*` only the `notebook-web` client. The iOS client is in neither audience until the app ships with universal-link callbacks. A token from another client gets a gateway **401**. The web sends the ID token.
 - The router re-checks every protected route by its `auth` kind (`authorize` in `services/api/src/router.ts`):
 
   | `auth`       | Prefix          | Client ID env var                         | Group        |
@@ -167,11 +176,11 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
   | `notebook`   | `/api/notebook` | `NOTEBOOK_WEB_CLIENT_ID` (`notebook-web`) | `notebook`   |
   - No `sub` → **401**. The token's client must equal the prefix's client env var, else **403**: `aud` when `token_use` is `id`, `client_id` when it is `access`, nothing otherwise. Then the prefix's group must be in `cognito:groups`, else **403**. An unset client env var matches nothing (fail closed).
   - `cognito:groups` parses strictly: a JSON array of strings, or the gateway's `[a b]` form split on whitespace only (commas are part of a name). Anything else is no groups.
-  - **Legacy fallback:** while the Lambda has `AUTH_LEGACY_WEB_CLIENT_ID` set, a token from that client with the `admin` group passes on both prefixes (the apex `/admin` app's access). A new-client token never falls back to `admin`. Unsetting the variable removes the fallback.
+  - The legacy `web` client and `admin` group still exist in the pool but nothing trusts them: `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is off, so neither authorizer audience lists `web` and the Lambda has no `AUTH_LEGACY_WEB_CLIENT_ID`. The router's legacy branch only applies when that variable is set.
   - So a `notebook`-only user gets 403 on every `/api/admin` route and a `site-admin`-only user gets 403 on every `/api/notebook` route. Notebook data is also owner-scoped by `sub`.
 
 - Tokens live in Amplify's default `localStorage` store, so each app's tokens (refresh token included) are readable only by script on its own origin; public pages on `gagnechris.com` can't read them, and none ride on requests as cookies. HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and the app hosts' strict CSP (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
-- The frozen legacy apex app (`/spa.html`) still signs in with the `web` client and keeps its tokens in `CookieStorage` on `Domain=gagnechris.com`.
+- The apex holds no tokens. The public bundle sweeps any `CognitoIdentityServiceProvider.*` keys and cookies left from the old apex app (see Web apps).
 - Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only that app's group. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
 ## Notebook app
@@ -235,11 +244,9 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 ## Security headers and rendered HTML
 
 - `renderMarkdownToHtml` (`@gagnechris/shared/render`) runs `marked` output through `sanitize-html` with an allowlist: no scripts, iframes, forms, event handlers, inline styles, or `javascript:` / `data:` URLs. The admin previews and the publisher both use it, so pasted HTML is inert in the editor and on published pages.
-- The public distribution has two page response-header policies in the Site stack:
-  - Public pages: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap.
-  - `/admin*` and `/auth*`: `script-src 'self'` (no inline script, no Google hosts); `connect-src` is `'self'`, Cognito and the site bucket's regional host (presigned media PUTs). The frozen legacy `spa.html` has no GA snippet so it runs under this policy.
+- The public distribution has one page response-headers policy: GA4 hosts allowed, `script-src` keeps `'unsafe-inline'` for the gtag bootstrap, and `connect-src` lists only `'self'` and the GA4 hosts (no Cognito, no upload bucket).
 - `admin.gagnechris.com` and `notebook.gagnechris.com` are separate distributions (`AppHost` in the Site stack), each with one strict policy on every page path: `script-src 'self'`, `img-src 'self' data:`, `connect-src` `'self'` + Cognito (+ the site bucket's regional host on admin only), no Google hosts. A host-wide policy means path case can't change it, so their viewer-request function only does the SPA fallback. `check:web-shells` keeps their shells free of GA and inline script. See `infra/RUNBOOK.md` (App hosts).
-- CloudFront path patterns are case-sensitive, so `/ADMIN/notebook` on the apex would land on the default behaviour (public CSP, GA). The viewer-request function 301s such variants to lowercase, the public app has no admin or auth routes at all, and `isPrivatePath` is case- and encoding-insensitive.
+- The apex has no `/admin*` or `/auth*` behaviours. The viewer-request function 301s every case and encoding variant of those paths to the app hosts before anything is served, and the public app has no admin or auth routes.
 
 ## Privacy: logs, caching and IAM
 
@@ -252,8 +259,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 ## Analytics stay off the signed-in apps
 
-- GA4 loads only in the public shells. The admin and Notebook shells never include it (`check:web-shells`), and neither does the frozen legacy `spa.html` served for apex `/admin*` and `/auth*`.
-- `apps/web/src/utils/analytics.ts` never sends page views or events for a private path (`isPrivatePath` in `utils/privatePaths.ts`). `RouteTracker` also sets gtag's `ga-disable-<id>` flag while a private route is showing, which stops gtag's own enhanced-measurement hits if gtag is already loaded from an in-app navigation.
+- GA4 loads only in the public shells. The admin and Notebook shells never include it (`check:web-shells`), and the apex serves no signed-in page: old `/admin*` and `/auth*` URLs 301 to the app hosts at the edge.
 
 ## `@gagnechris/shared` entry points
 
@@ -277,9 +283,8 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 **`scripts/deploy-web.sh`:** reads bucket names, distribution IDs and the two app client IDs from SSM, builds all three apps, runs `check:web-shells`, then:
 
 1. Syncs `dist-admin/` and `dist-notebook/` to their own buckets (`assets/` first with immutable cache-control, then `sync --delete` excluding `assets/*`), uploads `.well-known/*` as `application/json` and `manifest.json` as `application/manifest+json`, and invalidates `/*` on each app distribution.
-2. Syncs `dist/` to the site bucket with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. `spa.html`, `manifest.json` and `icons/*` are also excluded: they are the legacy apex `/admin` shell and its PWA files, which the public build no longer produces.
-3. Before that sync it runs the identical command with `--dryrun` and `check:legacy-admin-plan` (`scripts/check-legacy-admin-plan.ts`): starting from the bucket's `spa.html`, it walks every file the legacy shell can load (HTML `src`/`href`, JS chunk imports and preload lists, CSS `url()`, manifest icons) and refuses the deploy if any is missing, if the plan deletes any of them, or if it would overwrite `spa.html`.
-4. Invalidates the public distribution and runs publisher `republishAll`.
+2. Syncs `dist/` to the site bucket with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. Any other key the public build doesn't produce is deleted.
+3. Invalidates the public distribution and runs publisher `republishAll`.
 
 Hashed `assets/*` are never deleted on any host, so an open tab or installed PWA can still lazy-load chunks from the build it started with.
 

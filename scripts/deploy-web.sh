@@ -118,36 +118,23 @@ deploy_app notebook "${WEB}/dist-notebook" "${NOTEBOOK_BUCKET}" "${NOTEBOOK_DIST
 echo "Deploying public → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 upload_assets "${DIST}" "${BUCKET}"
 
-# Excludes also protect publisher-owned paths from --delete. home/* holds
-# last-published.json so an unpublished Home survives deploys. spa.html,
-# manifest.json and icons/* belong to the legacy apex /admin shell, which the
-# public build no longer produces.
-APEX_SYNC=(
-  "${DIST}/" "s3://${BUCKET}/"
-  --region "${AWS_REGION}"
-  --delete
-  --exclude "assets/*"
-  --exclude "blog/*"
-  --exclude "resume/*"
-  --exclude "resume.pdf"
-  --exclude "home/*"
-  --exclude "media/*"
-  --exclude "notebook/*"
-  --exclude "sitemap.xml"
-  --exclude "rss.xml"
-  --exclude "spa.html"
-  --exclude "manifest.json"
-  --exclude "icons/*"
-  --cache-control "public,max-age=0,must-revalidate"
+# Excludes protect publisher-owned paths from --delete. home/* holds
+# last-published.json so an unpublished Home survives deploys. Anything else
+# the public build doesn't produce is deleted.
+aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
+  --region "${AWS_REGION}" \
+  --delete \
+  --exclude "assets/*" \
+  --exclude "blog/*" \
+  --exclude "resume/*" \
+  --exclude "resume.pdf" \
+  --exclude "home/*" \
+  --exclude "media/*" \
+  --exclude "notebook/*" \
+  --exclude "sitemap.xml" \
+  --exclude "rss.xml" \
+  --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
-)
-
-# Same arguments as the real sync, so the guard checks exactly what runs.
-PLAN="$(mktemp)"
-trap 'rm -f "${PLAN}"' EXIT
-aws s3 sync "${APEX_SYNC[@]}" --dryrun >"${PLAN}"
-npm run --silent check:legacy-admin-plan -- --plan "${PLAN}" --bucket "${BUCKET}"
-aws s3 sync "${APEX_SYNC[@]}"
 
 upload_well_known "${DIST}" "${BUCKET}"
 invalidate "${DISTRIBUTION_ID}"

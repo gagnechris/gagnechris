@@ -42,7 +42,7 @@ function executable(file: string, body: string): void {
  * Runs deploy-web.sh from a scratch copy of the repo layout with `aws` and
  * `npm` stubbed, recording every call in order.
  */
-function runDeploy(opts: { guardExit?: number } = {}) {
+function runDeploy() {
   const root = tempDir('deploy-web-');
   mkdirSync(join(root, 'scripts'));
   copyFileSync(
@@ -69,10 +69,6 @@ case "$1 $2" in
     for ((i = 1; i <= $#; i++)); do
       if [ "\${!i}" = "--name" ]; then j=$((i + 1)); basename "\${!j}"; fi
     done ;;
-  "s3 sync")
-    for arg in "$@"; do
-      [ "$arg" = "--dryrun" ] && printf '%s' "\${FAKE_DRYRUN:-}"
-    done ;;
   "cloudfront create-invalidation") echo I123 ;;
   "lambda invoke") echo '{}' > "\${!#}"; echo None ;;
 esac
@@ -88,9 +84,6 @@ if [ "$1 $2" = "run build" ]; then
   for d in dist dist-admin dist-notebook; do mkdir -p "$web/$d/assets"; touch "$web/$d/index.html" "$web/$d/assets/x.js"; done
   touch "$web/dist/_shell.html" "$web/dist-notebook/manifest.json"
 fi
-case "$*" in
-  *check:legacy-admin-plan*) exit "\${FAKE_GUARD_EXIT:-0}" ;;
-esac
 `,
   );
 
@@ -101,8 +94,6 @@ esac
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       ENV_NAME: 'prod',
-      FAKE_GUARD_EXIT: String(opts.guardExit ?? 0),
-      FAKE_DRYRUN: '(dryrun) upload: dist/index.html to s3://site/index.html\n',
     },
   });
   const calls = existsSync(log)
@@ -205,18 +196,15 @@ describe('deploy-web.sh', () => {
     }
   });
 
-  it('keeps the legacy /admin shell, its PWA files and publisher output out of the apex --delete', () => {
-    const apex = syncTo(ok.calls, 's3://site-bucket-name/').filter(
-      (c) => !c.includes('--dryrun'),
-    );
+  it('keeps publisher output out of the apex --delete and deletes everything else the build lacks', () => {
+    const apex = syncTo(ok.calls, 's3://site-bucket-name/');
     expect(apex).toHaveLength(1);
     expect(apex[0]).toContain('--delete');
-    expect(excludes(apex[0]!)).toEqual(
-      expect.arrayContaining([
+    expect(apex[0]).not.toContain('--dryrun');
+    const patterns = excludes(apex[0]!);
+    expect(patterns.sort()).toEqual(
+      [
         'assets/*',
-        'spa.html',
-        'manifest.json',
-        'icons/*',
         'blog/*',
         'resume/*',
         'resume.pdf',
@@ -225,37 +213,41 @@ describe('deploy-web.sh', () => {
         'notebook/*',
         'sitemap.xml',
         'rss.xml',
-      ]),
+      ].sort(),
     );
+    // aws s3 sync globs: `*` also matches `/`.
+    const excluded = (key: string) =>
+      patterns.some((p) =>
+        new RegExp(
+          `^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+        ).test(key),
+      );
+    for (const key of [
+      'spa.html',
+      'manifest.json',
+      'icons/apple-touch-icon.png',
+      'icons/icon-192.png',
+    ]) {
+      expect(excluded(key), key).toBe(false);
+    }
+    for (const key of [
+      'blog/posts.json',
+      'blog/hello/index.html',
+      'resume/index.html',
+      'resume.pdf',
+      'home/last-published.json',
+      'media/x.png',
+      'rss.xml',
+      'sitemap.xml',
+    ]) {
+      expect(excluded(key), key).toBe(true);
+    }
   });
 
-  it('checks a dry run of exactly the apex sync before running it', () => {
-    const apex = syncTo(ok.calls, 's3://site-bucket-name/');
-    const dryrun = apex.find((c) => c.includes('--dryrun'))!;
-    const real = apex.find((c) => !c.includes('--dryrun'))!;
-    expect(dryrun.filter((a) => a !== '--dryrun')).toEqual(real);
-    const guard = ok.calls.find((c) =>
-      c.join(' ').includes('check:legacy-admin-plan'),
-    )!;
-    expect(guard).toContain('--bucket');
-    expect(guard[guard.indexOf('--bucket') + 1]).toBe('site-bucket-name');
-    const order = [dryrun, guard, real].map((c) => ok.calls.indexOf(c));
-    expect(order).toEqual([...order].sort((a, b) => a - b));
-  });
-
-  it('stops before touching the apex when the legacy shell check fails', () => {
-    const failed = runDeploy({ guardExit: 1 });
-    expect(failed.status).not.toBe(0);
-    const apex = syncTo(failed.calls, 's3://site-bucket-name/');
-    expect(apex.every((c) => c.includes('--dryrun'))).toBe(true);
+  it('syncs the apex without a dry run or legacy shell check first', () => {
+    expect(ok.calls.some((c) => c.includes('--dryrun'))).toBe(false);
     expect(
-      failed.calls.some(
-        (c) =>
-          c[1] === 'cloudfront' &&
-          c[c.indexOf('--distribution-id') + 1] ===
-            'cloudfront-distribution-id',
-      ),
+      ok.calls.some((c) => c.join(' ').includes('legacy-admin-plan')),
     ).toBe(false);
-    expect(failed.calls.some((c) => c[1] === 'lambda')).toBe(false);
   });
 });

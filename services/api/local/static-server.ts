@@ -52,9 +52,7 @@ type CfResponse = {
 };
 
 type ViewerRequestApi = {
-  handler: (event: {
-    request: CfRequest;
-  }) => Promise<CfRequest | { statusCode: number }>;
+  handler: (event: { request: CfRequest }) => Promise<CfRequest | CfResponse>;
   setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
 };
 
@@ -146,11 +144,10 @@ const server = createServer(async (req, res) => {
 
     if ('statusCode' in rewritten) {
       res.statusCode = rewritten.statusCode;
-      const location = (
-        rewritten as { headers?: { location?: { value: string } } }
-      ).headers?.location?.value;
-      if (location) res.setHeader('Location', location);
-      res.end();
+      for (const [name, header] of Object.entries(rewritten.headers ?? {})) {
+        res.setHeader(name, header.value);
+      }
+      res.end(rewritten.body ?? '');
       return;
     }
 

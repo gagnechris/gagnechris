@@ -1,5 +1,3 @@
-import { isPrivatePath } from './privatePaths';
-
 declare global {
   interface Window {
     gtag: (command: string, ...args: unknown[]) => void;
@@ -8,28 +6,10 @@ declare global {
 
 export const GA_MEASUREMENT_ID = 'G-CDG30T24XY';
 
-/**
- * spa.html strips gtag, but never report from /admin or /auth even if it is
- * present.
- */
-const canTrack = () =>
-  typeof window !== 'undefined' &&
-  Boolean(window.gtag) &&
-  !isPrivatePath(window.location.pathname);
-
-/**
- * Turns gtag off while a private route is showing, so its own hits
- * (enhanced-measurement outbound clicks, history page views) stop too.
- */
-export const setAnalyticsEnabledForPath = (pathname: string) => {
-  if (typeof window === 'undefined') return;
-  (window as unknown as Record<string, unknown>)[
-    `ga-disable-${GA_MEASUREMENT_ID}`
-  ] = isPrivatePath(pathname);
-};
+const canTrack = () => typeof window !== 'undefined' && Boolean(window.gtag);
 
 export const trackPageView = (url: string) => {
-  if (isPrivatePath(url) || !canTrack()) return;
+  if (!canTrack()) return;
   window.gtag('config', GA_MEASUREMENT_ID, {
     page_path: url,
   });

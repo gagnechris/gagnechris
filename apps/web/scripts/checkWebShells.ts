@@ -35,14 +35,6 @@ export function checkWebShells(webRoot: string): string[] {
     else if (!GA.test(html))
       problems.push(`dist/${shell} lost Google Analytics`);
   }
-  // The apex keeps the legacy shell and its PWA files that are already in S3.
-  for (const legacy of ['spa.html', 'manifest.json', 'icons']) {
-    if (fs.existsSync(path.join(dist, legacy))) {
-      problems.push(
-        `dist/${legacy} must not be built: it would replace the legacy /admin shell's copy on the apex`,
-      );
-    }
-  }
 
   for (const app of ['dist-admin', 'dist-notebook']) {
     problems.push(

@@ -96,15 +96,6 @@ describe('checkWebShells', () => {
     expect(problems).toEqual(['dist/index.html lost Google Analytics']);
   });
 
-  it.each(['spa.html', 'manifest.json', 'icons/icon-192.png'])(
-    'fails when the public build emits %s over the legacy apex copy',
-    (file) => {
-      const problems = checkWebShells(webRoot({ [`dist/${file}`]: 'x' }));
-      expect(problems).toHaveLength(1);
-      expect(problems[0]).toMatch(/legacy \/admin shell/);
-    },
-  );
-
   it('fails when the Notebook manifest is not scoped to its own origin root', () => {
     const problems = checkWebShells(
       webRoot({

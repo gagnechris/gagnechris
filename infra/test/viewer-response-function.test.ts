@@ -125,18 +125,6 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.body).toBe('<html>welcome</html>');
   });
 
-  it('leaves spa.html 200 responses alone', () => {
-    const res = runHandler('/spa.html', {
-      statusCode: 200,
-      headers: {
-        'content-type': { value: 'text/html; charset=utf-8' },
-      },
-      body: '<html>spa</html>',
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toBe('<html>spa</html>');
-  });
-
   it('does not rewrite non-XML application/json 404 bodies', () => {
     const res = runHandler('/some/key.json', {
       statusCode: 404,
