@@ -27,6 +27,7 @@ const samplePost = (): Post => ({
   excerpt: 'A short excerpt.',
   bodyMarkdown: '# Hello\n\n**bold** text',
   tags: ['aws'],
+  projectIds: [],
   status: 'published',
   publishedAt: '2026-09-27T12:00:00.000Z',
   updatedAt: '2026-09-27T12:00:00.000Z',
@@ -150,6 +151,7 @@ describe('render HTML snapshots', () => {
         feeds: true,
         home: false,
         resume: false,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(['post']),
       },
     });
@@ -168,6 +170,7 @@ describe('render HTML snapshots', () => {
         feeds: false,
         home: true,
         resume: false,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(['home']),
       },
     });

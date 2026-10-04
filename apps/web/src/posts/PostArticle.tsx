@@ -1,12 +1,27 @@
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import {
   formatPostDate,
   POST_AUTHOR_NOTE,
+  POST_PART_OF_LABEL,
   POST_META_SEPARATOR,
   postDateAttribute,
   readingTimeLabel,
 } from '@gagnechris/shared';
 import type { PostView } from './publishedPost';
+
+const PartOfProject = ({ name, href }: PostView['partOf'][number]) => {
+  if (!href) return <span className="post-part-of__project">{name}</span>;
+  return href.startsWith('/') ? (
+    <Link className="post-part-of__project" to={href} discover="none">
+      {name}
+    </Link>
+  ) : (
+    <a className="post-part-of__project" href={href}>
+      {name}
+    </a>
+  );
+};
 
 // Markup must stay byte-identical to `renderPostPageBodyHtml`
 // (PostArticle.test.tsx). Single-expression text children avoid the `<!-- -->`
@@ -36,6 +51,17 @@ const PostArticle = ({ post }: { post: PostView }) => {
           </p>
           <h1>{post.title}</h1>
           {post.excerpt ? <p className="post-excerpt">{post.excerpt}</p> : null}
+          {post.partOf.length ? (
+            <p className="post-part-of">
+              {`${POST_PART_OF_LABEL} `}
+              {post.partOf.map((project, i) => (
+                <Fragment key={i}>
+                  {i > 0 ? ', ' : null}
+                  <PartOfProject {...project} />
+                </Fragment>
+              ))}
+            </p>
+          ) : null}
         </header>
         <div
           className="post-content blog-post-body"

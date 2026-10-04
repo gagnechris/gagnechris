@@ -19,6 +19,7 @@ const samplePost: Post = {
   excerpt: '',
   bodyMarkdown: '# hi',
   tags: ['aws'],
+  projectIds: [],
   status: 'draft',
   publishedAt: null,
   updatedAt: '2026-09-27T01:00:00.000Z',
@@ -29,6 +30,7 @@ const samplePost: Post = {
 };
 
 describe('posts HTTP handlers', () => {
+  const projectsRepo = { getById: vi.fn() };
   const repo = {
     list: vi.fn(),
     getById: vi.fn(),
@@ -49,7 +51,7 @@ describe('posts HTTP handlers', () => {
     opts?: Parameters<typeof makeEvent>[2],
   ) {
     return dispatchRoutes(
-      createPostRoutes(repo),
+      createPostRoutes(repo, projectsRepo),
       makeEvent(method, path, { jwtClaims: ADMIN, ...opts }),
       method,
       path,
@@ -61,6 +63,69 @@ describe('posts HTTP handlers', () => {
     const result = await dispatch('GET', '/api/admin/posts');
     expect(result.statusCode).toBe(200);
     expect(JSON.parse(result.body as string).items).toHaveLength(1);
+  });
+
+  describe('projectIds', () => {
+    const known = '01PROJECTKNOWN000000000000';
+    const unknown = '01PROJECTUNKNOWN0000000000';
+
+    beforeEach(() => {
+      projectsRepo.getById.mockImplementation(async (id: string) =>
+        id === known ? { id } : undefined,
+      );
+    });
+
+    it('rejects an unknown project id with 400 on create and update', async () => {
+      for (const [method, path] of [
+        ['POST', '/api/admin/posts'],
+        ['PUT', `/api/admin/posts/${samplePost.id}`],
+      ] as const) {
+        vi.mocked(repo.getById).mockResolvedValue(samplePost);
+        const result = await dispatch(method, path, {
+          body: { version: 1, title: 'Hello', projectIds: [known, unknown] },
+        });
+        expect(result.statusCode).toBe(400);
+        expect(JSON.parse(result.body as string)).toMatchObject({
+          error: 'bad_request',
+          fields: { projectIds: 'unknown_project' },
+        });
+      }
+      expect(repo.create).not.toHaveBeenCalled();
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts existing project ids', async () => {
+      vi.mocked(repo.update).mockResolvedValue({
+        ...samplePost,
+        projectIds: [known],
+      });
+      vi.mocked(repo.getById).mockResolvedValue(samplePost);
+      const result = await dispatch(
+        'PUT',
+        `/api/admin/posts/${samplePost.id}`,
+        {
+          body: { version: 1, projectIds: [known] },
+        },
+      );
+      expect(result.statusCode).toBe(200);
+      expect(JSON.parse(result.body as string).projectIds).toEqual([known]);
+    });
+
+    it('a tag already on the post saves after its project is deleted', async () => {
+      vi.mocked(repo.getById).mockResolvedValue({
+        ...samplePost,
+        projectIds: [unknown],
+      });
+      vi.mocked(repo.update).mockResolvedValue(samplePost);
+      const result = await dispatch(
+        'PUT',
+        `/api/admin/posts/${samplePost.id}`,
+        {
+          body: { version: 1, projectIds: [unknown] },
+        },
+      );
+      expect(result.statusCode).toBe(200);
+    });
   });
 
   it('creates a draft', async () => {

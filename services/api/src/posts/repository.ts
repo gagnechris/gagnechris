@@ -390,6 +390,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
       excerpt: input.excerpt ?? '',
       bodyMarkdown: input.bodyMarkdown ?? '',
       tags,
+      projectIds: [...new Set(input.projectIds ?? [])],
       status: 'draft',
       publishedAt: null,
       updatedAt,
@@ -461,6 +462,9 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
       excerpt: input.excerpt ?? existing.excerpt,
       bodyMarkdown: input.bodyMarkdown ?? existing.bodyMarkdown,
       tags: nextTags,
+      projectIds: input.projectIds
+        ? [...new Set(input.projectIds)]
+        : existing.projectIds,
       coverImage:
         input.coverImage !== undefined ? input.coverImage : existing.coverImage,
       seo: input.seo !== undefined ? input.seo : existing.seo,

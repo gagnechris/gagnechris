@@ -26,7 +26,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 - **Contact, Bears and 404:** `packages/shared/src/public-pages-html.ts` (`@gagnechris/shared/public-pages`) holds their shared markup. The Vite build writes the site chrome into `contact/index.html` (with the Contact heading and intro; the form needs JavaScript) and the three `dont-feed-the-bears` pages (chrome only; their lazy routes render nothing until the chunk loads), so they show the header and footer with JavaScript off. `pages/NotFound.tsx` and the `404.html` prerender (`NOT_FOUND_PRERENDER`) print the same 404 markup (`NotFound.test.tsx`). A cold load that received `404.html` renders `NotFound` at once with no section marked current, even for `/posts/<slug>`.
 - **Posts index:** `renderPostsIndexBodyHtml` and `apps/web/src/posts/PostsIndexBody.tsx` print the same markup (`PostsIndexBody.test.tsx`): title, intro, Subscribe via RSS, then posts grouped by `groupPostsByYear` under year headings, each entry one link with title, short date (`formatPostShortDate`) and excerpt. Both come from the `@gagnechris/shared` domain entry. The SPA reads the list back from the prerender (and from the older card list until it is republished) or from `posts.json` on client navigation.
 - **Fonts:** Newsreader (roman and italic) and Inter are self-hosted from `apps/web/public/fonts/` with `font-display: swap` and metric-matched local fallbacks (`src/public.css`). Each font file is named `<name>.<first 8 hex of its SHA-256>.woff2`, so a changed font gets a new URL and deploys serve fonts as immutable; `check:web-shells` fails the deploy if a referenced font's name doesn't match its content. `index.html` preloads only the roman Newsreader file. Sources and subsetting are in [design/public-redesign/README.md](./design/public-redesign/README.md#fonts).
-- **Projects:** `renderProjectsIndexBodyHtml` (`packages/shared/src/project-html.ts`) and `apps/web/src/projects/ProjectsIndexBody.tsx` print the same `/projects` markup (`ProjectCard.test.tsx`): title, intro, then one card per project in `order` (preview image or a CSS mini-UI picked by `demo`, a dashed box for ideas; stage as text with a dot; name, pitch, stack line), or an empty state when nothing is published. A card is one link to the project's page or `href`; an `idea` with no body is not a link. Home's What I’m building section uses the same card (`renderProjectCardHtml`) for up to two non-idea projects (`selectHomeProjects`). The SPA reads cards back from the prerender (`apps/web/src/projects/publishedProjects.ts`). `/projects/<slug>` still has a deliberately bare body; `pages/ProjectsPrerendered.tsx` shows its prerendered `<main>` so mounting does not swap it for the 404.
+- **Projects:** `renderProjectsIndexBodyHtml` (`packages/shared/src/project-html.ts`) and `apps/web/src/projects/ProjectsIndexBody.tsx` print the same `/projects` markup (`ProjectCard.test.tsx`): title, intro, then one card per project in `order` (preview image or a CSS mini-UI picked by `demo`, a dashed box for ideas; stage as text with a dot; name, pitch, stack line), or an empty state when nothing is published. A card is one link to the project's page or `href`; an `idea` with no body is not a link. Home's What I’m building section uses the same card (`renderProjectCardHtml`) for up to two non-idea projects (`selectHomeProjects`). The SPA reads cards back from the prerender (`apps/web/src/projects/publishedProjects.ts`). `/projects/<slug>` still has a deliberately bare body, ending in a minimal Build log; `pages/ProjectsPrerendered.tsx` shows its prerendered `<main>` so mounting does not swap it for the 404.
 - **CSS:** `src/index.css` is shared by all three apps; `src/public.css` (public entry only) adds the fonts, the white ground, the 720px column and the chrome.
 
 ## Request flow
@@ -147,6 +147,15 @@ the index already there is kept. After every project rebuild the orchestrator
 syncs the `projects/<slug>` KeyValueStore keys (plus `projects/__synced__`)
 from the `projects/<slug>/index.html` objects left in storage, so `href` cards
 and body-less ideas have no key and corrupt rows' kept pages do.
+
+Post tagging: `RebuildScope.projectIds` collects the `projectIds` of both the
+old and new images of every changed published post (so a project the post was
+untagged from or unpublished from is rebuilt too) and the id of every changed
+published project. On a post-only change the `projects` target re-renders just
+those projects' pages with their Build logs (the index shows no posts, so it is
+not rewritten); `post-pages` re-renders every post tagged with one of those ids,
+which is how "Part of" follows a project rename or unpublish. Both resolve ids
+against the published-project catalog at render time.
 
 `sitemap.xml` has one owner, the `sitemap` target. It runs on post (`feeds`),
 project and full rebuilds and reads both catalogs, so neither kind of rebuild

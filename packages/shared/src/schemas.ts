@@ -79,6 +79,13 @@ export const PostSeoSchema = z.object({
 
 export type PostSeo = z.infer<typeof PostSeoSchema>;
 
+export const POST_PROJECT_IDS_MAX = 20;
+
+/** Ids, not slugs, so renaming a project's slug keeps the tag. */
+export const PostProjectIdsSchema = z
+  .array(z.string().min(1))
+  .max(POST_PROJECT_IDS_MAX);
+
 export const PostSchema = z
   .object({
     id: z.string().min(1),
@@ -87,6 +94,7 @@ export const PostSchema = z
     excerpt: z.string(),
     bodyMarkdown: z.string(),
     tags: z.array(z.string()),
+    projectIds: z.array(z.string()),
     coverImage: z.string().nullable(),
     seo: PostSeoSchema.nullable(),
   })
@@ -107,6 +115,7 @@ export const CreatePostRequestSchema = z.object({
   excerpt: z.string().default(''),
   bodyMarkdown: z.string().default(''),
   tags: z.array(z.string()).default([]),
+  projectIds: PostProjectIdsSchema.default([]),
   coverImage: z.string().nullable().optional(),
   seo: PostSeoSchema.nullable().optional(),
 });
@@ -120,6 +129,7 @@ export const UpdatePostRequestSchema = z.object({
   excerpt: z.string().optional(),
   bodyMarkdown: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  projectIds: PostProjectIdsSchema.optional(),
   coverImage: z.string().nullable().optional(),
   seo: PostSeoSchema.nullable().optional(),
 });

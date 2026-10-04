@@ -214,6 +214,7 @@ export interface paths {
                                 excerpt: string;
                                 bodyMarkdown: string;
                                 tags: string[];
+                                projectIds: string[];
                                 coverImage: string | null;
                                 seo: {
                                     title?: string;
@@ -331,6 +332,8 @@ export interface paths {
                         bodyMarkdown?: string;
                         /** @default [] */
                         tags?: string[];
+                        /** @default [] */
+                        projectIds?: string[];
                         coverImage?: string | null;
                         seo?: {
                             title?: string;
@@ -356,6 +359,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -509,6 +513,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -641,6 +646,7 @@ export interface paths {
                         excerpt?: string;
                         bodyMarkdown?: string;
                         tags?: string[];
+                        projectIds?: string[];
                         coverImage?: string | null;
                         seo?: {
                             title?: string;
@@ -666,6 +672,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -849,6 +856,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -1045,6 +1053,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -1242,6 +1251,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -1439,6 +1449,7 @@ export interface paths {
                             excerpt: string;
                             bodyMarkdown: string;
                             tags: string[];
+                            projectIds: string[];
                             coverImage: string | null;
                             seo: {
                                 title?: string;
@@ -8086,6 +8097,7 @@ export interface components {
             excerpt: string;
             bodyMarkdown: string;
             tags: string[];
+            projectIds: string[];
             coverImage: string | null;
             seo: {
                 title?: string;
@@ -8109,6 +8121,7 @@ export interface components {
                 excerpt: string;
                 bodyMarkdown: string;
                 tags: string[];
+                projectIds: string[];
                 coverImage: string | null;
                 seo: {
                     title?: string;
@@ -8136,6 +8149,8 @@ export interface components {
             bodyMarkdown: string;
             /** @default [] */
             tags: string[];
+            /** @default [] */
+            projectIds: string[];
             coverImage?: string | null;
             seo?: {
                 title?: string;
@@ -8150,6 +8165,7 @@ export interface components {
             excerpt?: string;
             bodyMarkdown?: string;
             tags?: string[];
+            projectIds?: string[];
             coverImage?: string | null;
             seo?: {
                 title?: string;

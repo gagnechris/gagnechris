@@ -63,6 +63,7 @@ const projectScope = (): RebuildScope => ({
   feeds: false,
   home: false,
   resume: false,
+  projectIds: new Set(),
   touchedEntityTypes: new Set(['project']),
 });
 

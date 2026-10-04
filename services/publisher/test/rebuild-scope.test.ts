@@ -46,6 +46,46 @@ function metaImage(fields: {
 }
 
 describe('collectRebuildScope', () => {
+  it('collects project ids from both the old and new post images', () => {
+    const withIds = (ids: string[] | undefined) => {
+      const image = metaImage({ slug: 'hello', status: 'published' });
+      if (ids) image.projectIds = { L: ids.map((S) => ({ S })) };
+      return image;
+    };
+    const scope = collectRebuildScope([
+      {
+        eventName: 'MODIFY',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          OldImage: withIds(['A', 'B']),
+          NewImage: withIds(['B', 'C']),
+        },
+      },
+      {
+        eventName: 'MODIFY',
+        eventSource: 'aws:dynamodb',
+        dynamodb: {
+          OldImage: withIds(undefined),
+          NewImage: withIds(undefined),
+        },
+      },
+    ]);
+    expect([...scope.projectIds].sort()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('ignores project ids on draft-only post changes', () => {
+    const image = metaImage({ slug: 'hello', status: 'draft' });
+    image.projectIds = { L: [{ S: 'A' }] };
+    const scope = collectRebuildScope([
+      {
+        eventName: 'MODIFY',
+        eventSource: 'aws:dynamodb',
+        dynamodb: { OldImage: image, NewImage: image },
+      },
+    ]);
+    expect(scope.projectIds.size).toBe(0);
+  });
+
   it('ignores unknown PUBLISHED entity types', () => {
     const records: DynamoDBRecord[] = [
       {
@@ -272,6 +312,7 @@ describe('isFullRebuildScope', () => {
         feeds: true,
         home: false,
         resume: false,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(),
       }),
     ).toBe(false);

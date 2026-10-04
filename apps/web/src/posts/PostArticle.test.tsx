@@ -100,6 +100,32 @@ describe('PostArticle', () => {
     },
   );
 
+  test('renders the prerender markup for Part of, linked and unlinked', () => {
+    const partOf = [
+      { name: 'Notebook', href: '/projects/notebook' },
+      { name: 'Bears & co', href: '/dont-feed-the-bears' },
+      { name: 'Elsewhere', href: 'https://example.com/x' },
+      { name: 'Someday', href: null },
+    ];
+    const prerender = renderPostPageBodyHtml(
+      POSTS['no date or excerpt'],
+      partOf,
+    );
+    const view = parse(prerender);
+
+    expect(view.partOf).toEqual(partOf);
+    expect(staticMarkup(view)).toBe(normalize(prerender));
+    const { container } = render(
+      <MemoryRouter>
+        <PostArticle post={view} />
+      </MemoryRouter>,
+    );
+    expect(container.innerHTML).toBe(normalize(prerender));
+    expect(container.querySelector('.post-part-of')?.textContent).toBe(
+      'Part of Notebook, Bears & co, Elsewhere, Someday',
+    );
+  });
+
   test('the long fixture reads for more than a minute', () => {
     expect(readingMinutes(POSTS['a long post'].bodyMarkdown)).toBeGreaterThan(
       1,
@@ -126,6 +152,7 @@ describe('postViewFromDocument on pages published before this layout', () => {
       date: '2026-02-01',
       excerpt: '',
       minutes: readingMinutes(words),
+      partOf: [],
       contentHtml: `<p>${words}</p>`,
     });
     expect(readingMinutes(words)).toBe(3);

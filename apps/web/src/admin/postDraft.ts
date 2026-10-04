@@ -9,6 +9,7 @@ export const emptyPostDraft = (): PostDraftFields => ({
   excerpt: '',
   bodyMarkdown: '',
   tagsText: '',
+  projectIds: [],
   coverImage: '',
 });
 
@@ -18,6 +19,7 @@ export const postDraftFromPost = (post: Post): PostDraftFields => ({
   excerpt: post.excerpt,
   bodyMarkdown: post.bodyMarkdown,
   tagsText: post.tags.join(', '),
+  projectIds: post.projectIds,
   coverImage: post.coverImage ?? '',
 });
 

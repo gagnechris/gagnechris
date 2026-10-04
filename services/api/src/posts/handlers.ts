@@ -7,14 +7,40 @@ import {
   UpdatePostRequestSchema,
 } from '@gagnechris/shared';
 import { z } from 'zod';
+import { BadRequestError } from '../data/errors.js';
 import { json } from '../http.js';
+import { ProjectsRepository } from '../projects/repository.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { PostsRepository } from './repository.js';
 
 const IdParams = z.object({ id: z.string().min(1) });
 
-export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
+type ProjectLookup = Pick<ProjectsRepository, 'getById'>;
+
+/** Ids already on the post are not rechecked, so deleting a project never blocks saving a post tagged with it. */
+async function assertKnownProjectIds(
+  ids: readonly string[] | undefined,
+  projects: () => ProjectLookup,
+  existing: readonly string[] = [],
+): Promise<void> {
+  const unique = [...new Set(ids)].filter((id) => !existing.includes(id));
+  if (!unique.length) return;
+  const repo = projects();
+  const found = await Promise.all(unique.map((id) => repo.getById(id)));
+  const unknown = unique.filter((_, i) => !found[i]);
+  if (unknown.length) {
+    throw new BadRequestError(`Unknown project id: ${unknown.join(', ')}`, {
+      projectIds: 'unknown_project',
+    });
+  }
+}
+
+export function createPostRoutes(
+  repo?: PostsRepository,
+  projectsRepo?: ProjectLookup,
+): RouteDef[] {
   const posts = () => repo ?? new PostsRepository();
+  const projects = () => projectsRepo ?? new ProjectsRepository();
   return [
     defineRoute({
       method: 'GET',
@@ -37,6 +63,7 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       metric: 'CreatePost',
       body: CreatePostRequestSchema,
       handler: async (_ctx, { body }) => {
+        await assertKnownProjectIds(body.projectIds, projects);
         const post = await posts().create(body);
         return json(201, PostSchema.parse(post));
       },
@@ -66,6 +93,14 @@ export function createPostRoutes(repo?: PostsRepository): RouteDef[] {
       params: IdParams,
       body: UpdatePostRequestSchema,
       handler: async (_ctx, { params, body }) => {
+        if (body.projectIds?.length) {
+          const current = await posts().getById(params.id);
+          await assertKnownProjectIds(
+            body.projectIds,
+            projects,
+            current?.projectIds,
+          );
+        }
         const post = await posts().update(params.id, body);
         return json(200, PostSchema.parse(post));
       },

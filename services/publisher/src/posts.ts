@@ -67,6 +67,7 @@ export function listItemToFeedPost(item: PublishedListItem): Post {
     excerpt: typeof item.excerpt === 'string' ? item.excerpt : '',
     bodyMarkdown: '',
     tags: Array.isArray(item.tags) ? item.tags : [],
+    projectIds: [],
     status: 'published',
     publishedAt: item.publishedAt ?? null,
     updatedAt: item.updatedAt,

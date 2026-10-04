@@ -1,5 +1,10 @@
 import { useEffect, type FormEvent, type RefObject } from 'react';
-import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
+import type { components } from '@gagnechris/api-client';
+import {
+  MAX_SLUG_LENGTH,
+  PROJECT_STAGE_LABELS,
+  sortProjectsByOrder,
+} from '@gagnechris/shared';
 import { Field, TextArea, TextInput } from '../workspace/ui/Field';
 import { MarkdownBodyEditor } from './MarkdownBodyEditor';
 
@@ -9,8 +14,11 @@ export type PostDraftFields = {
   excerpt: string;
   bodyMarkdown: string;
   tagsText: string;
+  projectIds: string[];
   coverImage: string;
 };
+
+type Project = components['schemas']['Project'];
 
 type MetaProps = {
   draft: PostDraftFields;
@@ -20,6 +28,9 @@ type MetaProps = {
   ) => void;
   setSlugManual: (manual: boolean) => void;
   onSave: () => void;
+  /** `undefined` while loading. */
+  projects: readonly Project[] | undefined;
+  projectsError: string | null;
 };
 
 export function PostEditorMeta({
@@ -27,6 +38,8 @@ export function PostEditorMeta({
   setField,
   setSlugManual,
   onSave,
+  projects,
+  projectsError,
 }: MetaProps) {
   return (
     <details className="admin-details">
@@ -54,6 +67,12 @@ export function PostEditorMeta({
             onChange={(e) => setField('tagsText', e.target.value)}
           />
         </Field>
+        <PostProjectsField
+          projects={projects}
+          error={projectsError}
+          selected={draft.projectIds}
+          onChange={(ids) => setField('projectIds', ids)}
+        />
         <Field label="Excerpt" fullWidth>
           <TextArea
             rows={2}
@@ -70,6 +89,59 @@ export function PostEditorMeta({
         </Field>
       </form>
     </details>
+  );
+}
+
+function PostProjectsField({
+  projects,
+  error,
+  selected,
+  onChange,
+}: {
+  projects: readonly Project[] | undefined;
+  error: string | null;
+  selected: readonly string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const toggle = (id: string, on: boolean) =>
+    onChange(
+      on ? [...selected, id] : selected.filter((existing) => existing !== id),
+    );
+
+  let options;
+  if (error) {
+    options = <p className="admin-hint">{error}</p>;
+  } else if (!projects) {
+    options = <p className="admin-hint">Loading projects…</p>;
+  } else if (projects.length === 0) {
+    options = <p className="admin-hint">No projects yet.</p>;
+  } else {
+    options = (
+      <ul className="admin-post-projects__list">
+        {sortProjectsByOrder(projects).map((project) => (
+          <li key={project.id}>
+            <label className="admin-check">
+              <input
+                type="checkbox"
+                checked={selected.includes(project.id)}
+                onChange={(e) => toggle(project.id, e.target.checked)}
+              />
+              {`${project.name} · ${PROJECT_STAGE_LABELS[project.stage]}`}
+            </label>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <fieldset className="admin-field admin-field--full admin-post-projects">
+      <legend>Projects</legend>
+      {options}
+      <span className="admin-hint">
+        Published posts show up in each tagged project’s Build log.
+      </span>
+    </fieldset>
   );
 }
 

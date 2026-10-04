@@ -18,6 +18,7 @@ import {
   POSTS_RSS_LINK,
   postsYearId,
 } from './posts-index.js';
+import { POST_PART_OF_LABEL, type PostProjectLink } from './projects.js';
 import type { Post } from './schemas.js';
 
 export { POSTS_INDEX_EMPTY_TEXT };
@@ -41,6 +42,19 @@ const authorNoteHtml = (): string => {
   );
 };
 
+const partOfHtml = (links: readonly PostProjectLink[]): string =>
+  links.length
+    ? `<p class="post-part-of">${POST_PART_OF_LABEL} ` +
+      links
+        .map(({ name, href }) =>
+          href
+            ? `<a class="post-part-of__project" href="${escapeHtml(href)}">${escapeHtml(name)}</a>`
+            : `<span class="post-part-of__project">${escapeHtml(name)}</span>`,
+        )
+        .join(', ') +
+      `</p>`
+    : '';
+
 /**
  * `apps/web/src/posts/PostArticle.tsx` renders the same markup byte for byte
  * (PostArticle.test.tsx). `blog-post-prerender` and `data-minutes` are what
@@ -51,6 +65,7 @@ export const renderPostPageBodyHtml = (
     Post,
     'slug' | 'title' | 'excerpt' | 'publishedAt' | 'bodyMarkdown'
   >,
+  partOf: readonly PostProjectLink[] = [],
 ): string => {
   const minutes = readingMinutes(post.bodyMarkdown);
   const date = postDateHtml(post.publishedAt);
@@ -64,6 +79,7 @@ export const renderPostPageBodyHtml = (
     (post.excerpt
       ? `<p class="post-excerpt">${escapeHtml(post.excerpt)}</p>`
       : '') +
+    partOfHtml(partOf) +
     `</header>` +
     `<div class="post-content blog-post-body">${renderPostMarkdownToHtml(post.bodyMarkdown)}</div>` +
     `</article>` +

@@ -96,6 +96,7 @@ export const handler = async (
         feeds: scope.feeds,
         home: scope.home,
         resume: scope.resume,
+        projectIds: [...scope.projectIds],
         touchedEntityTypes: [...scope.touchedEntityTypes],
         streamPublishedPosts: streamPublishedPosts.length,
         streamPublishedProjects: streamPublishedProjects.length,

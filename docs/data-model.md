@@ -39,6 +39,7 @@ redirects use dedicated items.
 | `slug`                             | Current draft slug                                                                          |
 | `title`, `excerpt`, `bodyMarkdown` | Draft content                                                                               |
 | `tags`                             | `string[]`                                                                                  |
+| `projectIds`                       | `string[]` of project ids (optional; missing reads as `[]`). The API rejects unknown ids    |
 | `status`                           | `draft` \| `published` \| `deleted` (soft delete). `published` means a live snapshot exists |
 | `publishedAt`                      | ISO-8601 when first published; kept on unpublish                                            |
 | `updatedAt`                        | ISO-8601                                                                                    |
@@ -164,6 +165,13 @@ Either way it is listed on `/projects`; `projectCardHref` gives the card's link
 (`href`, the page, or none). Only projects with a page are in `sitemap.xml`.
 Don't Feed the Bears is the `href` case: its card links to
 `/dont-feed-the-bears` and there is no `/projects/dont-feed-the-bears`.
+
+A post's `projectIds` tag it to projects. Ids rather than slugs, so a slug
+rename keeps the tag: the publisher resolves ids to the current slug and name
+when it renders. A project page's Build log lists the published posts tagged
+with it, newest first, and a tagged post's page shows "Part of" with a link to
+each published project (`projectCardHref`: its page, its `href`, or plain text
+for an idea with no page).
 
 ## Resume (singleton)
 

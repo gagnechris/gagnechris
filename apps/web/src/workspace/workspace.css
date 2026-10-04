@@ -663,6 +663,32 @@
   }
 }
 
+.admin-post-projects {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-post-projects legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+.admin-post-projects__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-post-projects .admin-check {
+  margin: 0;
+  font-weight: 400;
+  color: var(--neutral-800);
+}
+
 .admin-details {
   margin: 0 0 var(--space-4);
   border: 1px solid var(--neutral-200);

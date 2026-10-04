@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -47,6 +47,7 @@ const basePost = {
   excerpt: '',
   bodyMarkdown: 'line one',
   tags: [] as string[],
+  projectIds: [] as string[],
   status: 'draft' as const,
   publishedAt: null as string | null,
   updatedAt: '2026-09-27T00:00:00.000Z',
@@ -635,5 +636,80 @@ describe('PostEditorPage navigation (CHR-178)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText(/Reload and try again/)).not.toBeInTheDocument();
     confirmSpy.mockRestore();
+  });
+});
+
+describe('PostEditorPage projects', () => {
+  const project = (id: string, name: string, stage: string, order: number) => ({
+    id,
+    slug: name.toLowerCase(),
+    name,
+    stage,
+    order,
+    status: 'published',
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockImplementation(async (path: string) =>
+      path === '/api/admin/projects'
+        ? {
+            data: {
+              items: [
+                project('01NOTEBOOK', 'Notebook', 'building', 2),
+                project('01POSTS', 'Posts', 'live', 1),
+              ],
+            },
+            error: undefined,
+            response: { status: 200 },
+          }
+        : {
+            data: { ...basePost, projectIds: ['01NOTEBOOK'] },
+            error: undefined,
+            response: { status: 200 },
+          },
+    );
+    put.mockImplementation(
+      async (_path: string, { body }: { body: Record<string, unknown> }) => ({
+        data: { ...basePost, ...body, version: 2 },
+        error: undefined,
+        response: { status: 200 },
+      }),
+    );
+  });
+
+  test('lists each project with its stage and saves the tags', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    const group = await screen.findByRole('group', { name: 'Projects' });
+    const boxes = within(group).getAllByRole('checkbox');
+    expect(boxes.map((b) => b.closest('label')?.textContent)).toEqual([
+      'Posts · Live',
+      'Notebook · Building',
+    ]);
+    expect(
+      within(group).getByRole('checkbox', { name: 'Notebook · Building' }),
+    ).toBeChecked();
+
+    const posts = within(group).getByRole('checkbox', { name: 'Posts · Live' });
+    posts.focus();
+    await user.keyboard(' ');
+    expect(posts).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(put.mock.calls[0]?.[1]).toMatchObject({
+      body: { projectIds: ['01NOTEBOOK', '01POSTS'] },
+    });
+
+    await user.click(
+      within(group).getByRole('checkbox', { name: 'Notebook · Building' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(put.mock.calls[1]?.[1]).toMatchObject({
+      body: { projectIds: ['01POSTS'] },
+    });
   });
 });

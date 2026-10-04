@@ -19,6 +19,7 @@ const draft: Post = {
   excerpt: '',
   bodyMarkdown: 'body',
   tags: [],
+  projectIds: [],
   status: 'draft',
   publishedAt: null,
   updatedAt: '2026-09-27T01:00:00.000Z',
@@ -50,6 +51,7 @@ describe('PostsRepository', () => {
       excerpt: '',
       bodyMarkdown: '',
       tags: [],
+      projectIds: [],
     });
     expect(post.status).toBe('draft');
     expect(post.slug).toBe('hello-world');
@@ -439,7 +441,13 @@ describe('PostsRepository', () => {
     });
     const repo = new PostsRepository(doc, 'gagnechris-test');
     await expect(
-      repo.create({ title: 'Taken', excerpt: '', bodyMarkdown: '', tags: [] }),
+      repo.create({
+        title: 'Taken',
+        excerpt: '',
+        bodyMarkdown: '',
+        tags: [],
+        projectIds: [],
+      }),
     ).rejects.toMatchObject({
       name: 'ConflictError',
       code: 'slug_taken',

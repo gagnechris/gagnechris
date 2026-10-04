@@ -32,6 +32,7 @@ export async function makePost(
     excerpt: input.excerpt ?? '',
     bodyMarkdown: input.bodyMarkdown ?? 'Body',
     tags: input.tags ?? [],
+    projectIds: [],
     slug: input.slug,
     coverImage: input.coverImage,
     seo: input.seo,

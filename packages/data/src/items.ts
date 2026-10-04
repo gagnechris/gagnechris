@@ -84,6 +84,7 @@ export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
   excerpt: z.string(),
   bodyMarkdown: z.string(),
   tags: z.array(z.string()),
+  projectIds: z.array(z.string()).optional(),
   coverImage: z.string().nullable().optional(),
   seo: PostSeoSchema.nullable().optional(),
   gsi1pk: z.string().min(1).optional(),
@@ -184,6 +185,7 @@ export function postContentEqual(
     | 'excerpt'
     | 'bodyMarkdown'
     | 'tags'
+    | 'projectIds'
     | 'coverImage'
     | 'seo'
   >,
@@ -194,6 +196,7 @@ export function postContentEqual(
     | 'excerpt'
     | 'bodyMarkdown'
     | 'tags'
+    | 'projectIds'
     | 'coverImage'
     | 'seo'
   >,
@@ -204,6 +207,7 @@ export function postContentEqual(
     a.excerpt === b.excerpt &&
     a.bodyMarkdown === b.bodyMarkdown &&
     deepEqual(a.tags, b.tags) &&
+    deepEqual(a.projectIds, b.projectIds) &&
     a.coverImage === b.coverImage &&
     deepEqual(a.seo ?? null, b.seo ?? null)
   );
@@ -220,6 +224,7 @@ export function metaToPost(
     excerpt: item.excerpt,
     bodyMarkdown: item.bodyMarkdown,
     tags: item.tags,
+    projectIds: item.projectIds ?? [],
     status: item.status,
     publishedAt: item.publishedAt ?? null,
     updatedAt: item.updatedAt,
@@ -245,6 +250,7 @@ export function buildMetaItem(post: Post): PostMetaItem {
     excerpt: post.excerpt,
     bodyMarkdown: post.bodyMarkdown,
     tags: post.tags,
+    projectIds: post.projectIds,
     status: post.status,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
