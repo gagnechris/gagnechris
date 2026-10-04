@@ -42,32 +42,33 @@ export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   );
 }
 
+/** Also reads the card list published before the year groups, until it is republished. */
 export function postsIndexFromDocument(
   root: ParentNode,
 ): PublishedPostListItem[] | null {
   const main = root.querySelector('.blog-index-prerender > main');
   if (!main) return null;
 
-  return [...main.querySelectorAll('article.post-preview')].flatMap(
-    (article) => {
-      const href = article.querySelector('a')?.getAttribute('href') ?? '';
-      const slug = href.replace(/^\/posts\//, '');
-      if (!slug || slug === href) return [];
-      return [
-        {
-          id: article.getAttribute('data-id') || slug,
-          slug,
-          title: article.querySelector('h2')?.textContent ?? '',
-          excerpt: article.querySelector('.post-excerpt')?.textContent ?? '',
-          publishedAt:
-            article.querySelector('time')?.getAttribute('datetime') || null,
-          updatedAt: '',
-          tags: [],
-          coverImage: null,
-        },
-      ];
-    },
-  );
+  return [...main.querySelectorAll('.post-preview')].flatMap((entry) => {
+    const href = entry.querySelector('a')?.getAttribute('href') ?? '';
+    const slug = href.replace(/^\/posts\//, '');
+    if (!slug || slug === href) return [];
+    const text = (selector: string) =>
+      entry.querySelector(selector)?.textContent ?? '';
+    return [
+      {
+        id: entry.getAttribute('data-id') || slug,
+        slug,
+        title: text('.post-preview__title, h2'),
+        excerpt: text('.post-preview__excerpt, .post-excerpt'),
+        publishedAt:
+          entry.querySelector('time')?.getAttribute('datetime') || null,
+        updatedAt: '',
+        tags: [],
+        coverImage: null,
+      },
+    ];
+  });
 }
 
 export const documentPostsIndex = (): PublishedPostListItem[] | null =>

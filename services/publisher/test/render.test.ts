@@ -126,6 +126,57 @@ describe('publisher render', () => {
     );
   });
 
+  it('lists every published post with its excerpt and date in the HTML, grouped by year', () => {
+    const posts = [
+      samplePost({
+        id: '01A',
+        slug: 'old',
+        title: 'Old',
+        excerpt: 'From 2025.',
+        publishedAt: '2025-11-12T00:00:00.000Z',
+      }),
+      samplePost({
+        id: '01B',
+        slug: 'new',
+        title: 'New',
+        excerpt: 'Fresh.',
+        publishedAt: '2026-09-27T12:00:00.000Z',
+      }),
+      samplePost({
+        id: '01C',
+        slug: 'mid',
+        title: 'Mid',
+        excerpt: 'Middle.',
+        publishedAt: '2026-02-01T00:00:00.000Z',
+      }),
+    ];
+    const html = renderPostsIndexPage(shell, posts);
+    const main = html.slice(html.indexOf('<main>'), html.indexOf('</main>'));
+
+    expect(
+      [...main.matchAll(/<h2 class="posts-year__label"[^>]*>(\d+)</g)].map(
+        (m) => m[1],
+      ),
+    ).toEqual(['2026', '2025']);
+    expect(
+      [...main.matchAll(/href="\/posts\/([^"]+)"/g)].map((m) => m[1]),
+    ).toEqual(['new', 'mid', 'old']);
+    for (const [slug, date, iso, excerpt] of [
+      ['new', 'Sep 27', '2026-09-27', 'Fresh.'],
+      ['mid', 'Feb 1', '2026-02-01', 'Middle.'],
+      ['old', 'Nov 12', '2025-11-12', 'From 2025.'],
+    ]) {
+      expect(main).toMatch(
+        new RegExp(
+          `href="/posts/${slug}"><h3 class="post-preview__title">[^<]+</h3><time class="post-preview__date" datetime="${iso}">${date}</time><p class="post-preview__excerpt">${excerpt.replace('.', '\\.')}</p></a>`,
+        ),
+      );
+    }
+    expect(html).toContain(
+      '<a class="posts-index__rss" href="/rss.xml">Subscribe via RSS</a>',
+    );
+  });
+
   it('prefers seo.ogImage when set', () => {
     expect(
       resolveOgImage(

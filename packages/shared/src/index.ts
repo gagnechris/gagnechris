@@ -18,7 +18,20 @@ export * from './schemas.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export { EMPTY_SLUG_FALLBACK, MAX_SLUG_LENGTH, slugify } from './slugify.js';
-export { formatPostDate, postDateAttribute } from './post-date.js';
+export {
+  formatPostDate,
+  formatPostShortDate,
+  postDateAttribute,
+} from './post-date.js';
+export {
+  groupPostsByYear,
+  POSTS_INDEX_EMPTY_TEXT,
+  POSTS_INDEX_INTRO,
+  POSTS_RSS_LINK,
+  postsYearId,
+  UNDATED_POSTS_LABEL,
+  type PostsYearGroup,
+} from './posts-index.js';
 export { textExcerpt } from './excerpt.js';
 export {
   countWords,

@@ -128,6 +128,16 @@ describe('cold load: first React render matches the prerender', () => {
     expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
   });
 
+  test.each(['/posts', '/posts/hello-world'])(
+    '%s keeps the prerendered markup',
+    async (path) => {
+      const loaded = await coldLoad(path, PRERENDERS[path]);
+      unmount = loaded.unmount;
+
+      expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    },
+  );
+
   test('/resume when unpublished', async () => {
     const loaded = await coldLoad(
       '/resume',

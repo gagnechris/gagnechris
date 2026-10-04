@@ -78,6 +78,21 @@ Values from the stories unless marked measured.
 | Not drawn (our specs) | Blockquote: italic `inkSoft`, 2px ink rule. Code: system mono at 0.8em on `neutral-100`; blocks scroll in a bordered box. Figure caption: Inter 13px `neutral-600`. Tables scroll in their box; header rule ink, row rules `neutral-200` |
 | At 390px (not drawn)  | Body 19px, title 40px, excerpt 20px, h2 26px, author note 17px                                                                                                                                                                           |
 
+## Posts (measured)
+
+| Element              | Value                                                                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column               | Full 720px column                                                                                                                                   |
+| Title                | "Posts", Newsreader 60px / 500, line height 1.1; cap top 99px below the header row                                                                  |
+| Intro                | "Ideas, lessons and experiments from software engineering, leadership and AI." Newsreader italic 24px / 1.4, `inkSoft`                              |
+| Subscribe via RSS    | Inter 14px / 500, `link`, 1px underline 3px below the baseline, 44px target; links to `/rss.xml`                                                    |
+| Year label           | Inter 13px / 600, tracked 0.12em, ink; 13px above a 1px ink rule across the column                                                                  |
+| Entry                | One link: title Newsreader 28px / 500 (underlined on hover and focus), short date ("Feb 1") Inter 13px `neutral-600` on the right, baseline-aligned |
+| Entry excerpt        | Newsreader 19px / 1.5, `inkSoft`                                                                                                                    |
+| Entry spacing        | 25px above the title, 28px below the excerpt, 1px `neutral-200` rule between entries; 56px between years                                            |
+| Order                | `groupPostsByYear`: years newest first (UTC), posts newest first; undated posts last under "Undated"                                                |
+| At 390px (not drawn) | Title 40px, intro 20px, entry title 22px, excerpt 17px                                                                                              |
+
 ## Colours
 
 | Token           | Value   | Use                                                                |

@@ -93,6 +93,36 @@ describe('publishedPosts', () => {
     );
   });
 
+  test('reads the card list published before the year groups', () => {
+    const cards =
+      '<div class="posts-index blog-index-prerender"><header><h1>Posts</h1></header><main><div class="posts-list">' +
+      '<article class="post-preview" data-id="01A"><a class="post-preview__link" href="/posts/hello"><h2>Hello</h2><time class="post-date" datetime="2026-02-01">February 1, 2026</time><p class="post-excerpt">Short.</p><span class="read-more">Read more →</span></a></article>' +
+      '<article class="post-preview" data-id="01B"><a class="post-preview__link" href="/posts/bare"><h2>Bare</h2><span class="read-more">Read more →</span></a></article>' +
+      '</div></main></div>';
+    expect(postsIndexFromDocument(parse(cards))).toEqual([
+      {
+        id: '01A',
+        slug: 'hello',
+        title: 'Hello',
+        excerpt: 'Short.',
+        publishedAt: '2026-02-01',
+        updatedAt: '',
+        tags: [],
+        coverImage: null,
+      },
+      {
+        id: '01B',
+        slug: 'bare',
+        title: 'Bare',
+        excerpt: '',
+        publishedAt: null,
+        updatedAt: '',
+        tags: [],
+        coverImage: null,
+      },
+    ]);
+  });
+
   test('falls back to posts.json for a bare link-list index', () => {
     const legacy =
       '<section class="blog-index-prerender"><h1>Posts</h1><ul><li><a href="/posts/hello">Hello</a></li></ul></section>';

@@ -78,34 +78,45 @@ describe('renderPostPageBodyHtml', () => {
 });
 
 describe('renderPostsIndexBodyHtml', () => {
-  it('renders one preview per post with title, date, and excerpt', () => {
+  it('renders the title, intro and RSS link', () => {
+    expect(renderPostsIndexBodyHtml([])).toContain(
+      '<header class="posts-index__header"><h1>Posts</h1>' +
+        '<p class="posts-index__intro">Ideas, lessons and experiments from software engineering, leadership and AI.</p>' +
+        '<a class="posts-index__rss" href="/rss.xml">Subscribe via RSS</a></header>',
+    );
+  });
+
+  it('groups posts under year headings, each entry one link with title, short date and excerpt', () => {
     const html = renderPostsIndexBodyHtml([
       {
         id: '01A',
         slug: 'first',
-        title: 'First',
+        title: 'First & best',
         excerpt: 'An <excerpt>',
-        publishedAt: '2026-09-27T12:00:00.000Z',
+        publishedAt: '2025-12-31T23:30:00.000Z',
       },
       {
         id: '01B',
         slug: 'second',
         title: 'Second',
         excerpt: '',
-        publishedAt: null,
+        publishedAt: '2026-02-01T00:00:00.000Z',
       },
     ]);
     expect(html).toContain(
-      '<article class="post-preview" data-id="01A"><a class="post-preview__link" href="/posts/first"><h2>First</h2><time class="post-date" datetime="2026-09-27">September 27, 2026</time><p class="post-excerpt">An &lt;excerpt&gt;</p><span class="read-more">Read more →</span></a></article>',
-    );
-    expect(html).toContain(
-      '<a class="post-preview__link" href="/posts/second"><h2>Second</h2><span class="read-more">',
+      '<main><section class="posts-year" aria-labelledby="posts-2026"><h2 class="posts-year__label" id="posts-2026">2026</h2>' +
+        '<ul class="posts-year__list"><li class="post-preview" data-id="01B"><a class="post-preview__link" href="/posts/second">' +
+        '<h3 class="post-preview__title">Second</h3><time class="post-preview__date" datetime="2026-02-01">Feb 1</time></a></li></ul></section>' +
+        '<section class="posts-year" aria-labelledby="posts-2025"><h2 class="posts-year__label" id="posts-2025">2025</h2>' +
+        '<ul class="posts-year__list"><li class="post-preview" data-id="01A"><a class="post-preview__link" href="/posts/first">' +
+        '<h3 class="post-preview__title">First &amp; best</h3><time class="post-preview__date" datetime="2025-12-31">Dec 31</time>' +
+        '<p class="post-preview__excerpt">An &lt;excerpt&gt;</p></a></li></ul></section></main>',
     );
   });
 
   it('says so when nothing is published', () => {
     expect(renderPostsIndexBodyHtml([])).toContain(
-      `<main><p>${POSTS_INDEX_EMPTY_TEXT}</p></main>`,
+      `<main><p class="posts-index__empty">${POSTS_INDEX_EMPTY_TEXT}</p></main>`,
     );
   });
 });

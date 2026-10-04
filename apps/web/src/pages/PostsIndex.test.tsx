@@ -41,8 +41,11 @@ describe('PostsIndex', () => {
     expect(
       await screen.findByRole('link', { name: /Hello World/ }),
     ).toHaveAttribute('href', '/posts/hello');
+    expect(
+      screen.getByRole('heading', { level: 2, name: '2026' }),
+    ).toBeVisible();
     expect(screen.getByText('An excerpt')).toBeInTheDocument();
-    const time = screen.getByText('February 1, 2026');
+    const time = screen.getByText('Feb 1');
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveAttribute('datetime', '2026-02-01');
     expect(fetch).toHaveBeenCalledWith(
