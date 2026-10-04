@@ -168,6 +168,8 @@ export async function startStack(): Promise<Stack> {
     VITE_AUTH_MODE: 'local',
     VITE_LOCAL_API_ORIGIN: apiUrl,
     VITE_LOCAL_SITE_ORIGIN: siteUrl,
+    // The admin app's View live links; the local site stands in for gagnechris.com.
+    VITE_PUBLIC_SITE_ORIGIN: siteUrl,
   };
   delete env.AWS_PROFILE;
   delete env.AWS_DEFAULT_PROFILE;

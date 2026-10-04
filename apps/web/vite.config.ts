@@ -7,7 +7,11 @@ import { appShellPlugin } from './scripts/appShellPlugin.ts';
 import { bundleBoundaryPlugin } from './scripts/bundleBoundaryPlugin.ts';
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
 import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
-import { WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
+import {
+  publicSiteOrigin,
+  WEB_APPS,
+  webAppFromEnv,
+} from './scripts/webApps.ts';
 
 const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +36,8 @@ export default defineConfig(({ mode, command }) => {
       );
     }
   }
+
+  const publicOrigin = publicSiteOrigin(env.VITE_PUBLIC_SITE_ORIGIN, command);
 
   const useProdApi = env.VITE_API_TARGET === 'prod';
   const proxyTarget = useProdApi
@@ -110,6 +116,9 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     base: '/',
+    define: {
+      'import.meta.env.VITE_PUBLIC_SITE_ORIGIN': JSON.stringify(publicOrigin),
+    },
     plugins,
     publicDir: path.join(appRoot, app.publicDir),
     // The three dev servers run side by side; a shared optimizer cache makes

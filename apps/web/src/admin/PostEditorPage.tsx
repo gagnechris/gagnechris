@@ -17,6 +17,7 @@ import {
   type PostDraftFields,
 } from './PostEditorSections';
 import { uploadImages } from './uploadImages';
+import { publicUrl } from './publicUrl';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 
 /** Outer shell keys the editor by postId so A→B navigation drops pending debounce. */
@@ -149,7 +150,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         }
         {...actionBarProps}
         viewLiveHref={
-          post.status === 'published' ? `/posts/${post.slug}` : null
+          post.status === 'published' ? publicUrl(`/posts/${post.slug}`) : null
         }
         extraActions={
           <Button

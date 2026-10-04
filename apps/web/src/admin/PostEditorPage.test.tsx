@@ -713,3 +713,34 @@ describe('PostEditorPage projects', () => {
     });
   });
 });
+
+describe('PostEditorPage View live', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...basePost, status: 'published' },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test('opens the post on the public dev origin in a new tab', async () => {
+    renderEditor();
+    const link = await screen.findByRole('link', { name: 'View live' });
+    expect(link).toHaveAttribute('href', 'http://localhost:5173/posts/hello');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener');
+  });
+
+  test('opens the post on gagnechris.com in prod', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    renderEditor();
+    expect(
+      await screen.findByRole('link', { name: 'View live' }),
+    ).toHaveAttribute('href', 'https://gagnechris.com/posts/hello');
+  });
+});

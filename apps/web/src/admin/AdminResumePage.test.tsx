@@ -513,3 +513,38 @@ describe('AdminResumePage publish with an end before start', () => {
     );
   });
 });
+
+describe('AdminResumePage public links', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...baseResume },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test('View live opens the public dev origin in a new tab', async () => {
+    renderResume();
+    const link = await screen.findByRole('link', { name: 'View live' });
+    expect(link).toHaveAttribute('href', 'http://localhost:5173/resume');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener');
+  });
+
+  test('View live and preview links point at the public site in prod', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    renderResume();
+    expect(
+      await screen.findByRole('link', { name: 'View live' }),
+    ).toHaveAttribute('href', 'https://gagnechris.com/resume');
+    expect(screen.getByRole('link', { name: 'Get in touch' })).toHaveAttribute(
+      'href',
+      'https://gagnechris.com/contact',
+    );
+  });
+});

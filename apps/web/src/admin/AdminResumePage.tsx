@@ -4,6 +4,7 @@ import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
+import { publicUrl, withPublicLinks } from './publicUrl';
 import {
   createResumeContentBuilder,
   hasExperienceRangeError,
@@ -135,7 +136,7 @@ const AdminResumePage = () => {
         // save does not mean everything typed is on the server.
         dirty={actionBarProps.dirty || hasExperienceRangeError(draft)}
         onPublish={() => void guardedPublish()}
-        viewLiveHref="/resume"
+        viewLiveHref={publicUrl('/resume')}
       />
 
       {blockedRole ? (
@@ -172,7 +173,7 @@ const AdminResumePage = () => {
           <h2 className="admin-preview-title">Preview</h2>
           <div
             className="resume-page admin-resume-preview"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
+            dangerouslySetInnerHTML={{ __html: withPublicLinks(previewHtml) }}
           />
         </div>
       </div>

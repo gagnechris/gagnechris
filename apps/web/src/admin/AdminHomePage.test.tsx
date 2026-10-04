@@ -251,3 +251,37 @@ describe('AdminHomePage publish', () => {
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
   });
 });
+
+describe('AdminHomePage public links', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...baseHome },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test('View live opens the public dev origin in a new tab', async () => {
+    renderHome();
+    const link = await screen.findByRole('link', { name: 'View live' });
+    expect(link).toHaveAttribute('href', 'http://localhost:5173/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener');
+  });
+
+  test('View live and preview links point at the public site in prod', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    renderHome();
+    expect(
+      await screen.findByRole('link', { name: 'View live' }),
+    ).toHaveAttribute('href', 'https://gagnechris.com/');
+    const resume = screen.getByRole('link', { name: 'resume' });
+    expect(resume).toHaveAttribute('href', 'https://gagnechris.com/resume');
+    expect(resume).toHaveAttribute('target', '_blank');
+  });
+});

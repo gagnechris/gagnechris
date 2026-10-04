@@ -10,6 +10,7 @@ import { Button } from '../workspace/ui/Button';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { MarkdownBodyEditor } from './MarkdownBodyEditor';
 import { ProjectEditorFields } from './ProjectEditorFields';
+import { publicUrl } from './publicUrl';
 import {
   emptyProjectDraft,
   hasProjectDraftErrors,
@@ -175,7 +176,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
         onPublish={() => void guardedPublish()}
         viewLiveHref={
           project.status === 'published'
-            ? (project.href ?? `/projects/${project.slug}`)
+            ? publicUrl(project.href ?? `/projects/${project.slug}`)
             : null
         }
         extraActions={
