@@ -156,8 +156,16 @@ Same draft / published split as the resume.
 `GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
 writes `HOME#current` / `PUBLISHED`; unpublish deletes it. On publish the
 publisher also writes `home/last-published.json`; when `PUBLISHED` is missing
-or corrupt it re-renders `index.html` from that snapshot (or leaves
-`index.html` alone if there is none).
+or corrupt it re-renders `index.html` from that snapshot. With no snapshot, a
+missing Home renders `DEFAULT_HOME` (what the SPA falls back to) and a corrupt
+one leaves `index.html` alone.
+
+`index.html` also lists the three newest published posts (Recent posts), so
+the home target runs on every post publish, unpublish and delete as well as on
+Home changes. It reads the same catalog as `posts.json`. When the rendered
+bytes are unchanged (a body edit, or an edit to a post outside the top three)
+nothing is written and `/` is not invalidated. With no posts the section is
+left out.
 
 #### `HOME#current` / `PUBLISHED` — live snapshot
 
@@ -166,8 +174,8 @@ Publisher reads only this item.
 Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
 (home meta shell), then invokes `republishAll`, which reads `_shell.html` and
 writes the home prerender into `index.html`. Home-only head tags therefore
-cannot leak into `/posts` or `/resume`. Quick Links **link data** is defined
-once in `@gagnechris/shared/render` (`HOME_QUICK_LINKS`); the publisher
+cannot leak into `/posts` or `/resume`. The hero's links sentence is defined
+once in `@gagnechris/shared/render` (`HOME_LINKS_SENTENCE`); the publisher
 prerenders HTML from that list and React renders the same list as JSX
 (`<Link>` / tracked `<a>`) so SPA navigation and GA4 click events stay intact.
 The site header and footer around every page come from

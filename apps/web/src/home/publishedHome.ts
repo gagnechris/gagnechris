@@ -1,11 +1,19 @@
-import { DEFAULT_HOME, renderHomeAboutHtml } from '@gagnechris/shared/render';
+import {
+  DEFAULT_HOME,
+  renderHomeAboutHtml,
+  selectHomeRecentPosts,
+  type HomeRecentPost,
+} from '@gagnechris/shared/render';
 import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import { fetchPublishedPosts } from '../posts/publishedPosts';
 
 export type HomeView = {
   name: string;
   title: string;
   aboutHtml: string;
 };
+
+export type HomeDocument = HomeView & { recentPosts: HomeRecentPost[] };
 
 /** Local Vite uses `/__site` → static origin; prod is same-origin. */
 export function publishedHomeUrl(): string {
@@ -20,20 +28,42 @@ export const fallbackHomeView = (): HomeView => ({
   aboutHtml: renderHomeAboutHtml(DEFAULT_HOME.about),
 });
 
-export function homeViewFromDocument(root: ParentNode): HomeView | null {
-  const article = root.querySelector('article.home-page-prerender');
-  const about = article?.querySelector('#about .about-body');
-  if (!article || !about) return null;
+const recentPostsFromDocument = (main: Element): HomeRecentPost[] =>
+  [...main.querySelectorAll('.home-posts > li.home-post')].flatMap((item) => {
+    const href =
+      item.querySelector('.home-post__title a')?.getAttribute('href') ?? '';
+    const slug = href.replace(/^\/posts\//, '');
+    if (!slug || slug === href) return [];
+    return [
+      {
+        id: item.getAttribute('data-id') || slug,
+        slug,
+        title: item.querySelector('.home-post__title')?.textContent ?? '',
+        excerpt: item.querySelector('.home-post__excerpt')?.textContent ?? '',
+        publishedAt:
+          item.querySelector('time')?.getAttribute('datetime') || null,
+      },
+    ];
+  });
+
+export function homeDocumentFromRoot(root: ParentNode): HomeDocument | null {
+  const main = root.querySelector('.home-page-prerender');
+  const about = main?.querySelector('.home-hero__about');
+  if (!main || !about) return null;
 
   return {
-    name: article.getAttribute('data-name') || DEFAULT_HOME.name,
-    title: article.getAttribute('data-title') || DEFAULT_HOME.title,
+    name: main.getAttribute('data-name') || DEFAULT_HOME.name,
+    title: main.getAttribute('data-title') || DEFAULT_HOME.title,
     aboutHtml: about.innerHTML,
+    recentPosts: recentPostsFromDocument(main),
   };
 }
 
-export const documentHomeView = (): HomeView | null =>
-  fromPrerender(homeViewFromDocument);
+export const documentHome = (): HomeDocument | null =>
+  fromPrerender(homeDocumentFromRoot);
 
 export const loadPublishedHome = (): Promise<HomeView | null> =>
-  fetchPrerender(publishedHomeUrl(), homeViewFromDocument);
+  fetchPrerender(publishedHomeUrl(), homeDocumentFromRoot);
+
+export const loadRecentPosts = async (): Promise<HomeRecentPost[]> =>
+  selectHomeRecentPosts(await fetchPublishedPosts());

@@ -49,8 +49,12 @@ Values from the stories unless marked measured.
 | Use                                  | Face       | Size / weight / line height                     | Story   |
 | ------------------------------------ | ---------- | ----------------------------------------------- | ------- |
 | Home name                            | Newsreader | 68px / 500                                      | CHR-220 |
-| Home title line                      | Newsreader | italic, `link` colour                           | CHR-220 |
-| Home About lede                      | Newsreader | 23px                                            | CHR-220 |
+| Home title line                      | Newsreader | italic 26px, `link` colour (measured)           | CHR-220 |
+| Home About lede                      | Newsreader | 23px / 1.6                                      | CHR-220 |
+| Home links sentence                  | Newsreader | 20px / 1.6 (measured)                           | CHR-220 |
+| Home Recent posts title              | Newsreader | 30px / 500 (measured)                           | CHR-220 |
+| Home Recent posts excerpt            | Newsreader | 19px, `inkSoft` (measured)                      | CHR-220 |
+| Home Recent posts date               | Inter      | 13.5px, `neutral-600` (measured)                | CHR-220 |
 | Post, Posts and Project titles       | Newsreader | 60px / 500                                      | CHR-221 |
 | Post excerpt subtitle                | Newsreader | italic 24px                                     | CHR-221 |
 | Post body                            | Newsreader | 21px / 1.7, measure about 680px                 | CHR-221 |

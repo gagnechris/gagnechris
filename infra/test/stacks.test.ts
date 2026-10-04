@@ -117,24 +117,10 @@ describe('stack Template assertions', () => {
               backupVaultArn: [Match.anyValue()],
             },
             {
-              status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
-              backupVaultArn: [Match.anyValue()],
-            },
-            {
               state: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
               sourceBackupVaultArn: [Match.anyValue()],
             },
-            {
-              status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'],
-              restoreTestingPlanArn: [
-                {
-                  'Fn::GetAtt': [
-                    Match.stringLikeRegexp('RestoreTestingPlan'),
-                    'RestoreTestingPlanArn',
-                  ],
-                },
-              ],
-            },
+            { status: ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'] },
           ],
         },
       }),

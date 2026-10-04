@@ -47,7 +47,6 @@ export type RestoreJobStateChangeEvent = {
     status?: string;
     resourceType?: string;
     createdResourceArn?: string;
-    restoreTestingPlanArn?: string;
   };
 };
 
@@ -63,11 +62,17 @@ export type PutValidationFn = (input: {
   message: string;
 }) => Promise<void>;
 
+export type RestoreJobInfo = {
+  restoreTestingPlanArn?: string;
+  recoveryPointCreationDate?: Date;
+};
+
 export type RestoreTestDeps = {
   scan: ScanFn;
   count: CountFn;
   sourceTableName: string;
-  restorePointOf: (restoreJobId: string) => Promise<Date | undefined>;
+  restoreTestingPlanArn: string;
+  describeRestoreJob: (restoreJobId: string) => Promise<RestoreJobInfo>;
   putValidation: PutValidationFn;
   listTables: ListTablesFn;
   describeCreation: DescribeCreationFn;
@@ -80,6 +85,11 @@ export type ValidateOutcome = {
   restoreJobId: string;
   tableName?: string;
   result: ValidationResult;
+};
+
+export type IgnoredOutcome = {
+  kind: 'ignored';
+  restoreJobId: string;
 };
 
 export type LeftoverOutcome = {
@@ -110,6 +120,7 @@ function defaultDeps(): RestoreTestDeps {
   const planArn = requireEnv('RESTORE_TESTING_PLAN_ARN');
   return {
     sourceTableName: requireEnv('SOURCE_TABLE_NAME'),
+    restoreTestingPlanArn: planArn,
     count: async (input) => {
       const out = await doc.send(new ScanCommand(input));
       return {
@@ -118,11 +129,14 @@ function defaultDeps(): RestoreTestDeps {
           Record<string, unknown> | undefined,
       };
     },
-    restorePointOf: async (restoreJobId) => {
+    describeRestoreJob: async (restoreJobId) => {
       const out = await backup.send(
         new DescribeRestoreJobCommand({ RestoreJobId: restoreJobId }),
       );
-      return out.RecoveryPointCreationDate;
+      return {
+        restoreTestingPlanArn: out.CreatedBy?.RestoreTestingPlanArn,
+        recoveryPointCreationDate: out.RecoveryPointCreationDate,
+      };
     },
     freshness: {
       newestRecoveryPoint: async (createdAfter) => {
@@ -240,7 +254,7 @@ function isLeftoverEvent(event: RestoreTestEvent): boolean {
 export async function handleRestoreJob(
   event: RestoreJobStateChangeEvent,
   d: RestoreTestDeps = getDeps(),
-): Promise<ValidateOutcome | undefined> {
+): Promise<ValidateOutcome | IgnoredOutcome | undefined> {
   const { restoreJobId, status, createdResourceArn } = event.detail;
   if (!restoreJobId) {
     throw new Error('Restore Job State Change event without restoreJobId');
@@ -248,6 +262,16 @@ export async function handleRestoreJob(
   if (status !== 'COMPLETED') {
     logger.info('Ignoring restore job event', { restoreJobId, status });
     return undefined;
+  }
+  // The rule cannot filter on the plan (the event does not reliably carry its
+  // ARN), so ownership is decided here. A validation result on a job outside
+  // our plan, such as a manual restore, would be wrong and cannot be undone.
+  const job = await d.describeRestoreJob(restoreJobId);
+  if (job.restoreTestingPlanArn !== d.restoreTestingPlanArn) {
+    logger.info('Ignoring restore job outside the restore testing plan', {
+      restoreJobId,
+    });
+    return { kind: 'ignored', restoreJobId };
   }
   const tableName = tableNameFromArn(createdResourceArn);
   let result: ValidationResult;
@@ -259,7 +283,7 @@ export async function handleRestoreJob(
     });
   } else {
     try {
-      const restorePoint = await d.restorePointOf(restoreJobId);
+      const restorePoint = job.recoveryPointCreationDate;
       result = await validateRestoredTable(
         d.scan,
         tableName,
@@ -376,7 +400,7 @@ export async function handleLeftoverCheck(
 
 export const handler = async (
   event: RestoreTestEvent,
-): Promise<ValidateOutcome | LeftoverOutcome | undefined> => {
+): Promise<ValidateOutcome | IgnoredOutcome | LeftoverOutcome | undefined> => {
   if (isRestoreJobEvent(event)) return handleRestoreJob(event);
   if (isLeftoverEvent(event)) return handleLeftoverCheck();
   throw new Error('Unsupported restore-test event');

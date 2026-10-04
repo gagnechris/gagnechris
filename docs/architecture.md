@@ -21,7 +21,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 ## Public pages
 
 - **Chrome:** every public page renders inside one header (photo and name → `/`, then Posts / Resume / Contact with `aria-current`) and one footer (©, RSS, Don’t feed the bears). `packages/shared/src/site-chrome-html.ts` renders it for the publisher (`renderSitePageHtml`) and the 404 prerender; `apps/web/src/components/SiteChrome.tsx` renders it in React from the root layout (`AppWithTracking`). The two must stay byte-identical (`SiteChrome.test.tsx`).
-- **Cold load:** `createRoot` replaces the prerendered `#root`, so `apps/web/src/prerender/documentPrerender.ts` copies it when the bundle loads. Home, Posts, a post and Resume seed their first render from that copy (`fromPrerender`) and skip the fetch; client navigation fetches the published HTML or `posts.json`. A post's copy is used only for the slug it was rendered for. `coldLoadParity.test.tsx` mounts each page over its prerender and checks the text doesn't change.
+- **Cold load:** `createRoot` replaces the prerendered `#root`, so `apps/web/src/prerender/documentPrerender.ts` copies it when the bundle loads. Home, Posts, a post and Resume seed their first render from that copy (`fromPrerender`) and skip the fetch; client navigation fetches the published HTML or `posts.json` (Home's Recent posts come from `posts.json`). A post's copy is used only for the slug it was rendered for. `coldLoadParity.test.tsx` mounts each page over its prerender and checks the text doesn't change.
 - **Post page:** `renderPostPageBodyHtml` (`packages/shared/src/post-html.ts`) and `apps/web/src/posts/PostArticle.tsx` print the same markup (`PostArticle.test.tsx`): meta line (date · reading time), title, excerpt, body, author note. Reading time is `readingMinutes` (words / 230, rounded, at least 1) from the `@gagnechris/shared` domain entry; the publisher writes it into `data-minutes` and the SPA reads it back, falling back to counting the body text for pages published before it existed. `renderPostMarkdownToHtml` starts body headings at h2 with no skipped levels, turns a titled image on its own line into a captioned figure, and puts tables (`role="region"`, labelled) and code blocks in keyboard-focusable scroll boxes.
 - **Posts index:** `renderPostsIndexBodyHtml` and `apps/web/src/posts/PostsIndexBody.tsx` print the same markup (`PostsIndexBody.test.tsx`): title, intro, Subscribe via RSS, then posts grouped by `groupPostsByYear` under year headings, each entry one link with title, short date (`formatPostShortDate`) and excerpt. Both come from the `@gagnechris/shared` domain entry. The SPA reads the list back from the prerender (and from the older card list until it is republished) or from `posts.json` on client navigation.
 - **Fonts:** Newsreader (roman and italic) and Inter are self-hosted from `apps/web/public/fonts/` with `font-display: swap` and metric-matched local fallbacks (`src/public.css`). `index.html` preloads only `newsreader-roman.woff2`. Sources and subsetting are in [design/public-redesign/README.md](./design/public-redesign/README.md#fonts).
@@ -123,7 +123,9 @@ without an entry there has no object behind its Option B rewrite. `collectRebuil
 
 Invalidation is target-owned: a body-only post edit that does not change feed
 artifacts does not re-invalidate `/rss.xml` or `/sitemap.xml` when those files
-are unchanged (hash-skip / no feed rewrite).
+are unchanged (hash-skip / no feed rewrite). The home target runs on `home` and
+`feeds` scopes (Recent posts), and the same hash-skip keeps `/` from being
+rewritten or invalidated when a post change doesn't alter it.
 
 On relevant stream events the publisher updates, among others:
 

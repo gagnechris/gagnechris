@@ -27,6 +27,9 @@ function healthyFreshness(
 
 const ARN =
   'arn:aws:dynamodb:us-east-1:111111111111:table/awsbackup-restore-test-abc';
+const PLAN_ARN =
+  'arn:aws:backup:us-east-1:111111111111:restore-testing-plan:gagnechris_prod_app_table_weekly-1';
+const RESTORE_POINT = new Date('2026-10-03T07:00:00.000Z');
 
 function completed(
   detail: Partial<RestoreJobStateChangeEvent['detail']> = {},
@@ -50,7 +53,11 @@ function fakeDeps(overrides: Partial<RestoreTestDeps> = {}) {
     scan: pagedScan(healthyItems()),
     count: fakeCount(healthyItems()),
     sourceTableName: 'gagnechris-prod',
-    restorePointOf: async () => new Date('2026-10-03T07:00:00.000Z'),
+    restoreTestingPlanArn: PLAN_ARN,
+    describeRestoreJob: async () => ({
+      restoreTestingPlanArn: PLAN_ARN,
+      recoveryPointCreationDate: RESTORE_POINT,
+    }),
     putValidation: put,
     listTables: async () => ({ TableNames: [] }),
     describeCreation: async () => undefined,
@@ -121,7 +128,9 @@ describe('restore-test handler', () => {
   });
 
   it('reports FAILED when the restore point date is unknown', async () => {
-    const { put } = fakeDeps({ restorePointOf: async () => undefined });
+    const { put } = fakeDeps({
+      describeRestoreJob: async () => ({ restoreTestingPlanArn: PLAN_ARN }),
+    });
     await handler(completed());
     expect(put).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -155,6 +164,61 @@ describe('restore-test handler', () => {
     expect(put).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'FAILED' }),
     );
+  });
+
+  it("validates a COMPLETED job of our plan, looked up by the event's job id", async () => {
+    const describe = vi.fn<RestoreTestDeps['describeRestoreJob']>(async () => ({
+      restoreTestingPlanArn: PLAN_ARN,
+      recoveryPointCreationDate: RESTORE_POINT,
+    }));
+    const { put } = fakeDeps({ describeRestoreJob: describe });
+    const out = await handler(completed({ restoreJobId: 'job-ours' }));
+    expect(describe).toHaveBeenCalledWith('job-ours');
+    expect(out).toMatchObject({ kind: 'validation', restoreJobId: 'job-ours' });
+    expect(put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restoreJobId: 'job-ours',
+        status: 'SUCCESSFUL',
+      }),
+    );
+  });
+
+  it('ignores a COMPLETED restore job from another restore testing plan', async () => {
+    const scan = vi.fn(pagedScan(healthyItems()));
+    const { put } = fakeDeps({
+      scan,
+      describeRestoreJob: async () => ({
+        restoreTestingPlanArn: `${PLAN_ARN}-other`,
+        recoveryPointCreationDate: RESTORE_POINT,
+      }),
+    });
+    const addMetric = vi.spyOn(metrics, 'addMetric');
+    const out = await handler(completed({ restoreJobId: 'job-other' }));
+    expect(out).toEqual({ kind: 'ignored', restoreJobId: 'job-other' });
+    expect(put).not.toHaveBeenCalled();
+    expect(scan).not.toHaveBeenCalled();
+    expect(addMetric).not.toHaveBeenCalled();
+  });
+
+  it('ignores a COMPLETED restore job not created by any restore testing plan', async () => {
+    const { put } = fakeDeps({
+      describeRestoreJob: async () => ({
+        recoveryPointCreationDate: RESTORE_POINT,
+      }),
+    });
+    const out = await handler(completed({ restoreJobId: 'job-manual' }));
+    expect(out).toEqual({ kind: 'ignored', restoreJobId: 'job-manual' });
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('lets a DescribeRestoreJob failure surface as a Lambda error without reporting', async () => {
+    const { put } = fakeDeps({
+      describeRestoreJob: async () => {
+        throw new Error('throttled');
+      },
+    });
+    await expect(handler(completed())).rejects.toThrow('throttled');
+    expect(put).not.toHaveBeenCalled();
   });
 
   it('ignores non-COMPLETED restore events', async () => {

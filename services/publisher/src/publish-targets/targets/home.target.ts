@@ -1,3 +1,5 @@
+import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
+import { selectHomeRecentPosts } from '@gagnechris/shared/render';
 import {
   HOME_LAST_PUBLISHED_KEY,
   homeToSnapshot,
@@ -5,35 +7,52 @@ import {
   snapshotToHome,
 } from '../../home-publish.js';
 import { renderHomePage } from '../../render.js';
-import type { PublishTarget } from '../types.js';
+import type {
+  PublishArtifact,
+  PublishTarget,
+  PublishTargetContext,
+} from '../types.js';
 import { CACHE_HTML } from '../types.js';
+
+const homePageArtifact = (
+  ctx: PublishTargetContext,
+  home: Home,
+): PublishArtifact => ({
+  key: 'index.html',
+  body: renderHomePage(
+    ctx.shell,
+    home,
+    selectHomeRecentPosts([...ctx.published, ...ctx.retainedPosts]),
+  ),
+  contentType: 'text/html; charset=utf-8',
+  cacheControl: CACHE_HTML,
+});
+
+// Unchanged bytes are skipped by storage.put, and the orchestrator only
+// invalidates for targets that wrote, so post edits that don't change Recent
+// posts leave `/` alone.
+const INVALIDATION_PATHS = ['/', '/index.html'];
 
 const target: PublishTarget = {
   id: 'home',
   // Home is `/` (special-cased in viewer-request), not Option B.
-  adminMutationPrefixes: ['/api/admin/home'],
+  adminMutationPrefixes: ['/api/admin/home', '/api/admin/posts'],
   matches(scope) {
-    return scope.home;
+    return scope.home || scope.feeds;
   },
-  needsCatalog() {
-    return false;
+  needsCatalog(scope) {
+    return scope.home || scope.feeds;
   },
-  needsShell() {
-    return true;
+  needsShell(scope) {
+    return scope.home || scope.feeds;
   },
   async run(ctx) {
-    const { shell, storage, sources } = ctx;
-    const lookup = await sources.getPublishedHome();
+    const lookup = await ctx.sources.getPublishedHome();
     if (lookup.status === 'ok') {
       const home = lookup.entity;
       return {
         artifacts: [
-          {
-            key: 'index.html',
-            body: renderHomePage(shell, home),
-            contentType: 'text/html; charset=utf-8',
-            cacheControl: CACHE_HTML,
-          },
+          homePageArtifact(ctx, home),
           {
             key: HOME_LAST_PUBLISHED_KEY,
             body: JSON.stringify(homeToSnapshot(home)),
@@ -41,27 +60,26 @@ const target: PublishTarget = {
             cacheControl: CACHE_HTML,
           },
         ],
-        invalidationPaths: ['/', '/index.html'],
+        invalidationPaths: INVALIDATION_PATHS,
         homePublished: true,
       };
     }
-    // missing or corrupt: restore last published snapshot when present.
-    const snapshot = await readHomePublishSnapshot(storage);
+    const snapshot = await readHomePublishSnapshot(ctx.storage);
     if (snapshot) {
       return {
-        artifacts: [
-          {
-            key: 'index.html',
-            body: renderHomePage(shell, snapshotToHome(snapshot)),
-            contentType: 'text/html; charset=utf-8',
-            cacheControl: CACHE_HTML,
-          },
-        ],
-        invalidationPaths: ['/', '/index.html'],
+        artifacts: [homePageArtifact(ctx, snapshotToHome(snapshot))],
+        invalidationPaths: INVALIDATION_PATHS,
         homeRestoredFromSnapshot: true,
       };
     }
-    return {};
+    // A corrupt row with no snapshot keeps whatever `/` serves now. Home that
+    // was never published renders the bundled default, which is what the SPA
+    // falls back to anyway, so Recent posts still reach `/`.
+    if (lookup.status === 'corrupt') return {};
+    return {
+      artifacts: [homePageArtifact(ctx, DEFAULT_HOME)],
+      invalidationPaths: INVALIDATION_PATHS,
+    };
   },
 };
 

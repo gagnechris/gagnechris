@@ -130,6 +130,10 @@ echo "${HTML}" | grep -q 'property="og:title"'
 echo "${HTML}" | grep -q 'class="blog-post-prerender"'
 echo "${HTML}" | grep -q 'Local body'
 
+echo "==> / lists the new post under Recent posts (Home not published yet)"
+ROOT_HTML="$(curl -sS "${SITE}/")"
+echo "${ROOT_HTML}" | grep -q "href=\"/posts/${SLUG}\">Local E2E Post</a>"
+
 echo "==> Legacy /blog URL 301s to /posts"
 LEGACY_LOCATION="$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "${SITE}/blog/${SLUG}")"
 if [[ "${LEGACY_LOCATION}" != "301 ${SITE}/posts/${SLUG}" ]]; then
@@ -147,7 +151,8 @@ HOME_PUB="$(curl -sS -X POST "${API}/api/admin/home/publish" \
 node -e "const h=JSON.parse(process.argv[1]); if(h.status!=='published'||h.hasUnpublishedChanges){console.error(h);process.exit(1)}" "${HOME_PUB}"
 HOME_HTML="$(curl -sS "${SITE}/")"
 echo "${HOME_HTML}" | grep -q 'home-page-prerender'
-echo "${HOME_HTML}" | grep -q 'About Me'
+echo "${HOME_HTML}" | grep -q 'class="home-hero__links"'
+echo "${HOME_HTML}" | grep -q "href=\"/posts/${SLUG}\">Local E2E Post</a>"
 echo "${HOME_HTML}" | grep -q '<script type="module"'
 
 echo "==> Home prerender must not leak into other pages"
@@ -180,6 +185,8 @@ REPUBLISH="$(curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/publish" \
 node -e "const p=JSON.parse(process.argv[1]); if(p.title!=='Local E2E Updated'||p.hasUnpublishedChanges){console.error(p);process.exit(1)}" "${REPUBLISH}"
 HTML3="$(curl -sS "${SITE}/posts/${SLUG}")"
 echo "${HTML3}" | grep -q 'Local E2E Updated'
+ROOT_HTML="$(curl -sS "${SITE}/")"
+echo "${ROOT_HTML}" | grep -q "href=\"/posts/${SLUG}\">Local E2E Updated</a>"
 
 echo "==> Orphan cleanup"
 ORPHAN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/posts/orphan-e2e")"
@@ -196,6 +203,11 @@ curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/unpublish" \
 GONE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/posts/${SLUG}")"
 if [[ "${GONE}" != "404" ]]; then
   echo "Expected /posts/${SLUG} 404 after unpublish, got ${GONE}" >&2
+  exit 1
+fi
+ROOT_HTML="$(curl -sS "${SITE}/")"
+if echo "${ROOT_HTML}" | grep -q "/posts/${SLUG}"; then
+  echo "Unpublished post still listed on /" >&2
   exit 1
 fi
 

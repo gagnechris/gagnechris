@@ -11,20 +11,37 @@ import {
 
 vi.mock('../utils/analytics');
 
+const PUBLISHED_HOME = {
+  name: 'Christopher Gagne',
+  title: 'Published title',
+  about: 'Published about.\n\nSecond paragraph.',
+  status: 'published' as const,
+  publishedAt: '2026-09-27T00:00:00.000Z',
+  updatedAt: '2026-09-27T00:00:00.000Z',
+  seo: null,
+  version: 3,
+  hasUnpublishedChanges: false,
+};
+
 // Content that differs from the bundled defaults, so a page that renders
 // DEFAULT_HOME / DEFAULT_RESUME or a loading state first can't pass.
 const PRERENDERS: Record<string, string> = {
-  '/': renderHomePrerenderHtml({
-    name: 'Christopher Gagne',
-    title: 'Published title',
-    about: 'Published about.\n\nSecond paragraph.',
-    status: 'published',
-    publishedAt: '2026-09-27T00:00:00.000Z',
-    updatedAt: '2026-09-27T00:00:00.000Z',
-    seo: null,
-    version: 3,
-    hasUnpublishedChanges: false,
-  }),
+  '/': renderHomePrerenderHtml(PUBLISHED_HOME, [
+    {
+      id: '01B',
+      slug: 'second',
+      title: 'Second post',
+      excerpt: 'The newer one.',
+      publishedAt: '2026-09-28T09:00:00.000Z',
+    },
+    {
+      id: '01A',
+      slug: 'first',
+      title: 'First post',
+      excerpt: '',
+      publishedAt: '2026-02-01T00:00:00.000Z',
+    },
+  ]),
   '/posts': renderSitePageHtml(
     '/posts',
     renderPostsIndexBodyHtml([
@@ -126,6 +143,24 @@ describe('cold load: first React render matches the prerender', () => {
     const footer = loaded.root.querySelector('footer.site-footer');
     expect(loaded.before.html.startsWith(header!.outerHTML)).toBe(true);
     expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
+  });
+
+  test('/ mounts the same DOM as the prerender, Recent posts included', async () => {
+    const loaded = await coldLoad('/', PRERENDERS['/']);
+    unmount = loaded.unmount;
+
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    expect(loaded.root.querySelectorAll('.home-post')).toHaveLength(2);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test('/ with no posts has no Recent posts heading before or after mount', async () => {
+    const loaded = await coldLoad('/', renderHomePrerenderHtml(PUBLISHED_HOME));
+    unmount = loaded.unmount;
+
+    expect(loaded.before.text).not.toContain('Recent posts');
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test.each(['/posts', '/posts/hello-world'])(
