@@ -75,7 +75,7 @@ describe('site sections', () => {
 describe('renderSiteMenuHtml', () => {
   it('is a details disclosure with a labelled button that controls the panel', () => {
     expect(renderSiteMenuHtml(null)).toMatch(
-      /^<details class="site-menu"><summary class="site-menu__button" role="button" aria-label="Menu" aria-controls="site-menu" aria-expanded="false"><\/summary><nav class="site-menu__panel" id="site-menu" aria-label="Menu">/,
+      /^<details class="site-menu"><summary class="site-menu__button" aria-label="Menu" aria-controls="site-menu"><\/summary><nav class="site-menu__panel" id="site-menu" aria-label="Menu">/,
     );
   });
 

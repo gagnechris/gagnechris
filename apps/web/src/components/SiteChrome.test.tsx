@@ -56,20 +56,21 @@ describe('SiteHeader menu', () => {
         <SiteHeader current="/posts" />
       </MemoryRouter>,
     );
-    const button = screen.getByRole('button', { name: 'Menu' });
+    const button = screen.getByLabelText('Menu', { selector: 'summary' });
     return { button, menu: button.closest('details')! };
   };
 
-  test('the button opens and closes it and reports aria-expanded', () => {
+  test('the button opens and closes it', () => {
     const { button, menu } = renderMenu();
     expect(button).toHaveAttribute('aria-controls', 'site-menu');
-    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById('site-menu')).not.toBeNull();
+    expect(button).not.toHaveAttribute('role');
+    expect(button).not.toHaveAttribute('aria-expanded');
     fireEvent.click(button);
     expect(menu.open).toBe(true);
-    expect(button).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(button);
     expect(menu.open).toBe(false);
-    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).not.toHaveAttribute('aria-expanded');
   });
 
   test('following a link closes it', () => {

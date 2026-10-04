@@ -9,7 +9,7 @@ test('the site header and footer fit a 390px phone with 44px targets', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of PAGES) {
     await page.goto(`${apps.public}${path}`);
-    await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+    await expect(page.locator('summary[aria-label="Menu"]')).toBeVisible();
 
     const overflow = await page.evaluate(
       () =>

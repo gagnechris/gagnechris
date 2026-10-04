@@ -80,12 +80,12 @@ const ariaCurrent = (href: string, current: SiteNavHref | null): string =>
 /*
  * Works without script: `<details>` opens and closes it, and CSS (`:has`)
  * stops the page scrolling. SiteHeader adds the focus trap and Escape.
- * `aria-expanded` here is a placeholder for React to keep in sync; browsers
- * take a summary's expanded state from its `<details>`.
+ * Browsers expose the summary as a button whose expanded state comes from
+ * `<details open>`, so it carries no role or `aria-expanded` of its own.
  */
 export const renderSiteMenuHtml = (current: SiteNavHref | null): string =>
   `<details class="site-menu">` +
-  `<summary class="site-menu__button" role="button" aria-label="${SITE_MENU_LABEL}" aria-controls="${SITE_MENU_ID}" aria-expanded="false"></summary>` +
+  `<summary class="site-menu__button" aria-label="${SITE_MENU_LABEL}" aria-controls="${SITE_MENU_ID}"></summary>` +
   `<nav class="site-menu__panel" id="${SITE_MENU_ID}" aria-label="${SITE_MENU_LABEL}">` +
   `<ul class="site-menu__list">` +
   SITE_NAV_LINKS.map(

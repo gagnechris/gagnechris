@@ -55,10 +55,8 @@ const SiteMenu = ({ current }: { current: SiteNavHref | null }) => {
     <details className="site-menu" open={open} ref={menuRef}>
       <summary
         className="site-menu__button"
-        role="button"
         aria-label={SITE_MENU_LABEL}
         aria-controls={SITE_MENU_ID}
-        aria-expanded={open}
         ref={buttonRef}
         onClick={(event) => {
           event.preventDefault();

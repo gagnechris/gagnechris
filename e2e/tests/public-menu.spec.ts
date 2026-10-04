@@ -15,7 +15,13 @@ const MENU_LINKS = [
   'Don’t feed the bears',
 ];
 
-const menuButton = (page: Page) => page.getByRole('button', { name: 'Menu' });
+// Playwright's role engine gives <summary> no role; browsers expose it as a
+// button (see the accessibility tree test below).
+const menuButton = (page: Page) => page.locator('summary[aria-label="Menu"]');
+const menuOpen = (page: Page) =>
+  page
+    .locator('details.site-menu')
+    .evaluate((el) => (el as HTMLDetailsElement).open);
 const menuPanel = (page: Page) =>
   page.getByRole('navigation', { name: 'Menu' });
 
@@ -32,11 +38,11 @@ test.describe('the phone menu', () => {
     await expect(
       page.getByRole('navigation', { name: 'Primary' }),
     ).toBeHidden();
-    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(await menuOpen(page)).toBe(false);
     await expect(button).toHaveAttribute('aria-controls', 'site-menu');
 
     await button.click();
-    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(await menuOpen(page)).toBe(true);
     const panel = menuPanel(page);
     await expect(panel).toBeVisible();
     await expect(panel).toHaveAttribute('id', 'site-menu');
@@ -69,7 +75,7 @@ test.describe('the phone menu', () => {
 
     await page.keyboard.press('Escape');
     await expect(panel).toBeHidden();
-    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(await menuOpen(page)).toBe(false);
     await expect(button).toBeFocused();
   });
 
@@ -108,7 +114,7 @@ test.describe('the phone menu', () => {
     await menuPanel(page).getByRole('link', { name: 'Resume' }).click();
     await expect(page).toHaveURL(/\/resume$/);
     await expect(menuPanel(page)).toBeHidden();
-    await expect(menuButton(page)).toHaveAttribute('aria-expanded', 'false');
+    expect(await menuOpen(page)).toBe(false);
   });
 
   test('with reduced motion it opens without animating', async ({
@@ -171,3 +177,63 @@ test.describe('the phone menu with JavaScript off', () => {
     });
   }
 });
+
+/** Chromium's own accessibility tree: the summary's role, name and expanded state. */
+const axMenuButton = async (page: Page) => {
+  const cdp = await page.context().newCDPSession(page);
+  const { nodes } = (await cdp.send('Accessibility.getFullAXTree')) as {
+    nodes: {
+      role?: { value: string };
+      name?: { value: string };
+      ignored?: boolean;
+      properties?: { name: string; value: { value: unknown } }[];
+    }[];
+  };
+  await cdp.detach();
+  const node = nodes.find(
+    (n) =>
+      !n.ignored && n.name?.value === 'Menu' && n.role?.value !== 'navigation',
+  );
+  return node
+    ? {
+        role: node.role?.value,
+        expanded: node.properties?.find((p) => p.name === 'expanded')?.value
+          .value,
+      }
+    : null;
+};
+
+for (const javaScriptEnabled of [true, false]) {
+  test.describe(`menu button in the accessibility tree, JavaScript ${javaScriptEnabled ? 'on' : 'off'}`, () => {
+    test.use({ viewport: PHONE, javaScriptEnabled });
+
+    test('is a named button that reports expanded', async ({
+      page,
+      browserName,
+    }) => {
+      test.skip(
+        browserName !== 'chromium',
+        'Only Chromium exposes its accessibility tree to Playwright',
+      );
+      await page.goto(`${site()}/contact`);
+      await expect(menuButton(page)).toBeVisible();
+      // Chromium calls a <summary>'s role DisclosureTriangle; platform APIs map it to a button.
+      expect(await axMenuButton(page)).toEqual({
+        role: 'DisclosureTriangle',
+        expanded: false,
+      });
+      await menuButton(page).click();
+      await expect(menuPanel(page)).toBeVisible();
+      expect(await axMenuButton(page)).toEqual({
+        role: 'DisclosureTriangle',
+        expanded: true,
+      });
+      await menuButton(page).click();
+      await expect(menuPanel(page)).toBeHidden();
+      expect(await axMenuButton(page)).toEqual({
+        role: 'DisclosureTriangle',
+        expanded: false,
+      });
+    });
+  });
+}
