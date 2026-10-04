@@ -41,20 +41,6 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.body).toBe('<html>not found page</html>');
   });
 
-  it('serves inline HTML NotFound for cached /404.html (304) instead of a blank body', () => {
-    const res = runHandler('/404.html', {
-      statusCode: 304,
-      statusDescription: 'Not Modified',
-      headers: {
-        etag: { value: '"abc"' },
-      },
-    });
-    expect(res.statusCode).toBe(404);
-    expect(res.statusDescription).toBe('Not Found');
-    expect(res.body).toContain('Page not found');
-    expect(res.headers['cache-control'].value).toBe('no-cache');
-  });
-
   it('strips validators and sets no-cache when forcing 404 from /404.html 200', () => {
     const res = runHandler('/404.html', {
       statusCode: 200,
@@ -73,46 +59,6 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.headers['last-modified']).toBeUndefined();
   });
 
-  it('replaces S3 XML 404 with HTML NotFound', () => {
-    const res = runHandler('/blog/typo/index.html', {
-      statusCode: 404,
-      statusDescription: 'Not Found',
-      headers: {
-        'content-type': { value: 'application/xml' },
-      },
-      body: '<Error><Code>NoSuchKey</Code></Error>',
-    });
-    expect(res.statusCode).toBe(404);
-    expect(res.headers['content-type'].value).toBe('text/html; charset=utf-8');
-    expect(res.body).toContain('Page Not Found');
-    expect(res.body).toContain('noindex');
-    expect(res.body).not.toContain('NoSuchKey');
-  });
-
-  it('replaces S3 404 with empty content-type (treat as XML-like)', () => {
-    const res = runHandler('/blog/missing/index.html', {
-      statusCode: 404,
-      headers: {},
-      body: '<Error><Code>NoSuchKey</Code></Error>',
-    });
-    expect(res.statusCode).toBe(404);
-    expect(res.headers['content-type'].value).toBe('text/html; charset=utf-8');
-    expect(res.body).toContain('Page not found');
-  });
-
-  it('replaces S3 XML 403 with HTML NotFound', () => {
-    const res = runHandler('/blog/draft/index.html', {
-      statusCode: 403,
-      statusDescription: 'Forbidden',
-      headers: {
-        'content-type': { value: 'application/xml' },
-      },
-      body: '<Error><Code>AccessDenied</Code></Error>',
-    });
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toContain('Page not found');
-  });
-
   it('leaves successful HTML responses alone', () => {
     const res = runHandler('/blog/welcome/index.html', {
       statusCode: 200,
@@ -125,34 +71,13 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.body).toBe('<html>welcome</html>');
   });
 
-  it('does not rewrite non-XML application/json 404 bodies', () => {
-    const res = runHandler('/some/key.json', {
-      statusCode: 404,
-      headers: {
-        'content-type': { value: 'application/json' },
-      },
-      body: '{"error":"not_found"}',
-    });
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toBe('{"error":"not_found"}');
-  });
-
-  it('serves the site 404 page, with the current year in the footer', () => {
-    const res = runHandler('/resume/typo/index.html', {
+  it('has no inline 404 page: CloudFront never runs it on an origin 4xx', () => {
+    expect(fnSource).not.toContain('NOT_FOUND_HTML');
+    const xml: CfResponse = {
       statusCode: 404,
       headers: { 'content-type': { value: 'application/xml' } },
-    });
-    expect(res.body).toContain('<header class="site-header">');
-    expect(res.body).toContain('<main class="not-found">');
-    expect(res.body).toContain('<h1>Page not found</h1>');
-    expect(res.body).toContain(
-      `<p class="site-footer__copy">© ${new Date().getUTCFullYear()} Chris Gagne</p>`,
-    );
-    expect(res.body).not.toContain('{{year}}');
-  });
-
-  // CloudFront Functions are capped at 10 KB; the inline 404 is most of it.
-  it('stays well under the CloudFront Functions size limit', () => {
-    expect(Buffer.byteLength(fnSource)).toBeLessThanOrEqual(8.5 * 1024);
+      body: '<Error><Code>NoSuchKey</Code></Error>',
+    };
+    expect(runHandler('/resume/x/index.html', { ...xml })).toEqual(xml);
   });
 });

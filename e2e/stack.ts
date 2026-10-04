@@ -1,7 +1,7 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createWriteStream, existsSync } from 'node:fs';
-import { copyFile, cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -161,6 +161,7 @@ export async function startStack(): Promise<Stack> {
     SITE_STORAGE: 'filesystem',
     SITE_BUCKET_NAME: siteRoot,
     CLOUDFRONT_DISTRIBUTION_ID: 'local',
+    LOCAL_KVS_FILE: join(runDir, 'kvs.json'),
     SITE_APEX_DOMAIN: 'gagnechris.com',
     LOCAL_API_PORT: String(ports.api),
     LOCAL_SITE_PORT: String(ports.site),
@@ -258,6 +259,12 @@ export async function startStack(): Promise<Stack> {
       await copyFile(shell, join(siteRoot, 'index.html'));
       await copyFile(shell, join(siteRoot, '_shell.html'));
     }
+    // An empty site the publisher has already synced, as in prod: unknown
+    // post and project slugs 404 instead of failing open.
+    await writeFile(
+      env.LOCAL_KVS_FILE!,
+      JSON.stringify({ keys: ['__synced__', 'projects/__synced__'] }),
+    );
 
     const apiLogs = start('api', join(BIN, 'tsx'), [
       'services/api/local/server.ts',

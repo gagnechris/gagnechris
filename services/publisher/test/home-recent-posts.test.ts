@@ -15,6 +15,7 @@ import type { SiteStorage } from '../src/storage.js';
 
 vi.mock('../src/viewer-request-slugs.js', () => ({
   syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
+  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
 }));
 
 const SHELL = '<html><head></head><body><div id="root"></div></body></html>';

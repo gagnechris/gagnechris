@@ -36,6 +36,7 @@ vi.mock('@aws-sdk/lib-dynamodb', () => {
 vi.mock('../src/viewer-request-slugs.js', () => ({
   KvsSyncError: class KvsSyncError extends Error {},
   syncViewerRequestBlogSlugs: (...args: unknown[]) => syncSlugs(...args),
+  syncViewerRequestProjectSlugs: async () => undefined,
 }));
 
 vi.mock('../src/observability.js', () => ({

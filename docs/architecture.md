@@ -23,7 +23,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 - **Chrome:** every public page renders inside one header (photo and name → `/`, then Posts / Projects / Resume / Contact with `aria-current`; `SITE_PROJECTS_LIVE` in `packages/shared/src/site-config.ts` turns the Projects link off) and one footer (©, RSS, Don’t feed the bears). At phone widths (480px and below) the inline nav is replaced by a full-screen menu: a `<details>`/`<summary>` disclosure that works without JavaScript (CSS `:has` stops the page scrolling while it is open), to which `SiteHeader` adds the focus trap, Escape and closing on navigation. `packages/shared/src/site-chrome-html.ts` renders it for the publisher (`renderSitePageHtml`) and the 404 prerender; `apps/web/src/components/SiteChrome.tsx` renders it in React from the root layout (`AppWithTracking`). The two must stay byte-identical (`SiteChrome.test.tsx`).
 - **Cold load:** `createRoot` replaces the prerendered `#root`, so `apps/web/src/prerender/documentPrerender.ts` copies it when the bundle loads. Home, Posts, a post, Projects and Resume seed their first render from that copy (`fromPrerender`) and skip the fetch; client navigation fetches the published HTML or `posts.json` (Home's Recent posts come from `posts.json`; its What I’m building cards and the Projects index are read from the published `/` and `/projects/`). A post's copy is used only for the slug it was rendered for. `coldLoadParity.test.tsx` mounts each page over its prerender and checks the text doesn't change.
 - **Post page:** `renderPostPageBodyHtml` (`packages/shared/src/post-html.ts`) and `apps/web/src/posts/PostArticle.tsx` print the same markup (`PostArticle.test.tsx`): meta line (date · reading time), title, excerpt, body, author note. Reading time is `readingMinutes` (words / 230, rounded, at least 1) from the `@gagnechris/shared` domain entry; the publisher writes it into `data-minutes` and the SPA reads it back, falling back to counting the body text for pages published before it existed. `renderPostMarkdownToHtml` starts body headings at h2 with no skipped levels, turns a titled image on its own line into a captioned figure, and puts tables (`role="region"`, labelled) and code blocks in keyboard-focusable scroll boxes.
-- **Contact, Bears and 404:** `packages/shared/src/public-pages-html.ts` (`@gagnechris/shared/public-pages`) holds their shared markup. The Vite build writes the site chrome into `contact/index.html` (with the Contact heading and intro; the form needs JavaScript) and the three `dont-feed-the-bears` pages (chrome only; their lazy routes render nothing until the chunk loads), so they show the header and footer with JavaScript off. `pages/NotFound.tsx`, the `404.html` prerender (`NOT_FOUND_PRERENDER`) and the CloudFront fallback page print the same 404 markup (`NotFound.test.tsx`). A cold load that received `404.html` renders `NotFound` at once with no section marked current, even for `/posts/<slug>`.
+- **Contact, Bears and 404:** `packages/shared/src/public-pages-html.ts` (`@gagnechris/shared/public-pages`) holds their shared markup. The Vite build writes the site chrome into `contact/index.html` (with the Contact heading and intro; the form needs JavaScript) and the three `dont-feed-the-bears` pages (chrome only; their lazy routes render nothing until the chunk loads), so they show the header and footer with JavaScript off. `pages/NotFound.tsx` and the `404.html` prerender (`NOT_FOUND_PRERENDER`) print the same 404 markup (`NotFound.test.tsx`). A cold load that received `404.html` renders `NotFound` at once with no section marked current, even for `/posts/<slug>`.
 - **Posts index:** `renderPostsIndexBodyHtml` and `apps/web/src/posts/PostsIndexBody.tsx` print the same markup (`PostsIndexBody.test.tsx`): title, intro, Subscribe via RSS, then posts grouped by `groupPostsByYear` under year headings, each entry one link with title, short date (`formatPostShortDate`) and excerpt. Both come from the `@gagnechris/shared` domain entry. The SPA reads the list back from the prerender (and from the older card list until it is republished) or from `posts.json` on client navigation.
 - **Fonts:** Newsreader (roman and italic) and Inter are self-hosted from `apps/web/public/fonts/` with `font-display: swap` and metric-matched local fallbacks (`src/public.css`). Each font file is named `<name>.<first 8 hex of its SHA-256>.woff2`, so a changed font gets a new URL and deploys serve fonts as immutable; `check:web-shells` fails the deploy if a referenced font's name doesn't match its content. `index.html` preloads only the roman Newsreader file. Sources and subsetting are in [design/public-redesign/README.md](./design/public-redesign/README.md#fonts).
 - **Projects:** `renderProjectsIndexBodyHtml` (`packages/shared/src/project-html.ts`) and `apps/web/src/projects/ProjectsIndexBody.tsx` print the same `/projects` markup (`ProjectCard.test.tsx`): title, intro, then one card per project in `order` (preview image or a CSS mini-UI picked by `demo`, a dashed box for ideas; stage as text with a dot; name, pitch, stack line), or an empty state when nothing is published. A card is one link to the project's page or `href`; an `idea` with no body is not a link. Home's What I’m building section uses the same card (`renderProjectCardHtml`) for up to two non-idea projects (`selectHomeProjects`). The SPA reads cards back from the prerender (`apps/web/src/projects/publishedProjects.ts`). `/projects/<slug>` still has a deliberately bare body, ending in a minimal Build log; `pages/ProjectsPrerendered.tsx` shows its prerendered `<main>` so mounting does not swap it for the 404.
@@ -47,10 +47,11 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
    - `/blog` and `/blog/*` → 301 to the same path under `/posts`
    - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
-   - Option B prefixes (publisher `optionBPaths` such as `/projects` and `/resume`, plus Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/projects/<slug>` and `/dont-feed-the-bears/camp` are served from their own `index.html`.
-   - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
-   - Other extensionless paths → `/404.html`
-3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404, and an S3 403/404 (for example a nested path under an Option B prefix) becomes the inline `NOT_FOUND_HTML` page. That page can't load the bundle, so `npm run not-found:generate` (`apps/web/scripts/notFoundDocument.ts`) builds it from the shared 404 markup plus the rules of `index.css`, `public.css` and `NotFound.css` that match it, inlined; the footer year is filled in at the edge. CloudFront Functions are capped at 10 KB and have no zlib, so the generator dictionary-codes the page (`packNotFoundHtml`: `~a`, `~b`, … stand for entries of `NOT_FOUND_DICT`) and the function expands it per response; a test keeps the function under 8.5 KB
+   - Every other page URL (extensionless or `.html`, with or without a trailing `/` or `/index.html`) must be a known page, or it is rewritten to `/404.html`. CloudFront doesn't run viewer-response functions when the origin returns 4xx, so a page URL that reached S3 without an object would be S3's raw XML 404. Files that aren't pages (`/assets/*`, `/rss.xml`, `/posts/posts.json`) pass through, and a missing one is S3's 404.
+   - Option B pages (publisher `optionBPaths` `/blog`, `/projects`, `/resume`, plus the Vite pages in `STATIC_OPTION_B_PAGES`: `/contact`, `/dont-feed-the-bears` and its `/camp` and `/wild`) → `{path}/index.html`. Only those exact paths: `/resume/x` is the 404.
+   - `/blog/<slug>` (public `/posts/<slug>`) and `/projects/<slug>` → `{path}/index.html` only when the slug is in the CloudFront KeyValueStore (post keys are the bare slug, project keys `projects/<slug>`); otherwise `/404.html`. Each namespace fails open (any slug) until the publisher writes its sentinel (`__synced__`, `projects/__synced__`), and on a KVS error.
+   - The rewrite to `/404.html` drops `If-None-Match` and `If-Modified-Since`, so CloudFront can't answer a validator left from an earlier page with a bodiless 304.
+3. **Viewer response** (S3 default behavior) forces HTTP 404 when serving `/404.html` and strips its validators. It never sees an S3 4xx.
 4. **S3** holds the site objects (prerendered HTML including `projects/`, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
 5. **API Gateway → Lambda API** for CRUD, publish, Notebook, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
@@ -84,7 +85,7 @@ Integrity rules:
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
-- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post. Projects follow the same rules: a corrupt project row keeps its page and sitemap entry, and stream NewImages merge into the project catalog.
+- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post. Projects follow the same rules: a corrupt project row keeps its page, KVS key and sitemap entry, and stream NewImages merge into the project catalog.
 - Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished.
 - Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise.
 - `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing.
@@ -116,11 +117,12 @@ target wakes the real handler). Declare `optionBPaths` and
 `adminMutationPrefixes` on the target; `npm run publish-surface:generate` folds
 those into the CloudFront Option B allowlist and local-dev
 `isPublishRelevantAdminMutation` routes (`publish-surface:check` guards drift).
-Vite-only pages (`/contact`, `/dont-feed-the-bears`) stay in
-`STATIC_OPTION_B_PREFIXES`. The Vite build writes an `index.html` for every
-entry in `STATIC_PAGE_META` (`apps/web/scripts/staticPageMeta.ts`), including
-nested pages under a prefix such as `/dont-feed-the-bears/camp`; a nested route
-without an entry there has no object behind its Option B rewrite. `collectRebuildScope` records every PUBLISHED
+`optionBPaths` are exact pages; nothing under them is served unless a KVS
+allowlist covers it. Vite-only pages are listed in `STATIC_OPTION_B_PAGES`, one
+per non-publisher entry in `STATIC_PAGE_META`
+(`apps/web/scripts/staticPageMeta.ts`), which the Vite build writes an
+`index.html` for; `staticPageRouting.test.ts` fails when a Vite page is missing
+from the allowlist. `collectRebuildScope` records every PUBLISHED
 `entityType` in `touchedEntityTypes`; unknown types do not set home/resume/feeds.
 
 Invalidation is target-owned: a body-only post edit that does not change feed
@@ -141,9 +143,10 @@ other `projects/<slug>/index.html`. A project has a page unless it sets `href`
 `/dont-feed-the-bears`) or is an `idea` with an empty body (listed, unlinked).
 `projects/index.html` is always written, so the nav link never 404s: with
 nothing published it is the empty state. When every published row is corrupt,
-the index already there is kept. No KeyValueStore allowlist: `/projects` is an Option B prefix, so a
-missing `projects/<slug>/index.html` is an S3 404 that viewer-response turns
-into the HTML 404.
+the index already there is kept. After every project rebuild the orchestrator
+syncs the `projects/<slug>` KeyValueStore keys (plus `projects/__synced__`)
+from the `projects/<slug>/index.html` objects left in storage, so `href` cards
+and body-less ideas have no key and corrupt rows' kept pages do.
 
 Post tagging: `RebuildScope.projectIds` collects the `projectIds` of both the
 old and new images of every changed published post (so a project the post was
@@ -165,7 +168,7 @@ On relevant stream events the publisher updates, among others:
 - `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html`, `/projects/index.html`, `/projects/<slug>/index.html` (prerendered pages)
 - `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s use the `/blog/<slug>` URL so feed readers don't re-list posts.
 - `/resume.pdf` (pdf-lib + Inter fonts)
-- CloudFront KeyValueStore keys for known published slugs
+- CloudFront KeyValueStore keys for published post slugs and for projects with a page
 - Targeted CloudFront invalidations
 
 The Vite `apps/web` build produces the public shell and the admin and Notebook apps; it does **not** generate the sitemap/RSS/posts index.

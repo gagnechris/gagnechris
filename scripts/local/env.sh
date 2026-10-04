@@ -39,6 +39,9 @@ if [[ -z "${SITE_BUCKET_NAME:-}" || "${SITE_BUCKET_NAME}" != "${_LOCAL_ROOT}/"* 
   export SITE_BUCKET_NAME="${_LOCAL_ROOT}/.local-site"
 fi
 export CLOUDFRONT_DISTRIBUTION_ID=local
+# Stands in for the CloudFront KeyValueStore: the publisher writes the slug
+# allowlist here and the local static server reads it.
+export LOCAL_KVS_FILE="${_LOCAL_ROOT}/.local-kvs.json"
 export SITE_APEX_DOMAIN=gagnechris.com
 
 export LOCAL_API_PORT="${LOCAL_API_PORT:-8787}"

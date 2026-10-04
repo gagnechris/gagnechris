@@ -63,7 +63,6 @@ npm run format:check  # Prettier check (CI)
 npm run openapi:check # OpenAPI + generated client drift (CI)
 npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # CloudFront Option B + local publish routes from publisher targets (CI)
-npm run not-found:check # CloudFront fallback 404 page from the shared 404 markup and the site CSS (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
 npm run check:web-shells # after build: GA on the public shell only; app shells load bundled scripts only (CI)

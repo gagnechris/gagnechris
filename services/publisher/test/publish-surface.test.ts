@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { publishTargets } from '../src/publish-targets/registry.js';
 import {
-  STATIC_OPTION_B_PREFIXES,
-  allOptionBPrefixes,
+  STATIC_OPTION_B_PAGES,
+  allOptionBPages,
   collectAdminMutationPrefixes,
   collectAdminSoftDeletePrefixes,
   collectOptionBPaths,
@@ -16,16 +16,20 @@ describe('publish surface collectors', () => {
       '/projects',
       '/resume',
     ]);
-    expect(allOptionBPrefixes(publishTargets)).toEqual([
+    expect(allOptionBPages(publishTargets)).toEqual([
       '/blog',
       '/contact',
       '/dont-feed-the-bears',
+      '/dont-feed-the-bears/camp',
+      '/dont-feed-the-bears/wild',
       '/projects',
       '/resume',
     ]);
-    expect([...STATIC_OPTION_B_PREFIXES].sort()).toEqual([
+    expect([...STATIC_OPTION_B_PAGES].sort()).toEqual([
       '/contact',
       '/dont-feed-the-bears',
+      '/dont-feed-the-bears/camp',
+      '/dont-feed-the-bears/wild',
     ]);
   });
 
@@ -37,7 +41,7 @@ describe('publish surface collectors', () => {
       '/projects',
       '/resume',
     ]);
-    expect(allOptionBPrefixes(targets)).toContain('/now');
+    expect(allOptionBPages(targets)).toContain('/now');
     expect(collectAdminMutationPrefixes(targets)).toEqual([
       '/api/admin/home',
       '/api/admin/now',

@@ -23,7 +23,7 @@ This script:
 5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
 6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
 7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
-8. Creates and publishes a project and a bodyless `idea`; asserts `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists the project but not the idea, and `sitemap.xml` lists only the project with a page; checks that tagging a post with an unknown project id is a 400, publishes a post tagged with the project and asserts it is in the project's Build log and shows "Part of", renames the project slug and asserts both still link; unpublishes the project and asserts its page, `/projects` and Home entries and sitemap entry are gone, that the post no longer shows "Part of", and that `/projects/does-not-exist` is the HTML 404 with status 404
+8. Creates and publishes a project and a bodyless `idea`; asserts `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists the project but not the idea, and `sitemap.xml` lists only the project with a page; checks that tagging a post with an unknown project id is a 400, publishes a post tagged with the project and asserts it is in the project's Build log and shows "Part of", renames the project slug and asserts both still link; unpublishes the project and asserts its page, `/projects` and Home entries and sitemap entry are gone and the post no longer shows "Part of", then asserts that unknown page URLs (`/projects/x`, `/resume/x`, `/contact/x`, `/dont-feed-the-bears/x`, `/x.html`, an unpublished post or project, …) are the HTML 404 with status 404 and every real page is 200. Last, it starts a second static server whose viewer-response function marks responses and asserts a missing object comes back unmarked, since CloudFront never runs viewer-response on an origin 4xx
 
 To run it beside another stack, give it its own Compose project and ports, e.g. `COMPOSE_PROJECT_NAME=mine DYNAMODB_LOCAL_HOST_PORT=28427 LOCAL_API_PORT=28787 LOCAL_SITE_PORT=28177 npm run e2e:local`, then `COMPOSE_PROJECT_NAME=mine docker compose -f docker-compose.local.yml down`.
 
@@ -47,6 +47,8 @@ afterwards:
 3. Local API + publisher (`services/api/local/server.ts`) and static site
    (`static-server.ts`, `E2E_SITE_URL`), which runs the real apex
    viewer-request function and returns its redirects with their headers.
+   The KeyValueStore is `e2e/.stack/<run>/kvs.json` (`LOCAL_KVS_FILE`),
+   seeded with both sentinels so unknown slugs 404 as in prod.
    `tests/apex-cutover.spec.ts` checks the old apex `/admin*` and `/auth*`
    301s against it
 4. One Vite dev server per app (public, admin, Notebook) with
@@ -197,5 +199,6 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 | `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild               |
 | `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request        |
 | `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored) |
+| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)        |
 
-Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation.
+Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation. Locally the publisher writes the slug KeyValueStore keys to `LOCAL_KVS_FILE` (set by `env.sh`), and the static server answers the viewer-request function's KVS reads from it. Like CloudFront, the static server runs viewer-response only on responses below 400.

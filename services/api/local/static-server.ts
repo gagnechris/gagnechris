@@ -51,21 +51,41 @@ type CfResponse = {
   body?: string;
 };
 
-type ViewerRequestApi = {
-  handler: (event: { request: CfRequest }) => Promise<CfRequest | CfResponse>;
-  setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
+type ViewerRequestHandler = (event: {
+  request: CfRequest;
+}) => Promise<CfRequest | CfResponse>;
+
+const localKvsFile = process.env.LOCAL_KVS_FILE?.trim();
+
+/**
+ * The publisher writes the KVS keys to LOCAL_KVS_FILE locally. No file (or no
+ * env) means no sentinel, so every slug fails open as before the first sync.
+ */
+const localKvs = {
+  async exists(key: string): Promise<boolean> {
+    if (!localKvsFile) return false;
+    try {
+      const parsed = JSON.parse(await readFile(localKvsFile, 'utf8')) as {
+        keys?: string[];
+      };
+      return (parsed.keys ?? []).includes(key);
+    } catch {
+      return false;
+    }
+  },
 };
 
-async function loadViewerRequestApi(): Promise<ViewerRequestApi> {
+async function loadViewerRequestHandler(): Promise<ViewerRequestHandler> {
   const source = (await readFile(viewerRequestPath, 'utf8')).replace(
     /import cf from 'cloudfront';\s*/g,
     '',
   );
   return new Function(
-    `var cf = { kvs: function () { throw new Error('kvs unavailable locally'); } };
+    '__kvs',
+    `var cf = { kvs: function () { return __kvs; } };
      ${source}
-     return { handler, setPublishedBlogSlugsForTests };`,
-  )() as ViewerRequestApi;
+     return handler;`,
+  )(localKvs) as ViewerRequestHandler;
 }
 
 async function loadViewerResponseHandler(): Promise<
@@ -76,21 +96,6 @@ async function loadViewerResponseHandler(): Promise<
     request: { uri: string };
     response: CfResponse;
   }) => CfResponse;
-}
-
-async function loadPublishedSlugs(api: ViewerRequestApi): Promise<void> {
-  try {
-    const raw = await readFile(join(root!, 'blog/slugs.json'), 'utf8');
-    const parsed = JSON.parse(raw) as { slugs?: string[] };
-    const map: Record<string, number> = {};
-    for (const slug of parsed.slugs ?? []) {
-      if (slug) map[slug] = 1;
-    }
-    api.setPublishedBlogSlugsForTests(map);
-  } catch {
-    // Missing slugs.json → fail-open (null), matching CDK default.
-    api.setPublishedBlogSlugsForTests(null);
-  }
 }
 
 const contentTypes: Record<string, string> = {
@@ -115,18 +120,13 @@ function safeJoin(base: string, uri: string): string | null {
 }
 
 const handlersPromise = Promise.all([
-  loadViewerRequestApi().then(async (api) => {
-    await loadPublishedSlugs(api);
-    return api;
-  }),
+  loadViewerRequestHandler(),
   loadViewerResponseHandler(),
 ]);
 
 const server = createServer(async (req, res) => {
   try {
-    const [viewerRequestApi, viewerResponse] = await handlersPromise;
-    // Refresh allowlist each request so local publisher rebuilds are visible.
-    await loadPublishedSlugs(viewerRequestApi);
+    const [viewerRequest, viewerResponse] = await handlersPromise;
     const host = req.headers.host || `127.0.0.1:${port}`;
     const url = new URL(req.url || '/', `http://${host}`);
     const querystring: CfRequest['querystring'] = {};
@@ -134,7 +134,7 @@ const server = createServer(async (req, res) => {
       querystring[k] = { value: v };
     }
 
-    const rewritten = await viewerRequestApi.handler({
+    const rewritten = await viewerRequest({
       request: {
         uri: url.pathname,
         querystring,
@@ -186,15 +186,14 @@ const server = createServer(async (req, res) => {
         return;
       }
     } catch {
-      // Mirror S3 NoSuchKey XML so viewer-response can swap to HTML 404.
-      originResponse = {
-        statusCode: 404,
-        statusDescription: 'Not Found',
-        headers: {
-          'content-type': { value: 'application/xml' },
-        },
-        body: `<Error><Code>NoSuchKey</Code><Key>${rewritten.uri}</Key></Error>`,
-      };
+      // S3's NoSuchKey. CloudFront never runs viewer-response on an origin
+      // 4xx, so neither does this.
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'application/xml');
+      res.end(
+        `<Error><Code>NoSuchKey</Code><Key>${rewritten.uri}</Key></Error>`,
+      );
+      return;
     }
 
     const finalResponse = viewerResponse({
@@ -222,4 +221,5 @@ server.listen(port, '127.0.0.1', () => {
   console.info(
     `[local-site] viewer-response ${pathToFileURL(viewerResponsePath).href}`,
   );
+  console.info(`[local-site] KVS ${localKvsFile ?? '(none: fail open)'}`);
 });

@@ -7,8 +7,15 @@ import {
 import { mapWithConcurrency, PUT_CONCURRENCY } from '../concurrency.js';
 import { listItemToFeedPost, readPublishedListItems } from '../posts.js';
 import type { RebuildResult } from '../rebuild-result.js';
-import { postSlugsFromKeys, type SiteStorage } from '../storage.js';
-import { syncViewerRequestBlogSlugs } from '../viewer-request-slugs.js';
+import {
+  postSlugsFromKeys,
+  projectSlugsFromKeys,
+  type SiteStorage,
+} from '../storage.js';
+import {
+  syncViewerRequestBlogSlugs,
+  syncViewerRequestProjectSlugs,
+} from '../viewer-request-slugs.js';
 import { getPublishTargets } from './registry.js';
 import type {
   PublishArtifact,
@@ -176,7 +183,8 @@ export async function runPublishTargets(options: {
   const retainedPosts = needsCatalog
     ? await retainLivePosts(storage, scope, catalog)
     : [];
-  const projects = scopeNeedsProjects(targets, scope)
+  const needsProjects = scopeNeedsProjects(targets, scope);
+  const projects = needsProjects
     ? await sources.listPublishedProjects()
     : { projects: [], corruptSlugs: [] };
   const corruptPostSlugs = new Set([
@@ -236,6 +244,15 @@ export async function runPublishTargets(options: {
   if (scope.feeds) {
     const desiredSlugs = [...published.map((p) => p.slug), ...corruptPostSlugs];
     await syncViewerRequestBlogSlugs(desiredSlugs);
+  }
+
+  if (needsProjects) {
+    // The pages in storage after this run's writes and deletes, so href
+    // cards and body-less ideas (no page) stay out and kept pages of corrupt
+    // rows stay in.
+    await syncViewerRequestProjectSlugs(async () =>
+      projectSlugsFromKeys(await storage.list('projects/')),
+    );
   }
 
   return {

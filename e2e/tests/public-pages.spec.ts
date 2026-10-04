@@ -30,7 +30,11 @@ test.describe('unknown URLs', () => {
   for (const path of [
     '/posts/no-such-post-e2e',
     '/projects/x',
+    '/resume/x',
+    '/contact/x',
     '/dont-feed-the-bears/no-such-game',
+    '/dont-feed-the-bears/camp/x',
+    '/x.html',
   ]) {
     test(`${path} is the styled 404 with status 404`, async ({ page }) => {
       const response = await page.goto(`${site()}${path}`);
@@ -50,23 +54,6 @@ test.describe('unknown URLs', () => {
       expect(h1Font).toMatch(/^"?Newsreader/);
     });
   }
-
-  test('the S3 fallback page needs no script or stylesheet', async ({
-    page,
-  }) => {
-    const external: string[] = [];
-    page.on('request', (request) => {
-      if (['script', 'stylesheet'].includes(request.resourceType())) {
-        external.push(request.url());
-      }
-    });
-    const response = await page.goto(
-      `${site()}/dont-feed-the-bears/no-such-game`,
-    );
-    expect(response!.status()).toBe(404);
-    await expect(page.locator('main.not-found')).toBeVisible();
-    expect(external).toEqual([]);
-  });
 });
 
 test.describe('contact form', () => {
