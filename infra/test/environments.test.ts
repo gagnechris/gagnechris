@@ -475,7 +475,7 @@ describe('AuthStack', () => {
     });
 
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
-      ClientName: 'web',
+      ClientName: 'admin-web',
       GenerateSecret: false,
       AllowedOAuthFlows: ['code'],
       AllowedOAuthFlowsUserPoolClient: true,
@@ -495,13 +495,8 @@ describe('AuthStack', () => {
       ManagedLoginVersion: 2,
     });
 
-    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 5);
+    template.resourceCountIs('AWS::Cognito::ManagedLoginBranding', 4);
 
-    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
-      ClientName: 'web',
-      CallbackURLs: ['https://gagnechris.com/auth/callback'],
-      LogoutURLs: ['https://gagnechris.com/'],
-    });
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'ios',
       CallbackURLs: [
@@ -524,13 +519,8 @@ describe('AuthStack', () => {
     });
     expect(JSON.stringify(template.toJSON())).not.toContain('localhost:3000');
 
-    template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
-      GroupName: 'admin',
-    });
-    template.hasResourceProperties(
-      'AWS::Cognito::UserPoolUserToGroupAttachment',
-      { GroupName: { Ref: 'AdminGroup' }, Username: config.adminUsername },
-    );
+    template.resourceCountIs('AWS::Cognito::UserPoolGroup', 2);
+    template.resourceCountIs('AWS::Cognito::UserPoolUserToGroupAttachment', 2);
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/cognito-dev-client-id',
     });
@@ -747,7 +737,6 @@ describe('ApiStack', () => {
       env: { account: config.account, region: config.region },
       config,
       userPool: auth.userPool,
-      webClient: auth.webClient,
       alertsTopic,
       dataTable: data.table,
       emailIdentity: email.emailIdentity,

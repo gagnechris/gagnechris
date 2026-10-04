@@ -16,7 +16,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
-import type { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
+import type { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -30,7 +30,6 @@ import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
-  LEGACY_WEB_AUTH,
   POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
   ssmParameterName,
@@ -42,10 +41,6 @@ import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly userPool: IUserPool;
-  /** Legacy apex client; trusted on both prefixes only while `legacyWebAuth`. */
-  readonly webClient: IUserPoolClient;
-  /** Defaults to LEGACY_WEB_AUTH. */
-  readonly legacyWebAuth?: boolean;
   readonly alertsTopic: ITopic;
   readonly dataTable: ITable;
   readonly emailIdentity: IEmailIdentity;
@@ -64,7 +59,6 @@ export class ApiStack extends Stack {
     const {
       config,
       userPool,
-      webClient,
       alertsTopic,
       dataTable,
       emailIdentity,
@@ -72,10 +66,6 @@ export class ApiStack extends Stack {
       fromEmail,
     } = props;
 
-    const legacyWebAuth = props.legacyWebAuth ?? LEGACY_WEB_AUTH;
-    const legacyWebClientIds = legacyWebAuth
-      ? [webClient.userPoolClientId]
-      : [];
     // Via SSM, not Auth exports, so Auth can replace or drop a client without
     // first removing an import here. Auth deploys before Api.
     const adminWebClientId = StringParameter.valueForStringParameter(
@@ -125,9 +115,6 @@ export class ApiStack extends Stack {
         SITE_APEX_DOMAIN: config.domainName,
         ADMIN_WEB_CLIENT_ID: adminWebClientId,
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
-        ...(legacyWebAuth
-          ? { AUTH_LEGACY_WEB_CLIENT_ID: webClient.userPoolClientId }
-          : {}),
       },
     });
 
@@ -142,14 +129,14 @@ export class ApiStack extends Stack {
     // audiences until the app ships with universal links.
     const issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`;
     const adminAuthorizer = new HttpJwtAuthorizer('CognitoJwtAdmin', issuer, {
-      jwtAudience: [adminWebClientId, ...legacyWebClientIds],
+      jwtAudience: [adminWebClientId],
       identitySource: ['$request.header.Authorization'],
     });
     const notebookAuthorizer = new HttpJwtAuthorizer(
       'CognitoJwtNotebook',
       issuer,
       {
-        jwtAudience: [notebookWebClientId, ...legacyWebClientIds],
+        jwtAudience: [notebookWebClientId],
         identitySource: ['$request.header.Authorization'],
       },
     );

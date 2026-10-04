@@ -3416,7 +3416,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -3715,7 +3715,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -4021,7 +4021,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -4327,7 +4327,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -4687,7 +4687,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -5084,7 +5084,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -5483,7 +5483,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -5882,7 +5882,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -6281,7 +6281,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -6589,7 +6589,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -6875,7 +6875,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -7215,7 +7215,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -7555,7 +7555,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -7895,7 +7895,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -8255,7 +8255,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -8699,7 +8699,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -9118,7 +9118,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -9537,7 +9537,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -9956,7 +9956,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -10260,7 +10260,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -10426,7 +10426,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not an `admin-web` client token with the `site-admin` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -10778,7 +10778,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -11081,7 +11081,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -11493,7 +11493,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -11811,7 +11811,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -12198,7 +12198,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -12532,7 +12532,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -12947,7 +12947,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -13437,7 +13437,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -13772,7 +13772,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -14145,7 +14145,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -14554,7 +14554,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -14933,7 +14933,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -15310,7 +15310,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -15744,7 +15744,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -16168,7 +16168,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -16724,7 +16724,7 @@
             }
           },
           "403": {
-            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)",
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {

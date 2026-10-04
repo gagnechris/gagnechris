@@ -121,7 +121,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -263,7 +263,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -403,7 +403,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -556,7 +556,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -713,7 +713,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -896,7 +896,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1092,7 +1092,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1289,7 +1289,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1486,7 +1486,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1650,7 +1650,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1782,7 +1782,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -1958,7 +1958,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2133,7 +2133,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2308,7 +2308,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2473,7 +2473,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2637,7 +2637,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2829,7 +2829,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3020,7 +3020,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3211,7 +3211,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3376,7 +3376,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3487,7 +3487,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3646,7 +3646,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3785,7 +3785,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3968,7 +3968,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4103,7 +4103,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4302,7 +4302,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4452,7 +4452,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4647,7 +4647,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4847,7 +4847,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4996,7 +4996,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5176,7 +5176,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5374,7 +5374,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5561,7 +5561,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5720,7 +5720,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5919,7 +5919,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -6119,7 +6119,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -6321,7 +6321,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group) */
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
                 403: {
                     headers: {
                         [name: string]: unknown;

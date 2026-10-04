@@ -5,7 +5,6 @@ import {
   claimGroups,
   defineRoute,
   dispatchRoutes,
-  LEGACY_WEB_CLIENT_ID_ENV,
   tokenClientId,
   type ProtectedAuth,
   type RouteDef,
@@ -188,8 +187,7 @@ describe('per-prefix authorization', () => {
       }
     });
 
-    it('the legacy admin group alone does not pass on a new client', async () => {
-      vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, LEGACY_CLIENT);
+    it('the admin group does not pass on an app client', async () => {
       expect(
         (await probe(method, path, idToken(ownClient, '[admin]'))).status,
       ).toBe(403);
@@ -209,41 +207,21 @@ describe('per-prefix authorization', () => {
   });
 });
 
-describe('legacy web client fallback', () => {
-  const legacyAdmin = idToken(LEGACY_CLIENT, '[admin]');
+describe('only the two app clients are trusted', () => {
   const both = [...routesOf('site-admin'), ...routesOf('notebook')];
 
+  // A stale env var left on the Lambda must not reopen a third client.
   it.each(both)(
-    'flag set: legacy client + admin → 200 on %s %s',
+    'AUTH_LEGACY_WEB_CLIENT_ID is ignored: web client + admin → 403 on %s %s',
     async (method, path) => {
-      vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, LEGACY_CLIENT);
-      expect((await probe(method, path, legacyAdmin)).status).toBe(200);
+      vi.stubEnv('AUTH_LEGACY_WEB_CLIENT_ID', LEGACY_CLIENT);
+      for (const groups of ['[admin]', '[admin site-admin notebook]']) {
+        expect(
+          (await probe(method, path, idToken(LEGACY_CLIENT, groups))).status,
+        ).toBe(403);
+      }
     },
   );
-
-  it.each(both)('flag unset: legacy client → 403 on %s %s', async (m, p) => {
-    expect((await probe(m, p, legacyAdmin)).status).toBe(403);
-  });
-
-  it('flag set: legacy client still needs the admin group', async () => {
-    vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, LEGACY_CLIENT);
-    for (const groups of ['[site-admin notebook]', '[editors]', '']) {
-      const result = await probe(
-        'GET',
-        '/api/admin/posts',
-        idToken(LEGACY_CLIENT, groups),
-      );
-      expect(result.status).toBe(403);
-    }
-  });
-
-  it('flag set: an admin-group token from another client is not legacy', async () => {
-    vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, LEGACY_CLIENT);
-    expect(
-      (await probe('GET', '/api/admin/posts', idToken('other', '[admin]')))
-        .status,
-    ).toBe(403);
-  });
 });
 
 describe('real handlers', () => {

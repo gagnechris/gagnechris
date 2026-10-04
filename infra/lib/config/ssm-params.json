@@ -15,7 +15,6 @@
     "dataTableArn": "data-table-arn",
     "dataTableStreamArn": "data-table-stream-arn",
     "cognitoUserPoolId": "cognito-user-pool-id",
-    "cognitoWebClientId": "cognito-web-client-id",
     "cognitoAdminWebClientId": "cognito-admin-web-client-id",
     "cognitoNotebookWebClientId": "cognito-notebook-web-client-id",
     "cognitoIosClientId": "cognito-ios-client-id",

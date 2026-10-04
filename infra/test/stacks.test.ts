@@ -492,7 +492,6 @@ describe('stack Template assertions', () => {
       env: { account: config.account, region: config.region },
       config,
       userPool: auth.userPool,
-      webClient: auth.webClient,
       alertsTopic,
       dataTable: data.table,
       emailIdentity: email.emailIdentity,

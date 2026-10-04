@@ -152,10 +152,6 @@ export const AUTH_POLICIES: Record<ProtectedAuth, AuthPolicy> = {
   },
 };
 
-/** While set, the legacy `web` client plus {@link LEGACY_ADMIN_GROUP} passes on every protected prefix. */
-export const LEGACY_WEB_CLIENT_ID_ENV = 'AUTH_LEGACY_WEB_CLIENT_ID';
-export const LEGACY_ADMIN_GROUP = 'admin';
-
 /** Malformed `%` escapes are non-matches so the handler can return 400; do not throw here. */
 export function routeAuthForPath(
   routes: readonly RouteDef[],
@@ -231,16 +227,6 @@ export function authorize(
           ok: false,
           status: 403,
           message: `Requires the ${policy.group} group`,
-        };
-  }
-  const legacyClientId = envClientId(LEGACY_WEB_CLIENT_ID_ENV);
-  if (clientId && clientId === legacyClientId) {
-    return groups.includes(LEGACY_ADMIN_GROUP)
-      ? { ok: true }
-      : {
-          ok: false,
-          status: 403,
-          message: `Requires the ${LEGACY_ADMIN_GROUP} group`,
         };
   }
   return {

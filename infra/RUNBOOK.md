@@ -628,16 +628,16 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 ## Cognito auth
 
-`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `admin-web` / `notebook-web` / `ios` / `dev-local` clients (authorization code + PKCE), each with its own managed login branding. The legacy `web` client also still exists, with its branding and SSM param, but the API doesn't trust it.
+`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `admin-web` / `notebook-web` / `ios` / `dev-local` clients (authorization code + PKCE), each with its own managed login branding. Those four are the only clients in the pool.
 
-SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
+SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
 
 ### Groups and clients
 
-- Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and the legacy `admin`, which grants nothing while `LEGACY_WEB_AUTH` is off. CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
+- Groups: `site-admin` (CMS, `/api/admin/*`) and `notebook` (`/api/notebook/*`). CDK creates both and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
-- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is `false`, so neither lists the legacy `web` client and the Lambda has no `AUTH_LEGACY_WEB_CLIENT_ID`. Auth still exports the `web` client ID (`this.exportValue`) so it can be deleted once `aws cloudformation list-imports` shows no importers (see Removing a cross-stack reference). The Lambda always gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`. Api reads the two new client IDs from SSM (not Auth exports).
-- Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
+- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). The Lambda gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`, which Api reads from SSM (not Auth exports).
+- The `ios` client trusts only `https://gagnechris.com` and `gagnechris://`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools
@@ -715,7 +715,7 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 - `DNS_PROBE_FINISHED_NXDOMAIN` on a host that resolves elsewhere is a stale negative cache in Chrome: clear it at `chrome://net-internals/#dns`.
 - 403 on every API call right after joining a group: sign out of that app and back in (see Groups and clients).
 - Signed out unexpectedly on one app: sign in again there. Each app keeps its own refresh token, so the other app is unaffected.
-- Last resort, to bring back the old apex app: revert the cutover change, set `LEGACY_WEB_AUTH = true`, and restore the previous versions of `spa.html`, `manifest.json` and `icons/*` in the site bucket with an admin-approved `aws s3api copy-object --copy-source <bucket>/<key>?versionId=<id>` (noncurrent versions are kept 90 days). The `web` client and `admin` group must still exist.
+- There is no fallback to an apex app: the apex has no Cognito client. Fix a broken app host forward, or revert that app's change.
 
 ## HTTP API runtime and contract
 
