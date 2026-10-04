@@ -287,3 +287,164 @@ describe('useDraftPublishEditor discard awaits in-flight PUT', () => {
     expect(order).toEqual(['await', 'discard']);
   });
 });
+
+describe('useDraftPublishEditor publish flushes edits made before the click', () => {
+  const renderHeldEditor = () => {
+    const saves: { draft: string; resolve: () => void }[] = [];
+    const performSave = vi.fn(
+      (draft: string, version: number) =>
+        new Promise<{ ok: true; entity: Entity }>((resolve) => {
+          saves.push({
+            draft,
+            resolve: () =>
+              resolve({
+                ok: true,
+                entity: { version: version + 1, body: draft },
+              }),
+          });
+        }),
+    );
+    const publish = vi.fn(async () => ({
+      data: { version: 99, body: 'published' } satisfies Entity,
+      response: { status: 200 },
+    }));
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState('server');
+      const [dirty, setDirty] = useState(false);
+      const versionRef = useRef(1);
+      const busyRef = useRef(false);
+      const autosave = useQueuedAutosave({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        versionRef,
+        getVersion: (e: Entity) => e.version,
+        performSave,
+        onSaved: () => {},
+        conflictMessage: 'Conflict',
+      });
+      const { setAutosaveHeld } = autosave;
+      const hold: DraftPublishHold = {
+        withHold: async (fn) => {
+          if (busyRef.current) return;
+          busyRef.current = true;
+          setAutosaveHeld(true);
+          try {
+            await fn();
+          } finally {
+            setAutosaveHeld(false);
+            busyRef.current = false;
+          }
+        },
+        isBusy: () => busyRef.current,
+      };
+      const editor = useDraftPublishEditor({
+        autosave,
+        dirty,
+        setDirty,
+        versionRef,
+        getVersion: (e: Entity) => e.version,
+        onEntityMeta: () => {},
+        onReplaceDraft: () => {},
+        publish,
+        unpublish: async () => ({
+          data: { version: 99, body: 'x' },
+          response: { status: 200 },
+        }),
+        discard: async () => ({
+          data: { version: 99, body: 'x' },
+          response: { status: 200 },
+        }),
+        unpublishConfirm: 'u?',
+        discardConfirm: 'd?',
+        confirm: async () => true,
+        hold,
+      });
+      const edit = (text: string) => {
+        autosave.bumpEdit();
+        setDraft(text);
+        setDirty(true);
+      };
+      return { ...autosave, ...editor, dirty, edit };
+    });
+    const settle = () =>
+      act(async () => {
+        for (let i = 0; i < 5; i += 1) await Promise.resolve();
+      });
+    return { result, saves, performSave, publish, settle };
+  };
+
+  test('an edit made while a save is in flight is saved before publishing', async () => {
+    const { result, saves, publish, settle } = renderHeldEditor();
+
+    act(() => result.current.edit('first'));
+    act(() => {
+      void result.current.save();
+    });
+    await settle();
+    expect(saves.map((s) => s.draft)).toEqual(['first']);
+
+    act(() => result.current.edit('first second'));
+    let published!: Promise<void>;
+    act(() => {
+      published = result.current.runPublish();
+    });
+    await settle();
+    expect(publish).not.toHaveBeenCalled();
+
+    saves[0]!.resolve();
+    await settle();
+    expect(saves.map((s) => s.draft)).toEqual(['first', 'first second']);
+    expect(publish).not.toHaveBeenCalled();
+
+    saves[1]!.resolve();
+    await act(async () => {
+      await published;
+    });
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.saveState).toBe('saved');
+  });
+
+  test('a pending edit with no save in flight is saved once, then published', async () => {
+    const { result, saves, publish, performSave, settle } = renderHeldEditor();
+
+    act(() => result.current.edit('ticked'));
+    let published!: Promise<void>;
+    act(() => {
+      published = result.current.runPublish();
+    });
+    await settle();
+    expect(publish).not.toHaveBeenCalled();
+    saves[0]!.resolve();
+    await act(async () => {
+      await published;
+    });
+    expect(performSave).toHaveBeenCalledTimes(1);
+    expect(performSave).toHaveBeenCalledWith('ticked', 1);
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  test('an in-flight save with no later edit is not saved twice', async () => {
+    const { result, saves, publish, performSave, settle } = renderHeldEditor();
+
+    act(() => result.current.edit('only'));
+    act(() => {
+      void result.current.save();
+    });
+    await settle();
+    let published!: Promise<void>;
+    act(() => {
+      published = result.current.runPublish();
+    });
+    await settle();
+    expect(publish).not.toHaveBeenCalled();
+    saves[0]!.resolve();
+    await act(async () => {
+      await published;
+    });
+    expect(performSave).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+});

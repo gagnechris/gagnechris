@@ -127,13 +127,13 @@ describe('PostEditorPage publish (CHR-113)', () => {
     });
   });
 
-  test('edits typed during an in-flight save are not marked Saved after publish (CHR-124)', async () => {
+  test('an edit typed during an in-flight save is saved before publishing; edits during the publish stay unsaved', async () => {
     const user = userEvent.setup();
-    let resolvePut!: (value: unknown) => void;
+    const putResolvers: ((value: unknown) => void)[] = [];
     put.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolvePut = resolve;
+          putResolvers.push(resolve);
         }),
     );
     let resolvePublish!: (value: unknown) => void;
@@ -149,31 +149,40 @@ describe('PostEditorPage publish (CHR-113)', () => {
 
     const markdown = screen.getByLabelText('Markdown');
     await user.type(markdown, ' first');
-    // Trigger autosave (debounce is 900ms; wait via fake? use real timers + click Save)
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
 
     await user.type(markdown, ' second');
     await user.click(screen.getByRole('button', { name: 'Publish' }));
 
-    resolvePut({
-      data: {
-        ...basePost,
-        bodyMarkdown: 'line one first',
-        version: 2,
-      },
+    putResolvers[0]!({
+      data: { ...basePost, bodyMarkdown: 'line one first', version: 2 },
       error: undefined,
       response: { status: 200 },
     });
 
-    await waitFor(() => expect(post).toHaveBeenCalled());
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(put.mock.calls[1]?.[1]).toMatchObject({
+      body: { bodyMarkdown: 'line one first second', version: 2 },
+    });
+    expect(post).not.toHaveBeenCalled();
+
+    putResolvers[1]!({
+      data: { ...basePost, bodyMarkdown: 'line one first second', version: 3 },
+      error: undefined,
+      response: { status: 200 },
+    });
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(post.mock.calls[0]?.[1]).toMatchObject({ body: { version: 3 } });
+
+    await user.type(markdown, ' third');
 
     resolvePublish({
       data: {
         ...basePost,
         status: 'published',
-        version: 3,
-        bodyMarkdown: 'line one first',
+        version: 4,
+        bodyMarkdown: 'line one first second',
         publishedAt: '2026-09-27T01:00:00.000Z',
         hasUnpublishedChanges: false,
       },
@@ -182,10 +191,13 @@ describe('PostEditorPage publish (CHR-113)', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Markdown')).toHaveValue(
-        'line one first second',
-      );
+      expect(
+        screen.getByRole('button', { name: 'Unpublish' }),
+      ).toBeInTheDocument();
     });
+    expect(screen.getByLabelText('Markdown')).toHaveValue(
+      'line one first second third',
+    );
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
   });
@@ -683,7 +695,10 @@ describe('PostEditorPage projects', () => {
     renderEditor();
     await screen.findByDisplayValue('Hello');
 
-    const group = await screen.findByRole('group', { name: 'Projects' });
+    const group = await screen.findByRole('group', { name: 'Part of project' });
+    expect(group).toHaveAccessibleDescription(
+      'Lists this post in the project’s Build log. Not the same as Tags.',
+    );
     const boxes = within(group).getAllByRole('checkbox');
     expect(boxes.map((b) => b.closest('label')?.textContent)).toEqual([
       'Posts · Live',

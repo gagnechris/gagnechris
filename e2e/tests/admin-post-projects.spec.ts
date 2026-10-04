@@ -28,7 +28,7 @@ test('tag a post with a project from the editor; the post shows Part of and the 
   await page.goto(`${apps.admin}/posts/${post.id}`);
   await page.getByText('Details', { exact: true }).click();
 
-  const group = page.getByRole('group', { name: 'Projects' });
+  const group = page.getByRole('group', { name: 'Part of project' });
   const box = group.getByRole('checkbox', { name: `${name} · Building` });
   await box.focus();
   await page.keyboard.press('Space');

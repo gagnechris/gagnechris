@@ -102,14 +102,23 @@ export function useDraftPublishEditor<TEntity>({
     [getEditGen, getVersion, onEntityMeta, setDirty, setSaveState, versionRef],
   );
 
+  // Under hold, joining an in-flight save ends that chain at 'pending' with
+  // later edits unsent, so keep saving until every edit made before the click
+  // is on the server.
+  const flushEdits = useCallback(async (): Promise<boolean> => {
+    const target = getEditGen();
+    if (!dirty && getLastSavedGen() >= target) return true;
+    for (;;) {
+      if ((await save()) === 'error') return false;
+      if (getLastSavedGen() >= target) return true;
+    }
+  }, [dirty, getEditGen, getLastSavedGen, save]);
+
   const runPublish = useCallback(async () => {
     await withHold(async () => {
-      if (dirty) {
-        const flush = await save();
-        if (flush === 'error') return;
-      }
+      if (!(await flushEdits())) return;
       // Baseline is what is on the server after the flush, not the edit gen at
-      // click time (text may have been typed during an in-flight save).
+      // click time (text may be typed while the flush runs).
       const baselineGen = getLastSavedGen();
       const { data, error, response } = await publish();
       if (error || !data) {
@@ -120,10 +129,9 @@ export function useDraftPublishEditor<TEntity>({
     });
   }, [
     applyKeepDraft,
-    dirty,
+    flushEdits,
     getLastSavedGen,
     publish,
-    save,
     setSaveError,
     withHold,
   ]);
@@ -136,10 +144,7 @@ export function useDraftPublishEditor<TEntity>({
     if (!enabled || isBusy()) return;
     if (!(await confirm(unpublishConfirm))) return;
     await withHold(async () => {
-      if (dirty) {
-        const flush = await save();
-        if (flush === 'error') return;
-      }
+      if (!(await flushEdits())) return;
       const baselineGen = getLastSavedGen();
       const { data, error, response } = await unpublish();
       if (error || !data) {
@@ -151,11 +156,10 @@ export function useDraftPublishEditor<TEntity>({
   }, [
     applyKeepDraft,
     confirm,
-    dirty,
     enabled,
+    flushEdits,
     getLastSavedGen,
     isBusy,
-    save,
     setSaveError,
     unpublish,
     unpublishConfirm,
