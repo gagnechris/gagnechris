@@ -56,9 +56,17 @@ test('the public site has no admin, Notebook or sign-in pages', async ({
   page,
   apps,
 }) => {
+  const workspaceModules: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/src/workspace/')) {
+      workspaceModules.push(request.url());
+    }
+  });
   for (const path of [
     '/admin',
+    '/admin.html',
     '/admin/notebook/today',
+    '/notebook',
     '/auth/callback',
     '/today',
   ]) {
@@ -66,5 +74,7 @@ test('the public site has no admin, Notebook or sign-in pages', async ({
     await expect(
       page.getByRole('heading', { name: 'Page not found' }),
     ).toBeVisible();
+    await expect(page.locator('.site-header')).toBeVisible();
   }
+  expect(workspaceModules).toEqual([]);
 });

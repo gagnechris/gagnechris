@@ -59,6 +59,14 @@ afterwards:
    deletes leftover `CognitoIdentityServiceProvider.*` cookies and
    `localStorage` keys
 
+Each dev server answers every page route, `*.html` included, with its own
+app's shell, so the public server never loads `admin.html` or
+`notebook.html`. Teardown fails the run if a dev server logged
+`dependencies optimized:` or `optimized dependencies changed`: it met a
+dependency its start-up scan missed, re-bundled, and may have reloaded every
+open page mid-test. That only happens with a cold `node_modules/.vite` cache,
+which CI always has.
+
 Every port is picked by the OS unless set, so a run never collides with
 `npm run local:dev` (8000/8787/4177/5173-5175), another worktree, or another
 run. No Compose project is used.

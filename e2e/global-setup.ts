@@ -13,5 +13,11 @@ export default async function globalSetup() {
   console.info(
     `[e2e] stack up: public ${stack.publicUrl}, admin ${stack.adminUrl}, notebook ${stack.notebookUrl}, auth builds ${stack.adminAuthUrl} ${stack.notebookAuthUrl}, api ${stack.apiUrl}, site ${stack.siteUrl}`,
   );
-  return stack.stop;
+  return async () => {
+    try {
+      await stack.checkDevServers();
+    } finally {
+      await stack.stop();
+    }
+  };
 }

@@ -99,7 +99,13 @@ export default defineConfig(({ mode, command }) => {
 
   const plugins: PluginOption[] =
     appName === 'public'
-      ? [react(), sitemapPlugin(), staticPagesPlugin(), bundleBoundaryPlugin()]
+      ? [
+          react(),
+          appShellPlugin(app.html),
+          sitemapPlugin(),
+          staticPagesPlugin(),
+          bundleBoundaryPlugin(),
+        ]
       : [react(), appShellPlugin(app.html)];
 
   return {

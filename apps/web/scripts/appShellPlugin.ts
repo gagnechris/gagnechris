@@ -6,8 +6,9 @@ import type { Plugin } from 'vite';
 const DEV_PASS_THROUGH = /^\/(?:@|api(?:\/|$)|src\/|node_modules\/|__)/;
 
 /**
- * Serves `<name>.html` as the SPA shell in dev and writes it as `index.html`
- * in the build, so each app host has a plain `index.html` like the public one.
+ * Serves `<name>.html` as the SPA shell for every dev route and writes it as
+ * `index.html` in the build. Without it Vite answers `/admin` with the
+ * sibling `admin.html`, so one dev server would load another app.
  */
 export function appShellPlugin(htmlFile: string): Plugin {
   let outDir = '';
@@ -24,21 +25,18 @@ export function appShellPlugin(htmlFile: string): Plugin {
         const pathname = url.split(/[?#]/)[0] ?? '/';
         const lastSegment = pathname.slice(pathname.lastIndexOf('/') + 1);
         const isGet = req.method === 'GET' || req.method === 'HEAD';
-        const isRoot = pathname === '/' || pathname === '/index.html';
-        if (
-          isGet &&
-          (isRoot ||
-            (!DEV_PASS_THROUGH.test(pathname) &&
-              !lastSegment.includes('.') &&
-              (req.headers.accept ?? '').includes('text/html')))
-        ) {
+        const appRoute =
+          !DEV_PASS_THROUGH.test(pathname) &&
+          (req.headers.accept ?? '').includes('text/html') &&
+          (!lastSegment.includes('.') || lastSegment.endsWith('.html'));
+        if (isGet && (pathname === '/' || appRoute)) {
           req.url = `/${htmlFile}`;
         }
         next();
       });
     },
     writeBundle() {
-      if (!isBuild) return;
+      if (!isBuild || htmlFile === 'index.html') return;
       const from = path.join(outDir, htmlFile);
       if (!fs.existsSync(from)) {
         throw new Error(`Missing ${from}: Vite build did not emit the shell`);

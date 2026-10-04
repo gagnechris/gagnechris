@@ -23,6 +23,8 @@ export type Stack = {
   apiUrl: string;
   siteUrl: string;
   logDir: string;
+  /** Throws if a dev server re-bundled dependencies mid-run. */
+  checkDevServers: () => Promise<void>;
   stop: () => Promise<void>;
 };
 
@@ -33,6 +35,12 @@ export const E2E_COGNITO = {
   adminClientId: 'e2e-admin-web',
   notebookClientId: 'e2e-notebook-web',
 } as const;
+
+// Logged only when a dev server meets a dependency its startup scan missed.
+// It then re-bundles and may reload every open page, which breaks whichever
+// test is mid-load, and only on a cold `node_modules/.vite` cache.
+const LATE_DEPENDENCY =
+  /dependenc(?:y|ies) optimized: |optimized dependencies changed/;
 
 function listen(server: Server): Promise<number> {
   return new Promise((ok, fail) => {
@@ -318,6 +326,23 @@ export async function startStack(): Promise<Stack> {
     throw err;
   }
 
+  const checkDevServers = async () => {
+    const problems: string[] = [];
+    for (const app of ['public', 'admin', 'notebook']) {
+      const log = join(runDir, `vite-${app}.log`);
+      const text = await readFile(log, 'utf8').catch(() => '');
+      const late = text
+        .split('\n')
+        .filter((line) => LATE_DEPENDENCY.test(line));
+      if (late.length > 0) problems.push(`vite-${app}:\n${late.join('\n')}`);
+    }
+    if (problems.length > 0) {
+      throw new Error(
+        `A dev server found dependencies after its start-up scan, so open pages may have reloaded mid-test:\n${problems.join('\n')}`,
+      );
+    }
+  };
+
   return {
     publicUrl: url(ports.public),
     adminUrl: url(ports.admin),
@@ -327,6 +352,7 @@ export async function startStack(): Promise<Stack> {
     apiUrl,
     siteUrl,
     logDir: runDir,
+    checkDevServers,
     stop,
   };
 }
