@@ -9,6 +9,11 @@ export type RebuildScope = {
   feeds: boolean;
   home: boolean;
   resume: boolean;
+  /**
+   * Projects whose pages or links may have changed: tags on both images of a
+   * changed published post, and every changed published project.
+   */
+  projectIds: Set<string>;
   /** Targets with their own Dynamo entity match via this set, so they need no RebuildScope flag. */
   touchedEntityTypes: Set<string>;
 };
@@ -19,7 +24,16 @@ export type StreamMeta = {
   entityType?: string;
   slug?: string;
   status?: string;
+  projectId?: string;
+  projectIds?: unknown;
 };
+
+const imageProjectIds = (meta: StreamMeta | undefined): string[] =>
+  Array.isArray(meta?.projectIds)
+    ? meta.projectIds.filter(
+        (id): id is string => typeof id === 'string' && id !== '',
+      )
+    : [];
 
 export const PROJECT_ENTITY_TYPE = 'project';
 
@@ -64,6 +78,7 @@ export function fullRebuildScope(): RebuildScope {
     feeds: true,
     home: true,
     resume: true,
+    projectIds: new Set(),
     touchedEntityTypes: new Set(),
   };
 }
@@ -76,6 +91,7 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   const postSlugs = new Set<string>();
   const slugsToRemove = new Set<string>();
   const touchedEntityTypes = new Set<string>();
+  const projectIds = new Set<string>();
   let home = false;
   let resume = false;
   let feeds = false;
@@ -102,8 +118,12 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       continue;
     }
 
-    // Project targets match on `touchedEntityTypes`; projects set no post flags.
-    if (entity === PROJECT_ENTITY_TYPE) continue;
+    if (entity === PROJECT_ENTITY_TYPE) {
+      for (const meta of [oldMeta, newMeta]) {
+        if (meta?.projectId) projectIds.add(meta.projectId);
+      }
+      continue;
+    }
 
     if (entity === 'resume') {
       if (newMeta?.status === 'published' || oldMeta?.status === 'published') {
@@ -121,6 +141,14 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     if (!touchedPublished) continue;
 
     feeds = true;
+
+    // Both images: a project the post was untagged from must drop it too.
+    for (const id of [
+      ...imageProjectIds(oldMeta),
+      ...imageProjectIds(newMeta),
+    ]) {
+      projectIds.add(id);
+    }
 
     if (newMeta?.status === 'published' && newMeta.slug) {
       postSlugs.add(newMeta.slug);
@@ -142,6 +170,7 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
     feeds,
     home,
     resume,
+    projectIds,
     touchedEntityTypes,
   };
 }

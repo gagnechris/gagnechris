@@ -91,13 +91,19 @@ const PRERENDERS: Record<string, string> = {
   ),
   '/posts/hello-world': renderSitePageHtml(
     '/posts',
-    renderPostPageBodyHtml({
-      slug: 'hello-world',
-      title: 'Hello World',
-      excerpt: 'A published excerpt.',
-      publishedAt: '2026-09-27T12:00:00.000Z',
-      bodyMarkdown: '## Intro\n\nSome **bold** text and a [link](/resume).',
-    }),
+    renderPostPageBodyHtml(
+      {
+        slug: 'hello-world',
+        title: 'Hello World',
+        excerpt: 'A published excerpt.',
+        publishedAt: '2026-09-27T12:00:00.000Z',
+        bodyMarkdown: '## Intro\n\nSome **bold** text and a [link](/resume).',
+      },
+      [
+        { name: 'Notebook', href: '/projects/notebook' },
+        { name: 'Bears', href: '/dont-feed-the-bears' },
+      ],
+    ),
   ),
   '/resume': renderResumePrerenderHtml(PUBLISHED_RESUME),
 };
@@ -219,6 +225,11 @@ describe('cold load: first React render matches the prerender', () => {
       unmount = loaded.unmount;
 
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
+      if (path === '/posts/hello-world') {
+        expect(loaded.root.querySelector('.post-part-of')?.textContent).toBe(
+          'Part of Notebook, Bears',
+        );
+      }
     },
   );
 

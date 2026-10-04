@@ -30,6 +30,7 @@ const samplePost = (overrides: Partial<Post> = {}): Post => ({
   excerpt: 'A short excerpt.',
   bodyMarkdown: '# Hello\n\n**bold** text',
   tags: ['aws'],
+  projectIds: [],
   status: 'published',
   publishedAt: '2026-09-27T12:00:00.000Z',
   updatedAt: '2026-09-27T12:00:00.000Z',

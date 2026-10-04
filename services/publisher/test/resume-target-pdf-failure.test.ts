@@ -73,6 +73,7 @@ describe('resume target PDF failure', () => {
         feeds: false,
         home: false,
         resume: true,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(['resume']),
       },
       storage,

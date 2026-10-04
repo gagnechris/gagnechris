@@ -10,6 +10,7 @@ import {
   validateRestoredTable,
 } from '../src/validate.js';
 import {
+  buildPublishedItem,
   buildResumeMetaItem,
   buildResumePublishedItem,
 } from '@gagnechris/data';
@@ -235,6 +236,31 @@ describe('helpers', () => {
     expect(checkItem({ pk: 'A' })).toBe('A: missing string sk');
     expect(checkItem({ pk: 'A', sk: 'B', entityType: 'unknown' })).toBe(
       undefined,
+    );
+  });
+
+  it('checkItem accepts post rows with or without projectIds', () => {
+    const tagged = buildPublishedItem({
+      id: '01POST',
+      slug: 'hello',
+      title: 'Hello',
+      excerpt: '',
+      bodyMarkdown: '',
+      tags: [],
+      projectIds: ['01PROJECT'],
+      status: 'published',
+      publishedAt: TS,
+      updatedAt: TS,
+      coverImage: null,
+      seo: null,
+      version: 1,
+      hasUnpublishedChanges: false,
+    });
+    const { projectIds: _ids, ...legacy } = tagged;
+    expect(checkItem(tagged)).toBeUndefined();
+    expect(checkItem(legacy)).toBeUndefined();
+    expect(checkItem({ ...tagged, projectIds: '01PROJECT' })).toBe(
+      'POST#01POST/PUBLISHED: post schema (projectIds)',
     );
   });
 

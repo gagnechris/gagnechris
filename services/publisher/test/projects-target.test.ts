@@ -56,6 +56,7 @@ const post: Post = {
   excerpt: '',
   bodyMarkdown: 'hi',
   tags: [],
+  projectIds: [],
   status: 'published',
   publishedAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -113,6 +114,7 @@ const projectScope = (): RebuildScope => ({
   feeds: false,
   home: false,
   resume: false,
+  projectIds: new Set(),
   touchedEntityTypes: new Set(['project']),
 });
 
@@ -322,6 +324,7 @@ describe('projects publish targets', () => {
         ...projectScope(),
         feeds: true,
         postSlugs: new Set(['hello']),
+        projectIds: new Set<string>(),
         touchedEntityTypes: new Set(['post']),
       },
       { ...projectScope(), home: true, touchedEntityTypes: new Set(['home']) },
@@ -356,6 +359,7 @@ describe('projects publish targets', () => {
         ...projectScope(),
         feeds: true,
         postSlugs: new Set(['other']),
+        projectIds: new Set(),
         touchedEntityTypes: new Set(['post']),
       },
       [post, { ...post, id: '01POST00000000000000000001', slug: 'other' }],
@@ -418,17 +422,23 @@ describe('project stream records', () => {
     project({ slug: 'notebook', status: 'draft' }),
   );
 
-  it('match the projects, Home and sitemap targets, not post feeds', () => {
+  it('match the projects, Home, sitemap and tagged post page targets, not post feeds', () => {
     const records = [record('INSERT', published)];
     const scope = collectRebuildScope(records);
     expect(scope.touchedEntityTypes.has('project')).toBe(true);
     expect(scope.feeds).toBe(false);
     expect(scope.postSlugs.size).toBe(0);
+    expect(scope.projectIds).toEqual(new Set([published.projectId]));
     expect(streamNeedsRebuild(records, publishTargets)).toBe(true);
     const active = publishTargets
       .filter((t) => t.matches(scope))
       .map((t) => t.id);
-    expect(active.sort()).toEqual(['home', 'projects', 'sitemap']);
+    expect(active.sort()).toEqual([
+      'home',
+      'post-pages',
+      'projects',
+      'sitemap',
+    ]);
   });
 
   it('an unpublish (REMOVE) still matches', () => {

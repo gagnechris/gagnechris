@@ -259,14 +259,48 @@ if echo "${SITEMAP}" | grep -q "/projects/${SLUG}-idea<"; then
   exit 1
 fi
 
+echo "==> An unknown project id is a 400"
+UNKNOWN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "${API}/api/admin/posts" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Untagged","projectIds":["01NOSUCHPROJECT0000000000"]}')"
+if [[ "${UNKNOWN_CODE}" != "400" ]]; then
+  echo "Expected 400 for an unknown project id, got ${UNKNOWN_CODE}" >&2
+  exit 1
+fi
+
+echo "==> A tagged post is in the project's Build log and shows Part of"
+TAGGED="$(curl -sS -X POST "${API}/api/admin/posts" \
+  -H 'Content-Type: application/json' \
+  -d "{\"title\":\"Local E2E Build Log\",\"slug\":\"${SLUG}-log\",\"bodyMarkdown\":\"Tagged.\",\"projectIds\":[\"${PROJECT_ID}\"]}")"
+TAGGED_ID="$(node -e "const p=JSON.parse(process.argv[1]); if(!p.id){console.error(p);process.exit(1)}; console.log(p.id)" "${TAGGED}")"
+TAGGED_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${TAGGED}")"
+curl -sS -X POST "${API}/api/admin/posts/${TAGGED_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${TAGGED_VERSION}}" >/dev/null
+curl -sS "${SITE}/projects/${SLUG}" | grep -q "<a href=\"/posts/${SLUG}-log\">Local E2E Build Log</a>"
+curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "<p class=\"post-part-of\">Part of <a class=\"post-part-of__project\" href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a></p>"
+
+echo "==> Renaming the project slug keeps the Build log and Part of"
+PROJECT_SLUG="${SLUG}-renamed"
+PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PROJECT_PUB}")"
+RENAMED="$(curl -sS -X PUT "${API}/api/admin/projects/${PROJECT_ID}" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${PROJECT_VERSION},\"slug\":\"${PROJECT_SLUG}\"}")"
+PROJECT_VERSION="$(node -e "const p=JSON.parse(process.argv[1]); if(!p.version){console.error(p);process.exit(1)}; console.log(p.version)" "${RENAMED}")"
+PROJECT_PUB="$(curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${PROJECT_VERSION}}")"
+curl -sS "${SITE}/projects/${PROJECT_SLUG}" | grep -q "<a href=\"/posts/${SLUG}-log\">Local E2E Build Log</a>"
+curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "href=\"/projects/${PROJECT_SLUG}\">Local E2E Project ${SLUG}</a>"
+
 echo "==> Unpublish removes the project page, its /projects and Home entries and its sitemap entry"
 PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PROJECT_PUB}")"
 curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/unpublish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${PROJECT_VERSION}}" >/dev/null
-GONE_PROJECT="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}")"
+GONE_PROJECT="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${PROJECT_SLUG}")"
 if [[ "${GONE_PROJECT}" != "404" ]]; then
-  echo "Expected /projects/${SLUG} 404 after unpublish, got ${GONE_PROJECT}" >&2
+  echo "Expected /projects/${PROJECT_SLUG} 404 after unpublish, got ${GONE_PROJECT}" >&2
   exit 1
 fi
 if curl -sS "${SITE}/projects" | grep -q "Local E2E Project ${SLUG}"; then
@@ -277,8 +311,12 @@ if curl -sS "${SITE}/" | grep -q "Local E2E Project ${SLUG}"; then
   echo "Unpublished project still listed on /" >&2
   exit 1
 fi
-if curl -sS "${SITE}/sitemap.xml" | grep -q "/projects/${SLUG}<"; then
+if curl -sS "${SITE}/sitemap.xml" | grep -q "/projects/${PROJECT_SLUG}<"; then
   echo "Unpublished project still in sitemap.xml" >&2
+  exit 1
+fi
+if curl -sS "${SITE}/posts/${SLUG}-log" | grep -q 'post-part-of'; then
+  echo "Post still shows Part of an unpublished project" >&2
   exit 1
 fi
 

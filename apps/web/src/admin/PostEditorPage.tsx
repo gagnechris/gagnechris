@@ -5,6 +5,7 @@ import {
   postResource,
   useDeletePostMutation,
   useGetApiClient,
+  useProjectsQuery,
 } from '@gagnechris/app-core';
 import { Button } from '../workspace/ui/Button';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
@@ -38,6 +39,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
   const navigate = useNavigate();
   const getClient = useGetApiClient();
   const deleteMutation = useDeletePostMutation();
+  const projectsQuery = useProjectsQuery();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [slugManual, setSlugManual] = useState(false);
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
@@ -67,6 +69,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
       excerpt: current.excerpt,
       bodyMarkdown: current.bodyMarkdown,
       tags: parsePostTags(current.tagsText),
+      projectIds: current.projectIds,
       coverImage: current.coverImage.trim() || null,
     }),
     conflictMessage:
@@ -176,6 +179,8 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         setField={setField}
         setSlugManual={setSlugManual}
         onSave={() => void save()}
+        projects={projectsQuery.data}
+        projectsError={projectsQuery.error ? 'Could not load projects.' : null}
       />
 
       <PostEditorBody

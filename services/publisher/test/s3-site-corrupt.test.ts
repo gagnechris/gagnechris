@@ -37,6 +37,7 @@ const publishedPost = (): Post => ({
   excerpt: 'ex',
   bodyMarkdown: '# Keep',
   tags: [],
+  projectIds: [],
   status: 'published',
   publishedAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',

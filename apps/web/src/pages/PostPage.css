@@ -44,6 +44,19 @@
   color: var(--color-ink-soft);
 }
 
+.post-part-of {
+  margin: 14px 0 0;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+.post-part-of a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .post-content {
   font-size: var(--post-body-size);
   line-height: 1.7;

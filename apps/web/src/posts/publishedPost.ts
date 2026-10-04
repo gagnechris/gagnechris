@@ -1,4 +1,4 @@
-import { readingMinutes } from '@gagnechris/shared';
+import { readingMinutes, type PostProjectLink } from '@gagnechris/shared';
 import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
 import { publishedPostPageUrl } from './publishedPosts';
 
@@ -9,6 +9,7 @@ export type PostView = {
   date: string;
   excerpt: string;
   minutes: number;
+  partOf: PostProjectLink[];
   contentHtml: string;
 };
 
@@ -31,6 +32,12 @@ export function postViewFromDocument(root: ParentNode): PostView | null {
       Number.isInteger(minutes) && minutes > 0
         ? minutes
         : readingMinutes(body.textContent ?? ''),
+    partOf: [
+      ...article.querySelectorAll('.post-part-of .post-part-of__project'),
+    ].map((el) => ({
+      name: el.textContent ?? '',
+      href: el.tagName === 'A' ? el.getAttribute('href') : null,
+    })),
     contentHtml: body.innerHTML,
   };
 }

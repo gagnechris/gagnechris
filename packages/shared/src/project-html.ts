@@ -1,6 +1,7 @@
 import { escapeHtml } from './html.js';
 import { isSafeLinkHref, POST_LINK_SCHEMES } from './links.js';
 import { renderPostMarkdownToHtml } from './markdown.js';
+import { formatPostShortDate, postDateAttribute } from './post-date.js';
 import {
   PROJECT_IDEA_PREVIEW_TEXT,
   PROJECT_MINI_UI,
@@ -10,9 +11,11 @@ import {
   PROJECTS_INDEX_EMPTY_TEXT,
   PROJECTS_INDEX_INTRO,
   PROJECTS_PATH,
+  projectBuildLogEmptyText,
   projectCardViews,
   projectPreview,
   projectStageText,
+  type ProjectBuildLogPost,
   type ProjectCardSource,
   type ProjectCardView,
   type ProjectMiniNode,
@@ -131,6 +134,32 @@ const linksHtml = (links: Project['links']): string => {
   );
 };
 
+const buildLogHtml = (
+  name: string,
+  posts: readonly ProjectBuildLogPost[],
+): string =>
+  `<section class="project-build-log" aria-labelledby="project-build-log">` +
+  `<h2 id="project-build-log">Build log</h2>` +
+  (posts.length
+    ? `<ul>` +
+      posts
+        .map((post) => {
+          const date = formatPostShortDate(post.publishedAt);
+          const attr = postDateAttribute(post.publishedAt);
+          return (
+            `<li data-id="${escapeHtml(post.id)}">` +
+            `<a href="/posts/${escapeHtml(post.slug)}">${escapeHtml(post.title)}</a>` +
+            (date
+              ? ` <time${attr ? ` datetime="${attr}"` : ''}>${escapeHtml(date)}</time>`
+              : '') +
+            `</li>`
+          );
+        })
+        .join('') +
+      `</ul>`
+    : `<p>${escapeHtml(projectBuildLogEmptyText(name))}</p>`) +
+  `</section>`;
+
 /** Deliberately bare: the designed project page replaces this markup. */
 export const renderProjectPageBodyHtml = (
   project: Pick<
@@ -144,6 +173,7 @@ export const renderProjectPageBodyHtml = (
     | 'stack'
     | 'links'
   >,
+  buildLog: readonly ProjectBuildLogPost[] = [],
 ): string =>
   `<main class="project-page" data-slug="${escapeHtml(project.slug)}">` +
   `<p class="project-back"><a href="${PROJECTS_PATH}">${PROJECTS_INDEX_TITLE}</a></p>` +
@@ -155,6 +185,7 @@ export const renderProjectPageBodyHtml = (
   `<div class="project-body">${renderPostMarkdownToHtml(project.bodyMarkdown)}</div>` +
   stackHtml(project.stack) +
   linksHtml(project.links) +
+  buildLogHtml(project.name, buildLog) +
   `</main>`;
 
 export const renderProjectsIndexPrerenderHtml = (
@@ -169,6 +200,11 @@ export const renderProjectsIndexPrerenderHtml = (
 
 export const renderProjectPagePrerenderHtml = (
   project: Parameters<typeof renderProjectPageBodyHtml>[0],
+  buildLog: readonly ProjectBuildLogPost[] = [],
   year?: number | string,
 ): string =>
-  renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(project), year);
+  renderSitePageHtml(
+    PROJECTS_PATH,
+    renderProjectPageBodyHtml(project, buildLog),
+    year,
+  );

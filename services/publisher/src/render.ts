@@ -15,6 +15,8 @@ import {
   PROJECTS_PATH,
   projectHasPage,
   projectPagePath,
+  type PostProjectLink,
+  type ProjectBuildLogPost,
   type ProjectCardView,
   type Home,
   type Post,
@@ -87,17 +89,23 @@ export const buildJsonLd = (post: Post): string => {
   return JSON.stringify(payload).replace(/</g, '\\u003c');
 };
 
-export const buildArticleHtml = (post: Post): string =>
-  renderSitePageHtml('/posts', renderPostPageBodyHtml(post));
+export const buildArticleHtml = (
+  post: Post,
+  partOf: readonly PostProjectLink[] = [],
+): string => renderSitePageHtml('/posts', renderPostPageBodyHtml(post, partOf));
 
-export const renderPostPage = (shellHtml: string, post: Post): string => {
+export const renderPostPage = (
+  shellHtml: string,
+  post: Post,
+  partOf: readonly PostProjectLink[] = [],
+): string => {
   const title = escapeHtml(post.seo?.title || `${post.title} - Chris Gagne`);
   const description = escapeHtml(
     post.seo?.description || post.excerpt || post.title,
   );
   const url = postCanonicalUrl(post.slug);
   const image = resolveOgImage(post);
-  const article = buildArticleHtml(post);
+  const article = buildArticleHtml(post, partOf);
   const jsonLd = buildJsonLd(post);
 
   let html = applyPageMeta(shellHtml, {
@@ -229,6 +237,7 @@ export const renderProjectsIndexPage = (
 export const renderProjectPage = (
   shellHtml: string,
   project: Project,
+  buildLog: readonly ProjectBuildLogPost[] = [],
 ): string => {
   let html = applyPageMeta(shellHtml, {
     title: escapeHtml(`${project.name} - Chris Gagne`),
@@ -239,7 +248,10 @@ export const renderProjectPage = (
       ? absoluteUrl(project.previewImage)
       : defaultOgImage(),
   });
-  html = injectPrerender(html, renderProjectPagePrerenderHtml(project));
+  html = injectPrerender(
+    html,
+    renderProjectPagePrerenderHtml(project, buildLog),
+  );
   return html;
 };
 

@@ -16,6 +16,7 @@ const draftPost: Post = {
   excerpt: '',
   bodyMarkdown: '',
   tags: [],
+  projectIds: [],
   status: 'draft',
   publishedAt: null,
   updatedAt: '2026-09-27T00:00:00.000Z',

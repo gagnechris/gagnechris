@@ -1,4 +1,4 @@
-import type { Project, ProjectStage } from './schemas.js';
+import type { Post, Project, ProjectStage } from './schemas.js';
 
 export const PROJECTS_PATH = '/projects';
 
@@ -24,6 +24,40 @@ export const projectCardHref = (
 ): string | null =>
   project.href ||
   (projectHasPage(project) ? projectPagePath(project.slug) : null);
+
+export type PostProjectLink = { name: string; href: string | null };
+
+export const POST_PART_OF_LABEL = 'Part of';
+
+/** Resolved at render time, so a renamed project slug is picked up on the next rebuild. Unpublished ids are skipped. */
+export const postProjectLinks = (
+  projectIds: readonly string[],
+  projects: readonly (PageFields & Pick<Project, 'id' | 'slug' | 'name'>)[],
+): PostProjectLink[] => {
+  const byId = new Map(projects.map((p) => [p.id, p]));
+  return [...new Set(projectIds)].flatMap((id) => {
+    const project = byId.get(id);
+    return project
+      ? [{ name: project.name, href: projectCardHref(project) }]
+      : [];
+  });
+};
+
+export type ProjectBuildLogPost = Pick<
+  Post,
+  'id' | 'slug' | 'title' | 'publishedAt'
+>;
+
+/** `posts` arrive newest first from the published catalog. */
+export const projectBuildLogPosts = <
+  T extends ProjectBuildLogPost & Pick<Post, 'projectIds'>,
+>(
+  projectId: string,
+  posts: readonly T[],
+): T[] => posts.filter((p) => p.projectIds.includes(projectId));
+
+export const projectBuildLogEmptyText = (name: string): string =>
+  `No posts about ${name} yet. Follow along via RSS.`;
 
 /** `order` ascending, then name, so equal orders stay stable across rebuilds. */
 export const sortProjectsByOrder = <

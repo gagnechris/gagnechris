@@ -59,6 +59,7 @@ function makePost(slug: string, n: number): Post {
     excerpt: 'ex',
     bodyMarkdown: `# ${slug}`,
     tags: [],
+    projectIds: [],
     status: 'published',
     publishedAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -80,6 +81,7 @@ function postPublished(post: Post) {
     excerpt: post.excerpt,
     bodyMarkdown: post.bodyMarkdown,
     tags: post.tags,
+    projectIds: post.projectIds,
     status: post.status,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
@@ -198,6 +200,7 @@ describe('rebuildPublishedSite selective scope', () => {
       feeds: false,
       home: true,
       resume: false,
+      projectIds: new Set(),
       touchedEntityTypes: new Set(),
     };
 
@@ -259,6 +262,7 @@ describe('rebuildPublishedSite selective scope', () => {
       feeds: true,
       home: false,
       resume: false,
+      projectIds: new Set(),
       touchedEntityTypes: new Set(),
     };
 
@@ -352,6 +356,7 @@ describe('rebuildPublishedSite selective scope', () => {
         feeds: true,
         home: false,
         resume: false,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(),
       },
       storage,
@@ -413,6 +418,7 @@ describe('rebuildPublishedSite selective scope', () => {
           feeds: true,
           home: false,
           resume: false,
+          projectIds: new Set(),
           touchedEntityTypes: new Set(),
         },
         storage,
@@ -457,6 +463,7 @@ describe('rebuildPublishedSite selective scope', () => {
         feeds: true,
         home: false,
         resume: false,
+        projectIds: new Set(),
         touchedEntityTypes: new Set(),
       },
       storage,

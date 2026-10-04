@@ -1,4 +1,4 @@
-import { projectHasPage } from '@gagnechris/shared';
+import { projectBuildLogPosts, projectHasPage } from '@gagnechris/shared';
 import {
   PROJECT_ENTITY_TYPE,
   isFullRebuildScope,
@@ -21,10 +21,13 @@ const target: PublishTarget = {
   matches(scope) {
     return (
       scope.touchedEntityTypes.has(PROJECT_ENTITY_TYPE) ||
-      isFullRebuildScope(scope)
+      isFullRebuildScope(scope) ||
+      scope.projectIds.size > 0
     );
   },
-  needsCatalog: () => false,
+  needsCatalog(scope) {
+    return this.matches(scope);
+  },
   needsShell(scope) {
     return this.matches(scope);
   },
@@ -32,20 +35,37 @@ const target: PublishTarget = {
     return this.matches(scope);
   },
   async run(ctx) {
-    const { shell, storage } = ctx;
+    const { scope, shell, storage, published } = ctx;
     const { projects, corruptSlugs } = ctx.projects;
     const paged = projects.filter(projectHasPage);
+    const page = (project: (typeof paged)[number]): PublishArtifact => ({
+      key: projectPageKey(project.slug),
+      body: renderProjectPage(
+        shell,
+        project,
+        projectBuildLogPosts(project.id, published),
+      ),
+      contentType: 'text/html; charset=utf-8',
+      cacheControl: CACHE_HTML,
+    });
+
+    // A post change only reaches the Build logs of the projects it was tagged
+    // with; the index shows no posts.
+    if (
+      !scope.touchedEntityTypes.has(PROJECT_ENTITY_TYPE) &&
+      !isFullRebuildScope(scope)
+    ) {
+      return {
+        artifacts: paged.filter((p) => scope.projectIds.has(p.id)).map(page),
+        invalidationPaths: ['/projects*'],
+      };
+    }
     const keep = new Set([
       ...paged.map((p) => projectPageKey(p.slug)),
       ...corruptSlugs.map(projectPageKey),
     ]);
 
-    const artifacts: PublishArtifact[] = paged.map((project) => ({
-      key: projectPageKey(project.slug),
-      body: renderProjectPage(shell, project),
-      contentType: 'text/html; charset=utf-8',
-      cacheControl: CACHE_HTML,
-    }));
+    const artifacts: PublishArtifact[] = paged.map(page);
     const deleteKeys = (await storage.list('projects/')).filter(
       (key) => PAGE_KEY_RE.test(key) && !keep.has(key),
     );

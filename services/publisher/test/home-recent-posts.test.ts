@@ -37,6 +37,7 @@ const post = (n: number, overrides: Partial<Post> = {}): Post => ({
   excerpt: `Excerpt ${n}.`,
   bodyMarkdown: `Body ${n}.`,
   tags: [],
+  projectIds: [],
   status: 'published',
   publishedAt: `2026-0${n}-01T00:00:00.000Z`,
   updatedAt: `2026-0${n}-01T00:00:00.000Z`,
