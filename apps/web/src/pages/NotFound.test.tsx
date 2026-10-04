@@ -119,7 +119,7 @@ describe('the three 404 markups', () => {
     ]) {
       expect(css).toContain(`${selector}{`);
     }
-    expect(css).toContain('url(/fonts/newsreader-roman.woff2)');
+    expect(css).toMatch(/url\(\/fonts\/newsreader-roman\.[0-9a-f]{8}\.woff2\)/);
     // The phone menu's open state is set by the browser, not in the markup.
     expect(css).toContain('html:has(.site-menu[open]){overflow:hidden}');
     expect(css).not.toMatch(/\.(posts-index|home-page|contact-page)/);

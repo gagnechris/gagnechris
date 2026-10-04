@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'Newsreader';
-  src: url('/fonts/newsreader-roman.woff2') format('woff2');
+  src: url('/fonts/newsreader-roman.c4b10fbd.woff2') format('woff2');
   font-style: normal;
   font-weight: 400 500;
   font-display: swap;
@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: 'Newsreader';
-  src: url('/fonts/newsreader-italic.woff2') format('woff2');
+  src: url('/fonts/newsreader-italic.30a9315f.woff2') format('woff2');
   font-style: italic;
   font-weight: 400 500;
   font-display: swap;
@@ -18,7 +18,7 @@
 
 @font-face {
   font-family: 'Inter';
-  src: url('/fonts/inter-latin.woff2') format('woff2');
+  src: url('/fonts/inter-latin.9295811b.woff2') format('woff2');
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;

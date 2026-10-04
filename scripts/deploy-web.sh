@@ -79,6 +79,19 @@ upload_assets() {
     --metadata-directive REPLACE
 }
 
+# Font file names carry a content hash (check:web-shells verifies it), so they
+# cache like hashed assets and old versions are never deleted.
+upload_fonts() {
+  local dir="$1" bucket="$2"
+  [ -d "${dir}/fonts" ] || return 0
+  aws s3 sync "${dir}/fonts/" "s3://${bucket}/fonts/" \
+    --region "${AWS_REGION}" \
+    --exclude "*" \
+    --include "*.woff2" \
+    --cache-control "public,max-age=31536000,immutable" \
+    --metadata-directive REPLACE
+}
+
 invalidate() {
   aws cloudfront create-invalidation \
     --distribution-id "$1" \
@@ -117,6 +130,7 @@ deploy_app notebook "${WEB}/dist-notebook" "${NOTEBOOK_BUCKET}" "${NOTEBOOK_DIST
 
 echo "Deploying public → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 upload_assets "${DIST}" "${BUCKET}"
+upload_fonts "${DIST}" "${BUCKET}"
 
 # Excludes protect publisher-owned paths from --delete. home/* holds
 # last-published.json so an unpublished Home survives deploys. Anything else
@@ -125,6 +139,7 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
   --exclude "assets/*" \
+  --exclude "fonts/*.woff2" \
   --exclude "blog/*" \
   --exclude "resume/*" \
   --exclude "resume.pdf" \
