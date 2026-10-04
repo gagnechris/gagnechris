@@ -170,7 +170,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
     expect(afterRestore).not.toMatch(/<div id="root"><\/div>/);
   });
 
-  it('never-published home leaves the Vite shell alone (no snapshot yet)', async () => {
+  it('never-published home renders the bundled default and writes no snapshot', async () => {
     const storage = createFilesystemSiteStorage(root);
     await mkdir(join(root, 'blog'), { recursive: true });
 
@@ -185,9 +185,27 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
 
     expect(result.homePublished).toBe(false);
     expect(result.homeRestoredFromSnapshot).toBe(false);
-    expect(await readFile(join(root, 'index.html'), 'utf-8')).toBe(SHELL);
+    const html = await readFile(join(root, 'index.html'), 'utf-8');
+    expect(html).toContain('home-page-prerender');
+    expect(html).toContain(`data-title="${DEFAULT_HOME.title}"`);
     await expect(
       access(join(root, ...HOME_LAST_PUBLISHED_KEY.split('/'))),
     ).rejects.toThrow();
+  });
+
+  it('corrupt home with no snapshot leaves index.html alone', async () => {
+    const storage = createFilesystemSiteStorage(root);
+
+    const result = await rebuildPublishedSite({
+      storage,
+      sources: {
+        listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        getPublishedResume: async () => ({ status: 'missing' as const }),
+        getPublishedHome: async () => ({ status: 'corrupt' as const }),
+      },
+    });
+
+    expect(result.homePublished).toBe(false);
+    expect(await readFile(join(root, 'index.html'), 'utf-8')).toBe(SHELL);
   });
 });

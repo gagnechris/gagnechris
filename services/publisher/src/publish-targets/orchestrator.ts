@@ -167,7 +167,7 @@ export async function runPublishTargets(options: {
     : { posts: [], corruptSlugs: [] as string[] };
   const published = catalog.posts;
   const retainedPosts =
-    needsCatalog && scope.feeds
+    needsCatalog && (scope.feeds || scope.home)
       ? await retainLivePosts(storage, scope, catalog)
       : [];
   const corruptPostSlugs = new Set([

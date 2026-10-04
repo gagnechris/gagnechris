@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HOME } from './home-default.js';
 import {
+  HOME_RECENT_POSTS_LIMIT,
   homeAboutExcerpt,
   renderHomeAboutHtml,
-  renderHomeAboutSectionHtml,
   renderHomePrerenderHtml,
+  renderHomeRecentPostsHtml,
+  selectHomeRecentPosts,
+  type HomeRecentPost,
 } from './home-html.js';
 import type { Home } from './schemas.js';
 import {
@@ -47,38 +50,48 @@ describe('renderHomeAboutHtml', () => {
   });
 });
 
-describe('renderHomeAboutSectionHtml', () => {
-  it('uses the App.css section id and body wrapper the SPA reads back', () => {
-    const html = renderHomeAboutSectionHtml('Hello.');
-    expect(html).toContain('<section id="about"><h2>About Me</h2>');
-    expect(html).toContain('<div class="about-body"><p>Hello.</p></div>');
-  });
+const recent = (
+  n: number,
+  overrides: Partial<HomeRecentPost & { updatedAt: string }> = {},
+) => ({
+  id: `0${n}`,
+  slug: `post-${n}`,
+  title: `Post ${n}`,
+  excerpt: `Excerpt ${n}.`,
+  publishedAt: `2026-0${n}-01T00:00:00.000Z`,
+  updatedAt: `2026-0${n}-01T00:00:00.000Z`,
+  ...overrides,
 });
 
 describe('renderHomePrerenderHtml', () => {
-  it('wraps Home and its Quick Links in the site header and footer', () => {
-    const html = renderHomePrerenderHtml(home(), 2026);
+  it('wraps Home in the site header and footer', () => {
+    const html = renderHomePrerenderHtml(home(), [], 2026);
     expect(html.startsWith(renderSiteHeaderHtml(null))).toBe(true);
     expect(html.endsWith(renderSiteFooterHtml(2026))).toBe(true);
-    expect(html).toContain('class="home-page home-page-prerender"');
-    expect(html).toContain('class="home-header"');
-    expect(html).toContain('id="quick-links"');
-    expect(html).toContain('href="/resume"');
-    expect(html).toContain('href="/posts"');
-    expect(html).toContain('href="/contact"');
-    expect(html).toContain('class="site-footer"');
-    expect(html).toContain('href="/rss.xml"');
-    expect(html).toContain('dont-feed-the-bears?from=footer');
+    expect(html).toContain('<main class="home-page home-page-prerender"');
+  });
+
+  it('renders the hero: name, italic title line, About lede, links sentence', () => {
+    const html = renderHomePrerenderHtml(home());
+    expect(html).toContain('<h1 class="home-hero__name">Chris Gagne</h1>');
+    expect(html).toContain(
+      '<p class="home-hero__title">Engineering Leader</p>',
+    );
+    expect(html).toContain(
+      '<div class="home-hero__about"><p>I&#39;m an Engineering Leader',
+    );
+    expect(html).toContain(
+      '<p class="home-hero__links">Read my <a href="/posts">posts</a>, see my <a href="/resume">resume</a>, or find me on ' +
+        '<a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a> and ' +
+        '<a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>',
+    );
+    expect(html).not.toContain('Quick Links');
   });
 
   it('exposes name and title as data attributes the SPA reads back', () => {
     const html = renderHomePrerenderHtml(home());
-    expect(html).toContain('class="home-page home-page-prerender"');
     expect(html).toContain('data-name="Chris Gagne"');
     expect(html).toContain('data-title="Engineering Leader"');
-    expect(html).toContain('<h1>Chris Gagne</h1>');
-    expect(html).toContain('<p>Engineering Leader</p>');
-    expect(html).toContain('<section id="about">');
   });
 
   it("preserves $$, $&, $`, $' in prerendered name/title/about", () => {
@@ -88,7 +101,7 @@ describe('renderHomePrerenderHtml', () => {
       home({ name: tricky, title: tricky, about: 'echo $$\n\nand $&' }),
     );
     expect(html).toContain(`data-name="${escaped}"`);
-    expect(html).toContain(`<h1>${escaped}</h1>`);
+    expect(html).toContain(`<h1 class="home-hero__name">${escaped}</h1>`);
     expect(html).toContain('<p>echo $$</p>');
     expect(html).toContain('<p>and $&amp;</p>');
   });
@@ -99,6 +112,66 @@ describe('renderHomePrerenderHtml', () => {
     );
     expect(html).toContain('data-name="A &quot;B&quot;"');
     expect(html).toContain('data-title="C &quot;D&quot;"');
+  });
+
+  it('has no Recent posts heading when there are no posts', () => {
+    const html = renderHomePrerenderHtml(home(), []);
+    expect(html).not.toContain('Recent posts');
+    expect(html).not.toContain('home-section');
+  });
+
+  it('lists recent posts with title link, excerpt and UTC date', () => {
+    const html = renderHomePrerenderHtml(home(), [recent(2)]);
+    expect(html).toContain(
+      '<h2 class="home-section__label" id="home-recent-posts">Recent posts</h2>' +
+        '<a class="home-section__more" href="/posts">All posts</a>',
+    );
+    expect(html).toContain(
+      '<li class="home-post" data-id="02">' +
+        '<h3 class="home-post__title"><a href="/posts/post-2">Post 2</a></h3>' +
+        '<p class="home-post__excerpt">Excerpt 2.</p>' +
+        '<time class="home-post__date" datetime="2026-02-01">February 1, 2026</time></li>',
+    );
+  });
+});
+
+describe('renderHomeRecentPostsHtml', () => {
+  it('omits an empty excerpt and a missing date', () => {
+    const html = renderHomeRecentPostsHtml([
+      recent(1, { excerpt: '', publishedAt: null }),
+    ]);
+    expect(html).not.toContain('home-post__excerpt');
+    expect(html).not.toContain('<time');
+  });
+
+  it('escapes titles, excerpts and slugs', () => {
+    const html = renderHomeRecentPostsHtml([
+      recent(1, { title: '<b>x</b>', excerpt: 'a & b', slug: 'a"b' }),
+    ]);
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+    expect(html).toContain('a &amp; b');
+    expect(html).toContain('href="/posts/a&quot;b"');
+  });
+});
+
+describe('selectHomeRecentPosts', () => {
+  it('keeps the newest three by publishedAt, then updatedAt', () => {
+    const picked = selectHomeRecentPosts([
+      recent(1),
+      recent(4),
+      recent(2),
+      recent(3, { publishedAt: null, updatedAt: '2026-04-15T00:00:00.000Z' }),
+      recent(5),
+    ]);
+    expect(picked.map((p) => p.slug)).toEqual(['post-5', 'post-3', 'post-4']);
+    expect(picked).toHaveLength(HOME_RECENT_POSTS_LIMIT);
+    expect(picked[0]).toEqual({
+      id: '05',
+      slug: 'post-5',
+      title: 'Post 5',
+      excerpt: 'Excerpt 5.',
+      publishedAt: '2026-05-01T00:00:00.000Z',
+    });
   });
 });
 

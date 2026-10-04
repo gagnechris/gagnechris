@@ -10,6 +10,7 @@ import {
   resumeSummaryExcerpt,
 } from '@gagnechris/shared/render';
 import type { Home, Post, Resume } from '@gagnechris/shared';
+import type { HomeRecentPost } from '@gagnechris/shared/render';
 import { APEX } from './config.js';
 import { applyPageMeta } from './page-meta.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
@@ -165,7 +166,11 @@ export const renderResumeUnavailablePage = (shellHtml: string): string => {
 };
 
 /** `shellHtml` must be the pristine `_shell.html`, never index.html read back. */
-export const renderHomePage = (shellHtml: string, home: Home): string => {
+export const renderHomePage = (
+  shellHtml: string,
+  home: Home,
+  recentPosts: readonly HomeRecentPost[] = [],
+): string => {
   const title = escapeHtml(home.seo?.title || `${home.name} - ${home.title}`);
   const description = escapeHtml(
     home.seo?.description || homeAboutExcerpt(home.about),
@@ -182,7 +187,7 @@ export const renderHomePage = (shellHtml: string, home: Home): string => {
     type: 'website',
     image,
   });
-  html = injectPrerender(html, renderHomePrerenderHtml(home));
+  html = injectPrerender(html, renderHomePrerenderHtml(home, recentPosts));
   return html;
 };
 

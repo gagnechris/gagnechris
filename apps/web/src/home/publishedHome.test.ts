@@ -2,25 +2,28 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import {
   fallbackHomeView,
-  homeViewFromDocument,
+  homeDocumentFromRoot,
   loadPublishedHome,
+  loadRecentPosts,
   publishedHomeUrl,
 } from './publishedHome';
 
 const parse = (html: string): Document =>
   new DOMParser().parseFromString(html, 'text/html');
 
-const prerender = renderHomePrerenderHtml({
+const home = {
   name: 'Christopher Gagne',
   title: 'Engineering Director',
   about: 'Published copy.\n\nSecond paragraph.',
-  status: 'published',
+  status: 'published' as const,
   publishedAt: '2026-09-27T00:00:00.000Z',
   updatedAt: '2026-09-27T00:00:00.000Z',
   seo: null,
   version: 2,
   hasUnpublishedChanges: false,
-});
+};
+
+const prerender = renderHomePrerenderHtml(home);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -36,19 +39,46 @@ describe('fallbackHomeView', () => {
   });
 });
 
-describe('homeViewFromDocument', () => {
+describe('homeDocumentFromRoot', () => {
   test('reads name, title, and about body out of the prerender', () => {
-    const view = homeViewFromDocument(parse(`<body>${prerender}</body>`));
+    const view = homeDocumentFromRoot(parse(`<body>${prerender}</body>`));
     expect(view).toEqual({
       name: 'Christopher Gagne',
       title: 'Engineering Director',
       aboutHtml: '<p>Published copy.</p><p>Second paragraph.</p>',
+      recentPosts: [],
     });
+  });
+
+  test('reads Recent posts back exactly as rendered', () => {
+    const recentPosts = [
+      {
+        id: '02',
+        slug: 'second',
+        title: 'Second & newest',
+        excerpt: 'Has an excerpt.',
+        publishedAt: '2026-09-28T09:00:00.000Z',
+      },
+      {
+        id: '01',
+        slug: 'first',
+        title: 'First',
+        excerpt: '',
+        publishedAt: null,
+      },
+    ];
+    const view = homeDocumentFromRoot(
+      parse(`<body>${renderHomePrerenderHtml(home, recentPosts)}</body>`),
+    );
+    expect(view?.recentPosts).toEqual([
+      { ...recentPosts[0], publishedAt: '2026-09-28' },
+      recentPosts[1],
+    ]);
   });
 
   test('returns null for a shell with an empty root', () => {
     expect(
-      homeViewFromDocument(parse('<body><div id="root"></div></body>')),
+      homeDocumentFromRoot(parse('<body><div id="root"></div></body>')),
     ).toBeNull();
   });
 
@@ -56,7 +86,7 @@ describe('homeViewFromDocument', () => {
     const doc = parse(
       '<body><article class="resume-page-prerender"></article></body>',
     );
-    expect(homeViewFromDocument(doc)).toBeNull();
+    expect(homeDocumentFromRoot(doc)).toBeNull();
   });
 });
 
@@ -90,5 +120,28 @@ describe('loadPublishedHome', () => {
       vi.fn(async () => ({ ok: false, status: 404 })),
     );
     await expect(loadPublishedHome()).resolves.toBeNull();
+  });
+});
+
+describe('loadRecentPosts', () => {
+  test('keeps the newest three from posts.json', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    const items = [1, 2, 3, 4].map((n) => ({
+      id: `0${n}`,
+      slug: `post-${n}`,
+      title: `Post ${n}`,
+      excerpt: '',
+      publishedAt: `2026-0${n}-01T00:00:00.000Z`,
+      updatedAt: `2026-0${n}-01T00:00:00.000Z`,
+      tags: [],
+      coverImage: null,
+    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => ({ items }) })),
+    );
+    const posts = await loadRecentPosts();
+    expect(posts.map((p) => p.slug)).toEqual(['post-4', 'post-3', 'post-2']);
+    expect(fetch).toHaveBeenCalledWith('/posts/posts.json', expect.anything());
   });
 });
