@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@gagnechris/api-client": "*",
+    "@gagnechris/shared": "*",
     "@types/node": "^22.13.0",
     "typescript": "~6.0.3",
     "ulid": "^3.0.2"

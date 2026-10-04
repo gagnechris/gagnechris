@@ -44,7 +44,7 @@
   transition: color var(--transition-normal);
 }
 
-.post-date {
+.posts-index .post-date {
   display: block;
   font-size: var(--text-sm);
   color: var(--neutral-500);
@@ -52,7 +52,7 @@
   font-weight: 500;
 }
 
-.post-excerpt {
+.posts-index .post-excerpt {
   color: var(--neutral-700);
   line-height: var(--line-relaxed);
   margin: var(--space-4) 0;

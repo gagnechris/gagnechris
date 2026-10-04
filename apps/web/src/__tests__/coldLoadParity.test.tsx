@@ -49,6 +49,7 @@ const PRERENDERS: Record<string, string> = {
     renderPostPageBodyHtml({
       slug: 'hello-world',
       title: 'Hello World',
+      excerpt: 'A published excerpt.',
       publishedAt: '2026-09-27T12:00:00.000Z',
       bodyMarkdown: '## Intro\n\nSome **bold** text and a [link](/resume).',
     }),
@@ -118,6 +119,7 @@ describe('cold load: first React render matches the prerender', () => {
     unmount = loaded.unmount;
 
     expect(text(loaded.root)).toBe(loaded.before.text);
+    expect(text(loaded.root)).not.toMatch(/Loading/);
     expect(fetch).not.toHaveBeenCalled();
     // Same chrome element-for-element, so nothing above the page body moves.
     const header = loaded.root.querySelector('header.site-header');

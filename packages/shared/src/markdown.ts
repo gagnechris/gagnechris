@@ -1,5 +1,6 @@
-import { Marked } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
+import { escapeHtml } from './html.js';
 
 /**
  * A local instance (no global `marked.setOptions`) keeps this module free of
@@ -54,4 +55,68 @@ export const sanitizeRenderedHtml = (html: string): string =>
 export const renderMarkdownToHtml = (source: string): string => {
   const html = markdown.parse(source ?? '', { async: false }) as string;
   return sanitizeRenderedHtml(html);
+};
+
+/** The page title is the h1, so body headings start at h2 and never skip a level. */
+const nestHeadings = (tokens: Token[]): void => {
+  const headings: Tokens.Heading[] = [];
+  markdown.walkTokens(tokens, (token) => {
+    if (token.type === 'heading') headings.push(token as Tokens.Heading);
+  });
+  if (!headings.length) return;
+  const shift = Math.min(...headings.map((h) => h.depth)) - 2;
+  let previous = 1;
+  for (const heading of headings) {
+    heading.depth = Math.min(heading.depth - shift, previous + 1, 6);
+    previous = heading.depth;
+  }
+};
+
+/** An image alone in its paragraph with a title (`![alt](src "Caption")`) becomes a captioned figure. */
+const captionImages = (tokens: Token[]): Token[] =>
+  tokens.map((token) => {
+    if (token.type !== 'paragraph') return token;
+    const parts = (token as Tokens.Paragraph).tokens.filter(
+      (t) => !(t.type === 'text' && !t.raw.trim()),
+    );
+    const image = parts[0];
+    if (parts.length !== 1 || image.type !== 'image' || !image.title) {
+      return token;
+    }
+    const { href, text, title } = image as Tokens.Image;
+    const html =
+      `<figure><img src="${escapeHtml(href)}" alt="${escapeHtml(text)}">` +
+      `<figcaption>${escapeHtml(title!)}</figcaption></figure>`;
+    return {
+      type: 'html',
+      block: true,
+      pre: false,
+      raw: token.raw,
+      text: html,
+    };
+  });
+
+/**
+ * Scrollable boxes must be reachable by keyboard, and a focusable region
+ * needs a name. Runs after sanitizing (which strips these attributes), on
+ * tags the sanitizer emits without attributes.
+ */
+const focusableScrollBoxes = (html: string): string => {
+  let tables = 0;
+  return html
+    .replace(/<pre>/g, '<pre tabindex="0">')
+    .replace(
+      /<table>/g,
+      () =>
+        `<div class="post-table" role="region" tabindex="0" aria-label="Table ${++tables}"><table>`,
+    )
+    .replace(/<\/table>/g, '</table></div>');
+};
+
+/** Post bodies on the public site; admin previews use `renderMarkdownToHtml`. */
+export const renderPostMarkdownToHtml = (source: string): string => {
+  const tokens = markdown.lexer(source ?? '');
+  nestHeadings(tokens);
+  const html = markdown.parser(captionImages(tokens));
+  return focusableScrollBoxes(sanitizeRenderedHtml(html));
 };

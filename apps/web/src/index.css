@@ -124,7 +124,6 @@ button:focus-visible {
 /* Shared public UI */
 .back-link,
 .home-link,
-.back-link-footer,
 .subtle-download {
   display: inline-flex;
   align-items: center;
@@ -148,7 +147,6 @@ button:focus-visible {
 
 .back-link:hover,
 .home-link:hover,
-.back-link-footer:hover,
 .subtle-download:hover {
   color: var(--primary-500);
   background-color: var(--primary-50);

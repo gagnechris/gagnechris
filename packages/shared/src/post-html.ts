@@ -1,11 +1,15 @@
 import { escapeHtml } from './html.js';
-import { renderMarkdownToHtml } from './markdown.js';
+import { renderPostMarkdownToHtml } from './markdown.js';
 import { formatPostDate, postDateAttribute } from './post-date.js';
+import {
+  POST_AUTHOR_NOTE,
+  POST_META_SEPARATOR,
+  readingMinutes,
+  readingTimeLabel,
+} from './post-reading.js';
 import type { Post } from './schemas.js';
 
 export const POSTS_INDEX_EMPTY_TEXT = 'No posts yet. Check back soon!';
-
-const BACK_TO_POSTS = '← Back to Posts';
 
 const postDateHtml = (iso: string | null | undefined): string => {
   const label = formatPostDate(iso);
@@ -15,19 +19,47 @@ const postDateHtml = (iso: string | null | undefined): string => {
   return `<time class="post-date"${dateTime}>${escapeHtml(label)}</time>`;
 };
 
-/** Classes match `apps/web/src/pages/PostPage.css`; `blog-post-prerender` is the marker the SPA parses. */
+const authorNoteHtml = (): string => {
+  const { name, role, about, rss } = POST_AUTHOR_NOTE;
+  return (
+    `<aside class="post-author" aria-label="About the author"><p>` +
+    `<strong>${escapeHtml(name)}</strong> ${escapeHtml(role)} ` +
+    `<a href="${about.href}">${escapeHtml(about.label)}</a>, or follow along via ` +
+    `<a href="${rss.href}">${escapeHtml(rss.label)}</a>.` +
+    `</p></aside>`
+  );
+};
+
+/**
+ * `apps/web/src/posts/PostArticle.tsx` renders the same markup byte for byte
+ * (PostArticle.test.tsx). `blog-post-prerender` and `data-minutes` are what
+ * the SPA parses on a cold load.
+ */
 export const renderPostPageBodyHtml = (
-  post: Pick<Post, 'slug' | 'title' | 'publishedAt' | 'bodyMarkdown'>,
-): string =>
-  `<div class="post-page">` +
-  `<header><a class="back-link" href="/posts">${BACK_TO_POSTS}</a></header>` +
-  `<article class="blog-post-prerender" data-slug="${escapeHtml(post.slug)}">` +
-  `<h1>${escapeHtml(post.title)}</h1>` +
-  postDateHtml(post.publishedAt) +
-  `<div class="post-content blog-post-body">${renderMarkdownToHtml(post.bodyMarkdown)}</div>` +
-  `</article>` +
-  `<footer><a class="back-link-footer" href="/posts">${BACK_TO_POSTS}</a></footer>` +
-  `</div>`;
+  post: Pick<
+    Post,
+    'slug' | 'title' | 'excerpt' | 'publishedAt' | 'bodyMarkdown'
+  >,
+): string => {
+  const minutes = readingMinutes(post.bodyMarkdown);
+  const date = postDateHtml(post.publishedAt);
+  return (
+    `<div class="post-page">` +
+    `<article class="blog-post-prerender" data-slug="${escapeHtml(post.slug)}">` +
+    `<header class="post-header">` +
+    `<p class="post-meta">${date}${date ? POST_META_SEPARATOR : ''}` +
+    `<span class="post-reading-time" data-minutes="${minutes}">${readingTimeLabel(minutes)}</span></p>` +
+    `<h1>${escapeHtml(post.title)}</h1>` +
+    (post.excerpt
+      ? `<p class="post-excerpt">${escapeHtml(post.excerpt)}</p>`
+      : '') +
+    `</header>` +
+    `<div class="post-content blog-post-body">${renderPostMarkdownToHtml(post.bodyMarkdown)}</div>` +
+    `</article>` +
+    authorNoteHtml() +
+    `</div>`
+  );
+};
 
 export type PostsIndexItem = Pick<
   Post,

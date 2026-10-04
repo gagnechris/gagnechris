@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
+import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import {
   HOME_LAST_PUBLISHED_KEY,
   homeToSnapshot,
 } from '../src/home-publish.js';
 import {
+  buildArticleHtml,
   buildRssXml,
   buildSitemapXml,
   renderPostsIndexPage,
@@ -70,6 +72,17 @@ describe('render HTML snapshots', () => {
     expect(renderPostsIndexPage(shell, [samplePost()])).toMatchSnapshot();
     expect(renderResumePage(shell, DEFAULT_RESUME)).toMatchSnapshot();
     expect(renderPostPage(shell, samplePost())).toMatchSnapshot();
+  });
+
+  it('matches frozen output for a post with every markdown element', () => {
+    expect(
+      buildArticleHtml({
+        ...samplePost(),
+        slug: 'every-element',
+        title: 'Every markdown element',
+        bodyMarkdown: EVERY_MARKDOWN_ELEMENT,
+      }),
+    ).toMatchSnapshot();
   });
 
   it('matches frozen output for resume-unavailable, RSS, and sitemap', () => {
