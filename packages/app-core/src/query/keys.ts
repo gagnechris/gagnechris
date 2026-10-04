@@ -10,6 +10,11 @@ export const queryKeys = {
         : ([...queryKeys.posts.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.posts.all, 'detail', id] as const,
   },
+  projects: {
+    all: ['admin', 'projects'] as const,
+    list: () => [...queryKeys.projects.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.projects.all, 'detail', id] as const,
+  },
   home: () => ['admin', 'home'] as const,
   resume: () => ['admin', 'resume'] as const,
   notes: {

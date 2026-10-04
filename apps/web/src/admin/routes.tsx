@@ -24,6 +24,14 @@ export const adminRoutes: RouteObject[] = [
         load: () => import('./PostEditorPage.tsx'),
       }),
       lazyRoute({
+        path: 'projects',
+        load: () => import('./AdminProjectsPage.tsx'),
+      }),
+      lazyRoute({
+        path: 'projects/:projectId',
+        load: () => import('./ProjectEditorPage.tsx'),
+      }),
+      lazyRoute({
         path: 'home',
         load: () => import('./AdminHomePage.tsx'),
       }),

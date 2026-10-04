@@ -34,12 +34,15 @@ describe('public bundle boundary', () => {
 
   it.each([
     '/repo/apps/web/src/admin/AdminLayout.tsx',
+    '/repo/apps/web/src/admin/ProjectEditorPage.tsx',
+    '/repo/apps/web/src/admin/projectDraft.ts',
     '/repo/apps/web/src/notebook/NotebookShell.tsx',
     '/repo/apps/web/src/workspace/auth/session.ts',
     '/repo/apps/web/src/auth/config.ts',
     '/repo/node_modules/aws-amplify/dist/esm/index.mjs',
     '/repo/node_modules/@aws-amplify/auth/dist/esm/index.mjs',
     '/repo/packages/app-core/src/index.ts',
+    '/repo/packages/app-core/src/query/projects.ts',
     '/repo/node_modules/@gagnechris/app-core/src/index.ts',
     '/repo/node_modules/@tanstack/react-query/build/modern/index.js',
   ])('forbids %s', (id) => {
@@ -50,6 +53,7 @@ describe('public bundle boundary', () => {
     '/repo/apps/web/src/pages/PostPage.tsx',
     '/repo/apps/web/src/lib/ulid.ts',
     '/repo/packages/shared/src/render.ts',
+    '/repo/packages/shared/src/projects.ts',
     '/repo/node_modules/react-router/dist/index.mjs',
   ])('allows %s', (id) => {
     expect(PUBLIC_FORBIDDEN_MODULES.some((re) => re.test(id))).toBe(false);

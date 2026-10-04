@@ -17,6 +17,9 @@ export default function AdminLayout() {
           <NavLink to="/resume" className={navLinkClass}>
             Resume
           </NavLink>
+          <NavLink to="/projects" className={navLinkClass}>
+            Projects
+          </NavLink>
         </>
       }
     />

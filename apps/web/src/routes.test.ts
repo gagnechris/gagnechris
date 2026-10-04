@@ -38,6 +38,10 @@ describe('admin routes', () => {
     expect(leafPath(adminRoutes, '/posts/01J9ZX')).toBe('posts/:postId');
     expect(leafPath(adminRoutes, '/home')).toBe('home');
     expect(leafPath(adminRoutes, '/resume')).toBe('resume');
+    expect(leafPath(adminRoutes, '/projects')).toBe('projects');
+    expect(leafPath(adminRoutes, '/projects/01J9ZX')).toBe(
+      'projects/:projectId',
+    );
     expect(leafPath(adminRoutes, '/auth/callback')).toBe('auth/callback');
   });
 

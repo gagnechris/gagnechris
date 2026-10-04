@@ -1,5 +1,5 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import type { Home, Note, Post, Resume, Task } from './api.js';
+import type { Home, Note, Post, Project, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
 
 export const preferNewerByVersion = <T extends { version: number }>(
@@ -126,6 +126,28 @@ export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
     removed: post.status === 'deleted',
     matches: postMatches,
     seedUnfiltered: true,
+  });
+};
+
+export const setCachedProject = (
+  queryClient: QueryClient,
+  project: Project,
+): void => {
+  queryClient.setQueryData<Project>(
+    queryKeys.projects.detail(project.id),
+    (prev) => preferNewerByVersion(prev, project),
+  );
+  // An unfetched list stays unfetched: seeding it with one row would hide the rest.
+  queryClient.setQueryData<Project[]>(queryKeys.projects.list(), (prev) => {
+    if (!prev) return prev;
+    if (project.status === 'deleted') {
+      return prev.filter((p) => p.id !== project.id);
+    }
+    const index = prev.findIndex((p) => p.id === project.id);
+    if (index === -1) return [...prev, project];
+    const next = [...prev];
+    next[index] = preferNewerByVersion(prev[index], project);
+    return next;
   });
 };
 

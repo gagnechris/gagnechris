@@ -176,7 +176,7 @@ The Vite `apps/web` build produces the public shell and the admin and Notebook a
 
 ## Admin editor foundation
 
-Post, Home, and Resume containers are mostly field layout; shared wiring lives in app-core. Notebook notes (and other non-publishable docs) use the versioned-doc path without a publish layer:
+Post, Project, Home, and Resume containers are mostly field layout; shared wiring lives in app-core. Notebook notes (and other non-publishable docs) use the versioned-doc path without a publish layer:
 
 - `createVersionedResource` + `useVersionedDocEditor` (hydrate, version, autosave, conflict, delete-with-hold)
 - `createDraftPublishResource` + `useVersionedEntityEditor` (layers publish / unpublish / discard on the doc editor)
@@ -184,6 +184,8 @@ Post, Home, and Resume containers are mostly field layout; shared wiring lives i
 - Web shell `apps/web/src/workspace/useVersionedDocShell.ts` adds leave guards and ⌘S; `useVersionedEntityEditor.ts` injects confirm and optional ⌘⏎ via `publishRef`
 - UI primitives in `apps/web/src/workspace/ui/`: `Button`, `Field`/`TextInput`/`TextArea`/`Select`, `StatusBadge`, `SaveIndicator`, `EditorActionBar`, `Repeater` (stable ids + functional updates + reorder focus), `navLinkClass`
 - Post editor splits container (`PostEditorPage`, keyed by `postId`) from presentational sections; `uploadImages(client, files)` takes the AppApiProvider client
+- Project editor (`ProjectEditorPage`, keyed by `projectId`) uses `projectResource` and the same markdown body editor (`MarkdownBodyEditor`). Links and `href` are checked in the form with the shared Zod schemas (`ProjectLinkSchema`, `ProjectHrefSchema`). While a link, `href` or order is invalid, autosave sends that field's saved value and Publish is blocked. The preview image uploads through the same presigned `/media` path as post images
+- The Projects list's empty state has **Create starter projects**, which creates draft Posts, Notebook and Don't Feed the Bears projects (`createStarterProjects` in app-core). It skips any slug already in use, including one held by a deleted project, so running it again creates nothing
 
 ## 404 handling
 
