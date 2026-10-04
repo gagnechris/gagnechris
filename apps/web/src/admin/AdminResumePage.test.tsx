@@ -238,9 +238,9 @@ describe('AdminResumePage structured dates', () => {
     expect(await screen.findByLabelText('Headline (current role)')).toHaveValue(
       'Director of Software Engineering',
     );
-    expect(screen.getByLabelText(/^Earlier roles through \(year\)/)).toHaveValue(
-      2012,
-    );
+    expect(
+      screen.getByLabelText(/^Earlier roles through \(year\)/),
+    ).toHaveValue(2012);
     const starts = screen.getAllByLabelText('Start month');
     const ends = screen.getAllByLabelText(/^End month/);
     const present = screen.getAllByRole('checkbox', {
