@@ -15,7 +15,11 @@ repo. Row A is the rejected alternative.
 | Projects                | 1440×1532 | Title, italic intro, project entries with preview, status label, name, pitch, stack line                                        | CHR-228                              |
 | Project Posts (demo)    | 1440×2200 | Project page template with the Posts demo (editor and public page side by side) and Build log                                   | CHR-229 (template), CHR-231 (demo)   |
 | Project Notebook (demo) | 1440×2300 | Project page template with the Notebook demo (mini Today) and Build log                                                         | CHR-229 (template), CHR-232 (demo)   |
-| Phone                   | 393×852   | Header with the menu button; Menu open, Home, Post (reading) and Posts at phone size                                            | —                                    |
+| Phone · Contact         | 393×852   | Header with the menu button, Contact title, intro, labelled form, full-width button                                             | CHR-226                              |
+| Phone · 404             | 393×852   | "404" label, Page not found, one sentence, Home / Posts / Projects / Resume rows (Projects: CHR-228), bears line                | CHR-226                              |
+| Phone · Bears landing   | 393×852   | Kicker, title, game cards with shorter copy                                                                                     | CHR-226 (heading only)               |
+| Phone · Menu open       | 393×852   | Full-screen menu: sections with chevrons, then LinkedIn, GitHub, RSS and Don't feed the bears                                   | —                                    |
+| Phone · Home/Posts/Post | 393×852   | Phone header with the menu button; Home, Posts and Post (reading) at phone size                                                 | —                                    |
 
 The PNG exports are 2×; measured values below are at 1×. The phone layout
 applies at `max-width: 480px`; wider viewports use the desktop values.
@@ -62,9 +66,9 @@ Values from the stories unless marked measured.
 | Post body                            | Newsreader | 21px / 1.7, measure about 680px                 | CHR-221 |
 | Post h2                              | Newsreader | 32px / 500                                      | CHR-221 |
 | Post meta (date · N min read)        | Inter      | 13px                                            | CHR-221 |
-| Resume role ("Title _at Company_")   | Newsreader | 25px                                            | CHR-223 |
-| Resume bullets                       | Newsreader | 18px                                            | CHR-223 |
-| Resume date column                   | Inter      | tabular figures, 150px column                   | CHR-223 |
+| Resume role ("Title _at Company_")   | Newsreader | 25px / 500 / 1.3 (measured)                     | CHR-223 |
+| Resume bullets                       | Newsreader | 18px / 1.6 (measured)                           | CHR-223 |
+| Resume date column                   | Inter      | 13px, tabular figures, 150px column             | CHR-223 |
 | Section labels (RECENT POSTS, years) | Inter      | about 13px / 600, uppercase, tracked (measured) | CHR-220 |
 | Section label rule                   | —          | 1px ink, full column width (measured)           | CHR-220 |
 
@@ -161,39 +165,69 @@ Projects is listed only when `SITE_PROJECTS_LIVE` (`packages/shared/src/site-con
 The Phone · Post artboard also draws a Text size / share bar at the bottom of
 the screen; the site does not have it.
 
-## Contact (not drawn)
+## Resume (measured)
 
-There is no artboard; these values follow the Posts page.
+The phone artboard is 393 wide; values for 390px are taken from it.
 
-| Element              | Value                                                                                                                                        |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Column               | Full 720px column                                                                                                                            |
-| Title                | "Contact", Newsreader 60px / 500, line height 1.1, -0.01em                                                                                   |
-| Intro                | One sentence, Newsreader italic 24px / 1.4, `inkSoft`, 17px below the title; 40px to the first field                                         |
-| Label                | Inter 14px / 600, ink, always visible above its field, 8px gap                                                                               |
-| Field                | Inter 16px / 1.5, ink on white, 1px `neutral-500` border (5:1), 4px radius, 10px 12px padding, at least 44px tall; message box 176px         |
-| Focus                | Border and 2px outline in `link`, 1px offset                                                                                                 |
-| Field spacing        | 24px between fields                                                                                                                          |
-| Error                | `color.error` #b42318 (6.6:1 on white): field border 2px, message Inter 14px / 500 8px below the field, linked with `aria-describedby`       |
-| Status line          | One `role="alert"` line above the button: "Please fix the N highlighted fields." or the send error (429 included); 1px error border, #fef3f2 |
-| Button               | "Send message", Inter 16px / 600, white on `link`, `primary-800` on hover, 4px radius, 44px tall, 20px side padding; "Sending…" while busy   |
-| Success              | Replaces the form: Newsreader 32px / 500 heading (focused), Newsreader 19px / 1.6 line in #2b3138, Home and bears links as 404 links         |
-| At 390px (not drawn) | Title 40px, intro 20px, success heading 26px                                                                                                 |
+| Element          | Value                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Column           | Full 720px column                                                                                                                                                                                                                                                                                                                                                                          |
+| Title            | "Resume", Newsreader 60px / 500, line height 1.1, -0.01em; cap top 100px below the header row                                                                                                                                                                                                                                                                                              |
+| Headline         | `content.headline` as stored, Newsreader italic 24px / 1.4, `inkSoft`, 17px below the title; omitted when unset                                                                                                                                                                                                                                                                            |
+| Summary          | Newsreader 21px / 1.6, #2b3138, 28px below the headline                                                                                                                                                                                                                                                                                                                                    |
+| Actions          | 28px below the summary, 16px apart. Download PDF: a link with `download`, white on ink, 44px tall, 154px wide, 18px side padding, 6px radius, Inter 14px / 600, 16px arrow icon 8px before the label. LinkedIn and Get in touch: Inter 14px / 500, `link`, 1px underline 3px below the baseline                                                                                            |
+| Section labels   | EXPERIENCE, STRENGTHS AND SKILLS, EDUCATION: as the Posts year label (Inter 13px / 600, 0.12em, 1px ink rule 13px below); 56px above the first, 72px between                                                                                                                                                                                                                               |
+| Role row         | 150px date column + 32px gap + role; first baselines aligned; 28px above, 32px below, 1px `neutral-200` rule after each role                                                                                                                                                                                                                                                               |
+| Dates            | Inter 13px / 1.4, tabular, `neutral-600`; "Jul 2019 – Present" (short month, en dash); a role `note` sits on the next line                                                                                                                                                                                                                                                                 |
+| Role             | Title Newsreader 25px / 500, ink; "at Company" italic 400 `inkSoft`                                                                                                                                                                                                                                                                                                                        |
+| Bullets          | Newsreader 18px / 1.6, #2b3138, disc markers, 20px indent, 4px between, 12px below the title                                                                                                                                                                                                                                                                                               |
+| Earlier roles    | `<details>`: summary row 24px above, 12px below; "Earlier roles, 1999–2012" Inter 14px / 600 `neutral-700`; Show details / Hide details Inter 13px / 500 ink in a 40px box, 1px `neutral-300`, 8px radius, on the right. Closed: one-line rows (date column + Newsreader 20px "Title _at Company_"), 40px tall, `neutral-200` rules. Open: the full role entries replace the one-line rows |
+| Competencies     | One line joined with " · ", Newsreader 19px / 1.6, #2b3138, 20px below the label                                                                                                                                                                                                                                                                                                           |
+| Technical skills | `Label: value` rows on the date column grid: label Inter 13px / 600 `neutral-700`, value Newsreader 18px / 1.5; 12px padding, `neutral-200` rules                                                                                                                                                                                                                                          |
+| Education        | Date column holds `year` as stored; title (with `degreeDetail` after a comma) Newsreader 20px / 400; "Institution, Location" italic 17px `inkSoft`; 18px padding                                                                                                                                                                                                                           |
+| At 390px         | Title 40px, headline 20px, summary 19px. Download PDF spans the column, 48px tall, 8px radius, Inter 15px. Dates stack 4px above the role; role title 22px, bullets 17px / 1.5; earlier rows, skill labels and education stack the same way                                                                                                                                                |
+| Not drawn        | The phone artboard shows no summary, LinkedIn or Get in touch; the page keeps them below the headline and button. Unpublished: title, "Resume available on request." as the summary, LinkedIn and Get in touch                                                                                                                                                                             |
 
-## 404 (not drawn)
+## Contact (Phone · Contact, measured)
 
-| Element              | Value                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Title                | "Page not found", Newsreader 60px / 500, line height 1.1, -0.01em                                                        |
-| Sentence             | "That URL does not match a page on this site." Newsreader italic 24px / 1.4, `inkSoft`, 17px below the title             |
-| Links                | Home, Posts, Resume: Inter 16px / 500, `link`, 1px underline 3px below the baseline, 44px targets, 24px apart; 28px down |
-| Bears line           | "Lost in the woods? Don’t feed the bears while you find your way." Newsreader 19px / 1.6, `inkSoft`; 28px down           |
-| At 390px (not drawn) | Title 40px, sentence 20px, bears line 17px                                                                               |
+Measured on the 393px Phone · Contact artboard; desktop values (not drawn)
+follow the Posts page. The values are the variables at the top of
+`apps/web/src/pages/Contact.css`.
 
+| Element             | Value                                                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column              | Full 720px column                                                                                                                                                                                                                                       |
+| Title               | "Contact", Newsreader 46px / 500, line height 1.1 (measured); 60px on desktop (not drawn)                                                                                                                                                               |
+| Intro               | "Say hello. I read everything and reply to most." (placeholder copy) Newsreader italic 19px, `inkSoft`; 25px from the title baseline to the intro, 46px from the intro to the first label (measured); 24px with a 17px gap on desktop (not drawn)       |
+| Label               | Inter 14px / 600, `neutral-700`, always visible, 6px above the field (measured)                                                                                                                                                                         |
+| Field               | 48px tall, 1px `neutral-500` border (deviation: the artboard's `neutral-300` is about 1.5:1 on white; WCAG 1.4.11 needs 3:1, `neutral-500` is about 5:1), 10px radius, Inter 16px, 14px side padding, placeholder #757575; message box 120px (measured) |
+| Placeholders        | "Your name", "you@example.com", "What’s on your mind?" (measured)                                                                                                                                                                                       |
+| Field spacing       | 85px from one label to the next (measured)                                                                                                                                                                                                              |
+| Button              | "Send message", full width, 50px tall, 10px radius, Inter 16px / 600, white on `link`, 14px below the message box (measured); auto width with 24px side padding on desktop, `primary-800` on hover (not drawn)                                          |
+| Focus (not drawn)   | Border and 2px outline in `link`, 1px offset                                                                                                                                                                                                            |
+| Error (not drawn)   | `color.error` #b42318 (6.6:1 on white): field border 2px, message Inter 14px / 500 below the field, linked with `aria-describedby`                                                                                                                      |
+| Status (not drawn)  | One `role="alert"` line above the button: "Please fix the N highlighted fields." or the send error (429 included); 1px error border, #fef3f2                                                                                                            |
+| Success (not drawn) | Replaces the form: Newsreader 32px / 500 heading (26px on phones, focused), Newsreader 19px / 1.6 line in #2b3138, Home and bears links                                                                                                                 |
+
+## 404 (Phone · 404, measured)
+
+Measured on the 393px Phone · 404 artboard; desktop sizes (not drawn) follow
+the Posts page. The values are the variables at the top of
+`apps/web/src/pages/NotFound.css`.
+
+| Element  | Value                                                                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Label    | "404", Inter 13px / 600, tracked 0.12em, `neutral-600`; 20px from its cap top to the title's (measured)                                                                                                                  |
+| Title    | "Page not found", Newsreader 44px / 500, line height 1.1 (measured); 60px on desktop (not drawn)                                                                                                                         |
+| Sentence | "This page wandered off. Unlike Vermont’s bears, it wasn’t lured by snacks." Newsreader 19px / 1.5, #2b3138 (measured); 21px on desktop (not drawn)                                                                      |
+| Links    | Home, Posts, Resume as rows: 1px ink rule above, 1px `neutral-200` rule under each, 56px rows, Newsreader 24px ink, grey (`neutral-400`) chevron on the right; 48px from the sentence's last line to the rule (measured) |
+| Bears    | "Don’t feed the bears while you’re here.", Inter 15px ink, the link in `link` underlined; 23px below the last rule (measured)                                                                                            |
+
+The meta description stays "That URL does not match a page on this site."
 The CloudFront fallback page has the same markup and inlines the rules of
 `index.css`, `public.css` and `NotFound.css` that match it.
 
-## Don’t feed the bears (not drawn)
+## Don’t feed the bears
 
 The games and their cards keep their own art. The page heading follows Posts:
 kicker Inter 13px / 600, tracked 0.12em, `link`; title Newsreader 60px / 500;
@@ -201,8 +235,9 @@ lede Newsreader italic 24px / 1.4, `inkSoft`; 48px to the cards. Card titles
 are Newsreader 28px / 500. The notes below the cards are Newsreader 19px / 1.6
 in #2b3138, and the tips heading Newsreader 32px / 500. On the game pages, the
 back link is Inter 14px / 500 in `link`, underlined, and the title Newsreader
-40px / 500 (32px at 390px). At 390px the landing title is 40px and the lede
-20px.
+40px / 500 (32px on phones). On phones (Phone · Bears landing, measured) the
+kicker is Inter 12px / 600, tracked 0.1em, 2px above a 40px title, and the
+lede is 20px (not drawn: the artboard has no lede).
 
 ## Colours
 

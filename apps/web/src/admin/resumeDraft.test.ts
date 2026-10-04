@@ -28,10 +28,10 @@ describe('resume draft round trip', () => {
   test('an end month without a start, or a partial cut-off year, is not sent', () => {
     const draft = resumeDraftFromResume(legacyResume());
     draft.experience[0]!.end = '2020-01';
-    draft.earlierRolesBeforeText = '201';
+    draft.earlierRolesThroughText = '201';
     const content = resumeContentFromDraft(draft);
     expect(content.experience[0]).not.toHaveProperty('end');
-    expect(content).not.toHaveProperty('earlierRolesBefore');
+    expect(content).not.toHaveProperty('earlierRolesThrough');
   });
 
   test('an end before start is kept in the draft but its dates are not sent', () => {

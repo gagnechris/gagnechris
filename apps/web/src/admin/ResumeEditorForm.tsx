@@ -41,8 +41,8 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         />
       </Field>
       <Field
-        label="Earlier roles before (year)"
-        hint="Roles that ended before this year are grouped as earlier roles"
+        label="Earlier roles through (year)"
+        hint="Roles that ended in or before this year are grouped as earlier roles"
       >
         <TextInput
           type="number"
@@ -50,8 +50,8 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
           min={1900}
           max={2100}
           step={1}
-          value={draft.earlierRolesBeforeText}
-          onChange={(e) => setField('earlierRolesBeforeText', e.target.value)}
+          value={draft.earlierRolesThroughText}
+          onChange={(e) => setField('earlierRolesThroughText', e.target.value)}
         />
       </Field>
       <Field

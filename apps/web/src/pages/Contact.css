@@ -1,19 +1,37 @@
-/* Specs in docs/design/public-redesign/README.md (Contact). */
+/* Specs in docs/design/public-redesign/README.md (Contact). Design values live in the variables below. */
+.contact-page {
+  --contact-title-size: 3.75rem;
+  --contact-intro-size: 1.5rem;
+  --contact-intro-gap: 17px;
+  --contact-header-gap: 28px;
+  --contact-field-gap: 12px;
+  --contact-label-gap: 6px;
+  --contact-label-color: var(--neutral-700);
+  --contact-control-height: 48px;
+  --contact-control-padding: 11px 14px;
+  --contact-control-border: var(--neutral-500);
+  --contact-control-radius: 10px;
+  --contact-message-height: 120px;
+  --contact-button-height: 50px;
+  --contact-button-width: auto;
+  --contact-success-size: 2rem;
+}
+
 .contact-page__header {
-  margin-bottom: 40px;
+  margin-bottom: var(--contact-header-gap);
 }
 
 .contact-page h1 {
   margin: 0;
-  font-size: 3.75rem;
+  font-size: var(--contact-title-size);
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
 
 .contact-page__intro {
-  margin: 17px 0 0;
+  margin: var(--contact-intro-gap) 0 0;
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: var(--contact-intro-size);
   font-style: italic;
   line-height: 1.4;
   color: var(--color-ink-soft);
@@ -22,7 +40,7 @@
 .contact-form {
   position: relative;
   display: grid;
-  gap: var(--space-6);
+  gap: var(--contact-field-gap);
 }
 
 /* Honeypot — visually hidden but present for bots. */
@@ -37,23 +55,23 @@
 
 .contact-field label {
   display: block;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--contact-label-gap);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
-  line-height: 1.4;
-  color: var(--color-ink);
+  line-height: 1.3;
+  color: var(--contact-label-color);
 }
 
 .contact-field input,
 .contact-field textarea {
   display: block;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--contact-control-height);
   margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--neutral-500);
-  border-radius: var(--radius-sm);
+  padding: var(--contact-control-padding);
+  border: 1px solid var(--contact-control-border);
+  border-radius: var(--contact-control-radius);
   background: white;
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -61,8 +79,13 @@
   color: var(--color-ink);
 }
 
+.contact-field ::placeholder {
+  color: #757575;
+  opacity: 1;
+}
+
 .contact-field textarea {
-  min-height: 176px;
+  min-height: var(--contact-message-height);
   resize: vertical;
 }
 
@@ -79,7 +102,7 @@
 }
 
 .contact-field__error {
-  margin: var(--space-2) 0 0;
+  margin: var(--contact-label-gap) 0 0;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -93,14 +116,14 @@
 
 /* Stays in the tree while empty so screen readers announce what fills it. */
 .contact-form__status:empty {
-  margin-top: calc(-1 * var(--space-6));
+  position: absolute;
 }
 
 .contact-form__message {
   display: block;
   padding: 12px 14px;
   border: 1px solid var(--color-error);
-  border-radius: var(--radius-sm);
+  border-radius: var(--contact-control-radius);
   background: #fef3f2;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -111,10 +134,12 @@
 
 .contact-form__submit {
   justify-self: start;
-  min-height: 44px;
-  padding: 0 20px;
+  width: var(--contact-button-width);
+  min-height: var(--contact-button-height);
+  margin-top: 2px;
+  padding: 0 24px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--contact-control-radius);
   background: var(--color-link);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -147,7 +172,7 @@
 
 .contact-success h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: var(--contact-success-size);
   line-height: 1.25;
 }
 
@@ -182,15 +207,12 @@
 }
 
 @media (max-width: 480px) {
-  .contact-page h1 {
-    font-size: 2.5rem;
-  }
-
-  .contact-page__intro {
-    font-size: 1.25rem;
-  }
-
-  .contact-success h2 {
-    font-size: 1.625rem;
+  .contact-page {
+    --contact-title-size: 2.875rem;
+    --contact-intro-size: 1.1875rem;
+    --contact-intro-gap: 7px;
+    --contact-header-gap: 20px;
+    --contact-button-width: 100%;
+    --contact-success-size: 1.625rem;
   }
 }

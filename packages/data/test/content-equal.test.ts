@@ -49,7 +49,7 @@ describe('contentEqual deep equality', () => {
       experience: content.experience,
       summary: content.summary,
       competencies: content.competencies,
-      earlierRolesBefore: content.earlierRolesBefore,
+      earlierRolesThrough: content.earlierRolesThrough,
       headline: content.headline,
     };
     expect(

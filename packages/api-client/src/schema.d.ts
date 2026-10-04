@@ -2428,8 +2428,8 @@ export interface paths {
                             content: {
                                 /** @description Current role */
                                 headline?: string;
-                                /** @description Roles that ended before this year are "earlier roles" */
-                                earlierRolesBefore?: number;
+                                /** @description Roles that ended in or before this year are "earlier roles" */
+                                earlierRolesThrough?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
@@ -2549,8 +2549,8 @@ export interface paths {
                         content?: {
                             /** @description Current role */
                             headline?: string;
-                            /** @description Roles that ended before this year are "earlier roles" */
-                            earlierRolesBefore?: number;
+                            /** @description Roles that ended in or before this year are "earlier roles" */
+                            earlierRolesThrough?: number;
                             summary: string;
                             competencies: string[];
                             experience: {
@@ -2595,8 +2595,8 @@ export interface paths {
                             content: {
                                 /** @description Current role */
                                 headline?: string;
-                                /** @description Roles that ended before this year are "earlier roles" */
-                                earlierRolesBefore?: number;
+                                /** @description Roles that ended in or before this year are "earlier roles" */
+                                earlierRolesThrough?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
@@ -2796,8 +2796,8 @@ export interface paths {
                             content: {
                                 /** @description Current role */
                                 headline?: string;
-                                /** @description Roles that ended before this year are "earlier roles" */
-                                earlierRolesBefore?: number;
+                                /** @description Roles that ended in or before this year are "earlier roles" */
+                                earlierRolesThrough?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
@@ -2996,8 +2996,8 @@ export interface paths {
                             content: {
                                 /** @description Current role */
                                 headline?: string;
-                                /** @description Roles that ended before this year are "earlier roles" */
-                                earlierRolesBefore?: number;
+                                /** @description Roles that ended in or before this year are "earlier roles" */
+                                earlierRolesThrough?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
@@ -3196,8 +3196,8 @@ export interface paths {
                             content: {
                                 /** @description Current role */
                                 headline?: string;
-                                /** @description Roles that ended before this year are "earlier roles" */
-                                earlierRolesBefore?: number;
+                                /** @description Roles that ended in or before this year are "earlier roles" */
+                                earlierRolesThrough?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
@@ -6872,8 +6872,8 @@ export interface components {
             content: {
                 /** @description Current role */
                 headline?: string;
-                /** @description Roles that ended before this year are "earlier roles" */
-                earlierRolesBefore?: number;
+                /** @description Roles that ended in or before this year are "earlier roles" */
+                earlierRolesThrough?: number;
                 summary: string;
                 competencies: string[];
                 experience: {
@@ -6916,8 +6916,8 @@ export interface components {
             content?: {
                 /** @description Current role */
                 headline?: string;
-                /** @description Roles that ended before this year are "earlier roles" */
-                earlierRolesBefore?: number;
+                /** @description Roles that ended in or before this year are "earlier roles" */
+                earlierRolesThrough?: number;
                 summary: string;
                 competencies: string[];
                 experience: {
@@ -6955,8 +6955,8 @@ export interface components {
         ResumeContent: {
             /** @description Current role */
             headline?: string;
-            /** @description Roles that ended before this year are "earlier roles" */
-            earlierRolesBefore?: number;
+            /** @description Roles that ended in or before this year are "earlier roles" */
+            earlierRolesThrough?: number;
             summary: string;
             competencies: string[];
             experience: {

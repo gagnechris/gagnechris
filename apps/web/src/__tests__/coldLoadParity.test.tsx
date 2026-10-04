@@ -27,6 +27,22 @@ const PUBLISHED_HOME = {
   hasUnpublishedChanges: false,
 };
 
+const PUBLISHED_RESUME = {
+  ...DEFAULT_RESUME,
+  content: {
+    ...DEFAULT_RESUME.content,
+    headline: 'Published headline',
+    summary: 'Published summary.',
+    earlierRolesThrough: 2013,
+  },
+};
+
+const {
+  headline: _headline,
+  earlierRolesThrough: _cutoff,
+  ...UNSET_CONTENT
+} = PUBLISHED_RESUME.content;
+
 // Content that differs from the bundled defaults, so a page that renders
 // DEFAULT_HOME / DEFAULT_RESUME or a loading state first can't pass.
 const PRERENDERS: Record<string, string> = {
@@ -75,11 +91,7 @@ const PRERENDERS: Record<string, string> = {
       bodyMarkdown: '## Intro\n\nSome **bold** text and a [link](/resume).',
     }),
   ),
-  '/resume': renderResumePrerenderHtml({
-    ...DEFAULT_RESUME,
-    name: 'Christopher M. Gagne',
-    content: { ...DEFAULT_RESUME.content, summary: 'Published summary.' },
-  }),
+  '/resume': renderResumePrerenderHtml(PUBLISHED_RESUME),
 };
 
 /** The markers are replaced along with everything else in `#root`. */
@@ -190,6 +202,22 @@ describe('cold load: first React render matches the prerender', () => {
     },
   );
 
+  test.each([
+    ['with headline and earlier roles', PUBLISHED_RESUME],
+    [
+      'without headline or cut-off',
+      { ...PUBLISHED_RESUME, content: UNSET_CONTENT },
+    ],
+  ])('/resume %s mounts the same DOM as the prerender', async (_, resume) => {
+    const prerender = renderResumePrerenderHtml(resume);
+    const loaded = await coldLoad('/resume', prerender);
+    unmount = loaded.unmount;
+
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    expect(loaded.root.querySelector('.resume-download')).not.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   test('/resume when unpublished', async () => {
     const loaded = await coldLoad(
       '/resume',
@@ -199,6 +227,8 @@ describe('cold load: first React render matches the prerender', () => {
 
     expect(text(loaded.root)).toBe(loaded.before.text);
     expect(text(loaded.root)).toContain('Resume available on request.');
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    expect(loaded.root.querySelector('.resume-download')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 

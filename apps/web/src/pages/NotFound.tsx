@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   NOT_FOUND_BEARS,
   NOT_FOUND_HEADING,
+  NOT_FOUND_LABEL,
   NOT_FOUND_LINKS,
   NOT_FOUND_TEXT,
   NOT_FOUND_TITLE,
@@ -16,6 +17,7 @@ function NotFound() {
     <main className="not-found">
       <title>{NOT_FOUND_TITLE}</title>
       <meta name="robots" content="noindex" />
+      <p className="not-found__label">{NOT_FOUND_LABEL}</p>
       <h1>{NOT_FOUND_HEADING}</h1>
       <p className="not-found__text">{NOT_FOUND_TEXT}</p>
       <ul className="not-found__links">
@@ -28,7 +30,6 @@ function NotFound() {
         ))}
       </ul>
       <p className="not-found__bears">
-        {NOT_FOUND_BEARS.before}
         <Link to={NOT_FOUND_BEARS.href} discover="none">
           {NOT_FOUND_BEARS.label}
         </Link>

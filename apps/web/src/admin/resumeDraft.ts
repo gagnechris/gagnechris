@@ -29,7 +29,7 @@ export type ResumeDraftFields = {
   name: string;
   pdfPath: string;
   headline: string;
-  earlierRolesBeforeText: string;
+  earlierRolesThroughText: string;
   summary: string;
   competenciesText: string;
   experience: ExperienceDraft[];
@@ -68,10 +68,10 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   name: resume.name,
   pdfPath: resume.pdfPath,
   headline: resume.content.headline ?? '',
-  earlierRolesBeforeText:
-    resume.content.earlierRolesBefore === undefined
+  earlierRolesThroughText:
+    resume.content.earlierRolesThrough === undefined
       ? ''
-      : String(resume.content.earlierRolesBefore),
+      : String(resume.content.earlierRolesThrough),
   summary: resume.content.summary,
   competenciesText: resume.content.competencies.join('\n'),
   experience: resume.content.experience.map((item) => ({
@@ -144,10 +144,10 @@ export const resumeContentFromDraft = (
   draft: ResumeDraftFields,
 ): ResumeContent => {
   const headline = draft.headline.trim();
-  const earlierRolesBefore = parseCutoffYear(draft.earlierRolesBeforeText);
+  const earlierRolesThrough = parseCutoffYear(draft.earlierRolesThroughText);
   return {
     ...(headline ? { headline } : {}),
-    ...(earlierRolesBefore !== undefined ? { earlierRolesBefore } : {}),
+    ...(earlierRolesThrough !== undefined ? { earlierRolesThrough } : {}),
     summary: draft.summary.trim(),
     competencies: parseResumeLines(draft.competenciesText),
     experience: draft.experience.map(experienceFromDraft),

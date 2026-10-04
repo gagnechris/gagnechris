@@ -5,7 +5,7 @@ import {
   upsertCanonical,
 } from '@gagnechris/shared/html';
 import {
-  NOT_FOUND_TEXT,
+  NOT_FOUND_DESCRIPTION,
   NOT_FOUND_TITLE,
   renderContactPrerenderBodyHtml,
   renderNotFoundBodyHtml,
@@ -158,7 +158,7 @@ function removeMeta(
 
 export function applyNotFoundPageMeta(shellHtml: string): string {
   const title = NOT_FOUND_TITLE;
-  const description = NOT_FOUND_TEXT;
+  const description = NOT_FOUND_DESCRIPTION;
   let html = shellHtml;
   html = html.replace(
     /<title>[\s\S]*?<\/title>/i,
