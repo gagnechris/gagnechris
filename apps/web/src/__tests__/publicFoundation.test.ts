@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,11 +60,24 @@ describe('public fonts', () => {
       .map(([tag]) => tag)
       .filter((tag) => /rel="preload"/.test(tag) && /as="font"/.test(tag));
     expect(preloads).toHaveLength(1);
-    expect(preloads[0]).toContain('href="/fonts/newsreader-roman.woff2"');
+    const href = /href="([^"]+)"/.exec(preloads[0]!)?.[1] ?? '';
+    expect(href).toMatch(/^\/fonts\/newsreader-roman\.[0-9a-f]{8}\.woff2$/);
     expect(preloads[0]).toMatch(/\bcrossorigin\b/);
-    expect(
-      fs.existsSync(path.join(fontsDir, 'fonts/newsreader-roman.woff2')),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(fontsDir, href))).toBe(true);
+  });
+
+  it('every font file is named for its content hash, so a changed font gets a new URL', () => {
+    const fonts = fs
+      .readdirSync(path.join(fontsDir, 'fonts'))
+      .filter((name) => !name.endsWith('.txt'));
+    expect(fonts.length).toBeGreaterThanOrEqual(3);
+    for (const name of fonts) {
+      const hash = createHash('sha256')
+        .update(fs.readFileSync(path.join(fontsDir, 'fonts', name)))
+        .digest('hex')
+        .slice(0, 8);
+      expect(name).toMatch(new RegExp(`^[\\w-]+\\.${hash}\\.woff2$`));
+    }
   });
 
   it('every @font-face is self-hosted with font-display: swap, or a local() fallback', () => {

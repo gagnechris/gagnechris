@@ -83,6 +83,7 @@ if [ "$1 $2" = "run build" ]; then
   web="${root}/apps/web"
   for d in dist dist-admin dist-notebook; do mkdir -p "$web/$d/assets"; touch "$web/$d/index.html" "$web/$d/assets/x.js"; done
   touch "$web/dist/_shell.html" "$web/dist-notebook/manifest.json"
+  mkdir -p "$web/dist/fonts"; touch "$web/dist/fonts/serif.0123abcd.woff2" "$web/dist/fonts/OFL.txt"
 fi
 `,
   );
@@ -111,6 +112,28 @@ const syncTo = (calls: string[][], target: string) =>
   calls.filter((c) => isSync(c) && c[4] === target);
 const excludes = (c: string[]) =>
   c.flatMap((a, i) => (c[i - 1] === '--exclude' ? [a] : []));
+const cacheControl = (c: string[]) => c[c.indexOf('--cache-control') + 1];
+
+// aws s3 sync globs: `*` also matches `/`.
+const glob = (pattern: string) =>
+  new RegExp(
+    `^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+  );
+
+/** Whether a sync to `bucket` touches `key`: the last matching --exclude/--include wins. */
+function syncCovers(sync: string[], bucket: string, key: string): boolean {
+  const prefix = `s3://${bucket}/`;
+  if (!sync[4]!.startsWith(prefix)) return false;
+  const dir = sync[4]!.slice(prefix.length);
+  if (!key.startsWith(dir)) return false;
+  const rel = key.slice(dir.length);
+  let included = true;
+  sync.forEach((arg, i) => {
+    if (sync[i - 1] === '--exclude' && glob(arg).test(rel)) included = false;
+    if (sync[i - 1] === '--include' && glob(arg).test(rel)) included = true;
+  });
+  return included;
+}
 
 describe('deploy-web.sh', () => {
   const ok = runDeploy();
@@ -205,6 +228,7 @@ describe('deploy-web.sh', () => {
     expect(patterns.sort()).toEqual(
       [
         'assets/*',
+        'fonts/*.woff2',
         'blog/*',
         'resume/*',
         'resume.pdf',
@@ -215,13 +239,7 @@ describe('deploy-web.sh', () => {
         'rss.xml',
       ].sort(),
     );
-    // aws s3 sync globs: `*` also matches `/`.
-    const excluded = (key: string) =>
-      patterns.some((p) =>
-        new RegExp(
-          `^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
-        ).test(key),
-      );
+    const excluded = (key: string) => patterns.some((p) => glob(p).test(key));
     for (const key of [
       'spa.html',
       'manifest.json',
@@ -242,6 +260,33 @@ describe('deploy-web.sh', () => {
     ]) {
       expect(excluded(key), key).toBe(true);
     }
+  });
+
+  it('uploads every public font as immutable before the HTML, and never deletes an old version', () => {
+    const syncs = ok.calls.filter(isSync);
+    const html = syncTo(ok.calls, 's3://site-bucket-name/')[0]!;
+    for (const key of [
+      'fonts/serif.0123abcd.woff2',
+      'fonts/a-font-from-an-earlier-build.89abcdef.woff2',
+    ]) {
+      const covering = syncs.filter((c) =>
+        syncCovers(c, 'site-bucket-name', key),
+      );
+      expect(covering.length, key).toBeGreaterThan(0);
+      for (const sync of covering) {
+        expect(cacheControl(sync), key).toBe(
+          'public,max-age=31536000,immutable',
+        );
+        expect(sync, key).not.toContain('--delete');
+        expect(ok.calls.indexOf(sync)).toBeLessThan(ok.calls.indexOf(html));
+      }
+    }
+    const licence = syncs.filter((c) =>
+      syncCovers(c, 'site-bucket-name', 'fonts/OFL.txt'),
+    );
+    expect(licence.map(cacheControl)).toEqual([
+      'public,max-age=0,must-revalidate',
+    ]);
   });
 
   it('syncs the apex without a dry run or legacy shell check first', () => {

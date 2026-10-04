@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,8 +8,13 @@ import { checkWebShells } from '../../scripts/checkWebShells';
 
 const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>
 <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}</script>`;
-const FONT_PRELOAD =
-  '<link rel="preload" href="/fonts/serif.woff2" as="font" type="font/woff2" crossorigin />';
+const FONT_BYTES = 'wOF2';
+const FONT_HASH = createHash('sha256')
+  .update(FONT_BYTES)
+  .digest('hex')
+  .slice(0, 8);
+const FONT = `/fonts/serif.${FONT_HASH}.woff2`;
+const FONT_PRELOAD = `<link rel="preload" href="${FONT}" as="font" type="font/woff2" crossorigin />`;
 const APP_SHELL = `<!doctype html><html><head>
 <script type="module" crossorigin src="/assets/main-abc123.js"></script>
 </head><body><div id="root"></div></body></html>`;
@@ -25,9 +31,8 @@ function webRoot(files: Record<string, string>): string {
   const all: Record<string, string> = {
     'dist/index.html': `<html><head>${GA_SNIPPET}</head></html>`,
     'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}</head></html>`,
-    'dist/fonts/serif.woff2': 'wOF2',
-    'dist/assets/index-abc.css':
-      "@font-face{font-family:Serif;src:url('/fonts/serif.woff2') format('woff2')}",
+    [`dist${FONT}`]: FONT_BYTES,
+    'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${FONT}') format('woff2')}`,
     'dist-admin/index.html': APP_SHELL,
     'dist-notebook/index.html': APP_SHELL,
     'dist-notebook/manifest.json': JSON.stringify({
@@ -129,11 +134,49 @@ describe('checkWebShells', () => {
         }),
       ),
     ).toContain('dist/_shell.html preloads 2 fonts (expected 1)');
-    expect(
-      checkWebShells(webRoot({ 'dist/fonts/serif.woff2': '\0delete' })),
-    ).toContain(
-      'dist/_shell.html preloads a font that is not in dist: /fonts/serif.woff2',
+    expect(checkWebShells(webRoot({ [`dist${FONT}`]: '\0delete' }))).toContain(
+      `dist/_shell.html preloads a font that is not in dist: ${FONT}`,
     );
+  });
+
+  it('accepts a Vite-hashed font under /assets/', () => {
+    const font = '/assets/serif-AbC123.woff2';
+    expect(
+      checkWebShells(
+        webRoot({
+          [`dist${font}`]: FONT_BYTES,
+          'dist/_shell.html': `<html><head>${FONT_PRELOAD.replace(FONT, font)}${GA_SNIPPET}</head></html>`,
+          'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${font}') format('woff2')}`,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('fails when a font name does not carry a content hash, so it would not be cached as immutable', () => {
+    const font = '/fonts/serif.woff2';
+    const problems = checkWebShells(
+      webRoot({
+        [`dist${font}`]: FONT_BYTES,
+        'dist/_shell.html': `<html><head>${FONT_PRELOAD.replace(FONT, font)}${GA_SNIPPET}</head></html>`,
+        'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${font}') format('woff2')}`,
+      }),
+    );
+    const reason =
+      'is not a hashed /fonts/<name>.<sha256:8>.woff2 or /assets/ file';
+    expect(problems).toEqual([
+      `dist/_shell.html preloads a font that ${reason}: ${font}`,
+      `assets/index-abc.css loads a font that ${reason}: ${font}`,
+    ]);
+  });
+
+  it('fails when a font file changes but its name keeps the old hash', () => {
+    const problems = checkWebShells(webRoot({ [`dist${FONT}`]: 'wOF2 v2' }));
+    expect(problems).toHaveLength(2);
+    for (const problem of problems) {
+      expect(problem).toContain(
+        `is named for hash ${FONT_HASH} but its content hashes to`,
+      );
+    }
   });
 
   it('fails when the public CSS loads a font from another origin', () => {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,6 +9,9 @@ const SCRIPT_TAG = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const LINK_TAG = /<link\b[^>]*>/gi;
 const CSS_URL = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
 const FONT_FILE = /\.(?:woff2?|ttf|otf)(?:[?#].*)?$/i;
+/** deploy-web.sh uploads these two paths with an immutable Cache-Control. */
+const HASHED_FONT = /^\/fonts\/[\w-]+\.([0-9a-f]{8})\.woff2$/;
+const VITE_ASSET = /^\/assets\/[^/]+$/;
 
 const read = (file: string): string | null =>
   fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
@@ -31,12 +35,33 @@ function appShellProblems(label: string, html: string | null): string[] {
 const attr = (tag: string, name: string): string | undefined =>
   new RegExp(`\\b${name}=["']([^"']*)["']`, 'i').exec(tag)?.[1];
 
-const isSameOriginPath = (url: string): boolean =>
-  url.startsWith('/') && !url.startsWith('//');
+/** Why `url` can't be cached as immutable from this build, or null if it can. */
+function fontUrlProblem(dist: string, url: string): string | null {
+  const file = url.replace(/[?#].*$/, '');
+  if (
+    !file.startsWith('/') ||
+    file.startsWith('//') ||
+    !fs.existsSync(path.join(dist, file))
+  ) {
+    return 'is not in dist';
+  }
+  if (VITE_ASSET.test(file)) return null;
+  const hash = HASHED_FONT.exec(file)?.[1];
+  if (!hash)
+    return 'is not a hashed /fonts/<name>.<sha256:8>.woff2 or /assets/ file';
+  const actual = createHash('sha256')
+    .update(fs.readFileSync(path.join(dist, file)))
+    .digest('hex')
+    .slice(0, 8);
+  return actual === hash
+    ? null
+    : `is named for hash ${hash} but its content hashes to ${actual}`;
+}
 
 /**
  * The public shell preloads exactly one self-hosted font, and every font the
- * public CSS loads is self-hosted: no third-party font origin.
+ * public CSS loads is self-hosted (no third-party font origin) under a name
+ * that changes with its content.
  */
 function publicFontProblems(dist: string, html: string): string[] {
   const problems: string[] = [];
@@ -54,9 +79,10 @@ function publicFontProblems(dist: string, html: string): string[] {
   }
   for (const tag of preloads) {
     const href = attr(tag, 'href') ?? '';
-    if (!isSameOriginPath(href) || !fs.existsSync(path.join(dist, href))) {
+    const problem = fontUrlProblem(dist, href);
+    if (problem) {
       problems.push(
-        `dist/_shell.html preloads a font that is not in dist: ${href}`,
+        `dist/_shell.html preloads a font that ${problem}: ${href}`,
       );
     }
   }
@@ -69,11 +95,9 @@ function publicFontProblems(dist: string, html: string): string[] {
     const body = fs.readFileSync(path.join(assets, name), 'utf8');
     for (const [, url = ''] of body.matchAll(CSS_URL)) {
       if (!FONT_FILE.test(url)) continue;
-      const file = url.replace(/[?#].*$/, '');
-      if (!isSameOriginPath(file) || !fs.existsSync(path.join(dist, file))) {
-        problems.push(
-          `assets/${name} loads a font that is not in dist: ${url}`,
-        );
+      const problem = fontUrlProblem(dist, url);
+      if (problem) {
+        problems.push(`assets/${name} loads a font that ${problem}: ${url}`);
       }
     }
   }
@@ -132,6 +156,6 @@ if (
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA and one self-hosted font preload on the public shell, app shells load bundled scripts only.',
+    'Web shells OK: GA and one self-hosted font preload on the public shell, fonts named for their content, app shells load bundled scripts only.',
   );
 }

@@ -260,13 +260,17 @@ secondary text; #2b3138 is the prose colour.
 ## Fonts
 
 Both families are self-hosted from `apps/web/public/fonts/` under the SIL Open
-Font License (licences alongside the files).
+Font License (licences alongside the files). Each file name ends in the first 8
+hex characters of its SHA-256 (`newsreader-roman.c4b10fbd.woff2`), so the URL
+changes with the content and the deploy serves fonts as immutable. After
+replacing a font, rename it (`shasum -a 256 <file> | cut -c1-8`) and update
+`index.html` and `src/public.css`, then run `npm run not-found:generate`.
 
-| File                      | Source                                                                                                                                                                                    | Axes kept                 | Size  |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----- |
-| `newsreader-roman.woff2`  | Newsreader 1.003, [`google/fonts` `ofl/newsreader/Newsreader[opsz,wght].ttf`](https://github.com/google/fonts/tree/991ce1de6075188e6b8977a5aa9fcd3610a4e946/ofl/newsreader) at `991ce1de` | opsz 6–72, wght 400–500   | 87 KB |
-| `newsreader-italic.woff2` | Same commit, `Newsreader-Italic[opsz,wght].ttf`                                                                                                                                           | opsz 6–72, wght 400–500   | 97 KB |
-| `inter-latin.woff2`       | Inter 4.1, [`rsms/inter` release v4.1](https://github.com/rsms/inter/releases/tag/v4.1) (`Inter-4.1.zip`, `InterVariable.ttf`)                                                            | wght 400–700 (opsz at 14) | 34 KB |
+| File                        | Source                                                                                                                                                                                    | Axes kept                 | Size  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----- |
+| `newsreader-roman.*.woff2`  | Newsreader 1.003, [`google/fonts` `ofl/newsreader/Newsreader[opsz,wght].ttf`](https://github.com/google/fonts/tree/991ce1de6075188e6b8977a5aa9fcd3610a4e946/ofl/newsreader) at `991ce1de` | opsz 6–72, wght 400–500   | 87 KB |
+| `newsreader-italic.*.woff2` | Same commit, `Newsreader-Italic[opsz,wght].ttf`                                                                                                                                           | opsz 6–72, wght 400–500   | 97 KB |
+| `inter-latin.*.woff2`       | Inter 4.1, [`rsms/inter` release v4.1](https://github.com/rsms/inter/releases/tag/v4.1) (`Inter-4.1.zip`, `InterVariable.ttf`)                                                            | wght 400–700 (opsz at 14) | 34 KB |
 
 All three are subset to the Latin range below with fontTools 4 (`fonttools`
 plus `brotli`):
