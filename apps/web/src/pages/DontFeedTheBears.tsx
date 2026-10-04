@@ -151,16 +151,14 @@ const DontFeedTheBears = () => {
   return (
     <div className="bears-landing">
       <BearsPageMeta meta={BEARS_PAGE_META.landing} />
+      <header className="bears-landing__header">
+        <p className="bears-landing__kicker">Vermont camp rules</p>
+        <h1>Don’t Feed the Bears</h1>
+        <p className="bears-landing__lede">
+          Two quick games about the same rule, from both sides of the campsite.
+        </p>
+      </header>
       <main>
-        <section className="bears-landing__intro">
-          <p className="bears-landing__kicker">Vermont camp rules</p>
-          <h1>Don’t Feed the Bears</h1>
-          <p className="bears-landing__lede">
-            Two quick games about the same rule, from both sides of the
-            campsite.
-          </p>
-        </section>
-
         <section className="bears-landing__cards" aria-label="Pick a side">
           {GAME_CARDS.map(
             ({ game, kicker, title, body, details, cta, Art }) => (

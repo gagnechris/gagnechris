@@ -26,6 +26,11 @@
       "import": "./src/site-chrome-html.ts",
       "default": "./src/site-chrome-html.ts"
     },
+    "./public-pages": {
+      "types": "./src/public-pages-html.ts",
+      "import": "./src/public-pages-html.ts",
+      "default": "./src/public-pages-html.ts"
+    },
     "./fixtures/every-markdown-element": {
       "types": "./src/fixtures/every-markdown-element.ts",
       "import": "./src/fixtures/every-markdown-element.ts",

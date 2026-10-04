@@ -39,6 +39,8 @@ jobs:
         run: npm run tokens:check
       - name: Publish surface drift
         run: npm run publish-surface:check
+      - name: CloudFront 404 page drift
+        run: npm run not-found:check
 
       - name: Lint
         run: npm run lint

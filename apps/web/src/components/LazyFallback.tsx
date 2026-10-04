@@ -4,3 +4,5 @@ export const LazyFallback = () => (
     Loading…
   </p>
 );
+
+export const EmptyFallback = () => null;

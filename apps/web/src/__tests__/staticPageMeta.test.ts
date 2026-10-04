@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  NOT_FOUND_PRERENDER,
   STATIC_PAGE_META,
   applyNotFoundPageMeta,
   applyStaticPageMeta,
   canonicalUrlFor,
   outputRelativePath,
+  staticPagePrerender,
 } from '../../scripts/staticPageMeta';
+import {
+  renderSiteFooterHtml,
+  renderSiteHeaderHtml,
+} from '@gagnechris/shared/site-chrome';
 
 const shell = `<!doctype html>
 <html lang="en">
@@ -127,5 +133,47 @@ describe('staticPageMeta', () => {
     expect(html).toContain('href="/dont-feed-the-bears?from=404"');
     expect(html).not.toMatch(/rel=["']canonical["']/);
     expect(html).not.toMatch(/property=["']og:url["']/);
+  });
+
+  it('builds 404.html with the shared 404 inside the site chrome', () => {
+    const html = applyNotFoundPageMeta(shell);
+    expect(html).toContain(`<div id="root">${NOT_FOUND_PRERENDER}</div>`);
+    expect(NOT_FOUND_PRERENDER).toContain('<main class="not-found">');
+  });
+
+  it.each([
+    'contact',
+    'dont-feed-the-bears',
+    'dont-feed-the-bears/camp',
+    'dont-feed-the-bears/wild',
+  ] as const)(
+    'prerenders the site header and footer into %s/index.html',
+    (routePath) => {
+      const meta = STATIC_PAGE_META.find((p) => p.routePath === routePath)!;
+      const html = applyStaticPageMeta(shell, meta);
+      const root = /<div id="root">([\s\S]*?)<\/div><\/body>/.exec(html)![1]!;
+      expect(root.startsWith('<!--prerender:start-->')).toBe(true);
+      expect(root).toContain(
+        renderSiteHeaderHtml(routePath === 'contact' ? '/contact' : null),
+      );
+      expect(root).toContain(renderSiteFooterHtml());
+      expect(root).toBe(staticPagePrerender(routePath));
+    },
+  );
+
+  it('leaves Home and Resume to the publisher', () => {
+    for (const routePath of ['', 'resume'] as const) {
+      const meta = STATIC_PAGE_META.find((p) => p.routePath === routePath)!;
+      expect(applyStaticPageMeta(shell, meta)).toContain(
+        '<div id="root"></div>',
+      );
+    }
+  });
+
+  it('contact prerender has the page heading and intro but no form', () => {
+    const html = staticPagePrerender('contact')!;
+    expect(html).toContain('<h1>Contact</h1>');
+    expect(html).toContain('class="contact-page__intro"');
+    expect(html).not.toContain('<form');
   });
 });

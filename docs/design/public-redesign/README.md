@@ -97,6 +97,49 @@ Values from the stories unless marked measured.
 | Order                | `groupPostsByYear`: years newest first (UTC), posts newest first; undated posts last under "Undated"                                                |
 | At 390px (not drawn) | Title 40px, intro 20px, entry title 22px, excerpt 17px                                                                                              |
 
+## Contact (not drawn)
+
+There is no artboard; these values follow the Posts page.
+
+| Element              | Value                                                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column               | Full 720px column                                                                                                                            |
+| Title                | "Contact", Newsreader 60px / 500, line height 1.1, -0.01em                                                                                   |
+| Intro                | One sentence, Newsreader italic 24px / 1.4, `inkSoft`, 17px below the title; 40px to the first field                                         |
+| Label                | Inter 14px / 600, ink, always visible above its field, 8px gap                                                                               |
+| Field                | Inter 16px / 1.5, ink on white, 1px `neutral-500` border (5:1), 4px radius, 10px 12px padding, at least 44px tall; message box 176px         |
+| Focus                | Border and 2px outline in `link`, 1px offset                                                                                                 |
+| Field spacing        | 24px between fields                                                                                                                          |
+| Error                | `color.error` #b42318 (6.6:1 on white): field border 2px, message Inter 14px / 500 8px below the field, linked with `aria-describedby`       |
+| Status line          | One `role="alert"` line above the button: "Please fix the N highlighted fields." or the send error (429 included); 1px error border, #fef3f2 |
+| Button               | "Send message", Inter 16px / 600, white on `link`, `primary-800` on hover, 4px radius, 44px tall, 20px side padding; "Sending…" while busy   |
+| Success              | Replaces the form: Newsreader 32px / 500 heading (focused), Newsreader 19px / 1.6 line in #2b3138, Home and bears links as 404 links         |
+| At 390px (not drawn) | Title 40px, intro 20px, success heading 26px                                                                                                 |
+
+## 404 (not drawn)
+
+| Element              | Value                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Title                | "Page not found", Newsreader 60px / 500, line height 1.1, -0.01em                                                        |
+| Sentence             | "That URL does not match a page on this site." Newsreader italic 24px / 1.4, `inkSoft`, 17px below the title             |
+| Links                | Home, Posts, Resume: Inter 16px / 500, `link`, 1px underline 3px below the baseline, 44px targets, 24px apart; 28px down |
+| Bears line           | "Lost in the woods? Don’t feed the bears while you find your way." Newsreader 19px / 1.6, `inkSoft`; 28px down           |
+| At 390px (not drawn) | Title 40px, sentence 20px, bears line 17px                                                                               |
+
+The CloudFront fallback page has the same markup and inlines the rules of
+`index.css`, `public.css` and `NotFound.css` that match it.
+
+## Don’t feed the bears (not drawn)
+
+The games and their cards keep their own art. The page heading follows Posts:
+kicker Inter 13px / 600, tracked 0.12em, `link`; title Newsreader 60px / 500;
+lede Newsreader italic 24px / 1.4, `inkSoft`; 48px to the cards. Card titles
+are Newsreader 28px / 500. The notes below the cards are Newsreader 19px / 1.6
+in #2b3138, and the tips heading Newsreader 32px / 500. On the game pages, the
+back link is Inter 14px / 500 in `link`, underlined, and the title Newsreader
+40px / 500 (32px at 390px). At 390px the landing title is 40px and the lede
+20px.
+
 ## Colours
 
 | Token           | Value   | Use                                                                |
@@ -104,6 +147,7 @@ Values from the stories unless marked measured.
 | `color.ink`     | #16191d | Name, titles, headings, current nav link, section labels and rules |
 | `color.inkSoft` | #4a515a | Excerpts, subtitles, project descriptions (measured)               |
 | `color.link`    | #235a58 | Links and accents (`primary-700`)                                  |
+| `color.error`   | #b42318 | Form errors (not drawn)                                            |
 | `neutral-700`   | #384259 | Nav links (measured)                                               |
 | `neutral-600`   | #4d5871 | Dates, meta, footer (measured)                                     |
 | —               | #2b3138 | Home About lede and Resume summary prose (measured, not a token)   |

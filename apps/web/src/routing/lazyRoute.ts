@@ -11,6 +11,8 @@ type LazyComponentModule = { default: ComponentType };
 type LazyRouteBase = {
   load: () => Promise<LazyComponentModule>;
   children?: RouteObject[];
+  /** Shown while the chunk loads on the first page load; defaults to LazyFallback. */
+  fallback?: ComponentType;
 };
 
 type LazyIndexRoute = LazyRouteBase & {
@@ -34,10 +36,12 @@ export function lazyRoute(
     return { Component };
   };
 
+  const HydrateFallback = opts.fallback ?? LazyFallback;
+
   if (opts.index) {
     const route: IndexRouteObject = {
       index: true,
-      HydrateFallback: LazyFallback,
+      HydrateFallback,
       lazy,
     };
     return route;
@@ -45,7 +49,7 @@ export function lazyRoute(
 
   const route: NonIndexRouteObject = {
     path: opts.path,
-    HydrateFallback: LazyFallback,
+    HydrateFallback,
     lazy,
   };
   if (opts.children) {

@@ -18,7 +18,9 @@ const BearsGameHeader = ({ title, from, actions }: BearsGameHeaderProps) => (
         <span aria-hidden="true" className="bears-arrow">
           ←
         </span>
-        Don’t Feed the Bears
+        <span className="bears-game-page__back-label">
+          Don’t Feed the Bears
+        </span>
       </Link>
       <h1>{title}</h1>
     </div>

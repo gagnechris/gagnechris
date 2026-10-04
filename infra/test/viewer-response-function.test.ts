@@ -136,4 +136,24 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.statusCode).toBe(404);
     expect(res.body).toBe('{"error":"not_found"}');
   });
+
+  it('serves the site 404 page, with the current year in the footer', () => {
+    const res = runHandler('/resume/typo/index.html', {
+      statusCode: 404,
+      headers: { 'content-type': { value: 'application/xml' } },
+    });
+    expect(res.body).toContain('<header class="site-header">');
+    expect(res.body).toContain(
+      '<main class="not-found"><h1>Page not found</h1>',
+    );
+    expect(res.body).toContain(
+      `<p class="site-footer__copy">© ${new Date().getUTCFullYear()} Chris Gagne</p>`,
+    );
+    expect(res.body).not.toContain('{{year}}');
+  });
+
+  // CloudFront Functions are capped at 10 KB; the inline 404 is most of it.
+  it('stays well under the CloudFront Functions size limit', () => {
+    expect(Buffer.byteLength(fnSource)).toBeLessThanOrEqual(8.5 * 1024);
+  });
 });
