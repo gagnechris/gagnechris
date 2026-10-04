@@ -1,6 +1,6 @@
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
+import PostArticle from '../posts/PostArticle';
 import {
   documentPostView,
   loadPublishedPost,
@@ -10,12 +10,6 @@ import NotFound from './NotFound';
 import './PostPage.css';
 
 type Loaded = { slug: string; post: PostView | null };
-
-const BackLink = ({ className }: { className: string }) => (
-  <Link className={className} to="/posts">
-    ← Back to Posts
-  </Link>
-);
 
 function PostPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -48,23 +42,15 @@ function PostPage() {
   if (post === undefined) {
     return (
       <div className="post-page">
-        <header>
-          <BackLink className="back-link" />
-        </header>
-        <main>
-          <p>Loading post...</p>
-        </main>
+        <p className="post-loading">Loading post…</p>
       </div>
     );
   }
 
   if (!post) return <NotFound />;
 
-  const dateLabel = formatPostDate(post.date);
-  const dateAttr = postDateAttribute(post.date);
-
   return (
-    <div className="post-page">
+    <>
       <title>{`${post.title} - Chris Gagne`}</title>
       <link rel="canonical" href={`https://gagnechris.com/posts/${slug}`} />
       <link
@@ -73,25 +59,8 @@ function PostPage() {
         title="Chris Gagne"
         href="/rss.xml"
       />
-      <header>
-        <BackLink className="back-link" />
-      </header>
-      <article>
-        <h1>{post.title}</h1>
-        {dateLabel ? (
-          <time className="post-date" dateTime={dateAttr || undefined}>
-            {dateLabel}
-          </time>
-        ) : null}
-        <div
-          className="post-content"
-          dangerouslySetInnerHTML={{ __html: post.contentHtml }}
-        />
-      </article>
-      <footer>
-        <BackLink className="back-link-footer" />
-      </footer>
-    </div>
+      <PostArticle post={post} />
+    </>
   );
 }
 

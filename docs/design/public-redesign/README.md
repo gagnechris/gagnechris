@@ -66,6 +66,22 @@ Values from the stories unless marked measured.
 | Section labels (RECENT POSTS, years) | Inter      | about 13px / 600, uppercase, tracked (measured) | CHR-220 |
 | Section label rule                   | —          | 1px ink, full column width (measured)           | CHR-220 |
 
+## Post (measured)
+
+| Element               | Value                                                                                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column                | 680px measure, centred (x 380–1060); 20px inside the 720px column                                                                                                                                                                        |
+| Meta line             | Inter 13px, `neutral-600`; "February 1, 2026 · 1 min read"; cap top 102px below the header row                                                                                                                                           |
+| Title                 | Newsreader 60px / 500, line height 1.1, -0.01em; 14px below the meta line                                                                                                                                                                |
+| Excerpt               | Newsreader italic 24px / 1.4, `inkSoft`; 17px below the title                                                                                                                                                                            |
+| Body                  | Newsreader 21px / 1.7 (35.7px lines), #22272d; paragraphs 1.2em apart; first line 48px below the excerpt                                                                                                                                 |
+| h2                    | Newsreader 32px / 500, line height 1.25; 1.75em above, 0.5em below                                                                                                                                                                       |
+| Links                 | `link`, underlined 1px at 0.18em offset (2px on hover)                                                                                                                                                                                   |
+| Author note           | 64px below the body, 1px ink rule, 24px above the text; Newsreader 19px / 1.6, #2b3138; name in ink at 500                                                                                                                               |
+| Reading time          | `readingMinutes`: words / 230, rounded, at least 1                                                                                                                                                                                       |
+| Not drawn (our specs) | Blockquote: italic `inkSoft`, 2px ink rule. Code: system mono at 0.8em on `neutral-100`; blocks scroll in a bordered box. Figure caption: Inter 13px `neutral-600`. Tables scroll in their box; header rule ink, row rules `neutral-200` |
+| At 390px (not drawn)  | Body 19px, title 40px, excerpt 20px, h2 26px, author note 17px                                                                                                                                                                           |
+
 ## Colours
 
 | Token           | Value   | Use                                                                |

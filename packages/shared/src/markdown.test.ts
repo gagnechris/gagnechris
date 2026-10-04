@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderMarkdownToHtml } from './markdown.js';
+import { renderMarkdownToHtml, renderPostMarkdownToHtml } from './markdown.js';
 import { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 
 describe('renderMarkdownToHtml', () => {
@@ -110,5 +110,65 @@ describe('slugify', () => {
     const slug = slugify('Word '.repeat(40).trim());
     expect(slug.endsWith('-')).toBe(false);
     expect(slug.length).toBeLessThanOrEqual(MAX_SLUG_LENGTH);
+  });
+});
+
+describe('renderPostMarkdownToHtml', () => {
+  const levels = (html: string) =>
+    [...html.matchAll(/<h([1-6])>/g)].map(([, n]) => Number(n));
+
+  it('starts body headings at h2 and never skips a level', () => {
+    expect(levels(renderPostMarkdownToHtml('# A\n\n### B\n\n## C'))).toEqual([
+      2, 3, 3,
+    ]);
+    expect(
+      levels(renderPostMarkdownToHtml('## A\n\n#### B\n\n###### C\n\n## D')),
+    ).toEqual([2, 3, 4, 2]);
+    expect(levels(renderPostMarkdownToHtml('### Only'))).toEqual([2]);
+    expect(levels(renderPostMarkdownToHtml('> # In a quote'))).toEqual([2]);
+  });
+
+  it('captions an image that has a title and sits alone in its paragraph', () => {
+    expect(
+      renderPostMarkdownToHtml('![A "cat"](https://x.test/c.jpg "Our <cat>")'),
+    ).toBe(
+      '<figure><img src="https://x.test/c.jpg" alt="A &quot;cat&quot;" /><figcaption>Our &lt;cat&gt;</figcaption></figure>',
+    );
+    expect(renderPostMarkdownToHtml('![cat](https://x.test/c.jpg)')).toBe(
+      '<p><img src="https://x.test/c.jpg" alt="cat" /></p>\n',
+    );
+    expect(
+      renderPostMarkdownToHtml('Inline ![cat](https://x.test/c.jpg "t") image'),
+    ).not.toContain('<figure>');
+  });
+
+  it('keeps an unsafe image source out of a figure', () => {
+    const html = renderPostMarkdownToHtml(
+      '![x](javascript:alert(1) "caption")',
+    ).toLowerCase();
+    expect(html).not.toMatch(/javascript:|onerror/);
+  });
+
+  it('puts tables and code blocks in keyboard-focusable scroll boxes', () => {
+    const html = renderPostMarkdownToHtml(
+      '| a |\n| - |\n| 1 |\n\n```\ncode\n```\n\n| b |\n| - |\n| 2 |',
+    );
+    expect(
+      html.match(
+        /<div class="post-table" role="region" tabindex="0" aria-label="Table \d">/g,
+      ),
+    ).toEqual([
+      '<div class="post-table" role="region" tabindex="0" aria-label="Table 1">',
+      '<div class="post-table" role="region" tabindex="0" aria-label="Table 2">',
+    ]);
+    expect(html.match(/<\/table><\/div>/g)).toHaveLength(2);
+    expect(html).toContain('<pre tabindex="0"><code>code');
+  });
+
+  it('is sanitized like every other markdown render', () => {
+    const html = renderPostMarkdownToHtml(
+      '<img src=x onerror="alert(1)"><script>alert(1)</script><pre onclick="x">y</pre>',
+    ).toLowerCase();
+    expect(html).not.toMatch(/<script|\son\w+\s*=/);
   });
 });

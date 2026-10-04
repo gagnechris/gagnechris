@@ -1,163 +1,288 @@
-/* Post Page Styles */
-.post-page header {
-  margin-bottom: var(--space-6);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
+/* Specs in docs/design/public-redesign/README.md (Post). */
+.post-page {
+  --post-measure: 680px;
+  --post-body-size: 1.3125rem;
+  --post-prose: #22272d;
+
+  max-width: calc(var(--post-measure) + 2 * var(--site-gutter));
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+  font-family: var(--font-serif);
+  color: var(--post-prose);
 }
 
-.post-page article {
-  margin-bottom: var(--space-6);
+.post-header {
+  margin-bottom: 48px;
 }
 
-.post-page h1 {
-  font-size: var(--text-4xl);
-  color: var(--neutral-900);
-  margin: 0 0 var(--space-2) 0;
-  line-height: var(--line-tight);
-  font-weight: 600;
+.post-meta {
+  margin: 0 0 14px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
 }
 
 .post-date {
-  display: block;
-  font-size: var(--text-sm);
-  color: var(--neutral-500);
-  margin-bottom: var(--space-8);
-  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
-/* .back-link / .back-link-footer: shared in index.css */
+.post-page h1 {
+  margin: 0;
+  font-size: 3.75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.post-excerpt {
+  margin: 17px 0 0;
+  font-size: 1.5rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-ink-soft);
+}
 
 .post-content {
-  line-height: var(--line-relaxed);
-  color: var(--neutral-800);
-  max-width: 65ch;
+  font-size: var(--post-body-size);
+  line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
-.post-content h1,
+.post-content > :first-child {
+  margin-top: 0;
+}
+
+.post-content > :last-child {
+  margin-bottom: 0;
+}
+
+.post-content p,
+.post-content ul,
+.post-content ol,
+.post-content blockquote,
+.post-content figure,
+.post-content pre,
+.post-content .post-table {
+  margin: 0 0 1.2em;
+}
+
 .post-content h2,
 .post-content h3,
 .post-content h4,
 .post-content h5,
 .post-content h6 {
-  margin-top: var(--space-8);
-  margin-bottom: var(--space-4);
-  color: var(--neutral-900);
-  font-weight: 600;
-  line-height: var(--line-tight);
-}
-
-.post-content h1 {
-  font-size: var(--text-3xl);
+  margin: 1.75em 0 0.5em;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: var(--color-ink);
 }
 
 .post-content h2 {
-  font-size: var(--text-2xl);
+  font-size: 2rem;
 }
 
 .post-content h3 {
-  font-size: var(--text-xl);
+  font-size: 1.5rem;
 }
 
 .post-content h4 {
-  font-size: var(--text-lg);
+  font-size: 1.3125rem;
 }
 
-.post-content p {
-  margin: var(--space-4) 0;
-  line-height: var(--line-relaxed);
+.post-content h5,
+.post-content h6 {
+  font-size: 1.125rem;
 }
 
-.post-content a {
-  color: var(--primary-600);
-  text-decoration: none;
-  transition: color var(--transition-normal);
-  border-bottom: 1px solid var(--primary-200);
+/* Underlined so links don't rely on colour alone. */
+.post-content a,
+.post-author a {
+  font-weight: inherit;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
-.post-content a:hover {
-  color: var(--primary-500);
-  border-bottom-color: var(--primary-500);
+.post-content a:hover,
+.post-author a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.post-content strong {
+  font-weight: 500;
+  color: var(--color-ink);
 }
 
 .post-content ul,
 .post-content ol {
-  margin: var(--space-4) 0;
-  padding-left: var(--space-8);
+  padding-left: 1.4em;
 }
 
 .post-content li {
-  margin: var(--space-2) 0;
-  line-height: var(--line-relaxed);
+  margin: 0.3em 0;
+}
+
+.post-content li > ul,
+.post-content li > ol {
+  margin: 0.3em 0 0;
+}
+
+.post-content li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+
+.post-content input[type='checkbox'] {
+  margin: 0 0.4em 0 -1.2em;
+  accent-color: var(--color-link);
 }
 
 .post-content blockquote {
-  margin: var(--space-6) 0;
-  padding: var(--space-4) var(--space-6);
-  border-left: 4px solid var(--primary-400);
-  background-color: var(--primary-50);
+  padding-left: 1em;
+  border-left: 2px solid var(--color-ink);
   font-style: italic;
-  border-radius: var(--radius-md);
+  color: var(--color-ink-soft);
 }
 
 .post-content code {
-  background-color: var(--neutral-100);
-  color: var(--neutral-800);
-  padding: var(--space-1) var(--space-2);
+  padding: 0.1em 0.3em;
   border-radius: var(--radius-sm);
-  font-family: 'Courier New', 'Monaco', monospace;
-  font-size: var(--text-sm);
+  background-color: var(--neutral-100);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  color: var(--color-ink);
 }
 
 .post-content pre {
-  background-color: var(--neutral-800);
-  color: var(--neutral-100);
-  padding: var(--space-6);
-  border-radius: var(--radius-md);
   overflow-x: auto;
-  margin: var(--space-6) 0;
+  padding: 16px 20px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background-color: var(--neutral-50);
+  line-height: 1.6;
 }
 
 .post-content pre code {
-  background-color: transparent;
-  color: inherit;
   padding: 0;
-}
-
-.post-content hr {
-  border: none;
-  border-top: 2px solid var(--neutral-200);
-  margin: var(--space-8) 0;
+  background: none;
+  font-size: 0.95rem;
 }
 
 .post-content img {
+  display: block;
   max-width: 100%;
   height: auto;
-  margin: var(--space-6) 0;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
 }
 
-@media (max-width: 768px) {
+.post-content figcaption {
+  margin-top: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--neutral-600);
+}
+
+.post-content .post-table {
+  overflow-x: auto;
+}
+
+.post-content table {
+  border-collapse: collapse;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.post-content th,
+.post-content td {
+  min-width: 7em;
+  padding: 0.5em 0.75em;
+  border-bottom: 1px solid var(--neutral-200);
+  text-align: left;
+  vertical-align: top;
+}
+
+.post-content th:first-child,
+.post-content td:first-child {
+  padding-left: 0;
+}
+
+.post-content th {
+  border-bottom-color: var(--color-ink);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.post-content hr {
+  margin: 2.4em 0;
+  border: 0;
+  border-top: 1px solid var(--neutral-300);
+}
+
+.post-author {
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-ink);
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  color: #2b3138;
+}
+
+.post-author p {
+  margin: 0;
+}
+
+.post-author strong {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.post-loading {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--neutral-600);
+}
+
+@media (max-width: 480px) {
+  .post-page {
+    --post-body-size: 1.1875rem;
+  }
+
+  .post-header {
+    margin-bottom: 36px;
+  }
+
   .post-page h1 {
-    font-size: var(--text-3xl);
+    font-size: 2.5rem;
   }
 
-  .post-content {
-    max-width: 100%;
-  }
-
-  .post-content h1 {
-    font-size: var(--text-2xl);
+  .post-excerpt {
+    margin-top: 18px;
+    font-size: 1.25rem;
   }
 
   .post-content h2 {
-    font-size: var(--text-xl);
+    font-size: 1.625rem;
   }
 
   .post-content h3 {
-    font-size: var(--text-lg);
+    font-size: 1.3125rem;
+  }
+
+  .post-content pre {
+    padding: 12px 14px;
+  }
+
+  .post-content pre code {
+    font-size: 0.875rem;
+  }
+
+  .post-author {
+    margin-top: 48px;
+    padding-top: 24px;
+    font-size: 1.0625rem;
   }
 }
