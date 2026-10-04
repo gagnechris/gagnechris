@@ -1,0 +1,87 @@
+name: Deploy lag alert
+
+# Deploys run only after CI succeeds on main, so a CI run GitHub never
+# delivers, or a deploy skipped by mistake, leaves prod behind main with no
+# failure to alert on. scripts/ci/deploy-lag.sh decides from SSM deployed-sha
+# and main; the 2-hour threshold absorbs late CI delivery and normal deploys.
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: 'Also send a [test] alert with the current result'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  check:
+    name: Check prod deploy lag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    # The drift role trusts environment:prod, reads SSM and may publish to the
+    # alerts topic. No npm in this job.
+    environment: prod
+    concurrency:
+      group: deploy-lag
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure AWS credentials (drift role)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DRIFT_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # deployed-sha is read after checkout, so a deploy finishing in between
+      # shows as prod ahead of main, not as lag.
+      - name: Check deploy lag
+        id: lag
+        run: |
+          DEPLOYED="$(bash scripts/ci/read-deployed-sha.sh prod)"
+          bash scripts/ci/deploy-lag.sh "${DEPLOYED}" "$(git rev-parse HEAD)" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Notify SNS
+        if: failure() || steps.lag.outputs.alert == 'true' || inputs.test_alert
+        env:
+          ALERT: ${{ steps.lag.outputs.alert }}
+          REASON: ${{ steps.lag.outputs.reason }}
+          TEST: ${{ inputs.test_alert && '[test] ' || '' }}
+          RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          if [ -z "${ALERT}" ]; then
+            SUBJECT="${TEST}gagnechris deploy lag check failed"
+            MESSAGE="${TEST}The prod deploy lag check could not run, so a stalled deploy would go unnoticed. Run: ${RUN_URL}"
+          elif [ "${ALERT}" = 'true' ]; then
+            SUBJECT="${TEST}gagnechris prod is behind main"
+            MESSAGE="${TEST}${REASON} Check the CDK workflow on main and re-run or dispatch the deploy (infra/RUNBOOK.md, Deploy alerts). Run: ${RUN_URL}"
+          else
+            SUBJECT="${TEST}gagnechris deploy lag check: no lag"
+            MESSAGE="${TEST}${REASON} Run: ${RUN_URL}"
+          fi
+          TOPIC_ARN=$(aws ssm get-parameter \
+            --name "$(bash scripts/ssm-param-name.sh prod alertsTopicArn)" \
+            --query 'Parameter.Value' \
+            --output text)
+          aws sns publish \
+            --topic-arn "$TOPIC_ARN" \
+            --subject "$SUBJECT" \
+            --message "$MESSAGE"

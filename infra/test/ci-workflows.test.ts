@@ -72,6 +72,17 @@ function stepIndex(job: Job, predicate: (step: Step) => boolean): number {
 const isCredentialStep = (s: Step) =>
   s.uses?.startsWith('aws-actions/configure-aws-credentials@') ?? false;
 
+function expectNoNpm(job: Job): void {
+  for (const step of job.steps ?? []) {
+    if (step.uses) {
+      expect(step.uses).toMatch(
+        /^(actions\/checkout|aws-actions\/configure-aws-credentials)@[0-9a-f]{40}$/,
+      );
+    }
+    expect(step.run ?? '').not.toMatch(/\b(npm|npx|node_modules)\b/);
+  }
+}
+
 describe('GitHub Actions supply chain', () => {
   it('pins every remote action to a full commit SHA', () => {
     const offenders: string[] = [];
@@ -130,16 +141,16 @@ describe('GitHub Actions supply chain', () => {
       contents: 'read',
       'id-token': 'write',
     });
-    for (const step of plan.steps ?? []) {
-      if (step.uses) {
-        expect(step.uses).toMatch(
-          /^(actions\/checkout|aws-actions\/configure-aws-credentials)@[0-9a-f]{40}$/,
-        );
-      }
-      expect(step.run ?? '').not.toMatch(/\b(npm|npx|node_modules)\b/);
-    }
+    expectNoNpm(plan);
   });
 });
+
+type WorkflowRunWorkflow = Workflow & {
+  on: Record<string, unknown> & {
+    workflow_run: { workflows: string[]; types: string[] };
+  };
+};
+type GatedJob = Job & { if?: string; needs?: string; environment?: string };
 
 describe('non-strict branch protection', () => {
   const ruleset = JSON.parse(
@@ -150,35 +161,116 @@ describe('non-strict branch protection', () => {
       parameters?: { strict_required_status_checks_policy?: boolean };
     }[];
   };
-  const alert = loadYaml<
-    Workflow & {
-      on: { workflow_run: { workflows: string[]; types: string[] } };
-    }
-  >(join(WORKFLOWS_DIR, 'main-ci-alert.yml'));
+  const alert = loadYaml<WorkflowRunWorkflow>(
+    join(WORKFLOWS_DIR, 'main-ci-alert.yml'),
+  );
 
-  it('alerts on a red main because PRs needn’t be up to date', () => {
+  it('alerts on a red main or a failed deploy because PRs needn’t be up to date', () => {
     const checks = ruleset.rules.find(
       (r) => r.type === 'required_status_checks',
     );
     expect(checks?.parameters?.strict_required_status_checks_policy).toBe(
       false,
     );
-    expect(alert.on.workflow_run.workflows.sort()).toEqual(['CI', 'Mobile']);
+    expect(alert.on.workflow_run.workflows.sort()).toEqual([
+      'CDK',
+      'CI',
+      'Mobile',
+    ]);
     expect(alert.on.workflow_run.types).toEqual(['completed']);
-    const job = alert.jobs.alert! as Job & { if?: string };
-    expect(job.if).toContain("head_branch == 'main'");
-    expect(job.if).toContain("event == 'push'");
-    expect(job.if).toContain('"failure"');
+
+    const decide = alert.jobs.decide! as GatedJob;
+    expect(hasIdToken(decide, alert)).toBe(false);
+    expect(decide.environment).toBeUndefined();
+    expect(
+      decide.steps?.some((s) =>
+        s.run?.includes('scripts/ci/main-alert-decision.sh'),
+      ),
+    ).toBe(true);
+
+    const job = alert.jobs.alert! as GatedJob;
+    expect(job.needs).toBe('decide');
+    expect(job.if).toBe("needs.decide.outputs.alert == 'true'");
+    expect(job.environment).toBe('prod');
     const steps = job.steps ?? [];
     expect(steps.some((s) => s.run?.includes('aws sns publish'))).toBe(true);
-    for (const step of steps) {
-      if (step.uses) {
-        expect(step.uses).toMatch(
-          /^(actions\/checkout|aws-actions\/configure-aws-credentials)@[0-9a-f]{40}$/,
-        );
-      }
-      expect(step.run ?? '').not.toMatch(/\b(npm|npx)\b/);
-    }
+    expectNoNpm(job);
+  });
+});
+
+describe('main-alert-decision.sh', () => {
+  const decide = (...args: string[]) =>
+    runScript('main-alert-decision.sh', args, {});
+
+  it.each([
+    ['CI', 'push', 'main', 'failure', 'red-main'],
+    ['Mobile', 'push', 'main', 'timed_out', 'red-main'],
+    ['CI', 'push', 'main', 'startup_failure', 'red-main'],
+    // e.g. a stack update that rolls back fails the deploy job.
+    ['CDK', 'workflow_run', 'main', 'failure', 'deploy-failed'],
+    ['CDK', 'workflow_run', 'main', 'timed_out', 'deploy-failed'],
+  ])(
+    'alerts: %s %s on %s ended %s',
+    (workflow, event, branch, conclusion, kind) => {
+      expect(decide(workflow, event, branch, conclusion)).toMatchObject({
+        status: 0,
+        stdout: `alert=true\nkind=${kind}`,
+      });
+    },
+  );
+
+  it.each([
+    // A late or replaced run is cancelled; the lag check covers a stall.
+    ['CI', 'push', 'main', 'cancelled'],
+    ['CDK', 'workflow_run', 'main', 'cancelled'],
+    // CDK after a PR's CI, or after a red CI, skips every job.
+    ['CDK', 'workflow_run', 'main', 'skipped'],
+    ['CDK', 'workflow_run', 'main', 'success'],
+    ['CI', 'push', 'main', 'success'],
+    ['CI', 'pull_request', 'feature', 'failure'],
+    ['CDK', 'pull_request', 'feature', 'failure'],
+    ['CI', 'push', 'feature', 'failure'],
+    // Drift alerts by itself; a dispatched deploy is watched.
+    ['CDK', 'schedule', 'main', 'failure'],
+    ['CDK', 'workflow_dispatch', 'main', 'failure'],
+  ])(
+    'stays quiet: %s %s on %s ended %s',
+    (workflow, event, branch, conclusion) => {
+      expect(decide(workflow, event, branch, conclusion)).toMatchObject({
+        status: 0,
+        stdout: 'alert=false\nkind=none',
+      });
+    },
+  );
+});
+
+describe('deploy lag alert workflow', () => {
+  const lag = loadYaml<Workflow & { on: { schedule: { cron: string }[] } }>(
+    join(WORKFLOWS_DIR, 'deploy-lag-alert.yml'),
+  );
+  const job = lag.jobs.check! as GatedJob;
+
+  it('runs hourly in prod with the drift role and no npm', () => {
+    expect(lag.on.schedule.map((s) => s.cron)).toEqual(['23 * * * *']);
+    expect(job.environment).toBe('prod');
+    expect(job.permissions).toEqual({ contents: 'read', 'id-token': 'write' });
+    expectNoNpm(job);
+    const steps = job.steps ?? [];
+    expect(steps.find(isCredentialStep)?.with?.['role-to-assume']).toBe(
+      '${{ vars.AWS_DRIFT_ROLE_ARN }}',
+    );
+    const check = stepIndex(
+      job,
+      (s) => s.run?.includes('scripts/ci/deploy-lag.sh') ?? false,
+    );
+    const notify = stepIndex(
+      job,
+      (s) => s.run?.includes('aws sns publish') ?? false,
+    );
+    expect(check).toBeGreaterThan(stepIndex(job, isCredentialStep));
+    expect(notify).toBeGreaterThan(check);
+    expect(steps[notify]!.if).toContain("steps.lag.outputs.alert == 'true'");
+    expect(steps[notify]!.if).toContain('failure()');
   });
 });
 
@@ -456,5 +548,114 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
     // CHR-149: deployed-sha predates a cancelled infra build, so a later
     // docs-only head still deploys the stranded infra change.
     expect(paths(docs, runbook)).toBe('cdk=true\nweb=true');
+  });
+});
+
+describe('deploy-lag.sh', () => {
+  const HOUR = 3600;
+  const T0 = Date.parse('2026-10-03T12:00:00Z') / 1000;
+  const repo = tempDir();
+  const git = (args: string[], date = T0) =>
+    execFileSync('git', args, {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'ci',
+        GIT_AUTHOR_EMAIL: '',
+        GIT_COMMITTER_NAME: 'ci',
+        GIT_COMMITTER_EMAIL: '',
+        GIT_AUTHOR_DATE: `@${date} +0000`,
+        GIT_COMMITTER_DATE: `@${date} +0000`,
+      },
+    }).trim();
+  const commit = (file: string, at: number) => {
+    mkdirSync(join(repo, dirname(file)), { recursive: true });
+    writeFileSync(join(repo, file), `${file} ${Math.random()}\n`);
+    git(['add', '-A'], at);
+    git(['commit', '-q', '-m', file], at);
+    return git(['rev-parse', 'HEAD']);
+  };
+
+  git(['init', '-q', '-b', 'main']);
+  const deployed = commit('README.md', T0);
+  const docs = commit('docs/notes.md', T0 + 1 * HOUR);
+  const infra = commit('infra/lib/stacks/api-stack.ts', T0 + 2 * HOUR);
+  const runbook = commit('infra/RUNBOOK.md', T0 + 3 * HOUR);
+  const web = commit('apps/web/src/main.tsx', T0 + 4 * HOUR);
+  git(['checkout', '-q', '-b', 'side', deployed]);
+  const side = commit('infra/lib/side.ts', T0 + 1 * HOUR);
+  git(['checkout', '-q', 'main']);
+
+  const lagAt = (now: number, base: string, head: string) => {
+    const r = runScript(
+      'deploy-lag.sh',
+      [base, head],
+      {
+        NOW_EPOCH: String(now),
+      },
+      repo,
+    );
+    expect(r.status, r.stderr).toBe(0);
+    return r.stdout;
+  };
+
+  it('alerts when a deployable change has been undeployed for over 2 hours', () => {
+    const out = lagAt(T0 + 4 * HOUR + 60, deployed, infra);
+    expect(out).toMatch(/^alert=true\n/);
+    expect(out).toContain(infra.slice(0, 12));
+    expect(out).toContain('121 min');
+  });
+
+  it('measures age from the oldest undeployed deployable commit', () => {
+    // docs is older but doesn't deploy; infra is 2 h 1 min old.
+    expect(lagAt(T0 + 4 * HOUR + 60, deployed, web)).toMatch(/^alert=true\n/);
+    expect(lagAt(T0 + 4 * HOUR - 60, deployed, web)).toMatch(/^alert=false\n/);
+  });
+
+  it('does not alert for docs-only changes, however old', () => {
+    expect(lagAt(T0 + 48 * HOUR, deployed, docs)).toMatch(/^alert=false\n/);
+    // *.md under infra/ doesn't redeploy either.
+    expect(lagAt(T0 + 48 * HOUR, infra, runbook)).toMatch(/^alert=false\n/);
+  });
+
+  it('does not alert for a fresh lag', () => {
+    const out = lagAt(T0 + 4 * HOUR + 30 * 60, runbook, web);
+    expect(out).toMatch(/^alert=false\n/);
+    expect(out).toContain('30 min');
+  });
+
+  it('does not alert when prod is at main', () => {
+    expect(lagAt(T0 + 48 * HOUR, web, web)).toMatch(/^alert=false\n/);
+  });
+
+  it('does not alert when a deploy finished after main was fetched', () => {
+    expect(lagAt(T0 + 48 * HOUR, web, infra)).toMatch(/^alert=false\n/);
+  });
+
+  it('alerts at once when deployed-sha is not an ancestor of main', () => {
+    const out = lagAt(T0 + 1 * HOUR, side, web);
+    expect(out).toMatch(/^alert=true\n/);
+    expect(out).toContain('not an ancestor of main');
+  });
+
+  it('alerts when deployed-sha is unknown or missing', () => {
+    expect(lagAt(T0, 'b'.repeat(40), web)).toMatch(
+      /^alert=true\nreason=.*not in the repository/,
+    );
+    expect(lagAt(T0, '', web)).toMatch(/^alert=true\nreason=.*missing/);
+  });
+
+  it('honours LAG_THRESHOLD_SECONDS', () => {
+    const r = runScript(
+      'deploy-lag.sh',
+      [runbook, web],
+      {
+        NOW_EPOCH: String(T0 + 4 * HOUR + 30 * 60),
+        LAG_THRESHOLD_SECONDS: String(15 * 60),
+      },
+      repo,
+    );
+    expect(r.stdout).toMatch(/^alert=true\n/);
   });
 });

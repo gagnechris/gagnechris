@@ -4,11 +4,22 @@ name: Main CI alert
 # (strict_required_status_checks_policy: false). So two PRs that pass alone
 # can break main together. The deploy only runs after CI succeeds on main,
 # so prod is safe, but a red main must not go unnoticed: email the alerts
-# topic when CI or Mobile fails on a push to main.
+# topic when CI or Mobile fails on a push to main, or when the CI-triggered
+# CDK deploy fails. scripts/ci/main-alert-decision.sh decides.
 on:
   workflow_run:
-    workflows: [CI, Mobile]
+    workflows: [CI, Mobile, CDK]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: 'Send a [test] alert as if this workflow failed on main'
+        type: choice
+        options:
+          - CDK
+          - CI
+          - Mobile
+        default: CDK
 
 permissions:
   contents: read
@@ -17,12 +28,46 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
+  # No credentials and no environment, so a run that doesn't alert never
+  # mints a token or records a prod deployment.
+  decide:
+    name: Decide
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      alert: ${{ steps.decide.outputs.alert }}
+      kind: ${{ steps.decide.outputs.kind }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Decide
+        id: decide
+        shell: bash
+        env:
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          SIMULATE: ${{ inputs.simulate }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ]; then
+            WORKFLOW="${SIMULATE}"
+            BRANCH=main
+            CONCLUSION=failure
+            if [ "${SIMULATE}" = 'CDK' ]; then EVENT=workflow_run; else EVENT=push; fi
+          fi
+          bash scripts/ci/main-alert-decision.sh "${WORKFLOW}" "${EVENT}" "${BRANCH}" "${CONCLUSION}" | tee -a "$GITHUB_OUTPUT"
+
   alert:
     name: Alert on red main
-    if: >
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.event == 'push' &&
-      contains(fromJSON('["failure","timed_out","startup_failure"]'), github.event.workflow_run.conclusion)
+    needs: decide
+    if: needs.decide.outputs.alert == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -44,16 +89,25 @@ jobs:
 
       - name: Notify SNS
         env:
-          WORKFLOW: ${{ github.event.workflow_run.name }}
-          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          KIND: ${{ needs.decide.outputs.kind }}
+          TEST: ${{ github.event_name == 'workflow_dispatch' && '[test] ' || '' }}
+          WORKFLOW: ${{ github.event.workflow_run.name || inputs.simulate }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion || 'failure' }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
         run: |
+          if [ "${KIND}" = 'deploy-failed' ]; then
+            SUBJECT="${TEST}gagnechris prod deploy failed: ${WORKFLOW} ${CONCLUSION}"
+            MESSAGE="${TEST}The ${WORKFLOW} deploy from main (${HEAD_SHA}) ended ${CONCLUSION}. Prod stays at deployed-sha until a deploy succeeds; fix forward with a PR or re-run the deploy. Run: ${RUN_URL}"
+          else
+            SUBJECT="${TEST}gagnechris main is red: ${WORKFLOW} ${CONCLUSION}"
+            MESSAGE="${TEST}${WORKFLOW} ${CONCLUSION} on main at ${HEAD_SHA}. Nothing deploys until main is green again; fix forward with a PR. Run: ${RUN_URL}"
+          fi
           TOPIC_ARN=$(aws ssm get-parameter \
             --name "$(bash scripts/ssm-param-name.sh prod alertsTopicArn)" \
             --query 'Parameter.Value' \
             --output text)
           aws sns publish \
             --topic-arn "$TOPIC_ARN" \
-            --subject "gagnechris main is red: ${WORKFLOW} ${CONCLUSION}" \
-            --message "${WORKFLOW} ${CONCLUSION} on main at ${HEAD_SHA}. Nothing deploys until main is green again; fix forward with a PR. Run: ${RUN_URL}"
+            --subject "$SUBJECT" \
+            --message "$MESSAGE"
