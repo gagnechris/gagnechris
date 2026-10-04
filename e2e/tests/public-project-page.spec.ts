@@ -393,10 +393,11 @@ test.describe('the Posts demo on the built site', () => {
     const manifest = (await (
       await request.get(`${site()}/.vite/manifest.json`)
     ).json()) as Manifest;
+    // CodeMirror is its own chunk behind the demo, not part of it.
+    expect(manifest[CODEMIRROR], 'CodeMirror chunk').toBeDefined();
+    expect(manifest[DEMO]!.dynamicImports).toContain(CODEMIRROR);
     const demoFile = `/${manifest[DEMO]!.file}`;
     const editorFile = `/${manifest[CODEMIRROR]!.file}`;
-    // CodeMirror is its own chunk behind the demo, not part of it.
-    expect(manifest[DEMO]!.dynamicImports).toContain(CODEMIRROR);
     expect(staticFiles(manifest, DEMO).has(editorFile)).toBe(false);
     expect(staticFiles(manifest, 'index.html').has(editorFile)).toBe(false);
 
