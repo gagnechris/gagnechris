@@ -7,6 +7,7 @@ import {
 } from '@gagnechris/shared';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
+import { PostBodyPreview } from './PostBodyPreview';
 
 export type PostDraftFields = {
   title: string;
@@ -174,6 +175,7 @@ export function PostEditorBody({
       mobilePane={mobilePane}
       setMobilePane={setMobilePane}
       onUploadImages={onUploadImages}
+      preview={<PostBodyPreview markdown={draft.bodyMarkdown} />}
     />
   );
 }

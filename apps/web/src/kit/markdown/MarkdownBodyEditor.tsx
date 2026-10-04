@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import MarkdownPreview from './MarkdownPreview';
 import './markdown.css';
 
@@ -10,6 +10,8 @@ type Props = {
   mobilePane: 'edit' | 'preview';
   setMobilePane: (pane: 'edit' | 'preview') => void;
   onUploadImages: (files: File[]) => Promise<string[]>;
+  /** Replaces the default `MarkdownPreview` pane. */
+  preview?: ReactNode;
 };
 
 export function MarkdownBodyEditor({
@@ -18,6 +20,7 @@ export function MarkdownBodyEditor({
   mobilePane,
   setMobilePane,
   onUploadImages,
+  preview,
 }: Props) {
   return (
     <>
@@ -50,7 +53,7 @@ export function MarkdownBodyEditor({
               onUploadImages={onUploadImages}
             />
           </Suspense>
-          <MarkdownPreview markdown={value} />
+          {preview ?? <MarkdownPreview markdown={value} />}
         </div>
       </div>
       <p className="admin-hint">

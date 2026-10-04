@@ -1,0 +1,39 @@
+/*
+ * The post reading styles (PostPage.css) at admin size. Not .markdown-preview:
+ * its prose rules would compete with .post-content's, so the pane layout from
+ * markdown.css is repeated here.
+ */
+.admin-post-preview {
+  min-height: 18rem;
+  overflow: auto;
+  padding: var(--space-6);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.admin-post-preview .post-page {
+  --post-body-size: 1.125rem;
+
+  max-width: none;
+  padding-inline: 0;
+}
+
+.markdown-split > .admin-post-preview {
+  min-height: 0;
+  height: min(70vh, 40rem);
+  height: min(70dvh, 40rem);
+  height: min(var(--vv-height, 70dvh), 40rem);
+}
+
+@media (max-width: 1023px) {
+  .markdown-split > .admin-post-preview {
+    height: auto;
+    min-height: min(50vh, 24rem);
+    min-height: min(50dvh, 24rem);
+  }
+
+  .markdown-split[data-pane='edit'] > .admin-post-preview {
+    display: none;
+  }
+}

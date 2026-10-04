@@ -169,7 +169,7 @@ const renderPublicMarkdown = (
   return focusableScrollBoxes(sanitizeRenderedHtml(html));
 };
 
-/** Post bodies on the public site; admin previews use `renderMarkdownToHtml`. */
+/** Post bodies on the public site and in the admin post preview. */
 export const renderPostMarkdownToHtml = (source: string): string =>
   renderPublicMarkdown(source, captionImages);
 
