@@ -18,7 +18,12 @@ import {
   POSTS_RSS_LINK,
   postsYearId,
 } from './posts-index.js';
-import { POST_PART_OF_LABEL, type PostProjectLink } from './projects.js';
+import {
+  POST_PART_OF_LABEL,
+  postPartOfSeparator,
+  postPartOfSuffix,
+  type PostProjectLink,
+} from './projects.js';
 import type { Post } from './schemas.js';
 
 export { POSTS_INDEX_EMPTY_TEXT };
@@ -46,13 +51,15 @@ const partOfHtml = (links: readonly PostProjectLink[]): string =>
   links.length
     ? `<p class="post-part-of">${POST_PART_OF_LABEL} ` +
       links
-        .map(({ name, href }) =>
-          href
-            ? `<a class="post-part-of__project" href="${escapeHtml(href)}">${escapeHtml(name)}</a>`
-            : `<span class="post-part-of__project">${escapeHtml(name)}</span>`,
+        .map(
+          ({ name, href }, i) =>
+            postPartOfSeparator(i, links.length) +
+            (href
+              ? `<a class="post-part-of__project" href="${escapeHtml(href)}">${escapeHtml(name)}</a>`
+              : `<span class="post-part-of__project">${escapeHtml(name)}</span>`),
         )
-        .join(', ') +
-      `</p>`
+        .join('') +
+      `${postPartOfSuffix(links.length)}</p>`
     : '';
 
 /**

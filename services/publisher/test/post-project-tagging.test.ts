@@ -184,7 +184,7 @@ describe('post to project tagging', () => {
       '<a class="project-build-log__link" href="/posts/hello"><h3 class="project-build-log__title">Hello</h3>',
     );
     expect(page('blog/hello/index.html')).toContain(
-      '<p class="post-part-of">Part of <a class="post-part-of__project" href="/projects/notebook">Notebook</a></p>',
+      '<p class="post-part-of">Part of the <a class="post-part-of__project" href="/projects/notebook">Notebook</a> project</p>',
     );
     expect(buildLog('posts')).not.toContain('/posts/hello');
     expect(site.writes.sort()).toEqual([
@@ -280,7 +280,7 @@ describe('post to project tagging', () => {
     expect(site.writes).not.toContain('projects/posts/index.html');
     expect(site.objects.has('projects/bears/index.html')).toBe(false);
     expect(page('blog/hello/index.html')).toContain(
-      '<a class="post-part-of__project" href="/projects/notebook">Notebook</a>, <a class="post-part-of__project" href="/dont-feed-the-bears">Bears</a>',
+      '<a class="post-part-of__project" href="/projects/notebook">Notebook</a> and <a class="post-part-of__project" href="/dont-feed-the-bears">Bears</a> projects',
     );
   });
 
