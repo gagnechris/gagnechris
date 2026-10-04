@@ -191,7 +191,7 @@ export class DataStack extends Stack {
       {
         id: 'AwsSolutions-BACKUP1',
         reason:
-          'Vault uses AWS-owned key; customer-managed KMS is a follow-up if Notebook data classification requires it.',
+          'Vault uses the AWS-managed aws/backup KMS key (advanced DynamoDB backup is on, so recovery points are encrypted with it); a customer-managed key is a follow-up if Notebook data classification requires it.',
       },
     ]);
 

@@ -13,6 +13,7 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { PitrRehearsalRole } from '../constructs/pitr-rehearsal-role.js';
 
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
@@ -66,6 +67,7 @@ export class CiDeployRoleStack extends Stack {
   readonly deployRole: Role;
   readonly diffRole: Role;
   readonly driftRole: Role;
+  readonly pitrRehearsalRole: Role;
 
   constructor(scope: Construct, id: string, props: CiDeployRoleStackProps) {
     super(scope, id, props);
@@ -217,6 +219,17 @@ export class CiDeployRoleStack extends Stack {
       value: this.driftRole.roleArn,
       description:
         'Set GitHub Actions variable AWS_DRIFT_ROLE_ARN to this value.',
+    });
+
+    this.pitrRehearsalRole = new PitrRehearsalRole(this, 'PitrRehearsal', {
+      config: props.config,
+      provider,
+      repoPath,
+    }).role;
+    new CfnOutput(this, 'PitrRehearsalRoleArn', {
+      value: this.pitrRehearsalRole.roleArn,
+      description:
+        'Set GitHub Actions variable AWS_PITR_REHEARSAL_ROLE_ARN to this value.',
     });
 
     new CfnOutput(this, 'GitHubOidcProviderArn', {

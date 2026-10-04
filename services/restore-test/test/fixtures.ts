@@ -6,7 +6,7 @@ import {
   buildTaskMetaItem,
 } from '@gagnechris/data';
 import { DEFAULT_HOME, DEFAULT_RESUME } from '@gagnechris/shared';
-import type { ScanFn, ScanPage } from '../src/validate.js';
+import type { CountFn, ScanFn, ScanPage } from '../src/validate.js';
 
 export const USER = 'user-sub-1';
 export const TS = '2026-10-01T12:00:00.000Z';
@@ -76,4 +76,52 @@ export function pagedScan(
     get: () => state.calls,
   }) as ScanFn & { readonly calls: number };
   return fn;
+}
+
+export type CountCall = Parameters<CountFn>[0];
+
+/** Evaluates the floor's COUNT filter in memory, one item per page. */
+export function fakeCount(
+  items: Record<string, unknown>[],
+): CountFn & { readonly calls: CountCall[] } {
+  const calls: CountCall[] = [];
+  const count: CountFn = async (input) => {
+    calls.push(input);
+    const type = input.ExpressionAttributeValues[':t'];
+    const cut = String(input.ExpressionAttributeValues[':cut']);
+    const start = input.ExclusiveStartKey
+      ? Number(input.ExclusiveStartKey.offset)
+      : 0;
+    const item = items[start];
+    const at = (v: unknown) => typeof v === 'string' && v <= cut;
+    const hit =
+      item !== undefined &&
+      item.entityType === type &&
+      (at(item.createdAt) || at(item.updatedAt));
+    return {
+      Count: hit ? 1 : 0,
+      ...(start + 1 < items.length
+        ? { LastEvaluatedKey: { offset: start + 1 } }
+        : {}),
+    };
+  };
+  return Object.assign(count, { calls });
+}
+
+export function noteAt(id: string, ts: string): Record<string, unknown> {
+  return buildNoteMetaItem({
+    id,
+    userId: USER,
+    area: 'work',
+    type: 'page',
+    date: null,
+    title: 'Page',
+    bodyMarkdown: 'private text',
+    tags: [],
+    pinned: false,
+    version: 1,
+    createdAt: ts,
+    updatedAt: ts,
+    deleted: false,
+  });
 }

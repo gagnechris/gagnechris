@@ -136,6 +136,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy CiDeployRole-prod Guardrails-
 gh variable set AWS_DEPLOY_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-deploy'
 gh variable set AWS_DIFF_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-diff'
 gh variable set AWS_DRIFT_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-drift'
+gh variable set AWS_PITR_REHEARSAL_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/gagnechris-prod-gha-pitr-rehearsal'
 gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 ```
 
@@ -272,8 +273,9 @@ In addition to DynamoDB PITR (35 days, same-region):
 
 - **AWS Backup** vault `gagnechris-prod-app-table` with a daily plan (`07:00 UTC`) and a rolling **7-day** retention (`DeleteAfterDays=7`); older recovery points expire automatically.
 - **Vault lock is governance mode** (`MinRetentionDays=7`, `MaxRetentionDays=35`, no `ChangeableForDays`). It stops recovery points being deleted or shortened below 7 days, but an admin can change or remove it (`aws backup delete-backup-vault-lock-configuration`). Never add `changeableFor` in CDK: that is compliance mode, which becomes permanent when its window ends.
-- **Alerts:** EventBridge rule `gagnechris-prod-backup-job-failures` sends Backup, restore and copy jobs that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL` to the Guardrails topic. The pattern has one `$or` branch per event type because their fields differ: restore events report `status` (not `state`) and have only `backupVaultArn`, and copy events only have `sourceBackupVaultArn` / `destinationBackupVaultArn`.
-- **Off-site copy: not enabled.** PITR and AWS Backup are both same-account, same-region. A cross-region copy needs DynamoDB "advanced backup features" (`aws backup update-region-settings`) plus a copy rule; for a table this small storage is pennies a month, but it adds a second vault to manage. If the account itself is the risk, a separate backup account matters more than a second region.
+- **Advanced DynamoDB backup is on** (account and Region setting `ResourceTypeManagementPreference.DynamoDB: true`, not in CDK). With it, AWS Backup owns the DynamoDB recovery points: they are encrypted with the vault key (the AWS-managed `aws/backup` key), and the vault lock and the 7-day lifecycle apply to them. If it is turned off, new backups are DynamoDB-managed again: encrypted with the table's key and deletable with `dynamodb:DeleteBackup`, outside the vault lock. CDK has no resource for it, so the daily restore-test check reads it and alarms (`gagnechris-prod-backup-advanced-dynamodb-off`). To turn it back on (admin, ask first): `aws backup update-region-settings --resource-type-opt-in-preference DynamoDB=true --resource-type-management-preference DynamoDB=true`.
+- **Alerts:** EventBridge rule `gagnechris-prod-backup-job-failures` sends Backup, restore and copy jobs that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL` to the Guardrails topic. The pattern has one `$or` branch per event type because their fields differ: restore events report `status` (not `state`) and have only `backupVaultArn`, and copy events only have `sourceBackupVaultArn` / `destinationBackupVaultArn`. A backup that never starts sends no event; `gagnechris-prod-backup-recovery-point-stale` covers that (see [Weekly restore testing](#weekly-restore-testing)).
+- **Off-site copy: not enabled.** PITR and AWS Backup are both same-account, same-region. A cross-region copy needs a copy rule and a second vault (advanced DynamoDB backup, which copies require, is already on); for a table this small storage is pennies a month, but it adds a second vault to manage. If the account itself is the risk, a separate backup account matters more than a second region.
 - Site bucket: versioning on + lifecycle expires noncurrent versions after 90 days.
 
 Verify (read-only):
@@ -284,7 +286,10 @@ AWS_PROFILE=gagnechris-readonly aws backup describe-backup-vault \
 # Governance: no LockDate. A LockDate means compliance mode with that deadline.
 AWS_PROFILE=gagnechris-readonly aws backup list-recovery-points-by-backup-vault \
   --backup-vault-name gagnechris-prod-app-table --region us-east-1 \
-  --query 'RecoveryPoints[].[CreationDate,Status,Lifecycle.DeleteAfterDays]'
+  --query 'RecoveryPoints[].[CreationDate,Status,Lifecycle.DeleteAfterDays,EncryptionKeyArn]'
+# Advanced DynamoDB backup: must print true
+AWS_PROFILE=gagnechris-readonly aws backup describe-region-settings --region us-east-1 \
+  --query ResourceTypeManagementPreference.DynamoDB
 ```
 
 Restore proof is the weekly restore testing plan below; manual restores use the PITR rehearsal workflow or the "Restore my notes" steps.
@@ -294,11 +299,18 @@ Restore proof is the weekly restore testing plan below; manual restores use the 
 AWS Backup restore testing proves the vault restores, with content checks, and cleans up after itself. All of it is in `Data-prod` (`infra/lib/constructs/restore-testing.ts`):
 
 - **Plan** `gagnechris_prod_app_table_weekly`: Sundays `09:00 UTC` (starts within 1 h), latest `SNAPSHOT` recovery point from `gagnechris-prod-app-table` created in the last 2 days (the daily backup runs at `07:00 UTC`).
-- **Selection** `app_table`: only `gagnechris-prod`, restored with role `gagnechris-prod-restore-testing` (AWS-managed `AWSBackupServiceRolePolicyForRestores`, which restore testing requires). AWS Backup names the table `awsbackup-restore-test-<random>`, with deletion protection off and the default (AWS-owned) encryption key. That is restore testing's inferred metadata for DynamoDB. It is a scratch copy that lives for a few hours, so it is not overridden.
+- **Selection** `app_table`: only `gagnechris-prod`, restored with role `gagnechris-prod-restore-testing` (AWS-managed `AWSBackupServiceRolePolicyForRestores`, which restore testing requires). Its trust allows `backup.amazonaws.com` with `StringEqualsIfExists` on `aws:SourceAccount`: AWS Backup does not document sending that key when it assumes a restore role, and a strict `StringEquals` would fail every restore test if it does not. AWS Backup names the table `awsbackup-restore-test-<random>`, with deletion protection off and the default (AWS-owned) encryption key. That is restore testing's inferred metadata for DynamoDB. It is a scratch copy that lives for a few hours, so it is not overridden.
 - **Validation window: 4 h.** AWS Backup deletes the restored table once a validation result is reported or the window closes, whatever the result. DynamoDB has no tag-on-restore, so AWS deletes it by its `awsbackup-restore-test-` name. Never rename it.
-- **Validator** Lambda `gagnechris-prod-restore-test` (`services/restore-test`), triggered by rule `gagnechris-prod-restore-test-validate` (`Restore Job State Change`, `COMPLETED`, this plan's ARN). It scans the restored table and checks that the table is not empty, every item has string `pk`/`sk`, every item with a known `entityType` (post, home, resume, contact, note, task, daily claim) parses with its `@gagnechris/data` schema and sits under the key the key builders produce, and `HOME#current`/`RESUME#current` META exist. It then calls `PutRestoreValidationResult` with `SUCCESSFUL` or `FAILED`. Messages and logs carry keys and schema paths only, never content. A scan error is reported as `FAILED` rather than retried. IAM: `dynamodb:Scan`/`DescribeTable` on `table/awsbackup-restore-test-*` only, `DescribeTable` on `table/gagnechris-*-restore-*`, `ListTables`, and `backup:PutRestoreValidationResult`. It has no access to `gagnechris-prod`.
-- **Leftover check:** the same Lambda runs daily at `12:00 UTC` (rule `gagnechris-prod-restore-leftover-check`). It lists tables named `awsbackup-restore-test-*`, `gagnechris-<env>-restore-*` or `gagnechris-<env>-backup-restore-*` that are older than 24 h, and emits `LeftoverRestoreTables`. Each one is a full copy of prod, private notes included, with no deletion protection, PITR, Backup or alarms.
-- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check failed), `gagnechris-prod-restore-leftover-tables` (scratch table older than 24 h; re-alerts daily until it is deleted), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which also matches restore jobs of the restore testing plan that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL`.
+- **Validator** Lambda `gagnechris-prod-restore-test` (`services/restore-test`), triggered by rule `gagnechris-prod-restore-test-validate` (`Restore Job State Change`, `COMPLETED`, this plan's ARN). It scans the restored table and checks that the table is not empty, every item has string `pk`/`sk`, every item with a known `entityType` (post, home, resume, contact, note, task, daily claim) parses with its `@gagnechris/data` schema and sits under the key the key builders produce, and `HOME#current`/`RESUME#current` META exist. It then applies the **count floor**, and calls `PutRestoreValidationResult` with `SUCCESSFUL` or `FAILED`. Messages and logs carry keys, schema paths and counts only, never content. A scan error is reported as `FAILED` rather than retried.
+- **Count floor:** for each type with a timestamp (post, home, resume, contact, note, task), the restore must hold at least `ceil(0.9 × N)` rows, where N is the number of `gagnechris-prod` rows of that type whose `createdAt` or `updatedAt` is at least 5 minutes before the recovery point's creation date (`DescribeRestoreJob` → `RecoveryPointCreationDate`). Those rows provably existed when the backup was taken, so rows created or edited since, and tombstones purged since, never count against the restore, and a near-empty table cannot fail it (N = 0 needs 0). At small counts the floor is exact (1 → 1, 3 → 3; 10 → 9). It can only false-fail if rows with old timestamps were written after the backup (a copy-back `create` keeps the source `createdAt`, or a bulk import); re-run after the next backup. N comes from `Scan` with `Select: COUNT`, one per type: no item is returned. A restore job without a recovery point date fails the test. Daily claims have no timestamps and are not floored.
+- **Validator IAM:** `dynamodb:Scan`/`DescribeTable` on `table/awsbackup-restore-test-*`, `DescribeTable` on `table/gagnechris-*-restore-*`, `ListTables`; on `gagnechris-prod` only `dynamodb:Scan` with `dynamodb:Select = COUNT` and `dynamodb:Attributes` limited to `pk`, `sk`, `entityType`, `createdAt`, `updatedAt` (so even a filter cannot touch note text); `backup:PutRestoreValidationResult`, `DescribeRestoreJob`, `ListRestoreJobs`, `DescribeRegionSettings`, `ListRecoveryPointsByBackupVault` (this vault) and `GetRestoreTestingPlan` (this plan).
+- **Daily check:** the same Lambda runs daily at `12:00 UTC` (rule `gagnechris-prod-restore-leftover-check`). AWS Backup sends no event when nothing happens (no backup job, no eligible recovery point for the restore test, or a validate rule that never matches, after which the scratch table is deleted with no validation status), so the check asks AWS Backup what last succeeded. It emits:
+  - `LeftoverRestoreTables`: tables named `awsbackup-restore-test-*`, `gagnechris-<env>-restore-*` or `gagnechris-<env>-backup-restore-*` older than 24 h. Each one is a full copy of prod, private notes included, with no deletion protection, PITR, Backup or alarms.
+  - `StaleRecoveryPoint` (0/1): the newest `COMPLETED` recovery point of `gagnechris-prod` in the vault is 26 h old or there is none.
+  - `RestoreValidationMissing` (0/1): no restore job of the plan has `ValidationStatus` `SUCCESSFUL` in the last 8 days. A plan less than 8 days old is exempt until its first run; a deleted plan counts as missing.
+  - `AdvancedDynamoDbBackupDisabled` (0/1): the Region setting above is off.
+  - `BackupCheckCompleted` (1), last, so a check that throws part-way emits no heartbeat.
+- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check or count floor failed), `gagnechris-prod-restore-validation-missing`, `gagnechris-prod-backup-recovery-point-stale`, `gagnechris-prod-backup-advanced-dynamodb-off`, `gagnechris-prod-restore-leftover-tables` (these four re-alert daily until fixed), `gagnechris-prod-backup-check-not-running` (no `BackupCheckCompleted` for two 1-day periods; missing data breaches, with a 2-day warm-up after it is created), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which also matches restore jobs of the restore testing plan that end `FAILED`, `ABORTED`, `EXPIRED` or `PARTIAL`. The missing-success alarm is computed by the Lambda rather than as a missing-`RestoreValidationSucceeded` CloudWatch alarm because CloudWatch alarms cannot look back more than 7 days.
 
 Verify (read-only):
 
@@ -315,9 +327,11 @@ aws dynamodb list-tables \
   --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"
 ```
 
-Run the leftover check on demand (needs `lambda:InvokeFunction`): `aws lambda invoke --function-name gagnechris-prod-restore-test --cli-binary-format raw-in-base64-out --payload '{"action":"leftoverCheck"}' /tmp/leftover.json && cat /tmp/leftover.json`.
+Run the daily check on demand (needs `lambda:InvokeFunction`): `aws lambda invoke --function-name gagnechris-prod-restore-test --cli-binary-format raw-in-base64-out --payload '{"action":"leftoverCheck"}' /tmp/leftover.json && cat /tmp/leftover.json`. The output has `leftovers` and `freshness` (`recoveryPointAgeHours`, `validationAgeDays` and the three flags).
 
-On `restore-validation-failed`: read the job's `ValidationStatusMessage` (command above) and the `/aws/lambda/gagnechris-prod-restore-test` logs. The scratch table is already being deleted. Fix the data or the validator, and record the outcome in the Linear ticket. On `restore-leftover-tables`: check the table's tags (`purpose`, `created-by`), then `aws dynamodb delete-table --table-name <name>` (admin).
+On `restore-validation-failed`: read the job's `ValidationStatusMessage` (command above) and the `/aws/lambda/gagnechris-prod-restore-test` logs. The scratch table is already being deleted. A `<type> count X below floor Y` problem means the restore lost rows that existed at the backup; anything else is a schema or key problem. Fix the data or the validator, and record the outcome in the Linear ticket. On `restore-leftover-tables`: check the table's tags (`purpose`, `created-by`), then `aws dynamodb delete-table --table-name <name>` (admin).
+
+On `restore-validation-missing`: `list-restore-jobs` (above) shows whether the plan ran. No job: check the plan exists and that the vault has a recovery point from the last 2 days. A job with an empty `ValidationStatus`: the validate rule or the Lambda did not run (check its logs and the rule). On `backup-recovery-point-stale`: `aws backup list-backup-jobs --by-resource-arn <table arn>` for failed or missing jobs, and that the plan and selection exist. On `backup-check-not-running`: the daily check is failing or not scheduled; read the Lambda logs and errors alarm.
 
 ### Manual PITR rehearsal (scratch table)
 
@@ -329,7 +343,7 @@ Actions → **PITR restore rehearsal** (`pitr-rehearsal.yml`; manual only, one r
 - A `trap` deletes the scratch table on **every** exit (success, mismatch, ACTIVE timeout, cancel), waiting for `ACTIVE` first because a restoring table cannot be deleted. With `keep_target=1` the table is kept and tagged `keep=true`, and the leftover alarm fires after 24 h. Delete it by hand.
 - `force_failure=1` fails after verification, to prove the cleanup.
 
-It runs with the deploy role.
+It runs with role `gagnechris-prod-gha-pitr-rehearsal` (`CiDeployRole-prod`, repo variable `AWS_PITR_REHEARSAL_ROLE_ARN`; the workflow fails if the variable is unset), never the deploy role. The role trusts only the `prod` environment. On `gagnechris-prod` it may only `DescribeContinuousBackups`, `RestoreTableToPointInTime`, and `Scan` with `Select: SPECIFIC_ATTRIBUTES` over `pk`, `sk`, `version`, `updatedAt` (the script's projection). On `gagnechris-prod-restore-*` it has the item read/write a PITR restore needs plus `DescribeTable`, `TagResource` and `DeleteTable`. It has no other permissions.
 
 ### Restore my notes (item-level copy-back)
 
@@ -378,7 +392,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
 
    | Action                | Meaning                                                                                                                |
    | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-   | `create`              | Live row is gone (purged tombstone): written with `source.version + 1`                                                 |
+   | `create`              | Live row is gone (purged tombstone): written with `source.version + 1` (see the note below the table)                  |
    | `undelete`            | Live row is a tombstone: written live again with `tombstone.version + 1`                                               |
    | `overwrite`           | Live row differs: written with `live.version + 1`                                                                      |
    | `skip-target-newer`   | Live row changed after the restore point. Pass `--overwrite-newer` to replace it, which is the "overwritten note" case |
@@ -386,6 +400,8 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
    | `skip-daily-taken`    | Another live daily note now holds that day; merge by hand                                                              |
    | `skip-source-deleted` | Already deleted at the restore point; pick an earlier `AT`                                                             |
    | warning on a task     | Its linked note will not be live; restore the note too (`--ids`)                                                       |
+
+   A `create` cannot know the purged tombstone's version, so `source.version + 1` can be lower than a tombstone a client still caches, and that client keeps the row deleted (`packages/app-core` keeps the higher version). Tombstones are purged 30 days after delete and client caches are in memory only, so this only affects an app session that has been open since before the purge. Reloading the web app or restarting the iOS app clears it.
 
 4. **Apply:** re-run with `--apply` (admin profile). Each row is one transaction: the META row, rebuilt with the shared builders (list GSIs, sync `syncSk` at the copy-back time, `createHash` kept and hashed if it is a plaintext value, no `ttl`), plus the owner create claim and, for daily notes, the day claim when it is free. Every write is conditional on the live version read during the plan, so an edit made in between shows as `conflict` (exit 2) and is never overwritten; re-run the dry run. The script refuses any target other than `gagnechris-prod` / `gagnechris-local`, a source equal to the target, and a live table as the source.
 

@@ -1,6 +1,12 @@
 import {
   BackupClient,
+  DescribeRegionSettingsCommand,
+  DescribeRestoreJobCommand,
+  GetRestoreTestingPlanCommand,
   PutRestoreValidationResultCommand,
+  ResourceNotFoundException as BackupResourceNotFoundException,
+  paginateListRecoveryPointsByBackupVault,
+  paginateListRestoreJobs,
 } from '@aws-sdk/client-backup';
 import {
   DescribeTableCommand,
@@ -10,6 +16,12 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
+import { RESTORE_TEST_METRICS } from '@gagnechris/shared';
+import {
+  checkBackupFreshness,
+  type BackupFreshness,
+  type BackupFreshnessDeps,
+} from './freshness.js';
 import {
   DEFAULT_LEFTOVER_MAX_AGE_HOURS,
   findLeftoverRestoreTables,
@@ -22,6 +34,7 @@ import {
   finalize,
   tableNameFromArn,
   validateRestoredTable,
+  type CountFn,
   type ScanFn,
   type ValidationResult,
 } from './validate.js';
@@ -52,9 +65,13 @@ export type PutValidationFn = (input: {
 
 export type RestoreTestDeps = {
   scan: ScanFn;
+  count: CountFn;
+  sourceTableName: string;
+  restorePointOf: (restoreJobId: string) => Promise<Date | undefined>;
   putValidation: PutValidationFn;
   listTables: ListTablesFn;
   describeCreation: DescribeCreationFn;
+  freshness: BackupFreshnessDeps;
   now: () => Date;
 };
 
@@ -68,13 +85,95 @@ export type ValidateOutcome = {
 export type LeftoverOutcome = {
   kind: 'leftoverCheck';
   leftovers: LeftoverTable[];
+  freshness: BackupFreshness;
 };
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+}
+
+const latest = (dates: (Date | undefined)[]): Date | undefined =>
+  dates.reduce<Date | undefined>(
+    (max, d) => (d && (!max || d > max) ? d : max),
+    undefined,
+  );
 
 function defaultDeps(): RestoreTestDeps {
   const ddb = new DynamoDBClient({});
   const doc = DynamoDBDocumentClient.from(ddb);
   const backup = new BackupClient({});
+  const sourceTableArn = requireEnv('SOURCE_TABLE_ARN');
+  const backupVaultName = requireEnv('BACKUP_VAULT_NAME');
+  const planName = requireEnv('RESTORE_TESTING_PLAN_NAME');
+  const planArn = requireEnv('RESTORE_TESTING_PLAN_ARN');
   return {
+    sourceTableName: requireEnv('SOURCE_TABLE_NAME'),
+    count: async (input) => {
+      const out = await doc.send(new ScanCommand(input));
+      return {
+        Count: out.Count,
+        LastEvaluatedKey: out.LastEvaluatedKey as
+          Record<string, unknown> | undefined,
+      };
+    },
+    restorePointOf: async (restoreJobId) => {
+      const out = await backup.send(
+        new DescribeRestoreJobCommand({ RestoreJobId: restoreJobId }),
+      );
+      return out.RecoveryPointCreationDate;
+    },
+    freshness: {
+      newestRecoveryPoint: async (createdAfter) => {
+        const dates: (Date | undefined)[] = [];
+        for await (const page of paginateListRecoveryPointsByBackupVault(
+          { client: backup },
+          {
+            BackupVaultName: backupVaultName,
+            ByResourceArn: sourceTableArn,
+            ByCreatedAfter: createdAfter,
+          },
+        )) {
+          for (const rp of page.RecoveryPoints ?? []) {
+            if (rp.Status === 'COMPLETED') dates.push(rp.CreationDate);
+          }
+        }
+        return latest(dates);
+      },
+      newestSuccessfulValidation: async (createdAfter) => {
+        const dates: (Date | undefined)[] = [];
+        for await (const page of paginateListRestoreJobs(
+          { client: backup },
+          { ByRestoreTestingPlanArn: planArn, ByCreatedAfter: createdAfter },
+        )) {
+          for (const job of page.RestoreJobs ?? []) {
+            if (job.ValidationStatus === 'SUCCESSFUL') {
+              dates.push(job.CreationDate);
+            }
+          }
+        }
+        return latest(dates);
+      },
+      restoreTestingPlanCreatedAt: async () => {
+        try {
+          const out = await backup.send(
+            new GetRestoreTestingPlanCommand({
+              RestoreTestingPlanName: planName,
+            }),
+          );
+          return out.RestoreTestingPlan?.CreationTime;
+        } catch (error) {
+          if (error instanceof BackupResourceNotFoundException)
+            return undefined;
+          throw error;
+        }
+      },
+      dynamoDbAdvancedBackupEnabled: async () => {
+        const out = await backup.send(new DescribeRegionSettingsCommand({}));
+        return out.ResourceTypeManagementPreference?.DynamoDB === true;
+      },
+    },
     scan: async (input) => {
       const out = await doc.send(new ScanCommand(input));
       return {
@@ -160,7 +259,29 @@ export async function handleRestoreJob(
     });
   } else {
     try {
-      result = await validateRestoredTable(d.scan, tableName);
+      const restorePoint = await d.restorePointOf(restoreJobId);
+      result = await validateRestoredTable(
+        d.scan,
+        tableName,
+        restorePoint
+          ? {
+              floor: {
+                count: d.count,
+                sourceTable: d.sourceTableName,
+                restorePoint,
+              },
+            }
+          : {},
+      );
+      if (!restorePoint) {
+        result = finalize({
+          ...result,
+          problems: [
+            ...result.problems,
+            'restore job has no recovery point date; count floor not checked',
+          ],
+        });
+      }
     } catch (error) {
       // A validator that cannot read the table is a failed test, not a retry.
       const name = error instanceof Error ? error.name : 'Error';
@@ -188,11 +309,12 @@ export async function handleRestoreJob(
     itemCount: result.itemCount,
     schemaChecked: result.schemaChecked,
     problems: result.problems.length,
+    floorChecked: result.floorChecked === true,
   });
   metrics.addMetric(
     result.status === 'SUCCESSFUL'
-      ? 'RestoreValidationSucceeded'
-      : 'RestoreValidationFailed',
+      ? RESTORE_TEST_METRICS.validationSucceeded
+      : RESTORE_TEST_METRICS.validationFailed,
     MetricUnit.Count,
     1,
   );
@@ -213,12 +335,43 @@ export async function handleLeftoverCheck(
     logger.info('No leftover restore scratch tables', { maxAgeHours });
   }
   metrics.addMetric(
-    'LeftoverRestoreTables',
+    RESTORE_TEST_METRICS.leftoverTables,
     MetricUnit.Count,
     leftovers.length,
   );
   metrics.publishStoredMetrics();
-  return { kind: 'leftoverCheck', leftovers };
+
+  const freshness = await checkBackupFreshness(d.freshness, d.now());
+  const log =
+    freshness.staleRecoveryPoint ||
+    freshness.validationMissing ||
+    freshness.advancedBackupDisabled
+      ? logger.warn.bind(logger)
+      : logger.info.bind(logger);
+  log('Backup freshness', { ...freshness });
+  const flag = (on: boolean) => (on ? 1 : 0);
+  metrics.addMetric(
+    RESTORE_TEST_METRICS.staleRecoveryPoint,
+    MetricUnit.Count,
+    flag(freshness.staleRecoveryPoint),
+  );
+  metrics.addMetric(
+    RESTORE_TEST_METRICS.validationMissing,
+    MetricUnit.Count,
+    flag(freshness.validationMissing),
+  );
+  metrics.addMetric(
+    RESTORE_TEST_METRICS.advancedBackupDisabled,
+    MetricUnit.Count,
+    flag(freshness.advancedBackupDisabled),
+  );
+  metrics.addMetric(
+    RESTORE_TEST_METRICS.backupCheckCompleted,
+    MetricUnit.Count,
+    1,
+  );
+  metrics.publishStoredMetrics();
+  return { kind: 'leftoverCheck', leftovers, freshness };
 }
 
 export const handler = async (

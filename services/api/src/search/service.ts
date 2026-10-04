@@ -3,8 +3,10 @@ import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
 import { rankTextFields } from './match.js';
 
+export const SEARCHED_TYPES = ['note', 'task'] as const;
+
 export type SearchHit = {
-  type: 'note' | 'task';
+  type: (typeof SEARCHED_TYPES)[number];
   id: string;
   area: NotebookArea;
   title: string;

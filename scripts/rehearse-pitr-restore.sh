@@ -119,7 +119,9 @@ RESTORE_EPOCH="$(date -u -d "${LATEST}" +%s)" || fail "cannot parse ${LATEST}"
 RESTORE_AT="$(date -u -d "@${RESTORE_EPOCH}" +%Y-%m-%dT%H:%M:%SZ)"
 log "Restore point (fixed): ${RESTORE_AT}"
 
+# The rehearsal role only allows this exact projection on the live table.
 aws dynamodb scan --table-name "${SOURCE}" --region "${REGION}" \
+  --select SPECIFIC_ATTRIBUTES \
   --projection-expression 'pk, sk, #v, updatedAt' \
   --expression-attribute-names '{"#v":"version"}' \
   --output json >"${WORK}/source.json"
