@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { QueryClientTestProvider, createTestQueryClient } from '../test-utils';
 import PostEditorPage from './PostEditorPage';
 import { queryKeys } from '@gagnechris/app-core';
+import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
+import { renderPostPageBodyHtml } from '@gagnechris/shared/render';
 
 const get = vi.fn();
 const put = vi.fn();
@@ -757,5 +759,34 @@ describe('PostEditorPage View live', () => {
     expect(
       await screen.findByRole('link', { name: 'View live' }),
     ).toHaveAttribute('href', 'https://gagnechris.com/posts/hello');
+  });
+});
+
+describe('PostEditorPage preview', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...basePost, bodyMarkdown: EVERY_MARKDOWN_ELEMENT },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  test('renders the body exactly as the published article does', async () => {
+    const { container } = renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    const published = document.createElement('div');
+    published.innerHTML = renderPostPageBodyHtml({
+      ...basePost,
+      bodyMarkdown: EVERY_MARKDOWN_ELEMENT,
+    });
+    const publishedBody = published.querySelector('.post-content');
+    const previewBody = container.querySelector(
+      '.admin-post-preview .post-page > .post-content',
+    );
+    expect(publishedBody?.querySelector('figcaption')).not.toBeNull();
+    expect(previewBody?.outerHTML).toBe(publishedBody?.outerHTML);
+    expect(screen.queryByTestId('preview')).not.toBeInTheDocument();
   });
 });
