@@ -2,11 +2,13 @@ import {
   escapeHtml,
   homeAboutExcerpt,
   renderHomePrerenderHtml,
-  renderMarkdownToHtml,
+  renderPostPageBodyHtml,
+  renderPostsIndexBodyHtml,
   renderResumePrerenderHtml,
+  renderResumeUnavailablePrerenderHtml,
+  renderSitePageHtml,
   resumeSummaryExcerpt,
 } from '@gagnechris/shared/render';
-import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
 import type { Home, Post, Resume } from '@gagnechris/shared';
 import { APEX } from './config.js';
 import { applyPageMeta } from './page-meta.js';
@@ -73,20 +75,8 @@ export const buildJsonLd = (post: Post): string => {
   return JSON.stringify(payload).replace(/</g, '\\u003c');
 };
 
-export const buildArticleHtml = (post: Post): string => {
-  const body = renderMarkdownToHtml(post.bodyMarkdown);
-  const date = post.publishedAt
-    ? `<time datetime="${escapeHtml(postDateAttribute(post.publishedAt))}">${escapeHtml(formatPostDate(post.publishedAt))}</time>`
-    : '';
-  return `
-<article class="blog-post-prerender" data-slug="${escapeHtml(post.slug)}">
-  <header>
-    <h1>${escapeHtml(post.title)}</h1>
-    ${date}
-  </header>
-  <div class="blog-post-body">${body}</div>
-</article>`.trim();
-};
+export const buildArticleHtml = (post: Post): string =>
+  renderSitePageHtml('/posts', renderPostPageBodyHtml(post));
 
 export const renderPostPage = (shellHtml: string, post: Post): string => {
   const title = escapeHtml(post.seo?.title || `${post.title} - Chris Gagne`);
@@ -119,17 +109,7 @@ export const renderPostsIndexPage = (
   const title = 'Posts - Chris Gagne';
   const description = 'Posts by Chris Gagne.';
   const url = `https://${APEX}${POSTS_PATH}`;
-  const list = posts
-    .map(
-      (p) =>
-        `<li><a href="${POSTS_PATH}/${escapeHtml(p.slug)}">${escapeHtml(p.title)}</a></li>`,
-    )
-    .join('\n');
-  const body = `
-<section class="blog-index-prerender">
-  <h1>Posts</h1>
-  <ul>${list || '<li>No published posts yet.</li>'}</ul>
-</section>`.trim();
+  const body = renderSitePageHtml('/posts', renderPostsIndexBodyHtml(posts));
 
   let html = applyPageMeta(shellHtml, {
     title,
@@ -171,8 +151,7 @@ export const renderResumeUnavailablePage = (shellHtml: string): string => {
   const title = 'Resume - Chris Gagne';
   const description = 'Resume available on request.';
   const url = `https://${APEX}/resume`;
-  const body =
-    '<article class="resume-page-unavailable"><header><div class="name-section"><h1>Resume</h1></div></header><main><p>Resume available on request.</p></main></article>';
+  const body = renderResumeUnavailablePrerenderHtml();
 
   let html = applyPageMeta(shellHtml, {
     title,

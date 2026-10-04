@@ -7,6 +7,10 @@ import {
   renderHomePrerenderHtml,
 } from './home-html.js';
 import type { Home } from './schemas.js';
+import {
+  renderSiteFooterHtml,
+  renderSiteHeaderHtml,
+} from './site-chrome-html.js';
 
 const home = (overrides: Partial<Home> = {}): Home => ({
   ...DEFAULT_HOME,
@@ -52,12 +56,12 @@ describe('renderHomeAboutSectionHtml', () => {
 });
 
 describe('renderHomePrerenderHtml', () => {
-  it('includes profile photo, Quick Links, and footer matching the React home', () => {
-    const html = renderHomePrerenderHtml(home());
+  it('wraps Home and its Quick Links in the site header and footer', () => {
+    const html = renderHomePrerenderHtml(home(), 2026);
+    expect(html.startsWith(renderSiteHeaderHtml(null))).toBe(true);
+    expect(html.endsWith(renderSiteFooterHtml(2026))).toBe(true);
     expect(html).toContain('class="home-page home-page-prerender"');
     expect(html).toContain('class="home-header"');
-    expect(html).toContain('src="/profile.jpg"');
-    expect(html).toContain('class="profile"');
     expect(html).toContain('id="quick-links"');
     expect(html).toContain('href="/resume"');
     expect(html).toContain('href="/posts"');

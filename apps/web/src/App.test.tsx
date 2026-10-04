@@ -86,36 +86,6 @@ describe('App', () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  test('tracks LinkedIn footer link clicks', () => {
-    renderWithProviders(<App />);
-
-    const linkedInLink = document.querySelector(
-      '.site-footer a[href*="linkedin"]',
-    );
-    fireEvent.click(linkedInLink!);
-
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'click',
-      'external_link',
-      'linkedin_footer',
-    );
-  });
-
-  test('tracks GitHub footer link clicks', () => {
-    renderWithProviders(<App />);
-
-    const githubLink = document.querySelector(
-      '.site-footer a[href*="github.com"]',
-    );
-    fireEvent.click(githubLink!);
-
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'click',
-      'external_link',
-      'github_footer',
-    );
-  });
-
   test('tracks Quick Links LinkedIn and GitHub clicks', () => {
     renderWithProviders(<App />);
 
@@ -185,27 +155,9 @@ describe('App', () => {
     expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  test('footer has copyright, useful links, and bears entry', () => {
-    renderWithProviders(<App />);
-
-    expect(screen.getByText(/© \d{4} Chris Gagne/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'RSS' })).toHaveAttribute(
-      'href',
-      '/rss.xml',
-    );
-    const bear = screen.getByRole('link', {
-      name: /don't feed the bears/i,
-    });
-    expect(bear).toHaveAttribute('href', '/dont-feed-the-bears?from=footer');
-    expect(bear).toHaveTextContent(/Don't Feed the Bears/);
-  });
-
-  test('scopes the profile header to .home-header', () => {
+  test('leaves the profile photo to the site header', () => {
     const { container } = renderWithProviders(<App />);
-    expect(container.querySelector('.home-page')).toBeTruthy();
     expect(container.querySelector('header.home-header')).toBeTruthy();
-    expect(
-      container.querySelector('header.home-header img.profile'),
-    ).toBeTruthy();
+    expect(container.querySelector('.home-page img')).toBeNull();
   });
 });

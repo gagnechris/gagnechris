@@ -1,0 +1,241 @@
+/* Public site only (gagnechris.com). Admin and Notebook share index.css but not this file. */
+
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-roman.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/newsreader-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* Metric-matched local fallbacks so the swap to the web font barely moves text. */
+@font-face {
+  font-family: 'Newsreader Fallback';
+  src: local('Georgia');
+  size-adjust: 96.14%;
+  ascent-override: 76.45%;
+  descent-override: 27.56%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  size-adjust: 106.8%;
+  ascent-override: 90.71%;
+  descent-override: 22.59%;
+  line-gap-override: 0%;
+}
+
+:root {
+  --site-column: 720px;
+  --site-gutter: var(--space-6);
+  --site-header-gap: calc(var(--space-12) * 2);
+
+  color: var(--color-ink);
+  background-color: white;
+}
+
+body {
+  background-color: white;
+  color: var(--color-ink);
+}
+
+a {
+  color: var(--color-link);
+}
+
+a:hover {
+  color: var(--color-link);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#root > * {
+  width: 100%;
+}
+
+.site-header,
+.site-footer,
+.home-page,
+.resume-page,
+.post-page,
+.posts-index,
+.contact-page,
+.not-found {
+  max-width: calc(var(--site-column) + 2 * var(--site-gutter));
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-top: 28px;
+  margin-bottom: var(--site-header-gap);
+}
+
+.site-header__home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.site-header__home:hover {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.site-header__photo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.site-nav__list {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--neutral-700);
+  text-decoration: none;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+.site-nav__link:hover,
+.site-nav__link[aria-current='page'] {
+  color: var(--color-ink);
+  text-decoration: underline;
+}
+
+.site-nav__link[aria-current='page'] {
+  font-weight: 600;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-6);
+  margin-top: auto;
+  padding-top: var(--site-header-gap);
+  padding-bottom: var(--space-8);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+.site-footer__copy {
+  margin: 0;
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  font-weight: 400;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.site-footer__links a:hover {
+  color: var(--color-ink);
+}
+
+@media (max-width: 480px) {
+  :root {
+    --site-header-gap: var(--space-12);
+  }
+
+  .site-header {
+    column-gap: var(--space-3);
+    padding-top: var(--space-4);
+  }
+
+  .site-header__home {
+    gap: 10px;
+    font-size: var(--text-lg);
+  }
+
+  .site-nav__list {
+    gap: 0;
+    margin-right: calc(-1 * var(--space-2));
+  }
+
+  .site-nav__link {
+    padding: 0 var(--space-2);
+  }
+}

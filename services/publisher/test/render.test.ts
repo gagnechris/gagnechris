@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  renderSiteFooterHtml,
+  renderSiteHeaderHtml,
+} from '@gagnechris/shared/render';
+import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
   type Home,
@@ -15,6 +19,7 @@ import {
   renderHomePage,
   renderPostPage,
   renderResumePage,
+  renderResumeUnavailablePage,
   resolveOgImage,
 } from '../src/render.js';
 
@@ -74,7 +79,9 @@ describe('publisher render', () => {
         ].join('\n\n'),
       }),
     );
-    const body = html.slice(html.indexOf('<div class="blog-post-body">'));
+    const body = html.slice(
+      html.indexOf('<div class="post-content blog-post-body">'),
+    );
     expect(body).toContain('<img src="x" />');
     expect(body).not.toMatch(/onerror|javascript:|<iframe|srcdoc/i);
   });
@@ -84,7 +91,7 @@ describe('publisher render', () => {
       samplePost({ publishedAt: '2026-02-01T00:00:00.000Z' }),
     );
     expect(html).toContain(
-      '<time datetime="2026-02-01">February 1, 2026</time>',
+      '<time class="post-date" datetime="2026-02-01">February 1, 2026</time>',
     );
   });
 
@@ -142,7 +149,9 @@ describe('publisher render', () => {
       '<link rel="canonical" href="https://gagnechris.com/resume" />',
     );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
-    expect(html).toContain('<article class="resume-page-prerender"');
+    expect(html).toContain(
+      '<div class="resume-page resume-page-prerender" id="top"',
+    );
     expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('/assets/index.js');
   });
@@ -197,6 +206,26 @@ describe('publisher render', () => {
     expect(second).toContain('<h1>Christopher Gagne</h1>');
     expect(second).toContain('<p>New copy.</p>');
     expect(second).not.toContain('Engineering Leader at Ro');
+  });
+
+  it('wraps every prerendered page in the shared header and footer', () => {
+    const year = new Date().getFullYear();
+    const rootOf = (html: string) =>
+      /<div id="root"><!--prerender:start-->([\s\S]*)<!--prerender:end--><\/div>/.exec(
+        html,
+      )?.[1] ?? '';
+    const pages = [
+      [renderHomePage(shell, DEFAULT_HOME), null],
+      [renderPostsIndexPage(shell, [samplePost()]), '/posts'],
+      [renderPostPage(shell, samplePost()), '/posts'],
+      [renderResumePage(shell, DEFAULT_RESUME), '/resume'],
+      [renderResumeUnavailablePage(shell), '/resume'],
+    ] as const;
+    for (const [html, current] of pages) {
+      const root = rootOf(html);
+      expect(root.startsWith(renderSiteHeaderHtml(current))).toBe(true);
+      expect(root.endsWith(renderSiteFooterHtml(year))).toBe(true);
+    }
   });
 
   it('never leaks home-only head tags into other pages from a pristine shell', () => {

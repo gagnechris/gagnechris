@@ -4,11 +4,6 @@
   padding: var(--space-6) var(--space-6) var(--space-12);
 }
 
-.bears-landing__header {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .bears-landing__intro,
 .bears-landing__note {
   max-width: 720px;

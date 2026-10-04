@@ -2,16 +2,18 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { trackResumeView, trackResumeDownload } from '../utils/analytics';
 import {
+  documentResumeView,
   fallbackResumeView,
   loadPublishedResume,
   type ResumeView,
 } from '../resume/publishedResume';
 import { createPublicApiClient } from '../api/public-client';
-import PublicNav from '../components/PublicNav';
 import './Resume.css';
 
 function Resume() {
-  const [resume, setResume] = useState<ResumeView>(fallbackResumeView);
+  const [resume, setResume] = useState<ResumeView>(
+    () => documentResumeView() ?? fallbackResumeView(),
+  );
   const [showBearNote, setShowBearNote] = useState(false);
 
   useEffect(() => {
@@ -19,6 +21,7 @@ function Resume() {
   }, []);
 
   useEffect(() => {
+    if (documentResumeView()) return;
     let cancelled = false;
     void loadPublishedResume()
       .then((published) => {
@@ -62,21 +65,20 @@ function Resume() {
         <div className="name-section">
           <h1>{resume.name}</h1>
         </div>
-        <div className="nav-section">
-          {!resume.unavailable && (
+        {!resume.unavailable && (
+          <div className="nav-section">
             <button
-              onClick={handleDownload}
               className="subtle-download"
               aria-label="Download resume as PDF"
+              onClick={handleDownload}
             >
               <span className="download-icon" aria-hidden="true">
                 ↓
               </span>
               <span className="download-text">Resume</span>
             </button>
-          )}
-          <PublicNav current="/resume" />
-        </div>
+          </div>
+        )}
       </header>
 
       {showBearNote && (
@@ -104,9 +106,9 @@ function Resume() {
       <div className="resume-page__footer-actions">
         {!resume.unavailable && (
           <button
-            onClick={handleDownload}
             className="subtle-download"
             aria-label="Download resume as PDF"
+            onClick={handleDownload}
           >
             <span className="download-icon" aria-hidden="true">
               ↓
@@ -115,8 +117,8 @@ function Resume() {
           </button>
         )}
         <a
-          href="#top"
           className="back-link"
+          href="#top"
           onClick={(e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });

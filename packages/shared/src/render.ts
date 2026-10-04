@@ -11,21 +11,42 @@ export {
 } from './html.js';
 export {
   homeAboutExcerpt,
-  HOME_FOOTER_LINKS,
-  HOME_PROFILE_IMAGE_SRC,
   HOME_QUICK_LINKS,
   renderHomeAboutHtml,
   renderHomeAboutSectionHtml,
-  renderHomeFooterHtml,
+  renderHomeBodyHtml,
   renderHomePrerenderHtml,
   renderHomeQuickLinksHtml,
   type SiteChromeLink,
 } from './home-html.js';
 export {
+  POSTS_INDEX_EMPTY_TEXT,
+  renderPostPageBodyHtml,
+  renderPostsIndexBodyHtml,
+  type PostsIndexItem,
+} from './post-html.js';
+export {
+  RESUME_UNAVAILABLE_HTML,
+  RESUME_UNAVAILABLE_NAME,
+  renderResumeBodyHtml,
   renderResumePrerenderHtml,
   renderResumeSectionsHtml,
+  renderResumeUnavailableBodyHtml,
+  renderResumeUnavailablePrerenderHtml,
   resumeSummaryExcerpt,
 } from './resume-html.js';
+export {
+  renderSiteFooterHtml,
+  renderSiteHeaderHtml,
+  renderSitePageHtml,
+  SITE_FOOTER_LINKS,
+  SITE_HEADER_PHOTO_SIZE,
+  SITE_NAV_LINKS,
+  siteFooterCopy,
+  siteNavCurrent,
+  type SiteFooterLink,
+  type SiteNavHref,
+} from './site-chrome-html.js';
 export type {
   Home,
   Resume,

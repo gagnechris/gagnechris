@@ -18,33 +18,6 @@ describe('Integration Tests', () => {
   });
 
   describe('External Link Tracking', () => {
-    test('tracks social media link clicks from home page footer', () => {
-      renderWithProviders(<App />);
-
-      const linkedInLink = document.querySelector(
-        '.site-footer a[href*="linkedin"]',
-      )!;
-      fireEvent.click(linkedInLink);
-
-      expect(mockTrackEvent).toHaveBeenCalledWith(
-        'click',
-        'external_link',
-        'linkedin_footer',
-      );
-
-      const githubLink = document.querySelector(
-        '.site-footer a[href*="github.com"]',
-      )!;
-      fireEvent.click(githubLink);
-
-      expect(mockTrackEvent).toHaveBeenCalledWith(
-        'click',
-        'external_link',
-        'github_footer',
-      );
-      expect(mockTrackEvent).toHaveBeenCalledTimes(2);
-    });
-
     test('tracks Quick Links LinkedIn and GitHub clicks', () => {
       renderWithProviders(<App />);
 
@@ -140,14 +113,6 @@ describe('Integration Tests', () => {
         screen.getAllByRole('button', { name: /download resume as pdf/i })
           .length,
       ).toBeGreaterThanOrEqual(1);
-
-      expect(
-        screen.getByRole('navigation', { name: 'Primary' }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
-        'href',
-        '/',
-      );
     });
   });
 });

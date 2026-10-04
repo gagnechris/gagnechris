@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
-  HOME_FOOTER_LINKS,
-  HOME_PROFILE_IMAGE_SRC,
   HOME_QUICK_LINKS,
   type SiteChromeLink,
 } from '@gagnechris/shared/render';
@@ -62,14 +60,8 @@ const ChromeLink = ({ link }: { link: SiteChromeLink }) => {
   );
 };
 
-const ChromeLinkList = ({
-  links,
-  className,
-}: {
-  links: readonly SiteChromeLink[];
-  className?: string;
-}) => (
-  <ul className={className}>
+const ChromeLinkList = ({ links }: { links: readonly SiteChromeLink[] }) => (
+  <ul>
     {links.map((link) => (
       <li key={`${link.href}:${link.trackId ?? link.label}`}>
         <ChromeLink link={link} />
@@ -101,20 +93,11 @@ function App() {
     };
   }, []);
 
-  const year = new Date().getFullYear();
-
   return (
     <div className="home-page">
       <title>{`${home.name} - ${home.title}`}</title>
       <link rel="canonical" href="https://gagnechris.com" />
       <header className="home-header">
-        <img
-          src={HOME_PROFILE_IMAGE_SRC}
-          className="profile"
-          alt={`Photo of ${home.name}`}
-          width={96}
-          height={96}
-        />
         <h1>{home.name}</h1>
         <p>{home.title}</p>
       </header>
@@ -131,13 +114,6 @@ function App() {
           <ChromeLinkList links={HOME_QUICK_LINKS} />
         </section>
       </main>
-      <footer className="site-footer">
-        <p className="site-footer__copy">© {year} Chris Gagne</p>
-        <ChromeLinkList
-          links={HOME_FOOTER_LINKS}
-          className="site-footer__links"
-        />
-      </footer>
     </div>
   );
 }

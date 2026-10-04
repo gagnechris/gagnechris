@@ -7,6 +7,8 @@ import { checkWebShells } from '../../scripts/checkWebShells';
 
 const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>
 <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}</script>`;
+const FONT_PRELOAD =
+  '<link rel="preload" href="/fonts/serif.woff2" as="font" type="font/woff2" crossorigin />';
 const APP_SHELL = `<!doctype html><html><head>
 <script type="module" crossorigin src="/assets/main-abc123.js"></script>
 </head><body><div id="root"></div></body></html>`;
@@ -22,7 +24,10 @@ function webRoot(files: Record<string, string>): string {
   roots.push(root);
   const all: Record<string, string> = {
     'dist/index.html': `<html><head>${GA_SNIPPET}</head></html>`,
-    'dist/_shell.html': `<html><head>${GA_SNIPPET}</head></html>`,
+    'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}</head></html>`,
+    'dist/fonts/serif.woff2': 'wOF2',
+    'dist/assets/index-abc.css':
+      "@font-face{font-family:Serif;src:url('/fonts/serif.woff2') format('woff2')}",
     'dist-admin/index.html': APP_SHELL,
     'dist-notebook/index.html': APP_SHELL,
     'dist-notebook/manifest.json': JSON.stringify({
@@ -107,5 +112,39 @@ describe('checkWebShells', () => {
       }),
     );
     expect(problems).toHaveLength(3);
+  });
+
+  it('fails unless the public shell preloads exactly one self-hosted font', () => {
+    expect(
+      checkWebShells(
+        webRoot({
+          'dist/_shell.html': `<html><head>${GA_SNIPPET}</head></html>`,
+        }),
+      ),
+    ).toContain('dist/_shell.html preloads 0 fonts (expected 1)');
+    expect(
+      checkWebShells(
+        webRoot({
+          'dist/_shell.html': `<html><head>${FONT_PRELOAD}${FONT_PRELOAD.replace('serif', 'sans')}${GA_SNIPPET}</head></html>`,
+        }),
+      ),
+    ).toContain('dist/_shell.html preloads 2 fonts (expected 1)');
+    expect(
+      checkWebShells(webRoot({ 'dist/fonts/serif.woff2': '\0delete' })),
+    ).toContain(
+      'dist/_shell.html preloads a font that is not in dist: /fonts/serif.woff2',
+    );
+  });
+
+  it('fails when the public CSS loads a font from another origin', () => {
+    const url = 'https://fonts.gstatic.com/s/inter/v1/inter.woff2';
+    const problems = checkWebShells(
+      webRoot({
+        'dist/assets/index-abc.css': `@font-face{font-family:Inter;src:url(${url}) format('woff2')}`,
+      }),
+    );
+    expect(problems).toEqual([
+      `assets/index-abc.css loads a font that is not in dist: ${url}`,
+    ]);
   });
 });

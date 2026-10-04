@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import PublicNav from '../components/PublicNav';
 import { useState, FormEvent } from 'react';
 import { ContactRequestSchema } from '@gagnechris/shared';
 import { createPublicApiClient } from '../api/public-client';
@@ -136,7 +135,6 @@ function Contact() {
         <title>Thank You - Chris Gagne</title>
         <header>
           <h1>Contact</h1>
-          <PublicNav current="/contact" />
         </header>
         <main>
           <div className="success-message">
@@ -167,7 +165,6 @@ function Contact() {
       <link rel="canonical" href="https://gagnechris.com/contact" />
       <header>
         <h1>Contact</h1>
-        <PublicNav current="/contact" />
       </header>
       <main>
         <div className="contact-intro">

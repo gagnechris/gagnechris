@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { renderPostsIndexBodyHtml } from '@gagnechris/shared/render';
 import {
   fetchPublishedPosts,
+  postsIndexFromDocument,
   publishedPostPageUrl,
   publishedPostsUrl,
 } from './publishedPosts';
+
+const parse = (html: string): Document =>
+  new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
 
 describe('publishedPosts', () => {
   afterEach(() => {
@@ -59,5 +64,38 @@ describe('publishedPosts', () => {
     const posts = await fetchPublishedPosts();
     expect(posts).toHaveLength(1);
     expect(posts[0]?.slug).toBe('hello');
+  });
+
+  test('reads the list back out of the posts index prerender', () => {
+    const html = renderPostsIndexBodyHtml([
+      {
+        id: '01A',
+        slug: 'hello',
+        title: 'Hello & welcome',
+        excerpt: 'Short.',
+        publishedAt: '2026-02-01T00:00:00.000Z',
+      },
+    ]);
+    expect(postsIndexFromDocument(parse(html))).toEqual([
+      {
+        id: '01A',
+        slug: 'hello',
+        title: 'Hello & welcome',
+        excerpt: 'Short.',
+        publishedAt: '2026-02-01',
+        updatedAt: '',
+        tags: [],
+        coverImage: null,
+      },
+    ]);
+    expect(postsIndexFromDocument(parse(renderPostsIndexBodyHtml([])))).toEqual(
+      [],
+    );
+  });
+
+  test('falls back to posts.json for a bare link-list index', () => {
+    const legacy =
+      '<section class="blog-index-prerender"><h1>Posts</h1><ul><li><a href="/posts/hello">Hello</a></li></ul></section>';
+    expect(postsIndexFromDocument(parse(legacy))).toBeNull();
   });
 });
