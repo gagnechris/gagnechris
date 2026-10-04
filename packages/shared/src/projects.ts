@@ -27,7 +27,14 @@ export const projectCardHref = (
 
 export type PostProjectLink = { name: string; href: string | null };
 
-export const POST_PART_OF_LABEL = 'Part of';
+export const POST_PART_OF_LABEL = 'Part of the';
+
+/** Text before link `index` of `count`: "A", "A and B", "A, B and C". */
+export const postPartOfSeparator = (index: number, count: number): string =>
+  index === 0 ? '' : index === count - 1 ? ' and ' : ', ';
+
+export const postPartOfSuffix = (count: number): string =>
+  count === 1 ? ' project' : ' projects';
 
 /** Resolved at render time, so a renamed project slug is picked up on the next rebuild. Unpublished ids are skipped. */
 export const postProjectLinks = (

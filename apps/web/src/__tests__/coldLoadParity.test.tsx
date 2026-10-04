@@ -291,7 +291,7 @@ describe('cold load: first React render matches the prerender', () => {
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
       if (path === '/posts/hello-world') {
         expect(loaded.root.querySelector('.post-part-of')?.textContent).toBe(
-          'Part of Notebook, Bears',
+          'Part of the Notebook and Bears projects',
         );
       }
     },

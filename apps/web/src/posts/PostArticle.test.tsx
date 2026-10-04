@@ -122,7 +122,7 @@ describe('PostArticle', () => {
     );
     expect(container.innerHTML).toBe(normalize(prerender));
     expect(container.querySelector('.post-part-of')?.textContent).toBe(
-      'Part of Notebook, Bears & co, Elsewhere, Someday',
+      'Part of the Notebook, Bears & co, Elsewhere and Someday projects',
     );
   });
 

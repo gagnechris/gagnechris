@@ -4,6 +4,8 @@ import {
   formatPostDate,
   POST_AUTHOR_NOTE,
   POST_PART_OF_LABEL,
+  postPartOfSeparator,
+  postPartOfSuffix,
   POST_META_SEPARATOR,
   postDateAttribute,
   readingTimeLabel,
@@ -56,10 +58,11 @@ const PostArticle = ({ post }: { post: PostView }) => {
               {`${POST_PART_OF_LABEL} `}
               {post.partOf.map((project, i) => (
                 <Fragment key={i}>
-                  {i > 0 ? ', ' : null}
+                  {postPartOfSeparator(i, post.partOf.length) || null}
                   <PartOfProject {...project} />
                 </Fragment>
               ))}
+              {postPartOfSuffix(post.partOf.length)}
             </p>
           ) : null}
         </header>

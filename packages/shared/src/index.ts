@@ -74,6 +74,8 @@ export {
   PROJECTS_INDEX_INTRO,
   PROJECTS_PATH,
   POST_PART_OF_LABEL,
+  postPartOfSeparator,
+  postPartOfSuffix,
   postProjectLinks,
   PROJECT_BUILD_LOG_HEADING,
   PROJECT_BUILD_LOG_ID,

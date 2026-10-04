@@ -48,7 +48,7 @@ test('tag a post with a project from the editor; the post shows Part of and the 
 
   await page.goto(`${site()}/posts/${post.slug}`);
   const partOf = page.locator('.post-part-of');
-  await expect(partOf).toHaveText(`Part of ${name}`);
+  await expect(partOf).toHaveText(`Part of the ${name} project`);
   await expect(partOf.getByRole('link', { name })).toHaveAttribute(
     'href',
     `/projects/${slug}`,
