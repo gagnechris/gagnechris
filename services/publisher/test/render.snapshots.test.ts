@@ -72,6 +72,15 @@ describe('render HTML snapshots', () => {
     expect(renderPostPage(shell, samplePost())).toMatchSnapshot();
   });
 
+  it('matches frozen output for home with Recent posts', () => {
+    expect(
+      renderHomePage(shell, DEFAULT_HOME, [
+        samplePost(),
+        { ...samplePost(), id: '01OLDER', slug: 'older', excerpt: '' },
+      ]),
+    ).toMatchSnapshot();
+  });
+
   it('matches frozen output for resume-unavailable, RSS, and sitemap', () => {
     expect(renderResumeUnavailablePage(shell)).toMatchSnapshot();
     expect(buildRssXml([samplePost()])).toMatchSnapshot();

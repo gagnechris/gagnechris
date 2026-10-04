@@ -180,8 +180,8 @@ describe('publisher render', () => {
       'name="description" content="I&#39;m an Engineering',
     );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
-    expect(html).toContain('<article class="home-page home-page-prerender"');
-    expect(html).toContain('<h1>Chris Gagne</h1>');
+    expect(html).toContain('<main class="home-page home-page-prerender"');
+    expect(html).toContain('<h1 class="home-hero__name">Chris Gagne</h1>');
     expect(html).toContain('/assets/index.js');
   });
 
@@ -203,7 +203,9 @@ describe('publisher render', () => {
     });
     expect(first.match(/home-page-prerender/g)).toHaveLength(1);
     expect(second.match(/home-page-prerender/g)).toHaveLength(1);
-    expect(second).toContain('<h1>Christopher Gagne</h1>');
+    expect(second).toContain(
+      '<h1 class="home-hero__name">Christopher Gagne</h1>',
+    );
     expect(second).toContain('<p>New copy.</p>');
     expect(second).not.toContain('Engineering Leader at Ro');
   });
