@@ -4,6 +4,7 @@ import type { DraftPublishResource } from './query/createDraftPublishResource.js
 import {
   useDraftPublishEditor,
   type DraftPublishDeleteOptions,
+  type DraftPublishEditorOptions,
 } from './useDraftPublishEditor.js';
 import type { SaveState } from './useQueuedAutosave.js';
 import {
@@ -38,6 +39,7 @@ export type VersionedEntityEditorOptions<
   delete?: DraftPublishDeleteOptions;
   onHydrate?: (entity: TEntity) => void;
   retrySignals?: RetrySignals;
+  beforePublish?: DraftPublishEditorOptions<TEntity>['beforePublish'];
 };
 
 export type VersionedEntityActionBarProps = {
@@ -74,6 +76,7 @@ export function useVersionedEntityEditor<
   delete: deleteOpts,
   onHydrate,
   retrySignals,
+  beforePublish,
 }: VersionedEntityEditorOptions<TEntity, TDraft, TParams>) {
   const {
     publish: publishRequest,
@@ -132,6 +135,7 @@ export function useVersionedEntityEditor<
       enabled,
       confirm,
       hold: { withHold: doc.withHold, isBusy: doc.isBusy },
+      beforePublish,
     });
 
   const actionBarProps: VersionedEntityActionBarProps = {
