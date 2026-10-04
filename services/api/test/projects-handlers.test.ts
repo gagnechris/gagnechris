@@ -296,6 +296,74 @@ describe('projects admin API', () => {
     );
   });
 
+  describe('publishing with a demo', () => {
+    const publish = (p: Project) =>
+      call('POST', `/api/admin/projects/${p.id}/publish`, {
+        version: p.version,
+      });
+
+    it('rejects a demo with no preview image and writes nothing', async () => {
+      const draft = await create({ name: 'Demo', demo: 'notebook' });
+      const res = await publish(draft);
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({
+        error: 'bad_request',
+        fields: { previewImage: 'required_with_demo' },
+      });
+      expect(row(keys.project.published(draft.id))).toBeUndefined();
+      expect(row(keys.project.meta(draft.id))).toMatchObject({
+        status: 'draft',
+        version: 1,
+      });
+    });
+
+    it('rejects publishing changes that remove the preview image', async () => {
+      const draft = await create({
+        name: 'Demo',
+        demo: 'notebook',
+        previewImage: '/media/a/b.png',
+      });
+      const published = (await publish(draft)).body;
+      const edited = await call('PUT', `/api/admin/projects/${draft.id}`, {
+        version: published.version,
+        previewImage: null,
+      });
+      expect(edited.status).toBe(200);
+      const res = await publish(edited.body);
+      expect(res.status).toBe(400);
+      expect(res.body.fields).toEqual({ previewImage: 'required_with_demo' });
+      expect(row(keys.project.published(draft.id))?.previewImage).toBe(
+        '/media/a/b.png',
+      );
+    });
+
+    it('publishes with both set, or once the demo is cleared', async () => {
+      const both = await create({
+        name: 'Both',
+        demo: 'posts',
+        previewImage: '/media/a/b.png',
+      });
+      expect((await publish(both)).status).toBe(200);
+
+      const demoOnly = await create({ name: 'Demo only', demo: 'notebook' });
+      const cleared = await call('PUT', `/api/admin/projects/${demoOnly.id}`, {
+        version: demoOnly.version,
+        demo: null,
+      });
+      expect((await publish(cleared.body)).status).toBe(200);
+    });
+
+    it('a stale version is still a 409, not the preview error', async () => {
+      const draft = await create({ name: 'Demo', demo: 'notebook' });
+      const res = await call(
+        'POST',
+        `/api/admin/projects/${draft.id}/publish`,
+        { version: draft.version + 1 },
+      );
+      expect(res.status).toBe(409);
+    });
+  });
+
   it('rejects a non-ULID id', async () => {
     expect((await call('GET', '/api/admin/projects/not-an-id')).status).toBe(
       400,

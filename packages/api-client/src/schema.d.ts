@@ -2480,12 +2480,21 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Validation error (may include `fields`) */
+                /** @description Validation error. `fields.previewImage` is `required_with_demo` when the draft has a `demo` but no `previewImage`. */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
+                        /**
+                         * @example {
+                         *       "error": "bad_request",
+                         *       "message": "A project with a demo needs a preview image before it is published",
+                         *       "fields": {
+                         *         "previewImage": "required_with_demo"
+                         *       }
+                         *     }
+                         */
                         "application/json": {
                             error: string;
                             message?: string;

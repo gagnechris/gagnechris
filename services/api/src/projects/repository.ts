@@ -19,6 +19,7 @@ import {
   type ProjectMetaItem,
 } from '@gagnechris/data';
 import {
+  projectPublishFieldErrors,
   sortProjectsByOrder,
   type CreateProjectRequest,
   type Project,
@@ -29,7 +30,11 @@ import { getDocClient, requireTableName } from '../data/client.js';
 import { logCorruptStoredItem } from '../data/corrupt-item.js';
 import { GSI1_CURSOR_KEYS } from '../data/cursor.js';
 import { runDynamoWrite } from '../data/dynamo-write.js';
-import { DataIntegrityError, NotFoundError } from '../data/errors.js';
+import {
+  BadRequestError,
+  DataIntegrityError,
+  NotFoundError,
+} from '../data/errors.js';
 import {
   PublishableRepository,
   assertExpectedVersion,
@@ -290,6 +295,22 @@ export class ProjectsRepository extends PublishableRepository<
       },
     );
     return project;
+  }
+
+  async publishLoaded(
+    loaded: { draft: Project; published: Project | undefined },
+    expectedVersion: number,
+    options?: { publishedAt?: string },
+  ): Promise<Project> {
+    assertExpectedVersion(loaded.draft, expectedVersion);
+    const fields = projectPublishFieldErrors(loaded.draft);
+    if (Object.keys(fields).length > 0) {
+      throw new BadRequestError(
+        'A project with a demo needs a preview image before it is published',
+        fields,
+      );
+    }
+    return super.publishLoaded(loaded, expectedVersion, options);
   }
 
   async update(id: string, input: UpdateProjectRequest): Promise<Project> {

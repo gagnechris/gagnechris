@@ -12,6 +12,7 @@ type Body = {
   bodyMarkdown?: string;
   stack?: string[];
   demo?: 'posts' | 'notebook';
+  previewImage?: string;
   href?: string;
   order?: number;
 };
@@ -66,6 +67,7 @@ test.describe('/projects', () => {
       bodyMarkdown: body,
       stack: ['React', 'DynamoDB'],
       demo: 'posts',
+      previewImage: `/media/projects/${prefix}-live.png`,
       order: 1,
     });
     await publishProject(seed, {
@@ -75,6 +77,7 @@ test.describe('/projects', () => {
       pitch: 'Building pitch.',
       bodyMarkdown: body,
       demo: 'notebook',
+      previewImage: `/media/projects/${prefix}-building.png`,
       order: 2,
     });
     await publishProject(seed, {

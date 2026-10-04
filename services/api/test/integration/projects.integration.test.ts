@@ -97,4 +97,34 @@ describe('projects (DynamoDB Local)', () => {
     });
     expect((await repo.list()).items).toHaveLength(1);
   });
+
+  it('publish needs a preview image when a demo is set', async () => {
+    const draft = await repo.create({
+      name: 'Notebook',
+      pitch: '',
+      stage: 'live',
+      stageNote: '',
+      bodyMarkdown: '',
+      stack: [],
+      links: [],
+      order: 0,
+      demo: 'notebook',
+    });
+    await expect(repo.publish(draft.id, draft.version)).rejects.toMatchObject({
+      name: 'BadRequestError',
+      fields: { previewImage: 'required_with_demo' },
+    });
+    expect(await get(keys.project.published(draft.id))).toBeUndefined();
+    expect(await publishedIds()).toEqual([]);
+
+    const withImage = await repo.update(draft.id, {
+      version: draft.version,
+      previewImage: '/media/2026/10/notebook.png',
+    });
+    await repo.publish(draft.id, withImage.version);
+    expect(await get(keys.project.published(draft.id))).toMatchObject({
+      demo: 'notebook',
+      previewImage: '/media/2026/10/notebook.png',
+    });
+  });
 });

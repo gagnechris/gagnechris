@@ -349,12 +349,35 @@ function registerProjectPaths(registry: OpenAPIRegistry) {
     responses: { 200: ok(ProjectSchema, 'Updated'), ...mutation },
   });
 
-  for (const [action, summary, description] of [
-    [
-      'publish',
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/projects/{id}/publish',
+    summary:
       'Publish project (copies draft to PUBLISHED snapshot; stream rebuild)',
-      'Published',
-    ],
+    ...base,
+    request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
+    responses: {
+      200: ok(ProjectSchema, 'Published'),
+      ...mutation,
+      400: {
+        description:
+          'Validation error. `fields.previewImage` is `required_with_demo` when the draft has a `demo` but no `previewImage`.',
+        content: {
+          'application/json': {
+            schema: ErrorResponseSchema,
+            example: {
+              error: 'bad_request',
+              message:
+                'A project with a demo needs a preview image before it is published',
+              fields: { previewImage: 'required_with_demo' },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  for (const [action, summary, description] of [
     ['unpublish', 'Unpublish project', 'Unpublished (draft)'],
     [
       'discard',

@@ -138,3 +138,78 @@ test('a taken slug shows the slug-taken message', async ({
   ).toBeVisible();
   await expect(page.getByText(/Reload and try again/)).toHaveCount(0);
 });
+
+test('a demo with no preview image blocks Publish until an image is added', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+  request,
+}) => {
+  const slug = `${prefix}-demo`;
+  const { data: created, error } = await seed.api.POST('/api/admin/projects', {
+    body: {
+      name: `${prefix} Demo`,
+      slug,
+      stage: 'building',
+      bodyMarkdown: 'Try it.',
+      demo: 'notebook',
+    },
+  });
+  if (!created)
+    throw new Error(`seed project failed: ${JSON.stringify(error)}`);
+
+  const rejected = await seed.api.POST('/api/admin/projects/{id}/publish', {
+    params: { path: { id: created.id } },
+    body: { version: created.version },
+  });
+  expect(rejected.response.status).toBe(400);
+  expect(rejected.error).toMatchObject({
+    error: 'bad_request',
+    fields: { previewImage: 'required_with_demo' },
+  });
+
+  await signIn();
+  await page.goto(`${apps.admin}/projects/${created.id}`);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
+    `${prefix} Demo`,
+  );
+  const hint = page.getByText(
+    'Add a preview image: a project with a demo needs one to publish.',
+  );
+  await expect(hint).toBeVisible();
+
+  const blocked = page.getByText(
+    'Not published: fix the highlighted fields first.',
+  );
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(blocked).toBeVisible();
+  await page.getByRole('heading', { name: 'Body' }).click();
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await page.waitForTimeout(500);
+  const { data: stillDraft } = await seed.api.GET('/api/admin/projects/{id}', {
+    params: { path: { id: created.id } },
+  });
+  expect(stillDraft).toMatchObject({ status: 'draft', version: 1 });
+
+  await page.getByLabel('Upload preview image').setInputFiles({
+    name: 'preview.png',
+    mimeType: 'image/png',
+    buffer: PNG_1X1,
+  });
+  await expect(
+    page.getByRole('img', { name: 'Preview image' }),
+  ).toHaveAttribute('src', /^\/media\/.+\.png$/);
+  await expect(hint).toHaveCount(0);
+  await expect(blocked).toHaveCount(0);
+
+  await page.getByRole('heading', { name: 'Body' }).click();
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByRole('button', { name: 'Unpublish' })).toBeVisible();
+  await expect
+    .poll(async () =>
+      (await request.get(`${site()}/projects/${slug}`)).status(),
+    )
+    .toBe(200);
+});

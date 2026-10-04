@@ -68,6 +68,19 @@ export const PROJECT_BUILD_LOG_RSS_LINK = {
   href: '/rss.xml',
 } as const;
 
+export type ProjectPublishFieldErrors = {
+  previewImage?: 'required_with_demo';
+};
+
+/** Drafts may break these; publishing may not. */
+export const projectPublishFieldErrors = (project: {
+  demo: string | null;
+  previewImage: string | null;
+}): ProjectPublishFieldErrors =>
+  project.demo && !project.previewImage?.trim()
+    ? { previewImage: 'required_with_demo' }
+    : {};
+
 export const PROJECT_DEMO_LABEL = 'Try it';
 export const PROJECT_DEMO_LABEL_ID = 'project-demo-label';
 
