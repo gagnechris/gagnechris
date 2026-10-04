@@ -4468,15 +4468,6 @@
         "responses": {
           "201": {
             "description": "Created",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -4781,15 +4772,6 @@
         "responses": {
           "200": {
             "description": "Post",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5053,7 +5035,7 @@
         }
       },
       "put": {
-        "summary": "Update post (optimistic concurrency via version / If-Match)",
+        "summary": "Update post (optimistic concurrency via version)",
         "tags": [
           "Posts"
         ],
@@ -5073,17 +5055,6 @@
             "description": "Post id (ULID)",
             "name": "id",
             "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -5156,15 +5127,6 @@
         "responses": {
           "200": {
             "description": "Updated",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5387,42 +5349,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -5525,17 +5451,6 @@
             "description": "Post id (ULID)",
             "name": "id",
             "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -5560,15 +5475,6 @@
         "responses": {
           "200": {
             "description": "Soft-deleted",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5791,42 +5697,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -5931,17 +5801,6 @@
             "description": "Post id (ULID)",
             "name": "id",
             "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -5966,15 +5825,6 @@
         "responses": {
           "200": {
             "description": "Published",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -6197,42 +6047,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -6337,17 +6151,6 @@
             "description": "Post id (ULID)",
             "name": "id",
             "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -6372,15 +6175,6 @@
         "responses": {
           "200": {
             "description": "Unpublished (draft)",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -6603,42 +6397,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -6743,17 +6501,6 @@
             "description": "Post id (ULID)",
             "name": "id",
             "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -6778,15 +6525,6 @@
         "responses": {
           "200": {
             "description": "Draft restored from published snapshot",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -7009,42 +6747,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -10192,15 +9894,6 @@
         "responses": {
           "200": {
             "description": "Home",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -10382,26 +10075,13 @@
         }
       },
       "put": {
-        "summary": "Update home content (optimistic concurrency via version / If-Match)",
+        "summary": "Update home content (optimistic concurrency via version)",
         "tags": [
           "Home"
         ],
         "security": [
           {
             "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -10451,15 +10131,6 @@
         "responses": {
           "200": {
             "description": "Updated",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -10627,42 +10298,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -10756,19 +10391,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -10791,15 +10413,6 @@
         "responses": {
           "200": {
             "description": "Published",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -10967,42 +10580,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -11096,19 +10673,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -11131,15 +10695,6 @@
         "responses": {
           "200": {
             "description": "Unpublished (draft)",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -11307,42 +10862,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -11436,19 +10955,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -11471,15 +10977,6 @@
         "responses": {
           "200": {
             "description": "Draft restored from published snapshot",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -11647,42 +11144,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -11779,15 +11240,6 @@
         "responses": {
           "200": {
             "description": "Resume",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -12072,26 +11524,13 @@
         }
       },
       "put": {
-        "summary": "Update resume (optimistic concurrency via version / If-Match)",
+        "summary": "Update resume (optimistic concurrency via version)",
         "tags": [
           "Resume"
         ],
         "security": [
           {
             "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
           }
         ],
         "requestBody": {
@@ -12244,15 +11683,6 @@
         "responses": {
           "200": {
             "description": "Updated",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -12523,42 +11953,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -12652,19 +12046,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -12687,15 +12068,6 @@
         "responses": {
           "200": {
             "description": "Published",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -12966,42 +12338,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -13095,19 +12431,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -13130,15 +12453,6 @@
         "responses": {
           "200": {
             "description": "Unpublished (draft)",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -13409,42 +12723,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
@@ -13538,19 +12816,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-              "example": "\"3\""
-            },
-            "required": false,
-            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
-            "name": "if-match",
-            "in": "header"
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -13573,15 +12838,6 @@
         "responses": {
           "200": {
             "description": "Draft restored from published snapshot",
-            "headers": {
-              "ETag": {
-                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
-                "schema": {
-                  "type": "string",
-                  "example": "\"3\""
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
@@ -13852,42 +13108,6 @@
                         "payload_mismatch",
                         "slug_taken",
                         "daily_taken"
-                      ]
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "fields": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "currentVersion": {
-                      "type": "integer"
-                    },
-                    "current": {
-                      "nullable": true
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "412": {
-            "description": "Precondition failed (`If-Match` version mismatch)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "precondition_failed"
                       ]
                     },
                     "message": {
