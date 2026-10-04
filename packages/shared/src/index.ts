@@ -75,6 +75,11 @@ export {
   PROJECTS_PATH,
   POST_PART_OF_LABEL,
   postProjectLinks,
+  PROJECT_BUILD_LOG_HEADING,
+  PROJECT_BUILD_LOG_ID,
+  PROJECT_BUILD_LOG_RSS_LINK,
+  PROJECT_DEMO_LABEL,
+  PROJECT_DEMO_LABEL_ID,
   projectBuildLogEmptyText,
   projectBuildLogPosts,
   projectCardHref,
@@ -92,5 +97,6 @@ export {
   type ProjectCardView,
   type ProjectMiniKind,
   type ProjectMiniNode,
+  type ProjectPageView,
   type ProjectPreview,
 } from './projects.js';

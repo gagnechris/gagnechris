@@ -104,6 +104,65 @@ function publicFontProblems(dist: string, html: string): string[] {
   return problems;
 }
 
+type ManifestChunk = {
+  file: string;
+  src?: string;
+  isEntry?: boolean;
+  isDynamicEntry?: boolean;
+  imports?: string[];
+};
+
+/** Vite manifest `src` paths are relative to apps/web. */
+export const DEMO_SRC_DIR = 'src/demos/';
+
+/**
+ * Every demo under `src/demos/<id>/index.tsx` must be its own lazy chunk that
+ * nothing on the entry's static import graph pulls in, so a page without a
+ * demo loads none of its JS.
+ */
+export function demoChunkProblems(
+  manifest: Record<string, ManifestChunk>,
+  demoEntries: readonly string[],
+): string[] {
+  const problems: string[] = [];
+  const entry = Object.entries(manifest).find(([, c]) => c.isEntry);
+  if (!entry) return ['the public build manifest has no entry chunk'];
+
+  const staticKeys = new Set<string>();
+  const queue = [entry[0]];
+  while (queue.length) {
+    const key = queue.pop()!;
+    if (staticKeys.has(key)) continue;
+    staticKeys.add(key);
+    queue.push(...(manifest[key]?.imports ?? []));
+  }
+  for (const key of staticKeys) {
+    const src = manifest[key]?.src ?? key;
+    if (src.startsWith(DEMO_SRC_DIR)) {
+      problems.push(`${src} is statically imported by the public entry`);
+    }
+  }
+  for (const src of demoEntries) {
+    const chunk = manifest[src];
+    if (!chunk) {
+      problems.push(`${src} has no chunk of its own (bundled into another)`);
+    } else if (!chunk.isDynamicEntry) {
+      problems.push(`${src} is not loaded with a dynamic import()`);
+    }
+  }
+  return problems;
+}
+
+const demoEntries = (webRoot: string): string[] => {
+  const dir = path.join(webRoot, DEMO_SRC_DIR);
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => `${DEMO_SRC_DIR}${d.name}/index.tsx`)
+    .filter((src) => fs.existsSync(path.join(webRoot, src)));
+};
+
 /** Returns every problem with the built shells; empty means they pass. */
 export function checkWebShells(webRoot: string): string[] {
   const problems: string[] = [];
@@ -119,6 +178,17 @@ export function checkWebShells(webRoot: string): string[] {
   const shell = read(path.join(dist, '_shell.html'));
   if (shell !== null) problems.push(...publicFontProblems(dist, shell));
 
+  const manifest = read(path.join(dist, '.vite', 'manifest.json'));
+  if (manifest === null) problems.push('dist/.vite/manifest.json is missing');
+  else {
+    problems.push(
+      ...demoChunkProblems(
+        JSON.parse(manifest) as Record<string, ManifestChunk>,
+        demoEntries(webRoot),
+      ),
+    );
+  }
+
   for (const app of ['dist-admin', 'dist-notebook']) {
     problems.push(
       ...appShellProblems(
@@ -128,11 +198,13 @@ export function checkWebShells(webRoot: string): string[] {
     );
   }
 
-  const manifest = read(path.join(webRoot, 'dist-notebook', 'manifest.json'));
-  if (manifest === null) {
+  const pwaManifest = read(
+    path.join(webRoot, 'dist-notebook', 'manifest.json'),
+  );
+  if (pwaManifest === null) {
     problems.push('dist-notebook/manifest.json is missing');
   } else {
-    const parsed = JSON.parse(manifest) as Record<string, unknown>;
+    const parsed = JSON.parse(pwaManifest) as Record<string, unknown>;
     for (const key of ['id', 'start_url', 'scope']) {
       if (parsed[key] !== '/') {
         problems.push(`dist-notebook/manifest.json ${key} must be "/"`);
@@ -156,6 +228,6 @@ if (
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA and one self-hosted font preload on the public shell, fonts named for their content, app shells load bundled scripts only.',
+    'Web shells OK: GA and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
   );
 }

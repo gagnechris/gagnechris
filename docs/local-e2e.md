@@ -19,7 +19,7 @@ This script:
 1. Starts DynamoDB Local (`docker-compose.local.yml`)
 2. Creates table `gagnechris-local` (idempotent)
 3. Builds the web app if `apps/web/dist` is missing (Cognito placeholders)
-4. Seeds `.local-site/` from that build (publisher shell)
+4. Seeds `.local-site/` from that build (publisher shell) and fails if the built app fetches `/__site`, which only the Vite dev server proxies
 5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
 6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
 7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404

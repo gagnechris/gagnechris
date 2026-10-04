@@ -128,6 +128,8 @@ export default defineConfig(({ mode, command }) => {
     build: {
       outDir: path.join(appRoot, app.outDir),
       emptyOutDir: true,
+      // check:web-shells reads it to keep demo chunks off pages without a demo.
+      manifest: appName === 'public',
       rollupOptions: {
         input: path.join(appRoot, app.html),
       },

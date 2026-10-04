@@ -180,7 +180,9 @@ describe('post to project tagging', () => {
     posts = [tagged];
     await rebuild([postRecord(untagged, tagged)]);
 
-    expect(buildLog('notebook')).toContain('<a href="/posts/hello">Hello</a>');
+    expect(buildLog('notebook')).toContain(
+      '<a class="project-build-log__link" href="/posts/hello"><h3 class="project-build-log__title">Hello</h3>',
+    );
     expect(page('blog/hello/index.html')).toContain(
       '<p class="post-part-of">Part of <a class="post-part-of__project" href="/projects/notebook">Notebook</a></p>',
     );
@@ -233,7 +235,9 @@ describe('post to project tagging', () => {
     await rebuild([projectRecord(notebook, renamed)]);
 
     expect(site.objects.has('projects/notebook/index.html')).toBe(false);
-    expect(buildLog('notes')).toContain('<a href="/posts/hello">Hello</a>');
+    expect(buildLog('notes')).toContain(
+      '<a class="project-build-log__link" href="/posts/hello"><h3 class="project-build-log__title">Hello</h3>',
+    );
     expect(page('blog/hello/index.html')).toContain(
       'href="/projects/notes">Notebook</a>',
     );

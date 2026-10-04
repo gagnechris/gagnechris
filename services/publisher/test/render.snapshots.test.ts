@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
+import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
   HOME_LAST_PUBLISHED_KEY,
   homeToSnapshot,
@@ -12,6 +13,7 @@ import {
   renderPostsIndexPage,
   renderHomePage,
   renderPostPage,
+  renderProjectPage,
   renderResumePage,
   renderResumeUnavailablePage,
 } from '../src/render.js';
@@ -92,6 +94,52 @@ describe('render HTML snapshots', () => {
         samplePost(),
         { ...samplePost(), id: '01OLDER', slug: 'older', excerpt: '' },
       ]),
+    ).toMatchSnapshot();
+  });
+
+  it('matches frozen output for a project page with a demo, rows, steps and a Build log', () => {
+    const posts = SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!;
+    expect(
+      renderProjectPage(
+        shell,
+        {
+          ...posts,
+          previewImage: '/media/projects/posts.png',
+          bodyMarkdown: [
+            '## Why I built it',
+            '',
+            'Because.',
+            '',
+            '## How publishing works',
+            '',
+            '1. I write in markdown.',
+            '2. Publishing writes to DynamoDB.',
+            '',
+            '## How it’s built',
+            '',
+            '- **One record per post** Versioned.',
+            '- **Stack** TypeScript, React',
+          ].join('\n'),
+          links: [{ label: 'Source', url: 'https://github.com/gagnechris' }],
+        },
+        [
+          {
+            id: samplePost().id,
+            slug: samplePost().slug,
+            title: samplePost().title,
+            publishedAt: samplePost().publishedAt,
+          },
+        ],
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it('matches frozen output for a project page with no demo and no posts', () => {
+    expect(
+      renderProjectPage(shell, {
+        ...SAMPLE_PROJECTS.find((p) => p.slug === 'notebook')!,
+        demo: null,
+      }),
     ).toMatchSnapshot();
   });
 

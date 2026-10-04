@@ -134,10 +134,12 @@ upload_fonts "${DIST}" "${BUCKET}"
 
 # Excludes protect publisher-owned paths from --delete. home/* holds
 # last-published.json so an unpublished Home survives deploys. Anything else
-# the public build doesn't produce is deleted.
+# the public build doesn't produce is deleted. .vite/ is the build manifest
+# check:web-shells reads; it is not part of the site.
 aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
+  --exclude ".vite/*" \
   --exclude "assets/*" \
   --exclude "fonts/*.woff2" \
   --exclude "blog/*" \

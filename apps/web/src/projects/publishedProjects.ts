@@ -6,6 +6,7 @@ import {
   type ProjectStage,
 } from '@gagnechris/shared';
 import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 const STAGES = Object.keys(PROJECT_STAGE_LABELS) as ProjectStage[];
 
@@ -15,16 +16,35 @@ const isStage = (value: string | null | undefined): value is ProjectStage =>
 const isDemo = (value: string | null): value is ProjectDemo =>
   PROJECT_DEMO_IDS.includes(value as ProjectDemo);
 
+/** Reads back `<p class="project-stage">`: "Live", or "Live · since 2026". */
+export const stageFromElement = (
+  el: Element | null,
+): { stage: ProjectStage; stageNote: string } | null => {
+  const stage = el?.getAttribute('data-stage');
+  if (!isStage(stage)) return null;
+  const label = `${PROJECT_STAGE_LABELS[stage]} · `;
+  const text = el?.textContent ?? '';
+  return {
+    stage,
+    stageNote: text.startsWith(label) ? text.slice(label.length) : '',
+  };
+};
+
+export const demoFrom = (el: Element): ProjectDemo | null => {
+  const demo = el.getAttribute('data-demo');
+  return isDemo(demo) ? demo : null;
+};
+
+export const previewImageFrom = (root: ParentNode): string | null =>
+  root.querySelector('.project-preview--image img')?.getAttribute('src') ||
+  null;
+
 /** Reads back what `renderProjectCardHtml` wrote. */
 export const projectCardsFromList = (list: Element): ProjectCardView[] =>
   [...list.querySelectorAll(':scope > li.project-card')].flatMap((item) => {
     const slug = item.getAttribute('data-slug') ?? '';
-    const stageEl = item.querySelector('.project-stage');
-    const stage = stageEl?.getAttribute('data-stage');
-    if (!slug || !isStage(stage)) return [];
-    const label = `${PROJECT_STAGE_LABELS[stage]} · `;
-    const stageText = stageEl?.textContent ?? '';
-    const demo = item.getAttribute('data-demo');
+    const stage = stageFromElement(item.querySelector('.project-stage'));
+    if (!slug || !stage) return [];
     const link = item.querySelector(':scope > a.project-card__link');
     return [
       {
@@ -32,18 +52,12 @@ export const projectCardsFromList = (list: Element): ProjectCardView[] =>
         slug,
         name: item.querySelector('.project-card__name')?.textContent ?? '',
         pitch: item.querySelector('.project-card__pitch')?.textContent ?? '',
-        stage,
-        stageNote: stageText.startsWith(label)
-          ? stageText.slice(label.length)
-          : '',
+        ...stage,
         stack: [...item.querySelectorAll('.project-card__stack > span')].map(
           (s) => s.textContent ?? '',
         ),
-        previewImage:
-          item
-            .querySelector('.project-preview--image img')
-            ?.getAttribute('src') || null,
-        demo: isDemo(demo) ? demo : null,
+        previewImage: previewImageFrom(item),
+        demo: demoFrom(item),
         href: link?.getAttribute('href') || null,
       },
     ];
@@ -61,12 +75,8 @@ export function projectsIndexFromDocument(
 export const documentProjectsIndex = (): ProjectCardView[] | null =>
   fromPrerender(projectsIndexFromDocument);
 
-/** Local Vite uses `/__site` → static origin; prod is same-origin. */
-export function publishedProjectsIndexUrl(): string {
-  return import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim()
-    ? '/__site/projects/'
-    : '/projects/';
-}
+export const publishedProjectsIndexUrl = (): string =>
+  publishedSiteUrl('/projects/');
 
 export const loadPublishedProjects = (): Promise<ProjectCardView[] | null> =>
   fetchPrerender(publishedProjectsIndexUrl(), projectsIndexFromDocument);

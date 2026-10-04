@@ -4,6 +4,7 @@ export { DEFAULT_RESUME } from './resume-default.js';
 export {
   renderMarkdownToHtml,
   renderPostMarkdownToHtml,
+  renderProjectMarkdownToHtml,
   sanitizeRenderedHtml,
 } from './markdown.js';
 export {
@@ -81,6 +82,7 @@ export type {
 export {
   PROJECTS_INDEX_TITLE,
   renderProjectCardHtml,
+  projectPageView,
   renderProjectPageBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexBodyHtml,

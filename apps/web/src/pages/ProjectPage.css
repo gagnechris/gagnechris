@@ -1,0 +1,357 @@
+/* Specs in docs/design/public-redesign/README.md (Project page). The body uses the Post reading styles (PostPage.css). */
+.project-page {
+  --project-measure: 680px;
+  --project-demo-width: 1072px;
+  --post-body-size: 1.3125rem;
+  --post-prose: #22272d;
+}
+
+.project-header,
+.project-demo,
+.project-main,
+.project-loading {
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+}
+
+.project-header,
+.project-loading {
+  max-width: calc(var(--site-column) + 2 * var(--site-gutter));
+}
+
+.project-main {
+  max-width: calc(var(--project-measure) + 2 * var(--site-gutter));
+  font-family: var(--font-serif);
+  color: var(--post-prose);
+}
+
+.project-header {
+  /* The artboard starts the back link about 10px above the shared header gap. */
+  margin-top: -10px;
+  margin-bottom: 48px;
+}
+
+.project-back {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.project-back a {
+  font-weight: 500;
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.project-back a:hover,
+.project-back a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.project-header .project-stage {
+  margin-top: 17px;
+}
+
+.project-header h1 {
+  margin: 18px 0 0;
+  font-size: 3.75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.project-pitch {
+  margin: 16px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--color-ink-soft);
+}
+
+/* Wider than the column: the demo (or its preview) gets about 1100px. */
+.project-demo {
+  max-width: calc(var(--project-demo-width) + 2 * var(--site-gutter));
+  margin-top: 59px;
+  margin-bottom: 70px;
+}
+
+.project-demo__label {
+  box-sizing: border-box;
+  max-width: var(--project-measure);
+  margin: 0 auto 16px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.project-demo__stage {
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 6%);
+}
+
+.project-demo .project-preview {
+  height: 444px;
+  padding: 28px;
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+}
+
+/* The Posts demo's box, at every width, so the image never shifts the page as it loads. */
+.project-demo .project-preview--image {
+  height: auto;
+  aspect-ratio: 1072 / 444;
+  padding: 0;
+}
+
+.project-demo .project-preview--image img {
+  object-position: top center;
+}
+
+/* The project artboards set body headings a little closer than a post's 1.75em. */
+.project-body h2 {
+  margin-top: 1.55em;
+}
+
+/* Numbered steps: an ordered list in a project body. */
+.project-body ol {
+  counter-reset: project-step;
+  padding: 0;
+  border-top: 1px solid var(--neutral-200);
+  list-style: none;
+}
+
+.project-body ol > li {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: baseline;
+  margin: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--neutral-200);
+  counter-increment: project-step;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+}
+
+.project-body ol > li::before {
+  content: counter(project-step, decimal-leading-zero);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-link);
+}
+
+.project-body ol > li > * {
+  grid-column: 2;
+}
+
+/* Label/value rows: a bulleted list whose items each start with a bold label. */
+.project-body dl {
+  margin: 0 0 1.2em;
+  border-top: 1px solid var(--neutral-200);
+}
+
+.project-body dl > div {
+  display: grid;
+  grid-template-columns: 172px minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 26px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.project-body dt {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--neutral-700);
+}
+
+.project-body dd {
+  margin: 0;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+}
+
+.project-stack {
+  margin: 18px 0 0;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+.project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.project-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.project-build-log {
+  margin-top: 52px;
+}
+
+.project-build-log h2 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+
+.project-build-log__list {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--neutral-200);
+}
+
+.project-build-log__entry {
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.project-build-log__link {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0 18px;
+  font-weight: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+
+.project-build-log__link:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.project-build-log__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.project-build-log__link:hover .project-build-log__title,
+.project-build-log__link:focus-visible .project-build-log__title {
+  text-decoration-line: underline;
+}
+
+.project-build-log__date {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--neutral-600);
+}
+
+.project-build-log__empty {
+  margin: 18px 0 0;
+  font-size: var(--post-body-size);
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+}
+
+.project-build-log__empty a {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.project-loading {
+  margin-block: 0;
+  font-family: var(--font-sans);
+  color: var(--neutral-600);
+}
+
+/* Phone · Project Notebook demo. */
+@media (max-width: 480px) {
+  .project-page {
+    --post-body-size: 1.1875rem;
+  }
+
+  .project-header {
+    margin-top: -8px;
+    margin-bottom: 18px;
+  }
+
+  .project-header h1 {
+    font-size: 2.625rem;
+  }
+
+  .project-pitch {
+    margin-top: 7px;
+    font-size: 1.125rem;
+  }
+
+  .project-demo {
+    margin-top: 18px;
+    margin-bottom: 48px;
+  }
+
+  .project-demo__label {
+    margin-bottom: 8px;
+  }
+
+  .project-demo .project-preview:not(.project-preview--image) {
+    height: 254px;
+    padding: 16px;
+    gap: 10px;
+  }
+
+  .project-body dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .project-body ol > li {
+    grid-template-columns: 36px minmax(0, 1fr);
+    font-size: 1.0625rem;
+  }
+
+  .project-body dd {
+    font-size: 1.0625rem;
+  }
+
+  .project-build-log h2 {
+    font-size: 1.625rem;
+  }
+
+  .project-build-log__title {
+    font-size: 1.3125rem;
+  }
+}

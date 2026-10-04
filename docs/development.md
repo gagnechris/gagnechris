@@ -65,7 +65,7 @@ npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # CloudFront Option B + local publish routes from publisher targets (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
-npm run check:web-shells # after build: GA on the public shell only; app shells load bundled scripts only (CI)
+npm run check:web-shells # after build: GA on the public shell only; demos only in lazy chunks; app shells load bundled scripts only (CI)
 npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
 npm run e2e:browser   # Playwright (Chromium + WebKit) against its own local stack
 ```
@@ -88,7 +88,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `VITE_API_BASE_URL`               | Optional; default same-origin                                                                                                        |
 | `VITE_API_TARGET`                 | Dev only: set `prod` to proxy `/api` to production                                                                                   |
 | `VITE_LOCAL_API_ORIGIN`           | Dev only: local API origin (set by `scripts/local/env.sh`)                                                                           |
-| `VITE_LOCAL_SITE_ORIGIN`          | Dev only: publisher static origin for `/__site` (`/posts` pages)                                                                     |
+| `VITE_LOCAL_SITE_ORIGIN`          | Dev only: publisher static origin for `/__site` (publisher pages). Builds ignore it and fetch same-origin paths, as in prod          |
 | `VITE_AUTH_MODE`                  | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                                  |
 
 ### Local stack (`scripts/local/env.sh`)

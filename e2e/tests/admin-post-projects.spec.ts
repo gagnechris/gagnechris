@@ -42,7 +42,9 @@ test('tag a post with a project from the editor; the post shows Part of and the 
 
   await expect
     .poll(async () => (await request.get(`${site()}/projects/${slug}`)).text())
-    .toContain(`<a href="/posts/${post.slug}">${post.title}</a>`);
+    .toContain(
+      `<a class="project-build-log__link" href="/posts/${post.slug}"><h3 class="project-build-log__title">${post.title}</h3>`,
+    );
 
   await page.goto(`${site()}/posts/${post.slug}`);
   const partOf = page.locator('.post-part-of');

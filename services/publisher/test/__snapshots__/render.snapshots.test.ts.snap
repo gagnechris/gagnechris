@@ -62,6 +62,62 @@ exports[`render HTML snapshots > matches frozen output for a post with every mar
 </div></article><aside class="post-author" aria-label="About the author"><p><strong>Chris Gagne</strong> is an engineering leader at Ro. <a href="/">More about me</a>, or follow along via <a href="/rss.xml">RSS</a>.</p></aside></div><footer class="site-footer"><p class="site-footer__copy">© 2026 Chris Gagne</p><ul class="site-footer__links"><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=footer">Don’t feed the bears</a></li></ul></footer>"
 `;
 
+exports[`render HTML snapshots > matches frozen output for a project page with a demo, rows, steps and a Build log 1`] = `
+"<!doctype html>
+<html lang="en">
+  <head>
+    <title>Posts - Chris Gagne</title>
+    <meta name="description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
+    <meta property="og:title" content="Posts - Chris Gagne" />
+    <meta property="og:description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gagnechris.com/projects/posts" />
+    <meta property="og:image" content="https://gagnechris.com/media/projects/posts.png" />
+    <meta name="twitter:title" content="Posts - Chris Gagne" />
+    <meta name="twitter:description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
+    <meta name="twitter:image" content="https://gagnechris.com/media/projects/posts.png" />
+    <link rel="canonical" href="https://gagnechris.com/projects/posts" />
+  </head>
+  <body>
+    <div id="root"><!--prerender:start--><header class="site-header"><a class="site-header__home" href="/"><img class="site-header__photo" alt="" width="40" height="40" src="/profile.jpg"><span class="site-header__name">Chris Gagne</span></a><nav class="site-nav" aria-label="Primary"><ul class="site-nav__list"><li><a class="site-nav__link" href="/posts">Posts</a></li><li><a class="site-nav__link" aria-current="page" href="/projects">Projects</a></li><li><a class="site-nav__link" href="/resume">Resume</a></li><li><a class="site-nav__link" href="/contact">Contact</a></li></ul></nav><details class="site-menu"><summary class="site-menu__button" aria-label="Menu" aria-controls="site-menu"></summary><nav class="site-menu__panel" id="site-menu" aria-label="Menu"><ul class="site-menu__list"><li><a href="/posts">Posts</a></li><li><a aria-current="page" href="/projects">Projects</a></li><li><a href="/resume">Resume</a></li><li><a href="/contact">Contact</a></li></ul><ul class="site-menu__more"><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=menu">Don’t feed the bears</a></li></ul></nav></details></header><div class="project-page" data-slug="posts" data-demo="posts"><header class="project-header"><p class="project-back"><a href="/projects">Projects</a></p><p class="project-stage" data-stage="live">Live · since 2026</p><h1>Posts</h1><p class="project-pitch">The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own.</p></header><section class="project-demo" aria-labelledby="project-demo-label"><h2 class="project-demo__label" id="project-demo-label">Try it</h2><div class="project-demo__stage"><div class="project-preview project-preview--image"><img alt="" width="240" height="160" src="/media/projects/posts.png"></div></div></section><main class="project-main"><div class="post-content project-body"><h2>Why I built it</h2>
+<p>Because.</p>
+<h2>How publishing works</h2>
+<ol>
+<li>I write in markdown.</li>
+<li>Publishing writes to DynamoDB.</li>
+</ol>
+<h2>How it’s built</h2>
+<dl><div><dt>One record per post</dt><dd>Versioned.</dd></div><div><dt>Stack</dt><dd>TypeScript, React</dd></div></dl></div><p class="project-stack"><span>React</span> · <span>AWS Lambda</span> · <span>DynamoDB Streams</span> · <span>CloudFront</span></p><ul class="project-links"><li><a href="https://github.com/gagnechris">Source</a></li></ul><section class="project-build-log" aria-labelledby="project-build-log"><h2 id="project-build-log">Build log</h2><ul class="project-build-log__list"><li class="project-build-log__entry" data-id="01TEST"><a class="project-build-log__link" href="/posts/hello-world"><h3 class="project-build-log__title">Hello World</h3><time class="project-build-log__date" datetime="2026-09-27">September 27, 2026</time></a></li></ul></section></main></div><footer class="site-footer"><p class="site-footer__copy">© 2026 Chris Gagne</p><ul class="site-footer__links"><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=footer">Don’t feed the bears</a></li></ul></footer><!--prerender:end--></div>
+    <script type="module" src="/assets/index.js"></script>
+  </body>
+</html>"
+`;
+
+exports[`render HTML snapshots > matches frozen output for a project page with no demo and no posts 1`] = `
+"<!doctype html>
+<html lang="en">
+  <head>
+    <title>Notebook - Chris Gagne</title>
+    <meta name="description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
+    <meta property="og:title" content="Notebook - Chris Gagne" />
+    <meta property="og:description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gagnechris.com/projects/notebook" />
+    <meta property="og:image" content="https://gagnechris.com/og-image.jpg" />
+    <meta name="twitter:title" content="Notebook - Chris Gagne" />
+    <meta name="twitter:description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
+    <meta name="twitter:image" content="https://gagnechris.com/og-image.jpg" />
+    <link rel="canonical" href="https://gagnechris.com/projects/notebook" />
+  </head>
+  <body>
+    <div id="root"><!--prerender:start--><header class="site-header"><a class="site-header__home" href="/"><img class="site-header__photo" alt="" width="40" height="40" src="/profile.jpg"><span class="site-header__name">Chris Gagne</span></a><nav class="site-nav" aria-label="Primary"><ul class="site-nav__list"><li><a class="site-nav__link" href="/posts">Posts</a></li><li><a class="site-nav__link" aria-current="page" href="/projects">Projects</a></li><li><a class="site-nav__link" href="/resume">Resume</a></li><li><a class="site-nav__link" href="/contact">Contact</a></li></ul></nav><details class="site-menu"><summary class="site-menu__button" aria-label="Menu" aria-controls="site-menu"></summary><nav class="site-menu__panel" id="site-menu" aria-label="Menu"><ul class="site-menu__list"><li><a href="/posts">Posts</a></li><li><a aria-current="page" href="/projects">Projects</a></li><li><a href="/resume">Resume</a></li><li><a href="/contact">Contact</a></li></ul><ul class="site-menu__more"><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=menu">Don’t feed the bears</a></li></ul></nav></details></header><div class="project-page" data-slug="notebook"><header class="project-header"><p class="project-back"><a href="/projects">Projects</a></p><p class="project-stage" data-stage="building">Building</p><h1>Notebook</h1><p class="project-pitch">Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow.</p></header><main class="project-main"><div class="post-content project-body"><h2>Why I built it</h2>
+<p>Because.</p>
+</div><p class="project-stack"><span>React</span> · <span>TanStack Query</span> · <span>DynamoDB</span> · <span>installable on phone</span></p><section class="project-build-log" aria-labelledby="project-build-log"><h2 id="project-build-log">Build log</h2><p class="project-build-log__empty">No posts about Notebook yet. <a href="/rss.xml">Follow along via RSS</a>.</p></section></main></div><footer class="site-footer"><p class="site-footer__copy">© 2026 Chris Gagne</p><ul class="site-footer__links"><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=footer">Don’t feed the bears</a></li></ul></footer><!--prerender:end--></div>
+    <script type="module" src="/assets/index.js"></script>
+  </body>
+</html>"
+`;
+
 exports[`render HTML snapshots > matches frozen output for home with Recent posts 1`] = `
 "<!doctype html>
 <html lang="en">

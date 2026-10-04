@@ -4,6 +4,8 @@ import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
+  projectPageView,
+  renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
   renderResumePrerenderHtml,
   renderResumeUnavailablePrerenderHtml,
@@ -70,6 +72,23 @@ const PRERENDERS: Record<string, string> = {
     selectHomeProjects(SAMPLE_PROJECTS),
   ),
   '/projects': renderProjectsIndexPrerenderHtml(SAMPLE_PROJECTS),
+  '/projects/posts': renderProjectPagePrerenderHtml(
+    projectPageView(
+      {
+        ...SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!,
+        bodyMarkdown:
+          '## Why I built it\n\nBecause.\n\n## How publishing works\n\n1. Write.\n2. Publish.',
+      },
+      [
+        {
+          id: '01A',
+          slug: 'welcome',
+          title: 'Welcome',
+          publishedAt: '2026-02-01T00:00:00.000Z',
+        },
+      ],
+    ),
+  ),
   '/posts': renderSitePageHtml(
     '/posts',
     renderPostsIndexBodyHtml([
@@ -207,6 +226,43 @@ describe('cold load: first React render matches the prerender', () => {
 
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['with a demo slot and a Build log', PRERENDERS['/projects/posts']!],
+    [
+      'with no demo and no posts',
+      renderProjectPagePrerenderHtml(
+        projectPageView({
+          ...SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!,
+          demo: null,
+        }),
+      ),
+    ],
+  ])(
+    '/projects/posts %s mounts the same DOM as the prerender',
+    async (_, html) => {
+      const loaded = await coldLoad('/projects/posts', html);
+      unmount = loaded.unmount;
+
+      expect(loaded.root.innerHTML).toBe(loaded.before.html);
+      expect(loaded.root.querySelector('.project-build-log')).not.toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  test('a project prerender for another slug is not reused', async () => {
+    const loaded = await coldLoad(
+      '/projects/notebook',
+      PRERENDERS['/projects/posts']!,
+    );
+    unmount = loaded.unmount;
+
+    expect(loaded.root.querySelector('.project-header')).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      '/projects/notebook/',
+      expect.anything(),
+    );
   });
 
   test('/ with no posts has no Recent posts heading before or after mount', async () => {

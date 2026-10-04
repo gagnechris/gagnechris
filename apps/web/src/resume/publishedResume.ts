@@ -6,6 +6,7 @@ import {
   type ResumeIntro,
 } from '@gagnechris/shared/render';
 import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 export type ResumeView = ResumeIntro & {
   bodyHtml: string;
@@ -13,11 +14,7 @@ export type ResumeView = ResumeIntro & {
   unavailable?: boolean;
 };
 
-/** Local Vite uses `/__site` → static origin; prod is same-origin. */
-export function publishedResumeUrl(): string {
-  const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  return localSite ? '/__site/resume/' : '/resume/';
-}
+export const publishedResumeUrl = (): string => publishedSiteUrl('/resume/');
 
 /** Only when the published page can't be loaded; never painted before it. */
 export const fallbackResumeView = (): ResumeView => ({

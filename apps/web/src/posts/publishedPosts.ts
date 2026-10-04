@@ -1,4 +1,5 @@
 import { fromPrerender } from '../prerender/documentPrerender';
+import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 /** CloudFront serves `/posts/*` from the `blog/` S3 prefix. */
 export type PublishedPostListItem = {
@@ -16,17 +17,11 @@ type PostsJson = {
   items?: PublishedPostListItem[];
 };
 
-/** Local Vite uses `/__site` → static origin; prod is same-origin. */
-export function publishedPostsUrl(): string {
-  const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  return localSite ? '/__site/posts/posts.json' : '/posts/posts.json';
-}
+export const publishedPostsUrl = (): string =>
+  publishedSiteUrl('/posts/posts.json');
 
-export function publishedPostPageUrl(slug: string): string {
-  const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  const path = `/posts/${slug}/`;
-  return localSite ? `/__site${path}` : path;
-}
+export const publishedPostPageUrl = (slug: string): string =>
+  publishedSiteUrl(`/posts/${slug}/`);
 
 export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   const response = await fetch(publishedPostsUrl(), {
