@@ -10,7 +10,7 @@ type Props = { onReset: () => void } & (
   | {
       /** The note sits in the slot's label row and the demo places Reset in its own toolbar. */
       layout: 'split';
-      note: string;
+      note: ReactNode;
       children: (resetButton: ReactNode) => ReactNode;
     }
 );

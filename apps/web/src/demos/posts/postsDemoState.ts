@@ -20,8 +20,11 @@ export type PostsDemoStatus = 'draft' | 'published' | 'unpublished';
 export type PostsDemoAction =
   { type: 'edit'; patch: Partial<PostDraft> } | { type: 'publish'; at: string };
 
-export const POSTS_DEMO_NOTE =
-  'Write on the left, publish, watch the right. Nothing is saved.';
+/** posts.css shows one per layout; the panes stack at the same breakpoint. */
+export const POSTS_DEMO_NOTE = {
+  sideBySide: 'Write on the left, publish, watch the right. Nothing is saved.',
+  stacked: 'Write above, publish, watch below. Nothing is saved.',
+};
 
 export const POSTS_DEMO_CAPTIONS: Record<PostsDemoStatus, string> = {
   draft:
