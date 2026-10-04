@@ -40,6 +40,7 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
 
 vi.mock('../src/viewer-request-slugs.js', () => ({
   syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
+  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/observability.js', () => ({

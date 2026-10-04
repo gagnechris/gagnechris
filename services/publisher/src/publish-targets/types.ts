@@ -76,7 +76,10 @@ export type PublishResultBooleanFlag =
 
 export type PublishTarget = {
   id: string;
-  /** Omit for feed-only / orphan / home (home is `/` special-cased). */
+  /**
+   * Exact page paths served from `{path}/index.html`; nothing nested under
+   * them is. Omit for feed-only / orphan / home (home is `/` special-cased).
+   */
   optionBPaths?: readonly string[];
   adminMutationPrefixes?: readonly string[];
   /** Soft-delete removes the PUBLISHED snapshot, so DELETE is publish-relevant. */

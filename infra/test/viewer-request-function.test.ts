@@ -16,7 +16,7 @@ type CfRequest = {
     string,
     { value?: string; multiValue?: Array<{ value: string }> }
   >;
-  headers: { host: { value: string } };
+  headers: { host: { value: string } } & Record<string, { value: string }>;
 };
 
 type CfResponse =
@@ -30,8 +30,8 @@ type CfResponse =
 
 type HandlerApi = {
   handler: (event: { request: CfRequest }) => Promise<CfResponse>;
-  setPublishedBlogSlugsForTests: (slugs: Record<string, number> | null) => void;
-  setOptionBPrefixesForTests: (prefixes: string[] | null) => void;
+  setPublishedKeysForTests: (keys: Record<string, number> | null) => void;
+  setOptionBPagesForTests: (pages: string[] | null) => void;
 };
 
 type FakeKvs = {
@@ -53,7 +53,7 @@ function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
     '__fakeKvsFactory',
     `var cf = { kvs: ${kvsFactory} };
      ${fnSource}
-     return { handler, setPublishedBlogSlugsForTests, setOptionBPrefixesForTests };`,
+     return { handler, setPublishedKeysForTests, setOptionBPagesForTests };`,
   )(
     typeof fakeKvs === 'function' ? undefined : fakeKvs,
     typeof fakeKvs === 'function' ? fakeKvs : undefined,
@@ -72,8 +72,8 @@ function locationOf(res: CfResponse): string {
 }
 
 afterEach(() => {
-  api.setPublishedBlogSlugsForTests(null);
-  api.setOptionBPrefixesForTests(null);
+  api.setPublishedKeysForTests(null);
+  api.setOptionBPagesForTests(null);
 });
 
 describe('viewer-request CloudFront Function', () => {
@@ -196,7 +196,7 @@ describe('viewer-request CloudFront Function', () => {
   });
 
   it('rewrites known /posts slugs to blog/ storage and unknown slugs to /404.html', async () => {
-    api.setPublishedBlogSlugsForTests({ welcome: 1 });
+    api.setPublishedKeysForTests({ welcome: 1 });
     expect(
       (
         (await runHandler({
@@ -232,7 +232,7 @@ describe('viewer-request CloudFront Function', () => {
   });
 
   it('fail-opens blog slugs when the published map is null', async () => {
-    api.setPublishedBlogSlugsForTests(null);
+    api.setPublishedKeysForTests(null);
     expect(
       (
         (await runHandler({
@@ -272,7 +272,7 @@ describe('viewer-request CloudFront Function', () => {
         __synced__: true,
       });
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
       expect(
         (
           (await kvsApi.handler({
@@ -292,7 +292,7 @@ describe('viewer-request CloudFront Function', () => {
         __synced__: true,
       });
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
       expect(
         (
           (await kvsApi.handler({
@@ -312,7 +312,7 @@ describe('viewer-request CloudFront Function', () => {
         { errorOn: 'welcome' },
       );
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
       expect(
         (
           (await kvsApi.handler({
@@ -329,7 +329,7 @@ describe('viewer-request CloudFront Function', () => {
     it('fail-opens when sentinel is absent (pre-first-sync)', async () => {
       const { kvs, calls } = createCountingKvs({});
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
       expect(
         (
           (await kvsApi.handler({
@@ -349,7 +349,7 @@ describe('viewer-request CloudFront Function', () => {
         welcome: true,
       });
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
 
       expect(
         (
@@ -384,7 +384,7 @@ describe('viewer-request CloudFront Function', () => {
         [maxSlug]: true,
       });
       const kvsApi = loadApi(kvs);
-      kvsApi.setPublishedBlogSlugsForTests(null);
+      kvsApi.setPublishedKeysForTests(null);
 
       expect(
         (
@@ -429,7 +429,7 @@ describe('viewer-request CloudFront Function', () => {
 
   it('serves /now via Option B when a target registers the path', async () => {
     // Simulates codegen after a page target adds optionBPaths: ['/now'].
-    api.setOptionBPrefixesForTests([
+    api.setOptionBPagesForTests([
       '/blog',
       '/contact',
       '/dont-feed-the-bears',
@@ -565,7 +565,7 @@ describe('viewer-request CloudFront Function', () => {
     });
 
     it('leaves paths that only start with admin or auth alone', async () => {
-      api.setPublishedBlogSlugsForTests({});
+      api.setPublishedKeysForTests({});
       for (const uri of [
         '/Administrator',
         '/administrator',
@@ -595,7 +595,7 @@ describe('viewer-request CloudFront Function', () => {
     });
 
     it('leaves other mixed-case paths alone', async () => {
-      api.setPublishedBlogSlugsForTests({});
+      api.setPublishedKeysForTests({});
       for (const uri of ['/posts/Some-Slug', '/Resume']) {
         const res = await runHandler(apex(uri));
         expect(res).not.toHaveProperty('statusCode');
@@ -622,24 +622,186 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/404.html');
   });
 
-  it('sends /projects and every /projects/<slug> to S3 (missing pages 404 there)', async () => {
-    for (const [uri, expected] of [
-      ['/projects', '/projects/index.html'],
-      ['/projects/', '/projects/index.html'],
-      ['/projects/notebook', '/projects/notebook/index.html'],
-      ['/projects/notebook/', '/projects/notebook/index.html'],
-      ['/projects/does-not-exist', '/projects/does-not-exist/index.html'],
+  const routedUri = async (uri: string, handlerApi: HandlerApi = api) =>
+    (
+      (await handlerApi.handler({
+        request: { uri, headers: { host: { value: 'gagnechris.com' } } },
+      })) as CfRequest
+    ).uri;
+
+  it('serves exactly the known Option B pages, with or without a trailing slash', async () => {
+    for (const page of [
+      '/resume',
+      '/contact',
+      '/dont-feed-the-bears',
+      '/dont-feed-the-bears/camp',
+      '/dont-feed-the-bears/wild',
+      '/projects',
     ]) {
-      expect(
-        (
-          (await runHandler({
-            uri,
-            headers: { host: { value: 'gagnechris.com' } },
-          })) as CfRequest
-        ).uri,
-        uri,
-      ).toBe(expected);
+      for (const uri of [page, `${page}/`, `${page}/index.html`]) {
+        expect(await routedUri(uri), uri).toBe(`${page}/index.html`);
+      }
     }
+  });
+
+  it('sends unknown pages under an Option B prefix to /404.html', async () => {
+    api.setPublishedKeysForTests({ welcome: 1 });
+    for (const uri of [
+      '/resume/x',
+      '/resume/x/',
+      '/contact/x',
+      '/dont-feed-the-bears/x',
+      '/dont-feed-the-bears/camp/x',
+      '/dont-feed-the-bears/wild/x/index.html',
+      '/posts/welcome/x',
+      '/resume/x/index.html',
+    ]) {
+      expect(await routedUri(uri), uri).toBe('/404.html');
+    }
+  });
+
+  it('sends .html URLs that are not pages to /404.html', async () => {
+    for (const uri of [
+      '/x.html',
+      '/resume.html',
+      '/resume/x.html',
+      '/posts/x.html',
+      '/projects/x.html',
+      '/404.html',
+    ]) {
+      expect(await routedUri(uri), uri).toBe('/404.html');
+    }
+    expect(await routedUri('/index.html')).toBe('/index.html');
+    expect(await routedUri('/contact/index.html')).toBe('/contact/index.html');
+  });
+
+  it('passes files that are not pages through, under a prefix too', async () => {
+    for (const [uri, expected] of [
+      ['/posts/posts.json', '/blog/posts.json'],
+      ['/resume/photo.png', '/resume/photo.png'],
+      ['/rss.xml', '/rss.xml'],
+      ['/robots.txt', '/robots.txt'],
+    ]) {
+      expect(await routedUri(uri), uri).toBe(expected);
+    }
+  });
+
+  it('drops validators on the way to /404.html so CloudFront cannot answer 304', async () => {
+    const headers = {
+      host: { value: 'gagnechris.com' },
+      'if-none-match': { value: '"abc"' },
+      'if-modified-since': { value: 'Wed, 01 Jan 2100 00:00:00 GMT' },
+    };
+    const missing = (await runHandler({
+      uri: '/resume/x',
+      headers: { ...headers },
+    })) as CfRequest;
+    expect(missing.uri).toBe('/404.html');
+    expect(missing.headers).toEqual({ host: { value: 'gagnechris.com' } });
+
+    const page = (await runHandler({
+      uri: '/resume',
+      headers: { ...headers },
+    })) as CfRequest;
+    expect(page.uri).toBe('/resume/index.html');
+    expect(page.headers).toEqual(headers);
+  });
+
+  describe('/projects/<slug> KVS allowlist', () => {
+    function kvsWith(keys: string[], errorOn?: string) {
+      const calls: string[] = [];
+      const kvs: FakeKvs = {
+        async exists(key) {
+          calls.push(key);
+          if (key === errorOn) throw new Error(`kvs error for ${key}`);
+          return keys.includes(key);
+        },
+      };
+      return { api: loadApi(kvs), calls };
+    }
+
+    it('serves a published project with one KVS read', async () => {
+      const { api: kvsApi, calls } = kvsWith([
+        'projects/notebook',
+        'projects/__synced__',
+      ]);
+      for (const uri of [
+        '/projects/notebook',
+        '/projects/notebook/',
+        '/projects/notebook/index.html',
+      ]) {
+        expect(await routedUri(uri, kvsApi), uri).toBe(
+          '/projects/notebook/index.html',
+        );
+      }
+      expect(calls).toEqual([
+        'projects/notebook',
+        'projects/notebook',
+        'projects/notebook',
+      ]);
+    });
+
+    it('sends an unknown project to /404.html once synced', async () => {
+      const { api: kvsApi, calls } = kvsWith([
+        'projects/notebook',
+        'projects/__synced__',
+      ]);
+      expect(await routedUri('/projects/x', kvsApi)).toBe('/404.html');
+      expect(calls).toEqual(['projects/x', 'projects/__synced__']);
+    });
+
+    it('keeps posts and projects apart', async () => {
+      const { api: kvsApi } = kvsWith([
+        'notebook',
+        '__synced__',
+        'projects/posts',
+        'projects/__synced__',
+      ]);
+      expect(await routedUri('/projects/notebook', kvsApi)).toBe('/404.html');
+      expect(await routedUri('/posts/posts', kvsApi)).toBe('/404.html');
+      expect(await routedUri('/projects/posts', kvsApi)).toBe(
+        '/projects/posts/index.html',
+      );
+    });
+
+    it('fails open before the first project sync, even when posts are synced', async () => {
+      const { api: kvsApi } = kvsWith(['welcome', '__synced__']);
+      expect(await routedUri('/projects/anything', kvsApi)).toBe(
+        '/projects/anything/index.html',
+      );
+    });
+
+    it('fails open on a KVS error', async () => {
+      const { api: kvsApi } = kvsWith(
+        ['projects/__synced__'],
+        'projects/notebook',
+      );
+      expect(await routedUri('/projects/notebook', kvsApi)).toBe(
+        '/projects/notebook/index.html',
+      );
+    });
+
+    it('rejects reserved and invalid slugs without reading the KVS', async () => {
+      const { api: kvsApi, calls } = kvsWith(['projects/__synced__']);
+      for (const uri of [
+        '/projects/__synced__',
+        '/projects/Notebook',
+        `/projects/${'a'.repeat(121)}`,
+        '/projects/a/b',
+      ]) {
+        expect(await routedUri(uri, kvsApi), uri).toBe('/404.html');
+      }
+      expect(calls).toEqual([]);
+    });
+
+    it('serves /projects without reading the KVS', async () => {
+      const { api: kvsApi, calls } = kvsWith(['projects/__synced__']);
+      expect(await routedUri('/projects', kvsApi)).toBe('/projects/index.html');
+      expect(await routedUri('/projects/', kvsApi)).toBe(
+        '/projects/index.html',
+      );
+      expect(calls).toEqual([]);
+    });
   });
 
   it('keeps / as the home index.html shell', async () => {

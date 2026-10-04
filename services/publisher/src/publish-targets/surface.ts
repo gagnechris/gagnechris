@@ -1,9 +1,14 @@
 import type { PublishTarget } from './types.js';
 
-/** Vite-built public pages that are not publisher targets. */
-export const STATIC_OPTION_B_PREFIXES = [
+/**
+ * Vite-built public pages that are not publisher targets: one per
+ * `STATIC_PAGE_META` entry in apps/web/scripts/staticPageMeta.ts.
+ */
+export const STATIC_OPTION_B_PAGES = [
   '/contact',
   '/dont-feed-the-bears',
+  '/dont-feed-the-bears/camp',
+  '/dont-feed-the-bears/wild',
 ] as const;
 
 export function collectOptionBPaths(
@@ -43,10 +48,8 @@ export function collectAdminSoftDeletePrefixes(
   return [...prefixes].sort();
 }
 
-export function allOptionBPrefixes(
-  targets: readonly PublishTarget[],
-): string[] {
+export function allOptionBPages(targets: readonly PublishTarget[]): string[] {
   return [
-    ...new Set([...collectOptionBPaths(targets), ...STATIC_OPTION_B_PREFIXES]),
+    ...new Set([...collectOptionBPaths(targets), ...STATIC_OPTION_B_PAGES]),
   ].sort();
 }

@@ -16,6 +16,7 @@ dist-ssr
 
 # Local E2E publisher filesystem root
 .local-site
+.local-kvs.json
 
 # Playwright output and per-run stack (site root + logs)
 e2e/test-results

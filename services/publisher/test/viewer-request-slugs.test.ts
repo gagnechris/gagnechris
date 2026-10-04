@@ -5,8 +5,11 @@ import {
   diffBlogSlugKeys,
   KVS_UPDATE_BATCH_SIZE,
   KvsSyncError,
+  PROJECT_SLUG_NAMESPACE,
   syncBlogSlugsOnce,
   syncBlogSlugsWithClient,
+  syncViewerRequestBlogSlugs,
+  syncViewerRequestProjectSlugs,
   type BlogSlugKvsClient,
 } from '../src/viewer-request-slugs.js';
 
@@ -52,6 +55,63 @@ describe('diffBlogSlugKeys', () => {
     const removeHalf = diffBlogSlugKeys(existing, slugs.slice(0, 250));
     expect(removeHalf.puts).toEqual([]);
     expect(removeHalf.deletes).toHaveLength(250);
+  });
+});
+
+describe('KVS namespaces', () => {
+  const shared = [
+    'welcome',
+    BLOG_SLUG_SYNCED_KEY,
+    'projects/notebook',
+    'projects/__synced__',
+  ];
+
+  it('a post sync never touches project keys', () => {
+    const diff = diffBlogSlugKeys(shared, []);
+    expect(diff.deletes).toEqual([{ Key: 'welcome' }]);
+    expect(diff.puts).toEqual([]);
+  });
+
+  it('a project sync never touches post keys and writes its own sentinel', () => {
+    const diff = diffBlogSlugKeys(
+      ['welcome', BLOG_SLUG_SYNCED_KEY, 'projects/old'],
+      ['projects/notebook'],
+      PROJECT_SLUG_NAMESPACE,
+    );
+    expect(diff.deletes).toEqual([{ Key: 'projects/old' }]);
+    expect(diff.puts).toEqual([
+      { Key: 'projects/notebook', Value: '1' },
+      { Key: 'projects/__synced__', Value: '1' },
+    ]);
+  });
+
+  it('syncs posts and projects into one store without clobbering each other', async () => {
+    const keys = new Set<string>(shared);
+    const client: BlogSlugKvsClient = {
+      describeETag: async () => 'e',
+      listKeys: async () => [...keys],
+      async updateKeys({ puts, deletes }) {
+        for (const d of deletes) keys.delete(d.Key!);
+        for (const p of puts) keys.add(p.Key!);
+        return 'e';
+      },
+    };
+    vi.stubEnv('CLOUDFRONT_DISTRIBUTION_ID', 'E123');
+    vi.stubEnv('BLOG_SLUGS_KVS_ARN', 'arn:kvs');
+    try {
+      await syncViewerRequestProjectSlugs(async () => ['bears-lab'], {
+        client,
+      });
+      await syncViewerRequestBlogSlugs(['hello'], { client });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect([...keys].sort()).toEqual([
+      BLOG_SLUG_SYNCED_KEY,
+      'hello',
+      'projects/__synced__',
+      'projects/bears-lab',
+    ]);
   });
 });
 

@@ -314,7 +314,7 @@ Font License (licences alongside the files). Each file name ends in the first 8
 hex characters of its SHA-256 (`newsreader-roman.c4b10fbd.woff2`), so the URL
 changes with the content and the deploy serves fonts as immutable. After
 replacing a font, rename it (`shasum -a 256 <file> | cut -c1-8`) and update
-`index.html` and `src/public.css`, then run `npm run not-found:generate`.
+`index.html` and `src/public.css`.
 
 | File                        | Source                                                                                                                                                                                    | Axes kept                 | Size  |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----- |

@@ -28,3 +28,12 @@ export function postSlugsFromKeys(keys: string[]): string[] {
   }
   return slugs;
 }
+
+export function projectSlugsFromKeys(keys: string[]): string[] {
+  const slugs: string[] = [];
+  for (const key of keys) {
+    const match = /^projects\/([^/]+)\/index\.html$/.exec(key);
+    if (match?.[1]) slugs.push(match[1]);
+  }
+  return slugs;
+}
