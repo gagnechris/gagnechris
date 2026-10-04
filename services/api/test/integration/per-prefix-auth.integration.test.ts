@@ -17,11 +17,7 @@ import { createPostRoutes } from '../../src/posts/handlers.js';
 import { PostsRepository } from '../../src/posts/repository.js';
 import { createResumeRoutes } from '../../src/resume/handlers.js';
 import { ResumeRepository } from '../../src/resume/repository.js';
-import {
-  dispatchRoutes,
-  LEGACY_WEB_CLIENT_ID_ENV,
-  type RouteDef,
-} from '../../src/router.js';
+import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { createSearchRoutes } from '../../src/search/handlers.js';
 import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
 import { createSyncRoutes } from '../../src/sync/handlers.js';
@@ -257,15 +253,17 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     expect(await rowKeys()).toEqual(before);
   });
 
-  it('legacy web client + admin group keeps both prefixes while the flag is set', async () => {
+  it('web client + admin group reads and writes nothing, even with AUTH_LEGACY_WEB_CLIENT_ID set', async () => {
     const legacy = token(LEGACY_CLIENT, '[admin]');
-    vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, LEGACY_CLIENT);
-    expect(await writeNotebookData(legacy)).toEqual([201, 201]);
-    const { post, homeUpdate } = await writeSiteContent(legacy);
-    expect([post.status, homeUpdate.status]).toEqual([201, 200]);
-
-    vi.stubEnv(LEGACY_WEB_CLIENT_ID_ENV, '');
+    vi.stubEnv('AUTH_LEGACY_WEB_CLIENT_ID', LEGACY_CLIENT);
+    const before = await rowKeys();
+    expect(await writeNotebookData(legacy)).toEqual([403, 403]);
+    const { post, home, homeUpdate } = await writeSiteContent(legacy);
+    expect([post.status, home.status, homeUpdate.status]).toEqual([
+      403, 403, 403,
+    ]);
     expect((await call(legacy, 'GET', '/api/notebook/notes')).status).toBe(403);
     expect((await call(legacy, 'GET', '/api/admin/posts')).status).toBe(403);
+    expect(await rowKeys()).toEqual(before);
   });
 });

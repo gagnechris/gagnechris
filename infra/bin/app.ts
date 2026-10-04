@@ -79,7 +79,6 @@ const api = new ApiStack(app, `Api-${config.name}`, {
   description: `HTTP API + Lambda behind CloudFront /api (${config.name}).`,
   config,
   userPool: auth.userPool,
-  webClient: auth.webClient,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
   emailIdentity: email.emailIdentity,

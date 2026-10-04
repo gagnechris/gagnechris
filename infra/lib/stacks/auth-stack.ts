@@ -28,7 +28,6 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
-  ADMIN_GROUP,
   ADMIN_HOST,
   APEX_DOMAIN,
   AUTH_DOMAIN as AUTH_DOMAIN_CONST,
@@ -52,8 +51,6 @@ export interface AuthStackProps extends StackProps {
 
 export class AuthStack extends Stack {
   readonly userPool: UserPool;
-  /** Legacy apex client; kept until the subdomain cutover. */
-  readonly webClient: UserPoolClient;
   readonly adminWebClient: UserPoolClient;
   readonly notebookWebClient: UserPoolClient;
   readonly iosClient: UserPoolClient;
@@ -144,15 +141,6 @@ export class AuthStack extends Stack {
       refreshTokenRotationGracePeriod: Duration.seconds(30),
     };
 
-    this.webClient = this.userPool.addClient('WebClient', {
-      ...clientCommon,
-      userPoolClientName: 'web',
-    });
-    // Auth deploys before Api, so this export has to outlive Api's import of
-    // it by one deploy or CloudFormation refuses to delete it. Remove it with
-    // the client once `list-imports` shows no importers.
-    this.exportValue(this.webClient.userPoolClientId);
-
     // Each app client trusts only its own host, so a script on one host can't
     // land the other client's code on a callback it controls.
     const hostOAuth = (host: string) => ({
@@ -197,18 +185,6 @@ export class AuthStack extends Stack {
       },
     });
 
-    const adminGroup = new CfnUserPoolGroup(this, 'AdminGroup', {
-      userPoolId: this.userPool.userPoolId,
-      groupName: ADMIN_GROUP,
-      description: 'Site owner: CMS and Notebook access',
-    });
-    new CfnUserPoolUserToGroupAttachment(this, 'AdminGroupMembership', {
-      userPoolId: this.userPool.userPoolId,
-      // Ref is the group name; it also orders the attachment after the group.
-      groupName: adminGroup.ref,
-      username: config.adminUsername,
-    });
-
     for (const [id, groupName, description] of [
       ['SiteAdmin', SITE_ADMIN_GROUP, 'Public-site CMS on the admin host'],
       ['Notebook', NOTEBOOK_GROUP, 'Notebook on the notebook host'],
@@ -220,6 +196,7 @@ export class AuthStack extends Stack {
       });
       new CfnUserPoolUserToGroupAttachment(this, `${id}GroupMembership`, {
         userPoolId: this.userPool.userPoolId,
+        // Ref is the group name; it also orders the attachment after the group.
         groupName: group.ref,
         username: config.adminUsername,
       });
@@ -231,12 +208,6 @@ export class AuthStack extends Stack {
         certificate,
       },
       managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
-    });
-
-    new CfnManagedLoginBranding(this, 'WebManagedLoginBranding', {
-      userPoolId: this.userPool.userPoolId,
-      clientId: this.webClient.userPoolClientId,
-      useCognitoProvidedValues: true,
     });
 
     // Managed login isn't available to a client without its own branding.
@@ -288,12 +259,6 @@ export class AuthStack extends Stack {
       description: 'Cognito user pool ID',
     });
 
-    new StringParameter(this, 'WebClientIdParam', {
-      parameterName: ssmParameterName(config.name, 'cognitoWebClientId'),
-      stringValue: this.webClient.userPoolClientId,
-      description: 'Cognito web app client ID (public, PKCE)',
-    });
-
     new StringParameter(this, 'AdminWebClientIdParam', {
       parameterName: ssmParameterName(config.name, 'cognitoAdminWebClientId'),
       stringValue: this.adminWebClient.userPoolClientId,
@@ -331,11 +296,6 @@ export class AuthStack extends Stack {
     new CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,
       description: 'Cognito user pool ID',
-    });
-
-    new CfnOutput(this, 'WebClientId', {
-      value: this.webClient.userPoolClientId,
-      description: 'Web app client ID (no secret; auth code + PKCE)',
     });
 
     new CfnOutput(this, 'AdminWebClientId', {

@@ -66,7 +66,6 @@ function build() {
     env,
     config,
     userPool: auth.userPool,
-    webClient: auth.webClient,
     alertsTopic,
     dataTable: data.table,
     emailIdentity: email.emailIdentity,
@@ -426,10 +425,22 @@ describe('app hosts: Cognito', () => {
       expect(props.EnableTokenRevocation).toBe(true);
       expect(props.RefreshTokenValidity).toBe(43200);
     }
-    // Kept, though no longer trusted by the API, until its exports have no importers.
-    expect(client('web').CallbackURLs).toEqual([
-      'https://gagnechris.com/auth/callback',
-    ]);
+  });
+
+  // Deleting or renaming one of these logical IDs replaces the client and
+  // signs out every device holding its refresh tokens.
+  it('has exactly the four clients, under stable logical IDs', () => {
+    const byId = Object.fromEntries(
+      Object.entries(
+        resourcesOf(built.auth, 'AWS::Cognito::UserPoolClient'),
+      ).map(([id, c]) => [id, c.Properties.ClientName]),
+    );
+    expect(byId).toEqual({
+      UserPoolAdminWebClient5CA64CB9: 'admin-web',
+      UserPoolNotebookWebClient2C352CC5: 'notebook-web',
+      UserPoolIosClientD1604E26: 'ios',
+      UserPoolDevClient09BBD8DF: 'dev-local',
+    });
   });
 
   it('gives each app client managed login branding', () => {
@@ -440,20 +451,31 @@ describe('app hosts: Cognito', () => {
     expect(brandings).toMatch(/UserPoolNotebookWebClient/);
   });
 
-  it('creates site-admin and notebook groups with the owner in both, keeping admin', () => {
-    const groups = resourcesOf(built.auth, 'AWS::Cognito::UserPoolGroup');
-    const groupIdByName = (name: string) =>
-      Object.entries(groups).find(
-        ([, g]) => g.Properties.GroupName === name,
-      )?.[0];
-    for (const name of ['admin', 'site-admin', 'notebook']) {
-      const id = groupIdByName(name);
-      expect(id, name).toBeDefined();
-      built.auth.hasResourceProperties(
-        'AWS::Cognito::UserPoolUserToGroupAttachment',
-        { GroupName: { Ref: id }, Username: 'owner@example.com' },
-      );
-    }
+  it('creates only the site-admin and notebook groups, with the owner in both', () => {
+    const groupNames = Object.fromEntries(
+      Object.entries(
+        resourcesOf(built.auth, 'AWS::Cognito::UserPoolGroup'),
+      ).map(([id, g]) => [id, g.Properties.GroupName]),
+    );
+    expect(groupNames).toEqual({
+      SiteAdminGroup: 'site-admin',
+      NotebookGroup: 'notebook',
+    });
+    const memberships = Object.fromEntries(
+      Object.entries(
+        resourcesOf(built.auth, 'AWS::Cognito::UserPoolUserToGroupAttachment'),
+      ).map(([id, a]) => [id, a.Properties]),
+    );
+    expect(memberships).toEqual({
+      SiteAdminGroupMembership: expect.objectContaining({
+        GroupName: { Ref: 'SiteAdminGroup' },
+        Username: 'owner@example.com',
+      }),
+      NotebookGroupMembership: expect.objectContaining({
+        GroupName: { Ref: 'NotebookGroup' },
+        Username: 'owner@example.com',
+      }),
+    });
   });
 
   it('publishes both client IDs to SSM', () => {
@@ -535,15 +557,17 @@ describe('app hosts: API Gateway', () => {
     expect(vars.AUTH_LEGACY_WEB_CLIENT_ID).toBeUndefined();
   });
 
-  it('no longer imports the legacy web client, while Auth still exports it', () => {
-    const api = JSON.stringify(built.api.toJSON());
-    expect(api).not.toMatch(/ExportsOutputRefUserPoolWebClient/);
-    const exportNames = Object.values(
-      built.auth.toJSON().Outputs as Record<string, Json>,
-    ).map((o) => JSON.stringify(o.Export?.Name ?? ''));
-    expect(
-      exportNames.some((n) => n.includes('ExportsOutputRefUserPoolWebClient')),
-    ).toBe(true);
+  it('leaves no trace of the web client in Auth or Api', () => {
+    const auth = JSON.stringify(built.auth.toJSON());
+    expect(auth).not.toMatch(
+      /UserPoolWebClient|"WebClientIdParam|cognito-web-client-id/,
+    );
+    expect(Object.keys(built.auth.toJSON().Outputs)).not.toContain(
+      'WebClientId',
+    );
+    expect(JSON.stringify(built.api.toJSON())).not.toMatch(
+      /UserPoolWebClient|cognito-web-client-id/,
+    );
   });
 });
 

@@ -914,9 +914,9 @@ type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>;
 
 export const PREFIX_FORBIDDEN_DESCRIPTIONS = {
   '/api/admin':
-    'Forbidden: the token is not an `admin-web` client token with the `site-admin` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)',
+    'Forbidden: the token is not an `admin-web` client token with the `site-admin` group',
   '/api/notebook':
-    'Forbidden: the token is not a `notebook-web` client token with the `notebook` group (or, while `AUTH_LEGACY_WEB_CLIENT_ID` is set, a legacy `web` client token with the `admin` group)',
+    'Forbidden: the token is not a `notebook-web` client token with the `notebook` group',
 } as const;
 
 /** The router applies the same 403 rule to every route under a prefix, so it is documented per prefix, not per route. */
