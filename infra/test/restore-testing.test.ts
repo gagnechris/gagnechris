@@ -254,7 +254,7 @@ describe('AWS Backup restore testing', () => {
     });
   });
 
-  it('triggers the validator on COMPLETED restore jobs of this plan only', () => {
+  it('triggers the validator on COMPLETED DynamoDB restore jobs without a plan filter', () => {
     template.hasResourceProperties('AWS::Events::Rule', {
       Name: 'gagnechris-prod-restore-test-validate',
       EventPattern: {
@@ -263,14 +263,6 @@ describe('AWS Backup restore testing', () => {
         detail: {
           status: ['COMPLETED'],
           resourceType: ['DynamoDB'],
-          restoreTestingPlanArn: [
-            {
-              'Fn::GetAtt': [
-                Match.stringLikeRegexp('RestoreTestingPlan'),
-                'RestoreTestingPlanArn',
-              ],
-            },
-          ],
         },
       },
       Targets: [
@@ -288,6 +280,52 @@ describe('AWS Backup restore testing', () => {
       Name: 'gagnechris-prod-restore-leftover-check',
       ScheduleExpression: 'cron(0 12 * * ? *)',
       Targets: [Match.objectLike({ Input: '{"action":"leftoverCheck"}' })],
+    });
+  });
+
+  it('logs every restore job event to a 7-day log group EventBridge can write', () => {
+    const logGroupId = Object.keys(
+      template.findResources('AWS::Logs::LogGroup', {
+        Properties: {
+          LogGroupName: '/aws/events/gagnechris-prod-restore-job-events',
+          RetentionInDays: 7,
+        },
+      }),
+    )[0];
+    expect(logGroupId).toBeDefined();
+    template.hasResourceProperties('AWS::Events::Rule', {
+      Name: 'gagnechris-prod-restore-job-event-log',
+      EventPattern: {
+        source: ['aws.backup'],
+        'detail-type': ['Restore Job State Change'],
+      },
+      Targets: [
+        Match.objectLike({
+          Arn: {
+            'Fn::Join': [
+              '',
+              Match.arrayWith([
+                Match.stringLikeRegexp(':log-group:$'),
+                { Ref: logGroupId },
+              ]),
+            ],
+          },
+        }),
+      ],
+    });
+    template.hasResourceProperties('AWS::Logs::ResourcePolicy', {
+      PolicyName: 'gagnechris-prod-restore-job-events',
+      PolicyDocument: {
+        'Fn::Join': [
+          '',
+          Match.arrayWith([
+            Match.stringLikeRegexp(
+              'logs:CreateLogStream.*logs:PutLogEvents.*events\\.amazonaws\\.com',
+            ),
+            { 'Fn::GetAtt': [logGroupId, 'Arn'] },
+          ]),
+        ],
+      },
     });
   });
 

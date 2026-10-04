@@ -237,8 +237,10 @@ export class DataStack extends Stack {
     });
 
     // The event types name their fields differently: restore jobs report
-    // `status` (not `state`) and carry no vault name, and copy jobs only name
-    // source/destination vault ARNs. Hence one `$or` branch per shape.
+    // `status` (not `state`) and may carry no vault ARN, and copy jobs only
+    // name source/destination vault ARNs. Hence one `$or` branch per shape.
+    // Restore failures alert account-wide: every AWS Backup restore here is
+    // ours, and the event's plan ARN location is undocumented.
     new Rule(this, 'BackupJobFailureRule', {
       ruleName: `gagnechris-${config.name}-backup-job-failures`,
       description: 'AWS Backup job failed, aborted, expired or partial',
@@ -256,19 +258,10 @@ export class DataStack extends Stack {
               backupVaultArn: [backupVault.backupVaultArn],
             },
             {
-              status: BACKUP_FAILURE_STATES,
-              backupVaultArn: [backupVault.backupVaultArn],
-            },
-            {
               state: BACKUP_FAILURE_STATES,
               sourceBackupVaultArn: [backupVault.backupVaultArn],
             },
-            {
-              status: BACKUP_FAILURE_STATES,
-              restoreTestingPlanArn: [
-                this.restoreTesting.plan.attrRestoreTestingPlanArn,
-              ],
-            },
+            { status: BACKUP_FAILURE_STATES },
           ],
         },
       },

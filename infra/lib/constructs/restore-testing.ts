@@ -1,4 +1,4 @@
-import { Duration, Stack } from 'aws-cdk-lib';
+import { ArnFormat, Duration, Stack } from 'aws-cdk-lib';
 import {
   CfnRestoreTestingPlan,
   CfnRestoreTestingSelection,
@@ -14,6 +14,7 @@ import {
   Role,
   ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
+import { LogGroup, ResourcePolicy, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
@@ -222,17 +223,56 @@ export class AppTableRestoreTesting extends Construct {
 
     new Rule(this, 'ValidateRule', {
       ruleName: `${prefix}-restore-test-validate`,
-      description: 'Restore testing job COMPLETED: validate the restored table',
+      description:
+        'DynamoDB restore job COMPLETED: validate it if the restore testing plan created it',
+      // No plan filter: AWS does not document where restore-testing events
+      // carry the plan ARN, so the validator checks it with DescribeRestoreJob.
       eventPattern: {
         source: ['aws.backup'],
         detailType: ['Restore Job State Change'],
         detail: {
           status: ['COMPLETED'],
           resourceType: ['DynamoDB'],
-          restoreTestingPlanArn: [this.plan.attrRestoreTestingPlanArn],
         },
       },
       targets: [new LambdaFunction(this.validator, { retryAttempts: 2 })],
+    });
+
+    // Records the real restore event shape for building pattern fixtures.
+    // Events hold job ids and ARNs only, no table content.
+    const restoreEventLog = new LogGroup(this, 'RestoreJobEventLog', {
+      logGroupName: `/aws/events/${prefix}-restore-job-events`,
+      retention: RetentionDays.ONE_WEEK,
+    });
+    new ResourcePolicy(this, 'RestoreJobEventLogPolicy', {
+      resourcePolicyName: `${prefix}-restore-job-events`,
+      policyStatements: [
+        new PolicyStatement({
+          principals: [new ServicePrincipal('events.amazonaws.com')],
+          actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+          resources: [restoreEventLog.logGroupArn],
+        }),
+      ],
+    });
+    new Rule(this, 'RestoreJobEventLogRule', {
+      ruleName: `${prefix}-restore-job-event-log`,
+      description: 'Log every AWS Backup restore job state change',
+      eventPattern: {
+        source: ['aws.backup'],
+        detailType: ['Restore Job State Change'],
+      },
+      targets: [
+        {
+          bind: () => ({
+            arn: stack.formatArn({
+              service: 'logs',
+              resource: 'log-group',
+              arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+              resourceName: restoreEventLog.logGroupName,
+            }),
+          }),
+        },
+      ],
     });
 
     new Rule(this, 'LeftoverCheckRule', {
