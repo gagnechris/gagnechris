@@ -1,6 +1,18 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { trackResumeView, trackResumeDownload } from '../utils/analytics';
+import {
+  RESUME_ACTION_LINKS,
+  RESUME_DOWNLOAD_FILENAME,
+  RESUME_DOWNLOAD_ICON_PATH,
+  RESUME_DOWNLOAD_LABEL,
+  RESUME_PAGE_TITLE,
+  type ResumeActionLink,
+} from '@gagnechris/shared/render';
+import {
+  trackEvent,
+  trackResumeDownload,
+  trackResumeView,
+} from '../utils/analytics';
 import {
   documentResumeView,
   fallbackResumeView,
@@ -10,10 +22,56 @@ import {
 import { createPublicApiClient } from '../api/public-client';
 import './Resume.css';
 
-function Resume() {
-  const [resume, setResume] = useState<ResumeView>(
-    () => documentResumeView() ?? fallbackResumeView(),
+// The intro must match `renderResumeIntroHtml` element for element
+// (coldLoadParity.test.tsx).
+
+const ActionLink = ({ link }: { link: ResumeActionLink }) => {
+  if (link.kind === 'spa') {
+    return (
+      <Link className="resume-intro__link" to={link.href} discover="none">
+        {link.label}
+      </Link>
+    );
+  }
+  const trackId = link.trackId;
+  return (
+    <a
+      className="resume-intro__link"
+      href={link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={
+        trackId
+          ? () => trackEvent('click', 'external_link', trackId)
+          : undefined
+      }
+    >
+      {link.label}
+    </a>
   );
+};
+
+const DownloadIcon = () => (
+  <svg
+    className="resume-download__icon"
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d={RESUME_DOWNLOAD_ICON_PATH}></path>
+  </svg>
+);
+
+function Resume() {
+  // Null only after client-side navigation, until /resume/ arrives; never the
+  // bundled default first.
+  const [resume, setResume] = useState<ResumeView | null>(documentResumeView);
   const [showBearNote, setShowBearNote] = useState(false);
 
   useEffect(() => {
@@ -24,13 +82,9 @@ function Resume() {
     if (documentResumeView()) return;
     let cancelled = false;
     void loadPublishedResume()
+      .catch(() => null)
       .then((published) => {
-        if (published && !cancelled) {
-          setResume(published);
-        }
-      })
-      .catch(() => {
-        /* fall back to the bundled default content */
+        if (!cancelled) setResume(published ?? fallbackResumeView());
       });
     return () => {
       cancelled = true;
@@ -38,7 +92,6 @@ function Resume() {
   }, []);
 
   const handleDownload = () => {
-    if (resume.unavailable || !resume.pdfPath) return;
     trackResumeDownload();
     void createPublicApiClient()
       .POST('/api/resume/download', {
@@ -48,37 +101,45 @@ function Resume() {
       .catch(() => {
         /* notify is best-effort; download still proceeds */
       });
-    const link = document.createElement('a');
-    link.href = resume.pdfPath;
-    link.download = 'Chris-Gagne-Resume.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
     setShowBearNote(true);
   };
 
+  const marker = !resume
+    ? ''
+    : resume.unavailable
+      ? ' resume-page-unavailable'
+      : ' resume-page-prerender';
+
   return (
-    <div className="resume-page" id="top">
+    <div className={`resume-page${marker}`} aria-busy={!resume || undefined}>
       <title>Resume - Chris Gagne</title>
       <link rel="canonical" href="https://gagnechris.com/resume" />
-      <header>
-        <div className="name-section">
-          <h1>{resume.name}</h1>
-        </div>
-        {!resume.unavailable && (
-          <div className="nav-section">
-            <button
-              className="subtle-download"
-              aria-label="Download resume as PDF"
-              onClick={handleDownload}
-            >
-              <span className="download-icon" aria-hidden="true">
-                ↓
-              </span>
-              <span className="download-text">Resume</span>
-            </button>
-          </div>
-        )}
+      <header className="resume-intro">
+        <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
+        {resume ? (
+          <>
+            {resume.headline ? (
+              <p className="resume-intro__headline">{resume.headline}</p>
+            ) : null}
+            <p className="resume-intro__summary">{resume.summary}</p>
+            <p className="resume-intro__actions">
+              {resume.pdfPath ? (
+                <a
+                  className="resume-download"
+                  href={resume.pdfPath}
+                  download={RESUME_DOWNLOAD_FILENAME}
+                  onClick={handleDownload}
+                >
+                  <DownloadIcon />
+                  {RESUME_DOWNLOAD_LABEL}
+                </a>
+              ) : null}
+              {RESUME_ACTION_LINKS.map((link) => (
+                <ActionLink key={link.href} link={link} />
+              ))}
+            </p>
+          </>
+        ) : null}
       </header>
 
       {showBearNote && (
@@ -101,32 +162,12 @@ function Resume() {
         </aside>
       )}
 
-      <main dangerouslySetInnerHTML={{ __html: resume.bodyHtml }} />
-
-      <div className="resume-page__footer-actions">
-        {!resume.unavailable && (
-          <button
-            className="subtle-download"
-            aria-label="Download resume as PDF"
-            onClick={handleDownload}
-          >
-            <span className="download-icon" aria-hidden="true">
-              ↓
-            </span>
-            <span className="download-text">Download Resume PDF</span>
-          </button>
-        )}
-        <a
-          className="back-link"
-          href="#top"
-          onClick={(e) => {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        >
-          Back to top
-        </a>
-      </div>
+      {resume?.bodyHtml ? (
+        <main
+          className="resume-body"
+          dangerouslySetInnerHTML={{ __html: resume.bodyHtml }}
+        />
+      ) : null}
     </div>
   );
 }

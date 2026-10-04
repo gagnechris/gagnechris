@@ -141,7 +141,7 @@ describe('resume date migration (DynamoDB Local)', () => {
     const body = JSON.parse(got.body as string) as Resume;
     expect(body.content).toEqual(content);
     expect(body.content.headline).toBe('Director of Software Engineering');
-    expect(body.content.earlierRolesBefore).toBe(2012);
+    expect(body.content.earlierRolesThrough).toBe(2012);
     expect(body.content.experience[0]).toMatchObject({
       start: '2019-07',
       end: null,

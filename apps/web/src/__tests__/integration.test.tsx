@@ -60,7 +60,9 @@ describe('Integration Tests', () => {
         </RouteTracker>,
       );
 
-      expect(screen.getByText('Professional Experience')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Resume' }),
+      ).toBeInTheDocument();
       expect(mockTrackPageView).toHaveBeenCalledWith('/');
       expect(mockTrackResumeView).toHaveBeenCalled();
     });
@@ -98,18 +100,23 @@ describe('Integration Tests', () => {
       expect(githubLink).toHaveAttribute('target', '_blank');
     });
 
-    test('resume page renders correctly with download functionality', () => {
+    test('resume page renders correctly with download functionality', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: false, status: 404 })),
+      );
       renderWithProviders(<Resume />);
 
-      expect(screen.getByText('Chris Gagne')).toBeInTheDocument();
-      expect(screen.getByText('Professional Experience')).toBeInTheDocument();
-      expect(screen.getByText('Summary')).toBeInTheDocument();
-      expect(screen.getByText('Core Competencies')).toBeInTheDocument();
-
       expect(
-        screen.getAllByRole('button', { name: /download resume as pdf/i })
-          .length,
-      ).toBeGreaterThanOrEqual(1);
+        await screen.findByRole('heading', { name: 'Experience' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Strengths and skills' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Download PDF' }),
+      ).toHaveAttribute('href', '/resume.pdf');
+      vi.unstubAllGlobals();
     });
   });
 });

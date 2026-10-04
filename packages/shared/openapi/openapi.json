@@ -688,11 +688,11 @@
                 "type": "string",
                 "description": "Current role"
               },
-              "earlierRolesBefore": {
+              "earlierRolesThrough": {
                 "type": "integer",
                 "minimum": 1900,
                 "maximum": 2100,
-                "description": "Roles that ended before this year are \"earlier roles\""
+                "description": "Roles that ended in or before this year are \"earlier roles\""
               },
               "summary": {
                 "type": "string"
@@ -860,11 +860,11 @@
                 "type": "string",
                 "description": "Current role"
               },
-              "earlierRolesBefore": {
+              "earlierRolesThrough": {
                 "type": "integer",
                 "minimum": 1900,
                 "maximum": 2100,
-                "description": "Roles that ended before this year are \"earlier roles\""
+                "description": "Roles that ended in or before this year are \"earlier roles\""
               },
               "summary": {
                 "type": "string"
@@ -1008,11 +1008,11 @@
             "type": "string",
             "description": "Current role"
           },
-          "earlierRolesBefore": {
+          "earlierRolesThrough": {
             "type": "integer",
             "minimum": 1900,
             "maximum": 2100,
-            "description": "Roles that ended before this year are \"earlier roles\""
+            "description": "Roles that ended in or before this year are \"earlier roles\""
           },
           "summary": {
             "type": "string"
@@ -8184,11 +8184,11 @@
                           "type": "string",
                           "description": "Current role"
                         },
-                        "earlierRolesBefore": {
+                        "earlierRolesThrough": {
                           "type": "integer",
                           "minimum": 1900,
                           "maximum": 2100,
-                          "description": "Roles that ended before this year are \"earlier roles\""
+                          "description": "Roles that ended in or before this year are \"earlier roles\""
                         },
                         "summary": {
                           "type": "string"
@@ -8495,11 +8495,11 @@
                         "type": "string",
                         "description": "Current role"
                       },
-                      "earlierRolesBefore": {
+                      "earlierRolesThrough": {
                         "type": "integer",
                         "minimum": 1900,
                         "maximum": 2100,
-                        "description": "Roles that ended before this year are \"earlier roles\""
+                        "description": "Roles that ended in or before this year are \"earlier roles\""
                       },
                       "summary": {
                         "type": "string"
@@ -8649,11 +8649,11 @@
                           "type": "string",
                           "description": "Current role"
                         },
-                        "earlierRolesBefore": {
+                        "earlierRolesThrough": {
                           "type": "integer",
                           "minimum": 1900,
                           "maximum": 2100,
-                          "description": "Roles that ended before this year are \"earlier roles\""
+                          "description": "Roles that ended in or before this year are \"earlier roles\""
                         },
                         "summary": {
                           "type": "string"
@@ -9092,11 +9092,11 @@
                           "type": "string",
                           "description": "Current role"
                         },
-                        "earlierRolesBefore": {
+                        "earlierRolesThrough": {
                           "type": "integer",
                           "minimum": 1900,
                           "maximum": 2100,
-                          "description": "Roles that ended before this year are \"earlier roles\""
+                          "description": "Roles that ended in or before this year are \"earlier roles\""
                         },
                         "summary": {
                           "type": "string"
@@ -9535,11 +9535,11 @@
                           "type": "string",
                           "description": "Current role"
                         },
-                        "earlierRolesBefore": {
+                        "earlierRolesThrough": {
                           "type": "integer",
                           "minimum": 1900,
                           "maximum": 2100,
-                          "description": "Roles that ended before this year are \"earlier roles\""
+                          "description": "Roles that ended in or before this year are \"earlier roles\""
                         },
                         "summary": {
                           "type": "string"
@@ -9978,11 +9978,11 @@
                           "type": "string",
                           "description": "Current role"
                         },
-                        "earlierRolesBefore": {
+                        "earlierRolesThrough": {
                           "type": "integer",
                           "minimum": 1900,
                           "maximum": 2100,
-                          "description": "Roles that ended before this year are \"earlier roles\""
+                          "description": "Roles that ended in or before this year are \"earlier roles\""
                         },
                         "summary": {
                           "type": "string"

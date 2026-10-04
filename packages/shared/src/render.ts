@@ -38,14 +38,22 @@ export {
   type PostsIndexItem,
 } from './post-html.js';
 export {
-  RESUME_UNAVAILABLE_HTML,
-  RESUME_UNAVAILABLE_NAME,
+  RESUME_ACTION_LINKS,
+  RESUME_DOWNLOAD_FILENAME,
+  RESUME_DOWNLOAD_ICON_PATH,
+  RESUME_DOWNLOAD_LABEL,
+  RESUME_PAGE_TITLE,
+  RESUME_UNAVAILABLE_TEXT,
   renderResumeBodyHtml,
+  renderResumeIntroHtml,
   renderResumePrerenderHtml,
   renderResumeSectionsHtml,
   renderResumeUnavailableBodyHtml,
   renderResumeUnavailablePrerenderHtml,
+  resumeIntro,
   resumeSummaryExcerpt,
+  type ResumeActionLink,
+  type ResumeIntro,
 } from './resume-html.js';
 export {
   renderSiteFooterHtml,

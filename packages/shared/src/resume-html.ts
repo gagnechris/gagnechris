@@ -1,117 +1,204 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
-import { experienceCompanyLine } from './resume-dates.js';
-import type { Resume, ResumeContent } from './schemas.js';
+import { groupResumeExperience, resumeRoleDates } from './resume-dates.js';
+import type { Resume, ResumeContent, ResumeExperience } from './schemas.js';
+import { SITE_LINKEDIN_URL } from './site-config.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
 
-const listItems = (items: string[]): string =>
-  items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+// `apps/web/src/pages/Resume.tsx` renders the intro element for element
+// (coldLoadParity.test.tsx) and reuses the body as `<main>` innerHTML.
 
-/** Two balanced columns once the list is long enough to be worth splitting. */
-const competencyColumns = (items: string[]): string[][] => {
-  if (items.length <= 4) return [items];
-  const mid = Math.ceil(items.length / 2);
-  return [items.slice(0, mid), items.slice(mid)];
+export const RESUME_PAGE_TITLE = 'Resume';
+export const RESUME_UNAVAILABLE_TEXT = 'Resume available on request.';
+export const RESUME_DOWNLOAD_LABEL = 'Download PDF';
+export const RESUME_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';
+export const RESUME_DOWNLOAD_ICON_PATH =
+  'M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10';
+
+export type ResumeActionLink = {
+  label: string;
+  href: string;
+  kind: 'spa' | 'external';
+  trackId?: string;
 };
 
-const summarySection = (summary: string): string =>
-  `<section class="resume-summary"><h2>Summary</h2><p>${escapeHtml(summary)}</p></section>`;
+export const RESUME_ACTION_LINKS: readonly ResumeActionLink[] = [
+  {
+    label: 'LinkedIn',
+    href: SITE_LINKEDIN_URL,
+    kind: 'external',
+    trackId: 'linkedin',
+  },
+  { label: 'Get in touch', href: '/contact', kind: 'spa' },
+];
 
-const competenciesSection = (items: string[]): string => {
-  const columns = competencyColumns(items)
-    .map((column) => `<ul class="competencies-list">${listItems(column)}</ul>`)
-    .join('');
-  return `<section class="resume-section"><h2>Core Competencies</h2><div class="competencies-container">${columns}</div></section>`;
+export type ResumeIntro = {
+  headline: string | null;
+  summary: string;
+  /** Null hides Download PDF (unpublished resume). */
+  pdfPath: string | null;
 };
 
-const experienceSection = (items: ResumeContent['experience']): string => {
-  const entries = items
+const downloadIconHtml =
+  '<svg class="resume-download__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  `<path d="${RESUME_DOWNLOAD_ICON_PATH}"></path></svg>`;
+
+const actionLinkHtml = (link: ResumeActionLink): string =>
+  link.kind === 'external'
+    ? `<a class="resume-intro__link" href="${escapeHtml(link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)}</a>`
+    : `<a class="resume-intro__link" href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a>`;
+
+export const renderResumeIntroHtml = ({
+  headline,
+  summary,
+  pdfPath,
+}: ResumeIntro): string =>
+  `<header class="resume-intro">` +
+  `<h1 class="resume-intro__title">${RESUME_PAGE_TITLE}</h1>` +
+  (headline
+    ? `<p class="resume-intro__headline">${escapeHtml(headline)}</p>`
+    : '') +
+  `<p class="resume-intro__summary">${escapeHtml(summary)}</p>` +
+  `<p class="resume-intro__actions">` +
+  (pdfPath
+    ? `<a class="resume-download" href="${escapeHtml(pdfPath)}" download="${RESUME_DOWNLOAD_FILENAME}">${downloadIconHtml}${RESUME_DOWNLOAD_LABEL}</a>`
+    : '') +
+  RESUME_ACTION_LINKS.map(actionLinkHtml).join('') +
+  `</p></header>`;
+
+const sectionHtml = (id: string, label: string, inner: string): string =>
+  `<section class="resume-section" aria-labelledby="${id}">` +
+  `<h2 class="resume-section__label" id="${id}">${label}</h2>${inner}</section>`;
+
+const roleHeadingHtml = (item: ResumeExperience): string =>
+  `${escapeHtml(item.title)} <span class="resume-role__company">at ${escapeHtml(item.company)}</span>`;
+
+const roleDatesHtml = (item: ResumeExperience): string => {
+  const note = item.note
+    ? `<span class="resume-role__note">${escapeHtml(item.note)}</span>`
+    : '';
+  return `<p class="resume-role__dates">${escapeHtml(resumeRoleDates(item))}${note}</p>`;
+};
+
+const roleHtml = (item: ResumeExperience): string => {
+  const bullets = item.bullets.length
+    ? `<ul class="resume-role__bullets">${item.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>`
+    : '';
+  return (
+    `<li class="resume-role">${roleDatesHtml(item)}` +
+    `<div class="resume-role__body"><h3 class="resume-role__title">${roleHeadingHtml(item)}</h3>${bullets}</div></li>`
+  );
+};
+
+const rolesHtml = (items: ResumeExperience[]): string =>
+  items.length
+    ? `<ol class="resume-roles">${items.map(roleHtml).join('')}</ol>`
+    : '';
+
+// Closed, the one-line list shows; open, the full entries inside <details>
+// replace it (a CSS sibling rule), so it needs no JS.
+const earlierRolesHtml = (items: ResumeExperience[], label: string): string =>
+  `<div class="resume-earlier">` +
+  `<details class="resume-earlier__details">` +
+  `<summary class="resume-earlier__summary">` +
+  `<span class="resume-earlier__label">${escapeHtml(label)}</span>` +
+  `<span class="resume-earlier__toggle"><span class="resume-earlier__show">Show details</span><span class="resume-earlier__hide">Hide details</span></span>` +
+  `</summary>${rolesHtml(items)}</details>` +
+  `<ol class="resume-earlier__list">` +
+  items
     .map(
       (item) =>
-        `<div class="experience-item"><h3>${escapeHtml(item.title)}</h3><p class="company">${escapeHtml(experienceCompanyLine(item))}</p><ul class="experience-list">${listItems(item.bullets)}</ul></div>`,
+        `<li class="resume-earlier__item">${roleDatesHtml(item)}<p class="resume-earlier__role">${roleHeadingHtml(item)}</p></li>`,
     )
-    .join('');
-  return `<section class="resume-section"><h2>Professional Experience</h2>${entries}</section>`;
+    .join('') +
+  `</ol></div>`;
+
+const experienceHtml = (content: ResumeContent): string => {
+  const { recent, earlier, earlierLabel } = groupResumeExperience(content);
+  return sectionHtml(
+    'resume-experience',
+    'Experience',
+    rolesHtml(recent) +
+      (earlierLabel ? earlierRolesHtml(earlier, earlierLabel) : ''),
+  );
 };
 
-const skillsSection = (items: string[]): string =>
-  `<section class="resume-section"><h2>Technical Skills</h2><div class="competencies-container"><ul class="competencies-list">${listItems(items)}</ul></div></section>`;
+/** `Label: value` is a label/value row; a line without a colon is value only. */
+const skillRowHtml = (line: string): string => {
+  const colon = line.indexOf(':');
+  const label = colon > 0 ? line.slice(0, colon).trim() : '';
+  const value = colon > 0 ? line.slice(colon + 1).trim() : line.trim();
+  return `<div class="resume-skill"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`;
+};
 
-const educationSection = (items: ResumeContent['education']): string => {
+const skillsHtml = (content: ResumeContent): string => {
+  const competencies = content.competencies.length
+    ? `<p class="resume-competencies">${content.competencies.map(escapeHtml).join(' · ')}</p>`
+    : '';
+  const skills = content.skills.length
+    ? `<dl class="resume-skills">${content.skills.map(skillRowHtml).join('')}</dl>`
+    : '';
+  if (!competencies && !skills) return '';
+  return sectionHtml(
+    'resume-skills',
+    'Strengths and skills',
+    competencies + skills,
+  );
+};
+
+const educationHtml = (items: ResumeContent['education']): string => {
+  if (!items.length) return '';
   const entries = items
     .map((item) => {
-      const detail = item.degreeDetail
-        ? `<p class="degree-detail">${escapeHtml(item.degreeDetail)}</p>`
-        : '';
-      return `<div class="education-item"><h3>${escapeHtml(item.title)}</h3>${detail}<p class="institution">${escapeHtml(item.institution)}</p><p class="location">${escapeHtml(item.location)}</p><p class="year">${escapeHtml(item.year)}</p></div>`;
+      const title = item.degreeDetail
+        ? `${item.title}, ${item.degreeDetail}`
+        : item.title;
+      const place = [item.institution, item.location]
+        .filter(Boolean)
+        .join(', ');
+      return (
+        `<li class="resume-role">` +
+        `<p class="resume-role__dates">${escapeHtml(item.year)}</p>` +
+        `<div class="resume-role__body"><h3 class="resume-education__title">${escapeHtml(title)}</h3>` +
+        `<p class="resume-education__place">${escapeHtml(place)}</p></div></li>`
+      );
     })
     .join('');
-  return `<section class="resume-section"><h2>Education</h2>${entries}</section>`;
+  return sectionHtml(
+    'resume-education',
+    'Education',
+    `<ol class="resume-roles resume-roles--education">${entries}</ol>`,
+  );
 };
 
-/** Section markup only — classes match `apps/web/src/pages/Resume.css`. */
+/** Everything below the intro. */
 export const renderResumeSectionsHtml = (content: ResumeContent): string =>
   [
-    summarySection(content.summary),
-    competenciesSection(content.competencies),
-    experienceSection(content.experience),
-    skillsSection(content.skills),
-    educationSection(content.education),
+    experienceHtml(content),
+    skillsHtml(content),
+    educationHtml(content.education),
   ].join('');
 
-export const RESUME_UNAVAILABLE_NAME = 'Resume';
-export const RESUME_UNAVAILABLE_HTML = '<p>Resume available on request.</p>';
+export const resumeIntro = (resume: Resume): ResumeIntro => ({
+  headline: resume.content.headline?.trim() || null,
+  summary: resume.content.summary,
+  pdfPath: resume.pdfPath,
+});
 
-const downloadButtonHtml = (text: string): string =>
-  `<button class="subtle-download" aria-label="Download resume as PDF">` +
-  `<span class="download-icon" aria-hidden="true">↓</span>` +
-  `<span class="download-text">${text}</span></button>`;
-
-type ResumePageParts = {
-  marker: 'resume-page-prerender' | 'resume-page-unavailable';
-  dataAttrs: string;
-  name: string;
-  downloadable: boolean;
-  mainHtml: string;
-};
-
-/** Mirrors `apps/web/src/pages/Resume.tsx`; the marker class is what the SPA parses. */
-const resumePageHtml = ({
-  marker,
-  dataAttrs,
-  name,
-  downloadable,
-  mainHtml,
-}: ResumePageParts): string =>
-  `<div class="resume-page ${marker}" id="top"${dataAttrs}>` +
-  `<header><div class="name-section"><h1>${escapeHtml(name)}</h1></div>` +
-  (downloadable
-    ? `<div class="nav-section">${downloadButtonHtml('Resume')}</div>`
-    : '') +
-  `</header>` +
-  `<main>${mainHtml}</main>` +
-  `<div class="resume-page__footer-actions">` +
-  (downloadable ? downloadButtonHtml('Download Resume PDF') : '') +
-  `<a class="back-link" href="#top">Back to top</a>` +
-  `</div></div>`;
-
+/** The marker class is what the SPA parses. */
 export const renderResumeBodyHtml = (resume: Resume): string =>
-  resumePageHtml({
-    marker: 'resume-page-prerender',
-    dataAttrs: ` data-name="${escapeHtml(resume.name)}" data-pdf="${escapeHtml(resume.pdfPath)}"`,
-    name: resume.name,
-    downloadable: true,
-    mainHtml: renderResumeSectionsHtml(resume.content),
-  });
+  `<div class="resume-page resume-page-prerender">` +
+  renderResumeIntroHtml(resumeIntro(resume)) +
+  `<main class="resume-body">${renderResumeSectionsHtml(resume.content)}</main></div>`;
 
 export const renderResumeUnavailableBodyHtml = (): string =>
-  resumePageHtml({
-    marker: 'resume-page-unavailable',
-    dataAttrs: '',
-    name: RESUME_UNAVAILABLE_NAME,
-    downloadable: false,
-    mainHtml: RESUME_UNAVAILABLE_HTML,
-  });
+  `<div class="resume-page resume-page-unavailable">` +
+  renderResumeIntroHtml({
+    headline: null,
+    summary: RESUME_UNAVAILABLE_TEXT,
+    pdfPath: null,
+  }) +
+  `</div>`;
 
 export const renderResumePrerenderHtml = (
   resume: Resume,
