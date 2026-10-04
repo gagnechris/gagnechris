@@ -11,11 +11,16 @@ import nowPageTarget from './fixtures/now-page.target.js';
 
 describe('publish surface collectors', () => {
   it('collects Option B paths from production targets plus static Vite pages', () => {
-    expect(collectOptionBPaths(publishTargets)).toEqual(['/blog', '/resume']);
+    expect(collectOptionBPaths(publishTargets)).toEqual([
+      '/blog',
+      '/projects',
+      '/resume',
+    ]);
     expect(allOptionBPrefixes(publishTargets)).toEqual([
       '/blog',
       '/contact',
       '/dont-feed-the-bears',
+      '/projects',
       '/resume',
     ]);
     expect([...STATIC_OPTION_B_PREFIXES].sort()).toEqual([
@@ -26,12 +31,18 @@ describe('publish surface collectors', () => {
 
   it('includes /now when the now-page fixture is registered', () => {
     const targets = [...publishTargets, nowPageTarget];
-    expect(collectOptionBPaths(targets)).toEqual(['/blog', '/now', '/resume']);
+    expect(collectOptionBPaths(targets)).toEqual([
+      '/blog',
+      '/now',
+      '/projects',
+      '/resume',
+    ]);
     expect(allOptionBPrefixes(targets)).toContain('/now');
     expect(collectAdminMutationPrefixes(targets)).toEqual([
       '/api/admin/home',
       '/api/admin/now',
       '/api/admin/posts',
+      '/api/admin/projects',
       '/api/admin/resume',
     ]);
   });
@@ -39,9 +50,10 @@ describe('publish surface collectors', () => {
   it('collects admin soft-delete only for targets that opt in', () => {
     expect(collectAdminSoftDeletePrefixes(publishTargets)).toEqual([
       '/api/admin/posts',
+      '/api/admin/projects',
     ]);
     expect(
       collectAdminSoftDeletePrefixes([...publishTargets, nowPageTarget]),
-    ).toEqual(['/api/admin/posts']);
+    ).toEqual(['/api/admin/posts', '/api/admin/projects']);
   });
 });

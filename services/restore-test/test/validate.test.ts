@@ -27,12 +27,12 @@ describe('validateRestoredTable', () => {
     const scan = pagedScan(healthyItems(), 2);
     const result = await validateRestoredTable(scan, TABLE);
     expect(result.status).toBe('SUCCESSFUL');
-    expect(result.itemCount).toBe(7);
-    // home, resume, note, task, daily claim
-    expect(result.schemaChecked).toBe(5);
+    expect(result.itemCount).toBe(10);
+    // home, resume, note, task, daily claim, project META + PUBLISHED
+    expect(result.schemaChecked).toBe(7);
     expect(result.problems).toEqual([]);
-    expect(scan.calls).toBe(4);
-    expect(result.message).toMatch(/^OK: 7 items/);
+    expect(scan.calls).toBe(5);
+    expect(result.message).toMatch(/^OK: 10 items/);
   });
 
   it('fails an empty table', async () => {
@@ -68,6 +68,28 @@ describe('validateRestoredTable', () => {
     expect(result.problems).toEqual([
       'USER#other#TASK#01TASK/META: task key does not match key builders',
     ]);
+  });
+
+  it('schema-checks projects and floors their count', async () => {
+    expect(SCHEMA_CHECKED_ENTITY_TYPES).toContain('project');
+    expect(COUNT_FLOOR_ENTITY_TYPES).toContain('project');
+    const corrupt = healthyItems().map((i) =>
+      i.entityType === 'project' && i.sk === 'PUBLISHED'
+        ? { ...i, stage: 'someday' }
+        : i,
+    );
+    const result = await validateRestoredTable(pagedScan(corrupt), TABLE);
+    expect(result.problems).toEqual([
+      'PROJECT#01PROJECT/PUBLISHED: project schema (stage)',
+    ]);
+    const moved = healthyItems().map((i) =>
+      i.entityType === 'project' && i.sk === 'META'
+        ? { ...i, pk: 'PROJECT#other' }
+        : i,
+    );
+    expect(
+      (await validateRestoredTable(pagedScan(moved), TABLE)).problems,
+    ).toEqual(['PROJECT#other/META: project key does not match key builders']);
   });
 
   it('refuses any table that is not a restore-test scratch table', async () => {

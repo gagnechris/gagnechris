@@ -41,8 +41,7 @@ const target: PublishTarget = {
     return {
       deleteKeys,
       removedSlugs,
-      invalidationPaths:
-        removedSlugs.length > 0 ? ['/blog*', '/sitemap.xml', '/rss.xml'] : [],
+      invalidationPaths: removedSlugs.length > 0 ? ['/blog*', '/rss.xml'] : [],
     };
   },
 };

@@ -411,7 +411,7 @@ describe('stack Template assertions', () => {
     );
     expect(itemRead?.Condition).toEqual({
       'ForAllValues:StringLike': {
-        'dynamodb:LeadingKeys': ['POST#*', 'HOME#*', 'RESUME#*'],
+        'dynamodb:LeadingKeys': ['POST#*', 'HOME#*', 'RESUME#*', 'PROJECT#*'],
       },
     });
     const indexQuery = statements.find(
@@ -419,7 +419,10 @@ describe('stack Template assertions', () => {
     );
     expect(indexQuery?.Condition).toEqual({
       'ForAllValues:StringLike': {
-        'dynamodb:LeadingKeys': ['STATUS#published'],
+        'dynamodb:LeadingKeys': [
+          'STATUS#published',
+          'PROJECT_STATUS#published',
+        ],
       },
     });
     expect(JSON.stringify(indexQuery?.Resource)).toContain('/index/gsi1');

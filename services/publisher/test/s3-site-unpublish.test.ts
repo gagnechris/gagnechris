@@ -70,6 +70,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({
           status: 'ok' as const,
           entity: resume,
@@ -91,6 +92,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
@@ -119,6 +121,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({ status: 'ok' as const, entity: home }),
       },
@@ -152,6 +155,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
@@ -178,6 +182,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
@@ -200,6 +205,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({ status: 'corrupt' as const }),
       },

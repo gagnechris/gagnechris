@@ -230,6 +230,7 @@ describe('deploy-web.sh', () => {
         'assets/*',
         'fonts/*.woff2',
         'blog/*',
+        'projects/*',
         'resume/*',
         'resume.pdf',
         'home/*',
@@ -251,6 +252,8 @@ describe('deploy-web.sh', () => {
     for (const key of [
       'blog/posts.json',
       'blog/hello/index.html',
+      'projects/index.html',
+      'projects/notebook/index.html',
       'resume/index.html',
       'resume.pdf',
       'home/last-published.json',

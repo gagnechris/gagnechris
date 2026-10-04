@@ -26,6 +26,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 - **Contact, Bears and 404:** `packages/shared/src/public-pages-html.ts` (`@gagnechris/shared/public-pages`) holds their shared markup. The Vite build writes the site chrome into `contact/index.html` (with the Contact heading and intro; the form needs JavaScript) and the three `dont-feed-the-bears` pages (chrome only; their lazy routes render nothing until the chunk loads), so they show the header and footer with JavaScript off. `pages/NotFound.tsx`, the `404.html` prerender (`NOT_FOUND_PRERENDER`) and the CloudFront fallback page print the same 404 markup (`NotFound.test.tsx`). A cold load that received `404.html` renders `NotFound` at once with no section marked current, even for `/posts/<slug>`.
 - **Posts index:** `renderPostsIndexBodyHtml` and `apps/web/src/posts/PostsIndexBody.tsx` print the same markup (`PostsIndexBody.test.tsx`): title, intro, Subscribe via RSS, then posts grouped by `groupPostsByYear` under year headings, each entry one link with title, short date (`formatPostShortDate`) and excerpt. Both come from the `@gagnechris/shared` domain entry. The SPA reads the list back from the prerender (and from the older card list until it is republished) or from `posts.json` on client navigation.
 - **Fonts:** Newsreader (roman and italic) and Inter are self-hosted from `apps/web/public/fonts/` with `font-display: swap` and metric-matched local fallbacks (`src/public.css`). Each font file is named `<name>.<first 8 hex of its SHA-256>.woff2`, so a changed font gets a new URL and deploys serve fonts as immutable; `check:web-shells` fails the deploy if a referenced font's name doesn't match its content. `index.html` preloads only the roman Newsreader file. Sources and subsetting are in [design/public-redesign/README.md](./design/public-redesign/README.md#fonts).
+- **Projects:** the publisher renders `/projects` and `/projects/<slug>` with the shared chrome and a deliberately bare body (`packages/shared/src/project-html.ts`); the designed index and page replace that markup. In the SPA, `pages/ProjectsPrerendered.tsx` shows the prerendered `<main>` (from the cold-load copy, or fetched on client navigation) so mounting does not swap it for the 404. Projects stay out of the nav until `SITE_PROJECTS_LIVE` is on.
 - **CSS:** `src/index.css` is shared by all three apps; `src/public.css` (public entry only) adds the fonts, the white ground, the 720px column and the chrome.
 
 ## Request flow
@@ -46,11 +47,11 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
    - `/blog` and `/blog/*` → 301 to the same path under `/posts`
    - `/posts` and `/posts/*` → rewritten to the `/blog` S3 prefix. Posts are public at `/posts`; the publisher stores them under `blog/`. Everything below sees the storage path.
    - `/` → `/index.html` (prerendered home)
-   - Option B prefixes (publisher `optionBPaths` + Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/dont-feed-the-bears/camp` and `/dont-feed-the-bears/wild` are served from their own `index.html`.
+   - Option B prefixes (publisher `optionBPaths` such as `/projects` and `/resume`, plus Vite static `/contact`, `/dont-feed-the-bears`) → `{path}/index.html`. Prefixes also match nested paths, so `/projects/<slug>` and `/dont-feed-the-bears/camp` are served from their own `index.html`.
    - `/blog/<slug>` (public `/posts/<slug>`) → Option B only when the slug is in the CloudFront KeyValueStore; otherwise `/404.html` (avoids raw S3 XML). Until the publisher writes a `__synced__` sentinel, unknown slugs fail open (Option B for any slug).
    - Other extensionless paths → `/404.html`
 3. **Viewer response** sets security headers; serving `/404.html` is forced to HTTP 404, and an S3 403/404 (for example a nested path under an Option B prefix) becomes the inline `NOT_FOUND_HTML` page. That page can't load the bundle, so `npm run not-found:generate` (`apps/web/scripts/notFoundDocument.ts`) builds it from the shared 404 markup plus the rules of `index.css`, `public.css` and `NotFound.css` that match it, inlined; the footer year is filled in at the edge. CloudFront Functions are capped at 10 KB and have no zlib, so the generator dictionary-codes the page (`packNotFoundHtml`: `~a`, `~b`, … stand for entries of `NOT_FOUND_DICT`) and the function expands it per response; a test keeps the function under 8.5 KB
-4. **S3** holds the site objects (prerendered HTML, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
+4. **S3** holds the site objects (prerendered HTML including `projects/`, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
 5. **API Gateway → Lambda API** for CRUD, publish, Notebook, contact, resume download notify
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
@@ -74,8 +75,8 @@ API repositories share one layering:
 - `VersionedRepository` (`services/api/src/data/versioned-repository.ts`) — optimistic-concurrency base for every entity: consistent read-modify-write (`mutateIfVersion` / `softDeleteIfVersion`), idempotent client-ULID create, sync stamping + create claims, optional unique claims (daily notes), cursor queries. Keying is an owner-scoping strategy:
   - `unscoped({ keyForId, idOf })` — id keys (publishable posts/home/resume).
   - `ownerScoped({ keyForId, idOf, userIdOf })` — `{ userId, id }` keys, rows of another owner read as missing, owner-scoped create claims, list GSI keys stripped from tombstones (Notebook notes/tasks).
-- `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
-- Posts keep slug claims and tag-index side effects in `posts/mutation-builders.ts`.
+- `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / projects / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
+- Slug claim and rename-redirect rows come from `data/slug-claims.ts`, parameterized per entity (`POST_SLUG_CLAIMS`, `PROJECT_SLUG_CLAIMS`); posts add tag-index side effects in `posts/mutation-builders.ts`.
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
@@ -83,7 +84,7 @@ Integrity rules:
 
 - Corrupt `PUBLISHED` rows parse through `mapItem` → HTTP **500** `data_integrity` (not 400).
 - Publisher treats corrupt resume/post rows as **preserve artifacts** (do not delete live HTML/PDF); emits `DataIntegrityError` metric and logs `pk`/`sk`.
-- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post.
+- Corrupt post slugs stay in the KVS allowlist, `slugs.json`, and sitemap so kept HTML remains reachable; stream NewImages merge into the catalog so GSI lag cannot drop a just-published post. Projects follow the same rules: a corrupt project row keeps its page and sitemap entry, and stream NewImages merge into the project catalog.
 - Only the last stream record per PUBLISHED pk is merged, and only when it is a published NewImage, so publish then unpublish in one batch leaves the post unpublished.
 - Live posts missing from the catalog keep their page, KVS entry, and previous `posts.json` / `rss.xml` / blog index entry, read back from `blog/posts.json` by post id: corrupt `PUBLISHED` rows on any rebuild (this also recovers the live slug when the slug itself is corrupt), and on stream rebuilds a GSI-lagging post whose page still exists and is not being removed. Full rebuilds trust the catalog otherwise.
 - `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing.
@@ -128,9 +129,28 @@ are unchanged (hash-skip / no feed rewrite). The home target runs on `home` and
 `feeds` scopes (Recent posts), and the same hash-skip keeps `/` from being
 rewritten or invalidated when a post change doesn't alter it.
 
+Projects: the `projects` target matches `touchedEntityTypes.has('project')`
+(and full rebuilds), reads the published-project catalog
+(`listPublishedProjects`: GSI1 `PROJECT_STATUS#published`, then the
+`PUBLISHED` rows), writes `projects/index.html` and one
+`projects/<slug>/index.html` per project that has a page, and deletes every
+other `projects/<slug>/index.html`. A project has a page unless it sets `href`
+(its card links there instead, as for Don't Feed the Bears →
+`/dont-feed-the-bears`) or is an `idea` with an empty body (listed, unlinked).
+With nothing published, `projects/index.html` is deleted and `/projects` is the
+HTML 404. No KeyValueStore allowlist: `/projects` is an Option B prefix, so a
+missing `projects/<slug>/index.html` is an S3 404 that viewer-response turns
+into the HTML 404.
+
+`sitemap.xml` has one owner, the `sitemap` target. It runs on post (`feeds`),
+project and full rebuilds and reads both catalogs, so neither kind of rebuild
+drops the other's entries. It lists `/`, `/posts`, `/resume`, `/contact`, every
+post, and, when any project is published, `/projects` plus each project that
+has a page.
+
 On relevant stream events the publisher updates, among others:
 
-- `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html` (prerendered pages)
+- `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html`, `/projects/index.html`, `/projects/<slug>/index.html` (prerendered pages)
 - `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s use the `/blog/<slug>` URL so feed readers don't re-list posts.
 - `/resume.pdf` (pdf-lib + Inter fonts)
 - CloudFront KeyValueStore keys for known published slugs
@@ -266,7 +286,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 - **API logs carry no bodies or query values.** The Lambda logs `request` with the path only (no query string, no body); Powertools `logEvent` stays off. `services/api/test/request-logging.test.ts` runs the real handler and fails if a search term or a note create/update body appears on stdout/stderr.
 - **Response headers.** The router adds `X-Content-Type-Options: nosniff` to every API response and `Cache-Control: no-store` to non-public routes and to every error (router 401/403/404/405, handler 500). Public successes (health, contact, resume notify) set no cache header. CloudFront `/api/*` has its own response headers policy (`api-security-headers`: nosniff, HSTS, `no-referrer`, and `Cache-Control: no-store` when the origin sent none), which covers responses API Gateway generates itself, such as JWT authorizer 401s and throttling 429s. The edge also stays `CACHING_DISABLED`.
 - **CI read roles.** The diff, drift and CDK lookup roles run under `ReadOnlyAccess` with a `DenyPrivateDataReads` statement: DynamoDB item reads, S3 object reads, and log and trace reads (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`, `xray:BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Logs hold no note content; the log deny keeps CI out of them regardless. `cdk diff` / `cdk drift` never read logs.
-- **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, and `Query` on `gsi1` limited to `STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
+- **Publisher is read-only on the table.** It writes nothing to DynamoDB. Its role allows `GetItem` / `BatchGetItem` on the table with `dynamodb:LeadingKeys` limited to `POST#*`, `HOME#*`, `RESUME#*`, `PROJECT#*`, and `Query` on `gsi1` limited to `STATUS#published` and `PROJECT_STATUS#published` (for an index, LeadingKeys is the index partition key). Notebook (`USER#…`), contact and rate-limit partitions are out of reach. Stream read is a separate grant.
 - **`execute-api` default endpoint (accepted risk).** CloudFront's `/api/*` origin is the `execute-api` hostname, so the default endpoint can't be disabled without a custom domain on the HTTP API. Calling it directly skips CloudFront (and its response headers policy), but the JWT authorizer, the router's client and group checks, API Gateway throttles and the Lambda's own headers still apply.
 
 ## Analytics stay off the signed-in apps
@@ -296,7 +316,7 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 **`scripts/deploy-web.sh`:** reads bucket names, distribution IDs and the two app client IDs from SSM, builds all three apps, runs `check:web-shells`, then:
 
 1. Syncs `dist-admin/` and `dist-notebook/` to their own buckets (`assets/` first with immutable cache-control, then `sync --delete` excluding `assets/*`), uploads `.well-known/*` as `application/json` and `manifest.json` as `application/manifest+json`, and invalidates `/*` on each app distribution.
-2. Syncs `dist/assets/` and then `dist/fonts/*.woff2` to the site bucket with `public,max-age=31536000,immutable`, then `dist/` with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `fonts/*.woff2`, `blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. Any other key the public build doesn't produce is deleted.
+2. Syncs `dist/assets/` and then `dist/fonts/*.woff2` to the site bucket with `public,max-age=31536000,immutable`, then `dist/` with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `fonts/*.woff2`, `blog/*`, `projects/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. Any other key the public build doesn't produce is deleted.
 3. Invalidates the public distribution and runs publisher `republishAll`.
 
 Hashed `assets/*` and fonts are never deleted on any host, so an open tab or installed PWA can still lazy-load chunks and fonts from the build it started with.

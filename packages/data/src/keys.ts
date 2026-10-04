@@ -10,6 +10,7 @@ export const SK_POST = 'POST';
 export const SK_REDIRECT = 'REDIRECT';
 export const SK_MSG = 'MSG';
 export const SK_NOTE = 'NOTE';
+export const SK_PROJECT = 'PROJECT';
 
 export const GSI1_NAME = 'gsi1';
 export const GSI2_NAME = 'gsi2';
@@ -57,6 +58,28 @@ export function statusGsi1Pk(status: string): string {
 
 export function statusGsi1Sk(sortTs: string, postId: string): string {
   return `TS#${sortTs}#POST#${postId}`;
+}
+
+export function projectPk(projectId: string): string {
+  return `PROJECT#${projectId}`;
+}
+
+/** Own partition so posts' slug and redirect rows never collide with a project's. */
+export function projectSlugPk(slug: string): string {
+  return `PROJECT_SLUG#${slug}`;
+}
+
+export function projectSlugClaimSk(): string {
+  return SK_PROJECT;
+}
+
+/** Separate from posts' `STATUS#…` so the published-posts query never sees projects. */
+export function projectStatusGsi1Pk(status: string): string {
+  return `PROJECT_STATUS#${status}`;
+}
+
+export function projectOrderGsi1Sk(order: number, projectId: string): string {
+  return `ORDER#${String(order).padStart(6, '0')}#PROJECT#${projectId}`;
 }
 
 export function homePk(): string {
@@ -320,6 +343,18 @@ export const keys = {
   post: {
     meta: (id: string) => ({ pk: postPk(id), sk: postMetaSk() }),
     published: (id: string) => ({ pk: postPk(id), sk: postPublishedSk() }),
+  },
+  project: {
+    meta: (id: string) => ({ pk: projectPk(id), sk: SK_META }),
+    published: (id: string) => ({ pk: projectPk(id), sk: SK_PUBLISHED }),
+    slugClaim: (slug: string) => ({
+      pk: projectSlugPk(slug),
+      sk: projectSlugClaimSk(),
+    }),
+    slugRedirect: (slug: string) => ({
+      pk: projectSlugPk(slug),
+      sk: SK_REDIRECT,
+    }),
   },
   singleton: {
     home: {

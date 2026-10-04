@@ -287,8 +287,14 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         call[0] &&
         typeof call[0] === 'object' &&
         'input' in call[0] &&
-        (call[0] as { input?: { IndexName?: string } }).input?.IndexName ===
-          'gsi1',
+        (
+          call[0] as {
+            input?: {
+              IndexName?: string;
+              ExpressionAttributeValues?: Record<string, unknown>;
+            };
+          }
+        ).input?.ExpressionAttributeValues?.[':pk'] === 'STATUS#published',
     );
     expect(gsiCalls).toHaveLength(1);
   });
@@ -592,6 +598,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },
@@ -608,6 +615,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },
@@ -642,6 +650,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
           posts: [],
           corruptSlugs: ['keep-me'],
         }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },

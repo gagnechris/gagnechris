@@ -78,6 +78,10 @@ describe('handler + now-page fixture', () => {
           storage,
           sources: {
             listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+            listPublishedProjects: async () => ({
+              projects: [],
+              corruptSlugs: [],
+            }),
             getPublishedResume: async () => ({ status: 'missing' as const }),
             getPublishedHome: async () => ({ status: 'missing' as const }),
           },

@@ -21,7 +21,14 @@ export type StreamMeta = {
   status?: string;
 };
 
-const KNOWN_ENTITY_TYPES = new Set(['post', 'home', 'resume']);
+export const PROJECT_ENTITY_TYPE = 'project';
+
+const KNOWN_ENTITY_TYPES = new Set([
+  'post',
+  'home',
+  'resume',
+  PROJECT_ENTITY_TYPE,
+]);
 
 function isLegacyPostPk(pk: string | undefined): boolean {
   return typeof pk === 'string' && pk.startsWith('POST#');
@@ -95,6 +102,9 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
       continue;
     }
 
+    // Project targets match on `touchedEntityTypes`; projects set no post flags.
+    if (entity === PROJECT_ENTITY_TYPE) continue;
+
     if (entity === 'resume') {
       if (newMeta?.status === 'published' || oldMeta?.status === 'published') {
         resume = true;
@@ -153,12 +163,13 @@ function streamPublishedPk(record: DynamoDBRecord): string | undefined {
 }
 
 /**
- * Merged into the catalog when GSI1 has not caught up. Only the last record
- * per pk counts: a publish then unpublish in the same batch must not add the
- * post back.
+ * Merged into a catalog when GSI1 has not caught up. Only the last record per
+ * pk counts: a publish then unpublish in the same batch must not add the item
+ * back.
  */
-export function collectStreamPublishedPostItems(
+function collectStreamPublishedItems(
   records: DynamoDBRecord[],
+  isEntity: (item: StreamMeta) => boolean,
 ): unknown[] {
   const lastByPk = new Map<string, DynamoDBRecord>();
   for (const record of records) {
@@ -176,10 +187,25 @@ export function collectStreamPublishedPostItems(
     ) as StreamMeta & Record<string, unknown>;
     if (item.sk !== SK_PUBLISHED) continue;
     if (item.status !== 'published') continue;
-    if (!isStreamPostEntity(item)) continue;
+    if (!isEntity(item)) continue;
     items.push(item);
   }
   return items;
+}
+
+export function collectStreamPublishedPostItems(
+  records: DynamoDBRecord[],
+): unknown[] {
+  return collectStreamPublishedItems(records, isStreamPostEntity);
+}
+
+export function collectStreamPublishedProjectItems(
+  records: DynamoDBRecord[],
+): unknown[] {
+  return collectStreamPublishedItems(
+    records,
+    (item) => item.entityType === PROJECT_ENTITY_TYPE,
+  );
 }
 
 export function streamNeedsRebuild(

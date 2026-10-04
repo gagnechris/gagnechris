@@ -38,6 +38,7 @@ const bannedPathFragments = [
   'markdown.ts',
   'home-html.ts',
   'resume-html.ts',
+  'project-html.ts',
   'html.ts',
   'dynamodb.ts',
   'openapi.ts',

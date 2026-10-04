@@ -2,10 +2,12 @@ import {
   buildDailyNoteClaimItem,
   buildHomeMetaItem,
   buildNoteMetaItem,
+  buildProjectMetaItem,
+  buildProjectPublishedItem,
   buildResumeMetaItem,
   buildTaskMetaItem,
 } from '@gagnechris/data';
-import { DEFAULT_HOME, DEFAULT_RESUME } from '@gagnechris/shared';
+import { DEFAULT_HOME, DEFAULT_RESUME, type Project } from '@gagnechris/shared';
 import type { CountFn, ScanFn, ScanPage } from '../src/validate.js';
 
 export const USER = 'user-sub-1';
@@ -44,6 +46,26 @@ export function healthyItems(): Record<string, unknown>[] {
     updatedAt: TS,
     deleted: false,
   });
+  const project: Project = {
+    id: '01PROJECT',
+    slug: 'notebook',
+    name: 'Notebook',
+    pitch: '',
+    stage: 'building',
+    stageNote: '',
+    previewImage: null,
+    bodyMarkdown: '',
+    stack: [],
+    links: [],
+    demo: null,
+    order: 0,
+    href: null,
+    status: 'published',
+    publishedAt: TS,
+    updatedAt: TS,
+    version: 2,
+    hasUnpublishedChanges: false,
+  };
   return [
     buildHomeMetaItem({ ...DEFAULT_HOME, updatedAt: TS, version: 1 }),
     buildResumeMetaItem({ ...DEFAULT_RESUME, updatedAt: TS, version: 1 }),
@@ -53,6 +75,14 @@ export function healthyItems(): Record<string, unknown>[] {
     // Key-only rows (no schema rule): rate counter, slug claim.
     { pk: 'RATE#ses#global', sk: 'DAY#2026-10-01', count: 2 },
     { pk: 'SLUG#hello', sk: 'POST', entityType: 'slug', postId: 'p1' },
+    buildProjectMetaItem(project),
+    buildProjectPublishedItem(project),
+    {
+      pk: 'PROJECT_SLUG#notebook',
+      sk: 'PROJECT',
+      entityType: 'projectSlug',
+      projectId: '01PROJECT',
+    },
   ];
 }
 

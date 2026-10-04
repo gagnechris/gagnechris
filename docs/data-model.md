@@ -1,6 +1,6 @@
 # Data model (single-table DynamoDB)
 
-Shared table for Blog CMS posts and Notebook entities. Table name:
+Shared table for Blog CMS posts, projects and Notebook entities. Table name:
 `gagnechris-<env>` (prod: `gagnechris-prod`).
 
 Attribute names are lowercase. Keys use string partition/sort values with `#`
@@ -8,8 +8,8 @@ separators so entity types never collide.
 
 **Key builders, item zod schemas, and mappers** live in `@gagnechris/data`
 (`packages/data`). API and publisher must import those helpers — do not hard-code
-`POST#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current` in application
-code.
+`POST#…`, `PROJECT#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current`
+in application code.
 
 ## Keys
 
@@ -17,10 +17,10 @@ code.
 | ------------------- | ------------------------------------------------------------------------------------------------- |
 | `pk`                | Partition key                                                                                     |
 | `sk`                | Sort key                                                                                          |
-| `gsi1pk` / `gsi1sk` | GSI1 — list by status (admin + published-by-date)                                                 |
+| `gsi1pk` / `gsi1sk` | GSI1 — list by status (posts by date, projects by order)                                          |
 | `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk |
 | `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                 |
-| `entityType`        | Discriminator (`post`, `slug`, `resume`, `home`, `contact`, `rateLimit`, `note`, `task`, …)       |
+| `entityType`        | Discriminator (`post`, `slug`, `project`, `resume`, `home`, `contact`, `note`, `task`, …)         |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -115,6 +115,55 @@ On publish/unpublish, rewrite these sparse items from the **PUBLISHED**
 snapshot (draft tag edits do not change the public tag index until publish).
 
 List by tag: `Query` `pk = TAG#x` (or GSI2), newest first.
+
+## Projects
+
+Immutable id: `projectId` (ULID). Same draft / published split, slug claims and
+soft delete as posts, through `ProjectsRepository`
+(`services/api/src/projects/repository.ts`, a `PublishableRepository`).
+Admin-only API: `/api/admin/projects*` (`site-admin`); the public side is
+the publisher's static `/projects` pages.
+
+#### `PROJECT#<projectId>` / `META` — editable draft
+
+| Attr                                            | Notes                                                                                                     |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `slug`                                          | URL slug (`/projects/<slug>`), claimed in its own partition                                               |
+| `name`, `pitch`                                 | Name and one-line pitch                                                                                   |
+| `stage`                                         | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
+| `stageNote`                                     | Short note shown with the stage, e.g. `since 2026`                                                        |
+| `previewImage`                                  | `/media/...` path or `null`                                                                               |
+| `bodyMarkdown`                                  | Page body (why / how sections)                                                                            |
+| `stack`                                         | `string[]`, trimmed and de-duplicated                                                                     |
+| `links`                                         | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
+| `demo`                                          | `posts` \| `notebook` \| `null`                                                                           |
+| `order`                                         | Integer 0–999999; lists sort by it, then name                                                             |
+| `href`                                          | Site path or `https` URL, or `null`. When set the card links here and no project page is generated        |
+| `status`, `publishedAt`, `updatedAt`, `version` | As for posts                                                                                              |
+| `gsi1pk`                                        | `PROJECT_STATUS#<status>` (never posts' `STATUS#…`, so the published-posts query never sees projects)     |
+| `gsi1sk`                                        | `ORDER#<order, 6 digits>#PROJECT#<projectId>`                                                             |
+
+#### `PROJECT#<projectId>` / `PUBLISHED` — live snapshot
+
+Same content attrs, no GSI1 keys. Written on publish, deleted on unpublish and
+soft delete. The publisher reads only these rows (`ConsistentRead`), after
+listing ids from GSI1 `PROJECT_STATUS#published`.
+
+#### `PROJECT_SLUG#<slug>` / `PROJECT` and `PROJECT_SLUG#<oldSlug>` / `REDIRECT`
+
+Slug claim (`entityType` `projectSlug`, `projectId`) and rename redirect
+(`projectSlugRedirect`, `targetSlug`), written in the same transaction as META
+exactly as for posts. A separate partition from `SLUG#…`, so a project and a
+post can share a slug and their redirect rows never collide.
+
+### Pages
+
+A published project has a page at `/projects/<slug>` unless `href` is set or it
+is an `idea` with an empty body (`projectHasPage` in `@gagnechris/shared`).
+Either way it is listed on `/projects`; `projectCardHref` gives the card's link
+(`href`, the page, or none). Only projects with a page are in `sitemap.xml`.
+Don't Feed the Bears is the `href` case: its card links to
+`/dont-feed-the-bears` and there is no `/projects/dont-feed-the-bears`.
 
 ## Resume (singleton)
 

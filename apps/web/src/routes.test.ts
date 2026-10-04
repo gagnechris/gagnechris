@@ -22,6 +22,11 @@ describe('public routes', () => {
     }
   });
 
+  it('keep the published /projects pages instead of the 404', () => {
+    expect(leafPath(routes, '/projects')).toBe('projects');
+    expect(leafPath(routes, '/projects/notebook')).toBe('projects/:slug');
+  });
+
   it('stay case-insensitive', () => {
     expect(leafPath(routes, '/Posts/some-slug')).toBe('posts/:slug');
   });

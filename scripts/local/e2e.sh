@@ -211,4 +211,72 @@ if echo "${ROOT_HTML}" | grep -q "/posts/${SLUG}"; then
   exit 1
 fi
 
+echo "==> Create + publish project ${SLUG}"
+PROJECT="$(curl -sS -X POST "${API}/api/admin/projects" \
+  -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Local E2E Project ${SLUG}\",\"slug\":\"${SLUG}\",\"stage\":\"building\",\"pitch\":\"Local pitch\",\"bodyMarkdown\":\"## Why I built it\\n\\nLocal project body.\"}")"
+PROJECT_ID="$(node -e "const p=JSON.parse(process.argv[1]); if(!p.id){console.error(p);process.exit(1)}; console.log(p.id)" "${PROJECT}")"
+PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PROJECT}")"
+PROJECT_PUB="$(curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${PROJECT_VERSION}}")"
+node -e "const p=JSON.parse(process.argv[1]); if(p.status!=='published'){console.error(p);process.exit(1)}" "${PROJECT_PUB}"
+
+echo "==> Publish an idea with no body (listed, no page)"
+IDEA="$(curl -sS -X POST "${API}/api/admin/projects" \
+  -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Local E2E Idea ${SLUG}\",\"slug\":\"${SLUG}-idea\",\"stage\":\"idea\"}")"
+IDEA_ID="$(node -e "console.log(JSON.parse(process.argv[1]).id)" "${IDEA}")"
+IDEA_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${IDEA}")"
+curl -sS -X POST "${API}/api/admin/projects/${IDEA_ID}/publish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${IDEA_VERSION}}" >/dev/null
+
+echo "==> /projects/<slug> is live; /projects lists both; sitemap lists the page only"
+PROJECT_HTML="$(curl -sS "${SITE}/projects/${SLUG}")"
+echo "${PROJECT_HTML}" | grep -q "<h1>Local E2E Project ${SLUG}</h1>"
+echo "${PROJECT_HTML}" | grep -q 'Local project body'
+echo "${PROJECT_HTML}" | grep -q 'class="site-header"'
+PROJECTS_HTML="$(curl -sS "${SITE}/projects")"
+echo "${PROJECTS_HTML}" | grep -q "href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a>"
+echo "${PROJECTS_HTML}" | grep -q "<h2 class=\"project-name\">Local E2E Idea ${SLUG}</h2>"
+IDEA_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}-idea")"
+if [[ "${IDEA_CODE}" != "404" ]]; then
+  echo "Expected the idea to have no page (404), got ${IDEA_CODE}" >&2
+  exit 1
+fi
+SITEMAP="$(curl -sS "${SITE}/sitemap.xml")"
+echo "${SITEMAP}" | grep -q "/projects/${SLUG}</loc>"
+if echo "${SITEMAP}" | grep -q "/projects/${SLUG}-idea<"; then
+  echo "Idea with no body is in sitemap.xml" >&2
+  exit 1
+fi
+
+echo "==> Unpublish removes the project page, its /projects entry and its sitemap entry"
+PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PROJECT_PUB}")"
+curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/unpublish" \
+  -H 'Content-Type: application/json' \
+  -d "{\"version\":${PROJECT_VERSION}}" >/dev/null
+GONE_PROJECT="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}")"
+if [[ "${GONE_PROJECT}" != "404" ]]; then
+  echo "Expected /projects/${SLUG} 404 after unpublish, got ${GONE_PROJECT}" >&2
+  exit 1
+fi
+if curl -sS "${SITE}/projects" | grep -q "Local E2E Project ${SLUG}"; then
+  echo "Unpublished project still listed on /projects" >&2
+  exit 1
+fi
+if curl -sS "${SITE}/sitemap.xml" | grep -q "/projects/${SLUG}<"; then
+  echo "Unpublished project still in sitemap.xml" >&2
+  exit 1
+fi
+
+echo "==> /projects/does-not-exist is the HTML 404"
+MISSING_BODY="$(mktemp)"
+MISSING_HEADERS="$(curl -sS -D - -o "${MISSING_BODY}" "${SITE}/projects/does-not-exist")"
+echo "${MISSING_HEADERS}" | head -1 | grep -q ' 404'
+echo "${MISSING_HEADERS}" | grep -qi '^content-type: text/html'
+grep -q 'Page not found' "${MISSING_BODY}"
+rm -f "${MISSING_BODY}"
+
 echo "OK: e2e:local passed"

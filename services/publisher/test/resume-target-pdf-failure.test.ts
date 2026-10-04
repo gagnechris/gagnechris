@@ -78,6 +78,7 @@ describe('resume target PDF failure', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({
           status: 'ok' as const,
           entity: publishedResume,

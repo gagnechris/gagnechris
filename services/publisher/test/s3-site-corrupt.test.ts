@@ -73,6 +73,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'ok', entity: resume }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },
@@ -89,6 +90,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'corrupt' }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },
@@ -127,6 +129,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
           posts: [],
           corruptSlugs: [post.slug],
         }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
         getPublishedHome: async () => ({ status: 'missing' }),
       },
@@ -173,6 +176,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
     const post = { ...publishedPost(), slug: 'steady-post' };
     const sources = {
       listPublishedPosts: async () => ({ posts: [post], corruptSlugs: [] }),
+      listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
       getPublishedResume: async () => ({
         status: 'ok' as const,
         entity: publishedResume(),

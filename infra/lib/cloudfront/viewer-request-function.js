@@ -20,6 +20,7 @@ var OPTION_B_PREFIXES = [
   '/blog',
   '/contact',
   '/dont-feed-the-bears',
+  '/projects',
   '/resume',
 ];
 /* PUBLISH_SURFACE_END */

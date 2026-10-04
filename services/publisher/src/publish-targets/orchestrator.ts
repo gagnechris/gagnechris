@@ -54,6 +54,13 @@ function scopeNeedsCatalog(
   return targets.some((t) => t.matches(scope) && t.needsCatalog(scope));
 }
 
+function scopeNeedsProjects(
+  targets: readonly PublishTarget[],
+  scope: RebuildScope,
+): boolean {
+  return targets.some((t) => t.matches(scope) && t.needsProjects?.(scope));
+}
+
 function scopeNeedsShell(
   targets: readonly PublishTarget[],
   scope: RebuildScope,
@@ -166,10 +173,12 @@ export async function runPublishTargets(options: {
     ? await sources.listPublishedPosts()
     : { posts: [], corruptSlugs: [] as string[] };
   const published = catalog.posts;
-  const retainedPosts =
-    needsCatalog && (scope.feeds || scope.home)
-      ? await retainLivePosts(storage, scope, catalog)
-      : [];
+  const retainedPosts = needsCatalog
+    ? await retainLivePosts(storage, scope, catalog)
+    : [];
+  const projects = scopeNeedsProjects(targets, scope)
+    ? await sources.listPublishedProjects()
+    : { projects: [], corruptSlugs: [] };
   const corruptPostSlugs = new Set([
     ...catalog.corruptSlugs,
     ...retainedPosts.map((p) => p.slug),
@@ -183,6 +192,7 @@ export async function runPublishTargets(options: {
     published,
     corruptPostSlugs,
     retainedPosts,
+    projects,
   };
 
   const flags = emptyFlagAccumulator();

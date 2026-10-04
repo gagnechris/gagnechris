@@ -134,6 +134,7 @@ function sources(
       posts: newestFirst(getPosts()),
       corruptSlugs: [],
     }),
+    listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
     getPublishedResume: async () => ({ status: 'missing' }),
     getPublishedHome,
   };

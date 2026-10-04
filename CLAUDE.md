@@ -19,7 +19,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
 - `scripts/` — local stack, web deploy, branch protection
-- `docs/` — architecture, development, data model, adding a Notebook entity (`docs/adding-an-entity.md`), local E2E
+- `docs/` — architecture, development, data model, adding a Notebook or publishable entity (`docs/adding-an-entity.md`), local E2E
 
 ## Commands
 

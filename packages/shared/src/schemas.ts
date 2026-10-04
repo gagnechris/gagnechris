@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { API_SERVICE_NAME } from './constants.js';
+import {
+  isSafeLinkHref,
+  POST_LINK_SCHEMES,
+  PROJECT_HREF_SCHEMES,
+} from './links.js';
 import { MAX_SLUG_LENGTH } from './slugify.js';
 
 export const HealthResponseSchema = z.object({
@@ -342,6 +347,124 @@ export const ResumeDownloadNotifyResponseSchema = z.object({
 export type ResumeDownloadNotifyResponse = z.infer<
   typeof ResumeDownloadNotifyResponseSchema
 >;
+
+/** Not `status`: that is the draft / published field every publishable entity shares. */
+export const ProjectStageSchema = z.enum(['idea', 'building', 'live']);
+
+export type ProjectStage = z.infer<typeof ProjectStageSchema>;
+
+export const PROJECT_DEMO_IDS = ['posts', 'notebook'] as const;
+
+export const ProjectDemoSchema = z.enum(PROJECT_DEMO_IDS);
+
+export type ProjectDemo = z.infer<typeof ProjectDemoSchema>;
+
+export const PROJECT_NAME_MAX_LENGTH = 120;
+export const PROJECT_PITCH_MAX_LENGTH = 300;
+export const PROJECT_STAGE_NOTE_MAX_LENGTH = 80;
+export const PROJECT_STACK_MAX = 30;
+export const PROJECT_STACK_ITEM_MAX_LENGTH = 50;
+export const PROJECT_LINKS_MAX = 20;
+export const PROJECT_LINK_LABEL_MAX_LENGTH = 100;
+export const PROJECT_ORDER_MAX = 999_999;
+
+export const ProjectHrefSchema = z
+  .string()
+  .refine((v) => isSafeLinkHref(v, PROJECT_HREF_SCHEMES), {
+    message: 'Must be a site-relative path or an https URL',
+  });
+
+export const ProjectLinkSchema = z.object({
+  label: z.string().trim().min(1).max(PROJECT_LINK_LABEL_MAX_LENGTH),
+  url: z.string().refine((v) => isSafeLinkHref(v, POST_LINK_SCHEMES), {
+    message:
+      'Must be a site-relative path or an http, https, mailto or tel URL',
+  }),
+});
+
+export type ProjectLink = z.infer<typeof ProjectLinkSchema>;
+
+export const ProjectPreviewImageSchema = z
+  .string()
+  .regex(/^\/media\/[^\s?#\\]+$/, 'Must be a /media/ path')
+  .refine((v) => !v.split('/').includes('..'), 'Must be a /media/ path');
+
+const ProjectStackSchema = z
+  .array(z.string().trim().min(1).max(PROJECT_STACK_ITEM_MAX_LENGTH))
+  .max(PROJECT_STACK_MAX);
+
+const ProjectOrderSchema = z.number().int().min(0).max(PROJECT_ORDER_MAX);
+
+export const ProjectSchema = z
+  .object({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    pitch: z.string(),
+    stage: ProjectStageSchema,
+    stageNote: z.string(),
+    previewImage: z.string().nullable(),
+    bodyMarkdown: z.string(),
+    stack: z.array(z.string()),
+    links: z.array(ProjectLinkSchema),
+    demo: ProjectDemoSchema.nullable(),
+    order: z.number().int().nonnegative(),
+    /** When set, the project card links here and no `/projects/<slug>` page is generated. */
+    href: z.string().nullable(),
+  })
+  .merge(PublishableFieldsSchema);
+
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const ProjectListResponseSchema = z.object({
+  items: z.array(ProjectSchema),
+});
+
+export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
+
+export const CreateProjectRequestSchema = z.object({
+  name: z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH),
+  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
+  pitch: z.string().max(PROJECT_PITCH_MAX_LENGTH).default(''),
+  stage: ProjectStageSchema.default('idea'),
+  stageNote: z.string().max(PROJECT_STAGE_NOTE_MAX_LENGTH).default(''),
+  previewImage: ProjectPreviewImageSchema.nullable().optional(),
+  bodyMarkdown: z.string().default(''),
+  stack: ProjectStackSchema.default([]),
+  links: z.array(ProjectLinkSchema).max(PROJECT_LINKS_MAX).default([]),
+  demo: ProjectDemoSchema.nullable().optional(),
+  order: ProjectOrderSchema.default(0),
+  href: ProjectHrefSchema.nullable().optional(),
+});
+
+export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
+
+export const UpdateProjectRequestSchema = z.object({
+  version: z.number().int().nonnegative(),
+  name: z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH).optional(),
+  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
+  pitch: z.string().max(PROJECT_PITCH_MAX_LENGTH).optional(),
+  stage: ProjectStageSchema.optional(),
+  stageNote: z.string().max(PROJECT_STAGE_NOTE_MAX_LENGTH).optional(),
+  previewImage: ProjectPreviewImageSchema.nullable().optional(),
+  bodyMarkdown: z.string().optional(),
+  stack: ProjectStackSchema.optional(),
+  links: z.array(ProjectLinkSchema).max(PROJECT_LINKS_MAX).optional(),
+  demo: ProjectDemoSchema.nullable().optional(),
+  order: ProjectOrderSchema.optional(),
+  href: ProjectHrefSchema.nullable().optional(),
+});
+
+export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
+
+export const ListProjectsQuerySchema = z.object({
+  status: z
+    .enum(['draft', 'published'])
+    .optional()
+    .describe('Filter by publish status'),
+});
+
+export type ListProjectsQuery = z.infer<typeof ListProjectsQuerySchema>;
 
 /**
  * No `/i` flag so OpenAPI emits a valid ECMA-262 pattern; input is

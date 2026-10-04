@@ -141,6 +141,7 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --exclude "assets/*" \
   --exclude "fonts/*.woff2" \
   --exclude "blog/*" \
+  --exclude "projects/*" \
   --exclude "resume/*" \
   --exclude "resume.pdf" \
   --exclude "home/*" \

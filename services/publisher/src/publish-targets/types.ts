@@ -1,4 +1,4 @@
-import type { Home, Post, Resume } from '@gagnechris/shared';
+import type { Home, Post, Project, Resume } from '@gagnechris/shared';
 import type { RebuildScope } from '../rebuild-scope.js';
 import type { SiteStorage } from '../storage.js';
 
@@ -12,8 +12,15 @@ export type PublishedPostsCatalog = {
   corruptPostIds?: string[];
 };
 
+export type PublishedProjectsCatalog = {
+  projects: Project[];
+  /** Slugs of corrupt PUBLISHED rows: their live pages are kept. */
+  corruptSlugs: string[];
+};
+
 export type RebuildSiteSources = {
   listPublishedPosts: () => Promise<PublishedPostsCatalog>;
+  listPublishedProjects: () => Promise<PublishedProjectsCatalog>;
   getPublishedResume: () => Promise<PublishedLookup<Resume>>;
   getPublishedHome: () => Promise<PublishedLookup<Home>>;
 };
@@ -40,6 +47,8 @@ export type PublishTargetContext = {
   corruptPostSlugs: ReadonlySet<string>;
   /** Feeds and Home Recent posts only; their pages are never re-rendered. */
   retainedPosts: Post[];
+  /** Empty unless an active target's `needsProjects` is true. */
+  projects: PublishedProjectsCatalog;
 };
 
 export type PublishTargetRunResult = {
@@ -75,5 +84,6 @@ export type PublishTarget = {
   matches(scope: RebuildScope): boolean;
   needsCatalog(scope: RebuildScope): boolean;
   needsShell(scope: RebuildScope): boolean;
+  needsProjects?(scope: RebuildScope): boolean;
   run(ctx: PublishTargetContext): Promise<PublishTargetRunResult>;
 };

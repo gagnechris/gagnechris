@@ -1590,6 +1590,1361 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List projects (published first, then drafts; by order) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter by publish status */
+                    status?: "draft" | "published";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Projects */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: {
+                                id: string;
+                                slug: string;
+                                name: string;
+                                pitch: string;
+                                /** @enum {string} */
+                                stage: "idea" | "building" | "live";
+                                stageNote: string;
+                                previewImage: string | null;
+                                bodyMarkdown: string;
+                                stack: string[];
+                                links: {
+                                    label: string;
+                                    url: string;
+                                }[];
+                                /** @enum {string|null} */
+                                demo: "posts" | "notebook" | null;
+                                order: number;
+                                href: string | null;
+                                /** @enum {string} */
+                                status: "draft" | "published" | "deleted";
+                                /** Format: date-time */
+                                publishedAt: string | null;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                version: number;
+                                hasUnpublishedChanges: boolean;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create draft project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        slug?: string;
+                        /** @default  */
+                        pitch?: string;
+                        /**
+                         * @default idea
+                         * @enum {string}
+                         */
+                        stage?: "idea" | "building" | "live";
+                        /** @default  */
+                        stageNote?: string;
+                        previewImage?: string | null;
+                        /** @default  */
+                        bodyMarkdown?: string;
+                        /** @default [] */
+                        stack?: string[];
+                        /** @default [] */
+                        links?: {
+                            label: string;
+                            url: string;
+                        }[];
+                        /** @enum {string|null} */
+                        demo?: "posts" | "notebook" | null;
+                        /** @default 0 */
+                        order?: number;
+                        href?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get project by id */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Project */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Update project draft (optimistic concurrency via version) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                        name?: string;
+                        slug?: string;
+                        pitch?: string;
+                        /** @enum {string} */
+                        stage?: "idea" | "building" | "live";
+                        stageNote?: string;
+                        previewImage?: string | null;
+                        bodyMarkdown?: string;
+                        stack?: string[];
+                        links?: {
+                            label: string;
+                            url: string;
+                        }[];
+                        /** @enum {string|null} */
+                        demo?: "posts" | "notebook" | null;
+                        order?: number;
+                        href?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Soft-delete project (removes it from the live site) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Soft-deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/projects/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish project (copies draft to PUBLISHED snapshot; stream rebuild) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Published */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/projects/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unpublish project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Unpublished (draft) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/projects/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discard draft edits and restore from the published snapshot */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project id (ULID) */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Draft restored from published snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            pitch: string;
+                            /** @enum {string} */
+                            stage: "idea" | "building" | "live";
+                            stageNote: string;
+                            previewImage: string | null;
+                            bodyMarkdown: string;
+                            stack: string[];
+                            links: {
+                                label: string;
+                                url: string;
+                            }[];
+                            /** @enum {string|null} */
+                            demo: "posts" | "notebook" | null;
+                            order: number;
+                            href: string | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "deleted";
+                            /** Format: date-time */
+                            publishedAt: string | null;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            version: number;
+                            hasUnpublishedChanges: boolean;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not an `admin-web` client token with the `site-admin` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/home": {
         parameters: {
             query?: never;
@@ -6801,6 +8156,116 @@ export interface components {
                 description?: string;
                 ogImage?: string;
             } | null;
+        };
+        Project: {
+            id: string;
+            slug: string;
+            name: string;
+            pitch: string;
+            /** @enum {string} */
+            stage: "idea" | "building" | "live";
+            stageNote: string;
+            previewImage: string | null;
+            bodyMarkdown: string;
+            stack: string[];
+            links: {
+                label: string;
+                url: string;
+            }[];
+            /** @enum {string|null} */
+            demo: "posts" | "notebook" | null;
+            order: number;
+            href: string | null;
+            /** @enum {string} */
+            status: "draft" | "published" | "deleted";
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+            hasUnpublishedChanges: boolean;
+        };
+        ProjectLink: {
+            label: string;
+            url: string;
+        };
+        ProjectListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                name: string;
+                pitch: string;
+                /** @enum {string} */
+                stage: "idea" | "building" | "live";
+                stageNote: string;
+                previewImage: string | null;
+                bodyMarkdown: string;
+                stack: string[];
+                links: {
+                    label: string;
+                    url: string;
+                }[];
+                /** @enum {string|null} */
+                demo: "posts" | "notebook" | null;
+                order: number;
+                href: string | null;
+                /** @enum {string} */
+                status: "draft" | "published" | "deleted";
+                /** Format: date-time */
+                publishedAt: string | null;
+                /** Format: date-time */
+                updatedAt: string;
+                version: number;
+                hasUnpublishedChanges: boolean;
+            }[];
+        };
+        CreateProjectRequest: {
+            name: string;
+            slug?: string;
+            /** @default  */
+            pitch: string;
+            /**
+             * @default idea
+             * @enum {string}
+             */
+            stage: "idea" | "building" | "live";
+            /** @default  */
+            stageNote: string;
+            previewImage?: string | null;
+            /** @default  */
+            bodyMarkdown: string;
+            /** @default [] */
+            stack: string[];
+            /** @default [] */
+            links: {
+                label: string;
+                url: string;
+            }[];
+            /** @enum {string|null} */
+            demo?: "posts" | "notebook" | null;
+            /** @default 0 */
+            order: number;
+            href?: string | null;
+        };
+        UpdateProjectRequest: {
+            version: number;
+            name?: string;
+            slug?: string;
+            pitch?: string;
+            /** @enum {string} */
+            stage?: "idea" | "building" | "live";
+            stageNote?: string;
+            previewImage?: string | null;
+            bodyMarkdown?: string;
+            stack?: string[];
+            links?: {
+                label: string;
+                url: string;
+            }[];
+            /** @enum {string|null} */
+            demo?: "posts" | "notebook" | null;
+            order?: number;
+            href?: string | null;
         };
         ExpectedVersionRequest: {
             version: number;
