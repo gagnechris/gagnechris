@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
@@ -25,6 +25,9 @@ const emptyResumeDraft = (): ResumeDraftFields =>
     hasUnpublishedChanges: false,
   });
 
+const focusRoleEnd = (roleId: string) =>
+  document.getElementById(resumeRoleEndId(roleId))?.focus();
+
 const AdminResumePage = () => {
   const [content] = useState(createResumeContentBuilder);
   const [publishBlockedRoleId, setPublishBlockedRoleId] = useState<
@@ -39,8 +42,6 @@ const AdminResumePage = () => {
     loadError,
     isLoading,
     actionBarProps,
-    publishRef,
-    runPublish,
   } = useVersionedEntityEditor({
     resource: resumeResource,
     params: {},
@@ -59,31 +60,18 @@ const AdminResumePage = () => {
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
+    beforePublish: () => {
+      const role = undatedErrors[0];
+      setPublishBlockedRoleId(role?.id ?? null);
+      if (role) focusRoleEnd(role.id);
+      return !role;
+    },
   });
 
   const undatedErrors = content.undatedRangeErrors(draft);
   const blockedRole = undatedErrors.find(
     (item) => item.id === publishBlockedRoleId,
   );
-
-  const focusRoleEnd = (roleId: string) =>
-    document.getElementById(resumeRoleEndId(roleId))?.focus();
-
-  const guardedPublish = async () => {
-    const role = undatedErrors[0];
-    if (!role) {
-      setPublishBlockedRoleId(null);
-      await runPublish();
-      return;
-    }
-    setPublishBlockedRoleId(role.id);
-    focusRoleEnd(role.id);
-  };
-  // The shell's Mod-Enter reads publishRef, which the editor refreshes on every
-  // render; this effect runs after that one, so the shortcut is guarded too.
-  useEffect(() => {
-    publishRef.current = guardedPublish;
-  });
 
   const setField = <K extends keyof ResumeDraftFields>(
     key: K,
@@ -135,7 +123,6 @@ const AdminResumePage = () => {
         // An invalid range is saved as the role's last saved dates, so a clean
         // save does not mean everything typed is on the server.
         dirty={actionBarProps.dirty || hasExperienceRangeError(draft)}
-        onPublish={() => void guardedPublish()}
         viewLiveHref={publicUrl('/resume')}
       />
 

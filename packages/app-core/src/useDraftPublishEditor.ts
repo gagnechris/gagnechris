@@ -49,6 +49,8 @@ export type DraftPublishEditorOptions<TEntity> = {
   confirm: ConfirmFn;
   /** Shared with `useVersionedDocEditor` so publish and delete cannot race. */
   hold: DraftPublishHold;
+  /** Runs before any save or publish request; `false` or a message (shown as the save error) cancels. */
+  beforePublish?: () => boolean | string;
 };
 
 /** Leave-guards and keyboard shortcuts stay in the shell; this hook has no DOM usage. */
@@ -68,6 +70,7 @@ export function useDraftPublishEditor<TEntity>({
   enabled = true,
   confirm,
   hold,
+  beforePublish,
 }: DraftPublishEditorOptions<TEntity>) {
   const {
     save,
@@ -115,6 +118,12 @@ export function useDraftPublishEditor<TEntity>({
   }, [dirty, getEditGen, getLastSavedGen, save]);
 
   const runPublish = useCallback(async () => {
+    if (!enabled || isBusy()) return;
+    const verdict = beforePublish?.() ?? true;
+    if (verdict !== true) {
+      if (typeof verdict === 'string') setSaveError(verdict);
+      return;
+    }
     await withHold(async () => {
       if (!(await flushEdits())) return;
       // Baseline is what is on the server after the flush, not the edit gen at
@@ -129,8 +138,11 @@ export function useDraftPublishEditor<TEntity>({
     });
   }, [
     applyKeepDraft,
+    beforePublish,
+    enabled,
     flushEdits,
     getLastSavedGen,
+    isBusy,
     publish,
     setSaveError,
     withHold,
