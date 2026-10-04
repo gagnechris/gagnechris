@@ -533,7 +533,7 @@ describe('AdminResumePage public links', () => {
     const link = await screen.findByRole('link', { name: 'View live' });
     expect(link).toHaveAttribute('href', 'http://localhost:5173/resume');
     expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   test('View live and preview links point at the public site in prod', async () => {
@@ -546,5 +546,18 @@ describe('AdminResumePage public links', () => {
       'href',
       'https://gagnechris.com/contact',
     );
+  });
+
+  test('preview images load from the public site', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    const { container } = renderResume();
+    await screen.findByRole('link', { name: 'View live' });
+    const sources = [...container.querySelectorAll('img')].map((img) =>
+      img.getAttribute('src'),
+    );
+    expect(sources).toContain('https://gagnechris.com/profile.jpg');
+    for (const src of sources) {
+      expect(src).toMatch(/^https:\/\/gagnechris\.com\//);
+    }
   });
 });

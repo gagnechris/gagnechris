@@ -257,6 +257,10 @@ export async function startStack(): Promise<Stack> {
     if (existsSync(join(dist, '_shell.html'))) {
       await cp(dist, siteRoot, { recursive: true });
     } else {
+      // Static files the build would copy, such as /profile.jpg.
+      await cp(join(REPO_ROOT, 'apps', 'web', 'public'), siteRoot, {
+        recursive: true,
+      });
       const shell = join(REPO_ROOT, 'scripts', 'local', 'minimal-shell.html');
       await copyFile(shell, join(siteRoot, 'index.html'));
       await copyFile(shell, join(siteRoot, '_shell.html'));

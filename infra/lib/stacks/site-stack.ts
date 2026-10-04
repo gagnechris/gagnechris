@@ -394,11 +394,11 @@ export class SiteStack extends Stack {
       },
     );
 
-    const appCsp = (connectSrc: string[]) =>
+    const appCsp = (connectSrc: string[], imgSrc: string[] = []) =>
       securityHeadersBehavior([
         ...sharedCsp,
         "script-src 'self'",
-        "img-src 'self' data:",
+        `img-src ${["'self'", 'data:', ...imgSrc].join(' ')}`,
         `connect-src ${["'self'", ...connectSrc].join(' ')}`,
       ]);
 
@@ -418,7 +418,11 @@ export class SiteStack extends Stack {
       ...appHostCommon,
       appName: 'admin',
       domainName: ADMIN_HOST,
-      securityHeadersBehavior: appCsp([cognitoOrigins, uploadOrigin]),
+      // The Home and Resume previews load their images from the public site.
+      securityHeadersBehavior: appCsp(
+        [cognitoOrigins, uploadOrigin],
+        [`https://${config.domainName}`],
+      ),
       apiBehavior: apiBehavior(),
       additionalBehaviors: (responseHeadersPolicy) => ({
         '/media/*': {

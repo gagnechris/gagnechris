@@ -748,7 +748,7 @@ describe('PostEditorPage View live', () => {
     const link = await screen.findByRole('link', { name: 'View live' });
     expect(link).toHaveAttribute('href', 'http://localhost:5173/posts/hello');
     expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   test('opens the post on gagnechris.com in prod', async () => {
