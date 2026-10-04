@@ -1,12 +1,14 @@
+import { useEffect, useState } from 'react';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import {
+  createResumeContentBuilder,
   hasExperienceRangeError,
-  resumeContentFromDraft,
   resumeDraftFromResume,
+  resumeRoleEndId,
   type ResumeDraftFields,
 } from './resumeDraft';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
@@ -23,6 +25,10 @@ const emptyResumeDraft = (): ResumeDraftFields =>
   });
 
 const AdminResumePage = () => {
+  const [content] = useState(createResumeContentBuilder);
+  const [publishBlockedRoleId, setPublishBlockedRoleId] = useState<
+    string | null
+  >(null);
   const {
     draft,
     updateDraft,
@@ -32,6 +38,8 @@ const AdminResumePage = () => {
     loadError,
     isLoading,
     actionBarProps,
+    publishRef,
+    runPublish,
   } = useVersionedEntityEditor({
     resource: resumeResource,
     params: {},
@@ -41,7 +49,7 @@ const AdminResumePage = () => {
     toPayload: (current) => ({
       name: current.name.trim() || 'Chris Gagne',
       pdfPath: '/resume.pdf',
-      content: resumeContentFromDraft(current),
+      content: content.payload(current),
     }),
     conflictMessage:
       'Conflict — another save updated the resume. Reload and try again.',
@@ -50,6 +58,30 @@ const AdminResumePage = () => {
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
+  });
+
+  const undatedErrors = content.undatedRangeErrors(draft);
+  const blockedRole = undatedErrors.find(
+    (item) => item.id === publishBlockedRoleId,
+  );
+
+  const focusRoleEnd = (roleId: string) =>
+    document.getElementById(resumeRoleEndId(roleId))?.focus();
+
+  const guardedPublish = async () => {
+    const role = undatedErrors[0];
+    if (!role) {
+      setPublishBlockedRoleId(null);
+      await runPublish();
+      return;
+    }
+    setPublishBlockedRoleId(role.id);
+    focusRoleEnd(role.id);
+  };
+  // The shell's Mod-Enter reads publishRef, which the editor refreshes on every
+  // render; this effect runs after that one, so the shortcut is guarded too.
+  useEffect(() => {
+    publishRef.current = guardedPublish;
   });
 
   const setField = <K extends keyof ResumeDraftFields>(
@@ -91,7 +123,7 @@ const AdminResumePage = () => {
     ...resume,
     name: draft.name,
     pdfPath: '/resume.pdf',
-    content: resumeContentFromDraft(draft),
+    content: content.preview(draft),
   });
 
   return (
@@ -99,11 +131,28 @@ const AdminResumePage = () => {
       <EditorActionBar
         leading={<h1>Resume</h1>}
         {...actionBarProps}
-        // The PUT leaves out dates that fail validation, so a clean save does
-        // not mean everything typed is on the server.
+        // An invalid range is saved as the role's last saved dates, so a clean
+        // save does not mean everything typed is on the server.
         dirty={actionBarProps.dirty || hasExperienceRangeError(draft)}
+        onPublish={() => void guardedPublish()}
         viewLiveHref="/resume"
       />
+
+      {blockedRole ? (
+        <p className="admin-panel__error" role="alert">
+          Not published: {blockedRole.title.trim() || 'a new role'} has an End
+          month before its Start month and no saved dates yet.{' '}
+          <a
+            href={`#${resumeRoleEndId(blockedRole.id)}`}
+            onClick={(event) => {
+              event.preventDefault();
+              focusRoleEnd(blockedRole.id);
+            }}
+          >
+            Fix End month
+          </a>
+        </p>
+      ) : null}
 
       {saveError ? (
         <p className="admin-panel__error" role="alert">
@@ -115,6 +164,7 @@ const AdminResumePage = () => {
         <ResumeEditorForm
           draft={draft}
           setField={setField}
+          hasSavedDates={(item) => content.savedDates(item) !== null}
           onSave={() => void save()}
         />
 

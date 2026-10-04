@@ -5,6 +5,8 @@ import {
   emptyEducation,
   emptyExperience,
   experienceRangeError,
+  resumeRoleEndId,
+  type ExperienceDraft,
   type ResumeDraftFields,
 } from './resumeDraft';
 
@@ -16,10 +18,16 @@ type Props = {
       | ResumeDraftFields[K]
       | ((prev: ResumeDraftFields[K]) => ResumeDraftFields[K]),
   ) => void;
+  hasSavedDates: (item: ExperienceDraft) => boolean;
   onSave: () => void;
 };
 
-export function ResumeEditorForm({ draft, setField, onSave }: Props) {
+export function ResumeEditorForm({
+  draft,
+  setField,
+  hasSavedDates,
+  onSave,
+}: Props) {
   return (
     <form
       className="admin-editor-fields"
@@ -117,6 +125,7 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
               </Field>
               <Field label="End month">
                 <TextInput
+                  id={resumeRoleEndId(item.id)}
                   type="month"
                   placeholder="YYYY-MM"
                   value={item.present ? '' : item.end}
@@ -128,8 +137,10 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
               </Field>
               {rangeError ? (
                 <p id={rangeErrorId} className="admin-field-error">
-                  {rangeError}. Dates for this role are not saved until this is
-                  fixed.
+                  {rangeError}.{' '}
+                  {hasSavedDates(item)
+                    ? 'The last saved dates are kept until this is fixed.'
+                    : 'Dates for this role are not saved until this is fixed.'}
                 </p>
               ) : null}
               <label className="admin-check">
