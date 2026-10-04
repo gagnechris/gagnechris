@@ -209,3 +209,54 @@ export function renderNotFoundDocumentHtml(
     `</head><body>${root}</body></html>`
   );
 }
+
+const PACK_MARK = '~';
+const PACK_KEYS = 'abcdefghijklmnopqrstuvwxyz';
+
+/** Bytes a string costs in the function source (ASCII-only JS literal). */
+const sourceBytes = (value: string): number =>
+  JSON.stringify(value).replace(/[^\x20-\x7e]/g, 'uXXXXX').length - 2;
+
+/*
+ * CloudFront Functions are capped at 10 KB and have no zlib, so the page ships
+ * dictionary-coded: `~a` stands for `dict[0]` and so on, and an entry can use
+ * earlier keys (the function expands the last key first). Each round codes
+ * the substring that saves the most bytes.
+ */
+export function packNotFoundHtml(html: string): {
+  dict: string[];
+  packed: string;
+} {
+  if (html.includes(PACK_MARK)) {
+    throw new Error(`The 404 page contains ${PACK_MARK}, the packing marker`);
+  }
+  const dict: string[] = [];
+  let packed = html;
+  for (const key of PACK_KEYS) {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < packed.length; i += 1) {
+      if (packed[i - 1] === PACK_MARK) continue;
+      for (let len = 4; len <= 48 && i + len <= packed.length; len += 1) {
+        const sub = packed.slice(i, i + len);
+        if (sub.endsWith(PACK_MARK)) break;
+        counts.set(sub, (counts.get(sub) ?? 0) + 1);
+      }
+    }
+    let best = '';
+    let bestGain = 0;
+    for (const [sub, overlapping] of counts) {
+      const size = sourceBytes(sub);
+      const gain = (n: number) => n * (size - 2) - (size + 3);
+      if (overlapping < 2 || gain(overlapping) <= bestGain) continue;
+      const n = packed.split(sub).length - 1;
+      if (gain(n) > bestGain) {
+        best = sub;
+        bestGain = gain(n);
+      }
+    }
+    if (!best) break;
+    dict.push(best);
+    packed = packed.split(best).join(PACK_MARK + key);
+  }
+  return { dict, packed };
+}

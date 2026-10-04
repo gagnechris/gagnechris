@@ -39,7 +39,7 @@ export const trackResumeDownload = () => {
 };
 
 export type BearsGameFrom =
-  'resume' | 'contact' | '404' | 'footer' | 'direct' | string;
+  'resume' | 'contact' | '404' | 'footer' | 'menu' | 'direct' | string;
 
 const trackNamedEvent = (
   name: string,

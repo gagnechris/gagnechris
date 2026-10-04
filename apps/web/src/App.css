@@ -131,32 +131,67 @@
   color: var(--neutral-600);
 }
 
+/* Phone · Home; values in docs/design/public-redesign/README.md. */
 @media (max-width: 480px) {
+  .home-hero {
+    padding-top: 8px;
+  }
+
   .home-hero__name {
-    font-size: 3rem;
+    font-size: 2.875rem;
   }
 
   .home-hero__title {
-    font-size: 1.375rem;
+    margin-top: 3px;
+    font-size: 1.3125rem;
+  }
+
+  .home-hero__about {
+    margin-top: 15px;
   }
 
   .home-hero__about p {
-    font-size: 1.25rem;
+    font-size: 1.1875rem;
+    line-height: 1.55;
   }
 
   .home-hero__links {
-    font-size: 1.125rem;
+    margin-top: 16px;
+    font-size: 1.0625rem;
+    line-height: 1.55;
   }
 
   .home-section {
-    margin-top: var(--space-16);
+    margin-top: 26px;
+  }
+
+  .home-section__head {
+    padding-bottom: 8px;
+  }
+
+  .home-section__label {
+    line-height: 1.4;
+  }
+
+  .home-section__more {
+    display: none;
+  }
+
+  .home-post {
+    padding: 16px 0 15px;
   }
 
   .home-post__title {
-    font-size: 1.625rem;
+    font-size: 1.5rem;
   }
 
   .home-post__excerpt {
+    margin-top: 5px;
     font-size: 1.0625rem;
+    line-height: 1.45;
+  }
+
+  .home-post__date {
+    margin-top: 3px;
   }
 }

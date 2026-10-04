@@ -15,8 +15,10 @@ repo. Row A is the rejected alternative.
 | Projects                | 1440×1532 | Title, italic intro, project entries with preview, status label, name, pitch, stack line                                        | CHR-228                              |
 | Project Posts (demo)    | 1440×2200 | Project page template with the Posts demo (editor and public page side by side) and Build log                                   | CHR-229 (template), CHR-231 (demo)   |
 | Project Notebook (demo) | 1440×2300 | Project page template with the Notebook demo (mini Today) and Build log                                                         | CHR-229 (template), CHR-232 (demo)   |
+| Phone                   | 393×852   | Header with the menu button; Menu open, Home, Post (reading) and Posts at phone size                                            | —                                    |
 
-The PNG exports are 2×; measured values below are at 1×.
+The PNG exports are 2×; measured values below are at 1×. The phone layout
+applies at `max-width: 480px`; wider viewports use the desktop values.
 
 ## Layout
 
@@ -40,7 +42,7 @@ The PNG exports are 2×; measured values below are at 1×.
 | Nav right edge       | Last label ends 12px inside the column                                                                    |
 | Footer text          | Inter 13px / 400, `neutral-600` (#4d5871); © on the left, links on the right                              |
 | Footer links         | Underlined (1px, 3px offset), 20px apart, last one flush with the column                                  |
-| At 390px (not drawn) | Name 18px, link padding 8px, 12px between name and nav; one row, wraps below 390px                        |
+| At 390px (see Phone) | Photo 32px, name 19px; a menu button replaces the nav                                                     |
 
 ## Type scale
 
@@ -80,7 +82,7 @@ Values from the stories unless marked measured.
 | Author note           | 64px below the body, 1px ink rule, 24px above the text; Newsreader 19px / 1.6, #2b3138; name in ink at 500                                                                                                                               |
 | Reading time          | `readingMinutes`: words / 230, rounded, at least 1                                                                                                                                                                                       |
 | Not drawn (our specs) | Blockquote: italic `inkSoft`, 2px ink rule. Code: system mono at 0.8em on `neutral-100`; blocks scroll in a bordered box. Figure caption: Inter 13px `neutral-600`. Tables scroll in their box; header rule ink, row rules `neutral-200` |
-| At 390px (not drawn)  | Body 19px, title 40px, excerpt 20px, h2 26px, author note 17px                                                                                                                                                                           |
+| At 390px (not drawn)  | h2 26px, author note 17px; the rest is under Phone                                                                                                                                                                                       |
 
 ## Posts (measured)
 
@@ -95,7 +97,69 @@ Values from the stories unless marked measured.
 | Entry excerpt        | Newsreader 19px / 1.5, `inkSoft`                                                                                                                    |
 | Entry spacing        | 25px above the title, 28px below the excerpt, 1px `neutral-200` rule between entries; 56px between years                                            |
 | Order                | `groupPostsByYear`: years newest first (UTC), posts newest first; undated posts last under "Undated"                                                |
-| At 390px (not drawn) | Title 40px, intro 20px, entry title 22px, excerpt 17px                                                                                              |
+| At 390px (see Phone) | Title 46px, intro 19px, entry title 24px, excerpt 17px; the date goes under the excerpt                                                             |
+
+## Phone (measured)
+
+Measured on the 393pt artboards and checked at a 390px viewport. The artboards
+start with an empty status-bar area, so vertical positions are taken from the
+centre of the header photo, not from the top. Positions are glyph top to glyph
+top. Tolerances: positions ±2px, font sizes ±1px.
+
+### Header and menu
+
+| Element      | Value                                                                                                                                                                               |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column       | 20px gutters (x 20–373 on the 393 artboard)                                                                                                                                         |
+| Header row   | 16px top padding (the artboard's status bar is not measured), 44px row; 32px below it to the page                                                                                   |
+| Photo, name  | 32px photo, 10px gap, name Newsreader 19px / 500                                                                                                                                    |
+| Menu button  | 44×44 target; icon three 2px ink bars, 17px wide, 4px apart, its right edge 6px inside the column, centred on the photo                                                             |
+| Open menu    | Full-screen white panel under the header, which stays at the top of the screen; the page underneath does not scroll; no animation                                                   |
+| Menu items   | Posts / Projects / Resume / Contact, Newsreader 32px / 500, ink; 65px rows (1px `neutral-200` rule under each); first row 17px below the header row                                 |
+| Chevron      | 8px, 1.5px `neutral-400` (#9ba5b7) stroke, 8px inside the column                                                                                                                    |
+| Bottom links | LinkedIn, GitHub, RSS in `link`, then "Don’t feed the bears" in `neutral-600` on its own line; Inter 15px / 400, underlined 1px at 3px, 20px apart; last line 46px above the bottom |
+| Not as drawn | The bottom links are 44px targets, so their lines are 44px apart (30px on the artboard)                                                                                             |
+
+Projects is listed only when `SITE_PROJECTS_LIVE` (`packages/shared/src/site-config.ts`) is on; the header nav reads the same list.
+
+### Home
+
+| Element            | Size                                  | From the element above                                     |
+| ------------------ | ------------------------------------- | ---------------------------------------------------------- |
+| Name               | Newsreader 46px / 500                 | 64px from the photo centre                                 |
+| Title              | Newsreader italic 21px                | 55px                                                       |
+| About              | Newsreader 19px / 1.55 (29.5px lines) | 44px                                                       |
+| Links sentence     | Newsreader 17px / 1.55 (26.5px lines) | 45px from the last About line                              |
+| RECENT POSTS label | Inter 13px / 600                      | 52.5px from the last links line; rule 22px below the label |
+| Post title         | Newsreader 24px / 500                 | 21px below the rule                                        |
+| Excerpt            | Newsreader 17px / 1.45                | 34px                                                       |
+| Date               | Inter 13.5px                          | 28px from the last excerpt line; rule 30px below           |
+| All posts link     | Hidden (not on the artboard)          | —                                                          |
+
+### Posts
+
+| Element           | Size                          | From the element above                             |
+| ----------------- | ----------------------------- | -------------------------------------------------- |
+| Title             | Newsreader 46px / 500         | 62.5px from the photo centre                       |
+| Intro             | Newsreader italic 19px / 1.45 | 60px                                               |
+| Subscribe via RSS | Inter 14px / 500              | 36px from the last intro line                      |
+| Year label        | Inter 13px / 600              | 45px; rule 22px below the label                    |
+| Entry title       | Newsreader 24px / 500         | 21px below the rule                                |
+| Excerpt           | Newsreader 17px / 1.45        | 34px                                               |
+| Date              | Inter 13px, under the excerpt | 27.5px from the last excerpt line; rule 30px below |
+
+### Post
+
+| Element    | Size                                  | From the element above          |
+| ---------- | ------------------------------------- | ------------------------------- |
+| Meta line  | Inter 13px                            | 58px from the photo centre      |
+| Title      | Newsreader 42px / 500                 | 23.5px                          |
+| Excerpt    | Newsreader italic 20px / 1.4          | 57px                            |
+| Body       | Newsreader 19px / 1.65 (31.4px lines) | 52px from the last excerpt line |
+| Paragraphs | 1em apart (50.5px line to line)       | —                               |
+
+The Phone · Post artboard also draws a Text size / share bar at the bottom of
+the screen; the site does not have it.
 
 ## Contact (not drawn)
 

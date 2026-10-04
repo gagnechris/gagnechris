@@ -127,29 +127,50 @@
   color: var(--color-ink-soft);
 }
 
+/* Phone · Posts: the date moves under the excerpt. */
 @media (max-width: 480px) {
   .posts-index__header {
-    margin-bottom: 40px;
+    margin-bottom: 13px;
+    padding-top: 4px;
   }
 
   .posts-index h1 {
-    font-size: 2.5rem;
+    font-size: 2.875rem;
   }
 
   .posts-index__intro {
-    font-size: 1.25rem;
+    margin-top: 9px;
+    font-size: 1.1875rem;
+    line-height: 1.45;
+  }
+
+  .posts-index__rss {
+    margin-top: -4px;
+  }
+
+  .posts-year__label {
+    padding-bottom: 8px;
   }
 
   .post-preview__link {
-    column-gap: var(--space-4);
-    padding: 20px 0 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 0 16px;
   }
 
   .post-preview__title {
-    font-size: 1.375rem;
+    font-size: 1.5rem;
+  }
+
+  .post-preview__date {
+    order: 1;
+    margin-top: 3px;
   }
 
   .post-preview__excerpt {
+    margin-top: 5px;
     font-size: 1.0625rem;
+    line-height: 1.45;
   }
 }

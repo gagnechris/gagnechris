@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   renderSiteFooterHtml,
   renderSiteHeaderHtml,
+  renderSiteMenuHtml,
   renderSitePageHtml,
+  SITE_NAV_LINKS,
   siteNavCurrent,
+  siteNavLinks,
 } from './site-chrome-html.js';
+
+const labels = (links: readonly { label: string }[]) =>
+  links.map(({ label }) => label);
 
 describe('siteNavCurrent', () => {
   it('marks a section for its index and every page under it', () => {
@@ -35,11 +41,59 @@ describe('renderSiteHeaderHtml', () => {
     expect(html).not.toContain('aria-current');
   });
 
-  it('sets aria-current on the current section only', () => {
+  it('sets aria-current on the current section only, in the nav and the menu', () => {
     const html = renderSiteHeaderHtml('/resume');
-    expect(html.match(/aria-current/g)).toHaveLength(1);
+    expect(html.match(/aria-current/g)).toHaveLength(2);
     expect(html).toContain(
       '<a class="site-nav__link" aria-current="page" href="/resume">Resume</a>',
+    );
+    expect(html).toContain('<a aria-current="page" href="/resume">Resume</a>');
+  });
+
+  it('ends with the phone menu', () => {
+    expect(
+      renderSiteHeaderHtml('/posts').endsWith(
+        `</nav>${renderSiteMenuHtml('/posts')}</header>`,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('site sections', () => {
+  it('list Projects only once it is live', () => {
+    expect(labels(siteNavLinks(true))).toEqual([
+      'Posts',
+      'Projects',
+      'Resume',
+      'Contact',
+    ]);
+    expect(labels(siteNavLinks(false))).toEqual(['Posts', 'Resume', 'Contact']);
+    expect(labels(SITE_NAV_LINKS)).toEqual(['Posts', 'Resume', 'Contact']);
+  });
+});
+
+describe('renderSiteMenuHtml', () => {
+  it('is a details disclosure with a labelled button that controls the panel', () => {
+    expect(renderSiteMenuHtml(null)).toMatch(
+      /^<details class="site-menu"><summary class="site-menu__button" role="button" aria-label="Menu" aria-controls="site-menu" aria-expanded="false"><\/summary><nav class="site-menu__panel" id="site-menu" aria-label="Menu">/,
+    );
+  });
+
+  it('lists the sections, then LinkedIn, GitHub, RSS and the bears game', () => {
+    const html = renderSiteMenuHtml(null);
+    expect(
+      [...html.matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]),
+    ).toEqual([
+      'Posts',
+      'Resume',
+      'Contact',
+      'LinkedIn',
+      'GitHub',
+      'RSS',
+      'Don’t feed the bears',
+    ]);
+    expect(html).toContain(
+      '<ul class="site-menu__more"><li><a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li><li><a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a></li><li><a href="/rss.xml">RSS</a></li><li><a href="/dont-feed-the-bears?from=menu">Don’t feed the bears</a></li></ul>',
     );
   });
 });

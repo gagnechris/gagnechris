@@ -9,9 +9,7 @@ test('the site header and footer fit a 390px phone with 44px targets', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of PAGES) {
     await page.goto(`${apps.public}${path}`);
-    await expect(
-      page.getByRole('navigation', { name: 'Primary' }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
 
     const overflow = await page.evaluate(
       () =>
@@ -20,11 +18,15 @@ test('the site header and footer fit a 390px phone with 44px targets', async ({
     );
     expect(overflow, `${path} scrolls sideways`).toBe(0);
 
-    const links = page.locator('.site-header a, .site-footer a');
-    await expect(links).toHaveCount(6);
-    for (const link of await links.all()) {
-      const box = await link.boundingBox();
-      const name = await link.textContent();
+    const targets = page.locator(
+      '.site-header a:visible, .site-menu__button, .site-footer a:visible',
+    );
+    await expect(targets).toHaveCount(4);
+    for (const target of await targets.all()) {
+      const box = await target.boundingBox();
+      const name =
+        (await target.textContent()) ||
+        (await target.getAttribute('aria-label'));
       expect(box!.height, `${path} ${name}`).toBeGreaterThanOrEqual(44);
       expect(box!.width, `${path} ${name}`).toBeGreaterThanOrEqual(44);
       expect(box!.x, `${path} ${name}`).toBeGreaterThanOrEqual(0);
