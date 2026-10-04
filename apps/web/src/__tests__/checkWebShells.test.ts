@@ -4,7 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkWebShells } from '../../scripts/checkWebShells';
+import {
+  checkWebShells,
+  demoChunkProblems,
+} from '../../scripts/checkWebShells';
 
 const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>
 <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}</script>`;
@@ -18,6 +21,25 @@ const FONT_PRELOAD = `<link rel="preload" href="${FONT}" as="font" type="font/wo
 const APP_SHELL = `<!doctype html><html><head>
 <script type="module" crossorigin src="/assets/main-abc123.js"></script>
 </head><body><div id="root"></div></body></html>`;
+
+const ENTRY = {
+  file: 'assets/index-abc.js',
+  src: 'index.html',
+  isEntry: true,
+  imports: ['_shared-abc.js'],
+  dynamicImports: ['src/demos/posts/index.tsx'],
+};
+const MANIFEST = {
+  'index.html': ENTRY,
+  '_shared-abc.js': { file: 'assets/shared-abc.js' },
+  'src/demos/posts/index.tsx': {
+    file: 'assets/index-def.js',
+    src: 'src/demos/posts/index.tsx',
+    isDynamicEntry: true,
+    imports: ['index.html', '_shared-abc.js'],
+  },
+};
+const POSTS_DEMO = 'src/demos/posts/index.tsx';
 
 const roots: string[] = [];
 afterEach(() => {
@@ -33,6 +55,7 @@ function webRoot(files: Record<string, string>): string {
     'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}</head></html>`,
     [`dist${FONT}`]: FONT_BYTES,
     'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${FONT}') format('woff2')}`,
+    'dist/.vite/manifest.json': JSON.stringify(MANIFEST),
     'dist-admin/index.html': APP_SHELL,
     'dist-notebook/index.html': APP_SHELL,
     'dist-notebook/manifest.json': JSON.stringify({
@@ -188,6 +211,59 @@ describe('checkWebShells', () => {
     );
     expect(problems).toEqual([
       `assets/index-abc.css loads a font that is not in dist: ${url}`,
+    ]);
+  });
+
+  it('fails when the public build manifest is missing', () => {
+    expect(
+      checkWebShells(webRoot({ 'dist/.vite/manifest.json': '\0delete' })),
+    ).toEqual(['dist/.vite/manifest.json is missing']);
+  });
+});
+
+describe('demoChunkProblems', () => {
+  it('passes a demo that is only a lazy chunk', () => {
+    expect(demoChunkProblems(MANIFEST, [POSTS_DEMO])).toEqual([]);
+  });
+
+  it('fails when the entry imports a demo statically', () => {
+    const manifest = {
+      ...MANIFEST,
+      'index.html': {
+        ...ENTRY,
+        imports: [...ENTRY.imports, POSTS_DEMO],
+        dynamicImports: [],
+      },
+      [POSTS_DEMO]: { ...MANIFEST[POSTS_DEMO], isDynamicEntry: false },
+    };
+    expect(demoChunkProblems(manifest, [POSTS_DEMO])).toEqual([
+      `${POSTS_DEMO} is statically imported by the public entry`,
+      `${POSTS_DEMO} is not loaded with a dynamic import()`,
+    ]);
+  });
+
+  it('fails when a demo was bundled into another chunk', () => {
+    const { [POSTS_DEMO]: _, ...manifest } = MANIFEST;
+    expect(demoChunkProblems(manifest, [POSTS_DEMO])).toEqual([
+      `${POSTS_DEMO} has no chunk of its own (bundled into another)`,
+    ]);
+  });
+
+  it('fails when a shared chunk on the static graph is a demo', () => {
+    const manifest = {
+      ...MANIFEST,
+      '_shared-abc.js': {
+        file: 'assets/shared-abc.js',
+        imports: ['src/demos/notebook/index.tsx'],
+      },
+      'src/demos/notebook/index.tsx': {
+        file: 'assets/nb.js',
+        src: 'src/demos/notebook/index.tsx',
+        isDynamicEntry: true,
+      },
+    };
+    expect(demoChunkProblems(manifest, [])).toEqual([
+      'src/demos/notebook/index.tsx is statically imported by the public entry',
     ]);
   });
 });

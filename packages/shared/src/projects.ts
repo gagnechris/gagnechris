@@ -56,8 +56,38 @@ export const projectBuildLogPosts = <
   posts: readonly T[],
 ): T[] => posts.filter((p) => p.projectIds.includes(projectId));
 
+export const PROJECT_BUILD_LOG_HEADING = 'Build log';
+export const PROJECT_BUILD_LOG_ID = 'project-build-log';
+
+/** The empty Build log: this sentence, then the RSS link. */
 export const projectBuildLogEmptyText = (name: string): string =>
-  `No posts about ${name} yet. Follow along via RSS.`;
+  `No posts about ${name} yet.`;
+
+export const PROJECT_BUILD_LOG_RSS_LINK = {
+  label: 'Follow along via RSS',
+  href: '/rss.xml',
+} as const;
+
+export const PROJECT_DEMO_LABEL = 'Try it';
+export const PROJECT_DEMO_LABEL_ID = 'project-demo-label';
+
+/** What `/projects/<slug>` shows; the SPA parses the same fields back out of the prerender. */
+export type ProjectPageView = Pick<
+  Project,
+  | 'slug'
+  | 'name'
+  | 'pitch'
+  | 'stage'
+  | 'stageNote'
+  | 'previewImage'
+  | 'demo'
+  | 'stack'
+  | 'links'
+> & {
+  /** Sanitized at publish. */
+  bodyHtml: string;
+  buildLog: ProjectBuildLogPost[];
+};
 
 /** `order` ascending, then name, so equal orders stay stable across rebuilds. */
 export const sortProjectsByOrder = <

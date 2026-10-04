@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { renderMarkdownToHtml, renderPostMarkdownToHtml } from './markdown.js';
+import {
+  renderMarkdownToHtml,
+  renderPostMarkdownToHtml,
+  renderProjectMarkdownToHtml,
+} from './markdown.js';
 import { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 
 describe('renderMarkdownToHtml', () => {
@@ -170,5 +174,57 @@ describe('renderPostMarkdownToHtml', () => {
       '<img src=x onerror="alert(1)"><script>alert(1)</script><pre onclick="x">y</pre>',
     ).toLowerCase();
     expect(html).not.toMatch(/<script|\son\w+\s*=/);
+  });
+});
+
+describe('renderProjectMarkdownToHtml', () => {
+  it('turns a list of bold-labelled items into label/value rows', () => {
+    const html = renderProjectMarkdownToHtml(
+      [
+        '## How it’s built',
+        '',
+        '- **One record per task** Tasks are *their own* records.',
+        '- **Carry-forward is a query**: Nothing gets copied.',
+        '- **Stack** — TypeScript, React',
+      ].join('\n'),
+    );
+    expect(html).toContain(
+      '<dl><div><dt>One record per task</dt><dd>Tasks are <em>their own</em> records.</dd></div>' +
+        '<div><dt>Carry-forward is a query</dt><dd>Nothing gets copied.</dd></div>' +
+        '<div><dt>Stack</dt><dd>TypeScript, React</dd></div></dl>',
+    );
+  });
+
+  it('leaves other lists as lists, ordered lists included', () => {
+    const html = renderProjectMarkdownToHtml(
+      [
+        '- **Label** value',
+        '- no label',
+        '',
+        'Para.',
+        '',
+        '- **only a label**',
+        '',
+        'Para.',
+        '',
+        '1. **Step** one',
+        '2. Two',
+      ].join('\n'),
+    );
+    expect(html).not.toContain('<dl>');
+    expect(html).toContain('<ul>');
+    expect(html).toContain('<ol>');
+  });
+
+  it('sanitizes the rows like the rest of the body', () => {
+    const html = renderProjectMarkdownToHtml(
+      '- **<img src=x onerror=alert(1)>Label** [x](javascript:alert(1)) value',
+    );
+    expect(html).toContain('<dl>');
+    expect(html).not.toMatch(/onerror|javascript:/);
+  });
+
+  it('renders posts without rows', () => {
+    expect(renderPostMarkdownToHtml('- **Label** value')).not.toContain('<dl>');
   });
 });

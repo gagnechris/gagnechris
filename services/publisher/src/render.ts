@@ -4,6 +4,7 @@ import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
+  projectPageView,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
   renderResumePrerenderHtml,
@@ -250,7 +251,7 @@ export const renderProjectPage = (
   });
   html = injectPrerender(
     html,
-    renderProjectPagePrerenderHtml(project, buildLog),
+    renderProjectPagePrerenderHtml(projectPageView(project, buildLog)),
   );
   return html;
 };

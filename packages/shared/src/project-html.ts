@@ -1,16 +1,20 @@
 import { escapeHtml } from './html.js';
 import { isSafeLinkHref, POST_LINK_SCHEMES } from './links.js';
-import { renderPostMarkdownToHtml } from './markdown.js';
-import { formatPostShortDate, postDateAttribute } from './post-date.js';
+import { renderProjectMarkdownToHtml } from './markdown.js';
+import { formatPostDate, postDateAttribute } from './post-date.js';
 import {
   PROJECT_IDEA_PREVIEW_TEXT,
   PROJECT_MINI_UI,
   PROJECT_PREVIEW_HEIGHT,
   PROJECT_PREVIEW_WIDTH,
-  PROJECT_STAGE_LABELS,
   PROJECTS_INDEX_EMPTY_TEXT,
   PROJECTS_INDEX_INTRO,
   PROJECTS_PATH,
+  PROJECT_BUILD_LOG_HEADING,
+  PROJECT_BUILD_LOG_ID,
+  PROJECT_BUILD_LOG_RSS_LINK,
+  PROJECT_DEMO_LABEL,
+  PROJECT_DEMO_LABEL_ID,
   projectBuildLogEmptyText,
   projectCardViews,
   projectPreview,
@@ -19,6 +23,7 @@ import {
   type ProjectCardSource,
   type ProjectCardView,
   type ProjectMiniNode,
+  type ProjectPageView,
 } from './projects.js';
 import type { Project } from './schemas.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
@@ -26,17 +31,6 @@ import { renderSitePageHtml } from './site-chrome-html.js';
 export const PROJECTS_INDEX_TITLE = 'Projects';
 
 export type ProjectsIndexItem = ProjectCardSource;
-
-const stageHtml = (project: Pick<Project, 'stage' | 'stageNote'>): string =>
-  `<p class="project-stage" data-stage="${project.stage}">` +
-  escapeHtml(PROJECT_STAGE_LABELS[project.stage]) +
-  (project.stageNote ? `, ${escapeHtml(project.stageNote)}` : '') +
-  `</p>`;
-
-const stackHtml = (stack: readonly string[]): string =>
-  stack.length
-    ? `<p class="project-stack">${stack.map(escapeHtml).join(' · ')}</p>`
-    : '';
 
 const miniHtml = (nodes: readonly ProjectMiniNode[]): string =>
   nodes
@@ -49,7 +43,9 @@ const miniHtml = (nodes: readonly ProjectMiniNode[]): string =>
     )
     .join('');
 
-const previewHtml = (card: ProjectCardView): string => {
+const previewHtml = (
+  card: Pick<ProjectCardView, 'previewImage' | 'stage' | 'demo'>,
+): string => {
   const preview = projectPreview(card);
   switch (preview.kind) {
     case 'image':
@@ -119,18 +115,36 @@ export const renderProjectsIndexBodyHtml = (
   );
 };
 
-const linksHtml = (links: Project['links']): string => {
-  const safe = links.filter((l) => isSafeLinkHref(l.url, POST_LINK_SCHEMES));
-  if (!safe.length) return '';
+const projectStackHtml = (stack: readonly string[]): string =>
+  stack.length
+    ? `<p class="project-stack">` +
+      stack.map((s) => `<span>${escapeHtml(s)}</span>`).join(' · ') +
+      `</p>`
+    : '';
+
+const linksHtml = (links: Project['links']): string =>
+  links.length
+    ? `<ul class="project-links">` +
+      links
+        .map(
+          (l) =>
+            `<li><a href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a></li>`,
+        )
+        .join('') +
+      `</ul>`
+    : '';
+
+const buildLogEntryHtml = (post: ProjectBuildLogPost): string => {
+  const date = formatPostDate(post.publishedAt);
+  const attr = postDateAttribute(post.publishedAt);
   return (
-    `<ul class="project-links">` +
-    safe
-      .map(
-        (l) =>
-          `<li><a href="${escapeHtml(l.url)}">${escapeHtml(l.label)}</a></li>`,
-      )
-      .join('') +
-    `</ul>`
+    `<li class="project-build-log__entry" data-id="${escapeHtml(post.id)}">` +
+    `<a class="project-build-log__link" href="/posts/${escapeHtml(post.slug)}">` +
+    `<h3 class="project-build-log__title">${escapeHtml(post.title)}</h3>` +
+    (date
+      ? `<time class="project-build-log__date"${attr ? ` datetime="${attr}"` : ''}>${escapeHtml(date)}</time>`
+      : '') +
+    `</a></li>`
   );
 };
 
@@ -138,30 +152,25 @@ const buildLogHtml = (
   name: string,
   posts: readonly ProjectBuildLogPost[],
 ): string =>
-  `<section class="project-build-log" aria-labelledby="project-build-log">` +
-  `<h2 id="project-build-log">Build log</h2>` +
+  `<section class="project-build-log" aria-labelledby="${PROJECT_BUILD_LOG_ID}">` +
+  `<h2 id="${PROJECT_BUILD_LOG_ID}">${PROJECT_BUILD_LOG_HEADING}</h2>` +
   (posts.length
-    ? `<ul>` +
-      posts
-        .map((post) => {
-          const date = formatPostShortDate(post.publishedAt);
-          const attr = postDateAttribute(post.publishedAt);
-          return (
-            `<li data-id="${escapeHtml(post.id)}">` +
-            `<a href="/posts/${escapeHtml(post.slug)}">${escapeHtml(post.title)}</a>` +
-            (date
-              ? ` <time${attr ? ` datetime="${attr}"` : ''}>${escapeHtml(date)}</time>`
-              : '') +
-            `</li>`
-          );
-        })
-        .join('') +
-      `</ul>`
-    : `<p>${escapeHtml(projectBuildLogEmptyText(name))}</p>`) +
+    ? `<ul class="project-build-log__list">${posts.map(buildLogEntryHtml).join('')}</ul>`
+    : `<p class="project-build-log__empty">${escapeHtml(projectBuildLogEmptyText(name))} ` +
+      `<a href="${PROJECT_BUILD_LOG_RSS_LINK.href}">${PROJECT_BUILD_LOG_RSS_LINK.label}</a>.</p>`) +
   `</section>`;
 
-/** Deliberately bare: the designed project page replaces this markup. */
-export const renderProjectPageBodyHtml = (
+/** Only when `demo` is set. Without script, or until the demo loads, it shows the preview. */
+const demoHtml = (view: ProjectPageView): string =>
+  view.demo
+    ? `<section class="project-demo" aria-labelledby="${PROJECT_DEMO_LABEL_ID}">` +
+      `<h2 class="project-demo__label" id="${PROJECT_DEMO_LABEL_ID}">${PROJECT_DEMO_LABEL}</h2>` +
+      `<div class="project-demo__stage">${previewHtml(view)}</div>` +
+      `</section>`
+    : '';
+
+/** Unsafe links are dropped here, so the page never renders them. */
+export const projectPageView = (
   project: Pick<
     Project,
     | 'slug'
@@ -169,24 +178,53 @@ export const renderProjectPageBodyHtml = (
     | 'pitch'
     | 'stage'
     | 'stageNote'
+    | 'previewImage'
+    | 'demo'
     | 'bodyMarkdown'
     | 'stack'
     | 'links'
   >,
   buildLog: readonly ProjectBuildLogPost[] = [],
-): string =>
-  `<main class="project-page" data-slug="${escapeHtml(project.slug)}">` +
+): ProjectPageView => ({
+  slug: project.slug,
+  name: project.name,
+  pitch: project.pitch,
+  stage: project.stage,
+  stageNote: project.stageNote,
+  previewImage: project.previewImage,
+  demo: project.demo,
+  bodyHtml: renderProjectMarkdownToHtml(project.bodyMarkdown),
+  stack: project.stack,
+  links: project.links.filter((l) => isSafeLinkHref(l.url, POST_LINK_SCHEMES)),
+  buildLog: buildLog.map(({ id, slug, title, publishedAt }) => ({
+    id,
+    slug,
+    title,
+    publishedAt,
+  })),
+});
+
+/*
+ * `apps/web/src/projects/ProjectPageBody.tsx` renders the same markup
+ * (ProjectPageBody.test.tsx), and `projectPageViewFromDocument` reads it back
+ * on a cold load.
+ */
+export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
+  `<div class="project-page" data-slug="${escapeHtml(view.slug)}"${view.demo ? ` data-demo="${view.demo}"` : ''}>` +
+  `<header class="project-header">` +
   `<p class="project-back"><a href="${PROJECTS_PATH}">${PROJECTS_INDEX_TITLE}</a></p>` +
-  stageHtml(project) +
-  `<h1>${escapeHtml(project.name)}</h1>` +
-  (project.pitch
-    ? `<p class="project-pitch">${escapeHtml(project.pitch)}</p>`
-    : '') +
-  `<div class="project-body">${renderPostMarkdownToHtml(project.bodyMarkdown)}</div>` +
-  stackHtml(project.stack) +
-  linksHtml(project.links) +
-  buildLogHtml(project.name, buildLog) +
-  `</main>`;
+  `<p class="project-stage" data-stage="${view.stage}">${escapeHtml(projectStageText(view))}</p>` +
+  `<h1>${escapeHtml(view.name)}</h1>` +
+  (view.pitch ? `<p class="project-pitch">${escapeHtml(view.pitch)}</p>` : '') +
+  `</header>` +
+  demoHtml(view) +
+  `<main class="project-main">` +
+  `<div class="post-content project-body">${view.bodyHtml}</div>` +
+  projectStackHtml(view.stack) +
+  linksHtml(view.links) +
+  buildLogHtml(view.name, view.buildLog) +
+  `</main>` +
+  `</div>`;
 
 export const renderProjectsIndexPrerenderHtml = (
   projects: readonly ProjectsIndexItem[],
@@ -199,12 +237,7 @@ export const renderProjectsIndexPrerenderHtml = (
   );
 
 export const renderProjectPagePrerenderHtml = (
-  project: Parameters<typeof renderProjectPageBodyHtml>[0],
-  buildLog: readonly ProjectBuildLogPost[] = [],
+  view: ProjectPageView,
   year?: number | string,
 ): string =>
-  renderSitePageHtml(
-    PROJECTS_PATH,
-    renderProjectPageBodyHtml(project, buildLog),
-    year,
-  );
+  renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(view), year);

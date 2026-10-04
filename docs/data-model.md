@@ -134,7 +134,7 @@ the publisher's static `/projects` pages.
 | `stage`                                         | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
 | `stageNote`                                     | Short note shown with the stage, e.g. `since 2026`                                                        |
 | `previewImage`                                  | `/media/...` path or `null`                                                                               |
-| `bodyMarkdown`                                  | Page body (why / how sections)                                                                            |
+| `bodyMarkdown`                                  | Page body (why / how sections); a list of `**Label** value` items renders as label/value rows             |
 | `stack`                                         | `string[]`, trimmed and de-duplicated                                                                     |
 | `links`                                         | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
 | `demo`                                          | `posts` \| `notebook` \| `null`                                                                           |

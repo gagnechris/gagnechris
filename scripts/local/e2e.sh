@@ -75,6 +75,13 @@ fi
 echo "==> Seed site shell"
 bash scripts/local/seed-shell.sh
 
+# env.sh sets VITE_LOCAL_SITE_ORIGIN for the Vite dev proxy; a build that baked
+# /__site in would 404 every client-side page fetch on this static site.
+if grep -rqs '/__site' "${SITE_BUCKET_NAME}/assets/"; then
+  echo "The built app fetches /__site, which only the Vite dev server proxies" >&2
+  exit 1
+fi
+
 # Plant an orphan page that rebuild must remove after publish of a different slug.
 mkdir -p "${SITE_BUCKET_NAME}/blog/orphan-e2e"
 echo '<html>orphan</html>' > "${SITE_BUCKET_NAME}/blog/orphan-e2e/index.html"
@@ -305,7 +312,7 @@ TAGGED_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${
 curl -sS -X POST "${API}/api/admin/posts/${TAGGED_ID}/publish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${TAGGED_VERSION}}" >/dev/null
-curl -sS "${SITE}/projects/${SLUG}" | grep -q "<a href=\"/posts/${SLUG}-log\">Local E2E Build Log</a>"
+curl -sS "${SITE}/projects/${SLUG}" | grep -q "<a class=\"project-build-log__link\" href=\"/posts/${SLUG}-log\"><h3 class=\"project-build-log__title\">Local E2E Build Log</h3>"
 curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "<p class=\"post-part-of\">Part of <a class=\"post-part-of__project\" href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a></p>"
 
 echo "==> Renaming the project slug keeps the Build log and Part of"
@@ -318,7 +325,7 @@ PROJECT_VERSION="$(node -e "const p=JSON.parse(process.argv[1]); if(!p.version){
 PROJECT_PUB="$(curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/publish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${PROJECT_VERSION}}")"
-curl -sS "${SITE}/projects/${PROJECT_SLUG}" | grep -q "<a href=\"/posts/${SLUG}-log\">Local E2E Build Log</a>"
+curl -sS "${SITE}/projects/${PROJECT_SLUG}" | grep -q "<a class=\"project-build-log__link\" href=\"/posts/${SLUG}-log\"><h3 class=\"project-build-log__title\">Local E2E Build Log</h3>"
 curl -sS "${SITE}/posts/${SLUG}-log" | grep -q "href=\"/projects/${PROJECT_SLUG}\">Local E2E Project ${SLUG}</a>"
 
 echo "==> Unpublish removes the project page, its /projects and Home entries and its sitemap entry"

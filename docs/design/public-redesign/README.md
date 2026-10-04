@@ -33,7 +33,7 @@ applies at `max-width: 480px`; wider viewports use the desktop values.
 | Header              | Photo top at 30px (measured); 44px tap targets, so the header row starts at 28px       |
 | Header → first text | About 100px from the header row to the first line of page content (measured)           |
 | Footer              | Last text line 48px above the page bottom (measured); at least 96px below page content |
-| Demo slot           | Up to about 1100px wide (CHR-229)                                                      |
+| Demo slot           | Up to 1072px wide, centred on the page (see Project page)                              |
 
 ## Header and footer (measured)
 
@@ -138,6 +138,32 @@ Values from the stories unless marked measured.
 | Links line | "Read my posts, see what I’m building, check out my resume, or find me on LinkedIn and GitHub."                                                                                        |
 | At 390px   | Not drawn: the cards stack like Projects entries, All projects is hidden as All posts is                                                                                               |
 
+## Project page (measured)
+
+Measured on B · Project Posts (demo) and B · Project Notebook (demo). Positions
+are glyph tops on the 1440 artboard.
+
+| Element               | Value                                                                                                                                                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header                | Full 720px column. "Projects" back link (Inter 14px / 500, `link`, underlined on hover) at y 162.5, 90px below the header row (10px above the shared header gap)                                                  |
+| Stage label           | As on Projects (dot, "Live · since 2026"); 34.5px below the back link                                                                                                                                             |
+| Name                  | Newsreader 60px / 500, line height 1.1; 33px below the stage label                                                                                                                                                |
+| Pitch                 | Newsreader italic 24px / 1.45 (35px lines), `inkSoft`; 83.5px from the name's top                                                                                                                                 |
+| Try it slot           | Only when `demo` is set. Up to 1072px wide (x 184–1256, the Posts demo's box), centred; 1px `neutral-200` border, 16px radius, soft shadow                                                                        |
+| Try it label          | "TRY IT", Inter 13px / 600, tracked 0.12em, ink; at the 680px body measure; 88px below the pitch's last line, 29px above the box                                                                                  |
+| Slot fallback         | Until a demo loads, and with JavaScript off: the project's `previewImage` at the Posts box ratio (1072 × 444, `object-fit: cover`, top aligned), or the card's mini-UI at 444px tall                              |
+| Slot → body           | 75px from the slot's last line (the box, or the demo's caption when it has one) to the first heading                                                                                                              |
+| Body                  | Post reading styles (Newsreader 21px / 1.7, #22272d) at the 680px measure (x 380–1060); h2 32px with 1.55em above (83px from the last paragraph line to the heading)                                              |
+| Numbered steps        | An ordered list: 1px `neutral-200` rule above and under each step, 16px padding; number Inter 13px / 600 `link` ("01"); text Newsreader 19px / 1.6, 48px in from the measure                                      |
+| Label/value rows      | A bulleted list whose items each start with a bold label (`- **Label** value`) renders as a `<dl>`: rules and padding as steps; label Inter 13px / 600 `neutral-700`, value Newsreader 19px / 1.6 at x 578        |
+| Stack line            | Inter 13px / 1.4, `neutral-600`, " · " between items; 23px below the last rule                                                                                                                                    |
+| Links                 | Not drawn: Inter 14px / 500, `link`, underlined, 20px apart, 44px targets, under the stack line                                                                                                                   |
+| Build log heading     | Newsreader 32px / 500; 72.5px below the stack line; 1px `neutral-200` rule 51.5px below its top                                                                                                                   |
+| Build log entry       | One link to the post: title Newsreader 24px / 500 (underlined on hover and focus) 25px below the rule; full date ("February 1, 2026") Inter 13px `neutral-600` 42.5px below the title; rule 32.5px below the date |
+| Build log order       | Published posts tagged with the project, newest first                                                                                                                                                             |
+| Build log empty state | "No posts about <name> yet. Follow along via RSS." with the second sentence linking `/rss.xml`; Newsreader 21px, `inkSoft`; 58.5px below the heading, no rule                                                     |
+| Not as drawn          | The Try it label sits on the body measure at x 380 (the artboard has 384.5). The demos' own note and caption ("Write on the left…", "Draft: only the editor sees it…") come with the demos                        |
+
 ## Phone (measured)
 
 Measured on the 393pt artboards and checked at a 390px viewport. The artboards
@@ -214,6 +240,22 @@ the label uses the desktop #7a5a12 and only the dot is amber.
 
 The Phone · Post artboard also draws a Text size / share bar at the bottom of
 the screen; the site does not have it.
+
+### Project
+
+Measured on Phone · Project Notebook demo.
+
+| Element          | Size                                                                                                            | From the element above            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Back link        | Inter 14px / 500                                                                                                | 50.5px from the photo centre      |
+| Name             | Newsreader 42px / 500                                                                                           | 31px below the stage label        |
+| Pitch            | Newsreader italic 18px / 1.45                                                                                   | 54.5px                            |
+| Try it label     | Inter 13px / 600                                                                                                | 41.5px from the pitch's last line |
+| Slot             | Full column; the fallback mini-UI is 254px tall (the artboard's demo box), the image keeps the 1072 × 444 ratio | 20px below the label              |
+| Label/value rows | Label above the value                                                                                           | —                                 |
+
+The phone artboard leaves out the stage label; the page keeps it, as the
+phone Projects list does, so the name sits one label lower than drawn.
 
 ## Resume (measured)
 

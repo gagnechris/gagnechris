@@ -8,6 +8,7 @@ import type { ProjectCardView } from '@gagnechris/shared';
 import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
 import { projectCardsFromList } from '../projects/publishedProjects';
 import { fetchPublishedPosts } from '../posts/publishedPosts';
+import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 export type HomeView = {
   name: string;
@@ -20,11 +21,7 @@ export type HomeDocument = HomeView & {
   projects: ProjectCardView[];
 };
 
-/** Local Vite uses `/__site` → static origin; prod is same-origin. */
-export function publishedHomeUrl(): string {
-  const localSite = import.meta.env.VITE_LOCAL_SITE_ORIGIN?.trim();
-  return localSite ? '/__site/' : '/';
-}
+export const publishedHomeUrl = (): string => publishedSiteUrl('/');
 
 /** Rendered from DEFAULT_HOME so the page never blanks before first publish. */
 export const fallbackHomeView = (): HomeView => ({

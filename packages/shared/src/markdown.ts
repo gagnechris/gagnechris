@@ -114,10 +114,65 @@ const focusableScrollBoxes = (html: string): string => {
     .replace(/<\/table>/g, '</table></div>');
 };
 
-/** Post bodies on the public site; admin previews use `renderMarkdownToHtml`. */
-export const renderPostMarkdownToHtml = (source: string): string => {
+const LABEL_SEPARATOR = /^\s*(?:[:\u2013\u2014-]\s*)?/;
+
+/** `**Label** value`, alone in its list item; null for anything else. */
+const labelRow = (item: Tokens.ListItem): [string, string] | null => {
+  const blocks = item.tokens.filter((t) => t.type !== 'space');
+  const block = blocks[0];
+  if (
+    item.task ||
+    blocks.length !== 1 ||
+    (block?.type !== 'text' && block?.type !== 'paragraph')
+  ) {
+    return null;
+  }
+  const { text, tokens = [] } = block as Tokens.Text;
+  const label = tokens[0];
+  if (label?.type !== 'strong') return null;
+  const value = text.slice(label.raw.length).replace(LABEL_SEPARATOR, '');
+  if (!value.trim()) return null;
+  return [
+    markdown.parseInline((label as Tokens.Strong).text) as string,
+    markdown.parseInline(value) as string,
+  ];
+};
+
+/** A bulleted list whose every item starts with a bold label becomes label/value rows. */
+const labelRows = (tokens: Token[]): Token[] =>
+  tokens.map((token) => {
+    if (token.type !== 'list' || (token as Tokens.List).ordered) return token;
+    const rows = (token as Tokens.List).items.map(labelRow);
+    if (rows.some((row) => row === null)) return token;
+    const html =
+      '<dl>' +
+      (rows as [string, string][])
+        .map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`)
+        .join('') +
+      '</dl>';
+    return {
+      type: 'html',
+      block: true,
+      pre: false,
+      raw: token.raw,
+      text: html,
+    };
+  });
+
+const renderPublicMarkdown = (
+  source: string,
+  transform: (tokens: Token[]) => Token[],
+): string => {
   const tokens = markdown.lexer(source ?? '');
   nestHeadings(tokens);
-  const html = markdown.parser(captionImages(tokens));
+  const html = markdown.parser(transform(tokens));
   return focusableScrollBoxes(sanitizeRenderedHtml(html));
 };
+
+/** Post bodies on the public site; admin previews use `renderMarkdownToHtml`. */
+export const renderPostMarkdownToHtml = (source: string): string =>
+  renderPublicMarkdown(source, captionImages);
+
+/** Project bodies: post rendering plus label/value rows. */
+export const renderProjectMarkdownToHtml = (source: string): string =>
+  renderPublicMarkdown(source, (tokens) => labelRows(captionImages(tokens)));

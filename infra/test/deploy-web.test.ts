@@ -227,6 +227,7 @@ describe('deploy-web.sh', () => {
     const patterns = excludes(apex[0]!);
     expect(patterns.sort()).toEqual(
       [
+        '.vite/*',
         'assets/*',
         'fonts/*.woff2',
         'blog/*',
@@ -260,6 +261,7 @@ describe('deploy-web.sh', () => {
       'media/x.png',
       'rss.xml',
       'sitemap.xml',
+      '.vite/manifest.json',
     ]) {
       expect(excluded(key), key).toBe(true);
     }
