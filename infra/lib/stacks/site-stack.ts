@@ -339,6 +339,18 @@ export class SiteStack extends Stack {
       ],
     });
 
+    // No viewer functions: these are files, not pages, so a missing one is
+    // S3's 404 rather than the HTML 404 page.
+    const hashedFileBehavior: BehaviorOptions = {
+      origin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+      cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+      compress: true,
+      cachePolicy: assetsCachePolicy,
+      responseHeadersPolicy: securityHeaders,
+    };
+
     this.distribution = new Distribution(this, 'Distribution', {
       comment: `gagnechris ${config.name} static site`,
       domainNames,
@@ -352,15 +364,7 @@ export class SiteStack extends Stack {
       defaultRootObject: 'index.html',
       defaultBehavior: siteBehavior(securityHeaders),
       additionalBehaviors: {
-        '/assets/*': {
-          origin,
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-          cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-          compress: true,
-          cachePolicy: assetsCachePolicy,
-          responseHeadersPolicy: securityHeaders,
-        },
+        '/assets/*': hashedFileBehavior,
         '/api/*': apiBehavior(),
         '/media/*': {
           origin,
@@ -371,6 +375,7 @@ export class SiteStack extends Stack {
           cachePolicy: mediaCachePolicy,
           responseHeadersPolicy: securityHeaders,
         },
+        '/fonts/*': hashedFileBehavior,
       },
       // No distribution-wide errorResponses: they would rewrite /api and
       // /assets 403/404 into HTML. The viewer functions handle 404s instead.
