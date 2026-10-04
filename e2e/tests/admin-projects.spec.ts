@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import { expect, requireEnv, test } from '../fixtures';
+import type { components } from '@gagnechris/api-client';
+import { expect, requireEnv, test, type Seed } from '../fixtures';
 
 // The local site serves the publisher's output, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -19,15 +20,61 @@ const saved = (page: Page) =>
 // disabled. The shortcut saves whatever is still pending, or nothing.
 const saveNow = (page: Page) => page.keyboard.press('ControlOrMeta+S');
 
-test('create, edit, upload a preview, publish, unpublish and delete a project', async ({
+type CreateProject = components['schemas']['CreateProjectRequest'];
+
+const seedProject = async (
+  seed: Seed,
+  body: { name: string; slug: string } & Partial<CreateProject>,
+) => {
+  const { data, error } = await seed.api.POST('/api/admin/projects', {
+    body: { stage: 'building', bodyMarkdown: 'Seeded by e2e.', ...body },
+  });
+  if (!data) throw new Error(`seed project failed: ${JSON.stringify(error)}`);
+  return data;
+};
+
+const openProject = async (
+  page: Page,
+  admin: string,
+  id: string,
+  name: string,
+) => {
+  await page.goto(`${admin}/projects/${id}`);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue(name);
+};
+
+// A smooth scroll still running when a click lands moves the target away
+// between mousedown and mouseup, and the click is lost.
+test('the project editor scrolls a control into view at once', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const name = `${prefix} Scroll`;
+  const project = await seedProject(seed, { name, slug: `${prefix}-scroll` });
+  await signIn();
+  await openProject(page, apps.admin, project.id, name);
+  await expect(page.getByRole('textbox', { name: 'Markdown' })).toBeVisible();
+
+  const addLink = page.getByRole('button', { name: 'Add link' });
+  const inView = await addLink.evaluate((button) => {
+    window.scrollTo(0, 0);
+    button.scrollIntoView({ block: 'center' });
+    const { top, bottom } = button.getBoundingClientRect();
+    return top >= 0 && bottom <= window.innerHeight;
+  });
+  expect(inView).toBe(true);
+});
+
+test('create a project and edit its fields', async ({
   page,
   apps,
   signIn,
   prefix,
-  request,
   seed,
 }) => {
-  acceptDialogs(page);
   await signIn();
   await page.goto(`${apps.admin}/projects`);
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
@@ -49,6 +96,28 @@ test('create, edit, upload a preview, publish, unpublish and delete a project', 
   await page.getByLabel(/^URL/).fill('https://github.com/x');
   await page.getByRole('textbox', { name: 'Markdown' }).fill('## Why\n\nFun.');
 
+  await saveNow(page);
+  await saved(page);
+  const { data: stored } = await seed.api.GET('/api/admin/projects/{id}', {
+    params: { path: { id } },
+  });
+  expect(stored).toMatchObject({
+    name,
+    slug,
+    pitch: 'A small thing I am building.',
+    stage: 'building',
+    stack: ['React'],
+    links: [{ label: 'Repo', url: 'https://github.com/x' }],
+    bodyMarkdown: '## Why\n\nFun.',
+  });
+});
+
+test('upload a preview image', async ({ page, apps, signIn, prefix, seed }) => {
+  const name = `${prefix} Preview`;
+  const project = await seedProject(seed, { name, slug: `${prefix}-preview` });
+  await signIn();
+  await openProject(page, apps.admin, project.id, name);
+
   await page.getByLabel('Upload preview image').setInputFiles({
     name: 'preview.png',
     mimeType: 'image/png',
@@ -63,17 +132,26 @@ test('create, edit, upload a preview, publish, unpublish and delete a project', 
   await saveNow(page);
   await saved(page);
   const { data: stored } = await seed.api.GET('/api/admin/projects/{id}', {
-    params: { path: { id } },
+    params: { path: { id: project.id } },
   });
-  expect(stored).toMatchObject({
-    name,
-    slug,
-    stage: 'building',
-    stack: ['React'],
-    links: [{ label: 'Repo', url: 'https://github.com/x' }],
-    bodyMarkdown: '## Why\n\nFun.',
-    previewImage: expect.stringMatching(/^\/media\/.+\.png$/),
-  });
+  expect(stored?.previewImage).toMatch(/^\/media\/.+\.png$/);
+  expect(stored?.previewImage).toBe(await preview.getAttribute('src'));
+});
+
+test('publish, unpublish and delete a project', async ({
+  page,
+  apps,
+  signIn,
+  prefix,
+  request,
+  seed,
+}) => {
+  acceptDialogs(page);
+  const name = `${prefix} Lifecycle`;
+  const slug = `${prefix}-lifecycle`;
+  const project = await seedProject(seed, { name, slug });
+  await signIn();
+  await openProject(page, apps.admin, project.id, name);
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unpublish' })).toBeVisible();
@@ -101,6 +179,10 @@ test('create, edit, upload a preview, publish, unpublish and delete a project', 
   await expect(page.getByRole('link', { name: new RegExp(name) })).toHaveCount(
     0,
   );
+  const { response } = await seed.api.GET('/api/admin/projects/{id}', {
+    params: { path: { id: project.id } },
+  });
+  expect(response.status).toBe(404);
 });
 
 test('a taken slug shows the slug-taken message', async ({
