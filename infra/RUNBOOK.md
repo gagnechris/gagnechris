@@ -512,6 +512,18 @@ AWS_PROFILE=gagnechris-readonly node scripts/migrate-create-hash.mjs --verify  #
 
 PITR (35 days) and AWS Backup recovery points keep any plaintext values until their retention expires, and restored copies from before a migration run contain them too.
 
+### Resume date migration
+
+`scripts/migrate-resume-dates.ts` moves experience dates out of `company` (`Ro | July 2019 - Present`) into `start`/`end` (`YYYY-MM`, `null` = present) on `RESUME#current` `META` and `PUBLISHED`. It prints keys, versions, company names and parsed dates, never bullets or the summary. It only accepts a line that re-renders identically; anything else is reported as `unparseable` and left as stored, to fix in admin. Both rows are written in one transaction, each conditional on the version it read; each version goes up by one, META gets a new `updatedAt`, and `PUBLISHED` keeps its `updatedAt`/`publishedAt` (the PDF dates are pinned to them). The write triggers a publisher rebuild whose HTML and PDF are byte-identical, so nothing is uploaded or invalidated. Re-running `--apply` is a no-op.
+
+```bash
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-resume-dates.ts           # dry run
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-resume-dates.ts --apply   # exit 1: raced an admin save, re-run
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-resume-dates.ts --verify  # exit 2 while anything is unmigrated
+```
+
+The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.
+
 ### Orphaned daily-note claims
 
 `scripts/scan-orphan-daily-claims.mjs` counts daily-note claims (`USER#…#DAILY#<area>#<date>`) whose holder note META row is missing or a tombstone. The API frees these on the next create of that day, so they are harmless once deployed; the script cleans them up ahead of time. It only runs against `gagnechris-prod` or `gagnechris-local` (`DATA_TABLE_NAME`, default prod) and prints counts only (`claims`, `live`, `holderMissing`, `holderDeleted`, `malformed`, `released`, `conditionFailed`), never ids, dates or content. `--apply` deletes each orphaned claim conditional on its `noteId` being unchanged.

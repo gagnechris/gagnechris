@@ -12,6 +12,8 @@ export const DEFAULT_RESUME: Resume = {
   version: 0,
   hasUnpublishedChanges: false,
   content: {
+    headline: 'Director of Software Engineering',
+    earlierRolesBefore: 2012,
     summary:
       'Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.',
     competencies: [
@@ -26,7 +28,9 @@ export const DEFAULT_RESUME: Resume = {
     experience: [
       {
         title: 'Director of Software Engineering',
-        company: 'Ro | July 2019 - Present',
+        company: 'Ro',
+        start: '2019-07',
+        end: null,
         bullets: [
           'Dedicated to aligning engineering initiatives with business goals while leading a high performing team.',
           'Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.',
@@ -36,7 +40,9 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Director of Software Engineering',
-        company: 'JW Player | March 2017 - July 2019',
+        company: 'JW Player',
+        start: '2017-03',
+        end: '2019-07',
         bullets: [
           'Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.',
           'Grew the engineering team and hired three engineering managers to support our expanding team.',
@@ -46,7 +52,9 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Software Engineering Manager',
-        company: 'Shutterstock | September 2014 - March 2017',
+        company: 'Shutterstock',
+        start: '2014-09',
+        end: '2017-03',
         bullets: [
           'Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.',
           'Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.',
@@ -56,14 +64,18 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Software Architect',
-        company: 'Viacom | September 2014 - April 2015',
+        company: 'Viacom',
+        start: '2014-09',
+        end: '2015-04',
         bullets: [
           "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes.",
         ],
       },
       {
         title: 'Application Development Manager',
-        company: 'Getty Images | June 2012 - September 2014',
+        company: 'Getty Images',
+        start: '2012-06',
+        end: '2014-09',
         bullets: [
           "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
           'Championed the use of Scala, Akka, and .NET/C# to build robust applications.',
@@ -73,7 +85,9 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Software Engineering Manager',
-        company: 'Dealertrack | August 2010 - June 2012',
+        company: 'Dealertrack',
+        start: '2010-08',
+        end: '2012-06',
         bullets: [
           'Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.',
           'Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.',
@@ -83,7 +97,9 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Senior Software Engineer',
-        company: 'Dealertrack | December 2004 - August 2010',
+        company: 'Dealertrack',
+        start: '2004-12',
+        end: '2010-08',
         bullets: [
           'Actively contributed to the development of critical applications and became a subject matter expert in key processes.',
           'Developed Java EE, VB 6.0 and C# applications to support diverse business needs.',
@@ -93,14 +109,18 @@ export const DEFAULT_RESUME: Resume = {
       },
       {
         title: 'Software Engineer',
-        company: 'Psyche Systems Corporation | July 2000 - December 2004',
+        company: 'Psyche Systems Corporation',
+        start: '2000-07',
+        end: '2004-12',
         bullets: [
           'Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications.',
         ],
       },
       {
         title: 'Software Engineer',
-        company: 'Daystar Corporation | January 1999 - April 2000',
+        company: 'Daystar Corporation',
+        start: '1999-01',
+        end: '2000-04',
         bullets: [
           'Developed and maintained applications. Supported corporate IT infrastructure.',
         ],

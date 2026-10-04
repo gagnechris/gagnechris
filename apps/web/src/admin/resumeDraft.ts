@@ -1,10 +1,18 @@
-import type { Resume, ResumeContent } from '@gagnechris/shared';
+import {
+  RESUME_MONTH_PATTERN,
+  type Resume,
+  type ResumeContent,
+} from '@gagnechris/shared';
 import { newRepeaterId } from '../workspace/ui/repeaterId';
 
 export type ExperienceDraft = {
   id: string;
   title: string;
   company: string;
+  start: string;
+  end: string;
+  present: boolean;
+  note: string;
   bulletsText: string;
 };
 
@@ -20,6 +28,8 @@ export type EducationDraft = {
 export type ResumeDraftFields = {
   name: string;
   pdfPath: string;
+  headline: string;
+  earlierRolesBeforeText: string;
   summary: string;
   competenciesText: string;
   experience: ExperienceDraft[];
@@ -31,6 +41,10 @@ export const emptyExperience = (): ExperienceDraft => ({
   id: newRepeaterId(),
   title: '',
   company: '',
+  start: '',
+  end: '',
+  present: false,
+  note: '',
   bulletsText: '',
 });
 
@@ -53,12 +67,21 @@ export const parseResumeLines = (text: string): string[] =>
 export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   name: resume.name,
   pdfPath: resume.pdfPath,
+  headline: resume.content.headline ?? '',
+  earlierRolesBeforeText:
+    resume.content.earlierRolesBefore === undefined
+      ? ''
+      : String(resume.content.earlierRolesBefore),
   summary: resume.content.summary,
   competenciesText: resume.content.competencies.join('\n'),
   experience: resume.content.experience.map((item) => ({
     id: newRepeaterId(),
     title: item.title,
     company: item.company,
+    start: item.start ?? '',
+    end: item.end ?? '',
+    present: Boolean(item.start) && !item.end,
+    note: item.note ?? '',
     bulletsText: item.bullets.join('\n'),
   })),
   skillsText: resume.content.skills.join('\n'),
@@ -72,24 +95,71 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   })),
 });
 
-export const resumeContentFromDraft = (
-  draft: ResumeDraftFields,
-): ResumeContent => ({
-  summary: draft.summary.trim(),
-  competencies: parseResumeLines(draft.competenciesText),
-  experience: draft.experience.map((item) => ({
+const validMonth = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  return RESUME_MONTH_PATTERN.test(trimmed) ? trimmed : undefined;
+};
+
+/** A blank or partial year means "no cut-off" rather than a failed save. */
+const parseCutoffYear = (text: string): number | undefined => {
+  const trimmed = text.trim();
+  if (!/^\d{4}$/.test(trimmed)) return undefined;
+  const year = Number(trimmed);
+  return year >= 1900 && year <= 2100 ? year : undefined;
+};
+
+export const END_BEFORE_START = 'End is before start';
+
+export const experienceRangeError = (
+  item: ExperienceDraft,
+): string | undefined => {
+  const start = validMonth(item.start);
+  const end = item.present ? undefined : validMonth(item.end);
+  return start && end && end < start ? END_BEFORE_START : undefined;
+};
+
+export const hasExperienceRangeError = (draft: ResumeDraftFields): boolean =>
+  draft.experience.some((item) => experienceRangeError(item) !== undefined);
+
+// Dates the server would reject (end without start, end before start) are left
+// out of the payload so autosave cannot loop on a 400; the draft keeps them.
+const experienceFromDraft = (
+  item: ExperienceDraft,
+): ResumeContent['experience'][number] => {
+  const start = validMonth(item.start);
+  const end = start && !item.present ? validMonth(item.end) : undefined;
+  const note = item.note.trim();
+  return {
     title: item.title.trim(),
     company: item.company.trim(),
-    bullets: parseResumeLines(item.bulletsText),
-  })),
-  skills: parseResumeLines(draft.skillsText),
-  education: draft.education.map((item) => ({
-    title: item.title.trim(),
-    institution: item.institution.trim(),
-    location: item.location.trim(),
-    year: item.year.trim(),
-    ...(item.degreeDetail.trim()
-      ? { degreeDetail: item.degreeDetail.trim() }
+    ...(start && !experienceRangeError(item)
+      ? { start, end: end ?? null }
       : {}),
-  })),
-});
+    ...(note ? { note } : {}),
+    bullets: parseResumeLines(item.bulletsText),
+  };
+};
+
+export const resumeContentFromDraft = (
+  draft: ResumeDraftFields,
+): ResumeContent => {
+  const headline = draft.headline.trim();
+  const earlierRolesBefore = parseCutoffYear(draft.earlierRolesBeforeText);
+  return {
+    ...(headline ? { headline } : {}),
+    ...(earlierRolesBefore !== undefined ? { earlierRolesBefore } : {}),
+    summary: draft.summary.trim(),
+    competencies: parseResumeLines(draft.competenciesText),
+    experience: draft.experience.map(experienceFromDraft),
+    skills: parseResumeLines(draft.skillsText),
+    education: draft.education.map((item) => ({
+      title: item.title.trim(),
+      institution: item.institution.trim(),
+      location: item.location.trim(),
+      year: item.year.trim(),
+      ...(item.degreeDetail.trim()
+        ? { degreeDetail: item.degreeDetail.trim() }
+        : {}),
+    })),
+  };
+};

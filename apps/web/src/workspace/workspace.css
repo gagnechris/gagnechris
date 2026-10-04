@@ -383,6 +383,12 @@
   max-width: 40rem;
 }
 
+.admin-field-error {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: #9b1c1c;
+}
+
 .admin-panel__error {
   color: #9b1c1c;
   background: #fef2f2;

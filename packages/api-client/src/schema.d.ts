@@ -2426,12 +2426,21 @@ export interface paths {
                             name: string;
                             pdfPath: string;
                             content: {
+                                /** @description Current role */
+                                headline?: string;
+                                /** @description Roles that ended before this year are "earlier roles" */
+                                earlierRolesBefore?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
                                     title: string;
                                     company: string;
                                     bullets: string[];
+                                    /** @description YYYY-MM */
+                                    start?: string;
+                                    /** @description YYYY-MM; null means present */
+                                    end?: string | null;
+                                    note?: string;
                                 }[];
                                 skills: string[];
                                 education: {
@@ -2538,12 +2547,21 @@ export interface paths {
                         name?: string;
                         pdfPath?: string;
                         content?: {
+                            /** @description Current role */
+                            headline?: string;
+                            /** @description Roles that ended before this year are "earlier roles" */
+                            earlierRolesBefore?: number;
                             summary: string;
                             competencies: string[];
                             experience: {
                                 title: string;
                                 company: string;
                                 bullets: string[];
+                                /** @description YYYY-MM */
+                                start?: string;
+                                /** @description YYYY-MM; null means present */
+                                end?: string | null;
+                                note?: string;
                             }[];
                             skills: string[];
                             education: {
@@ -2575,12 +2593,21 @@ export interface paths {
                             name: string;
                             pdfPath: string;
                             content: {
+                                /** @description Current role */
+                                headline?: string;
+                                /** @description Roles that ended before this year are "earlier roles" */
+                                earlierRolesBefore?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
                                     title: string;
                                     company: string;
                                     bullets: string[];
+                                    /** @description YYYY-MM */
+                                    start?: string;
+                                    /** @description YYYY-MM; null means present */
+                                    end?: string | null;
+                                    note?: string;
                                 }[];
                                 skills: string[];
                                 education: {
@@ -2767,12 +2794,21 @@ export interface paths {
                             name: string;
                             pdfPath: string;
                             content: {
+                                /** @description Current role */
+                                headline?: string;
+                                /** @description Roles that ended before this year are "earlier roles" */
+                                earlierRolesBefore?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
                                     title: string;
                                     company: string;
                                     bullets: string[];
+                                    /** @description YYYY-MM */
+                                    start?: string;
+                                    /** @description YYYY-MM; null means present */
+                                    end?: string | null;
+                                    note?: string;
                                 }[];
                                 skills: string[];
                                 education: {
@@ -2958,12 +2994,21 @@ export interface paths {
                             name: string;
                             pdfPath: string;
                             content: {
+                                /** @description Current role */
+                                headline?: string;
+                                /** @description Roles that ended before this year are "earlier roles" */
+                                earlierRolesBefore?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
                                     title: string;
                                     company: string;
                                     bullets: string[];
+                                    /** @description YYYY-MM */
+                                    start?: string;
+                                    /** @description YYYY-MM; null means present */
+                                    end?: string | null;
+                                    note?: string;
                                 }[];
                                 skills: string[];
                                 education: {
@@ -3149,12 +3194,21 @@ export interface paths {
                             name: string;
                             pdfPath: string;
                             content: {
+                                /** @description Current role */
+                                headline?: string;
+                                /** @description Roles that ended before this year are "earlier roles" */
+                                earlierRolesBefore?: number;
                                 summary: string;
                                 competencies: string[];
                                 experience: {
                                     title: string;
                                     company: string;
                                     bullets: string[];
+                                    /** @description YYYY-MM */
+                                    start?: string;
+                                    /** @description YYYY-MM; null means present */
+                                    end?: string | null;
+                                    note?: string;
                                 }[];
                                 skills: string[];
                                 education: {
@@ -6816,12 +6870,21 @@ export interface components {
             name: string;
             pdfPath: string;
             content: {
+                /** @description Current role */
+                headline?: string;
+                /** @description Roles that ended before this year are "earlier roles" */
+                earlierRolesBefore?: number;
                 summary: string;
                 competencies: string[];
                 experience: {
                     title: string;
                     company: string;
                     bullets: string[];
+                    /** @description YYYY-MM */
+                    start?: string;
+                    /** @description YYYY-MM; null means present */
+                    end?: string | null;
+                    note?: string;
                 }[];
                 skills: string[];
                 education: {
@@ -6851,12 +6914,21 @@ export interface components {
             name?: string;
             pdfPath?: string;
             content?: {
+                /** @description Current role */
+                headline?: string;
+                /** @description Roles that ended before this year are "earlier roles" */
+                earlierRolesBefore?: number;
                 summary: string;
                 competencies: string[];
                 experience: {
                     title: string;
                     company: string;
                     bullets: string[];
+                    /** @description YYYY-MM */
+                    start?: string;
+                    /** @description YYYY-MM; null means present */
+                    end?: string | null;
+                    note?: string;
                 }[];
                 skills: string[];
                 education: {
@@ -6881,12 +6953,21 @@ export interface components {
             ok: true;
         };
         ResumeContent: {
+            /** @description Current role */
+            headline?: string;
+            /** @description Roles that ended before this year are "earlier roles" */
+            earlierRolesBefore?: number;
             summary: string;
             competencies: string[];
             experience: {
                 title: string;
                 company: string;
                 bullets: string[];
+                /** @description YYYY-MM */
+                start?: string;
+                /** @description YYYY-MM; null means present */
+                end?: string | null;
+                note?: string;
             }[];
             skills: string[];
             education: {
@@ -6908,6 +6989,11 @@ export interface components {
             title: string;
             company: string;
             bullets: string[];
+            /** @description YYYY-MM */
+            start?: string;
+            /** @description YYYY-MM; null means present */
+            end?: string | null;
+            note?: string;
         };
         PostSeo: {
             title?: string;

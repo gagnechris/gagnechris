@@ -4,6 +4,7 @@ import { resumeResource } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import {
+  hasExperienceRangeError,
   resumeContentFromDraft,
   resumeDraftFromResume,
   type ResumeDraftFields,
@@ -98,6 +99,9 @@ const AdminResumePage = () => {
       <EditorActionBar
         leading={<h1>Resume</h1>}
         {...actionBarProps}
+        // The PUT leaves out dates that fail validation, so a clean save does
+        // not mean everything typed is on the server.
+        dirty={actionBarProps.dirty || hasExperienceRangeError(draft)}
         viewLiveHref="/resume"
       />
 

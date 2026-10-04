@@ -9,7 +9,15 @@ import {
   tableNameFromArn,
   validateRestoredTable,
 } from '../src/validate.js';
-import { RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES } from '@gagnechris/shared';
+import {
+  buildResumeMetaItem,
+  buildResumePublishedItem,
+} from '@gagnechris/data';
+import {
+  DEFAULT_RESUME,
+  RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
+} from '@gagnechris/shared';
+import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
 import { TS, fakeCount, healthyItems, noteAt, pagedScan } from './fixtures.js';
 
 const TABLE = 'awsbackup-restore-test-abc123';
@@ -218,5 +226,46 @@ describe('helpers', () => {
     expect(tableNameFromArn('arn:aws:s3:::bucket')).toBeUndefined();
     expect(isRestoreTestTableName('awsbackup-restore-test-')).toBe(false);
     expect(isRestoreTestTableName('gagnechris-prod')).toBe(false);
+  });
+});
+
+describe('resume rows across the date migration', () => {
+  const resumeRows = (content: unknown) => [
+    buildResumeMetaItem({
+      ...DEFAULT_RESUME,
+      content: content as typeof DEFAULT_RESUME.content,
+      updatedAt: TS,
+      version: 1,
+    }),
+    buildResumePublishedItem({
+      ...DEFAULT_RESUME,
+      content: content as typeof DEFAULT_RESUME.content,
+      updatedAt: TS,
+      version: 1,
+    }),
+  ];
+
+  it.each([
+    ['old shape (dates inside company)', legacyResumeContent()],
+    ['structured start/end, headline and cut-off', DEFAULT_RESUME.content],
+  ])('passes the %s', async (_label, content) => {
+    const items = [
+      ...healthyItems().filter((i) => i.entityType !== 'resume'),
+      ...resumeRows(content),
+    ];
+    const result = await validateRestoredTable(pagedScan(items), TABLE);
+    expect(result.problems).toEqual([]);
+    expect(result.status).toBe('SUCCESSFUL');
+  });
+
+  it('fails a resume with a malformed start month', async () => {
+    const content = structuredClone(DEFAULT_RESUME.content);
+    content.experience[0]!.start = 'July 2019';
+    const items = [
+      ...healthyItems().filter((i) => i.entityType !== 'resume'),
+      ...resumeRows(content),
+    ];
+    const result = await validateRestoredTable(pagedScan(items), TABLE);
+    expect(result.status).toBe('FAILED');
   });
 });

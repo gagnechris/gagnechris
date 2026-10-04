@@ -4,6 +4,7 @@ import { Repeater } from '../workspace/ui/Repeater';
 import {
   emptyEducation,
   emptyExperience,
+  experienceRangeError,
   type ResumeDraftFields,
 } from './resumeDraft';
 
@@ -31,6 +32,26 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         <TextInput
           value={draft.name}
           onChange={(e) => setField('name', e.target.value)}
+        />
+      </Field>
+      <Field label="Headline (current role)">
+        <TextInput
+          value={draft.headline}
+          onChange={(e) => setField('headline', e.target.value)}
+        />
+      </Field>
+      <Field
+        label="Earlier roles before (year)"
+        hint="Roles that ended before this year are grouped as earlier roles"
+      >
+        <TextInput
+          type="number"
+          inputMode="numeric"
+          min={1900}
+          max={2100}
+          step={1}
+          value={draft.earlierRolesBeforeText}
+          onChange={(e) => setField('earlierRolesBeforeText', e.target.value)}
         />
       </Field>
       <Field
@@ -62,29 +83,88 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         addLabel="Add role"
         removeLabel="Remove role"
         reorderable
-        renderItem={(item, { update }) => (
-          <>
-            <Field label="Title">
-              <TextInput
-                value={item.title}
-                onChange={(e) => update({ title: e.target.value })}
-              />
-            </Field>
-            <Field label="Company / dates">
-              <TextInput
-                value={item.company}
-                onChange={(e) => update({ company: e.target.value })}
-              />
-            </Field>
-            <Field label="Bullets (one per line)">
-              <TextArea
-                rows={4}
-                value={item.bulletsText}
-                onChange={(e) => update({ bulletsText: e.target.value })}
-              />
-            </Field>
-          </>
-        )}
+        renderItem={(item, { update }) => {
+          const rangeError = experienceRangeError(item);
+          const rangeErrorId = `resume-role-${item.id}-dates-error`;
+          return (
+            <>
+              <Field label="Title">
+                <TextInput
+                  value={item.title}
+                  onChange={(e) => update({ title: e.target.value })}
+                />
+              </Field>
+              <Field
+                label="Company"
+                hint={
+                  !item.start && item.company.includes('|')
+                    ? 'Dates are still inside the company name; move them to Start and End'
+                    : undefined
+                }
+              >
+                <TextInput
+                  value={item.company}
+                  onChange={(e) => update({ company: e.target.value })}
+                />
+              </Field>
+              <Field label="Start month">
+                <TextInput
+                  type="month"
+                  placeholder="YYYY-MM"
+                  value={item.start}
+                  onChange={(e) => update({ start: e.target.value })}
+                />
+              </Field>
+              <Field label="End month">
+                <TextInput
+                  type="month"
+                  placeholder="YYYY-MM"
+                  value={item.present ? '' : item.end}
+                  disabled={!item.start || item.present}
+                  aria-invalid={rangeError ? true : undefined}
+                  aria-describedby={rangeError ? rangeErrorId : undefined}
+                  onChange={(e) => update({ end: e.target.value })}
+                />
+              </Field>
+              {rangeError ? (
+                <p id={rangeErrorId} className="admin-field-error">
+                  {rangeError}. Dates for this role are not saved until this is
+                  fixed.
+                </p>
+              ) : null}
+              <label className="admin-check">
+                <input
+                  type="checkbox"
+                  checked={item.present}
+                  disabled={!item.start}
+                  onChange={(e) =>
+                    update({
+                      present: e.target.checked,
+                      ...(e.target.checked ? { end: '' } : {}),
+                    })
+                  }
+                />
+                Present (current role)
+              </label>
+              <Field
+                label="Note (optional)"
+                hint="For example: contract, concurrent"
+              >
+                <TextInput
+                  value={item.note}
+                  onChange={(e) => update({ note: e.target.value })}
+                />
+              </Field>
+              <Field label="Bullets (one per line)">
+                <TextArea
+                  rows={4}
+                  value={item.bulletsText}
+                  onChange={(e) => update({ bulletsText: e.target.value })}
+                />
+              </Field>
+            </>
+          );
+        }}
       />
 
       <Field label="Technical skills (one per line)">
