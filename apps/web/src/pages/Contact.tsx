@@ -17,12 +17,30 @@ type FieldName = 'name' | 'email' | 'message';
 const FIELDS: readonly {
   name: FieldName;
   label: string;
+  placeholder: string;
   type?: 'text' | 'email';
   autoComplete: string;
 }[] = [
-  { name: 'name', label: 'Name', type: 'text', autoComplete: 'name' },
-  { name: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
-  { name: 'message', label: 'Message', autoComplete: 'off' },
+  {
+    name: 'name',
+    label: 'Name',
+    placeholder: 'Your name',
+    type: 'text',
+    autoComplete: 'name',
+  },
+  {
+    name: 'email',
+    label: 'Email',
+    placeholder: 'you@example.com',
+    type: 'email',
+    autoComplete: 'email',
+  },
+  {
+    name: 'message',
+    label: 'Message',
+    placeholder: 'What’s on your mind?',
+    autoComplete: 'off',
+  },
 ];
 
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -222,13 +240,14 @@ function Contact() {
               />
             </div>
 
-            {FIELDS.map(({ name, label, type, autoComplete }) => {
+            {FIELDS.map(({ name, label, placeholder, type, autoComplete }) => {
               const error = fieldErrors[name];
               const props = {
                 id: name,
                 name,
                 value: values[name],
                 onChange: handleChange,
+                placeholder,
                 autoComplete,
                 'aria-required': true,
                 'aria-invalid': error ? true : undefined,
@@ -245,7 +264,7 @@ function Contact() {
                   {type ? (
                     <input {...props} type={type} ref={ref} />
                   ) : (
-                    <textarea {...props} rows={7} ref={ref} />
+                    <textarea {...props} rows={4} ref={ref} />
                   )}
                   {error ? (
                     <p className="contact-field__error" id={errorId(name)}>

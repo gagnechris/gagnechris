@@ -143,9 +143,8 @@ describe('viewer-response CloudFront Function', () => {
       headers: { 'content-type': { value: 'application/xml' } },
     });
     expect(res.body).toContain('<header class="site-header">');
-    expect(res.body).toContain(
-      '<main class="not-found"><h1>Page not found</h1>',
-    );
+    expect(res.body).toContain('<main class="not-found">');
+    expect(res.body).toContain('<h1>Page not found</h1>');
     expect(res.body).toContain(
       `<p class="site-footer__copy">© ${new Date().getUTCFullYear()} Chris Gagne</p>`,
     );

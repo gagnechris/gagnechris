@@ -1,4 +1,4 @@
-/* Page heading and notes follow the Posts specs in docs/design/public-redesign/README.md; the cards are the games' own art. */
+/* Specs in docs/design/public-redesign/README.md (Don’t feed the bears); the cards are the games' own art. */
 .bears-landing {
   max-width: 1040px;
   margin: 0 auto;
@@ -160,6 +160,12 @@
 }
 
 @media (max-width: 480px) {
+  .bears-landing__kicker {
+    margin-bottom: 2px;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
   .bears-landing h1 {
     font-size: 2.5rem;
   }
