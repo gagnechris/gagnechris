@@ -37,7 +37,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Local E2E: `npm run e2e:local` (curl smoke)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
-- Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync is dry-run first and `check:legacy-admin-plan` refuses it if it would break the frozen legacy `/admin` shell)
+- Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync deletes whatever the public build doesn't produce, except publisher-owned paths)
 - CI: lint/typecheck/test/build/synth; the **Local E2E smoke (CHR-82)** job runs `e2e:local` then `e2e:browser` (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke (CHR-82)**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
@@ -55,7 +55,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 
 ## Hosting & Integrations
 
-- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`
+- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com` and `notebook.gagnechris.com`, one distribution each. Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)

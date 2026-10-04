@@ -454,87 +454,153 @@ describe('viewer-request CloudFront Function', () => {
     ).toBe('/now/index.html');
   });
 
-  it('rewrites /admin and /auth to the neutral SPA shell', async () => {
-    for (const uri of ['/auth/callback', '/admin', '/admin/posts']) {
-      const req = (await runHandler({
-        uri,
-        headers: { host: { value: 'gagnechris.com' } },
-      })) as CfRequest;
-      expect(req.uri).toBe('/spa.html');
-    }
-  });
+  describe('old apex /admin and /auth URLs', () => {
+    const apex = (
+      uri: string,
+      querystring?: CfRequest['querystring'],
+    ): CfRequest => ({
+      uri,
+      querystring,
+      headers: { host: { value: 'gagnechris.com' } },
+    });
 
-  it('301s case and encoding variants of /admin and /auth to lowercase', async () => {
-    const cases: Array<[CfRequest, string]> = [
-      [
-        {
-          uri: '/ADMIN/notebook',
-          querystring: { x: { value: '1' } },
-          headers: { host: { value: 'gagnechris.com' } },
-        },
-        '/admin/notebook?x=1',
-      ],
-      [
-        { uri: '/Admin', headers: { host: { value: 'gagnechris.com' } } },
-        '/admin',
-      ],
-      [
-        {
-          uri: '/AUTH/callback',
-          headers: { host: { value: 'gagnechris.com' } },
-        },
-        '/auth/callback',
-      ],
-      [
-        {
-          uri: '/aDmIn/notes/01J9ZX',
-          headers: { host: { value: 'gagnechris.com' } },
-        },
-        '/admin/notes/01J9ZX',
-      ],
-      [
-        {
-          uri: '/Admin/Notebook/Notes/AbC',
-          headers: { host: { value: 'gagnechris.com' } },
-        },
-        '/admin/Notebook/Notes/AbC',
-      ],
-      [
-        { uri: '/%61dmin/', headers: { host: { value: 'gagnechris.com' } } },
-        '/admin/',
-      ],
-    ];
-    for (const [request, location] of cases) {
+    async function expectAppRedirect(request: CfRequest, location: string) {
       const res = await runHandler(request);
-      expect(res).toMatchObject({ statusCode: 301 });
-      expect(locationOf(res)).toBe(location);
-    }
-  });
-
-  it('leaves lowercase /admin and other mixed-case paths alone', async () => {
-    const admin = (await runHandler({
-      uri: '/admin/notebook/notes/01J9ZX',
-      querystring: { date: { value: '2026-10-03' } },
-      headers: { host: { value: 'gagnechris.com' } },
-    })) as CfRequest;
-    expect(admin.uri).toBe('/spa.html');
-
-    api.setPublishedBlogSlugsForTests({});
-    for (const uri of ['/posts/Some-Slug', '/Resume', '/Administrator']) {
-      const res = await runHandler({
-        uri,
-        headers: { host: { value: 'gagnechris.com' } },
+      expect(res).toMatchObject({
+        statusCode: 301,
+        headers: {
+          location: { value: location },
+          'cache-control': { value: 'max-age=86400' },
+        },
       });
-      expect(res).not.toHaveProperty('statusCode');
     }
-  });
 
-  it('rewrites trailing-slash SPA paths to the SPA shell', async () => {
-    const req = (await runHandler({
-      uri: '/admin/',
-      headers: { host: { value: 'gagnechris.com' } },
-    })) as CfRequest;
-    expect(req.uri).toBe('/spa.html');
+    it('301s /admin/notebook* to the Notebook host with the rest of the path and the query', async () => {
+      const cases: Array<[CfRequest, string]> = [
+        [apex('/admin/notebook'), 'https://notebook.gagnechris.com/'],
+        [apex('/admin/notebook/'), 'https://notebook.gagnechris.com/'],
+        [
+          apex('/admin/notebook/today'),
+          'https://notebook.gagnechris.com/today',
+        ],
+        [
+          apex('/admin/notebook/notes/01J9ZX', {
+            date: { value: '2026-10-03' },
+            tag: { multiValue: [{ value: 'a' }, { value: 'b' }] },
+          }),
+          'https://notebook.gagnechris.com/notes/01J9ZX?date=2026-10-03&tag=a&tag=b',
+        ],
+      ];
+      for (const [request, location] of cases) {
+        await expectAppRedirect(request, location);
+      }
+    });
+
+    it('301s other /admin* paths to the admin host with the rest of the path and the query', async () => {
+      const cases: Array<[CfRequest, string]> = [
+        [apex('/admin'), 'https://admin.gagnechris.com/'],
+        [apex('/admin/'), 'https://admin.gagnechris.com/'],
+        [apex('/admin/posts'), 'https://admin.gagnechris.com/posts'],
+        [
+          apex('/admin/posts/01J9ZX/edit', { tab: { value: 'meta' } }),
+          'https://admin.gagnechris.com/posts/01J9ZX/edit?tab=meta',
+        ],
+        [apex('/admin/notebooks'), 'https://admin.gagnechris.com/notebooks'],
+        [
+          apex('/admin/resume/notebook'),
+          'https://admin.gagnechris.com/resume/notebook',
+        ],
+      ];
+      for (const [request, location] of cases) {
+        await expectAppRedirect(request, location);
+      }
+    });
+
+    it('301s /auth* to the Notebook root and drops the query string', async () => {
+      for (const uri of ['/auth', '/auth/', '/auth/callback', '/auth/x/y']) {
+        await expectAppRedirect(
+          apex(uri, {
+            code: { value: 'secret-code' },
+            state: { value: 'secret-state' },
+          }),
+          'https://notebook.gagnechris.com/',
+        );
+      }
+    });
+
+    it('treats case and encoding variants the same in one hop', async () => {
+      const cases: Array<[CfRequest, string]> = [
+        [
+          apex('/ADMIN/notebook', { x: { value: '1' } }),
+          'https://notebook.gagnechris.com/?x=1',
+        ],
+        [apex('/Admin'), 'https://admin.gagnechris.com/'],
+        [apex('/aDmIn/posts/AbC'), 'https://admin.gagnechris.com/posts/AbC'],
+        [
+          apex('/Admin/Notebook/Notes/AbC'),
+          'https://notebook.gagnechris.com/Notes/AbC',
+        ],
+        [
+          apex('/admin/%6Eotebook/today'),
+          'https://notebook.gagnechris.com/today',
+        ],
+        [apex('/%61dmin/'), 'https://admin.gagnechris.com/'],
+        [
+          apex('/AUTH/callback', { code: { value: 'c' } }),
+          'https://notebook.gagnechris.com/',
+        ],
+        [apex('/%41uth'), 'https://notebook.gagnechris.com/'],
+      ];
+      for (const [request, location] of cases) {
+        await expectAppRedirect(request, location);
+      }
+    });
+
+    it('sends www variants to the apex first', async () => {
+      const res = await runHandler({
+        uri: '/admin/posts',
+        headers: { host: { value: 'www.gagnechris.com' } },
+      });
+      expect(locationOf(res)).toBe('https://gagnechris.com/admin/posts');
+    });
+
+    it('leaves paths that only start with admin or auth alone', async () => {
+      api.setPublishedBlogSlugsForTests({});
+      for (const uri of [
+        '/Administrator',
+        '/administrator',
+        '/authors',
+        '/adminx/posts',
+        '/admin%2Fposts',
+        '/posts/admin',
+        '/%E0%A4%A',
+      ]) {
+        const res = await runHandler(apex(uri));
+        expect(res).not.toHaveProperty('statusCode');
+        expect((res as CfRequest).uri).toBe('/404.html');
+      }
+    });
+
+    it('never redirects /.well-known', async () => {
+      for (const uri of [
+        '/.well-known/apple-app-site-association',
+        '/.well-known/webauthn',
+        '/.well-known/admin',
+        '/.well-known/auth/callback',
+      ]) {
+        const res = await runHandler(apex(uri));
+        expect(res).not.toHaveProperty('statusCode');
+        expect((res as CfRequest).uri).toBe(uri);
+      }
+    });
+
+    it('leaves other mixed-case paths alone', async () => {
+      api.setPublishedBlogSlugsForTests({});
+      for (const uri of ['/posts/Some-Slug', '/Resume']) {
+        const res = await runHandler(apex(uri));
+        expect(res).not.toHaveProperty('statusCode');
+      }
+    });
   });
 
   it('rewrites unknown extensionless paths to /404.html', async () => {

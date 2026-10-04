@@ -25,7 +25,11 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 ### iOS sign-in and associated domains
 
 - Expo `scheme` is `gagnechris`, so Cognito can return to `gagnechris://auth/callback` (registered on the iOS app client). iOS bundle id is `com.gagnechris.mobile`, with associated domains `applinks:gagnechris.com` and `webcredentials:gagnechris.com`.
-- The apex hosts `/.well-known/apple-app-site-association` and `/.well-known/webauthn` (CloudFront passes `/.well-known/*` through; deploy forces `Content-Type: application/json`). Replace `APPLE_TEAM_ID` in `apps/web/public/.well-known/apple-app-site-association` before shipping Associated Domains.
+- Each host serves its own `/.well-known/apple-app-site-association`, never redirected (Apple fetches it without following redirects); deploy forces `Content-Type: application/json`:
+  - Apex (`apps/web/public/.well-known/`): `webcredentials` only, no `applinks`. The apex also serves `/.well-known/webauthn`.
+  - `notebook.gagnechris.com` (`apps/web/public-notebook/.well-known/`): `applinks` for `/today`, `/notes/*` and `/tasks/*`, with `"exclude": true` on `/auth/*` so web sign-in on an iPhone with the app installed stays in the browser.
+  - `applinks:gagnechris.com` in `app.json` matches no paths; universal links need `applinks:notebook.gagnechris.com`. A universal-link OAuth callback, if added, should use its own path (for example `/ios/auth/callback`) on the iOS client only.
+- Replace `APPLE_TEAM_ID` in both AASA files before shipping Associated Domains.
 - **Passkey RP ID** is `auth.gagnechris.com` — see [ADR 0001](./adr/0001-passkey-rp-id.md). iOS sign-in uses managed login in `ASWebAuthenticationSession`, not native `ASAuthorization` against the apex.
 - Cognito refresh tokens last **30 days**; after a month without a refresh the user signs in again. There is no silent refresh beyond Cognito’s refresh token lifetime.
 

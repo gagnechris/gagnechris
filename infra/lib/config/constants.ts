@@ -34,16 +34,16 @@ export function siteOrigins(apexDomain: string = APEX_DOMAIN): string[] {
   return [`https://${apexDomain}`];
 }
 
-/** Legacy apex group; the API accepts it only alongside the legacy web client. */
+/** Legacy apex group; the API trusts it only alongside the legacy web client while LEGACY_WEB_AUTH is on. */
 export const ADMIN_GROUP = 'admin' as const;
 export const SITE_ADMIN_GROUP = 'site-admin' as const;
 export const NOTEBOOK_GROUP = 'notebook' as const;
 
 /**
- * Keeps the apex `web` client in both JWT audiences and sets
- * AUTH_LEGACY_WEB_CLIENT_ID on the API until the cutover turns it off.
+ * When true, the apex `web` client joins both JWT audiences and the API gets
+ * AUTH_LEGACY_WEB_CLIENT_ID. Off: only admin-web and notebook-web are trusted.
  */
-export const LEGACY_WEB_AUTH = true;
+export const LEGACY_WEB_AUTH = false;
 
 export const GITHUB_OWNER = 'gagnechris' as const;
 export const GITHUB_REPO = 'gagnechris' as const;

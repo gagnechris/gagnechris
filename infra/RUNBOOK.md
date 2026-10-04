@@ -198,10 +198,22 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 + Cognito auth domain / IdP + the site bucket for uploads; a stricter no-inline, no-GA policy on `/admin*` and `/auth*`), viewer-request function (www→apex with query string; case/encoding variants of the `/admin` or `/auth` first segment → 301 lowercase, since the `/admin*` and `/auth*` behaviours are case-sensitive; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`; `/admin` and `/auth` → `/spa.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
+- Security headers (HSTS, CSP for GA4 only), viewer-request function (www→apex with query string; old app URLs → 301 with `Cache-Control: max-age=86400`, matched case-insensitively and percent-decoded: `/admin/notebook*` → `https://notebook.gagnechris.com/*` and other `/admin*` → `https://admin.gagnechris.com/*`, both keeping the query, `/auth*` → `https://notebook.gagnechris.com/` with the query dropped; `/.well-known/*` is never redirected; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published slugs into a CloudFront KeyValueStore after each rebuild (function code stays CDK-managed).
 - 5xx alarm publishes to the Guardrails alerts topic.
+
+Smoke the old app URLs (status, `location`, `cache-control`):
+
+```bash
+for p in '/admin' '/admin/posts?tab=meta' '/admin/notebook' '/admin/notebook/today?date=2026-10-03' '/ADMIN/Notebook/notes/x' '/auth/callback?code=c&state=s' '/.well-known/apple-app-site-association'; do
+  printf '%s  ' "$p"
+  curl -sS -o /dev/null -w '%{http_code} %{redirect_url}  ' "https://gagnechris.com$p"
+  curl -sSI "https://gagnechris.com$p" | tr -d '\r' | grep -i '^cache-control' || echo
+done
+# Expect 301 to admin./notebook. with the path (query dropped for /auth*) and
+# cache-control: max-age=86400; 200 and no redirect for /.well-known.
+```
 
 ```bash
 export ALERTS_EMAIL='you@example.com'
@@ -212,7 +224,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 
 - Two `AppHost` constructs in `Site-prod`, one distribution each on `AppHostsCertificate`. Each has its own private, versioned bucket (access logs under `s3-admin/` / `s3-notebook/`, CloudFront logs under `cloudfront-admin/` / `cloudfront-notebook/` in `AccessLogs`), no AWS Backup (build output only).
 - Behaviours: default (`HtmlCachePolicy`) and `/assets/*` (`AssetsCachePolicy`) from the host's bucket, `/api/*` to the HTTP API (same as the apex, `api-security-headers`). Admin also serves `/media/*` from the **site** bucket, so the site bucket policy grants the admin distribution `GetObject` and `ListBucket`.
-- Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:`, `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows `https://admin.gagnechris.com` for those PUTs.
+- Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:`, `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows only `https://admin.gagnechris.com`, for those PUTs.
 - Viewer-request `gagnechris-prod-app-viewer-request` (`infra/lib/cloudfront/app-viewer-request.js`, no KVS): `/api`, `/assets`, `/media`, `/.well-known` and any path whose last segment has a dot pass through; everything else → `/index.html`. No distribution-wide error pages.
 - Content is the admin and Notebook builds (`apps/web/dist-admin/`, `dist-notebook/`), shipped by `scripts/deploy-web.sh` (see Web deploy pipeline). On first create, CDK wrote a placeholder `index.html` (no script) to each bucket so the host answered 200 before the first app deploy. It never runs again, so web deploys are not overwritten.
 - 5xx alarms `gagnechris-prod-admin-cloudfront-5xx`, `gagnechris-prod-notebook-cloudfront-5xx`.
@@ -234,12 +246,10 @@ On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk dep
 
 1. `npm run build -w @gagnechris/web` builds all three apps; `check:web-shells` must pass before anything uploads.
 2. Admin and Notebook: `assets/` (immutable cache), then `sync --delete` (excluding `assets/*`) to the host's bucket, `.well-known/*` as `application/json`, `manifest.json` as `application/manifest+json`, and a `/*` invalidation on that host's distribution.
-3. Public: `assets/`, then a dry run of the apex `sync --delete`, `check:legacy-admin-plan` on that plan, the real sync, `.well-known/*`, and a `/*` invalidation.
+3. Public: `assets/`, then the apex `sync --delete`, `.well-known/*`, and a `/*` invalidation.
 4. Publisher `{"action":"republishAll"}` (SSM `publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
 
-The apex sync never deletes publisher-owned paths (`blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `sitemap.xml`, `rss.xml`), the reserved `notebook/*`, hashed `assets/*`, or the legacy `/admin` shell and its PWA files (`spa.html`, `manifest.json`, `icons/*`). The public build doesn't produce those three.
-
-**If `check:legacy-admin-plan` refuses the deploy:** it prints each file the frozen `spa.html` loads that the sync would delete or that is already missing. Nothing on the apex has been written yet (the admin and Notebook hosts already have the new build). Fix the exclude list in `deploy-web.sh` and re-run the deploy. If a referenced file is already gone from the site bucket, restore its previous version (the bucket is versioned; noncurrent versions are kept 90 days) with an admin-approved `aws s3api copy-object` from that version, then re-run. To list what the live shell loads: `npx tsx scripts/check-legacy-admin-plan.ts --origin https://gagnechris.com`.
+The apex sync never deletes publisher-owned paths (`blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `sitemap.xml`, `rss.xml`), the reserved `notebook/*` or hashed `assets/*`. It deletes every other key the public build doesn't produce. The bucket is versioned, so a deleted key's previous version stays restorable for 90 days.
 
 Manual / local:
 
@@ -618,15 +628,15 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Publisher-prod --require-appr
 
 ## Cognito auth
 
-`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `web` / `admin-web` / `notebook-web` / `ios` clients (authorization code + PKCE), each with its own managed login branding.
+`Auth-prod`: single-admin user pool (self sign-up off), passkeys as primary sign-in with optional TOTP for password fallback (Cognito forbids MFA=REQUIRED with WebAuthn first-factor), managed login at `auth.gagnechris.com`, public `admin-web` / `notebook-web` / `ios` / `dev-local` clients (authorization code + PKCE), each with its own managed login branding. The legacy `web` client also still exists, with its branding and SSM param, but the API doesn't trust it.
 
 SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-web-client-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`, `cognito-dev-client-id`, `cognito-auth-domain`.
 
 ### Groups and clients
 
-- Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and the legacy `admin` (apex app, kept while `LEGACY_WEB_AUTH` is on). CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
+- Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and the legacy `admin`, which grants nothing while `LEGACY_WEB_AUTH` is off. CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
-- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). While `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is `true`, both also accept the legacy `web` client, and the Lambda gets `AUTH_LEGACY_WEB_CLIENT_ID`. The Lambda always gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`. Api reads the two new client IDs from SSM (not Auth exports).
+- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audience `notebook-web`). `LEGACY_WEB_AUTH` (`infra/lib/config/constants.ts`) is `false`, so neither lists the legacy `web` client and the Lambda has no `AUTH_LEGACY_WEB_CLIENT_ID`. Auth still exports the `web` client ID (`this.exportValue`) so it can be deleted once `aws cloudformation list-imports` shows no importers (see Removing a cross-stack reference). The Lambda always gets `ADMIN_WEB_CLIENT_ID` and `NOTEBOOK_WEB_CLIENT_ID`. Api reads the two new client IDs from SSM (not Auth exports).
 - Prod `web` and `ios` clients trust only `https://gagnechris.com` (plus `gagnechris://` for iOS). `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
@@ -680,7 +690,7 @@ aws cognito-idp admin-set-user-password \
   --profile gagnechris-admin
 ```
 
-Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://<admin|notebook>.gagnechris.com/auth/callback` with that host's client ID).
+Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` client; or `https://auth.gagnechris.com/login?client_id=...&response_type=code&scope=openid+email+profile&redirect_uri=https://<admin|notebook>.gagnechris.com/auth/callback` with that host's client ID).
 
 ## Admin and Notebook apps
 
@@ -697,7 +707,15 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (or `https://auth.gag
 3. Share → Add to Home Screen.
 4. Open the new icon and sign in once (standalone apps keep their own storage).
 
-**Legacy apex app:** `https://gagnechris.com/admin*` (including `/admin/notebook/*`) still serves the last pre-split build: the frozen `spa.html` and its hashed assets in the site bucket, signing in with the `web` client and the `admin` group (accepted while `LEGACY_WEB_AUTH` is on), tokens in `Domain=gagnechris.com` cookies. Deploys never change it. It is a fallback while the new hosts are in use; switch to the new hosts for daily work.
+**Old apex URLs:** `https://gagnechris.com/admin*` and `/auth*` 301 to the app hosts (see Static site). The apex serves no signed-in page and holds no tokens: the public bundle deletes `CognitoIdentityServiceProvider.*` keys from apex `localStorage` and expires matching cookies on `Domain=gagnechris.com` and host-only.
+
+**If sign-in or the hosts misbehave:**
+
+- A browser that cached a bad 301 holds it for at most 24 hours (`max-age=86400`); clearing site data for `gagnechris.com` drops it sooner.
+- `DNS_PROBE_FINISHED_NXDOMAIN` on a host that resolves elsewhere is a stale negative cache in Chrome: clear it at `chrome://net-internals/#dns`.
+- 403 on every API call right after joining a group: sign out of that app and back in (see Groups and clients).
+- Signed out unexpectedly on one app: sign in again there. Each app keeps its own refresh token, so the other app is unaffected.
+- Last resort, to bring back the old apex app: revert the cutover change, set `LEGACY_WEB_AUTH = true`, and restore the previous versions of `spa.html`, `manifest.json` and `icons/*` in the site bucket with an admin-approved `aws s3api copy-object --copy-source <bucket>/<key>?versionId=<id>` (noncurrent versions are kept 90 days). The `web` client and `admin` group must still exist.
 
 ## HTTP API runtime and contract
 

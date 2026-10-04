@@ -31,8 +31,6 @@ export function staticPagesPlugin(): Plugin {
       // Publisher reads this only; keep the raw Vite shell before home meta.
       fs.writeFileSync(path.join(appRoot, 'dist/_shell.html'), shell);
 
-      // No spa.html: the apex keeps serving the last one the deploy left in S3
-      // for /admin* and /auth*, and the deploy refuses to overwrite it.
       fs.writeFileSync(
         path.join(appRoot, 'dist/404.html'),
         applyNotFoundPageMeta(shell),

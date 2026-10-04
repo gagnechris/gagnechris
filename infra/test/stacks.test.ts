@@ -295,57 +295,28 @@ describe('stack Template assertions', () => {
     });
   });
 
-  it('SiteStack serves /admin and /auth with a strict CSP', () => {
+  it('SiteStack public CSP allows GA and nothing for sign-in or uploads', () => {
     const template = siteTemplate();
-    const policies = template.findResources(
-      'AWS::CloudFront::ResponseHeadersPolicy',
+    const policies = Object.values(
+      template.findResources('AWS::CloudFront::ResponseHeadersPolicy'),
     );
-    const cspFor = (name: string): string => {
-      const policy = Object.values(policies).find(
-        (p) => p.Properties.ResponseHeadersPolicyConfig.Name === name,
-      );
-      expect(policy, name).toBeDefined();
-      return JSON.stringify(
-        policy!.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig
-          .ContentSecurityPolicy.ContentSecurityPolicy,
-      );
-    };
-
-    const admin = cspFor('gagnechris-prod-admin-security-headers');
-    expect(admin).toContain("script-src 'self';");
-    expect(admin).not.toMatch(/script-src[^;]*unsafe-inline/);
-    expect(admin).not.toMatch(/google/);
-    expect(admin).not.toContain('*.s3');
-    expect(admin).toContain("frame-ancestors 'none'");
-
-    const site = cspFor('gagnechris-prod-security-headers');
-    expect(site).toContain('https://www.googletagmanager.com');
-    expect(site).not.toContain('*.s3');
-
-    const distribution = JSON.stringify(
-      template.findResources('AWS::CloudFront::Distribution'),
+    const site = policies.find(
+      (p) =>
+        p.Properties.ResponseHeadersPolicyConfig.Name ===
+        'gagnechris-prod-security-headers',
     );
-    const adminPolicyId = Object.keys(policies).find(
-      (id) =>
-        policies[id]!.Properties.ResponseHeadersPolicyConfig.Name ===
-        'gagnechris-prod-admin-security-headers',
+    expect(site).toBeDefined();
+    const csp = JSON.stringify(
+      site!.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig
+        .ContentSecurityPolicy.ContentSecurityPolicy,
     );
-    for (const pattern of ['/admin*', '/auth*']) {
-      template.hasResourceProperties('AWS::CloudFront::Distribution', {
-        DistributionConfig: Match.objectLike({
-          CacheBehaviors: Match.arrayWith([
-            Match.objectLike({
-              PathPattern: pattern,
-              ResponseHeadersPolicyId: { Ref: adminPolicyId },
-              FunctionAssociations: Match.arrayWith([
-                Match.objectLike({ EventType: 'viewer-request' }),
-              ]),
-            }),
-          ]),
-        }),
-      });
-    }
-    expect(distribution).toContain('"/admin*"');
+    expect(csp).toContain('https://www.googletagmanager.com');
+    expect(csp).toContain('https://www.google-analytics.com');
+    expect(csp).not.toMatch(/auth\.gagnechris\.com|cognito-idp/);
+    expect(csp).not.toMatch(/s3|SiteBucket|RegionalDomainName/i);
+    expect(
+      policies.map((p) => p.Properties.ResponseHeadersPolicyConfig.Name),
+    ).not.toContain('gagnechris-prod-admin-security-headers');
   });
 
   it('PublisherStack stream filter uses PUBLISH_STREAM_SK and has DLQ + alarms', () => {

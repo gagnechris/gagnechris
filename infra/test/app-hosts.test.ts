@@ -30,7 +30,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 type Json = any;
 type Resource = { Type: string; Properties: Record<string, Json> };
 
-function build(options: { legacyWebAuth?: boolean } = {}) {
+function build() {
   const app = new App();
   const config = getEnvironment('prod', testEnv);
   const env = { account: config.account, region: config.region };
@@ -67,7 +67,6 @@ function build(options: { legacyWebAuth?: boolean } = {}) {
     config,
     userPool: auth.userPool,
     webClient: auth.webClient,
-    legacyWebAuth: options.legacyWebAuth,
     alertsTopic,
     dataTable: data.table,
     emailIdentity: email.emailIdentity,
@@ -212,17 +211,17 @@ describe('app hosts: CloudFront', () => {
     }
   });
 
-  it('leaves the apex distribution and its /admin* and /auth* behaviours in place', () => {
+  it('serves no /admin* or /auth* behaviour and no strict policy on the apex', () => {
     const apex = distributionFor('gagnechris.com');
     expect(apex.Aliases).toEqual(['gagnechris.com', 'www.gagnechris.com']);
-    const adminPolicy = policyIdByName(
-      'gagnechris-prod-admin-security-headers',
-    );
-    for (const pattern of ['/admin*', '/auth*']) {
-      expect(behavior(apex, pattern)?.ResponseHeadersPolicyId).toEqual({
-        Ref: adminPolicy,
-      });
-    }
+    const patterns = (apex.CacheBehaviors as Json[]).map((b) => b.PathPattern);
+    expect(patterns).not.toContain('/admin*');
+    expect(patterns).not.toContain('/auth*');
+    expect(patterns.filter((p: string) => /admin|auth/i.test(p))).toEqual([]);
+    const names = Object.values(
+      resourcesOf(built.site, 'AWS::CloudFront::ResponseHeadersPolicy'),
+    ).map((p) => p.Properties.ResponseHeadersPolicyConfig.Name);
+    expect(names).not.toContain('gagnechris-prod-admin-security-headers');
     expect(JSON.stringify(apex.ViewerCertificate)).toContain('site');
   });
 
@@ -335,13 +334,13 @@ describe('app hosts: CloudFront', () => {
     expect(notebookAccess).toBeUndefined();
   });
 
-  it('allows presigned PUTs from the admin host in the site bucket CORS', () => {
+  it('allows presigned PUTs from the admin host only in the site bucket CORS', () => {
     const siteBucket = Object.entries(
       resourcesOf(built.site, 'AWS::S3::Bucket'),
     ).find(([id]) => id.startsWith('SiteBucket'))![1];
     expect(
       siteBucket.Properties.CorsConfiguration.CorsRules[0].AllowedOrigins,
-    ).toEqual(['https://gagnechris.com', 'https://admin.gagnechris.com']);
+    ).toEqual(['https://admin.gagnechris.com']);
   });
 
   it('gives each host a private bucket, a KVS-free SPA fallback, a 5xx alarm and SSM params', () => {
@@ -427,7 +426,7 @@ describe('app hosts: Cognito', () => {
       expect(props.EnableTokenRevocation).toBe(true);
       expect(props.RefreshTokenValidity).toBe(43200);
     }
-    // The legacy apex client is unchanged until the cutover.
+    // Kept, though no longer trusted by the API, until its exports have no importers.
     expect(client('web').CallbackURLs).toEqual([
       'https://gagnechris.com/auth/callback',
     ]);
@@ -489,23 +488,27 @@ describe('app hosts: API Gateway', () => {
     return byRoute;
   }
 
-  it('checks each prefix against its own client plus the legacy web client', () => {
+  it('checks each prefix against its own client only', () => {
     const byRoute = authorizersByRoute(built.api);
-    for (const key of ['ANY /api/admin', 'ANY /api/admin/{proxy+}']) {
-      const audience = JSON.parse(byRoute[key]!);
-      expect(audience, key).toHaveLength(2);
-      expect(JSON.stringify(audience[0])).toContain('cognitoadminwebclientid');
-      expect(JSON.stringify(audience[1])).toMatch(/WebClient/);
-      expect(byRoute[key]).not.toMatch(/notebook|IosClient|DevClient/i);
-    }
-    for (const key of ['ANY /api/notebook', 'ANY /api/notebook/{proxy+}']) {
-      const audience = JSON.parse(byRoute[key]!);
-      expect(audience, key).toHaveLength(2);
-      expect(JSON.stringify(audience[0])).toContain(
+    for (const [keys, own, other] of [
+      [
+        ['ANY /api/admin', 'ANY /api/admin/{proxy+}'],
+        'cognitoadminwebclientid',
+        /notebook|IosClient|DevClient/i,
+      ],
+      [
+        ['ANY /api/notebook', 'ANY /api/notebook/{proxy+}'],
         'cognitonotebookwebclientid',
-      );
-      expect(JSON.stringify(audience[1])).toMatch(/WebClient/);
-      expect(byRoute[key]).not.toMatch(/adminweb|IosClient|DevClient/i);
+        /adminweb|IosClient|DevClient/i,
+      ],
+    ] as const) {
+      for (const key of keys) {
+        const audience = JSON.parse(byRoute[key]!);
+        expect(audience, key).toHaveLength(1);
+        expect(JSON.stringify(audience[0])).toContain(own);
+        expect(byRoute[key]).not.toMatch(other);
+        expect(byRoute[key]).not.toMatch(/ImportValue|UserPoolWebClient/);
+      }
     }
     const params = built.api.toJSON().Parameters as Record<
       string,
@@ -518,37 +521,29 @@ describe('app hosts: API Gateway', () => {
     );
   });
 
-  it('passes the client IDs and the legacy flag to the Lambda', () => {
-    built.api.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'gagnechris-prod-api',
-      Environment: {
-        Variables: Match.objectLike({
-          ADMIN_WEB_CLIENT_ID: {
-            Ref: Match.stringLikeRegexp('cognitoadminwebclientid'),
-          },
-          NOTEBOOK_WEB_CLIENT_ID: {
-            Ref: Match.stringLikeRegexp('cognitonotebookwebclientid'),
-          },
-          AUTH_LEGACY_WEB_CLIENT_ID: {
-            'Fn::ImportValue': Match.stringLikeRegexp('WebClient'),
-          },
-        }),
-      },
+  it('passes only the two app client IDs to the Lambda', () => {
+    const fn = Object.values(
+      resourcesOf(built.api, 'AWS::Lambda::Function'),
+    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api')!;
+    const vars = fn.Properties.Environment.Variables;
+    expect(vars.ADMIN_WEB_CLIENT_ID).toEqual({
+      Ref: expect.stringMatching(/cognitoadminwebclientid/),
     });
+    expect(vars.NOTEBOOK_WEB_CLIENT_ID).toEqual({
+      Ref: expect.stringMatching(/cognitonotebookwebclientid/),
+    });
+    expect(vars.AUTH_LEGACY_WEB_CLIENT_ID).toBeUndefined();
   });
 
-  it('drops the legacy client from both audiences and the env when the flag is off', () => {
-    const off = build({ legacyWebAuth: false });
-    for (const audience of Object.values(authorizersByRoute(off.api))) {
-      expect(JSON.parse(audience)).toHaveLength(1);
-      expect(audience).not.toMatch(/ImportValue/);
-    }
-    const fn = Object.values(
-      resourcesOf(off.api, 'AWS::Lambda::Function'),
-    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api')!;
+  it('no longer imports the legacy web client, while Auth still exports it', () => {
+    const api = JSON.stringify(built.api.toJSON());
+    expect(api).not.toMatch(/ExportsOutputRefUserPoolWebClient/);
+    const exportNames = Object.values(
+      built.auth.toJSON().Outputs as Record<string, Json>,
+    ).map((o) => JSON.stringify(o.Export?.Name ?? ''));
     expect(
-      fn.Properties.Environment.Variables.AUTH_LEGACY_WEB_CLIENT_ID,
-    ).toBeUndefined();
+      exportNames.some((n) => n.includes('ExportsOutputRefUserPoolWebClient')),
+    ).toBe(true);
   });
 });
 

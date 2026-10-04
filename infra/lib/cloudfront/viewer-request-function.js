@@ -30,6 +30,9 @@ var STORAGE_POSTS_PREFIX = '/blog';
 
 var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
 
+var ADMIN_ORIGIN = 'https://admin.gagnechris.com';
+var NOTEBOOK_ORIGIN = 'https://notebook.gagnechris.com';
+
 async function handler(event) {
   var request = event.request;
   var host = request.headers.host.value.toLowerCase();
@@ -52,16 +55,15 @@ async function handler(event) {
   }
 
   var uri = request.uri;
-  // The strict /admin* and /auth* behaviours match case-sensitively.
-  var privateUri = canonicalPrivateUri(uri);
-  if (privateUri !== null) {
+  var appRedirect = appHostRedirect(uri, request.querystring);
+  if (appRedirect !== null) {
     return {
       statusCode: 301,
       statusDescription: 'Moved Permanently',
       headers: {
-        location: {
-          value: privateUri + serializeQueryString(request.querystring),
-        },
+        location: { value: appRedirect },
+        // Bounds how long browsers hold the redirect if it is ever rolled back.
+        'cache-control': { value: 'max-age=86400' },
       },
     };
   }
@@ -133,11 +135,6 @@ async function handler(event) {
     return request;
   }
 
-  if (isSpaShellPath(uri)) {
-    request.uri = '/spa.html';
-    return request;
-  }
-
   if (isOptionBIndexPath(uri)) {
     request.uri = rewriteOptionB(uri);
     return request;
@@ -178,34 +175,46 @@ function swapPathPrefix(uri, from, to) {
   return null;
 }
 
-/** Lowercased URI when the first segment is a case or encoding variant of admin/auth. */
-function canonicalPrivateUri(uri) {
-  var slash = uri.indexOf('/', 1);
-  var segment = slash === -1 ? uri.substring(1) : uri.substring(1, slash);
-  if (segment === 'admin' || segment === 'auth') {
+/**
+ * Target for the old apex /admin and /auth URLs, or null. Segments match the
+ * way the old app's router did: case-insensitively and percent-decoded.
+ */
+function appHostRedirect(uri, querystring) {
+  var rest = stripSegment(uri, 'auth');
+  if (rest !== null) {
+    // Never forward an OAuth code or state to another host.
+    return NOTEBOOK_ORIGIN + '/';
+  }
+  rest = stripSegment(uri, 'admin');
+  if (rest === null) {
     return null;
   }
+  var origin = ADMIN_ORIGIN;
+  var notebookRest = stripSegment(rest, 'notebook');
+  if (notebookRest !== null) {
+    origin = NOTEBOOK_ORIGIN;
+    rest = notebookRest;
+  }
+  return origin + (rest || '/') + serializeQueryString(querystring);
+}
+
+/** The rest of `uri` after a leading `/<name>` segment, or null. */
+function stripSegment(uri, name) {
+  if (uri.charAt(0) !== '/') {
+    return null;
+  }
+  var slash = uri.indexOf('/', 1);
+  var segment = slash === -1 ? uri.substring(1) : uri.substring(1, slash);
   var decoded;
   try {
     decoded = decodeURIComponent(segment).toLowerCase();
   } catch (e) {
     return null;
   }
-  if (decoded !== 'admin' && decoded !== 'auth') {
+  if (decoded !== name) {
     return null;
   }
-  return '/' + decoded + (slash === -1 ? '' : uri.substring(slash));
-}
-
-function isSpaShellPath(uri) {
-  return (
-    uri === '/admin' ||
-    uri === '/admin/' ||
-    uri.indexOf('/admin/') === 0 ||
-    uri === '/auth' ||
-    uri === '/auth/' ||
-    uri.indexOf('/auth/') === 0
-  );
+  return slash === -1 ? '' : uri.substring(slash);
 }
 
 function effectiveOptionBPrefixes() {

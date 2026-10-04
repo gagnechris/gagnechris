@@ -148,6 +148,10 @@ export class AuthStack extends Stack {
       ...clientCommon,
       userPoolClientName: 'web',
     });
+    // Auth deploys before Api, so this export has to outlive Api's import of
+    // it by one deploy or CloudFormation refuses to delete it. Remove it with
+    // the client once `list-imports` shows no importers.
+    this.exportValue(this.webClient.userPoolClientId);
 
     // Each app client trusts only its own host, so a script on one host can't
     // land the other client's code on a callback it controls.
@@ -355,10 +359,10 @@ export class AuthStack extends Stack {
     });
 
     new CfnOutput(this, 'ManagedLoginUrl', {
-      value: this.domain.signInUrl(this.webClient, {
-        redirectUri: `https://${APEX_DOMAIN}/auth/callback`,
+      value: this.domain.signInUrl(this.adminWebClient, {
+        redirectUri: `https://${ADMIN_HOST}/auth/callback`,
       }),
-      description: 'Managed login sign-in URL (web client)',
+      description: `Managed login sign-in URL (admin-web client, ${ADMIN_HOST})`,
     });
   }
 }

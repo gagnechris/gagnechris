@@ -42,7 +42,10 @@ afterwards:
 2. Site root `e2e/.stack/<run>/site`, seeded from `apps/web/dist` when a
    build exists, else `scripts/local/minimal-shell.html`
 3. Local API + publisher (`services/api/local/server.ts`) and static site
-   (`static-server.ts`)
+   (`static-server.ts`, `E2E_SITE_URL`), which runs the real apex
+   viewer-request function and returns its redirects with their headers.
+   `tests/apex-cutover.spec.ts` checks the old apex `/admin*` and `/auth*`
+   301s against it
 4. One Vite dev server per app (public, admin, Notebook) with
    `VITE_AUTH_MODE=local`, each on its own port, so each app is its own
    origin as in prod
@@ -51,7 +54,10 @@ afterwards:
    `E2E_COGNITO` in `e2e/stack.ts`) served by `vite preview`.
    `tests/app-auth.spec.ts` signs in to these through a stubbed managed login
    on `https://auth.e2e.test` (routed in the browser; nothing leaves the
-   machine)
+   machine). `tests/apex-cutover.spec.ts` serves the public dev server as
+   `https://gagnechris.com` the same way, to check that the public bundle
+   deletes leftover `CognitoIdentityServiceProvider.*` cookies and
+   `localStorage` keys
 
 Every port is picked by the OS unless set, so a run never collides with
 `npm run local:dev` (8000/8787/4177/5173-5175), another worktree, or another

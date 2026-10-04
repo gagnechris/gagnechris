@@ -54,7 +54,6 @@ import type { EnvironmentConfig } from '../config/environments.js';
 import {
   ADMIN_HOST,
   NOTEBOOK_HOST,
-  siteOrigins,
   ssmParameterName,
 } from '../config/constants.js';
 import { AppHost, distributionArn } from '../constructs/app-host.js';
@@ -135,10 +134,7 @@ export class SiteStack extends Stack {
       cors: [
         {
           allowedMethods: [HttpMethods.PUT, HttpMethods.GET, HttpMethods.HEAD],
-          allowedOrigins: [
-            ...siteOrigins(config.domainName),
-            `https://${ADMIN_HOST}`,
-          ],
+          allowedOrigins: [`https://${ADMIN_HOST}`],
           allowedHeaders: ['Content-Type', 'Content-Length'],
           exposedHeaders: ['ETag'],
           maxAge: 3600,
@@ -195,31 +191,14 @@ export class SiteStack extends Stack {
 
     const securityHeaders = new ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: `gagnechris-${config.name}-security-headers`,
-      comment: 'HSTS, CSP (GA4 + Cognito + S3 uploads), and browser hardening',
+      comment: 'HSTS, CSP (GA4), and browser hardening',
       securityHeadersBehavior: securityHeadersBehavior([
         ...sharedCsp,
         "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
         "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
-        `connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com ${cognitoOrigins} ${uploadOrigin}`,
+        "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com",
       ]),
     });
-
-    // spa.html ships without the GA snippet, so /admin and /auth need no
-    // 'unsafe-inline' and no Google hosts.
-    const adminSecurityHeaders = new ResponseHeadersPolicy(
-      this,
-      'AdminSecurityHeaders',
-      {
-        responseHeadersPolicyName: `gagnechris-${config.name}-admin-security-headers`,
-        comment: 'Strict CSP for /admin and /auth (no inline script, no GA)',
-        securityHeadersBehavior: securityHeadersBehavior([
-          ...sharedCsp,
-          "script-src 'self'",
-          "img-src 'self' data:",
-          `connect-src 'self' ${cognitoOrigins} ${uploadOrigin}`,
-        ]),
-      },
-    );
 
     // The Lambda sets these itself; the edge covers responses API Gateway
     // generates (JWT authorizer 401/403, throttling 429). Cache-Control does
@@ -265,7 +244,7 @@ export class SiteStack extends Stack {
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
       functionName: viewerRequestFunctionName,
       comment:
-        'www→apex + Option B + KVS blog slugs + spa/404 shells (CHR-115)',
+        'www→apex, old /admin and /auth → app hosts, Option B, KVS blog slugs, 404 shell',
       runtime: FunctionRuntime.JS_2_0,
       keyValueStore: blogSlugsKvs,
       code: FunctionCode.fromFile({
@@ -374,8 +353,6 @@ export class SiteStack extends Stack {
       defaultRootObject: 'index.html',
       defaultBehavior: siteBehavior(securityHeaders),
       additionalBehaviors: {
-        '/admin*': siteBehavior(adminSecurityHeaders),
-        '/auth*': siteBehavior(adminSecurityHeaders),
         '/assets/*': {
           origin,
           viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
