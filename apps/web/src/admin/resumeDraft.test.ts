@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { legacyResume } from '@gagnechris/shared/fixtures/legacy-resume';
-import { resumeContentFromDraft, resumeDraftFromResume } from './resumeDraft';
+import {
+  experienceRangeError,
+  resumeContentFromDraft,
+  resumeDraftFromResume,
+} from './resumeDraft';
 
 describe('resume draft round trip', () => {
   test('structured dates, note, headline and cut-off survive draft → payload', () => {
@@ -28,5 +32,17 @@ describe('resume draft round trip', () => {
     const content = resumeContentFromDraft(draft);
     expect(content.experience[0]).not.toHaveProperty('end');
     expect(content).not.toHaveProperty('earlierRolesBefore');
+  });
+
+  test('an end before start is kept in the draft but its dates are not sent', () => {
+    const draft = resumeDraftFromResume(DEFAULT_RESUME);
+    draft.experience[1]!.end = '2016-01';
+    expect(experienceRangeError(draft.experience[1]!)).toBe(
+      'End is before start',
+    );
+    const role = resumeContentFromDraft(draft).experience[1]!;
+    expect(role).not.toHaveProperty('start');
+    expect(role).not.toHaveProperty('end');
+    expect(draft.experience[1]!.end).toBe('2016-01');
   });
 });

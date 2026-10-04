@@ -108,8 +108,21 @@ const parseCutoffYear = (text: string): number | undefined => {
   return year >= 1900 && year <= 2100 ? year : undefined;
 };
 
-// An end month without a start, or before it, is dropped: the server would
-// reject it and autosave would keep failing.
+export const END_BEFORE_START = 'End is before start';
+
+export const experienceRangeError = (
+  item: ExperienceDraft,
+): string | undefined => {
+  const start = validMonth(item.start);
+  const end = item.present ? undefined : validMonth(item.end);
+  return start && end && end < start ? END_BEFORE_START : undefined;
+};
+
+export const hasExperienceRangeError = (draft: ResumeDraftFields): boolean =>
+  draft.experience.some((item) => experienceRangeError(item) !== undefined);
+
+// Dates the server would reject (end without start, end before start) are left
+// out of the payload so autosave cannot loop on a 400; the draft keeps them.
 const experienceFromDraft = (
   item: ExperienceDraft,
 ): ResumeContent['experience'][number] => {
@@ -119,7 +132,9 @@ const experienceFromDraft = (
   return {
     title: item.title.trim(),
     company: item.company.trim(),
-    ...(start ? { start, end: end && end >= start ? end : null } : {}),
+    ...(start && !experienceRangeError(item)
+      ? { start, end: end ?? null }
+      : {}),
     ...(note ? { note } : {}),
     bullets: parseResumeLines(item.bulletsText),
   };

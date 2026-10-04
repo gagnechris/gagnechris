@@ -260,6 +260,52 @@ describe('AdminResumePage structured dates', () => {
     );
   });
 
+  test('an end before start keeps the typed value, shows a linked error, leaves the dates out of the PUT and is not reported as saved', async () => {
+    renderResume();
+    await screen.findByLabelText('Headline (current role)');
+    const end = screen.getAllByLabelText(/^End month/)[1]!;
+
+    fireEvent.change(end, { target: { value: '2013-01' } });
+
+    expect(end).toHaveValue('2013-01');
+    expect(end).toHaveAttribute('aria-invalid', 'true');
+    const describedBy = end.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)).toHaveTextContent(
+      /^End is before start/,
+    );
+
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    const role = lastPutContent().experience[1]!;
+    expect(role).not.toHaveProperty('start');
+    expect(role).not.toHaveProperty('end');
+    expect(role).toMatchObject({
+      company: 'Viacom',
+      note: 'contract, concurrent',
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Unsaved changes'),
+    );
+    expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
+    expect(end).toHaveValue('2013-01');
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(put).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(end, { target: { value: '2015-05' } });
+    expect(end).not.toHaveAttribute('aria-invalid');
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(lastPutContent().experience[1]).toMatchObject({
+      start: '2014-09',
+      end: '2015-05',
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Saved'),
+    );
+  });
+
   test('saving round-trips edited dates, note, headline and cut-off', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderResume();

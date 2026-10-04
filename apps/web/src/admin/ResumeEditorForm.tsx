@@ -4,6 +4,7 @@ import { Repeater } from '../workspace/ui/Repeater';
 import {
   emptyEducation,
   emptyExperience,
+  experienceRangeError,
   type ResumeDraftFields,
 } from './resumeDraft';
 
@@ -82,83 +83,88 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
         addLabel="Add role"
         removeLabel="Remove role"
         reorderable
-        renderItem={(item, { update }) => (
-          <>
-            <Field label="Title">
-              <TextInput
-                value={item.title}
-                onChange={(e) => update({ title: e.target.value })}
-              />
-            </Field>
-            <Field
-              label="Company"
-              hint={
-                !item.start && item.company.includes('|')
-                  ? 'Dates are still inside the company name; move them to Start and End'
-                  : undefined
-              }
-            >
-              <TextInput
-                value={item.company}
-                onChange={(e) => update({ company: e.target.value })}
-              />
-            </Field>
-            <Field label="Start month">
-              <TextInput
-                type="month"
-                placeholder="YYYY-MM"
-                value={item.start}
-                onChange={(e) => update({ start: e.target.value })}
-              />
-            </Field>
-            <Field
-              label="End month"
-              hint={
-                item.start && !item.present && item.end && item.end < item.start
-                  ? 'End is before start; saved as present'
-                  : undefined
-              }
-            >
-              <TextInput
-                type="month"
-                placeholder="YYYY-MM"
-                value={item.present ? '' : item.end}
-                disabled={!item.start || item.present}
-                onChange={(e) => update({ end: e.target.value })}
-              />
-            </Field>
-            <label className="admin-check">
-              <input
-                type="checkbox"
-                checked={item.present}
-                disabled={!item.start}
-                onChange={(e) =>
-                  update({
-                    present: e.target.checked,
-                    ...(e.target.checked ? { end: '' } : {}),
-                  })
+        renderItem={(item, { update }) => {
+          const rangeError = experienceRangeError(item);
+          const rangeErrorId = `resume-role-${item.id}-dates-error`;
+          return (
+            <>
+              <Field label="Title">
+                <TextInput
+                  value={item.title}
+                  onChange={(e) => update({ title: e.target.value })}
+                />
+              </Field>
+              <Field
+                label="Company"
+                hint={
+                  !item.start && item.company.includes('|')
+                    ? 'Dates are still inside the company name; move them to Start and End'
+                    : undefined
                 }
-              />
-              Present (current role)
-            </label>
-            <Field
-              label="Note (optional)"
-              hint="For example: contract, concurrent"
-            >
-              <TextInput
-                value={item.note}
-                onChange={(e) => update({ note: e.target.value })}
-              />
-            </Field>
-            <Field label="Bullets (one per line)">
-              <TextArea
-                rows={4}
-                value={item.bulletsText}
-                onChange={(e) => update({ bulletsText: e.target.value })}
-              />
-            </Field>
-          </>
-        )}
+              >
+                <TextInput
+                  value={item.company}
+                  onChange={(e) => update({ company: e.target.value })}
+                />
+              </Field>
+              <Field label="Start month">
+                <TextInput
+                  type="month"
+                  placeholder="YYYY-MM"
+                  value={item.start}
+                  onChange={(e) => update({ start: e.target.value })}
+                />
+              </Field>
+              <Field label="End month">
+                <TextInput
+                  type="month"
+                  placeholder="YYYY-MM"
+                  value={item.present ? '' : item.end}
+                  disabled={!item.start || item.present}
+                  aria-invalid={rangeError ? true : undefined}
+                  aria-describedby={rangeError ? rangeErrorId : undefined}
+                  onChange={(e) => update({ end: e.target.value })}
+                />
+              </Field>
+              {rangeError ? (
+                <p id={rangeErrorId} className="admin-field-error">
+                  {rangeError}. Dates for this role are not saved until this is
+                  fixed.
+                </p>
+              ) : null}
+              <label className="admin-check">
+                <input
+                  type="checkbox"
+                  checked={item.present}
+                  disabled={!item.start}
+                  onChange={(e) =>
+                    update({
+                      present: e.target.checked,
+                      ...(e.target.checked ? { end: '' } : {}),
+                    })
+                  }
+                />
+                Present (current role)
+              </label>
+              <Field
+                label="Note (optional)"
+                hint="For example: contract, concurrent"
+              >
+                <TextInput
+                  value={item.note}
+                  onChange={(e) => update({ note: e.target.value })}
+                />
+              </Field>
+              <Field label="Bullets (one per line)">
+                <TextArea
+                  rows={4}
+                  value={item.bulletsText}
+                  onChange={(e) => update({ bulletsText: e.target.value })}
+                />
+              </Field>
+            </>
+          );
+        }}
       />
 
       <Field label="Technical skills (one per line)">
