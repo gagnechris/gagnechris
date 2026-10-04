@@ -50,11 +50,18 @@
   --accent-gold: #f4b942;
   --accent-blue: #4ea5d9;
 
+  /* Text Colors */
+  --color-ink: #16191d;
+  --color-ink-soft: #4a515a;
+  --color-link: #235a58;
+
   /* Font Family */
   --font-sans:
-    'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display:
-    'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif:
+    'Newsreader', 'Newsreader Fallback', Georgia, 'Times New Roman', serif;
 
   /* Line Heights */
   --line-tight: 1.2;

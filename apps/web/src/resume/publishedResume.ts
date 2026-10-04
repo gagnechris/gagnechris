@@ -1,7 +1,10 @@
 import {
   DEFAULT_RESUME,
+  RESUME_UNAVAILABLE_HTML,
+  RESUME_UNAVAILABLE_NAME,
   renderResumeSectionsHtml,
 } from '@gagnechris/shared/render';
+import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
 
 export type ResumeView = {
   name: string;
@@ -25,33 +28,30 @@ export const fallbackResumeView = (): ResumeView => ({
 });
 
 export const unavailableResumeView = (): ResumeView => ({
-  name: 'Resume',
+  name: RESUME_UNAVAILABLE_NAME,
   pdfPath: '',
-  bodyHtml: '<p>Resume available on request.</p>',
+  bodyHtml: RESUME_UNAVAILABLE_HTML,
   unavailable: true,
 });
 
-export async function loadPublishedResume(): Promise<ResumeView | null> {
-  const response = await fetch(publishedResumeUrl(), {
-    headers: { Accept: 'text/html' },
-  });
-  if (!response.ok) return null;
-
-  const html = await response.text();
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-
-  const unavailable = doc.querySelector('article.resume-page-unavailable');
-  if (unavailable) {
+export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
+  if (root.querySelector('.resume-page-unavailable')) {
     return unavailableResumeView();
   }
 
-  const article = doc.querySelector('article.resume-page-prerender');
-  const body = article?.querySelector('main');
-  if (!article || !body) return null;
+  const page = root.querySelector('.resume-page-prerender');
+  const body = page?.querySelector('main');
+  if (!page || !body) return null;
 
   return {
-    name: article.getAttribute('data-name') || DEFAULT_RESUME.name,
-    pdfPath: article.getAttribute('data-pdf') || DEFAULT_RESUME.pdfPath,
+    name: page.getAttribute('data-name') || DEFAULT_RESUME.name,
+    pdfPath: page.getAttribute('data-pdf') || DEFAULT_RESUME.pdfPath,
     bodyHtml: body.innerHTML,
   };
 }
+
+export const documentResumeView = (): ResumeView | null =>
+  fromPrerender(resumeViewFromDocument);
+
+export const loadPublishedResume = (): Promise<ResumeView | null> =>
+  fetchPrerender(publishedResumeUrl(), resumeViewFromDocument);

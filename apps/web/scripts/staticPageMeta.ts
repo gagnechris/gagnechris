@@ -4,6 +4,7 @@ import {
   replaceMeta,
   upsertCanonical,
 } from '@gagnechris/shared/html';
+import { renderSitePageHtml } from '@gagnechris/shared/site-chrome';
 import {
   BEARS_PAGE_META,
   type BearsPageMetaEntry,
@@ -108,23 +109,23 @@ export function applyStaticPageMeta(
   return html;
 }
 
-/** Static NotFound markup in #root for crawlers. */
-export const NOT_FOUND_PRERENDER = `<!--prerender:start--><div class="not-found">
-  <header>
-    <h1>Page not found</h1>
-    <a href="/" class="back-link">Back to Home</a>
-  </header>
-  <main>
-    <p>That URL does not match a page on this site.</p>
-    <p class="not-found-bear">Lost in the woods? <a href="/dont-feed-the-bears?from=404">Don't feed the bears</a> while you find your way.</p>
-    <ul class="not-found-links">
-      <li><a href="/">Home</a></li>
-      <li><a href="/posts">Posts</a></li>
-      <li><a href="/resume">Resume</a></li>
-      <li><a href="/contact">Contact</a></li>
-    </ul>
-  </main>
-</div><!--prerender:end-->`;
+/** Mirrors `src/pages/NotFound.tsx` inside the site chrome. */
+export const NOT_FOUND_PRERENDER = `<!--prerender:start-->${renderSitePageHtml(
+  null,
+  '<div class="not-found">' +
+    '<header><h1>Page not found</h1></header>' +
+    '<main>' +
+    '<p>That URL does not match a page on this site.</p>' +
+    '<p class="not-found-bear">Lost in the woods? <a class="tap-target-link" href="/dont-feed-the-bears?from=404">Don&#39;t feed the bears</a> while you find your way.</p>' +
+    '<ul class="not-found-links">' +
+    '<li><a href="/">Home</a></li>' +
+    '<li><a href="/posts">Posts</a></li>' +
+    '<li><a href="/resume">Resume</a></li>' +
+    '<li><a href="/contact">Contact</a></li>' +
+    '</ul>' +
+    '</main>' +
+    '</div>',
+)}<!--prerender:end-->`;
 
 function removeMeta(
   html: string,

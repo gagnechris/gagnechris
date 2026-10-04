@@ -1,65 +1,47 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
+import { POSTS_INDEX_EMPTY_TEXT } from '@gagnechris/shared/render';
 import {
+  documentPostsIndex,
   fetchPublishedPosts,
   type PublishedPostListItem,
 } from '../posts/publishedPosts';
-import PublicNav from '../components/PublicNav';
 import './PostsIndex.css';
 
+const newestFirst = (
+  a: PublishedPostListItem,
+  b: PublishedPostListItem,
+): number =>
+  new Date(b.publishedAt || b.updatedAt).getTime() -
+  new Date(a.publishedAt || a.updatedAt).getTime();
+
 function PostsIndex() {
-  const [posts, setPosts] = useState<PublishedPostListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<PublishedPostListItem[] | null>(
+    documentPostsIndex,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (documentPostsIndex()) return;
     let cancelled = false;
     void (async () => {
       try {
         const items = await fetchPublishedPosts();
         if (cancelled) return;
-        // Newest first (publisher already sorts; keep stable client-side).
-        items.sort((a, b) => {
-          const aTime = new Date(a.publishedAt || a.updatedAt).getTime();
-          const bTime = new Date(b.publishedAt || b.updatedAt).getTime();
-          return bTime - aTime;
-        });
-        setPosts(items);
+        setPosts([...items].sort(newestFirst));
       } catch (err) {
         console.error('Error loading posts:', err);
         if (!cancelled) {
           setError('Could not load posts.');
+          setPosts([]);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
-
-  if (loading) {
-    return (
-      <div className="posts-index">
-        <title>Posts - Chris Gagne</title>
-        <link
-          rel="alternate"
-          type="application/rss+xml"
-          title="Chris Gagne"
-          href="/rss.xml"
-        />
-        <header>
-          <h1>Posts</h1>
-          <PublicNav current="/posts" />
-        </header>
-        <main>
-          <p>Loading posts...</p>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="posts-index">
@@ -73,23 +55,27 @@ function PostsIndex() {
       />
       <header>
         <h1>Posts</h1>
-        <PublicNav current="/posts" />
       </header>
       <main>
+        {!posts ? <p>Loading posts...</p> : null}
         {error ? <p>{error}</p> : null}
-        {!error && posts.length === 0 ? (
-          <p>No posts yet. Check back soon!</p>
+        {posts && !error && posts.length === 0 ? (
+          <p>{POSTS_INDEX_EMPTY_TEXT}</p>
         ) : null}
-        {posts.length > 0 ? (
+        {posts && posts.length > 0 ? (
           <div className="posts-list">
             {posts.map((post) => {
               const dateLabel = formatPostDate(post.publishedAt);
               const dateAttr = postDateAttribute(post.publishedAt);
               return (
-                <article key={post.id || post.slug} className="post-preview">
+                <article
+                  key={post.id || post.slug}
+                  className="post-preview"
+                  data-id={post.id}
+                >
                   <Link
-                    to={`/posts/${post.slug}`}
                     className="post-preview__link"
+                    to={`/posts/${post.slug}`}
                   >
                     <h2>{post.title}</h2>
                     {dateLabel ? (

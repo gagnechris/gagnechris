@@ -1,95 +1,55 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
-import { publishedPostPageUrl } from '../posts/publishedPosts';
-import PublicNav from '../components/PublicNav';
+import {
+  documentPostView,
+  loadPublishedPost,
+  type PostView,
+} from '../posts/publishedPost';
 import NotFound from './NotFound';
 import './PostPage.css';
 
-interface PostData {
-  title: string;
-  date: string;
-  contentHtml: string;
-}
+type Loaded = { slug: string; post: PostView | null };
 
-async function loadPublishedPost(slug: string): Promise<PostData | null> {
-  const response = await fetch(publishedPostPageUrl(slug), {
-    headers: { Accept: 'text/html' },
-  });
-  if (!response.ok) return null;
-
-  const html = await response.text();
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const article = doc.querySelector('article.blog-post-prerender');
-  if (!article) return null;
-
-  const title =
-    article.querySelector('header h1')?.textContent?.trim() ||
-    doc
-      .querySelector('title')
-      ?.textContent?.replace(/\s*-\s*Chris Gagne\s*$/, '')
-      .trim() ||
-    'Untitled';
-  const date =
-    article.querySelector('time')?.getAttribute('datetime') ||
-    article.querySelector('time')?.textContent?.trim() ||
-    '';
-  const body = article.querySelector('.blog-post-body');
-  if (!body) return null;
-
-  return {
-    title,
-    date,
-    contentHtml: body.innerHTML,
-  };
-}
+const BackLink = ({ className }: { className: string }) => (
+  <Link className={className} to="/posts">
+    ← Back to Posts
+  </Link>
+);
 
 function PostPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const [post, setPost] = useState<PostData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { slug = '' } = useParams<{ slug: string }>();
+  const [loaded, setLoaded] = useState<Loaded | null>(() => {
+    const post = slug ? documentPostView(slug) : null;
+    return post ? { slug, post } : null;
+  });
+  const loadedSlug = loaded?.slug;
 
   useEffect(() => {
-    const loadPost = async () => {
-      if (!slug?.trim()) {
-        setError('Post not found');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const published = await loadPublishedPost(slug);
-        if (published) {
-          setPost(published);
-          return;
-        }
-
-        setError('Post not found');
-        setPost(null);
-      } catch (err) {
-        setError('Error loading post');
-        setPost(null);
-        console.error('Error details:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!slug.trim() || loadedSlug === slug) return;
+    let cancelled = false;
+    void loadPublishedPost(slug)
+      .catch((err: unknown) => {
+        console.error('Error loading post:', err);
+        return null;
+      })
+      .then((post) => {
+        if (!cancelled) setLoaded({ slug, post });
+      });
+    return () => {
+      cancelled = true;
     };
+  }, [slug, loadedSlug]);
 
-    void loadPost();
-  }, [slug]);
+  if (!slug.trim()) return <NotFound />;
 
-  if (loading) {
+  const post = loaded?.slug === slug ? loaded.post : undefined;
+
+  if (post === undefined) {
     return (
       <div className="post-page">
         <header>
-          <Link to="/posts" className="back-link">
-            ← Back to Posts
-          </Link>
-          <PublicNav current="/posts" />
+          <BackLink className="back-link" />
         </header>
         <main>
           <p>Loading post...</p>
@@ -98,9 +58,7 @@ function PostPage() {
     );
   }
 
-  if (error || !post) {
-    return <NotFound />;
-  }
+  if (!post) return <NotFound />;
 
   const dateLabel = formatPostDate(post.date);
   const dateAttr = postDateAttribute(post.date);
@@ -116,10 +74,7 @@ function PostPage() {
         href="/rss.xml"
       />
       <header>
-        <Link to="/posts" className="back-link">
-          ← Back to Posts
-        </Link>
-        <PublicNav current="/posts" />
+        <BackLink className="back-link" />
       </header>
       <article>
         <h1>{post.title}</h1>
@@ -134,9 +89,7 @@ function PostPage() {
         />
       </article>
       <footer>
-        <Link to="/posts" className="back-link-footer">
-          ← Back to Posts
-        </Link>
+        <BackLink className="back-link-footer" />
       </footer>
     </div>
   );

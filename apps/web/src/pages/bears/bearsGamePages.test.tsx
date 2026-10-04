@@ -37,17 +37,6 @@ describe('Camp Rules page', () => {
     ).toHaveAttribute('href', '/dont-feed-the-bears?from=404#tips');
   });
 
-  test('shows the site nav so players can leave the game', () => {
-    renderAt('/dont-feed-the-bears/camp', <CampRules />);
-
-    const nav = screen.getByRole('navigation', { name: 'Primary' });
-    expect(nav).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
-      'href',
-      '/',
-    );
-  });
-
   test('sound starts off', () => {
     renderAt('/dont-feed-the-bears/camp', <CampRules />);
 

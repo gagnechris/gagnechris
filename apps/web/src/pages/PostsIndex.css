@@ -1,15 +1,4 @@
 /* Posts Index Page Styles */
-.posts-index {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: var(--space-8);
-  background-color: var(--neutral-50);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  opacity: 0;
-  animation: fadeIn 0.6s ease-out forwards;
-}
-
 .posts-index header {
   display: flex;
   flex-wrap: wrap;
@@ -17,19 +6,6 @@
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-8);
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--primary-200);
-  position: relative;
-}
-
-.posts-index header::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100px;
-  height: 2px;
-  background-color: var(--primary-500);
 }
 
 .posts-index h1 {
@@ -45,26 +21,8 @@
   gap: var(--space-8);
 }
 
-.post-preview {
-  padding: 0;
-  background-color: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform var(--transition-normal),
-    box-shadow var(--transition-normal);
-  border-left: 4px solid var(--primary-400);
-  overflow: hidden;
-}
-
-.post-preview:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
 .post-preview__link {
   display: block;
-  padding: var(--space-6);
   color: inherit;
   text-decoration: none;
   min-height: 44px;
@@ -111,10 +69,6 @@
 }
 
 @media (max-width: 768px) {
-  .posts-index {
-    padding: var(--space-4);
-  }
-
   .posts-index header {
     flex-direction: column;
     align-items: flex-start;
@@ -127,9 +81,5 @@
 
   .post-preview h2 {
     font-size: var(--text-xl);
-  }
-
-  .post-preview__link {
-    padding: var(--space-4);
   }
 }

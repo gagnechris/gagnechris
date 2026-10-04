@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
+import './public.css';
 import { routes } from './routes.tsx';
 import { sweepLegacyAuth } from './utils/legacyAuthSweep';
 

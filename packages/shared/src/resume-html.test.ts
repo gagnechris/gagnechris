@@ -75,7 +75,7 @@ describe('renderResumeSectionsHtml', () => {
 describe('renderResumePrerenderHtml', () => {
   it('exposes name and pdf path as data attributes the SPA reads back', () => {
     const html = renderResumePrerenderHtml(resume());
-    expect(html).toContain('class="resume-page-prerender"');
+    expect(html).toContain('class="resume-page resume-page-prerender"');
     expect(html).toContain('data-name="Chris Gagne"');
     expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('<h1>Chris Gagne</h1>');

@@ -5,10 +5,8 @@ import {
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
-  SITE_PROFILE_IMAGE_SRC,
 } from './site-config.js';
-
-export const HOME_PROFILE_IMAGE_SRC = SITE_PROFILE_IMAGE_SRC;
+import { renderSitePageHtml } from './site-chrome-html.js';
 
 /** Single list rendered both as JSX by React and as HTML by the publisher prerender. */
 export type SiteChromeLink = {
@@ -37,30 +35,6 @@ export const HOME_QUICK_LINKS: readonly SiteChromeLink[] = [
     href: SITE_GITHUB_URL,
     kind: 'external',
     trackId: 'github',
-  },
-];
-
-export const HOME_FOOTER_LINKS: readonly SiteChromeLink[] = [
-  {
-    label: 'LinkedIn',
-    href: SITE_LINKEDIN_URL,
-    kind: 'external',
-    trackId: 'linkedin_footer',
-  },
-  {
-    label: 'GitHub',
-    href: SITE_GITHUB_URL,
-    kind: 'external',
-    trackId: 'github_footer',
-  },
-  { label: 'RSS', href: '/rss.xml', kind: 'href' },
-  {
-    label: "🐻 Don't Feed the Bears",
-    href: '/dont-feed-the-bears?from=footer',
-    kind: 'spa',
-    className: 'site-footer__bear',
-    ariaLabel: "Don't Feed the Bears — Vermont camp mini-game",
-    title: "Don't Feed the Bears",
   },
 ];
 
@@ -105,35 +79,20 @@ export const renderHomeQuickLinksHtml = (): string =>
   ) +
   `</ul></section>`;
 
-/** Year is fixed at publish time; the SPA renders the live year. */
-export const renderHomeFooterHtml = (year = new Date().getFullYear()): string =>
-  `<footer class="site-footer">` +
-  `<p class="site-footer__copy">© ${year} ${escapeHtml(SITE_AUTHOR_NAME)}</p>` +
-  `<ul class="site-footer__links">` +
-  HOME_FOOTER_LINKS.map(
-    (link) => `<li>${renderChromeLinkHtml(link)}</li>`,
-  ).join('') +
-  `</ul></footer>`;
-
-/**
- * Classes match React so no-JS and first paint look styled.
- * `home-page-prerender` is the marker for `publishedHome` hydration.
- */
-export const renderHomePrerenderHtml = (home: Home): string => {
+/** `home-page-prerender` is the marker for `publishedHome` hydration. */
+export const renderHomeBodyHtml = (home: Home): string => {
   const name = escapeHtml(home.name);
   const title = escapeHtml(home.title);
-  const alt = escapeHtml(`Photo of ${home.name}`);
   return (
     `<article class="home-page home-page-prerender" data-name="${name}" data-title="${title}">` +
-    `<header class="home-header">` +
-    `<img src="${HOME_PROFILE_IMAGE_SRC}" class="profile" alt="${alt}" width="96" height="96" />` +
-    `<h1>${name}</h1><p>${title}</p>` +
-    `</header>` +
+    `<header class="home-header"><h1>${name}</h1><p>${title}</p></header>` +
     `<main>${renderHomeAboutSectionHtml(home.about)}${renderHomeQuickLinksHtml()}</main>` +
-    `${renderHomeFooterHtml()}` +
     `</article>`
   );
 };
+
+export const renderHomePrerenderHtml = (home: Home, year?: number): string =>
+  renderSitePageHtml(null, renderHomeBodyHtml(home), year);
 
 export const homeAboutExcerpt = (about: string, max = 200): string =>
   textExcerpt(about, max);

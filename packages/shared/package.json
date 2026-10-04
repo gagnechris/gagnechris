@@ -21,6 +21,16 @@
       "import": "./src/render.ts",
       "default": "./src/render.ts"
     },
+    "./site-chrome": {
+      "types": "./src/site-chrome-html.ts",
+      "import": "./src/site-chrome-html.ts",
+      "default": "./src/site-chrome-html.ts"
+    },
+    "./site-config": {
+      "types": "./src/site-config.ts",
+      "import": "./src/site-config.ts",
+      "default": "./src/site-config.ts"
+    },
     "./html": {
       "types": "./src/html.ts",
       "import": "./src/html.ts",

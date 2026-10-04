@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
 import {
   HOME_LAST_PUBLISHED_KEY,
@@ -56,6 +56,15 @@ const shell = `<!doctype html>
 </html>`;
 
 describe('render HTML snapshots', () => {
+  // The footer year comes from the clock.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T12:00:00.000Z'));
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   it('matches frozen output for home, blog index, resume, and post', () => {
     expect(renderHomePage(shell, DEFAULT_HOME)).toMatchSnapshot();
     expect(renderPostsIndexPage(shell, [samplePost()])).toMatchSnapshot();

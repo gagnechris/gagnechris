@@ -2,6 +2,19 @@
  * `text`, `space`, and `radius` are px numbers so React Native can use them
  * directly; the generator converts them to `rem` for CSS.
  */
+const primary = {
+  50: '#f0f7f7',
+  100: '#dceae8',
+  200: '#badcd8',
+  300: '#8ec8c3',
+  400: '#5eafa9',
+  500: '#3d9690',
+  600: '#2d7471',
+  700: '#235a58',
+  800: '#1c4744',
+  900: '#173736',
+} as const;
+
 export const tokens = {
   text: {
     xs: 12,
@@ -23,18 +36,7 @@ export const tokens = {
     12: 48,
     16: 64,
   },
-  primary: {
-    50: '#f0f7f7',
-    100: '#dceae8',
-    200: '#badcd8',
-    300: '#8ec8c3',
-    400: '#5eafa9',
-    500: '#3d9690',
-    600: '#2d7471',
-    700: '#235a58',
-    800: '#1c4744',
-    900: '#173736',
-  },
+  primary,
   neutral: {
     50: '#f9fafb',
     100: '#f2f4f7',
@@ -52,10 +54,17 @@ export const tokens = {
     gold: '#f4b942',
     blue: '#4ea5d9',
   },
+  color: {
+    ink: '#16191d',
+    inkSoft: '#4a515a',
+    link: primary[700],
+  },
   font: {
-    sans: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    sans: "'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     display:
-      "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+      "'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    serif:
+      "'Newsreader', 'Newsreader Fallback', Georgia, 'Times New Roman', serif",
   },
   line: {
     tight: '1.2',
@@ -98,6 +107,9 @@ function toCssValue(name: string, value: number | string): string {
   return `${round(value / ROOT_FONT_SIZE_PX, 6)}rem`;
 }
 
+const kebab = (key: string): string =>
+  key.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`);
+
 type TokenEntry = {
   name: string;
   css: string;
@@ -108,7 +120,7 @@ function tokenEntries(source: Tokens): TokenEntry[] {
   const entries: TokenEntry[] = [];
   for (const [group, values] of Object.entries(source)) {
     for (const [key, raw] of Object.entries(values)) {
-      const name = `--${group}-${key}`;
+      const name = `--${group}-${kebab(key)}`;
       entries.push({ name, css: toCssValue(name, raw), raw });
     }
   }
@@ -134,6 +146,7 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
     '--primary-50': '  /* Primary Colors - Soft, Digital Comfort Palette */',
     '--neutral-50': '  /* Neutral Colors */',
     '--accent-coral': '  /* Accent Colors */',
+    '--color-ink': '  /* Text Colors */',
     '--font-sans': '  /* Font Family */',
     '--line-tight': '  /* Line Heights */',
     '--transition-fast': '  /* Transitions */',
@@ -156,7 +169,7 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
         ? ` /* ${round(raw, 2)}px */`
         : '';
     const suffix = valueComments[name] ?? derivedPx;
-    if (name === '--font-sans' || name === '--font-display') {
+    if (name.startsWith('--font-')) {
       lines.push(`  ${name}:`);
       lines.push(`    ${css};`);
     } else {

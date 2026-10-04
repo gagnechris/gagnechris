@@ -1,6 +1,5 @@
 import { useEffect, type JSX } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import PublicNav from '../components/PublicNav';
 import BearTipsList from '../games/bears/shared/BearTipsList';
 import BearsPageMeta from '../games/bears/shared/BearsPageMeta';
 import { BEARS_PAGE_META } from '../games/bears/shared/pageMeta';
@@ -152,9 +151,6 @@ const DontFeedTheBears = () => {
   return (
     <div className="bears-landing">
       <BearsPageMeta meta={BEARS_PAGE_META.landing} />
-      <header className="bears-landing__header">
-        <PublicNav />
-      </header>
       <main>
         <section className="bears-landing__intro">
           <p className="bears-landing__kicker">Vermont camp rules</p>

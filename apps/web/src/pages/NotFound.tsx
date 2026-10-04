@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import PublicNav from '../components/PublicNav';
 import './NotFound.css';
 
 function NotFound() {
@@ -9,7 +8,6 @@ function NotFound() {
       <meta name="robots" content="noindex" />
       <header>
         <h1>Page not found</h1>
-        <PublicNav />
       </header>
       <main>
         <p>That URL does not match a page on this site.</p>

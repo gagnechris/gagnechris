@@ -1,4 +1,5 @@
 import { DEFAULT_HOME, renderHomeAboutHtml } from '@gagnechris/shared/render';
+import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
 
 export type HomeView = {
   name: string;
@@ -19,8 +20,8 @@ export const fallbackHomeView = (): HomeView => ({
   aboutHtml: renderHomeAboutHtml(DEFAULT_HOME.about),
 });
 
-export function homeViewFromDocument(doc: Document): HomeView | null {
-  const article = doc.querySelector('article.home-page-prerender');
+export function homeViewFromDocument(root: ParentNode): HomeView | null {
+  const article = root.querySelector('article.home-page-prerender');
   const about = article?.querySelector('#about .about-body');
   if (!article || !about) return null;
 
@@ -31,23 +32,8 @@ export function homeViewFromDocument(doc: Document): HomeView | null {
   };
 }
 
-/**
- * Captured at import time — the prerender lives in `#root`, which React clears
- * on mount, and reading it here avoids refetching `index.html` on a cold load.
- */
-const initialDocumentView =
-  typeof document === 'undefined' ? null : homeViewFromDocument(document);
+export const documentHomeView = (): HomeView | null =>
+  fromPrerender(homeViewFromDocument);
 
-export const documentHomeView = (): HomeView | null => initialDocumentView;
-
-export async function loadPublishedHome(): Promise<HomeView | null> {
-  const response = await fetch(publishedHomeUrl(), {
-    headers: { Accept: 'text/html' },
-  });
-  if (!response.ok) return null;
-
-  const html = await response.text();
-  return homeViewFromDocument(
-    new DOMParser().parseFromString(html, 'text/html'),
-  );
-}
+export const loadPublishedHome = (): Promise<HomeView | null> =>
+  fetchPrerender(publishedHomeUrl(), homeViewFromDocument);

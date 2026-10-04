@@ -1,15 +1,7 @@
 /* Modern Resume Page Styles */
 .resume-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: var(--space-8);
   color: var(--neutral-800);
   line-height: var(--line-normal);
-  background-color: var(--neutral-50);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  opacity: 0;
-  animation: fadeIn 0.6s ease-out forwards;
 }
 
 /* Reset list styling to ensure vertical display */
@@ -36,19 +28,6 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-4);
-  border-bottom: 2px solid var(--primary-200);
-  padding-bottom: var(--space-4);
-  position: relative;
-}
-
-.resume-page header::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100px;
-  height: 2px;
-  background-color: var(--primary-500);
 }
 
 .name-section {
@@ -137,8 +116,6 @@
 .resume-page h2 {
   color: var(--primary-700);
   margin: var(--space-6) 0 var(--space-4);
-  border-bottom: 1px solid var(--neutral-200);
-  padding-bottom: var(--space-2);
   font-size: var(--text-2xl);
   letter-spacing: -0.01em;
 }
@@ -151,14 +128,7 @@
 
 /* Resume Content Sections */
 .resume-summary {
-  background-color: white;
-  padding: var(--space-6);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-8);
-  border-left: 4px solid var(--primary-400);
-  opacity: 0;
-  animation: slideUp 0.6s ease-out 0.2s forwards;
 }
 
 .resume-summary p {
@@ -169,12 +139,6 @@
 
 .resume-section {
   margin-bottom: var(--space-8);
-  background-color: white;
-  padding: var(--space-6);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  opacity: 0;
-  animation: slideUp 0.6s ease-out 0.4s forwards;
 }
 
 /* Experience Items */
@@ -182,11 +146,6 @@
   margin-bottom: var(--space-8);
   padding-bottom: var(--space-6);
   border-bottom: 1px solid var(--neutral-200);
-  transition: transform var(--transition-normal);
-}
-
-.experience-item:hover {
-  transform: translateY(-2px);
 }
 
 .experience-item h3 {
@@ -293,10 +252,6 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .resume-page {
-    padding: var(--space-4);
-  }
-
   .resume-page header {
     flex-direction: column;
     align-items: flex-start;
@@ -312,11 +267,6 @@
     justify-content: flex-start;
     gap: var(--space-3);
     margin-top: var(--space-2);
-  }
-
-  .resume-section,
-  .resume-summary {
-    padding: var(--space-4);
   }
 }
 

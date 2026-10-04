@@ -91,4 +91,4 @@ Issues welcome. Not accepting pull requests (this is a personal site; fork PRs c
 
 - **Code:** [MIT](../LICENSE) — `Copyright (c) 2026 Chris Gagne`
 - **Content:** [CONTENT-LICENSE](../CONTENT-LICENSE) — blog posts, resume, bio, photos, and artwork (including Don’t Feed the Bears) are © Chris Gagne, all rights reserved
-- **Third-party:** Inter fonts for resume PDFs remain under the SIL Open Font License — see [`services/publisher/assets/fonts/`](../services/publisher/assets/fonts/)
+- **Third-party:** Inter fonts for resume PDFs and the self-hosted web fonts (Newsreader, Inter) remain under the SIL Open Font License — see [`services/publisher/assets/fonts/`](../services/publisher/assets/fonts/) and [`apps/web/public/fonts/`](../apps/web/public/fonts/)

@@ -13,12 +13,6 @@
   margin-bottom: var(--space-4);
 }
 
-.bears-game-page__nav {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--space-4);
-}
-
 .bears-game-page__back {
   display: inline-flex;
   align-items: center;
