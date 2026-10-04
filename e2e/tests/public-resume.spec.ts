@@ -35,15 +35,15 @@ async function publishResume(
 }
 
 const withCutoff =
-  (earlierRolesBefore: number | undefined) =>
+  (earlierRolesThrough: number | undefined) =>
   ({
     headline: _headline,
-    earlierRolesBefore: _cutoff,
+    earlierRolesThrough: _cutoff,
     ...rest
   }: ResumeContent): ResumeContent => ({
     ...rest,
     headline: 'Director of Software Engineering',
-    ...(earlierRolesBefore === undefined ? {} : { earlierRolesBefore }),
+    ...(earlierRolesThrough === undefined ? {} : { earlierRolesThrough }),
   });
 
 const earlierCompanies = (page: Page) =>
@@ -81,6 +81,8 @@ test.describe('the resume page', () => {
     await expect(list).toBeVisible();
     await expect(full).toBeHidden();
     await expect(summary).toContainText('Show details');
+    // Ended in the cut-off year, so it is an earlier role.
+    await expect(list).toContainText('Aug 2010 – Jun 2012');
 
     await summary.click();
     await expect(full).toBeVisible();

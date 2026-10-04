@@ -290,13 +290,13 @@ export type ResumeEducation = z.infer<typeof ResumeEducationSchema>;
 
 export const ResumeContentSchema = z.object({
   headline: z.string().optional().describe('Current role'),
-  earlierRolesBefore: z
+  earlierRolesThrough: z
     .number()
     .int()
     .min(1900)
     .max(2100)
     .optional()
-    .describe('Roles that ended before this year are "earlier roles"'),
+    .describe('Roles that ended in or before this year are "earlier roles"'),
   summary: z.string(),
   competencies: z.array(z.string()),
   experience: z.array(ResumeExperienceSchema),

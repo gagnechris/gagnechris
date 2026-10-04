@@ -180,7 +180,7 @@ describe('AdminResumePage structured dates', () => {
     content: {
       ...baseResume.content,
       headline: 'Director of Software Engineering',
-      earlierRolesBefore: 2012,
+      earlierRolesThrough: 2012,
       experience: [
         {
           title: 'Director',
@@ -238,7 +238,7 @@ describe('AdminResumePage structured dates', () => {
     expect(await screen.findByLabelText('Headline (current role)')).toHaveValue(
       'Director of Software Engineering',
     );
-    expect(screen.getByLabelText(/^Earlier roles before \(year\)/)).toHaveValue(
+    expect(screen.getByLabelText(/^Earlier roles through \(year\)/)).toHaveValue(
       2012,
     );
     const starts = screen.getAllByLabelText('Start month');
@@ -313,7 +313,7 @@ describe('AdminResumePage structured dates', () => {
 
     await user.clear(headline);
     await user.type(headline, 'VP Engineering');
-    const cutoff = screen.getByLabelText(/^Earlier roles before \(year\)/);
+    const cutoff = screen.getByLabelText(/^Earlier roles through \(year\)/);
     await user.clear(cutoff);
     await user.type(cutoff, '2010');
     fireEvent.change(screen.getAllByLabelText('Start month')[1]!, {
@@ -342,7 +342,7 @@ describe('AdminResumePage structured dates', () => {
     });
     const content = lastPutContent();
     expect(content.headline).toBe('VP Engineering');
-    expect(content.earlierRolesBefore).toBe(2010);
+    expect(content.earlierRolesThrough).toBe(2010);
     expect(content.experience).toEqual([
       {
         title: 'Director',

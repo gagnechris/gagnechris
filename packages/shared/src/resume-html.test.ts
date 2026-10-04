@@ -15,7 +15,7 @@ const resume = (overrides: Partial<Resume> = {}): Resume => ({
 
 const {
   headline: _headline,
-  earlierRolesBefore: _cutoff,
+  earlierRolesThrough: _cutoff,
   ...UNSET
 } = DEFAULT_RESUME.content;
 
@@ -54,9 +54,9 @@ describe('renderResumeSectionsHtml', () => {
     );
   });
 
-  it('puts roles that ended before the cut-off year in <details>, with their full content', () => {
+  it('puts roles that ended in or before the cut-off year in <details>, with their full content', () => {
     const html = renderResumeSectionsHtml(
-      content({ earlierRolesBefore: 2012 }),
+      content({ earlierRolesThrough: 2012 }),
     );
     const [recent, earlier] = html.split('<div class="resume-earlier">');
     expect(earlier).toContain(
@@ -64,39 +64,41 @@ describe('renderResumeSectionsHtml', () => {
         '<span class="resume-earlier__label">Earlier roles, 1999–2012</span>' +
         '<span class="resume-earlier__toggle"><span class="resume-earlier__show">Show details</span><span class="resume-earlier__hide">Hide details</span></span></summary>',
     );
-    // Dealertrack 2010-08 → 2012-06 did not end before 2012.
-    expect(recent).toContain('Aug 2010 – Jun 2012');
-    expect(earlier).not.toContain('Aug 2010 – Jun 2012');
-    for (const role of UNSET.experience.slice(6)) {
+    // Dealertrack 2010-08 → 2012-06 ended in the cut-off year; Getty started in it.
+    expect(earlier).toContain('Aug 2010 – Jun 2012');
+    expect(recent).not.toContain('Aug 2010 – Jun 2012');
+    expect(recent).toContain('at Getty Images');
+    for (const role of UNSET.experience.slice(5)) {
       expect(earlier).toContain(`at ${role.company}</span>`);
       for (const bullet of role.bullets) {
         expect(earlier).toContain(bullet.replace(/&/g, '&amp;'));
       }
       expect(recent).not.toContain(role.bullets[0]!);
     }
-    expect(count(earlier!, '<li class="resume-earlier__item">')).toBe(3);
+    expect(count(earlier!, '<li class="resume-earlier__item">')).toBe(4);
   });
 
   it('labels earlier roles from the first start year to the cut-off', () => {
     const html = renderResumeSectionsHtml(
-      content({ earlierRolesBefore: 2015 }),
+      content({ earlierRolesThrough: 2014 }),
     );
-    expect(html).toContain('Earlier roles, 1999–2015');
+    expect(html).toContain('Earlier roles, 1999–2014');
     const earlier = html.split('<div class="resume-earlier">')[1]!;
     expect(earlier).toContain('at Getty Images');
     expect(earlier).not.toContain('at Viacom');
+    expect(earlier).not.toContain('at Shutterstock');
   });
 
   it('has no earlier section when no role ended before the cut-off', () => {
     const html = renderResumeSectionsHtml(
-      content({ earlierRolesBefore: 1990 }),
+      content({ earlierRolesThrough: 1990 }),
     );
     expect(html).not.toContain('resume-earlier');
   });
 
   it('never moves a current role', () => {
     const html = renderResumeSectionsHtml(
-      content({ earlierRolesBefore: 2100 }),
+      content({ earlierRolesThrough: 2100 }),
     );
     const [recent, earlier] = html.split('<div class="resume-earlier">');
     expect(recent).toContain('at Ro</span>');
@@ -167,7 +169,7 @@ describe('renderResumeSectionsHtml', () => {
           bullets: ['5 > 3'],
         },
       ],
-      earlierRolesBefore: 2022,
+      earlierRolesThrough: 2022,
       skills: ["it's: <fine>"],
       education: [
         {

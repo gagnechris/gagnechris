@@ -132,7 +132,7 @@ Editable draft plus an optional live snapshot.
 
 `content` holds `summary`, `competencies`, `experience`, `skills`,
 `education`, plus optional `headline` (current role) and
-`earlierRolesBefore` (cut-off year: roles that ended before it are "earlier
+`earlierRolesThrough` (cut-off year: roles that ended in or before it are "earlier
 roles"). Each `experience` entry is `title`, `company` (bare name), `start`
 and `end` (`YYYY-MM`; `end: null` is present), optional `note` (for example
 "contract, concurrent") and `bullets`. An entry without `start` is the old
@@ -140,8 +140,8 @@ shape, with its dates inside `company` (`Ro | July 2019 - Present`); it still
 parses, and `scripts/migrate-resume-dates.ts` moves the dates into
 `start`/`end`. The PDF renders entries as `Company | Month YYYY - Month YYYY`;
 the page puts `Mon YYYY – Mon YYYY` in a date column and reads old-shape rows
-through the same parser. With `earlierRolesBefore` set, roles whose `end` year
-is before it collapse under "Earlier roles, <first start year>–<cut-off>";
+through the same parser. With `earlierRolesThrough` set, roles whose `end` year
+is on or before it collapse under "Earlier roles, <first start year>–<cut-off>";
 unset, every role is expanded. Education keeps a free-text `year` (a single
 completion date, no range), shown in the date column as stored.
 

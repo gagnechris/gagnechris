@@ -175,17 +175,17 @@ export type ResumeExperienceGroups = {
   earlierLabel: string | null;
 };
 
-/** Roles that ended before `earlierRolesBefore` (a year) are earlier roles; unset keeps every role recent. */
+/** Roles that ended in or before `earlierRolesThrough` (a year) are earlier roles; unset keeps every role recent. */
 export const groupResumeExperience = (
-  content: Pick<ResumeContent, 'experience' | 'earlierRolesBefore'>,
+  content: Pick<ResumeContent, 'experience' | 'earlierRolesThrough'>,
 ): ResumeExperienceGroups => {
   const items = content.experience.map(structuredExperience);
-  const cutoff = content.earlierRolesBefore;
+  const cutoff = content.earlierRolesThrough;
   const isEarlier = (item: ResumeExperience): boolean =>
     cutoff !== undefined &&
     !!item.start &&
     !!item.end &&
-    Number(item.end.slice(0, 4)) < cutoff;
+    Number(item.end.slice(0, 4)) <= cutoff;
   const earlier = items.filter(isEarlier);
   const recent = items.filter((item) => !isEarlier(item));
   if (cutoff === undefined || earlier.length === 0) {

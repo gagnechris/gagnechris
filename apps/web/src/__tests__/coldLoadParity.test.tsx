@@ -33,13 +33,13 @@ const PUBLISHED_RESUME = {
     ...DEFAULT_RESUME.content,
     headline: 'Published headline',
     summary: 'Published summary.',
-    earlierRolesBefore: 2013,
+    earlierRolesThrough: 2013,
   },
 };
 
 const {
   headline: _headline,
-  earlierRolesBefore: _cutoff,
+  earlierRolesThrough: _cutoff,
   ...UNSET_CONTENT
 } = PUBLISHED_RESUME.content;
 

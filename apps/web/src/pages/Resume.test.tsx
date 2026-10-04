@@ -25,7 +25,7 @@ const PUBLISHED = {
     ...DEFAULT_RESUME.content,
     headline: 'Published headline',
     summary: 'Published summary.',
-    earlierRolesBefore: 2012,
+    earlierRolesThrough: 2012,
   },
 };
 

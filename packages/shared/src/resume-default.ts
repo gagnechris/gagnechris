@@ -13,7 +13,7 @@ export const DEFAULT_RESUME: Resume = {
   hasUnpublishedChanges: false,
   content: {
     headline: 'Director of Software Engineering',
-    earlierRolesBefore: 2012,
+    earlierRolesThrough: 2012,
     summary:
       'Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.',
     competencies: [
