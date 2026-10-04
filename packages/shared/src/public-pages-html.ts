@@ -14,6 +14,7 @@ export const NOT_FOUND_DESCRIPTION =
 export const NOT_FOUND_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Posts', href: '/posts' },
+  { label: 'Projects', href: '/projects' },
   { label: 'Resume', href: '/resume' },
 ] as const;
 

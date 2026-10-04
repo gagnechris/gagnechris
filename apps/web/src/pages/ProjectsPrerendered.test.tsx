@@ -7,7 +7,6 @@ const renderAt = (path: string) =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/projects" element={<ProjectsPrerendered />} />
         <Route path="/projects/:slug" element={<ProjectsPrerendered />} />
       </Routes>
     </MemoryRouter>,
@@ -47,7 +46,7 @@ describe('ProjectsPrerendered', () => {
       'fetch',
       vi.fn().mockResolvedValue({ ok: false, text: async () => '' }),
     );
-    renderAt('/projects');
+    renderAt('/projects/missing');
     expect(
       await screen.findByRole('heading', { name: /not found/i }),
     ).toBeInTheDocument();

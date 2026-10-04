@@ -1,9 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { formatPostDate, postDateAttribute } from '@gagnechris/shared';
+import {
+  formatPostDate,
+  postDateAttribute,
+  PROJECTS_PATH,
+  type ProjectCardView,
+} from '@gagnechris/shared';
 import {
   HOME_ALL_POSTS_LABEL,
+  HOME_ALL_PROJECTS_LABEL,
   HOME_LINKS_SENTENCE,
+  HOME_PROJECTS_HEADING,
+  HOME_PROJECTS_HEADING_ID,
   HOME_RECENT_POSTS_HEADING,
   HOME_RECENT_POSTS_HEADING_ID,
   homePostHref,
@@ -18,6 +26,7 @@ import {
   loadRecentPosts,
   type HomeView,
 } from './home/publishedHome';
+import ProjectCard from './projects/ProjectCard';
 import './App.css';
 
 // Markup must match `renderHomeBodyHtml` element for element (App.test.tsx).
@@ -93,12 +102,41 @@ const RecentPosts = ({ posts }: { posts: readonly HomeRecentPost[] }) =>
     </section>
   );
 
+const HomeProjects = ({
+  projects,
+}: {
+  projects: readonly ProjectCardView[];
+}) =>
+  projects.length === 0 ? null : (
+    <section
+      className="home-section"
+      aria-labelledby={HOME_PROJECTS_HEADING_ID}
+    >
+      <div className="home-section__head">
+        <h2 className="home-section__label" id={HOME_PROJECTS_HEADING_ID}>
+          {HOME_PROJECTS_HEADING}
+        </h2>
+        <Link className="home-section__more" to={PROJECTS_PATH} discover="none">
+          {HOME_ALL_PROJECTS_LABEL}
+        </Link>
+      </div>
+      <ul className="project-list project-list--home">
+        {projects.map((card) => (
+          <ProjectCard key={card.id} card={card} heading="h3" />
+        ))}
+      </ul>
+    </section>
+  );
+
 function App() {
   const [home, setHome] = useState<HomeView>(
     () => documentHome() ?? fallbackHomeView(),
   );
   const [recentPosts, setRecentPosts] = useState<HomeRecentPost[]>(
     () => documentHome()?.recentPosts ?? [],
+  );
+  const [projects, setProjects] = useState<ProjectCardView[]>(
+    () => documentHome()?.projects ?? [],
   );
 
   useEffect(() => {
@@ -113,6 +151,7 @@ function App() {
             title: published.title,
             aboutHtml: published.aboutHtml,
           });
+          setProjects(published.projects);
         }
       })
       .catch(() => {
@@ -156,6 +195,7 @@ function App() {
         </p>
       </header>
       <RecentPosts posts={recentPosts} />
+      <HomeProjects projects={projects} />
     </main>
   );
 }

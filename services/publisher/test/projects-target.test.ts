@@ -147,7 +147,10 @@ describe('projects publish targets', () => {
     expect(page).toContain('<header class="site-header">');
     expect(page).toContain('https://gagnechris.com/projects/notebook');
     const index = site.objects.get('projects/index.html') ?? '';
-    expect(index).toContain('<a href="/projects/notebook">Notebook</a>');
+    expect(index).toContain(
+      '<a class="project-card__link" href="/projects/notebook">',
+    );
+    expect(index).toContain('<h2 class="project-card__name">Notebook</h2>');
     expect(sitemap()).toContain(
       '<loc>https://gagnechris.com/projects/notebook</loc>',
     );
@@ -170,7 +173,10 @@ describe('projects publish targets', () => {
     await rebuild({ projects: [idea], corruptSlugs: [] });
     expect(site.objects.has('projects/someday/index.html')).toBe(false);
     const index = site.objects.get('projects/index.html') ?? '';
-    expect(index).toContain('<h2 class="project-name">Someday</h2>');
+    expect(index).toContain(
+      '<div class="project-card__link"><div class="project-preview project-preview--idea"',
+    );
+    expect(index).toContain('<h2 class="project-card__name">Someday</h2>');
     expect(index).not.toContain('href="/projects/someday"');
     expect(sitemap()).not.toContain('/projects/someday');
   });
@@ -195,7 +201,7 @@ describe('projects publish targets', () => {
       false,
     );
     expect(site.objects.get('projects/index.html')).toContain(
-      '<a href="/dont-feed-the-bears">Don’t Feed the Bears</a>',
+      '<a class="project-card__link" href="/dont-feed-the-bears">',
     );
     expect(sitemap()).not.toContain('/projects/dont-feed-the-bears');
   });
@@ -219,8 +225,113 @@ describe('projects publish targets', () => {
     await rebuild({ projects: [], corruptSlugs: [] });
     expect(
       [...site.objects.keys()].filter((k) => k.startsWith('projects/')),
-    ).toEqual([]);
-    expect(sitemap()).not.toContain('/projects');
+    ).toEqual(['projects/index.html']);
+    expect(site.objects.get('projects/index.html')).toContain(
+      'The first project is on its way.',
+    );
+    expect(sitemap()).toContain('<loc>https://gagnechris.com/projects</loc>');
+    expect(sitemap()).not.toContain('/projects/');
+  });
+
+  it('with nothing published, /projects is the empty state, not a 404', async () => {
+    await rebuild({ projects: [], corruptSlugs: [] }, fullRebuildScope());
+    const index = site.objects.get('projects/index.html') ?? '';
+    expect(index).toContain('<h1>Projects</h1>');
+    expect(index).toContain(
+      '<p class="projects-index__empty">Nothing to show yet. The first project is on its way.</p>',
+    );
+    expect(index).toContain('aria-current="page" href="/projects"');
+    expect(sitemap()).toContain('<loc>https://gagnechris.com/projects</loc>');
+  });
+
+  it('only corrupt rows: keeps the index that lists them, or writes the empty state when there is none', async () => {
+    await rebuild({ projects: [], corruptSlugs: ['notebook'] });
+    expect(site.objects.get('projects/index.html')).toContain(
+      'The first project is on its way.',
+    );
+
+    site.objects.set('projects/index.html', '<html>listed notebook</html>');
+    await rebuild({ projects: [], corruptSlugs: ['notebook'] });
+    expect(site.objects.get('projects/index.html')).toBe(
+      '<html>listed notebook</html>',
+    );
+  });
+
+  it('publishing and unpublishing a project updates What I’m building on Home', async () => {
+    const posts = project({ slug: 'posts', name: 'Posts', stage: 'live' });
+    const notebook = project({ slug: 'notebook', name: 'Notebook', order: 1 });
+    await rebuild({ projects: [posts], corruptSlugs: [] });
+    const home = () => site.objects.get('index.html') ?? '';
+    expect(home()).toContain('id="home-projects">What I’m building</h2>');
+    expect(home()).toContain('<h3 class="project-card__name">Posts</h3>');
+    // Recent posts survive a project-only rebuild.
+    expect(home()).toContain('href="/posts/hello"');
+
+    site.invalidations.length = 0;
+    await rebuild({ projects: [posts, notebook], corruptSlugs: [] });
+    expect(home()).toContain('<h3 class="project-card__name">Notebook</h3>');
+    expect(site.invalidations.flat()).toEqual(
+      expect.arrayContaining(['/', '/index.html', '/projects*']),
+    );
+
+    await rebuild({ projects: [notebook], corruptSlugs: [] });
+    expect(home()).not.toContain('>Posts</h3>');
+
+    await rebuild({ projects: [], corruptSlugs: [] });
+    expect(home()).not.toContain('home-projects');
+    expect(home()).toContain('href="/posts/hello"');
+  });
+
+  it('a project change Home does not show leaves / alone', async () => {
+    const shown = [
+      project({ slug: 'a', name: 'A', stage: 'live', order: 1 }),
+      project({ slug: 'b', name: 'B', order: 2 }),
+    ];
+    await rebuild({ projects: shown, corruptSlugs: [] });
+    site.invalidations.length = 0;
+
+    await rebuild({
+      projects: [
+        ...shown,
+        project({ slug: 'c', name: 'C', order: 3 }),
+        project({ slug: 'd', name: 'D', stage: 'idea', order: 0 }),
+      ],
+      corruptSlugs: [],
+    });
+    expect(site.objects.get('projects/index.html')).toContain('>C</h2>');
+    expect(site.invalidations.flat()).toContain('/projects*');
+    expect(site.invalidations.flat()).not.toContain('/');
+  });
+
+  it('ideas are listed on /projects but not on Home', async () => {
+    await rebuild({
+      projects: [project({ slug: 'someday', stage: 'idea' })],
+      corruptSlugs: [],
+    });
+    expect(site.objects.get('projects/index.html')).toContain('someday');
+    expect(site.objects.get('index.html')).not.toContain('home-projects');
+  });
+
+  it('a post or Home rebuild keeps What I’m building', async () => {
+    const shown = {
+      projects: [project({ slug: 'notebook', name: 'Notebook' })],
+      corruptSlugs: [],
+    };
+    for (const scope of [
+      {
+        ...projectScope(),
+        feeds: true,
+        postSlugs: new Set(['hello']),
+        touchedEntityTypes: new Set(['post']),
+      },
+      { ...projectScope(), home: true, touchedEntityTypes: new Set(['home']) },
+    ]) {
+      site.objects.delete('index.html');
+      await rebuild(shown, scope);
+      expect(site.objects.get('index.html')).toContain(
+        '<h3 class="project-card__name">Notebook</h3>',
+      );
+    }
   });
 
   it('a corrupt PUBLISHED row keeps its live page and sitemap entry', async () => {
@@ -307,7 +418,7 @@ describe('project stream records', () => {
     project({ slug: 'notebook', status: 'draft' }),
   );
 
-  it('match the projects and sitemap targets, not post feeds', () => {
+  it('match the projects, Home and sitemap targets, not post feeds', () => {
     const records = [record('INSERT', published)];
     const scope = collectRebuildScope(records);
     expect(scope.touchedEntityTypes.has('project')).toBe(true);
@@ -317,7 +428,7 @@ describe('project stream records', () => {
     const active = publishTargets
       .filter((t) => t.matches(scope))
       .map((t) => t.id);
-    expect(active.sort()).toEqual(['projects', 'sitemap']);
+    expect(active.sort()).toEqual(['home', 'projects', 'sitemap']);
   });
 
   it('an unpublish (REMOVE) still matches', () => {

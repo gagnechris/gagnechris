@@ -103,6 +103,41 @@ Values from the stories unless marked measured.
 | Order                | `groupPostsByYear`: years newest first (UTC), posts newest first; undated posts last under "Undated"                                                |
 | At 390px (see Phone) | Title 46px, intro 19px, entry title 24px, excerpt 17px; the date goes under the excerpt                                                             |
 
+## Projects (measured)
+
+| Element              | Value                                                                                                                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column               | Full 720px column                                                                                                                                                                                                                                                                  |
+| Title                | "Projects", as the Posts title (Newsreader 60px / 500)                                                                                                                                                                                                                             |
+| Intro                | "Things I’m building, mostly for myself, in the open." Newsreader italic 24px / 1.4, `inkSoft`; 56px to the list rule                                                                                                                                                              |
+| List                 | 1px ink rule above, 1px `neutral-200` rule under each entry; entries ordered by `order`, then name                                                                                                                                                                                 |
+| Entry                | One link (an unlinked `<div>` for an `idea` with no body): 240×160 preview, 32px gap, text column; 36px above and below                                                                                                                                                            |
+| Stage label          | Inter 12px / 600 with an 8px dot 8px before it; text "Live", "Building" or "Idea", then " · " and `stageNote` when set                                                                                                                                                             |
+| Live                 | Dot `primary-600` (#2d7471), text `link`                                                                                                                                                                                                                                           |
+| Building             | Dot #c28d24, text #7a5a12; the dot fades to 35% and back every 2.4s, not under `prefers-reduced-motion`                                                                                                                                                                            |
+| Idea                 | 1.5px dashed `neutral-600` ring, text `neutral-600`                                                                                                                                                                                                                                |
+| Name                 | Newsreader 32px / 500, line height 1.2, ink, 8px below the label; underlined on hover and focus                                                                                                                                                                                    |
+| Pitch                | Newsreader 19px / 1.5, `inkSoft`, 10px below the name                                                                                                                                                                                                                              |
+| Stack line           | Inter 13px / 1.4, `neutral-600`, items joined with " · ", 8px below the pitch                                                                                                                                                                                                      |
+| Preview image        | `previewImage`, `object-fit: cover`, 12px radius, no border                                                                                                                                                                                                                        |
+| Mini-UI (no image)   | 12px radius, 1px border, 14px padding: two white panes (1px `neutral-200`, 6px radius, 10px padding, 8px apart) with 8px title bars, 5px `neutral-300` and 4px `neutral-200` lines                                                                                                 |
+| Mini-UI by `demo`    | `posts`: `primary-50` ground, `primary-100` border, an editor pane with a 44×16 `primary-600` button and a preview pane headed "Welcome". `notebook`: `neutral-50` ground, `neutral-200` border, a wider pane with a done and an open task, and a side pane. None: two plain panes |
+| Idea preview         | 1px dashed `neutral-300` box, "Coming soon" Inter 13px `neutral-500` (deviation: the artboard's `neutral-400` is about 2.5:1 on white)                                                                                                                                             |
+| Focus                | The global 2px `link` outline, 4px outside the entry                                                                                                                                                                                                                               |
+| Empty state          | "Nothing to show yet. The first project is on its way." Newsreader 19px `inkSoft`, 25px under the rule (not drawn)                                                                                                                                                                 |
+| At 390px (see Phone) | The preview spans the column, 130px tall, above the text; no stack line                                                                                                                                                                                                            |
+| Not as drawn         | The desktop artboard's second intro sentence (a demo on each page) is left out until project pages have demos; the phone artboard has only the first                                                                                                                               |
+
+## Home · What I’m building (measured)
+
+| Element    | Value                                                                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section    | Below Recent posts: label row as Recent posts ("WHAT I’M BUILDING", All projects → `/projects`); 100px from the last Recent posts rule to the label                                    |
+| Cards      | Up to two projects that are not ideas, by `order`; two columns, 32px apart, 32px below the rule                                                                                        |
+| Card       | Same markup as the Projects entry, stacked: preview full width, 188px tall; label 15px below; name Newsreader 28px, 14px below; pitch Newsreader 18px / 1.5, 12px below; no stack line |
+| Links line | "Read my posts, see what I’m building, check out my resume, or find me on LinkedIn and GitHub."                                                                                        |
+| At 390px   | Not drawn: the cards stack like Projects entries, All projects is hidden as All posts is                                                                                               |
+
 ## Phone (measured)
 
 Measured on the 393pt artboards and checked at a 390px viewport. The artboards
@@ -124,7 +159,7 @@ top. Tolerances: positions ±2px, font sizes ±1px.
 | Bottom links | LinkedIn, GitHub, RSS in `link`, then "Don’t feed the bears" in `neutral-600` on its own line; Inter 15px / 400, underlined 1px at 3px, 20px apart; last line 46px above the bottom |
 | Not as drawn | The bottom links are 44px targets, so their lines are 44px apart (30px on the artboard)                                                                                             |
 
-Projects is listed only when `SITE_PROJECTS_LIVE` (`packages/shared/src/site-config.ts`) is on; the header nav reads the same list.
+`SITE_PROJECTS_LIVE` (`packages/shared/src/site-config.ts`) takes Projects out of the menu and the header nav when it is off.
 
 ### Home
 
@@ -139,6 +174,21 @@ Projects is listed only when `SITE_PROJECTS_LIVE` (`packages/shared/src/site-con
 | Excerpt            | Newsreader 17px / 1.45                | 34px                                                       |
 | Date               | Inter 13.5px                          | 28px from the last excerpt line; rule 30px below           |
 | All posts link     | Hidden (not on the artboard)          | —                                                          |
+
+### Projects
+
+| Element     | Size                          | From the element above                       |
+| ----------- | ----------------------------- | -------------------------------------------- |
+| Title       | Newsreader 46px / 500         | 57px from the photo centre                   |
+| Intro       | Newsreader italic 18px / 1.45 | 59.5px; list rule 16.5px below its last line |
+| Preview     | Full column, 130px tall       | 20.5px below the rule                        |
+| Stage label | Inter 12px / 600              | 10.5px below the preview                     |
+| Name        | Newsreader 26px / 500         | 22px                                         |
+| Pitch       | Newsreader 17px / 1.45        | 40px; rule 41px below its last line          |
+| Stack line  | Hidden (not on the artboard)  | —                                            |
+
+The phone artboard draws the Building label in #c08a1e (about 2.8:1 on white);
+the label uses the desktop #7a5a12 and only the dot is amber.
 
 ### Posts
 
@@ -215,13 +265,13 @@ Measured on the 393px Phone · 404 artboard; desktop sizes (not drawn) follow
 the Posts page. The values are the variables at the top of
 `apps/web/src/pages/NotFound.css`.
 
-| Element  | Value                                                                                                                                                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Label    | "404", Inter 13px / 600, tracked 0.12em, `neutral-600`; 20px from its cap top to the title's (measured)                                                                                                                  |
-| Title    | "Page not found", Newsreader 44px / 500, line height 1.1 (measured); 60px on desktop (not drawn)                                                                                                                         |
-| Sentence | "This page wandered off. Unlike Vermont’s bears, it wasn’t lured by snacks." Newsreader 19px / 1.5, #2b3138 (measured); 21px on desktop (not drawn)                                                                      |
-| Links    | Home, Posts, Resume as rows: 1px ink rule above, 1px `neutral-200` rule under each, 56px rows, Newsreader 24px ink, grey (`neutral-400`) chevron on the right; 48px from the sentence's last line to the rule (measured) |
-| Bears    | "Don’t feed the bears while you’re here.", Inter 15px ink, the link in `link` underlined; 23px below the last rule (measured)                                                                                            |
+| Element  | Value                                                                                                                                                                                                                              |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Label    | "404", Inter 13px / 600, tracked 0.12em, `neutral-600`; 20px from its cap top to the title's (measured)                                                                                                                            |
+| Title    | "Page not found", Newsreader 44px / 500, line height 1.1 (measured); 60px on desktop (not drawn)                                                                                                                                   |
+| Sentence | "This page wandered off. Unlike Vermont’s bears, it wasn’t lured by snacks." Newsreader 19px / 1.5, #2b3138 (measured); 21px on desktop (not drawn)                                                                                |
+| Links    | Home, Posts, Projects, Resume as rows: 1px ink rule above, 1px `neutral-200` rule under each, 56px rows, Newsreader 24px ink, grey (`neutral-400`) chevron on the right; 48px from the sentence's last line to the rule (measured) |
+| Bears    | "Don’t feed the bears while you’re here.", Inter 15px ink, the link in `link` underlined; 23px below the last rule (measured)                                                                                                      |
 
 The meta description stays "That URL does not match a page on this site."
 The CloudFront fallback page has the same markup and inlines the rules of

@@ -23,7 +23,7 @@ This script:
 5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
 6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
 7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
-8. Creates and publishes a project and a bodyless `idea`; asserts `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), and `sitemap.xml` lists only the project with a page; unpublishes the project and asserts its page, `/projects` entry and sitemap entry are gone, and that `/projects/does-not-exist` is the HTML 404 with status 404
+8. Creates and publishes a project and a bodyless `idea`; asserts `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists the project but not the idea, and `sitemap.xml` lists only the project with a page; unpublishes the project and asserts its page, `/projects` and Home entries and sitemap entry are gone, and that `/projects/does-not-exist` is the HTML 404 with status 404
 
 To run it beside another stack, give it its own Compose project and ports, e.g. `COMPOSE_PROJECT_NAME=mine DYNAMODB_LOCAL_HOST_PORT=28427 LOCAL_API_PORT=28787 LOCAL_SITE_PORT=28177 npm run e2e:local`, then `COMPOSE_PROJECT_NAME=mine docker compose -f docker-compose.local.yml down`.
 

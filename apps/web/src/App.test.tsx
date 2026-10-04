@@ -7,6 +7,8 @@ import {
   renderHomePrerenderHtml,
   type HomeRecentPost,
 } from '@gagnechris/shared/render';
+import { selectHomeProjects } from '@gagnechris/shared';
+import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import App from './App';
 import { renderWithProviders } from './test-utils';
 import * as analytics from './utils/analytics';
@@ -49,10 +51,13 @@ const RECENT: HomeRecentPost[] = [4, 3, 2].map((n) => {
   return { id, slug, title, excerpt, publishedAt };
 });
 
-/** Routes `/` to a Home prerender and `/posts/posts.json` to `items`. */
+const HOME_PROJECTS = selectHomeProjects(SAMPLE_PROJECTS);
+
+/** Routes `/` to a Home prerender (with `projects`) and `/posts/posts.json` to `items`. */
 const stubSite = (opts: {
   home?: typeof publishedHome | null;
   items?: unknown[] | null;
+  projects?: typeof HOME_PROJECTS;
 }) =>
   vi.stubGlobal(
     'fetch',
@@ -66,7 +71,7 @@ const stubSite = (opts: {
         return {
           ok: true,
           text: async () =>
-            `<!DOCTYPE html><html><body>${renderHomePrerenderHtml(opts.home!)}</body></html>`,
+            `<!DOCTYPE html><html><body>${renderHomePrerenderHtml(opts.home!, [], opts.projects)}</body></html>`,
         };
       }
       return { ok: false, status: 404 };
@@ -92,7 +97,7 @@ describe('App', () => {
       screen.getByRole('heading', { level: 1, name: 'Chris Gagne' }),
     ).toBeInTheDocument();
     expect(document.querySelector('.home-hero__links')?.textContent).toBe(
-      'Read my posts, see my resume, or find me on LinkedIn and GitHub.',
+      'Read my posts, see what I’m building, check out my resume, or find me on LinkedIn and GitHub.',
     );
     expect(screen.queryByText('Quick Links')).toBeNull();
   });
@@ -136,6 +141,32 @@ describe('App', () => {
     expect(fetch).toHaveBeenCalledWith('/posts/posts.json', expect.anything());
   });
 
+  test('on client navigation loads What I’m building from /', async () => {
+    stubSite({ home: publishedHome, items: POSTS, projects: HOME_PROJECTS });
+
+    renderWithProviders(<App />);
+
+    const section = await screen.findByRole('region', {
+      name: 'What I’m building',
+    });
+    expect(
+      [...section.querySelectorAll('.project-card__link')].map((a) => [
+        a.querySelector('.project-card__name')?.textContent,
+        a.getAttribute('href'),
+      ]),
+    ).toEqual([
+      ['Posts', '/projects/posts'],
+      ['Notebook', '/projects/notebook'],
+    ]);
+    expect(screen.getByRole('link', { name: 'All projects' })).toHaveAttribute(
+      'href',
+      '/projects',
+    );
+    // Below Recent posts.
+    const sections = [...document.querySelectorAll('.home-section')];
+    expect(sections.indexOf(section)).toBe(1);
+  });
+
   test('has no Recent posts heading when there are no posts', async () => {
     stubSite({ home: publishedHome, items: [] });
 
@@ -155,14 +186,15 @@ describe('App', () => {
   });
 
   test('renders the same markup as the publisher prerender', async () => {
-    stubSite({ home: publishedHome, items: POSTS });
+    stubSite({ home: publishedHome, items: POSTS, projects: HOME_PROJECTS });
 
     const { container } = renderWithProviders(<App />);
     await screen.findByText('Published about copy.');
     await screen.findByText('Post 4');
+    await screen.findByText('Notebook');
 
     const expected = new DOMParser().parseFromString(
-      renderHomeBodyHtml(publishedHome, RECENT),
+      renderHomeBodyHtml(publishedHome, RECENT, HOME_PROJECTS),
       'text/html',
     ).body.firstElementChild!;
     expect(container.querySelector('main.home-page')!.outerHTML).toBe(
@@ -192,12 +224,13 @@ describe('App', () => {
     );
   });
 
-  test('hero posts and resume links are SPA links', async () => {
+  test('hero posts, projects and resume links are SPA links', async () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
 
     for (const [name, href] of [
       ['posts', '/posts'],
+      ['what I’m building', '/projects'],
       ['resume', '/resume'],
     ] as const) {
       const link = screen.getByRole('link', { name });

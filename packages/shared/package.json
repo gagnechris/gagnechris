@@ -41,6 +41,11 @@
       "import": "./src/fixtures/legacy-resume.ts",
       "default": "./src/fixtures/legacy-resume.ts"
     },
+    "./fixtures/sample-projects": {
+      "types": "./src/fixtures/sample-projects.ts",
+      "import": "./src/fixtures/sample-projects.ts",
+      "default": "./src/fixtures/sample-projects.ts"
+    },
     "./site-config": {
       "types": "./src/site-config.ts",
       "import": "./src/site-config.ts",

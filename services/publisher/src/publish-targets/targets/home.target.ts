@@ -1,4 +1,8 @@
-import { DEFAULT_HOME, type Home } from '@gagnechris/shared';
+import {
+  DEFAULT_HOME,
+  selectHomeProjects,
+  type Home,
+} from '@gagnechris/shared';
 import { selectHomeRecentPosts } from '@gagnechris/shared/render';
 import {
   HOME_LAST_PUBLISHED_KEY,
@@ -6,6 +10,11 @@ import {
   readHomePublishSnapshot,
   snapshotToHome,
 } from '../../home-publish.js';
+import {
+  PROJECT_ENTITY_TYPE,
+  isFullRebuildScope,
+  type RebuildScope,
+} from '../../rebuild-scope.js';
 import { renderHomePage } from '../../render.js';
 import type {
   PublishArtifact,
@@ -23,29 +32,36 @@ const homePageArtifact = (
     ctx.shell,
     home,
     selectHomeRecentPosts([...ctx.published, ...ctx.retainedPosts]),
+    selectHomeProjects(ctx.projects.projects),
   ),
   contentType: 'text/html; charset=utf-8',
   cacheControl: CACHE_HTML,
 });
 
 // Unchanged bytes are skipped by storage.put, and the orchestrator only
-// invalidates for targets that wrote, so post edits that don't change Recent
-// posts leave `/` alone.
+// invalidates for targets that wrote, so post and project edits that don't
+// change what Home lists leave `/` alone.
 const INVALIDATION_PATHS = ['/', '/index.html'];
+
+const rendersHome = (scope: RebuildScope): boolean =>
+  scope.home ||
+  scope.feeds ||
+  scope.touchedEntityTypes.has(PROJECT_ENTITY_TYPE) ||
+  isFullRebuildScope(scope);
 
 const target: PublishTarget = {
   id: 'home',
   // Home is `/` (special-cased in viewer-request), not Option B.
-  adminMutationPrefixes: ['/api/admin/home', '/api/admin/posts'],
-  matches(scope) {
-    return scope.home || scope.feeds;
-  },
-  needsCatalog(scope) {
-    return scope.home || scope.feeds;
-  },
-  needsShell(scope) {
-    return scope.home || scope.feeds;
-  },
+  adminMutationPrefixes: [
+    '/api/admin/home',
+    '/api/admin/posts',
+    '/api/admin/projects',
+  ],
+  matches: rendersHome,
+  // Every render needs both lists, or one section drops off `/`.
+  needsCatalog: rendersHome,
+  needsShell: rendersHome,
+  needsProjects: rendersHome,
   async run(ctx) {
     const lookup = await ctx.sources.getPublishedHome();
     if (lookup.status === 'ok') {

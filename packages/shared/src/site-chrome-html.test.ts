@@ -28,7 +28,7 @@ describe('siteNavCurrent', () => {
 });
 
 describe('renderSiteHeaderHtml', () => {
-  it('links photo and name home, then Posts / Resume / Contact', () => {
+  it('links photo and name home, then Posts / Projects / Resume / Contact', () => {
     const html = renderSiteHeaderHtml(null);
     expect(html).toContain(
       '<a class="site-header__home" href="/"><img class="site-header__photo" alt="" width="40" height="40" src="/profile.jpg"><span class="site-header__name">Chris Gagne</span></a>',
@@ -37,7 +37,7 @@ describe('renderSiteHeaderHtml', () => {
       [...html.matchAll(/class="site-nav__link"[^>]*>([^<]+)</g)].map(
         (m) => m[1],
       ),
-    ).toEqual(['Posts', 'Resume', 'Contact']);
+    ).toEqual(['Posts', 'Projects', 'Resume', 'Contact']);
     expect(html).not.toContain('aria-current');
   });
 
@@ -60,7 +60,7 @@ describe('renderSiteHeaderHtml', () => {
 });
 
 describe('site sections', () => {
-  it('list Projects only once it is live', () => {
+  it('list Projects while it is live', () => {
     expect(labels(siteNavLinks(true))).toEqual([
       'Posts',
       'Projects',
@@ -68,7 +68,12 @@ describe('site sections', () => {
       'Contact',
     ]);
     expect(labels(siteNavLinks(false))).toEqual(['Posts', 'Resume', 'Contact']);
-    expect(labels(SITE_NAV_LINKS)).toEqual(['Posts', 'Resume', 'Contact']);
+    expect(labels(SITE_NAV_LINKS)).toEqual([
+      'Posts',
+      'Projects',
+      'Resume',
+      'Contact',
+    ]);
   });
 });
 
@@ -85,6 +90,7 @@ describe('renderSiteMenuHtml', () => {
       [...html.matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]),
     ).toEqual([
       'Posts',
+      'Projects',
       'Resume',
       'Contact',
       'LinkedIn',

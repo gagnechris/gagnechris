@@ -19,16 +19,16 @@ const pageUrl = (pathname: string): string => {
 };
 
 const parsePage = (root: ParentNode): ProjectsPage | null => {
-  const main = root.querySelector('main.projects-page, main.project-page');
+  const main = root.querySelector('main.project-page');
   if (!main) return null;
   const heading = main.querySelector('h1')?.textContent?.trim() || 'Projects';
   return { title: `${heading} - Chris Gagne`, html: main.outerHTML };
 };
 
 /**
- * Shows the publisher's `/projects` prerender (already sanitized at publish)
- * so the SPA mount does not replace it with the 404. A stand-in until the
- * projects index and page are React components.
+ * Shows the publisher's `/projects/<slug>` prerender (already sanitized at
+ * publish) so the SPA mount does not replace it with the 404. A stand-in until
+ * the project page is a React component.
  */
 function ProjectsPrerendered() {
   const { pathname } = useLocation();

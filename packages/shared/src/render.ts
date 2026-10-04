@@ -15,7 +15,10 @@ export {
 } from './html.js';
 export {
   HOME_ALL_POSTS_LABEL,
+  HOME_ALL_PROJECTS_LABEL,
   HOME_LINKS_SENTENCE,
+  HOME_PROJECTS_HEADING,
+  HOME_PROJECTS_HEADING_ID,
   HOME_RECENT_POSTS_HEADING,
   HOME_RECENT_POSTS_HEADING_ID,
   HOME_RECENT_POSTS_LIMIT,
@@ -25,6 +28,7 @@ export {
   renderHomeBodyHtml,
   renderHomeLinksSentenceHtml,
   renderHomePrerenderHtml,
+  renderHomeProjectsHtml,
   renderHomeRecentPostsHtml,
   selectHomeRecentPosts,
   type HomeLink,
@@ -76,6 +80,7 @@ export type {
 } from './schemas.js';
 export {
   PROJECTS_INDEX_TITLE,
+  renderProjectCardHtml,
   renderProjectPageBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexBodyHtml,
