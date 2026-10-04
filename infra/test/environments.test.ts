@@ -327,6 +327,8 @@ describe('CiDeployRoleStack', () => {
       ]) {
         expect(denied).toContain(action);
       }
+      // Plan and the deploy lag check read deployed-sha with the drift role.
+      expect(denied.some((a) => a?.startsWith('ssm:'))).toBe(false);
     }
     const lookupDeny = denyPolicies.find((p) =>
       JSON.stringify(p).includes(
