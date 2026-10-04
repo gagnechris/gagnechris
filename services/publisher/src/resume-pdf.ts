@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { Logger } from '@aws-lambda-powertools/logger';
-import { PUBLISHER_SERVICE_NAME, type Resume } from '@gagnechris/shared';
+import {
+  experienceCompanyLine,
+  PUBLISHER_SERVICE_NAME,
+  type Resume,
+} from '@gagnechris/shared';
 
 const PAGE_WIDTH = 612; // US Letter
 const PAGE_HEIGHT = 792;
@@ -260,7 +264,7 @@ export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
     for (const job of content.experience) {
       ctx.y -= 4;
       drawText(ctx, job.title, 11, fontBold);
-      drawText(ctx, job.company, 9.5, font, COLOR_MUTED);
+      drawText(ctx, experienceCompanyLine(job), 9.5, font, COLOR_MUTED);
       ctx.y -= 2;
       for (const bullet of job.bullets) {
         drawBullet(ctx, bullet);

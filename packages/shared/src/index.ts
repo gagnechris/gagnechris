@@ -17,6 +17,16 @@ export {
 export * from './schemas.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
+export {
+  experienceCompanyLine,
+  formatResumeDateRange,
+  formatResumeMonth,
+  parseLegacyCompanyLine,
+  planResumeDateMigration,
+  type LegacyCompanyLineParse,
+  type ResumeDateMigrationPlan,
+  type ResumeDateMigrationRow,
+} from './resume-dates.js';
 export { EMPTY_SLUG_FALLBACK, MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export {
   formatPostDate,

@@ -49,6 +49,8 @@ describe('contentEqual deep equality', () => {
       experience: content.experience,
       summary: content.summary,
       competencies: content.competencies,
+      earlierRolesBefore: content.earlierRolesBefore,
+      headline: content.headline,
     };
     expect(
       resumeContentEqual(

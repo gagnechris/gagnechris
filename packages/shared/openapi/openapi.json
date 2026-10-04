@@ -684,6 +684,16 @@
           "content": {
             "type": "object",
             "properties": {
+              "headline": {
+                "type": "string",
+                "description": "Current role"
+              },
+              "earlierRolesBefore": {
+                "type": "integer",
+                "minimum": 1900,
+                "maximum": 2100,
+                "description": "Roles that ended before this year are \"earlier roles\""
+              },
               "summary": {
                 "type": "string"
               },
@@ -709,6 +719,20 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "start": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                      "description": "YYYY-MM"
+                    },
+                    "end": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                      "description": "YYYY-MM; null means present"
+                    },
+                    "note": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -832,6 +856,16 @@
           "content": {
             "type": "object",
             "properties": {
+              "headline": {
+                "type": "string",
+                "description": "Current role"
+              },
+              "earlierRolesBefore": {
+                "type": "integer",
+                "minimum": 1900,
+                "maximum": 2100,
+                "description": "Roles that ended before this year are \"earlier roles\""
+              },
               "summary": {
                 "type": "string"
               },
@@ -857,6 +891,20 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "start": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                      "description": "YYYY-MM"
+                    },
+                    "end": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                      "description": "YYYY-MM; null means present"
+                    },
+                    "note": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -956,6 +1004,16 @@
       "ResumeContent": {
         "type": "object",
         "properties": {
+          "headline": {
+            "type": "string",
+            "description": "Current role"
+          },
+          "earlierRolesBefore": {
+            "type": "integer",
+            "minimum": 1900,
+            "maximum": 2100,
+            "description": "Roles that ended before this year are \"earlier roles\""
+          },
           "summary": {
             "type": "string"
           },
@@ -981,6 +1039,20 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "start": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                  "description": "YYYY-MM"
+                },
+                "end": {
+                  "type": "string",
+                  "nullable": true,
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                  "description": "YYYY-MM; null means present"
+                },
+                "note": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -1074,6 +1146,20 @@
             "items": {
               "type": "string"
             }
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "YYYY-MM"
+          },
+          "end": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "YYYY-MM; null means present"
+          },
+          "note": {
+            "type": "string"
           }
         },
         "required": [
@@ -8094,6 +8180,16 @@
                     "content": {
                       "type": "object",
                       "properties": {
+                        "headline": {
+                          "type": "string",
+                          "description": "Current role"
+                        },
+                        "earlierRolesBefore": {
+                          "type": "integer",
+                          "minimum": 1900,
+                          "maximum": 2100,
+                          "description": "Roles that ended before this year are \"earlier roles\""
+                        },
                         "summary": {
                           "type": "string"
                         },
@@ -8119,6 +8215,20 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "start": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM"
+                              },
+                              "end": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM; null means present"
+                              },
+                              "note": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -8381,6 +8491,16 @@
                   "content": {
                     "type": "object",
                     "properties": {
+                      "headline": {
+                        "type": "string",
+                        "description": "Current role"
+                      },
+                      "earlierRolesBefore": {
+                        "type": "integer",
+                        "minimum": 1900,
+                        "maximum": 2100,
+                        "description": "Roles that ended before this year are \"earlier roles\""
+                      },
                       "summary": {
                         "type": "string"
                       },
@@ -8406,6 +8526,20 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "start": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                              "description": "YYYY-MM"
+                            },
+                            "end": {
+                              "type": "string",
+                              "nullable": true,
+                              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                              "description": "YYYY-MM; null means present"
+                            },
+                            "note": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -8511,6 +8645,16 @@
                     "content": {
                       "type": "object",
                       "properties": {
+                        "headline": {
+                          "type": "string",
+                          "description": "Current role"
+                        },
+                        "earlierRolesBefore": {
+                          "type": "integer",
+                          "minimum": 1900,
+                          "maximum": 2100,
+                          "description": "Roles that ended before this year are \"earlier roles\""
+                        },
                         "summary": {
                           "type": "string"
                         },
@@ -8536,6 +8680,20 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "start": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM"
+                              },
+                              "end": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM; null means present"
+                              },
+                              "note": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -8930,6 +9088,16 @@
                     "content": {
                       "type": "object",
                       "properties": {
+                        "headline": {
+                          "type": "string",
+                          "description": "Current role"
+                        },
+                        "earlierRolesBefore": {
+                          "type": "integer",
+                          "minimum": 1900,
+                          "maximum": 2100,
+                          "description": "Roles that ended before this year are \"earlier roles\""
+                        },
                         "summary": {
                           "type": "string"
                         },
@@ -8955,6 +9123,20 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "start": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM"
+                              },
+                              "end": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM; null means present"
+                              },
+                              "note": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -9349,6 +9531,16 @@
                     "content": {
                       "type": "object",
                       "properties": {
+                        "headline": {
+                          "type": "string",
+                          "description": "Current role"
+                        },
+                        "earlierRolesBefore": {
+                          "type": "integer",
+                          "minimum": 1900,
+                          "maximum": 2100,
+                          "description": "Roles that ended before this year are \"earlier roles\""
+                        },
                         "summary": {
                           "type": "string"
                         },
@@ -9374,6 +9566,20 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "start": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM"
+                              },
+                              "end": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM; null means present"
+                              },
+                              "note": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -9768,6 +9974,16 @@
                     "content": {
                       "type": "object",
                       "properties": {
+                        "headline": {
+                          "type": "string",
+                          "description": "Current role"
+                        },
+                        "earlierRolesBefore": {
+                          "type": "integer",
+                          "minimum": 1900,
+                          "maximum": 2100,
+                          "description": "Roles that ended before this year are \"earlier roles\""
+                        },
                         "summary": {
                           "type": "string"
                         },
@@ -9793,6 +10009,20 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "start": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM"
+                              },
+                              "end": {
+                                "type": "string",
+                                "nullable": true,
+                                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                                "description": "YYYY-MM; null means present"
+                              },
+                              "note": {
+                                "type": "string"
                               }
                             },
                             "required": [

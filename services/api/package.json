@@ -42,6 +42,10 @@
     "./restore/copy-back": {
       "types": "./src/restore/copy-back.ts",
       "import": "./src/restore/copy-back.ts"
+    },
+    "./resume/date-migration": {
+      "types": "./src/resume/date-migration.ts",
+      "import": "./src/resume/date-migration.ts"
     }
   }
 }

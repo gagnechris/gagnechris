@@ -1,5 +1,6 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
+import { experienceCompanyLine } from './resume-dates.js';
 import type { Resume, ResumeContent } from './schemas.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
 
@@ -27,7 +28,7 @@ const experienceSection = (items: ResumeContent['experience']): string => {
   const entries = items
     .map(
       (item) =>
-        `<div class="experience-item"><h3>${escapeHtml(item.title)}</h3><p class="company">${escapeHtml(item.company)}</p><ul class="experience-list">${listItems(item.bullets)}</ul></div>`,
+        `<div class="experience-item"><h3>${escapeHtml(item.title)}</h3><p class="company">${escapeHtml(experienceCompanyLine(item))}</p><ul class="experience-list">${listItems(item.bullets)}</ul></div>`,
     )
     .join('');
   return `<section class="resume-section"><h2>Professional Experience</h2>${entries}</section>`;

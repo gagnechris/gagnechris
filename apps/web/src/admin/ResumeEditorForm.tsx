@@ -33,6 +33,26 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
           onChange={(e) => setField('name', e.target.value)}
         />
       </Field>
+      <Field label="Headline (current role)">
+        <TextInput
+          value={draft.headline}
+          onChange={(e) => setField('headline', e.target.value)}
+        />
+      </Field>
+      <Field
+        label="Earlier roles before (year)"
+        hint="Roles that ended before this year are grouped as earlier roles"
+      >
+        <TextInput
+          type="number"
+          inputMode="numeric"
+          min={1900}
+          max={2100}
+          step={1}
+          value={draft.earlierRolesBeforeText}
+          onChange={(e) => setField('earlierRolesBeforeText', e.target.value)}
+        />
+      </Field>
       <Field
         label="PDF download"
         hint="Regenerated from this content on every Publish"
@@ -70,10 +90,64 @@ export function ResumeEditorForm({ draft, setField, onSave }: Props) {
                 onChange={(e) => update({ title: e.target.value })}
               />
             </Field>
-            <Field label="Company / dates">
+            <Field
+              label="Company"
+              hint={
+                !item.start && item.company.includes('|')
+                  ? 'Dates are still inside the company name; move them to Start and End'
+                  : undefined
+              }
+            >
               <TextInput
                 value={item.company}
                 onChange={(e) => update({ company: e.target.value })}
+              />
+            </Field>
+            <Field label="Start month">
+              <TextInput
+                type="month"
+                placeholder="YYYY-MM"
+                value={item.start}
+                onChange={(e) => update({ start: e.target.value })}
+              />
+            </Field>
+            <Field
+              label="End month"
+              hint={
+                item.start && !item.present && item.end && item.end < item.start
+                  ? 'End is before start; saved as present'
+                  : undefined
+              }
+            >
+              <TextInput
+                type="month"
+                placeholder="YYYY-MM"
+                value={item.present ? '' : item.end}
+                disabled={!item.start || item.present}
+                onChange={(e) => update({ end: e.target.value })}
+              />
+            </Field>
+            <label className="admin-check">
+              <input
+                type="checkbox"
+                checked={item.present}
+                disabled={!item.start}
+                onChange={(e) =>
+                  update({
+                    present: e.target.checked,
+                    ...(e.target.checked ? { end: '' } : {}),
+                  })
+                }
+              />
+              Present (current role)
+            </label>
+            <Field
+              label="Note (optional)"
+              hint="For example: contract, concurrent"
+            >
+              <TextInput
+                value={item.note}
+                onChange={(e) => update({ note: e.target.value })}
               />
             </Field>
             <Field label="Bullets (one per line)">

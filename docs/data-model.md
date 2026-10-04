@@ -128,6 +128,19 @@ Editable draft plus an optional live snapshot.
 | `resumeId`   | `current`                                                                                  |
 | `name`       | Display name in the page header                                                            |
 | `pdfPath`    | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
+| `content`    | `ResumeContentSchema` (below)                                                              |
+
+`content` holds `summary`, `competencies`, `experience`, `skills`,
+`education`, plus optional `headline` (current role) and
+`earlierRolesBefore` (cut-off year: roles that ended before it are "earlier
+roles"). Each `experience` entry is `title`, `company` (bare name), `start`
+and `end` (`YYYY-MM`; `end: null` is present), optional `note` (for example
+"contract, concurrent") and `bullets`. An entry without `start` is the old
+shape, with its dates inside `company` (`Ro | July 2019 - Present`); it still
+parses and renders as stored, and `scripts/migrate-resume-dates.ts` moves the
+dates into `start`/`end`. The page and PDF render structured entries as the
+same `Company | Month YYYY - Month YYYY` line. Education keeps a free-text
+`year` (a single completion date, no range).
 
 No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
 `DEFAULT_RESUME` on first read. Publish copies META → `PUBLISHED` (and

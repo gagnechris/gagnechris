@@ -239,11 +239,42 @@ export const UpdateHomeRequestSchema = z.object({
 
 export type UpdateHomeRequest = z.infer<typeof UpdateHomeRequestSchema>;
 
-export const ResumeExperienceSchema = z.object({
-  title: z.string(),
-  company: z.string(),
-  bullets: z.array(z.string()),
-});
+export const RESUME_MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export const ResumeMonthSchema = z
+  .string()
+  .regex(RESUME_MONTH_PATTERN, 'Expected YYYY-MM')
+  .describe('YYYY-MM');
+
+// Rows without `start` still carry their dates inside `company`; they render
+// unchanged until migrated (scripts/migrate-resume-dates.ts).
+export const ResumeExperienceSchema = z
+  .object({
+    title: z.string(),
+    company: z.string(),
+    bullets: z.array(z.string()),
+    start: ResumeMonthSchema.optional(),
+    end: ResumeMonthSchema.nullable()
+      .optional()
+      .describe('YYYY-MM; null means present'),
+    note: z.string().optional(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.end != null && item.start === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['end'],
+        message: 'end needs a start',
+      });
+    }
+    if (item.end != null && item.start !== undefined && item.end < item.start) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['end'],
+        message: 'end is before start',
+      });
+    }
+  });
 
 export type ResumeExperience = z.infer<typeof ResumeExperienceSchema>;
 
@@ -258,6 +289,14 @@ export const ResumeEducationSchema = z.object({
 export type ResumeEducation = z.infer<typeof ResumeEducationSchema>;
 
 export const ResumeContentSchema = z.object({
+  headline: z.string().optional().describe('Current role'),
+  earlierRolesBefore: z
+    .number()
+    .int()
+    .min(1900)
+    .max(2100)
+    .optional()
+    .describe('Roles that ended before this year are "earlier roles"'),
   summary: z.string(),
   competencies: z.array(z.string()),
   experience: z.array(ResumeExperienceSchema),

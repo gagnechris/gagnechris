@@ -31,6 +31,11 @@
       "import": "./src/fixtures/every-markdown-element.ts",
       "default": "./src/fixtures/every-markdown-element.ts"
     },
+    "./fixtures/legacy-resume": {
+      "types": "./src/fixtures/legacy-resume.ts",
+      "import": "./src/fixtures/legacy-resume.ts",
+      "default": "./src/fixtures/legacy-resume.ts"
+    },
     "./site-config": {
       "types": "./src/site-config.ts",
       "import": "./src/site-config.ts",

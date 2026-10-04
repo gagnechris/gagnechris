@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RESUME } from '@gagnechris/shared';
+import { DEFAULT_RESUME, planResumeDateMigration } from '@gagnechris/shared';
+import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
+import { renderResumePage } from '../src/render.js';
 import {
   buildResumePdfArtifact,
   renderResumePdf,
@@ -91,5 +93,37 @@ describe('buildResumePdfArtifact', () => {
       throw new Error('forced PDF failure');
     });
     expect(result).toEqual({ ok: false });
+  });
+});
+
+describe('resume migration keeps the published artifacts', () => {
+  const legacy = { ...publishedResume, content: legacyResumeContent() };
+  const migrated = {
+    ...legacy,
+    content: planResumeDateMigration(legacy.content).content,
+  };
+
+  it('migrated content changes the stored shape', () => {
+    expect(migrated.content.experience[0]).toMatchObject({
+      company: 'Ro',
+      start: '2019-07',
+      end: null,
+    });
+  });
+
+  it('the PDF is byte-identical for the old and migrated shapes', async () => {
+    const [before, after] = await Promise.all([
+      renderResumePdf(legacy),
+      renderResumePdf(migrated),
+    ]);
+    expect(Buffer.from(after).equals(Buffer.from(before))).toBe(true);
+  });
+
+  it('the resume page HTML is identical for the old and migrated shapes', () => {
+    const shell =
+      '<!doctype html><html><head></head><body><div id="root"></div></body></html>';
+    expect(renderResumePage(shell, migrated)).toBe(
+      renderResumePage(shell, legacy),
+    );
   });
 });
