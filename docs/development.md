@@ -16,6 +16,22 @@ npm ci
 npm ci --prefix apps/mobile
 ```
 
+## Claude Code cloud sessions
+
+`.claude/hooks/session-start.sh` runs at the start of each cloud session (it
+exits immediately on a local machine). It installs the Node version from
+`.nvmrc` with nvm, puts it first on `PATH` for the session, then installs root
+dependencies and `apps/mobile` dependencies. Lint, typecheck, `npm test` and
+the mobile tests work without further setup.
+
+Docker has no running daemon in cloud sessions, so `npm run local:dev`,
+`e2e:local`, `e2e:browser` and `test:integration` run in CI or on a local
+machine.
+
+Linear is reached through the claude.ai Linear connector, which must be
+enabled for the project or session; the repository holds no Linear
+credentials.
+
 ## Day-to-day: full local CMS
 
 ```bash
