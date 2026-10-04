@@ -6,16 +6,25 @@ export const publicSiteOrigin = (): string =>
 export const publicUrl = (path: string): string =>
   new URL(path, publicSiteOrigin()).href;
 
-/** Points root-relative links in rendered public HTML at the public site, in a new tab. */
-export const withPublicLinks = (html: string): string => {
+const ROOT_RELATIVE = (attribute: string) =>
+  `[${attribute}^="/"]:not([${attribute}^="//"])`;
+
+/** Points root-relative links and images in rendered public HTML at the public site; links open in a new tab. */
+export const withPublicUrls = (html: string): string => {
   const template = document.createElement('template');
   template.innerHTML = html;
   for (const link of template.content.querySelectorAll<HTMLAnchorElement>(
-    'a[href^="/"]:not([href^="//"])',
+    `a${ROOT_RELATIVE('href')}`,
   )) {
     link.setAttribute('href', publicUrl(link.getAttribute('href')!));
     link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noopener');
+    // noreferrer keeps the admin host out of the public site's analytics referrals.
+    link.setAttribute('rel', 'noopener noreferrer');
+  }
+  for (const image of template.content.querySelectorAll<HTMLImageElement>(
+    `img${ROOT_RELATIVE('src')}`,
+  )) {
+    image.setAttribute('src', publicUrl(image.getAttribute('src')!));
   }
   return template.innerHTML;
 };

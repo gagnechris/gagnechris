@@ -4,7 +4,7 @@ import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { ResumeEditorForm } from './ResumeEditorForm';
-import { publicUrl, withPublicLinks } from './publicUrl';
+import { publicUrl, withPublicUrls } from './publicUrl';
 import {
   createResumeContentBuilder,
   hasExperienceRangeError,
@@ -173,7 +173,7 @@ const AdminResumePage = () => {
           <h2 className="admin-preview-title">Preview</h2>
           <div
             className="resume-page admin-resume-preview"
-            dangerouslySetInnerHTML={{ __html: withPublicLinks(previewHtml) }}
+            dangerouslySetInnerHTML={{ __html: withPublicUrls(previewHtml) }}
           />
         </div>
       </div>

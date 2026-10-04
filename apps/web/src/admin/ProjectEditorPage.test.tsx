@@ -593,6 +593,6 @@ describe('ProjectEditorPage lifecycle', () => {
       'https://gagnechris.com/projects/notebook',
     );
     expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

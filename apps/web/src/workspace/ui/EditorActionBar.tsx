@@ -47,7 +47,7 @@ export function EditorActionBar({
       </div>
       <div className="admin-actions">
         {viewLiveHref ? (
-          <Button href={viewLiveHref} target="_blank" rel="noopener">
+          <Button href={viewLiveHref} target="_blank" rel="noopener noreferrer">
             View live
           </Button>
         ) : null}

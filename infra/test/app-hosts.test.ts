@@ -237,7 +237,6 @@ describe('app hosts: CloudFront', () => {
       expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
       expect(csp).not.toMatch(/google/);
       expect(csp).toContain("frame-ancestors 'none'");
-      expect(csp).toContain("img-src 'self' data:;");
       expect(csp).toContain(
         "connect-src 'self' https://auth.gagnechris.com https://cognito-idp.us-east-1.amazonaws.com",
       );
@@ -263,6 +262,12 @@ describe('app hosts: CloudFront', () => {
         policyRef,
       );
     }
+    expect(cspOf('gagnechris-prod-admin-app-security-headers')).toContain(
+      "img-src 'self' data: https://gagnechris.com;",
+    );
+    expect(cspOf('gagnechris-prod-notebook-app-security-headers')).toContain(
+      "img-src 'self' data:;",
+    );
     // Presigned media PUTs go to the site bucket from admin only.
     expect(cspOf('gagnechris-prod-admin-app-security-headers')).toContain(
       'SiteBucket',
