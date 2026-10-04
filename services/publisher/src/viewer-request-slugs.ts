@@ -1,5 +1,7 @@
-// A KeyValueStore lets the viewer-request function allowlist /blog/<slug>
-// without rewriting function code.
+// A KeyValueStore lets the viewer-request function allowlist /blog/<slug> and
+// /projects/<slug> without rewriting function code. A CloudFront Function can
+// read one KVS, so each allowlist owns a namespace of its keys.
+import { readFile, writeFile } from 'node:fs/promises';
 import '@aws-sdk/signature-v4a';
 import {
   CloudFrontKeyValueStoreClient,
@@ -17,6 +19,31 @@ const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 
 /** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
 export const BLOG_SLUG_SYNCED_KEY = '__synced__';
+
+/** Keys must match infra/lib/cloudfront/viewer-request-function.js. */
+export type KvsNamespace = {
+  label: string;
+  syncedKey: string;
+  owns: (key: string) => boolean;
+};
+
+export const BLOG_SLUG_NAMESPACE: KvsNamespace = {
+  label: 'blog',
+  syncedKey: BLOG_SLUG_SYNCED_KEY,
+  // Post slugs never contain `/`, so other namespaces use a path prefix.
+  owns: (key) => !key.includes('/'),
+};
+
+const PROJECT_KEY_PREFIX = 'projects/';
+
+export const PROJECT_SLUG_NAMESPACE: KvsNamespace = {
+  label: 'project',
+  syncedKey: `${PROJECT_KEY_PREFIX}__synced__`,
+  owns: (key) => key.startsWith(PROJECT_KEY_PREFIX),
+};
+
+export const projectSlugKvsKey = (slug: string): string =>
+  `${PROJECT_KEY_PREFIX}${slug}`;
 
 export const KVS_UPDATE_BATCH_SIZE = 50;
 
@@ -49,18 +76,22 @@ export class KvsSyncError extends Error {
   }
 }
 
+/** Only keys `namespace` owns are put or deleted. */
 export function diffBlogSlugKeys(
   existingKeys: Iterable<string>,
   slugs: string[],
+  namespace: KvsNamespace = BLOG_SLUG_NAMESPACE,
 ): SlugKeyDiff {
-  const existing = new Set(existingKeys);
+  const existing = new Set(
+    [...existingKeys].filter((key) => namespace.owns(key)),
+  );
   const desired = new Set<string>();
   for (const slug of slugs) {
-    if (slug && slug !== BLOG_SLUG_SYNCED_KEY) {
+    if (slug && slug !== namespace.syncedKey && namespace.owns(slug)) {
       desired.add(slug);
     }
   }
-  desired.add(BLOG_SLUG_SYNCED_KEY);
+  desired.add(namespace.syncedKey);
 
   const puts: PutKeyRequestListItem[] = [];
   const deletes: DeleteKeyRequestListItem[] = [];
@@ -175,12 +206,13 @@ export async function syncBlogSlugsOnce(
   kvsArn: string,
   slugs: DesiredSlugs,
   client: BlogSlugKvsClient,
+  namespace: KvsNamespace = BLOG_SLUG_NAMESPACE,
 ): Promise<'synced' | 'noop'> {
   // Describe first so the ETag covers list → update (avoids concurrent races).
   let etag = await client.describeETag(kvsArn);
   const existing = await client.listKeys(kvsArn);
   const desired = await resolveDesiredSlugs(slugs);
-  const diff = diffBlogSlugKeys(existing, desired);
+  const diff = diffBlogSlugKeys(existing, desired, namespace);
   if (diff.puts.length === 0 && diff.deletes.length === 0) {
     return 'noop';
   }
@@ -199,6 +231,7 @@ export async function syncBlogSlugsOnce(
 
 export type SyncBlogSlugsOptions = {
   client?: BlogSlugKvsClient;
+  namespace?: KvsNamespace;
   maxAttempts?: number;
   sleep?: (ms: number) => Promise<void>;
 };
@@ -209,29 +242,33 @@ export async function syncBlogSlugsWithClient(
   options: SyncBlogSlugsOptions = {},
 ): Promise<'synced' | 'noop'> {
   const client = options.client ?? defaultSdkClient();
+  const namespace = options.namespace ?? BLOG_SLUG_NAMESPACE;
   const maxAttempts = options.maxAttempts ?? KVS_SYNC_MAX_ATTEMPTS;
   const sleep = options.sleep ?? defaultSleep;
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const result = await syncBlogSlugsOnce(kvsArn, slugs, client);
+      const result = await syncBlogSlugsOnce(kvsArn, slugs, client, namespace);
       if (result === 'noop') {
-        logger.info('Blog slug KVS already in sync', {
+        logger.info('Slug KVS already in sync', {
           kvsArn,
+          namespace: namespace.label,
           attempt,
         });
       } else {
-        logger.info('Synced blog slug KeyValueStore', {
+        logger.info('Synced slug KeyValueStore', {
           kvsArn,
+          namespace: namespace.label,
           attempt,
         });
       }
       return result;
     } catch (err) {
       lastError = err;
-      logger.warn('Blog slug KVS sync attempt failed', {
+      logger.warn('Slug KVS sync attempt failed', {
         kvsArn,
+        namespace: namespace.label,
         attempt,
         maxAttempts,
         err,
@@ -243,9 +280,63 @@ export async function syncBlogSlugsWithClient(
   }
 
   throw new KvsSyncError(
-    `CloudFront KVS blog slug sync failed after ${maxAttempts} attempts`,
+    `CloudFront KVS ${namespace.label} slug sync failed after ${maxAttempts} attempts`,
     { cause: lastError },
   );
+}
+
+/**
+ * Local stacks have no KVS: with `LOCAL_KVS_FILE` set, the keys go to that
+ * JSON file (`{ "keys": [...] }`), which the local static server reads.
+ */
+function localFileClient(path: string): BlogSlugKvsClient {
+  const read = async (): Promise<string[]> => {
+    try {
+      const parsed = JSON.parse(await readFile(path, 'utf8')) as {
+        keys?: string[];
+      };
+      return parsed.keys ?? [];
+    } catch {
+      return [];
+    }
+  };
+  return {
+    describeETag: async () => 'local',
+    listKeys: read,
+    async updateKeys({ puts, deletes }) {
+      const keys = new Set(await read());
+      for (const { Key } of deletes) if (Key) keys.delete(Key);
+      for (const { Key } of puts) if (Key) keys.add(Key);
+      await writeFile(path, JSON.stringify({ keys: [...keys].sort() }));
+      return 'local';
+    },
+  };
+}
+
+async function syncViewerRequestKeys(
+  keys: DesiredSlugs,
+  namespace: KvsNamespace,
+  options?: SyncBlogSlugsOptions,
+): Promise<void> {
+  if (isLocalCloudFront()) {
+    const localFile = process.env.LOCAL_KVS_FILE?.trim();
+    if (!localFile) return;
+    await syncBlogSlugsWithClient('local', keys, {
+      ...options,
+      namespace,
+      client: options?.client ?? localFileClient(localFile),
+    });
+    return;
+  }
+  const kvsArn = process.env.BLOG_SLUGS_KVS_ARN?.trim();
+  if (!kvsArn) {
+    logger.warn('BLOG_SLUGS_KVS_ARN unset; skipped slug KVS sync', {
+      namespace: namespace.label,
+    });
+    return;
+  }
+
+  await syncBlogSlugsWithClient(kvsArn, keys, { ...options, namespace });
 }
 
 /** Throws {@link KvsSyncError} after retries so the stream can retry. */
@@ -253,12 +344,17 @@ export async function syncViewerRequestBlogSlugs(
   slugs: DesiredSlugs,
   options?: SyncBlogSlugsOptions,
 ): Promise<void> {
-  if (isLocalCloudFront()) return;
-  const kvsArn = process.env.BLOG_SLUGS_KVS_ARN?.trim();
-  if (!kvsArn) {
-    logger.warn('BLOG_SLUGS_KVS_ARN unset; skipped blog slug KVS sync');
-    return;
-  }
+  await syncViewerRequestKeys(slugs, BLOG_SLUG_NAMESPACE, options);
+}
 
-  await syncBlogSlugsWithClient(kvsArn, slugs, options);
+/** `slugs` resolves to the projects that have a page after this rebuild's writes. */
+export async function syncViewerRequestProjectSlugs(
+  slugs: () => Promise<string[]>,
+  options?: SyncBlogSlugsOptions,
+): Promise<void> {
+  await syncViewerRequestKeys(
+    async () => (await slugs()).map(projectSlugKvsKey),
+    PROJECT_SLUG_NAMESPACE,
+    options,
+  );
 }

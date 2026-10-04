@@ -244,7 +244,7 @@ export class SiteStack extends Stack {
     const viewerRequestFn = new CloudFrontFunction(this, 'ViewerRequestFn', {
       functionName: viewerRequestFunctionName,
       comment:
-        'www→apex, old /admin and /auth → app hosts, Option B, KVS blog slugs, 404 shell',
+        'www→apex, old /admin and /auth → app hosts, Option B, KVS post and project slugs, 404 shell',
       runtime: FunctionRuntime.JS_2_0,
       keyValueStore: blogSlugsKvs,
       code: FunctionCode.fromFile({
@@ -257,8 +257,7 @@ export class SiteStack extends Stack {
 
     const viewerResponseFn = new CloudFrontFunction(this, 'ViewerResponseFn', {
       functionName: `gagnechris-${config.name}-viewer-response`,
-      comment:
-        'Force 404 status for /404.html; replace S3 XML errors with HTML 404 (CHR-102)',
+      comment: 'Force 404 status for /404.html',
       runtime: FunctionRuntime.JS_2_0,
       code: FunctionCode.fromFile({
         filePath: path.join(

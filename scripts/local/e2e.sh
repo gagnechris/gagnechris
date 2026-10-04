@@ -18,7 +18,11 @@ fi
 
 API_PID=""
 SITE_PID=""
+PROBE_PID=""
 cleanup() {
+  if [[ -n "${PROBE_PID}" ]] && kill -0 "${PROBE_PID}" 2>/dev/null; then
+    kill "${PROBE_PID}" 2>/dev/null || true
+  fi
   if [[ -n "${API_PID}" ]] && kill -0 "${API_PID}" 2>/dev/null; then
     kill "${API_PID}" 2>/dev/null || true
   fi
@@ -110,6 +114,34 @@ done
 API="http://127.0.0.1:${LOCAL_API_PORT}"
 SITE="http://127.0.0.1:${LOCAL_SITE_PORT}"
 SLUG="local-e2e-$(date +%s)"
+
+# The styled 404 the way CloudFront serves it: status 404, HTML, the page.
+expect_html_404() {
+  local path="$1"
+  local body headers
+  body="$(mktemp)"
+  headers="$(curl -sS -D - -o "${body}" "${SITE}${path}")"
+  if ! echo "${headers}" | head -1 | grep -q ' 404' ||
+    ! echo "${headers}" | grep -qi '^content-type: text/html' ||
+    ! grep -q 'Page not found' "${body}"; then
+    echo "Expected ${path} to be the HTML 404, got:" >&2
+    echo "${headers}" >&2
+    head -c 300 "${body}" >&2
+    rm -f "${body}"
+    exit 1
+  fi
+  rm -f "${body}"
+}
+
+expect_200() {
+  local path="$1"
+  local code
+  code="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}${path}")"
+  if [[ "${code}" != "200" ]]; then
+    echo "Expected ${path} 200, got ${code}" >&2
+    exit 1
+  fi
+}
 
 echo "==> Create + publish post ${SLUG}"
 CREATE="$(curl -sS -X POST "${API}/api/admin/posts" \
@@ -247,11 +279,7 @@ if echo "${HOME_HTML}" | grep -q "Local E2E Idea ${SLUG}"; then
   echo "An idea is listed on Home" >&2
   exit 1
 fi
-IDEA_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}-idea")"
-if [[ "${IDEA_CODE}" != "404" ]]; then
-  echo "Expected the idea to have no page (404), got ${IDEA_CODE}" >&2
-  exit 1
-fi
+expect_html_404 "/projects/${SLUG}-idea"
 SITEMAP="$(curl -sS "${SITE}/sitemap.xml")"
 echo "${SITEMAP}" | grep -q "/projects/${SLUG}</loc>"
 if echo "${SITEMAP}" | grep -q "/projects/${SLUG}-idea<"; then
@@ -264,11 +292,7 @@ PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "$
 curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/unpublish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${PROJECT_VERSION}}" >/dev/null
-GONE_PROJECT="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}")"
-if [[ "${GONE_PROJECT}" != "404" ]]; then
-  echo "Expected /projects/${SLUG} 404 after unpublish, got ${GONE_PROJECT}" >&2
-  exit 1
-fi
+expect_html_404 "/projects/${SLUG}"
 if curl -sS "${SITE}/projects" | grep -q "Local E2E Project ${SLUG}"; then
   echo "Unpublished project still listed on /projects" >&2
   exit 1
@@ -282,12 +306,48 @@ if curl -sS "${SITE}/sitemap.xml" | grep -q "/projects/${SLUG}<"; then
   exit 1
 fi
 
-echo "==> /projects/does-not-exist is the HTML 404"
-MISSING_BODY="$(mktemp)"
-MISSING_HEADERS="$(curl -sS -D - -o "${MISSING_BODY}" "${SITE}/projects/does-not-exist")"
-echo "${MISSING_HEADERS}" | head -1 | grep -q ' 404'
-echo "${MISSING_HEADERS}" | grep -qi '^content-type: text/html'
-grep -q 'Page not found' "${MISSING_BODY}"
-rm -f "${MISSING_BODY}"
+echo "==> Unknown page URLs are the HTML 404; real pages are 200"
+for path in \
+  /projects/does-not-exist /projects/x /resume/x /contact/x \
+  /dont-feed-the-bears/x /dont-feed-the-bears/camp/x /x.html /resume/x.html \
+  /posts/x "/posts/${SLUG}" /nope; do
+  expect_html_404 "${path}"
+done
+for path in \
+  / /posts /posts/ /resume /resume/ /contact /contact/ \
+  /dont-feed-the-bears /dont-feed-the-bears/ /dont-feed-the-bears/camp/ \
+  /dont-feed-the-bears/wild/ /projects /projects/ /sitemap.xml /rss.xml \
+  /posts/posts.json; do
+  expect_200 "${path}"
+done
+
+echo "==> The local site, like CloudFront, skips viewer-response on an origin 4xx"
+PROBE_ROOT="$(mktemp -d)"
+mkdir -p "${PROBE_ROOT}/infra/lib/cloudfront"
+cp infra/lib/cloudfront/viewer-request-function.js "${PROBE_ROOT}/infra/lib/cloudfront/"
+cat >"${PROBE_ROOT}/infra/lib/cloudfront/viewer-response-function.js" <<'JS'
+function handler(event) {
+  event.response.headers['x-viewer-response'] = { value: 'ran' };
+  return event.response;
+}
+JS
+PROBE_PORT="$(node -e "const s=require('net').createServer().listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})")"
+REPO_ROOT="${PROBE_ROOT}" LOCAL_SITE_PORT="${PROBE_PORT}" \
+  npx --yes tsx services/api/local/static-server.ts &
+PROBE_PID=$!
+PROBE="http://127.0.0.1:${PROBE_PORT}"
+wait_http "${PROBE}/" "probe site"
+if ! curl -sS -D - -o /dev/null "${PROBE}/" | grep -qi '^x-viewer-response: ran'; then
+  echo "viewer-response did not run on a 200" >&2
+  exit 1
+fi
+MISSING="$(curl -sS -D - -o /dev/null "${PROBE}/assets/no-such-file-e2e.js")"
+echo "${MISSING}" | head -1 | grep -q ' 404'
+if echo "${MISSING}" | grep -qi '^x-viewer-response'; then
+  echo "The local site ran viewer-response on an origin 404; CloudFront never does" >&2
+  exit 1
+fi
+kill "${PROBE_PID}" 2>/dev/null || true
+rm -rf "${PROBE_ROOT}"
 
 echo "OK: e2e:local passed"
