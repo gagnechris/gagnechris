@@ -5,7 +5,11 @@
 export const PUBLISH_ADMIN_MUTATION_PREFIXES = [
   '/api/admin/home',
   '/api/admin/posts',
+  '/api/admin/projects',
   '/api/admin/resume',
 ] as const;
 
-export const PUBLISH_ADMIN_SOFT_DELETE_PREFIXES = ['/api/admin/posts'] as const;
+export const PUBLISH_ADMIN_SOFT_DELETE_PREFIXES = [
+  '/api/admin/posts',
+  '/api/admin/projects',
+] as const;

@@ -27,3 +27,11 @@ describe('every synced Notebook type is covered', () => {
     });
   }
 });
+
+// Publishable site types are not synced, so the list above misses them.
+describe('every publishable site type is restore-tested', () => {
+  it.each(['post', 'project', 'home', 'resume'])('%s', (type) => {
+    expect(SCHEMA_CHECKED_ENTITY_TYPES).toContain(type);
+    expect(COUNT_FLOOR_ENTITY_TYPES).toContain(type);
+  });
+});

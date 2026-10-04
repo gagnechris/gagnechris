@@ -13,7 +13,12 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
-import { GSI1_NAME, PUBLISH_STREAM_SK, statusGsi1Pk } from '@gagnechris/data';
+import {
+  GSI1_NAME,
+  PUBLISH_STREAM_SK,
+  projectStatusGsi1Pk,
+  statusGsi1Pk,
+} from '@gagnechris/data';
 import {
   PUBLISHER_SERVICE_NAME,
   ssmParameterName,
@@ -26,9 +31,17 @@ import {
   REPO_ROOT,
 } from '../constructs/node-lambda.js';
 
-export const PUBLISHER_TABLE_LEADING_KEYS = ['POST#*', 'HOME#*', 'RESUME#*'];
+export const PUBLISHER_TABLE_LEADING_KEYS = [
+  'POST#*',
+  'HOME#*',
+  'RESUME#*',
+  'PROJECT#*',
+];
 
-export const PUBLISHER_GSI1_LEADING_KEYS = [statusGsi1Pk('published')];
+export const PUBLISHER_GSI1_LEADING_KEYS = [
+  statusGsi1Pk('published'),
+  projectStatusGsi1Pk('published'),
+];
 
 /** For an index, `dynamodb:LeadingKeys` is the index partition key. */
 export function publisherTableReadStatements(

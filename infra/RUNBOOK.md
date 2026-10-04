@@ -198,7 +198,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 only), viewer-request function (www→apex with query string; old app URLs → 301 with `Cache-Control: max-age=86400`, matched case-insensitively and percent-decoded: `/admin/notebook*` → `https://notebook.gagnechris.com/*` and other `/admin*` → `https://admin.gagnechris.com/*`, both keeping the query, `/auth*` → `https://notebook.gagnechris.com/` with the query dropped; `/.well-known/*` is never redirected; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html`; published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
+- Security headers (HSTS, CSP for GA4 only), viewer-request function (www→apex with query string; old app URLs → 301 with `Cache-Control: max-age=86400`, matched case-insensitively and percent-decoded: `/admin/notebook*` → `https://notebook.gagnechris.com/*` and other `/admin*` → `https://admin.gagnechris.com/*`, both keeping the query, `/auth*` → `https://notebook.gagnechris.com/` with the query dropped; `/.well-known/*` is never redirected; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; `/blog`, `/projects`, `/resume`, `/contact`, `/dont-feed-the-bears` → Option B `{path}/index.html` (nested paths too, so `/projects/<slug>` → `projects/<slug>/index.html` and a missing project page is an S3 404 that viewer-response turns into the HTML 404); published `/blog/<slug>` → Option B; unknown blog slugs and other extensionless paths → `/404.html`), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`; replace S3 XML 403/404 with HTML NotFound), `/assets/*` long cache, `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published slugs into a CloudFront KeyValueStore after each rebuild (function code stays CDK-managed).
 - 5xx alarm publishes to the Guardrails alerts topic.
@@ -249,7 +249,7 @@ On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk dep
 3. Public: `assets/`, then `fonts/*.woff2` (both immutable cache), then the apex `sync --delete`, `.well-known/*`, and a `/*` invalidation.
 4. Publisher `{"action":"republishAll"}` (SSM `publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
 
-The apex sync never deletes publisher-owned paths (`blog/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `sitemap.xml`, `rss.xml`), the reserved `notebook/*`, hashed `assets/*` or hashed `fonts/*.woff2`. It deletes every other key the public build doesn't produce. The bucket is versioned, so a deleted key's previous version stays restorable for 90 days.
+The apex sync never deletes publisher-owned paths (`blog/*`, `projects/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `sitemap.xml`, `rss.xml`), the reserved `notebook/*`, hashed `assets/*` or hashed `fonts/*.woff2`. It deletes every other key the public build doesn't produce. The bucket is versioned, so a deleted key's previous version stays restorable for 90 days.
 
 Manual / local:
 
@@ -267,7 +267,7 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 Privacy (details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply).
 
-Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`; `Query` on `gsi1` for `STATUS#published`). A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
+Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`, `PROJECT#*`; `Query` on `gsi1` for `STATUS#published` and `PROJECT_STATUS#published`). `infra/test/publisher-iam.test.ts` evaluates the synthesized policy: project rows and the two published partitions are readable, `USER#…`, `CONTACT#…`, slug claims and draft partitions are not. A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
 
 ## DynamoDB data plane
 
@@ -468,11 +468,11 @@ Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integ
 1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it in the Linear ticket.
 2. Restore a scratch copy from before the damage (step 2 above).
 3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
-4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `HOME#`, `RESUME#`, `CONTACT#`) have no versioned clients, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
+4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`) have no versioned clients, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
 
    ```bash
    aws dynamodb scan --table-name "$SCRATCH" --output json \
-     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|HOME|RESUME|CONTACT)#"))]
+     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT)#"))]
               | . as $all | range(0; length; 25) | $all[.:(. + 25)]
               | {"gagnechris-prod": [ .[] | {PutRequest: {Item: .}} ]}' > /tmp/cms-batches.jsonl
    wc -l /tmp/cms-batches.jsonl     # batches of 25
@@ -596,7 +596,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 ## Publisher
 
-`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
+`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
 
 **Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `services/api/src/sync/adapters.ts` lists it), publisher `DataIntegrityError`, resume-pdf and kvs-sync, API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 

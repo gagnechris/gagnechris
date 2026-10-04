@@ -10,17 +10,22 @@ import {
   ContactRequestSchema,
   ContactResponseSchema,
   CreatePostRequestSchema,
+  CreateProjectRequestSchema,
   ErrorResponseSchema,
   ExpectedVersionRequestSchema,
   HealthResponseSchema,
   HomeSchema,
   ListPostsQuerySchema,
+  ListProjectsQuerySchema,
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
   PostListResponseSchema,
   PostSchema,
   PostSeoSchema,
   PreconditionFailedErrorResponseSchema,
+  ProjectLinkSchema,
+  ProjectListResponseSchema,
+  ProjectSchema,
   ResumeContentSchema,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
@@ -31,6 +36,7 @@ import {
   UlidSchema,
   UpdateHomeRequestSchema,
   UpdatePostRequestSchema,
+  UpdateProjectRequestSchema,
   UpdateResumeRequestSchema,
   CalendarDateSchema,
   CreateNoteRequestSchema,
@@ -67,6 +73,14 @@ const PostIdParamsSchema = z.object({
   }),
 });
 
+const ProjectIdParamsSchema = z.object({
+  id: UlidSchema.openapi({
+    description: 'Project id (ULID)',
+    type: 'string',
+    pattern: ULID_PATTERN,
+  }),
+});
+
 const MediaObjectKeyParamsSchema = z.object({
   key: z.string().min(1).openapi({
     description: 'Object key under media/ (may include slashes)',
@@ -90,6 +104,14 @@ const etagResponseHeaders = {
   ETag: {
     description: 'Strong entity version tag (quoted integer), e.g. `"3"`',
     schema: { type: 'string' as const, example: '"3"' },
+  },
+};
+
+const versionOnlyBody = {
+  body: {
+    content: {
+      'application/json': { schema: ExpectedVersionRequestSchema },
+    },
   },
 };
 
@@ -269,6 +291,97 @@ function registerNotebookEntityPaths(
   });
 }
 
+/** Projects take `version` in the body only (no `If-Match`, no `ETag`). */
+function registerProjectPaths(registry: OpenAPIRegistry) {
+  const base = { tags: ['Projects'], security: [{ bearerAuth: [] }] };
+  const mutation = { 400: r400, 404: r404, 409: r409, ...adminAuth };
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/admin/projects',
+    summary: 'List projects (published first, then drafts; by order)',
+    ...base,
+    request: { query: ListProjectsQuerySchema },
+    responses: {
+      200: ok(ProjectListResponseSchema, 'Projects'),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/projects',
+    summary: 'Create draft project',
+    ...base,
+    request: { body: jsonBody(CreateProjectRequestSchema) },
+    responses: {
+      201: ok(ProjectSchema, 'Created'),
+      400: r400,
+      409: r409,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/admin/projects/{id}',
+    summary: 'Get project by id',
+    ...base,
+    request: { params: ProjectIdParamsSchema },
+    responses: {
+      200: ok(ProjectSchema, 'Project'),
+      400: r400,
+      404: r404,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/admin/projects/{id}',
+    summary: 'Update project draft (optimistic concurrency via version)',
+    ...base,
+    request: {
+      params: ProjectIdParamsSchema,
+      body: jsonBody(UpdateProjectRequestSchema),
+    },
+    responses: { 200: ok(ProjectSchema, 'Updated'), ...mutation },
+  });
+
+  for (const [action, summary, description] of [
+    [
+      'publish',
+      'Publish project (copies draft to PUBLISHED snapshot; stream rebuild)',
+      'Published',
+    ],
+    ['unpublish', 'Unpublish project', 'Unpublished (draft)'],
+    [
+      'discard',
+      'Discard draft edits and restore from the published snapshot',
+      'Draft restored from published snapshot',
+    ],
+  ] as const) {
+    registry.registerPath({
+      method: 'post',
+      path: `/api/admin/projects/{id}/${action}`,
+      summary,
+      ...base,
+      request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
+      responses: { 200: ok(ProjectSchema, description), ...mutation },
+    });
+  }
+
+  registry.registerPath({
+    method: 'delete',
+    path: '/api/admin/projects/{id}',
+    summary: 'Soft-delete project (removes it from the live site)',
+    ...base,
+    request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
+    responses: { 200: ok(ProjectSchema, 'Soft-deleted'), ...mutation },
+  });
+}
+
 export function buildOpenApiDocument() {
   const registry = new OpenAPIRegistry();
 
@@ -284,6 +397,11 @@ export function buildOpenApiDocument() {
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
   registry.register('UpdatePostRequest', UpdatePostRequestSchema);
+  registry.register('Project', ProjectSchema);
+  registry.register('ProjectLink', ProjectLinkSchema);
+  registry.register('ProjectListResponse', ProjectListResponseSchema);
+  registry.register('CreateProjectRequest', CreateProjectRequestSchema);
+  registry.register('UpdateProjectRequest', UpdateProjectRequestSchema);
   registry.register('ExpectedVersionRequest', ExpectedVersionRequestSchema);
   registry.register('MediaUploadUrlRequest', MediaUploadUrlRequestSchema);
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
@@ -490,6 +608,8 @@ export function buildOpenApiDocument() {
       ...versionedAuth,
     },
   });
+
+  registerProjectPaths(registry);
 
   registry.registerPath({
     method: 'get',

@@ -11,6 +11,7 @@ import { json } from './http.js';
 import { mediaRoutes } from './media/handlers.js';
 import { noteRoutes } from './notes/handlers.js';
 import { createPostRoutes } from './posts/handlers.js';
+import { createProjectRoutes } from './projects/handlers.js';
 import { resumeRoutes } from './resume/handlers.js';
 import { defineRoute, type RouteDef } from './router.js';
 import { searchRoutes } from './search/handlers.js';
@@ -56,6 +57,7 @@ export const routes: RouteDef[] = [
   adminMe,
   ...createContactRoutes(),
   ...createPostRoutes(),
+  ...createProjectRoutes(),
   ...homeRoutes,
   ...resumeRoutes,
   ...mediaRoutes,

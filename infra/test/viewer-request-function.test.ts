@@ -620,14 +620,26 @@ describe('viewer-request CloudFront Function', () => {
         })) as CfRequest
       ).uri,
     ).toBe('/404.html');
-    expect(
-      (
-        (await runHandler({
-          uri: '/projects/x',
-          headers: { host: { value: 'gagnechris.com' } },
-        })) as CfRequest
-      ).uri,
-    ).toBe('/404.html');
+  });
+
+  it('sends /projects and every /projects/<slug> to S3 (missing pages 404 there)', async () => {
+    for (const [uri, expected] of [
+      ['/projects', '/projects/index.html'],
+      ['/projects/', '/projects/index.html'],
+      ['/projects/notebook', '/projects/notebook/index.html'],
+      ['/projects/notebook/', '/projects/notebook/index.html'],
+      ['/projects/does-not-exist', '/projects/does-not-exist/index.html'],
+    ]) {
+      expect(
+        (
+          (await runHandler({
+            uri,
+            headers: { host: { value: 'gagnechris.com' } },
+          })) as CfRequest
+        ).uri,
+        uri,
+      ).toBe(expected);
+    }
   });
 
   it('keeps / as the home index.html shell', async () => {

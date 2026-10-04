@@ -128,6 +128,7 @@ describe('render HTML snapshots', () => {
           posts: [post],
           corruptSlugs: [],
         }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({
           status: 'ok' as const,
@@ -136,6 +137,7 @@ describe('render HTML snapshots', () => {
       },
       corruptPostSlugs: new Set(),
       retainedPosts: [],
+      projects: { projects: [], corruptSlugs: [] },
     };
 
     const feeds = await postsFeedsTarget.run({

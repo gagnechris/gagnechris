@@ -51,7 +51,8 @@ function checkDeleteCondition(
     string,
     unknown
   >;
-  const pointsAtId = existing?.noteId === values[':id'];
+  const ownerAttr = /(\w+) = :id$/.exec(cond)?.[1] ?? 'noteId';
+  const pointsAtId = existing?.[ownerAttr] === values[':id'];
   const ok = cond.startsWith('attribute_not_exists(pk) OR')
     ? !existing || pointsAtId
     : existing !== undefined && pointsAtId;
@@ -75,6 +76,21 @@ export function createMemoryDoc(): {
       const key = cmd.input.Key as { pk: string; sk: string };
       const item = store.get(itemKey(key));
       return item ? { Item: { ...item } } : {};
+    }
+
+    if (name === 'BatchGetCommand') {
+      const requests = cmd.input.RequestItems as Record<
+        string,
+        { Keys: Array<{ pk: string; sk: string }> }
+      >;
+      const Responses: Record<string, Record<string, unknown>[]> = {};
+      for (const [table, request] of Object.entries(requests)) {
+        Responses[table] = request.Keys.flatMap((key) => {
+          const item = store.get(itemKey(key));
+          return item ? [{ ...item }] : [];
+        });
+      }
+      return { Responses };
     }
 
     if (name === 'PutCommand') {

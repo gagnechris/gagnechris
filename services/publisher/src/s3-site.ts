@@ -11,21 +11,25 @@ import {
   keys,
   metaToHome,
   metaToPost,
+  metaToProject,
   metaToResume,
   parseHomeMetaItem,
   parsePostMetaItem,
+  parseProjectMetaItem,
   parseResumeMetaItem,
+  projectStatusGsi1Pk,
   statusGsi1Pk,
   type PostMetaItem,
 } from '@gagnechris/data';
 import { batchGetAllWithDocClient } from '@gagnechris/data';
-import type { Home, Post, Resume } from '@gagnechris/shared';
+import type { Home, Post, Project, Resume } from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { logger, metrics } from './observability.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';
 import type {
   PublishedLookup,
   PublishedPostsCatalog,
+  PublishedProjectsCatalog,
   PublishTarget,
   RebuildSiteSources,
 } from './publish-targets/types.js';
@@ -220,6 +224,99 @@ export function mergeStreamPublishedPosts(
   };
 }
 
+const stringAttr = (item: unknown, name: string): string | undefined => {
+  const value = (item as Record<string, unknown>)[name];
+  return typeof value === 'string' && value ? value : undefined;
+};
+
+/** Same shape as {@link listPublishedPosts}: GSI1 for ids, then the PUBLISHED rows. */
+export async function listPublishedProjects(
+  tableName: string,
+): Promise<PublishedProjectsCatalog> {
+  const ids: string[] = [];
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const page = await ddb.send(
+      new QueryCommand({
+        TableName: tableName,
+        IndexName: GSI1_NAME,
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': projectStatusGsi1Pk('published'),
+        },
+        ExclusiveStartKey: exclusiveStartKey,
+      }),
+    );
+    for (const item of page.Items ?? []) {
+      if (item.entityType !== 'project' || item.sk !== SK_META) continue;
+      const id = stringAttr(item, 'projectId');
+      if (id) ids.push(id);
+    }
+    exclusiveStartKey = page.LastEvaluatedKey as
+      Record<string, unknown> | undefined;
+  } while (exclusiveStartKey);
+
+  const projects: Project[] = [];
+  const corruptSlugs: string[] = [];
+  const unique = [...new Set(ids)];
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100);
+    const responses = await batchGetAllWithDocClient(
+      async (RequestItems) => ddb.send(new BatchGetCommand({ RequestItems })),
+      {
+        [tableName]: {
+          Keys: chunk.map((id) => keys.project.published(id)),
+          ConsistentRead: true,
+        },
+      },
+    );
+    for (const item of responses[tableName] ?? []) {
+      try {
+        const record = parseProjectMetaItem(item);
+        if (record.status === 'published') projects.push(metaToProject(record));
+      } catch (error) {
+        logCorruptPublished({
+          label: 'project',
+          pk: stringAttr(item, 'pk'),
+          sk: stringAttr(item, 'sk'),
+          err: error,
+        });
+        const slug = stringAttr(item, 'slug');
+        if (slug) corruptSlugs.push(slug);
+      }
+    }
+  }
+  return { projects, corruptSlugs: [...new Set(corruptSlugs)] };
+}
+
+/** A just-published project must still render when GSI1 has not caught up. */
+export function mergeStreamPublishedProjects(
+  catalog: PublishedProjectsCatalog,
+  streamItems: readonly unknown[],
+): PublishedProjectsCatalog {
+  if (streamItems.length === 0) return catalog;
+  const byId = new Map(catalog.projects.map((p) => [p.id, p]));
+  const corruptSlugs = new Set(catalog.corruptSlugs);
+  for (const item of streamItems) {
+    try {
+      const record = parseProjectMetaItem(item);
+      if (record.status !== 'published') continue;
+      byId.set(record.projectId, metaToProject(record));
+      corruptSlugs.delete(record.slug);
+    } catch (error) {
+      logCorruptPublished({
+        label: 'project',
+        pk: stringAttr(item, 'pk'),
+        sk: stringAttr(item, 'sk'),
+        err: error,
+      });
+      const slug = stringAttr(item, 'slug');
+      if (slug) corruptSlugs.add(slug);
+    }
+  }
+  return { projects: [...byId.values()], corruptSlugs: [...corruptSlugs] };
+}
+
 export async function getPublishedResume(
   tableName: string,
 ): Promise<PublishedLookup<Resume>> {
@@ -288,32 +385,37 @@ export async function rebuildPublishedSite(options?: {
   storage?: SiteStorage;
   sources?: RebuildSiteSources;
   streamPublishedPosts?: readonly unknown[];
+  streamPublishedProjects?: readonly unknown[];
   targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();
   const storage = options?.storage ?? getSiteStorage();
   const streamPublishedPosts = options?.streamPublishedPosts ?? [];
+  const streamPublishedProjects = options?.streamPublishedProjects ?? [];
   const baseSources: RebuildSiteSources =
     options?.sources ??
     (() => {
       const tableName = requireEnv('DATA_TABLE_NAME');
       return {
         listPublishedPosts: () => listPublishedPosts(tableName),
+        listPublishedProjects: () => listPublishedProjects(tableName),
         getPublishedResume: () => getPublishedResume(tableName),
         getPublishedHome: () => getPublishedHome(tableName),
       };
     })();
-  const sources: RebuildSiteSources =
-    streamPublishedPosts.length === 0
-      ? baseSources
-      : {
-          ...baseSources,
-          listPublishedPosts: async () =>
-            mergeStreamPublishedPosts(
-              await baseSources.listPublishedPosts(),
-              streamPublishedPosts,
-            ),
-        };
+  const sources: RebuildSiteSources = {
+    ...baseSources,
+    listPublishedPosts: async () =>
+      mergeStreamPublishedPosts(
+        await baseSources.listPublishedPosts(),
+        streamPublishedPosts,
+      ),
+    listPublishedProjects: async () =>
+      mergeStreamPublishedProjects(
+        await baseSources.listPublishedProjects(),
+        streamPublishedProjects,
+      ),
+  };
 
   return runPublishTargets({
     scope,

@@ -19,9 +19,10 @@ if [[ ! -f "${DIST}/_shell.html" ]]; then
   exit 1
 fi
 
-# Keep publisher output (blog/, sitemap, rss) that is not in dist.
+# Keep publisher output (blog/, projects/, sitemap, rss) that is not in dist.
 rsync -a --delete \
   --exclude 'blog/' \
+  --exclude 'projects/' \
   --exclude 'sitemap.xml' \
   --exclude 'rss.xml' \
   "${DIST}/" "${SITE}/"

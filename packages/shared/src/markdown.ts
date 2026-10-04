@@ -1,6 +1,7 @@
 import { Marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import { escapeHtml } from './html.js';
+import { POST_LINK_SCHEMES } from './links.js';
 
 /**
  * A local instance (no global `marked.setOptions`) keeps this module free of
@@ -35,7 +36,7 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedClasses: {
     code: [/^language-[\w-]+$/],
   },
-  allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+  allowedSchemes: [...POST_LINK_SCHEMES],
   allowedSchemesByTag: { img: ['http', 'https'] },
   allowProtocolRelative: false,
   // GFM task lists render `<input type="checkbox" disabled>`; nothing else.

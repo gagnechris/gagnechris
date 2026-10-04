@@ -6,6 +6,7 @@ import {
   HomeMetaItemSchema,
   NoteMetaItemSchema,
   PostMetaItemSchema,
+  ProjectMetaItemSchema,
   ResumeMetaItemSchema,
   SK_META,
   SK_PUBLISHED,
@@ -19,6 +20,7 @@ import {
   noteMetaSk,
   notePk,
   postPk,
+  projectPk,
   resumePk,
   taskMetaSk,
   taskPk,
@@ -83,6 +85,12 @@ const ENTITY_RULES: Record<string, EntityRule> = {
       i.pk === postPk(str(i.postId)) &&
       (i.sk === SK_META || i.sk === SK_PUBLISHED),
   },
+  project: {
+    schema: ProjectMetaItemSchema,
+    keyMatches: (i) =>
+      i.pk === projectPk(str(i.projectId)) &&
+      (i.sk === SK_META || i.sk === SK_PUBLISHED),
+  },
   home: {
     schema: HomeMetaItemSchema,
     keyMatches: (i) =>
@@ -125,6 +133,7 @@ export const SCHEMA_CHECKED_ENTITY_TYPES: readonly string[] =
  */
 export const COUNT_FLOOR_ENTITY_TYPES: readonly string[] = [
   'post',
+  'project',
   'home',
   'resume',
   'contact',

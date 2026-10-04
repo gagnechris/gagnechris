@@ -80,7 +80,15 @@ describe('publish target registry', () => {
       expect(registrySource).toContain(`./targets/${stem}.target.js`);
     }
     expect(ids).toEqual(
-      ['posts-feeds', 'home', 'post-orphans', 'post-pages', 'resume'].sort(),
+      [
+        'posts-feeds',
+        'home',
+        'post-orphans',
+        'post-pages',
+        'projects',
+        'resume',
+        'sitemap',
+      ].sort(),
     );
     expect(registrySource).not.toContain('definePublishTarget');
     expect(registrySource).not.toContain('registry-self-test');
@@ -104,6 +112,7 @@ describe('publish target registry', () => {
       storage,
       sources: {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
+        listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
         getPublishedHome: async () => ({
           status: 'ok' as const,

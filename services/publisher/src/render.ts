@@ -4,12 +4,22 @@ import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
+  renderProjectPagePrerenderHtml,
+  renderProjectsIndexPrerenderHtml,
   renderResumePrerenderHtml,
   renderResumeUnavailablePrerenderHtml,
   renderSitePageHtml,
   resumeSummaryExcerpt,
 } from '@gagnechris/shared/render';
-import type { Home, Post, Resume } from '@gagnechris/shared';
+import {
+  PROJECTS_PATH,
+  projectHasPage,
+  projectPagePath,
+  type Home,
+  type Post,
+  type Project,
+  type Resume,
+} from '@gagnechris/shared';
 import type { HomeRecentPost } from '@gagnechris/shared/render';
 import { APEX } from './config.js';
 import { applyPageMeta } from './page-meta.js';
@@ -191,10 +201,73 @@ export const renderHomePage = (
   return html;
 };
 
+export const projectCanonicalUrl = (slug: string): string =>
+  `https://${APEX}${projectPagePath(slug)}`;
+
+const projectDescription = (project: Project): string =>
+  project.pitch || `${project.name}, a project by Chris Gagne.`;
+
+export const renderProjectsIndexPage = (
+  shellHtml: string,
+  projects: readonly Project[],
+): string => {
+  let html = applyPageMeta(shellHtml, {
+    title: 'Projects - Chris Gagne',
+    description: 'What Chris Gagne is building.',
+    url: `https://${APEX}${PROJECTS_PATH}`,
+    type: 'website',
+  });
+  html = injectPrerender(html, renderProjectsIndexPrerenderHtml(projects));
+  return html;
+};
+
+export const renderProjectPage = (
+  shellHtml: string,
+  project: Project,
+): string => {
+  let html = applyPageMeta(shellHtml, {
+    title: escapeHtml(`${project.name} - Chris Gagne`),
+    description: escapeHtml(projectDescription(project)),
+    url: projectCanonicalUrl(project.slug),
+    type: 'website',
+    image: project.previewImage
+      ? absoluteUrl(project.previewImage)
+      : defaultOgImage(),
+  });
+  html = injectPrerender(html, renderProjectPagePrerenderHtml(project));
+  return html;
+};
+
+export type SitemapProjects = {
+  projects: readonly Project[];
+  /** Corrupt PUBLISHED rows keep their page, so they stay listed. */
+  corruptSlugs?: readonly string[];
+};
+
+const projectSitemapUrls = ({
+  projects,
+  corruptSlugs = [],
+}: SitemapProjects): { loc: string; lastmod: string | undefined }[] => {
+  if (projects.length === 0 && corruptSlugs.length === 0) return [];
+  const paged = projects.filter(projectHasPage);
+  const seen = new Set(projects.map((p) => p.slug));
+  return [
+    { loc: `https://${APEX}${PROJECTS_PATH}`, lastmod: undefined },
+    ...paged.map((p) => ({
+      loc: projectCanonicalUrl(p.slug),
+      lastmod: (p.updatedAt || p.publishedAt || '').slice(0, 10) || undefined,
+    })),
+    ...corruptSlugs
+      .filter((slug) => slug && !seen.has(slug))
+      .map((slug) => ({ loc: projectCanonicalUrl(slug), lastmod: undefined })),
+  ];
+};
+
 export const buildSitemapXml = (
   posts: Post[],
   /** Slugs whose PUBLISHED rows are corrupt: HTML is preserved, so they must stay discoverable. */
   extraSlugs: readonly string[] = [],
+  projects: SitemapProjects = { projects: [] },
 ): string => {
   const staticPaths = ['/', POSTS_PATH, '/resume', '/contact'];
   const seen = new Set(posts.map((p) => p.slug));
@@ -213,6 +286,7 @@ export const buildSitemapXml = (
         loc: postCanonicalUrl(slug),
         lastmod: undefined as string | undefined,
       })),
+    ...projectSitemapUrls(projects),
   ];
   const body = urls
     .map((u) => {

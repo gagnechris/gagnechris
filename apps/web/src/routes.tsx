@@ -5,6 +5,7 @@ import PostsIndex from './pages/PostsIndex.tsx';
 import PostPage from './pages/PostPage.tsx';
 import Contact from './pages/Contact.tsx';
 import NotFound from './pages/NotFound.tsx';
+import ProjectsPrerendered from './pages/ProjectsPrerendered.tsx';
 import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
 import AppWithTracking from './components/AppWithTracking.tsx';
 import { EmptyFallback, LazyFallback } from './components/LazyFallback.tsx';
@@ -48,6 +49,14 @@ export const routes: RouteObject[] = [
       {
         path: 'contact',
         element: <Contact />,
+      },
+      {
+        path: 'projects',
+        element: <ProjectsPrerendered />,
+      },
+      {
+        path: 'projects/:slug',
+        element: <ProjectsPrerendered />,
       },
       lazyRoute({
         path: 'dont-feed-the-bears',

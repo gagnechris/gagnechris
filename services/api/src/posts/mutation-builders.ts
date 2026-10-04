@@ -9,27 +9,18 @@ import {
   buildPublishedItem,
   postPk,
   postPublishedSk,
-  slugPk,
-  slugPostSk,
-  slugRedirectSk,
   tagPk,
   tagSk,
 } from '@gagnechris/data';
+import {
+  buildSlugChangeItems,
+  buildSoftDeleteSlugRelease,
+  type TransactItem,
+} from '../data/slug-claims.js';
 
-export type TransactItem = {
-  Put?: {
-    TableName: string;
-    Item: Record<string, unknown>;
-    ConditionExpression?: string;
-    ExpressionAttributeValues?: Record<string, unknown>;
-  };
-  Delete?: {
-    TableName: string;
-    Key: Record<string, string>;
-    ConditionExpression?: string;
-    ExpressionAttributeValues?: Record<string, unknown>;
-  };
-};
+export { buildSlugChangeItems, buildSoftDeleteSlugRelease };
+
+export type { TransactItem };
 
 export type DraftMutationOptions = {
   syncTags?: boolean;
@@ -51,48 +42,6 @@ export function buildMetaPut(
       ExpressionAttributeValues: versionMatchValues(before.version),
     },
   };
-}
-
-export function buildSlugChangeItems(
-  tableName: string,
-  before: Post,
-  after: Post,
-): TransactItem[] {
-  if (before.slug === after.slug) return [];
-  return [
-    {
-      Delete: {
-        TableName: tableName,
-        Key: { pk: slugPk(before.slug), sk: slugPostSk() },
-        ConditionExpression: 'postId = :id',
-        ExpressionAttributeValues: { ':id': before.id },
-      },
-    },
-    {
-      Put: {
-        TableName: tableName,
-        Item: {
-          pk: slugPk(before.slug),
-          sk: slugRedirectSk(),
-          entityType: 'slugRedirect',
-          postId: before.id,
-          targetSlug: after.slug,
-        },
-      },
-    },
-    {
-      Put: {
-        TableName: tableName,
-        Item: {
-          pk: slugPk(after.slug),
-          sk: slugPostSk(),
-          entityType: 'slug',
-          postId: after.id,
-        },
-        ConditionExpression: 'attribute_not_exists(pk)',
-      },
-    },
-  ];
 }
 
 export function buildPublishedPut(
@@ -177,22 +126,6 @@ export function buildTagSyncItems(
     });
   }
   return items;
-}
-
-export function buildSoftDeleteSlugRelease(
-  tableName: string,
-  before: Post,
-  after: Post,
-): TransactItem[] {
-  if (after.status !== 'deleted' || before.status === 'deleted') return [];
-  return [
-    {
-      Delete: {
-        TableName: tableName,
-        Key: { pk: slugPk(after.slug), sk: slugPostSk() },
-      },
-    },
-  ];
 }
 
 export type DraftMutationPlan = {

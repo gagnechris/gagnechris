@@ -1,4 +1,8 @@
-# Adding a Notebook entity
+# Adding an entity
+
+Two kinds: a synced, owner-scoped Notebook entity (below), and a
+[publishable site entity](#publishable-site-entity) with a draft, a live
+snapshot and static public pages (like posts and projects).
 
 How to add a synced, owner-scoped, versioned Notebook entity (like notes and tasks) to the API. The examples use a `bookmark` entity with `url` and `title`; replace the names.
 
@@ -521,3 +525,66 @@ Not required for a working API entity:
 
 - **Client data layer** (`packages/app-core`): fetch / mutate functions and derived types in `src/query/api.ts` (`components['schemas']['Bookmark']`), query keys in `src/query/keys.ts`, a `setCachedBookmark` in `src/query/cache.ts` built on `upsertIntoListCaches` with a filter predicate, a resource in `src/query/bookmarks.ts` via `createVersionedResource`, and exports in `src/index.ts` (5 files).
 - **Docs**: add the key layout to `docs/data-model.md`.
+
+## Publishable site entity
+
+An admin-edited entity with a draft `META` row, a `PUBLISHED` snapshot, a URL
+slug and static pages written by the publisher. Projects are the smallest
+complete example (`project` below); posts add tags and feeds on top. The
+entity gets:
+
+- `/api/admin/<things>` list / create, `/{id}` get / update / soft delete, `/{id}/publish`, `/unpublish`, `/discard`, all `auth: 'site-admin'`, `version` in the body
+- a slug claim that is unique per entity type, with rename redirects
+- publisher pages at `/<things>` and `/<things>/<slug>`, rebuilt only when a `PUBLISHED` row changes, plus sitemap entries
+- restore-test schema checks and a count floor
+
+There is no public API: the read side is static HTML in S3.
+
+### Files
+
+| #   | File                                                                                             | Change                                                                                 |
+| --- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| 1   | `packages/shared/src/schemas.ts`                                                                 | entity (`.merge(PublishableFieldsSchema)`), list, create / update / list query         |
+| 2   | `packages/shared/src/openapi.ts`                                                                 | components + paths                                                                     |
+| 3   | `packages/data/src/keys.ts`                                                                      | `<THING>#<id>`, slug-claim partition, published GSI1 partition                         |
+| 4   | `packages/data/src/items.ts`                                                                     | META item schema, `metaTo…`, `build…MetaItem`, `build…PublishedItem`, `…ContentEqual`  |
+| 5   | `services/api/src/data/slug-claims.ts`                                                           | a `SlugClaims` entry for the new type                                                  |
+| 6   | `services/api/src/<things>/repository.ts`, `handlers.ts`                                         | new: repository and routes                                                             |
+| 7   | `services/api/src/routes.ts`                                                                     | add the routes                                                                         |
+| 8   | `packages/shared/src/<thing>-html.ts`, `render.ts`                                               | page markup (render entry only; add it to `sharedDomainIgnores` in `eslint.config.js`) |
+| 9   | `services/publisher/src/s3-site.ts`, `publish-targets/types.ts`                                  | `listPublished…` source and catalog                                                    |
+| 10  | `services/publisher/src/publish-targets/targets/<things>.target.ts`                              | new: target, plus a `registry.ts` entry                                                |
+| 11  | `services/publisher/src/publish-targets/targets/sitemap.target.ts`, `render.ts`                  | sitemap entries                                                                        |
+| 12  | `services/publisher/src/rebuild-scope.ts`                                                        | add the type to `KNOWN_ENTITY_TYPES`; stream NewImage merge for GSI lag                |
+| 13  | `infra/lib/stacks/publisher-stack.ts`                                                            | `LeadingKeys` for `<THING>#*` and the published GSI1 partition                         |
+| 14  | `scripts/deploy-web.sh`, `scripts/local/seed-shell.sh`                                           | keep `<things>/*` out of the web deploy's `--delete`                                   |
+| 15  | `services/restore-test/src/validate.ts`                                                          | `ENTITY_RULES` entry and `COUNT_FLOOR_ENTITY_TYPES`                                    |
+| 16  | `apps/web/src/routes.tsx`                                                                        | a route, or the SPA mount replaces the prerender with the 404                          |
+| —   | `openapi.json`, `schema.d.ts`, `viewer-request-function.js`, `publish-admin-routes.generated.ts` | generated by `npm run openapi` and `npm run publish-surface:generate`                  |
+
+### Data
+
+- **Publish status vs domain status.** Every publishable entity has `status: draft | published | deleted`. Name any domain lifecycle field something else (projects use `stage`).
+- **Own GSI1 partition.** META carries `gsi1pk = <THING>_STATUS#<status>`, never posts' `STATUS#…`, so `listPublishedPosts` needs no `entityType` filter. Choose `gsi1sk` for the admin list order (projects: `ORDER#<6 digits>#PROJECT#<id>`). `build…PublishedItem` drops the GSI1 keys so only META rows are on the index.
+- **Own slug partition.** Claims are `<THING>_SLUG#<slug>` / `<THING>` and redirects `<THING>_SLUG#<old>` / `REDIRECT`. A shared `SLUG#` partition would collide on `REDIRECT`. Add a `SlugClaims` entry in `data/slug-claims.ts` and build transactions with `buildSlugClaimPut`, `buildSlugChangeItems`, `buildSoftDeleteSlugRelease` and `slugClaimIndexesOf`.
+
+### Repository and routes
+
+Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual` and `isDeleted`. Override `persistMutation` to put META (version-conditioned, index 0), the slug change items, the `PUBLISHED` put or delete, and the soft-delete slug release in one `TransactWriteItems`; pass `slugClaimIndexes` and `versionItemIndex: 0` to `runVersionedWrite` so a taken slug is `slug_taken` and a stale version wins with `current`. `publish`, `unpublish` and `discard` come from the base. Write `create` (claim + META with `attribute_not_exists`), `update` and `softDelete` the way `ProjectsRepository` does.
+
+Routes live under `/admin/<things>` with `auth: 'site-admin'`; ids are `UlidSchema`. `test/router.test.ts` checks that every `/admin` route is `site-admin` and that routes and OpenAPI operations match one to one; add an explicit list for the new prefix like the projects one. Validate any user-supplied link with `isSafeLinkHref` (`packages/shared/src/links.ts`): `POST_LINK_SCHEMES` is what the markdown sanitizer keeps in post bodies.
+
+### Publisher
+
+The target matches `touchedEntityTypes.has('<thing>') || isFullRebuildScope(scope)`, loads its catalog only when it matches (projects add `needsProjects` to `PublishTarget` and `listPublishedProjects` to the sources), declares `optionBPaths: ['/<things>']`, `adminMutationPrefixes: ['/api/admin/<things>']` and `adminSoftDelete: true`, and returns artifacts for the index and each page plus `deleteKeys` for pages that should no longer exist (list `<things>/` and keep corrupt rows' pages). Run `npm run publish-surface:generate`: the Option B prefix means `/<things>/<slug>` maps to `<things>/<slug>/index.html` and a missing page is the HTML 404, so no KeyValueStore is needed. Extend `buildSitemapXml` and the `sitemap` target instead of writing `sitemap.xml` from the new target.
+
+The CloudFront function change and the IAM change deploy with CDK. Add the new `LeadingKeys` to `infra/test/publisher-iam.test.ts`, which evaluates the synthesized policy and also proves `USER#…` stays unreadable.
+
+### Verify
+
+```bash
+npm run openapi && npm run openapi:check
+npm run publish-surface:check
+npm run typecheck && npm run lint && npm test
+npm run e2e:local   # extend scripts/local/e2e.sh: publish, page live, unpublish, 404
+```

@@ -232,6 +232,31 @@ describe('route table contract', () => {
     }
   });
 
+  it('every /admin/projects route is site-admin', () => {
+    const projectRoutes = routes
+      .filter(
+        (r) =>
+          r.pattern === '/admin/projects' ||
+          r.pattern.startsWith('/admin/projects/'),
+      )
+      .map((r) => `${r.method} ${r.pattern} ${r.auth}`)
+      .sort();
+    expect(projectRoutes).toEqual(
+      [
+        'GET /admin/projects',
+        'POST /admin/projects',
+        'GET /admin/projects/:id',
+        'PUT /admin/projects/:id',
+        'DELETE /admin/projects/:id',
+        'POST /admin/projects/:id/publish',
+        'POST /admin/projects/:id/unpublish',
+        'POST /admin/projects/:id/discard',
+      ]
+        .map((r) => `${r} site-admin`)
+        .sort(),
+    );
+  });
+
   it('rejects public routes under JWT prefixes', () => {
     for (const route of routes) {
       if (route.auth !== 'public') continue;

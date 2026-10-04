@@ -5,12 +5,16 @@ import {
   NoteTypeSchema,
   PostSeoSchema,
   PostStatusSchema,
+  ProjectDemoSchema,
+  ProjectLinkSchema,
+  ProjectStageSchema,
   ResumeContentSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
   type Home,
   type Note,
   type Post,
+  type Project,
   type Resume,
   type Task,
 } from '@gagnechris/shared';
@@ -36,7 +40,12 @@ import {
   postMetaSk,
   postPk,
   postPublishedSk,
+  projectOrderGsi1Sk,
+  projectPk,
+  projectStatusGsi1Pk,
   RESUME_ID,
+  SK_META,
+  SK_PUBLISHED,
   resumeMetaSk,
   resumePk,
   resumePublishedSk,
@@ -82,6 +91,29 @@ export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
 });
 
 export type PostMetaItem = z.infer<typeof PostMetaItemSchema>;
+
+export const ProjectMetaItemSchema = PublishableMetaFieldsSchema.extend({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('project'),
+  projectId: z.string().min(1),
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  pitch: z.string(),
+  stage: ProjectStageSchema,
+  stageNote: z.string(),
+  previewImage: z.string().nullable(),
+  bodyMarkdown: z.string(),
+  stack: z.array(z.string()),
+  links: z.array(ProjectLinkSchema),
+  demo: ProjectDemoSchema.nullable(),
+  order: z.number().int().nonnegative(),
+  href: z.string().nullable(),
+  gsi1pk: z.string().min(1).optional(),
+  gsi1sk: z.string().min(1).optional(),
+});
+
+export type ProjectMetaItem = z.infer<typeof ProjectMetaItemSchema>;
 
 export const HomeMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
@@ -237,6 +269,93 @@ export function buildPublishedItem(
     status: 'published',
     publishedAt,
   };
+}
+
+export function parseProjectMetaItem(raw: unknown): ProjectMetaItem {
+  return ProjectMetaItemSchema.parse(raw);
+}
+
+export function projectContentEqual(a: Project, b: Project): boolean {
+  return (
+    a.slug === b.slug &&
+    a.name === b.name &&
+    a.pitch === b.pitch &&
+    a.stage === b.stage &&
+    a.stageNote === b.stageNote &&
+    a.previewImage === b.previewImage &&
+    a.bodyMarkdown === b.bodyMarkdown &&
+    deepEqual(a.stack, b.stack) &&
+    deepEqual(a.links, b.links) &&
+    a.demo === b.demo &&
+    a.order === b.order &&
+    a.href === b.href
+  );
+}
+
+export function metaToProject(
+  item: ProjectMetaItem,
+  hasUnpublishedChanges = false,
+): Project {
+  return {
+    id: item.projectId,
+    slug: item.slug,
+    name: item.name,
+    pitch: item.pitch,
+    stage: item.stage,
+    stageNote: item.stageNote,
+    previewImage: item.previewImage,
+    bodyMarkdown: item.bodyMarkdown,
+    stack: item.stack,
+    links: item.links,
+    demo: item.demo,
+    order: item.order,
+    href: item.href,
+    status: item.status,
+    publishedAt: item.publishedAt ?? null,
+    updatedAt: item.updatedAt,
+    version: item.version,
+    hasUnpublishedChanges,
+  };
+}
+
+export function buildProjectMetaItem(project: Project): ProjectMetaItem {
+  return {
+    pk: projectPk(project.id),
+    sk: SK_META,
+    entityType: 'project',
+    projectId: project.id,
+    slug: project.slug,
+    name: project.name,
+    pitch: project.pitch,
+    stage: project.stage,
+    stageNote: project.stageNote,
+    previewImage: project.previewImage,
+    bodyMarkdown: project.bodyMarkdown,
+    stack: project.stack,
+    links: project.links,
+    demo: project.demo,
+    order: project.order,
+    href: project.href,
+    status: project.status,
+    publishedAt: project.publishedAt,
+    updatedAt: project.updatedAt,
+    version: project.version,
+    gsi1pk: projectStatusGsi1Pk(project.status),
+    gsi1sk: projectOrderGsi1Sk(project.order, project.id),
+  };
+}
+
+/** Omits GSI1 keys so the published-projects query only returns META rows. */
+export function buildProjectPublishedItem(
+  project: Project,
+): Omit<ProjectMetaItem, 'gsi1pk' | 'gsi1sk'> {
+  const publishedAt = project.publishedAt ?? project.updatedAt;
+  const {
+    gsi1pk: _gsi1pk,
+    gsi1sk: _gsi1sk,
+    ...rest
+  } = buildProjectMetaItem({ ...project, status: 'published', publishedAt });
+  return { ...rest, sk: SK_PUBLISHED, status: 'published', publishedAt };
 }
 
 export function homeContentEqual(

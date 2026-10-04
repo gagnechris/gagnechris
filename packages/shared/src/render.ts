@@ -74,3 +74,11 @@ export type {
   ResumeEducation,
   ResumeExperience,
 } from './schemas.js';
+export {
+  PROJECTS_INDEX_TITLE,
+  renderProjectPageBodyHtml,
+  renderProjectPagePrerenderHtml,
+  renderProjectsIndexBodyHtml,
+  renderProjectsIndexPrerenderHtml,
+  type ProjectsIndexItem,
+} from './project-html.js';

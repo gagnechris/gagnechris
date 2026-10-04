@@ -1,9 +1,5 @@
 import { sortPostsNewestFirst, toListItem } from '../../posts.js';
-import {
-  buildRssXml,
-  buildSitemapXml,
-  renderPostsIndexPage,
-} from '../../render.js';
+import { buildRssXml, renderPostsIndexPage } from '../../render.js';
 import type { PublishTarget } from '../types.js';
 import { CACHE_FEED, CACHE_HTML } from '../types.js';
 
@@ -51,12 +47,6 @@ const target: PublishTarget = {
           cacheControl: CACHE_HTML,
         },
         {
-          key: 'sitemap.xml',
-          body: buildSitemapXml(feedPosts, [...corruptPostSlugs]),
-          contentType: 'application/xml; charset=utf-8',
-          cacheControl: CACHE_FEED,
-        },
-        {
           key: 'rss.xml',
           body: buildRssXml(feedPosts),
           contentType: 'application/rss+xml; charset=utf-8',
@@ -64,7 +54,7 @@ const target: PublishTarget = {
         },
       ],
       // One wildcard covers /blog, index, posts.json, slugs.json, and every slug.
-      invalidationPaths: ['/blog*', '/sitemap.xml', '/rss.xml'],
+      invalidationPaths: ['/blog*', '/rss.xml'],
     };
   },
 };
