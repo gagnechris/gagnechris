@@ -137,10 +137,13 @@ roles"). Each `experience` entry is `title`, `company` (bare name), `start`
 and `end` (`YYYY-MM`; `end: null` is present), optional `note` (for example
 "contract, concurrent") and `bullets`. An entry without `start` is the old
 shape, with its dates inside `company` (`Ro | July 2019 - Present`); it still
-parses and renders as stored, and `scripts/migrate-resume-dates.ts` moves the
-dates into `start`/`end`. The page and PDF render structured entries as the
-same `Company | Month YYYY - Month YYYY` line. Education keeps a free-text
-`year` (a single completion date, no range).
+parses, and `scripts/migrate-resume-dates.ts` moves the dates into
+`start`/`end`. The PDF renders entries as `Company | Month YYYY - Month YYYY`;
+the page puts `Mon YYYY – Mon YYYY` in a date column and reads old-shape rows
+through the same parser. With `earlierRolesBefore` set, roles whose `end` year
+is before it collapse under "Earlier roles, <first start year>–<cut-off>";
+unset, every role is expanded. Education keeps a free-text `year` (a single
+completion date, no range), shown in the date column as stored.
 
 No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
 `DEFAULT_RESUME` on first read. Publish copies META → `PUBLISHED` (and

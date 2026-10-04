@@ -8,8 +8,11 @@ import { DEFAULT_RESUME } from './resume-default.js';
 import {
   experienceCompanyLine,
   formatResumeMonth,
+  formatResumeShortMonth,
+  groupResumeExperience,
   parseLegacyCompanyLine,
   planResumeDateMigration,
+  resumeRoleDates,
 } from './resume-dates.js';
 import {
   renderResumePrerenderHtml,
@@ -117,7 +120,12 @@ describe('resume renders the same before and after migration', () => {
     expect(renderResumeSectionsHtml(migrated)).toBe(
       renderResumeSectionsHtml(legacy),
     );
-    expect(renderResumeSectionsHtml(DEFAULT_RESUME.content)).toBe(
+    const {
+      headline: _headline,
+      earlierRolesBefore: _cutoff,
+      ...unset
+    } = DEFAULT_RESUME.content;
+    expect(renderResumeSectionsHtml(unset)).toBe(
       renderResumeSectionsHtml(legacy),
     );
   });
@@ -179,5 +187,39 @@ describe('resume schema compatibility', () => {
         earlierRolesBefore: 12,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('resume page dates and earlier roles', () => {
+  it('formats the date column with short months and an en dash', () => {
+    expect(formatResumeShortMonth('2019-07')).toBe('Jul 2019');
+    expect(resumeRoleDates({ start: '2019-07', end: null })).toBe(
+      'Jul 2019 – Present',
+    );
+    expect(resumeRoleDates({ start: '2017-03', end: '2019-07' })).toBe(
+      'Mar 2017 – Jul 2019',
+    );
+    expect(resumeRoleDates({})).toBe('');
+  });
+
+  it('reads old-shape rows through the legacy parser', () => {
+    const groups = groupResumeExperience({
+      ...legacyResumeContent(),
+      earlierRolesBefore: 2012,
+    });
+    expect(groups.earlierLabel).toBe('Earlier roles, 1999–2012');
+    expect(groups.earlier.map((r) => r.company)).toEqual([
+      'Dealertrack',
+      'Psyche Systems Corporation',
+      'Daystar Corporation',
+    ]);
+    expect(groups.recent[0]).toMatchObject({ company: 'Ro', end: null });
+  });
+
+  it('keeps every role recent without a cut-off', () => {
+    const groups = groupResumeExperience(legacyResumeContent());
+    expect(groups.earlier).toEqual([]);
+    expect(groups.earlierLabel).toBeNull();
+    expect(groups.recent).toHaveLength(LEGACY_COMPANY_LINES.length);
   });
 });

@@ -1,16 +1,40 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  DEFAULT_RESUME,
+  renderResumePrerenderHtml,
+  renderResumeUnavailablePrerenderHtml,
+} from '@gagnechris/shared/render';
 import Resume from './Resume';
 import { renderWithProviders } from '../test-utils';
+import { trackResumeDownload } from '../utils/analytics';
 
-const stubFetch = (impl: () => Promise<unknown>) =>
+vi.mock('../utils/analytics');
+
+const stubFetch = (impl: (input: unknown) => Promise<unknown>) =>
   vi.stubGlobal('fetch', vi.fn(impl));
+
+const page = (html: string) => async () => ({
+  ok: true,
+  text: async () => `<!DOCTYPE html><html><body>${html}</body></html>`,
+});
+
+const PUBLISHED = {
+  ...DEFAULT_RESUME,
+  content: {
+    ...DEFAULT_RESUME.content,
+    headline: 'Published headline',
+    summary: 'Published summary.',
+    earlierRolesBefore: 2012,
+  },
+};
+
+const DEFAULT_SUMMARY_START = DEFAULT_RESUME.content.summary.slice(0, 40);
 
 describe('Resume Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
-    stubFetch(async () => ({ ok: false, status: 404 }));
   });
 
   afterEach(() => {
@@ -18,110 +42,99 @@ describe('Resume Page', () => {
     vi.unstubAllEnvs();
   });
 
-  test('renders default content when nothing is published yet', () => {
+  test('shows no default content while the published resume loads', () => {
+    stubFetch(() => new Promise(() => {}));
     renderWithProviders(<Resume />);
 
     expect(
-      screen.getByRole('heading', { name: /chris gagne/i }),
+      screen.getByRole('heading', { level: 1, name: 'Resume' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /summary/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /core competencies/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /professional experience/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /education/i }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getAllByRole('button', { name: /download resume as pdf/i }),
-    ).toHaveLength(2);
+    expect(document.body.textContent).not.toContain(DEFAULT_SUMMARY_START);
+    expect(screen.queryByRole('link', { name: 'Download PDF' })).toBeNull();
+    expect(document.querySelector('.resume-page')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(fetch).toHaveBeenCalledWith('/resume/', expect.anything());
   });
 
-  test('renders published HTML from resume/index.html when present', async () => {
-    stubFetch(async () => ({
-      ok: true,
-      text: async () => `<!DOCTYPE html><html><body>
-        <article class="resume-page-prerender" data-name="Christopher Gagne" data-pdf="/new-resume.pdf">
-          <header><div class="name-section"><h1>Christopher Gagne</h1></div></header>
-          <main><section class="resume-summary"><h2>Summary</h2><p>Published summary</p></section></main>
-        </article>
-      </body></html>`,
-    }));
-
+  test('renders the published page, earlier roles included', async () => {
+    stubFetch(page(renderResumePrerenderHtml(PUBLISHED)));
     renderWithProviders(<Resume />);
 
-    expect(await screen.findByText('Published summary')).toBeInTheDocument();
+    expect(await screen.findByText('Published summary.')).toBeInTheDocument();
+    expect(screen.getByText('Published headline')).toHaveClass(
+      'resume-intro__headline',
+    );
+    expect(document.body.textContent).not.toContain(DEFAULT_SUMMARY_START);
+    const details = document.querySelector('details.resume-earlier__details');
+    expect(details?.querySelector('summary')?.textContent).toContain(
+      'Earlier roles, 1999–2012',
+    );
+    expect(details?.textContent).toContain(
+      'Developed and maintained applications.',
+    );
+    expect(document.querySelector('.resume-page')).not.toHaveAttribute(
+      'aria-busy',
+    );
+  });
+
+  test('falls back to the default content when the page cannot load', async () => {
+    stubFetch(async () => ({ ok: false, status: 404 }));
+    renderWithProviders(<Resume />);
+
     expect(
-      screen.getByRole('heading', { name: 'Christopher Gagne' }),
+      await screen.findByText(DEFAULT_SUMMARY_START, { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Experience' }),
     ).toBeInTheDocument();
   });
 
-  test('hides download controls when resume is unpublished', async () => {
-    stubFetch(async () => ({
-      ok: true,
-      text: async () => `<!DOCTYPE html><html><body>
-        <article class="resume-page-unavailable">
-          <header><div class="name-section"><h1>Resume</h1></div></header>
-          <main><p>Resume available on request.</p></main>
-        </article>
-      </body></html>`,
-    }));
-
+  test('an unpublished resume says it is available on request, with no download', async () => {
+    stubFetch(page(renderResumeUnavailablePrerenderHtml()));
     renderWithProviders(<Resume />);
 
     expect(
       await screen.findByText('Resume available on request.'),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /download resume as pdf/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Download PDF' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Get in touch' })).toHaveAttribute(
+      'href',
+      '/contact',
+    );
   });
 
-  test('triggers download when the resume button is clicked', async () => {
+  test('Download PDF links to the PDF, tracks, notifies and offers the bears', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'http://localhost');
+    stubFetch(async (input) =>
+      input === '/resume/'
+        ? page(renderResumePrerenderHtml(PUBLISHED))()
+        : new Response('{"ok":true}', {
+            headers: { 'Content-Type': 'application/json' },
+          }),
+    );
     renderWithProviders(<Resume />);
 
-    const mockAnchor = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-    };
+    const link = await screen.findByRole('link', { name: 'Download PDF' });
+    expect(link).toHaveAttribute('href', '/resume.pdf');
+    expect(link).toHaveAttribute('download', 'Chris-Gagne-Resume.pdf');
 
-    let interceptNextAnchor = true;
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
-      if (tag === 'a' && interceptNextAnchor) {
-        interceptNextAnchor = false;
-        return mockAnchor as unknown as HTMLElement;
-      }
-      return originalCreateElement(tag);
-    });
+    link.addEventListener('click', (e) => e.preventDefault());
+    fireEvent.click(link);
 
-    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
-      if (node === (mockAnchor as unknown as Node)) {
-        return node;
-      }
-      return Node.prototype.appendChild.call(document.body, node) as Node;
-    });
-    vi.spyOn(document.body, 'removeChild').mockImplementation((node) => {
-      if (node === (mockAnchor as unknown as Node)) {
-        return node;
-      }
-      return Node.prototype.removeChild.call(document.body, node) as Node;
-    });
-
-    fireEvent.click(
-      screen.getAllByRole('button', { name: /download resume as pdf/i })[0],
+    expect(trackResumeDownload).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        vi.mocked(fetch).mock.calls.some(([input]) => {
+          const req = input as Request;
+          return (
+            req.method === 'POST' &&
+            String(req.url).endsWith('/api/resume/download')
+          );
+        }),
+      ).toBe(true),
     );
-
-    await waitFor(() => expect(mockAnchor.click).toHaveBeenCalled());
-    expect(mockAnchor.href).toBe('/resume.pdf');
-    expect(mockAnchor.download).toBe('Chris-Gagne-Resume.pdf');
-
     expect(
       screen.getByRole('link', { name: /don't feed the bears/i }),
     ).toHaveAttribute('href', '/dont-feed-the-bears?from=resume');

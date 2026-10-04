@@ -141,3 +141,58 @@ export const planResumeDateMigration = (
     changed,
   };
 };
+
+/** `2019-07` → `Jul 2019`. */
+export const formatResumeShortMonth = (month: string): string => {
+  const [year, mm] = month.split('-');
+  const name = MONTH_NAMES[Number(mm) - 1];
+  return name && year ? `${name.slice(0, 3)} ${year}` : month;
+};
+
+/** Old-shape rows are read through the legacy parser so both shapes render alike. */
+export const structuredExperience = (
+  item: ResumeExperience,
+): ResumeExperience => {
+  if (item.start) return item;
+  const parsed = parseLegacyCompanyLine(item.company);
+  return parsed.ok
+    ? { ...item, company: parsed.company, start: parsed.start, end: parsed.end }
+    : item;
+};
+
+/** `Jul 2019 – Present`; empty for a row with no `start`. */
+export const resumeRoleDates = (
+  item: Pick<ResumeExperience, 'start' | 'end'>,
+): string =>
+  item.start
+    ? `${formatResumeShortMonth(item.start)} – ${item.end ? formatResumeShortMonth(item.end) : 'Present'}`
+    : '';
+
+export type ResumeExperienceGroups = {
+  recent: ResumeExperience[];
+  earlier: ResumeExperience[];
+  /** `Earlier roles, 1999–2012`; null when there are no earlier roles. */
+  earlierLabel: string | null;
+};
+
+/** Roles that ended before `earlierRolesBefore` (a year) are earlier roles; unset keeps every role recent. */
+export const groupResumeExperience = (
+  content: Pick<ResumeContent, 'experience' | 'earlierRolesBefore'>,
+): ResumeExperienceGroups => {
+  const items = content.experience.map(structuredExperience);
+  const cutoff = content.earlierRolesBefore;
+  const isEarlier = (item: ResumeExperience): boolean =>
+    cutoff !== undefined &&
+    !!item.start &&
+    !!item.end &&
+    Number(item.end.slice(0, 4)) < cutoff;
+  const earlier = items.filter(isEarlier);
+  const recent = items.filter((item) => !isEarlier(item));
+  if (cutoff === undefined || earlier.length === 0) {
+    return { recent, earlier, earlierLabel: null };
+  }
+  const first = Math.min(
+    ...earlier.map((item) => Number(item.start!.slice(0, 4))),
+  );
+  return { recent, earlier, earlierLabel: `Earlier roles, ${first}–${cutoff}` };
+};

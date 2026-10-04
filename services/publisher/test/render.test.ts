@@ -201,10 +201,20 @@ describe('publisher render', () => {
     );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
     expect(html).toContain(
-      '<div class="resume-page resume-page-prerender" id="top"',
+      '<div class="resume-page resume-page-prerender"><header class="resume-intro">',
     );
-    expect(html).toContain('data-pdf="/resume.pdf"');
     expect(html).toContain('/assets/index.js');
+  });
+
+  it('points Download PDF at the generated PDF whatever pdfPath says', () => {
+    const html = renderResumePage(shell, {
+      ...DEFAULT_RESUME,
+      pdfPath: '/old/resume.pdf',
+    });
+    expect(html).toContain(
+      '<a class="resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf">',
+    );
+    expect(html).not.toContain('/old/resume.pdf');
   });
 
   it('prefers resume seo overrides for title and description', () => {
