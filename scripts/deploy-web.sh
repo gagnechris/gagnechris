@@ -37,8 +37,11 @@ VITE_COGNITO_USER_POOL_ID="$(ssm_value cognitoUserPoolId)"
 VITE_COGNITO_ADMIN_CLIENT_ID="$(ssm_value cognitoAdminWebClientId)"
 VITE_COGNITO_NOTEBOOK_CLIENT_ID="$(ssm_value cognitoNotebookWebClientId)"
 VITE_COGNITO_AUTH_DOMAIN="$(ssm_value cognitoAuthDomain)"
+# The admin app links public pages (View live, previews) at this origin.
+VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
 export VITE_COGNITO_USER_POOL_ID VITE_COGNITO_ADMIN_CLIENT_ID \
-  VITE_COGNITO_NOTEBOOK_CLIENT_ID VITE_COGNITO_AUTH_DOMAIN
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID VITE_COGNITO_AUTH_DOMAIN \
+  VITE_PUBLIC_SITE_ORIGIN
 
 npm run build -w @gagnechris/web
 npm run --silent check:web-shells

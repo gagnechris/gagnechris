@@ -46,3 +46,23 @@ export const webAppFromEnv = (value: string | undefined): WebAppName => {
   }
   return name;
 };
+
+const PROD_PUBLIC_SITE_ORIGIN = 'https://gagnechris.com';
+
+/** Where the admin app links public pages; builds default to production. */
+export const publicSiteOrigin = (
+  value: string | undefined,
+  command: 'build' | 'serve',
+): string => {
+  const origin =
+    value?.trim() ||
+    (command === 'build'
+      ? PROD_PUBLIC_SITE_ORIGIN
+      : `http://localhost:${WEB_APPS.public.port}`);
+  if (!URL.canParse(origin) || new URL(origin).origin !== origin) {
+    throw new Error(
+      `VITE_PUBLIC_SITE_ORIGIN must be an origin like ${PROD_PUBLIC_SITE_ORIGIN} (got ${origin})`,
+    );
+  }
+  return origin;
+};

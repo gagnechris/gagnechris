@@ -488,6 +488,10 @@ describe('ProjectEditorPage lifecycle', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   test('Publish, Unpublish, Discard and Delete call the project routes', async () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -522,7 +526,7 @@ describe('ProjectEditorPage lifecycle', () => {
     );
     expect(
       await screen.findByRole('link', { name: 'View live' }),
-    ).toHaveAttribute('href', '/projects/notebook');
+    ).toHaveAttribute('href', 'http://localhost:5173/projects/notebook');
 
     put.mockResolvedValue(
       ok({
@@ -577,6 +581,18 @@ describe('ProjectEditorPage lifecycle', () => {
     });
     expect(
       await screen.findByRole('link', { name: 'View live' }),
-    ).toHaveAttribute('href', '/dont-feed-the-bears');
+    ).toHaveAttribute('href', 'http://localhost:5173/dont-feed-the-bears');
+  });
+
+  test('a published project views live on gagnechris.com in prod', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    renderEditor({ ...baseProject, status: 'published' });
+    const link = await screen.findByRole('link', { name: 'View live' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://gagnechris.com/projects/notebook',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener');
   });
 });

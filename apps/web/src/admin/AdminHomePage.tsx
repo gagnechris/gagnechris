@@ -4,6 +4,7 @@ import { homeResource, mergeEditorSeo, type Home } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { Field, TextArea, TextInput } from '../workspace/ui/Field';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
+import { publicUrl, withPublicLinks } from './publicUrl';
 
 type DraftFields = {
   name: string;
@@ -97,7 +98,7 @@ const AdminHomePage = () => {
       <EditorActionBar
         leading={<h1>Home</h1>}
         {...actionBarProps}
-        viewLiveHref="/"
+        viewLiveHref={publicUrl('/')}
       />
 
       {saveError ? (
@@ -159,7 +160,7 @@ const AdminHomePage = () => {
           <h2 className="admin-preview-title">Preview</h2>
           <div
             className="admin-home-preview"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
+            dangerouslySetInnerHTML={{ __html: withPublicLinks(previewHtml) }}
           />
         </div>
       </div>
