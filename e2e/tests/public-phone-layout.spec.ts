@@ -126,7 +126,7 @@ test.describe('phone layout at 390px', () => {
       ],
       [
         'rule to title',
-        '.home-section__head@bottom',
+        `${HOME_POST}@top`,
         `${HOME_POST} .home-post__title@top`,
         16,
       ],
