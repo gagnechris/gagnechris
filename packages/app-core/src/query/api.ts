@@ -1,6 +1,7 @@
 import type { ApiClient, components } from '@gagnechris/api-client';
 
 export type Post = components['schemas']['Post'];
+export type Project = components['schemas']['Project'];
 export type Home = components['schemas']['Home'];
 export type Resume = components['schemas']['Resume'];
 export type Note = components['schemas']['Note'];
@@ -9,6 +10,10 @@ export type NotebookSearchResponse =
   components['schemas']['NotebookSearchResponse'];
 export type CreatePostRequest = components['schemas']['CreatePostRequest'];
 export type UpdatePostRequest = components['schemas']['UpdatePostRequest'];
+export type CreateProjectRequest =
+  components['schemas']['CreateProjectRequest'];
+export type UpdateProjectRequest =
+  components['schemas']['UpdateProjectRequest'];
 export type UpdateHomeRequest = components['schemas']['UpdateHomeRequest'];
 export type UpdateResumeRequest = components['schemas']['UpdateResumeRequest'];
 export type CreateNoteRequest = components['schemas']['CreateNoteRequest'];
@@ -187,6 +192,93 @@ export const discardPost = async (
   body: ExpectedVersionRequest,
 ): Promise<Post> => {
   const result = await client.POST('/api/admin/posts/{id}/discard', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Discard failed');
+};
+
+export const fetchProjects = async (client: ApiClient): Promise<Project[]> => {
+  const result = await client.GET('/api/admin/projects', {
+    params: { query: {} },
+  });
+  return unwrap(result, 'Could not load projects').items.filter(
+    (p) => p.status !== 'deleted',
+  );
+};
+
+export const fetchProject = async (
+  client: ApiClient,
+  id: string,
+): Promise<Project> => {
+  const result = await client.GET('/api/admin/projects/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Could not load project');
+};
+
+export const createProject = async (
+  client: ApiClient,
+  body: CreateProjectRequest,
+): Promise<Project> => {
+  const result = await client.POST('/api/admin/projects', { body });
+  return unwrap(result, 'Could not create project');
+};
+
+export const updateProject = async (
+  client: ApiClient,
+  id: string,
+  body: UpdateProjectRequest,
+): Promise<Project> => {
+  const result = await client.PUT('/api/admin/projects/{id}', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not save project');
+};
+
+export const deleteProject = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Project> => {
+  const result = await client.DELETE('/api/admin/projects/{id}', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Delete failed');
+};
+
+export const publishProject = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Project> => {
+  const result = await client.POST('/api/admin/projects/{id}/publish', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Publish failed');
+};
+
+export const unpublishProject = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Project> => {
+  const result = await client.POST('/api/admin/projects/{id}/unpublish', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Unpublish failed');
+};
+
+export const discardProject = async (
+  client: ApiClient,
+  id: string,
+  body: ExpectedVersionRequest,
+): Promise<Project> => {
+  const result = await client.POST('/api/admin/projects/{id}/discard', {
     params: { path: { id } },
     body,
   });

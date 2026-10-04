@@ -1,6 +1,6 @@
 # gagnechris.com
 
-Personal site and headless CMS for [gagnechris.com](https://gagnechris.com): statically prerendered public pages, an admin UI with Cognito passkeys, draft → publish for posts / home / resume, and a private Notebook (daily notes, pages, tasks, search, and export).
+Personal site and headless CMS for [gagnechris.com](https://gagnechris.com): statically prerendered public pages, an admin UI with Cognito passkeys, draft → publish for posts / projects / home / resume, and a private Notebook (daily notes, pages, tasks, search, and export).
 
 > GitHub profile intro lives in the root [`README.md`](../README.md) (this special `username/username` repo). GitHub prefers `.github/README.md` over the root for **both** the profile and the repo page, so project docs stay here under `docs/` instead.
 

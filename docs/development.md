@@ -32,7 +32,7 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 | Vite, admin app (`VITE_AUTH_MODE=local`)    | `5174`         |
 | Vite, Notebook app (`VITE_AUTH_MODE=local`) | `5175`         |
 
-Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Fake local sign-in never uses Cognito or prod AWS.
+Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Local media upload URLs point at the local API, which answers the browser's CORS preflight for them the way the site bucket's CORS rule does in production. Fake local sign-in never uses Cognito or prod AWS.
 
 The public site has no sign-in, admin or Notebook routes: on `:5173`, `/admin` and `/auth/callback` render the 404 page. The static origin (`:4177`) runs the apex viewer-request function, so there they 301 to `https://admin.gagnechris.com` / `https://notebook.gagnechris.com` as in production.
 

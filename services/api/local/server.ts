@@ -125,8 +125,23 @@ if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {
 
 applyLocalAuthEnv();
 
+// Local upload URLs point here, so the browser PUT is cross-origin like the
+// prod PUT to the site bucket, which allows it with a CORS rule.
+const MEDIA_OBJECTS_PREFIX = '/api/admin/media/objects/';
+
 const server = createServer(async (req, res) => {
   try {
+    if ((req.url || '').startsWith(MEDIA_OBJECTS_PREFIX)) {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Allow-Methods', 'PUT');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Vary', 'Origin');
+      if (req.method === 'OPTIONS') {
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
+    }
     const body = await readBody(req);
     const rawPath = req.url || '/';
     const event = buildEvent(req, body, rawPath);

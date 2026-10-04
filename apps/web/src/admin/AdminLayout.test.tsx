@@ -84,7 +84,7 @@ describe('AdminLayout', () => {
     expect(pending.cleared).toBe(1);
   });
 
-  test('shows Posts / Home / Resume nav and posts hub when authenticated', async () => {
+  test('shows Posts / Home / Resume / Projects nav and posts hub when authenticated', async () => {
     render(
       <QueryClientTestProvider>
         <MemoryRouter initialEntries={['/']}>
@@ -106,6 +106,10 @@ describe('AdminLayout', () => {
       '/home',
     );
     expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute(
+      'href',
+      '/projects',
+    );
     expect(
       screen.queryByRole('link', { name: 'Notebook' }),
     ).not.toBeInTheDocument();
