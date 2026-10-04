@@ -1,0 +1,22 @@
+{
+  "version": "0",
+  "id": "710b0398-d48e-f3c3-afca-cfeb2fdaa656",
+  "detail-type": "Backup Job State Change",
+  "source": "aws.backup",
+  "account": "111111111111",
+  "time": "2026-10-04T05:15:26Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "backupJobId": "34176239-e96d-4e1d-9fad-529dbb3c3556",
+    "backupVaultArn": "arn:aws:backup:us-east-1:111111111111:backup-vault:gagnechris-prod-app-table",
+    "backupVaultName": "gagnechris-prod-app-table",
+    "bytesTransferred": "0",
+    "creationDate": "2026-10-04T05:13:07.392Z",
+    "iamRoleArn": "arn:aws:iam::111111111111:role/gagnechris-prod-backup",
+    "resourceArn": "arn:aws:dynamodb:us-east-1:111111111111:table/gagnechris-prod",
+    "resourceType": "DynamoDB",
+    "state": "COMPLETED",
+    "percentDone": 0
+  }
+}

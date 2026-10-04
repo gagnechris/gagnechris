@@ -1,0 +1,27 @@
+{
+  "version": "0",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "detail-type": "Restore Job State Change",
+  "source": "aws.backup",
+  "account": "111111111111",
+  "time": "2026-10-04T09:23:05Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:backup:us-east-1:111111111111:recovery-point:00000000-0000-0000-0000-000000000000"
+  ],
+  "detail": {
+    "restoreJobId": "3B4FE402-2366-413B-AD4F-000000000000",
+    "backupVaultArn": "arn:aws:backup:us-east-1:111111111111:backup-vault:gagnechris-prod-app-table",
+    "recoveryPointArn": "arn:aws:backup:us-east-1:111111111111:recovery-point:00000000-0000-0000-0000-000000000000",
+    "sourceResourceArn": "arn:aws:dynamodb:us-east-1:111111111111:table/gagnechris-prod",
+    "backupSizeInBytes": "36048",
+    "creationDate": "2026-10-04T09:15:00.000Z",
+    "iamRoleArn": "arn:aws:iam::111111111111:role/gagnechris-prod-restore-testing",
+    "percentDone": 0,
+    "resourceType": "DynamoDB",
+    "status": "COMPLETED",
+    "createdResourceArn": "arn:aws:dynamodb:us-east-1:111111111111:table/awsbackup-restore-test-00000000-0000-0000-0000-000000000000",
+    "completionDate": "2026-10-04T09:23:00.000Z",
+    "restoreTestingPlanArn": "arn:aws:backup:us-east-1:111111111111:restore-testing-plan:gagnechris_prod_app_table_weekly-00000000-0000-0000-0000-000000000000"
+  }
+}
