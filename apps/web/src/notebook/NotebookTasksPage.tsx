@@ -1,17 +1,17 @@
 import { useMemo, useState } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
   useCreateTaskMutation,
   useTasksQuery,
   type NotebookArea,
   type Task,
-  type TaskPriority,
-  type TaskStatus,
 } from '@gagnechris/app-core';
+import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
-import { addLocalDays, localToday, parseLocalDate } from './calendarDates';
+import { addLocalDays, localToday, parseLocalDate } from '../kit/calendarDates';
 import { areaQueryParam } from './notebookAreaPreference';
-import { parseTaskQuickAdd } from './parseTaskQuickAdd';
+import { parseTaskQuickAdd } from '../kit/tasks/parseTaskQuickAdd';
+import { TaskRow } from '../kit/tasks/TaskRow';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
@@ -239,7 +239,7 @@ export default function NotebookTasksPage() {
       {openItems.length > 0 ? (
         <ul className="admin-post-list" aria-label="Open tasks">
           {openItems.map((task) => (
-            <TaskRow
+            <TaskListRow
               key={task.id}
               task={task}
               onToggle={() => toggleComplete(task)}
@@ -264,7 +264,7 @@ export default function NotebookTasksPage() {
           </summary>
           <ul className="admin-post-list" aria-label="Completed tasks">
             {doneItems.map((task) => (
-              <TaskRow
+              <TaskListRow
                 key={task.id}
                 task={task}
                 onToggle={() => toggleComplete(task)}
@@ -298,51 +298,19 @@ export default function NotebookTasksPage() {
   );
 }
 
-function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
-  const done = task.status === 'done';
+function TaskListRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
   return (
-    <li className="admin-post-list__item">
-      <div
-        className="admin-post-list__link"
-        style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}
-      >
-        <input
-          type="checkbox"
-          checked={done}
-          onChange={onToggle}
-          aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-        />
-        <Link
-          to={`/tasks/${task.id}`}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <span
-            className="admin-post-list__title"
-            style={
-              done
-                ? { textDecoration: 'line-through', opacity: 0.7 }
-                : undefined
-            }
-          >
-            {task.title}
-            <span className="admin-badge">{task.priority}</span>
-            {task.status === 'in_progress' ? (
-              <span className="admin-badge admin-badge--published">
-                in progress
-              </span>
-            ) : null}
-          </span>
-          <span className="admin-post-list__meta">
-            {task.area}
-            {task.dueDate ? ` · due ${task.dueDate}` : ' · no due date'}
-          </span>
-        </Link>
-      </div>
-    </li>
+    <TaskRow
+      task={task}
+      onToggle={onToggle}
+      to={`/tasks/${task.id}`}
+      variant="list"
+      meta={
+        <>
+          {task.area}
+          {task.dueDate ? ` · due ${task.dueDate}` : ' · no due date'}
+        </>
+      }
+    />
   );
 }

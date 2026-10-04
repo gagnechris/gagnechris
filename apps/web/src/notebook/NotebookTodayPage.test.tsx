@@ -49,7 +49,7 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../workspace/markdown/MarkdownEditor', () => ({
+vi.mock('../kit/markdown/MarkdownEditor', () => ({
   default: ({
     value,
     onChange,
@@ -67,7 +67,7 @@ vi.mock('../workspace/markdown/MarkdownEditor', () => ({
   ),
 }));
 
-vi.mock('../workspace/markdown/MarkdownPreview', () => ({
+vi.mock('../kit/markdown/MarkdownPreview', () => ({
   default: ({ markdown }: { markdown: string }) => (
     <div data-testid="preview">{markdown}</div>
   ),

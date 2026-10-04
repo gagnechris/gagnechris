@@ -4,7 +4,7 @@ import { render, renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { VersionedEntityEditorOptions } from '@gagnechris/app-core';
-import MarkdownEditor from './markdown/MarkdownEditor';
+import MarkdownEditor from '../kit/markdown/MarkdownEditor';
 import { useVersionedEntityEditor } from './useVersionedEntityEditor';
 
 vi.mock('react-router-dom', async () => {

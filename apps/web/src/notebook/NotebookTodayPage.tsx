@@ -8,7 +8,11 @@ import {
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
-import { addLocalDays, monthBounds, parseLocalDate } from './calendarDates';
+import {
+  addLocalDays,
+  monthBounds,
+  parseLocalDate,
+} from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import {

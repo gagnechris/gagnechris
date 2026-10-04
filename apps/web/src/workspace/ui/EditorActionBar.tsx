@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import type { SaveState } from '@gagnechris/app-core';
-import { Button } from './Button';
+import { Button } from '../../kit/Button';
 import { SaveIndicator } from './SaveIndicator';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge } from '../../kit/StatusBadge';
 
 export type EditorActionBarProps = {
   leading?: ReactNode;

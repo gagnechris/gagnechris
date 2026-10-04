@@ -20,7 +20,7 @@ vi.mock('../workspace/api/client', () => ({
   }),
 }));
 
-vi.mock('../workspace/markdown/MarkdownEditor', () => ({
+vi.mock('../kit/markdown/MarkdownEditor', () => ({
   default: ({
     value,
     onChange,
@@ -36,7 +36,7 @@ vi.mock('../workspace/markdown/MarkdownEditor', () => ({
   ),
 }));
 
-vi.mock('../workspace/markdown/MarkdownPreview', () => ({
+vi.mock('../kit/markdown/MarkdownPreview', () => ({
   default: () => <div data-testid="preview" />,
 }));
 

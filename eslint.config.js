@@ -288,6 +288,54 @@ const webAppZones = [
       ],
     },
   },
+  // Admin, Notebook and the public demos import the kit; it stays public-safe.
+  {
+    files: ['apps/web/src/kit/**/*.{ts,tsx}'],
+    ignores: ['apps/web/src/kit/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'aws-amplify',
+              message: 'The kit never signs anyone in.',
+            },
+            {
+              name: '@gagnechris/app-core',
+              message:
+                'The kit is presentational: pass data and callbacks in as props.',
+            },
+            {
+              name: '@tanstack/react-query',
+              message:
+                'The kit is presentational: pass data and callbacks in as props.',
+            },
+            {
+              name: '@gagnechris/api-client',
+              message: 'The kit never calls the API.',
+            },
+          ],
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              ...webDirImport('admin', 'notebook', 'workspace', 'auth'),
+              message:
+                'The kit must not import the admin, Notebook or workspace apps.',
+            },
+            {
+              group: ['aws-amplify/*', '@aws-amplify/*'],
+              message: 'The kit never signs anyone in.',
+            },
+            {
+              group: ['@gagnechris/api-client/*', '@tanstack/react-query/*'],
+              message: 'The kit never calls the API.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ['apps/web/src/admin/**/*.{ts,tsx}'],
     rules: {

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { taskResource, useDeleteTaskMutation } from '@gagnechris/app-core';
-import { Field, Select, TextInput } from '../workspace/ui/Field';
+import { Field, Select, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';

@@ -5,7 +5,7 @@ import {
   monthGrid,
   monthLabel,
   startOfMonth,
-} from './calendarDates';
+} from '../kit/calendarDates';
 
 type Props = {
   selected: string;

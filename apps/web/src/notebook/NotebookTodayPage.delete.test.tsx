@@ -30,7 +30,7 @@ const state = vi.hoisted(() => ({
   puts: [] as Record<string, unknown>[],
 }));
 
-vi.mock('../workspace/markdown/MarkdownEditor', () => ({
+vi.mock('../kit/markdown/MarkdownEditor', () => ({
   default: ({
     value,
     onChange,
@@ -48,7 +48,7 @@ vi.mock('../workspace/markdown/MarkdownEditor', () => ({
   ),
 }));
 
-vi.mock('../workspace/markdown/MarkdownPreview', () => ({
+vi.mock('../kit/markdown/MarkdownPreview', () => ({
   default: ({ markdown }: { markdown: string }) => (
     <div data-testid="preview">{markdown}</div>
   ),

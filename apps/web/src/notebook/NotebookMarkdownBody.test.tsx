@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 const loaded = vi.hoisted(() => ({ markdownCss: false }));
 
-vi.mock('../workspace/markdown/markdown.css', () => {
+vi.mock('../kit/markdown/markdown.css', () => {
   loaded.markdownCss = true;
   return {};
 });

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
 import { ApiError } from './query/api';
-import { Button } from '../workspace/ui/Button';
-import { TextInput, Select } from '../workspace/ui/Field';
-import { StatusBadge } from '../workspace/ui/StatusBadge';
+import { Button } from '../kit/Button';
+import { TextInput, Select } from '../kit/Field';
+import { StatusBadge } from '../kit/StatusBadge';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';

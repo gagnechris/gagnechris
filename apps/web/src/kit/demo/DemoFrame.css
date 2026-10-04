@@ -1,0 +1,44 @@
+/* The app look (sans, sage) inside the serif public page. */
+.demo-frame {
+  font-family: var(--font-sans);
+  line-height: var(--line-normal);
+  color: var(--neutral-800);
+  text-align: left;
+}
+
+.demo-frame :is(h1, h2, h3, h4) {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+
+.demo-frame a {
+  color: var(--primary-600);
+}
+
+.demo-frame__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--neutral-200);
+  background: white;
+}
+
+.demo-frame__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
+.demo-frame__body {
+  padding: var(--space-4);
+  background: linear-gradient(
+    165deg,
+    var(--neutral-50) 0%,
+    var(--primary-50) 45%,
+    var(--neutral-100) 100%
+  );
+}

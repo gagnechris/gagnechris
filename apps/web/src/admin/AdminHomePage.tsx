@@ -2,7 +2,7 @@ import { type FormEvent } from 'react';
 import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import { homeResource, mergeEditorSeo, type Home } from '@gagnechris/app-core';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
-import { Field, TextArea, TextInput } from '../workspace/ui/Field';
+import { Field, TextArea, TextInput } from '../kit/Field';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 import { publicUrl, withPublicLinks } from './publicUrl';
 

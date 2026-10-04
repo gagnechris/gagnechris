@@ -242,6 +242,17 @@ describe('demoChunkProblems', () => {
     ]);
   });
 
+  it('fails when the test-only fixture demo made it into the build', () => {
+    const fixture = 'src/__tests__/fixtures/demo/FixtureDemo.tsx';
+    const manifest = {
+      ...MANIFEST,
+      [fixture]: { file: 'assets/fx.js', src: fixture, isDynamicEntry: true },
+    };
+    expect(demoChunkProblems(manifest, [POSTS_DEMO])).toEqual([
+      `${fixture} is test-only but has a chunk in the build`,
+    ]);
+  });
+
   it('fails when a demo was bundled into another chunk', () => {
     const { [POSTS_DEMO]: _, ...manifest } = MANIFEST;
     expect(demoChunkProblems(manifest, [POSTS_DEMO])).toEqual([

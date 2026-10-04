@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { localToday } from './calendarDates';
+import { localToday } from '../kit/calendarDates';
 
 /**
  * Rolls over at midnight and when the tab comes back, so pages left open

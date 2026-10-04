@@ -102,8 +102,6 @@ export {
   type Project,
   type Resume,
   type Task,
-  type TaskPriority,
-  type TaskStatus,
   type TasksPage,
   type UpdateHomeRequest,
   type UpdateNoteRequest,

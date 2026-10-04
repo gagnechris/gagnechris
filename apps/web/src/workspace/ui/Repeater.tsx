@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button } from './Button';
+import { Button } from '../../kit/Button';
 
 export type RepeaterItem = { id: string };
 
