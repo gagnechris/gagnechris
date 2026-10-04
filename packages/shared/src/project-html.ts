@@ -2,29 +2,27 @@ import { escapeHtml } from './html.js';
 import { isSafeLinkHref, POST_LINK_SCHEMES } from './links.js';
 import { renderPostMarkdownToHtml } from './markdown.js';
 import {
+  PROJECT_IDEA_PREVIEW_TEXT,
+  PROJECT_MINI_UI,
+  PROJECT_PREVIEW_HEIGHT,
+  PROJECT_PREVIEW_WIDTH,
   PROJECT_STAGE_LABELS,
+  PROJECTS_INDEX_EMPTY_TEXT,
+  PROJECTS_INDEX_INTRO,
   PROJECTS_PATH,
-  projectCardHref,
-  sortProjectsByOrder,
+  projectCardViews,
+  projectPreview,
+  projectStageText,
+  type ProjectCardSource,
+  type ProjectCardView,
+  type ProjectMiniNode,
 } from './projects.js';
 import type { Project } from './schemas.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
 
 export const PROJECTS_INDEX_TITLE = 'Projects';
 
-export type ProjectsIndexItem = Pick<
-  Project,
-  | 'id'
-  | 'slug'
-  | 'name'
-  | 'pitch'
-  | 'stage'
-  | 'stageNote'
-  | 'stack'
-  | 'order'
-  | 'bodyMarkdown'
-  | 'href'
->;
+export type ProjectsIndexItem = ProjectCardSource;
 
 const stageHtml = (project: Pick<Project, 'stage' | 'stageNote'>): string =>
   `<p class="project-stage" data-stage="${project.stage}">` +
@@ -37,30 +35,86 @@ const stackHtml = (stack: readonly string[]): string =>
     ? `<p class="project-stack">${stack.map(escapeHtml).join(' · ')}</p>`
     : '';
 
-const projectItemHtml = (project: ProjectsIndexItem): string => {
-  const href = projectCardHref(project);
-  const name = escapeHtml(project.name);
-  return (
-    `<li class="projects-list__item" data-slug="${escapeHtml(project.slug)}">` +
-    `<h2 class="project-name">${href ? `<a href="${escapeHtml(href)}">${name}</a>` : name}</h2>` +
-    stageHtml(project) +
-    (project.pitch
-      ? `<p class="project-pitch">${escapeHtml(project.pitch)}</p>`
+const miniHtml = (nodes: readonly ProjectMiniNode[]): string =>
+  nodes
+    .map(
+      ({ className, text, children }) =>
+        `<span class="${className}">` +
+        (text ? escapeHtml(text) : '') +
+        (children ? miniHtml(children) : '') +
+        `</span>`,
+    )
+    .join('');
+
+const previewHtml = (card: ProjectCardView): string => {
+  const preview = projectPreview(card);
+  switch (preview.kind) {
+    case 'image':
+      return (
+        `<div class="project-preview project-preview--image">` +
+        `<img alt="" width="${PROJECT_PREVIEW_WIDTH}" height="${PROJECT_PREVIEW_HEIGHT}" src="${escapeHtml(preview.src)}">` +
+        `</div>`
+      );
+    case 'idea':
+      return `<div class="project-preview project-preview--idea" aria-hidden="true">${escapeHtml(PROJECT_IDEA_PREVIEW_TEXT)}</div>`;
+    case 'mini':
+      return (
+        `<div class="project-preview project-preview--${preview.mini}" aria-hidden="true">` +
+        miniHtml(PROJECT_MINI_UI[preview.mini]) +
+        `</div>`
+      );
+  }
+};
+
+/*
+ * React's ProjectCard renders exactly this (ProjectCard.test.tsx), and
+ * `projectCardsFromDocument` reads it back on a cold load.
+ */
+export const renderProjectCardHtml = (
+  card: ProjectCardView,
+  heading: 'h2' | 'h3',
+): string => {
+  const inner =
+    previewHtml(card) +
+    `<div class="project-card__text">` +
+    `<p class="project-stage" data-stage="${card.stage}">${escapeHtml(projectStageText(card))}</p>` +
+    `<${heading} class="project-card__name">${escapeHtml(card.name)}</${heading}>` +
+    (card.pitch
+      ? `<p class="project-card__pitch">${escapeHtml(card.pitch)}</p>`
       : '') +
-    stackHtml(project.stack) +
+    (card.stack.length
+      ? `<p class="project-card__stack">` +
+        card.stack.map((s) => `<span>${escapeHtml(s)}</span>`).join(' · ') +
+        `</p>`
+      : '') +
+    `</div>`;
+  return (
+    `<li class="project-card" data-id="${escapeHtml(card.id)}" data-slug="${escapeHtml(card.slug)}"${card.demo ? ` data-demo="${card.demo}"` : ''}>` +
+    (card.href
+      ? `<a class="project-card__link" href="${escapeHtml(card.href)}">${inner}</a>`
+      : `<div class="project-card__link">${inner}</div>`) +
     `</li>`
   );
 };
 
-/** Deliberately bare: the designed index replaces this markup. */
 export const renderProjectsIndexBodyHtml = (
   projects: readonly ProjectsIndexItem[],
-): string =>
-  `<main class="projects-page">` +
-  `<h1>${PROJECTS_INDEX_TITLE}</h1>` +
-  `<ul class="projects-list">` +
-  sortProjectsByOrder(projects).map(projectItemHtml).join('') +
-  `</ul></main>`;
+): string => {
+  const cards = projectCardViews(projects);
+  return (
+    `<div class="projects-index">` +
+    `<header class="projects-index__header">` +
+    `<h1>${PROJECTS_INDEX_TITLE}</h1>` +
+    `<p class="projects-index__intro">${escapeHtml(PROJECTS_INDEX_INTRO)}</p>` +
+    `</header>` +
+    `<main>` +
+    (cards.length
+      ? `<ul class="project-list">${cards.map((c) => renderProjectCardHtml(c, 'h2')).join('')}</ul>`
+      : `<p class="projects-index__empty">${escapeHtml(PROJECTS_INDEX_EMPTY_TEXT)}</p>`) +
+    `</main>` +
+    `</div>`
+  );
+};
 
 const linksHtml = (links: Project['links']): string => {
   const safe = links.filter((l) => isSafeLinkHref(l.url, POST_LINK_SCHEMES));

@@ -50,16 +50,20 @@ const target: PublishTarget = {
       (key) => PAGE_KEY_RE.test(key) && !keep.has(key),
     );
 
-    if (projects.length > 0) {
+    // The nav always links `/projects`, so it gets an index (the empty state
+    // when nothing is published). An index of only corrupt rows would drop
+    // their live pages from it, so the one already there is kept.
+    const keepIndex =
+      projects.length === 0 &&
+      corruptSlugs.length > 0 &&
+      (await storage.read(PROJECTS_INDEX_KEY)) !== undefined;
+    if (!keepIndex) {
       artifacts.push({
         key: PROJECTS_INDEX_KEY,
         body: renderProjectsIndexPage(shell, projects),
         contentType: 'text/html; charset=utf-8',
         cacheControl: CACHE_HTML,
       });
-    } else if (corruptSlugs.length === 0) {
-      // Nothing published: `/projects` falls through to the HTML 404.
-      deleteKeys.push(PROJECTS_INDEX_KEY);
     }
 
     return { artifacts, deleteKeys, invalidationPaths: ['/projects*'] };

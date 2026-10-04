@@ -15,6 +15,7 @@ import {
   PROJECTS_PATH,
   projectHasPage,
   projectPagePath,
+  type ProjectCardView,
   type Home,
   type Post,
   type Project,
@@ -180,6 +181,7 @@ export const renderHomePage = (
   shellHtml: string,
   home: Home,
   recentPosts: readonly HomeRecentPost[] = [],
+  projects: readonly ProjectCardView[] = [],
 ): string => {
   const title = escapeHtml(home.seo?.title || `${home.name} - ${home.title}`);
   const description = escapeHtml(
@@ -197,7 +199,10 @@ export const renderHomePage = (
     type: 'website',
     image,
   });
-  html = injectPrerender(html, renderHomePrerenderHtml(home, recentPosts));
+  html = injectPrerender(
+    html,
+    renderHomePrerenderHtml(home, recentPosts, projects),
+  );
   return html;
 };
 
@@ -248,11 +253,9 @@ const projectSitemapUrls = ({
   projects,
   corruptSlugs = [],
 }: SitemapProjects): { loc: string; lastmod: string | undefined }[] => {
-  if (projects.length === 0 && corruptSlugs.length === 0) return [];
   const paged = projects.filter(projectHasPage);
   const seen = new Set(projects.map((p) => p.slug));
   return [
-    { loc: `https://${APEX}${PROJECTS_PATH}`, lastmod: undefined },
     ...paged.map((p) => ({
       loc: projectCanonicalUrl(p.slug),
       lastmod: (p.updatedAt || p.publishedAt || '').slice(0, 10) || undefined,
@@ -269,7 +272,7 @@ export const buildSitemapXml = (
   extraSlugs: readonly string[] = [],
   projects: SitemapProjects = { projects: [] },
 ): string => {
-  const staticPaths = ['/', POSTS_PATH, '/resume', '/contact'];
+  const staticPaths = ['/', POSTS_PATH, PROJECTS_PATH, '/resume', '/contact'];
   const seen = new Set(posts.map((p) => p.slug));
   const urls = [
     ...staticPaths.map((path) => ({

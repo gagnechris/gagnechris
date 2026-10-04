@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { selectHomeProjects } from '@gagnechris/shared';
+import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
 import {
   fallbackHomeView,
@@ -47,7 +49,17 @@ describe('homeDocumentFromRoot', () => {
       title: 'Engineering Director',
       aboutHtml: '<p>Published copy.</p><p>Second paragraph.</p>',
       recentPosts: [],
+      projects: [],
     });
+  });
+
+  test('reads What I’m building back exactly as rendered', () => {
+    const projects = selectHomeProjects(SAMPLE_PROJECTS);
+    const view = homeDocumentFromRoot(
+      parse(`<body>${renderHomePrerenderHtml(home, [], projects)}</body>`),
+    );
+    expect(projects.map((p) => p.slug)).toEqual(['posts', 'notebook']);
+    expect(view?.projects).toEqual(projects);
   });
 
   test('reads Recent posts back exactly as rendered', () => {

@@ -7,6 +7,7 @@ const site = () => requireEnv('E2E_SITE_URL');
 const PHONE = { width: 390, height: 844 };
 const MENU_LINKS = [
   'Posts',
+  'Projects',
   'Resume',
   'Contact',
   'LinkedIn',

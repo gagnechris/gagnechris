@@ -1,6 +1,8 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
 import { formatPostDate, postDateAttribute } from './post-date.js';
+import { renderProjectCardHtml } from './project-html.js';
+import { PROJECTS_PATH, type ProjectCardView } from './projects.js';
 import type { Home, Post } from './schemas.js';
 import {
   SITE_AUTHOR_NAME,
@@ -25,7 +27,9 @@ export type HomeLinksSegment = string | HomeLink;
 export const HOME_LINKS_SENTENCE: readonly HomeLinksSegment[] = [
   'Read my ',
   { label: 'posts', href: '/posts', kind: 'spa' },
-  ', see my ',
+  ', see ',
+  { label: 'what I’m building', href: PROJECTS_PATH, kind: 'spa' },
+  ', check out my ',
   { label: 'resume', href: '/resume', kind: 'spa' },
   ', or find me on ',
   {
@@ -132,6 +136,24 @@ export const renderHomeRecentPostsHtml = (
       `<ul class="home-posts">${posts.map(renderHomeRecentPostHtml).join('')}</ul>` +
       `</section>`;
 
+export const HOME_PROJECTS_HEADING = 'What I’m building';
+export const HOME_PROJECTS_HEADING_ID = 'home-projects';
+export const HOME_ALL_PROJECTS_LABEL = 'All projects';
+
+/** Empty when nothing but ideas is published. */
+export const renderHomeProjectsHtml = (
+  projects: readonly ProjectCardView[],
+): string =>
+  projects.length === 0
+    ? ''
+    : `<section class="home-section" aria-labelledby="${HOME_PROJECTS_HEADING_ID}">` +
+      `<div class="home-section__head">` +
+      `<h2 class="home-section__label" id="${HOME_PROJECTS_HEADING_ID}">${escapeHtml(HOME_PROJECTS_HEADING)}</h2>` +
+      `<a class="home-section__more" href="${PROJECTS_PATH}">${HOME_ALL_PROJECTS_LABEL}</a>` +
+      `</div>` +
+      `<ul class="project-list project-list--home">${projects.map((p) => renderProjectCardHtml(p, 'h3')).join('')}</ul>` +
+      `</section>`;
+
 /**
  * Classes match `apps/web/src/App.css`. `home-page-prerender` and the data
  * attributes are what the SPA parses back on a cold load; React renders the
@@ -140,6 +162,7 @@ export const renderHomeRecentPostsHtml = (
 export const renderHomeBodyHtml = (
   home: Home,
   recentPosts: readonly HomeRecentPost[] = [],
+  projects: readonly ProjectCardView[] = [],
 ): string => {
   const name = escapeHtml(home.name);
   const title = escapeHtml(home.title);
@@ -152,6 +175,7 @@ export const renderHomeBodyHtml = (
     renderHomeLinksSentenceHtml() +
     `</header>` +
     renderHomeRecentPostsHtml(recentPosts) +
+    renderHomeProjectsHtml(projects) +
     `</main>`
   );
 };
@@ -159,9 +183,14 @@ export const renderHomeBodyHtml = (
 export const renderHomePrerenderHtml = (
   home: Home,
   recentPosts: readonly HomeRecentPost[] = [],
+  projects: readonly ProjectCardView[] = [],
   year?: number,
 ): string =>
-  renderSitePageHtml(null, renderHomeBodyHtml(home, recentPosts), year);
+  renderSitePageHtml(
+    null,
+    renderHomeBodyHtml(home, recentPosts, projects),
+    year,
+  );
 
 export const homeAboutExcerpt = (about: string, max = 200): string =>
   textExcerpt(about, max);

@@ -20,13 +20,13 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 ## Public pages
 
-- **Chrome:** every public page renders inside one header (photo and name → `/`, then Posts / Resume / Contact with `aria-current`, plus Projects once `SITE_PROJECTS_LIVE` in `packages/shared/src/site-config.ts` is on) and one footer (©, RSS, Don’t feed the bears). At phone widths (480px and below) the inline nav is replaced by a full-screen menu: a `<details>`/`<summary>` disclosure that works without JavaScript (CSS `:has` stops the page scrolling while it is open), to which `SiteHeader` adds the focus trap, Escape and closing on navigation. `packages/shared/src/site-chrome-html.ts` renders it for the publisher (`renderSitePageHtml`) and the 404 prerender; `apps/web/src/components/SiteChrome.tsx` renders it in React from the root layout (`AppWithTracking`). The two must stay byte-identical (`SiteChrome.test.tsx`).
-- **Cold load:** `createRoot` replaces the prerendered `#root`, so `apps/web/src/prerender/documentPrerender.ts` copies it when the bundle loads. Home, Posts, a post and Resume seed their first render from that copy (`fromPrerender`) and skip the fetch; client navigation fetches the published HTML or `posts.json` (Home's Recent posts come from `posts.json`). A post's copy is used only for the slug it was rendered for. `coldLoadParity.test.tsx` mounts each page over its prerender and checks the text doesn't change.
+- **Chrome:** every public page renders inside one header (photo and name → `/`, then Posts / Projects / Resume / Contact with `aria-current`; `SITE_PROJECTS_LIVE` in `packages/shared/src/site-config.ts` turns the Projects link off) and one footer (©, RSS, Don’t feed the bears). At phone widths (480px and below) the inline nav is replaced by a full-screen menu: a `<details>`/`<summary>` disclosure that works without JavaScript (CSS `:has` stops the page scrolling while it is open), to which `SiteHeader` adds the focus trap, Escape and closing on navigation. `packages/shared/src/site-chrome-html.ts` renders it for the publisher (`renderSitePageHtml`) and the 404 prerender; `apps/web/src/components/SiteChrome.tsx` renders it in React from the root layout (`AppWithTracking`). The two must stay byte-identical (`SiteChrome.test.tsx`).
+- **Cold load:** `createRoot` replaces the prerendered `#root`, so `apps/web/src/prerender/documentPrerender.ts` copies it when the bundle loads. Home, Posts, a post, Projects and Resume seed their first render from that copy (`fromPrerender`) and skip the fetch; client navigation fetches the published HTML or `posts.json` (Home's Recent posts come from `posts.json`; its What I’m building cards and the Projects index are read from the published `/` and `/projects/`). A post's copy is used only for the slug it was rendered for. `coldLoadParity.test.tsx` mounts each page over its prerender and checks the text doesn't change.
 - **Post page:** `renderPostPageBodyHtml` (`packages/shared/src/post-html.ts`) and `apps/web/src/posts/PostArticle.tsx` print the same markup (`PostArticle.test.tsx`): meta line (date · reading time), title, excerpt, body, author note. Reading time is `readingMinutes` (words / 230, rounded, at least 1) from the `@gagnechris/shared` domain entry; the publisher writes it into `data-minutes` and the SPA reads it back, falling back to counting the body text for pages published before it existed. `renderPostMarkdownToHtml` starts body headings at h2 with no skipped levels, turns a titled image on its own line into a captioned figure, and puts tables (`role="region"`, labelled) and code blocks in keyboard-focusable scroll boxes.
 - **Contact, Bears and 404:** `packages/shared/src/public-pages-html.ts` (`@gagnechris/shared/public-pages`) holds their shared markup. The Vite build writes the site chrome into `contact/index.html` (with the Contact heading and intro; the form needs JavaScript) and the three `dont-feed-the-bears` pages (chrome only; their lazy routes render nothing until the chunk loads), so they show the header and footer with JavaScript off. `pages/NotFound.tsx`, the `404.html` prerender (`NOT_FOUND_PRERENDER`) and the CloudFront fallback page print the same 404 markup (`NotFound.test.tsx`). A cold load that received `404.html` renders `NotFound` at once with no section marked current, even for `/posts/<slug>`.
 - **Posts index:** `renderPostsIndexBodyHtml` and `apps/web/src/posts/PostsIndexBody.tsx` print the same markup (`PostsIndexBody.test.tsx`): title, intro, Subscribe via RSS, then posts grouped by `groupPostsByYear` under year headings, each entry one link with title, short date (`formatPostShortDate`) and excerpt. Both come from the `@gagnechris/shared` domain entry. The SPA reads the list back from the prerender (and from the older card list until it is republished) or from `posts.json` on client navigation.
 - **Fonts:** Newsreader (roman and italic) and Inter are self-hosted from `apps/web/public/fonts/` with `font-display: swap` and metric-matched local fallbacks (`src/public.css`). Each font file is named `<name>.<first 8 hex of its SHA-256>.woff2`, so a changed font gets a new URL and deploys serve fonts as immutable; `check:web-shells` fails the deploy if a referenced font's name doesn't match its content. `index.html` preloads only the roman Newsreader file. Sources and subsetting are in [design/public-redesign/README.md](./design/public-redesign/README.md#fonts).
-- **Projects:** the publisher renders `/projects` and `/projects/<slug>` with the shared chrome and a deliberately bare body (`packages/shared/src/project-html.ts`); the designed index and page replace that markup. In the SPA, `pages/ProjectsPrerendered.tsx` shows the prerendered `<main>` (from the cold-load copy, or fetched on client navigation) so mounting does not swap it for the 404. Projects stay out of the nav until `SITE_PROJECTS_LIVE` is on.
+- **Projects:** `renderProjectsIndexBodyHtml` (`packages/shared/src/project-html.ts`) and `apps/web/src/projects/ProjectsIndexBody.tsx` print the same `/projects` markup (`ProjectCard.test.tsx`): title, intro, then one card per project in `order` (preview image or a CSS mini-UI picked by `demo`, a dashed box for ideas; stage as text with a dot; name, pitch, stack line), or an empty state when nothing is published. A card is one link to the project's page or `href`; an `idea` with no body is not a link. Home's What I’m building section uses the same card (`renderProjectCardHtml`) for up to two non-idea projects (`selectHomeProjects`). The SPA reads cards back from the prerender (`apps/web/src/projects/publishedProjects.ts`). `/projects/<slug>` still has a deliberately bare body; `pages/ProjectsPrerendered.tsx` shows its prerendered `<main>` so mounting does not swap it for the 404.
 - **CSS:** `src/index.css` is shared by all three apps; `src/public.css` (public entry only) adds the fonts, the white ground, the 720px column and the chrome.
 
 ## Request flow
@@ -125,9 +125,11 @@ without an entry there has no object behind its Option B rewrite. `collectRebuil
 
 Invalidation is target-owned: a body-only post edit that does not change feed
 artifacts does not re-invalidate `/rss.xml` or `/sitemap.xml` when those files
-are unchanged (hash-skip / no feed rewrite). The home target runs on `home` and
-`feeds` scopes (Recent posts), and the same hash-skip keeps `/` from being
-rewritten or invalidated when a post change doesn't alter it.
+are unchanged (hash-skip / no feed rewrite). The home target runs on `home`, `feeds`
+(Recent posts), project and full rebuilds, and loads both the post and project
+catalogs every time so neither section drops off `/`. The same hash-skip keeps
+`/` from being rewritten or invalidated when a post or project change doesn't
+alter it.
 
 Projects: the `projects` target matches `touchedEntityTypes.has('project')`
 (and full rebuilds), reads the published-project catalog
@@ -137,8 +139,9 @@ Projects: the `projects` target matches `touchedEntityTypes.has('project')`
 other `projects/<slug>/index.html`. A project has a page unless it sets `href`
 (its card links there instead, as for Don't Feed the Bears →
 `/dont-feed-the-bears`) or is an `idea` with an empty body (listed, unlinked).
-With nothing published, `projects/index.html` is deleted and `/projects` is the
-HTML 404. No KeyValueStore allowlist: `/projects` is an Option B prefix, so a
+`projects/index.html` is always written, so the nav link never 404s: with
+nothing published it is the empty state. When every published row is corrupt,
+the index already there is kept. No KeyValueStore allowlist: `/projects` is an Option B prefix, so a
 missing `projects/<slug>/index.html` is an S3 404 that viewer-response turns
 into the HTML 404.
 

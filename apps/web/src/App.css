@@ -56,6 +56,10 @@
   margin-top: 100px;
 }
 
+.home-section + .home-section {
+  margin-top: 83px;
+}
+
 .home-section__head {
   display: flex;
   align-items: center;
@@ -161,7 +165,8 @@
     line-height: 1.55;
   }
 
-  .home-section {
+  .home-section,
+  .home-section + .home-section {
     margin-top: 26px;
   }
 

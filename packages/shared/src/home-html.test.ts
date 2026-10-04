@@ -9,6 +9,8 @@ import {
   selectHomeRecentPosts,
   type HomeRecentPost,
 } from './home-html.js';
+import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
+import { selectHomeProjects } from './projects.js';
 import type { Home } from './schemas.js';
 import {
   renderSiteFooterHtml,
@@ -65,7 +67,7 @@ const recent = (
 
 describe('renderHomePrerenderHtml', () => {
   it('wraps Home in the site header and footer', () => {
-    const html = renderHomePrerenderHtml(home(), [], 2026);
+    const html = renderHomePrerenderHtml(home(), [], [], 2026);
     expect(html.startsWith(renderSiteHeaderHtml(null))).toBe(true);
     expect(html.endsWith(renderSiteFooterHtml(2026))).toBe(true);
     expect(html).toContain('<main class="home-page home-page-prerender"');
@@ -81,7 +83,7 @@ describe('renderHomePrerenderHtml', () => {
       '<div class="home-hero__about"><p>I&#39;m an Engineering Leader',
     );
     expect(html).toContain(
-      '<p class="home-hero__links">Read my <a href="/posts">posts</a>, see my <a href="/resume">resume</a>, or find me on ' +
+      '<p class="home-hero__links">Read my <a href="/posts">posts</a>, see <a href="/projects">what I’m building</a>, check out my <a href="/resume">resume</a>, or find me on ' +
         '<a href="https://www.linkedin.com/in/christophergagne/" target="_blank" rel="noopener noreferrer">LinkedIn</a> and ' +
         '<a href="https://github.com/gagnechris" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>',
     );
@@ -118,6 +120,33 @@ describe('renderHomePrerenderHtml', () => {
     const html = renderHomePrerenderHtml(home(), []);
     expect(html).not.toContain('Recent posts');
     expect(html).not.toContain('home-section');
+  });
+
+  it('puts What I’m building below Recent posts, with an All projects link', () => {
+    const html = renderHomePrerenderHtml(
+      home(),
+      [recent(2)],
+      selectHomeProjects(SAMPLE_PROJECTS),
+    );
+    const recentAt = html.indexOf('id="home-recent-posts"');
+    const projectsAt = html.indexOf(
+      '<h2 class="home-section__label" id="home-projects">What I’m building</h2>' +
+        '<a class="home-section__more" href="/projects">All projects</a>',
+    );
+    expect(recentAt).toBeGreaterThan(-1);
+    expect(projectsAt).toBeGreaterThan(recentAt);
+    const cards = html
+      .slice(projectsAt)
+      .match(/<h3 class="project-card__name">[^<]+/g);
+    expect(cards).toEqual([
+      '<h3 class="project-card__name">Posts',
+      '<h3 class="project-card__name">Notebook',
+    ]);
+  });
+
+  it('has no What I’m building section without projects', () => {
+    const html = renderHomePrerenderHtml(home(), [recent(2)], []);
+    expect(html).not.toContain('home-projects');
   });
 
   it('lists recent posts with title link, excerpt and UTC date', () => {

@@ -37,3 +37,154 @@ export const sortProjectsByOrder = <
       a.name.localeCompare(b.name) ||
       a.id.localeCompare(b.id),
   );
+
+/** What a card shows; the SPA parses the same fields back out of the prerender. */
+export type ProjectCardView = Pick<
+  Project,
+  | 'id'
+  | 'slug'
+  | 'name'
+  | 'pitch'
+  | 'stage'
+  | 'stageNote'
+  | 'stack'
+  | 'previewImage'
+  | 'demo'
+> & { href: string | null };
+
+export type ProjectCardSource = Omit<ProjectCardView, 'href'> &
+  PageFields &
+  Pick<Project, 'order'>;
+
+export const projectCardView = ({
+  id,
+  slug,
+  name,
+  pitch,
+  stage,
+  stageNote,
+  stack,
+  previewImage,
+  demo,
+  ...page
+}: ProjectCardSource): ProjectCardView => ({
+  id,
+  slug,
+  name,
+  pitch,
+  stage,
+  stageNote,
+  stack,
+  previewImage,
+  demo,
+  href: projectCardHref({ slug, stage, ...page }),
+});
+
+export const projectCardViews = (
+  projects: readonly ProjectCardSource[],
+): ProjectCardView[] => sortProjectsByOrder(projects).map(projectCardView);
+
+export const HOME_PROJECTS_LIMIT = 2;
+
+/** Ideas stay off Home: it shows what exists. */
+export const selectHomeProjects = (
+  projects: readonly ProjectCardSource[],
+): ProjectCardView[] =>
+  projectCardViews(projects.filter((p) => p.stage !== 'idea')).slice(
+    0,
+    HOME_PROJECTS_LIMIT,
+  );
+
+export const projectStageText = (
+  project: Pick<Project, 'stage' | 'stageNote'>,
+): string =>
+  PROJECT_STAGE_LABELS[project.stage] +
+  (project.stageNote ? ` · ${project.stageNote}` : '');
+
+export const PROJECTS_INDEX_INTRO =
+  'Things I’m building, mostly for myself, in the open.';
+
+export const PROJECTS_INDEX_EMPTY_TEXT =
+  'Nothing to show yet. The first project is on its way.';
+
+export const PROJECT_IDEA_PREVIEW_TEXT = 'Coming soon';
+
+export const PROJECT_PREVIEW_WIDTH = 240;
+export const PROJECT_PREVIEW_HEIGHT = 160;
+
+export type ProjectMiniNode = {
+  className: string;
+  text?: string;
+  children?: readonly ProjectMiniNode[];
+};
+
+const node = (
+  className: string,
+  children?: readonly ProjectMiniNode[],
+  text?: string,
+): ProjectMiniNode => ({ className, children, text });
+
+const bar = (modifier?: string): ProjectMiniNode =>
+  node(
+    modifier
+      ? `project-mini__bar project-mini__bar--${modifier}`
+      : 'project-mini__bar',
+  );
+
+const pane = (
+  children: readonly ProjectMiniNode[],
+  wide = false,
+): ProjectMiniNode =>
+  node(
+    wide ? 'project-mini__pane project-mini__pane--wide' : 'project-mini__pane',
+    children,
+  );
+
+const task = (done: boolean): ProjectMiniNode =>
+  node('project-mini__task', [
+    node(
+      done
+        ? 'project-mini__check project-mini__check--done'
+        : 'project-mini__check',
+    ),
+    bar('short'),
+  ]);
+
+export type ProjectMiniKind = 'posts' | 'notebook' | 'generic';
+
+/** The CSS mini-UI a card shows when it has no preview image. Decorative. */
+export const PROJECT_MINI_UI: Readonly<
+  Record<ProjectMiniKind, readonly ProjectMiniNode[]>
+> = {
+  posts: [
+    pane([bar('title'), bar(), bar('short'), node('project-mini__button')]),
+    pane([
+      node('project-mini__heading', undefined, 'Welcome'),
+      bar('light'),
+      bar('light'),
+      bar('light'),
+    ]),
+  ],
+  notebook: [
+    pane([bar('title'), task(true), task(false), bar('light')], true),
+    pane([bar('sub'), bar('light'), bar('light')]),
+  ],
+  generic: [
+    pane([bar('title'), bar(), bar('short')]),
+    pane([bar('sub'), bar('light')]),
+  ],
+};
+
+export type ProjectPreview =
+  | { kind: 'image'; src: string }
+  | { kind: 'idea' }
+  | { kind: 'mini'; mini: ProjectMiniKind };
+
+export const projectPreview = (
+  project: Pick<ProjectCardView, 'previewImage' | 'stage' | 'demo'>,
+): ProjectPreview =>
+  project.previewImage
+    ? { kind: 'image', src: project.previewImage }
+    : project.stage === 'idea'
+      ? { kind: 'idea' }
+      : { kind: 'mini', mini: project.demo ?? 'generic' };

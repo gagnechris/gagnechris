@@ -5,6 +5,7 @@ import PostsIndex from './pages/PostsIndex.tsx';
 import PostPage from './pages/PostPage.tsx';
 import Contact from './pages/Contact.tsx';
 import NotFound from './pages/NotFound.tsx';
+import ProjectsIndex from './pages/ProjectsIndex.tsx';
 import ProjectsPrerendered from './pages/ProjectsPrerendered.tsx';
 import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
 import AppWithTracking from './components/AppWithTracking.tsx';
@@ -52,7 +53,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'projects',
-        element: <ProjectsPrerendered />,
+        element: <ProjectsIndex />,
       },
       {
         path: 'projects/:slug',

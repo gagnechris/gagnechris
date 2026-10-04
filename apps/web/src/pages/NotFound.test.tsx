@@ -53,7 +53,7 @@ describe('NotFound', () => {
     expect(container.innerHTML).toBe(renderNotFoundBodyHtml());
   });
 
-  test('serif heading, one sentence, Home / Posts / Resume and the bears game', () => {
+  test('serif heading, one sentence, Home / Posts / Projects / Resume and the bears game', () => {
     render(
       <MemoryRouter>
         <NotFound />
@@ -70,6 +70,7 @@ describe('NotFound', () => {
     ).toEqual([
       ['Home', '/'],
       ['Posts', '/posts'],
+      ['Projects', '/projects'],
       ['Resume', '/resume'],
       ['Don’t feed the bears', '/dont-feed-the-bears?from=404'],
     ]);

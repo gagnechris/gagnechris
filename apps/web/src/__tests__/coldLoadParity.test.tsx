@@ -4,10 +4,13 @@ import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
+  renderProjectsIndexPrerenderHtml,
   renderResumePrerenderHtml,
   renderResumeUnavailablePrerenderHtml,
   renderSitePageHtml,
 } from '@gagnechris/shared/render';
+import { selectHomeProjects } from '@gagnechris/shared';
+import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
   NOT_FOUND_PRERENDER,
   staticPagePrerender,
@@ -46,22 +49,27 @@ const {
 // Content that differs from the bundled defaults, so a page that renders
 // DEFAULT_HOME / DEFAULT_RESUME or a loading state first can't pass.
 const PRERENDERS: Record<string, string> = {
-  '/': renderHomePrerenderHtml(PUBLISHED_HOME, [
-    {
-      id: '01B',
-      slug: 'second',
-      title: 'Second post',
-      excerpt: 'The newer one.',
-      publishedAt: '2026-09-28T09:00:00.000Z',
-    },
-    {
-      id: '01A',
-      slug: 'first',
-      title: 'First post',
-      excerpt: '',
-      publishedAt: '2026-02-01T00:00:00.000Z',
-    },
-  ]),
+  '/': renderHomePrerenderHtml(
+    PUBLISHED_HOME,
+    [
+      {
+        id: '01B',
+        slug: 'second',
+        title: 'Second post',
+        excerpt: 'The newer one.',
+        publishedAt: '2026-09-28T09:00:00.000Z',
+      },
+      {
+        id: '01A',
+        slug: 'first',
+        title: 'First post',
+        excerpt: '',
+        publishedAt: '2026-02-01T00:00:00.000Z',
+      },
+    ],
+    selectHomeProjects(SAMPLE_PROJECTS),
+  ),
+  '/projects': renderProjectsIndexPrerenderHtml(SAMPLE_PROJECTS),
   '/posts': renderSitePageHtml(
     '/posts',
     renderPostsIndexBodyHtml([
@@ -174,12 +182,24 @@ describe('cold load: first React render matches the prerender', () => {
     expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
   });
 
-  test('/ mounts the same DOM as the prerender, Recent posts included', async () => {
+  test('/ mounts the same DOM as the prerender, Recent posts and What I’m building included', async () => {
     const loaded = await coldLoad('/', PRERENDERS['/']);
     unmount = loaded.unmount;
 
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
     expect(loaded.root.querySelectorAll('.home-post')).toHaveLength(2);
+    expect(loaded.root.querySelectorAll('.project-card')).toHaveLength(2);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['with projects', PRERENDERS['/projects']!],
+    ['with nothing published', renderProjectsIndexPrerenderHtml([])],
+  ])('/projects %s mounts the same DOM as the prerender', async (_, html) => {
+    const loaded = await coldLoad('/projects', html);
+    unmount = loaded.unmount;
+
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
     expect(fetch).not.toHaveBeenCalled();
   });
 

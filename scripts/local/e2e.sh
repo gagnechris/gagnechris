@@ -232,14 +232,21 @@ curl -sS -X POST "${API}/api/admin/projects/${IDEA_ID}/publish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${IDEA_VERSION}}" >/dev/null
 
-echo "==> /projects/<slug> is live; /projects lists both; sitemap lists the page only"
+echo "==> /projects/<slug> is live; /projects lists both; Home lists the project; sitemap lists the page only"
 PROJECT_HTML="$(curl -sS "${SITE}/projects/${SLUG}")"
 echo "${PROJECT_HTML}" | grep -q "<h1>Local E2E Project ${SLUG}</h1>"
 echo "${PROJECT_HTML}" | grep -q 'Local project body'
 echo "${PROJECT_HTML}" | grep -q 'class="site-header"'
 PROJECTS_HTML="$(curl -sS "${SITE}/projects")"
-echo "${PROJECTS_HTML}" | grep -q "href=\"/projects/${SLUG}\">Local E2E Project ${SLUG}</a>"
-echo "${PROJECTS_HTML}" | grep -q "<h2 class=\"project-name\">Local E2E Idea ${SLUG}</h2>"
+echo "${PROJECTS_HTML}" | grep -q "<a class=\"project-card__link\" href=\"/projects/${SLUG}\">"
+echo "${PROJECTS_HTML}" | grep -q "<h2 class=\"project-card__name\">Local E2E Project ${SLUG}</h2>"
+echo "${PROJECTS_HTML}" | grep -q "<h2 class=\"project-card__name\">Local E2E Idea ${SLUG}</h2>"
+HOME_HTML="$(curl -sS "${SITE}/")"
+echo "${HOME_HTML}" | grep -q "<h3 class=\"project-card__name\">Local E2E Project ${SLUG}</h3>"
+if echo "${HOME_HTML}" | grep -q "Local E2E Idea ${SLUG}"; then
+  echo "An idea is listed on Home" >&2
+  exit 1
+fi
 IDEA_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/projects/${SLUG}-idea")"
 if [[ "${IDEA_CODE}" != "404" ]]; then
   echo "Expected the idea to have no page (404), got ${IDEA_CODE}" >&2
@@ -252,7 +259,7 @@ if echo "${SITEMAP}" | grep -q "/projects/${SLUG}-idea<"; then
   exit 1
 fi
 
-echo "==> Unpublish removes the project page, its /projects entry and its sitemap entry"
+echo "==> Unpublish removes the project page, its /projects and Home entries and its sitemap entry"
 PROJECT_VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${PROJECT_PUB}")"
 curl -sS -X POST "${API}/api/admin/projects/${PROJECT_ID}/unpublish" \
   -H 'Content-Type: application/json' \
@@ -264,6 +271,10 @@ if [[ "${GONE_PROJECT}" != "404" ]]; then
 fi
 if curl -sS "${SITE}/projects" | grep -q "Local E2E Project ${SLUG}"; then
   echo "Unpublished project still listed on /projects" >&2
+  exit 1
+fi
+if curl -sS "${SITE}/" | grep -q "Local E2E Project ${SLUG}"; then
+  echo "Unpublished project still listed on /" >&2
   exit 1
 fi
 if curl -sS "${SITE}/sitemap.xml" | grep -q "/projects/${SLUG}<"; then

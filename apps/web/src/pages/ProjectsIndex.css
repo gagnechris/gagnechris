@@ -1,0 +1,52 @@
+/* Specs in docs/design/public-redesign/README.md (Projects). */
+.projects-index__header {
+  margin-bottom: 56px;
+}
+
+.projects-index h1 {
+  margin: 0;
+  font-size: 3.75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.projects-index__intro {
+  margin: 17px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-ink-soft);
+}
+
+.projects-index__empty {
+  margin: 0;
+  padding-top: 25px;
+  border-top: 1px solid var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  color: var(--color-ink-soft);
+}
+
+@media (max-width: 480px) {
+  .projects-index__header {
+    margin-bottom: 12px;
+  }
+
+  .projects-index h1 {
+    font-size: 2.875rem;
+  }
+
+  .projects-index__intro {
+    margin-top: 7px;
+    font-size: 1.125rem;
+    line-height: 1.45;
+  }
+
+  .projects-index__empty {
+    padding-top: 16px;
+    font-size: 1.0625rem;
+  }
+}
