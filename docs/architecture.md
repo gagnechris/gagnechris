@@ -168,7 +168,7 @@ On relevant stream events the publisher updates, among others:
 
 - `/index.html`, `/resume/index.html`, `/blog/<slug>/index.html`, `/projects/index.html`, `/projects/<slug>/index.html` (prerendered pages)
 - `/blog/posts.json` (served at `/posts/posts.json`), `/rss.xml`, `/sitemap.xml`. Canonical, sitemap and RSS `<link>` URLs use `/posts`; RSS `<guid>`s use the `/blog/<slug>` URL so feed readers don't re-list posts.
-- `/resume.pdf` (pdf-lib + Inter fonts)
+- `/resume.pdf` (pdf-lib with embedded Newsreader and Inter; two Letter pages, layout in [design/public-redesign/README.md](./design/public-redesign/README.md#resume-pdf))
 - CloudFront KeyValueStore keys for published post slugs and for projects with a page
 - Targeted CloudFront invalidations
 
