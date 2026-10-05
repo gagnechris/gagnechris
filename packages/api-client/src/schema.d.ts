@@ -7230,6 +7230,8 @@ export interface paths {
                                 /** @enum {string} */
                                 area: "work" | "personal";
                                 title: string;
+                                /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
+                                date?: string;
                                 snippet: string;
                                 matches: {
                                     start: number;
@@ -7243,6 +7245,8 @@ export interface paths {
                                 /** @enum {string} */
                                 area: "work" | "personal";
                                 title: string;
+                                /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
+                                date?: string;
                                 snippet: string;
                                 matches: {
                                     start: number;
@@ -8536,6 +8540,8 @@ export interface components {
                 /** @enum {string} */
                 area: "work" | "personal";
                 title: string;
+                /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
+                date?: string;
                 snippet: string;
                 matches: {
                     start: number;
@@ -8549,6 +8555,8 @@ export interface components {
                 /** @enum {string} */
                 area: "work" | "personal";
                 title: string;
+                /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
+                date?: string;
                 snippet: string;
                 matches: {
                     start: number;

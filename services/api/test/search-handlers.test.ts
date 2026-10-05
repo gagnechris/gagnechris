@@ -100,6 +100,53 @@ describe('search handlers', () => {
     expect(body.tasks[0]?.title).toMatch(/Ship/i);
   });
 
+  it('a daily note hit carries its day; a page hit has none', async () => {
+    const { doc } = createMemoryDoc();
+    const notes = new NotesRepository(doc, TABLE);
+    const tasks = new TasksRepository(doc, TABLE);
+    const routes = [
+      ...createNoteRoutes(notes),
+      ...createSearchRoutes({ notes, tasks }),
+    ];
+    for (const body of [
+      {
+        id: NOTE_ID,
+        area: 'personal',
+        type: 'daily',
+        date: '2026-09-19',
+        bodyMarkdown: 'garden beds',
+      },
+      {
+        id: '01ARZ3NDEKTSV4RRFFQ48JMSC2',
+        area: 'personal',
+        type: 'page',
+        title: 'Garden plan',
+      },
+    ]) {
+      const created = await dispatchRoutes(
+        routes,
+        adminEvent('POST', '/api/notebook/notes', { body }),
+        'POST',
+        '/api/notebook/notes',
+      );
+      expect(created?.statusCode).toBe(201);
+    }
+
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/search', { body: { q: 'garden' } }),
+      'POST',
+      '/api/notebook/search',
+    );
+    const body = JSON.parse(res!.body as string) as {
+      notes: Array<{ id: string; date?: string }>;
+    };
+    expect(body.notes.find((n) => n.id === NOTE_ID)?.date).toBe('2026-09-19');
+    const page = body.notes.find((n) => n.id !== NOTE_ID);
+    expect(page).toBeDefined();
+    expect(page).not.toHaveProperty('date');
+  });
+
   it('matches and shows embedded tasks by title, never the raw token', async () => {
     const { doc } = createMemoryDoc();
     const notes = new NotesRepository(doc, TABLE);

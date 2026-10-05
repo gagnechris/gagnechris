@@ -2796,6 +2796,10 @@
                 "title": {
                   "type": "string"
                 },
+                "date": {
+                  "type": "string",
+                  "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
+                },
                 "snippet": {
                   "type": "string"
                 },
@@ -2855,6 +2859,10 @@
                 },
                 "title": {
                   "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
                 },
                 "snippet": {
                   "type": "string"
@@ -19443,6 +19451,10 @@
                           "title": {
                             "type": "string"
                           },
+                          "date": {
+                            "type": "string",
+                            "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
+                          },
                           "snippet": {
                             "type": "string"
                           },
@@ -19502,6 +19514,10 @@
                           },
                           "title": {
                             "type": "string"
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
                           },
                           "snippet": {
                             "type": "string"

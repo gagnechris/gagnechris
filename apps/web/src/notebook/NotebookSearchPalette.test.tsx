@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
 import NotebookSearchPalette from './NotebookSearchPalette';
 
@@ -69,7 +69,8 @@ const searchResponse = vi.hoisted(() => ({
         type: 'note',
         id: 'n2',
         area: 'work',
-        title: 'Retro',
+        title: 'Saturday, September 19',
+        date: '2026-09-19',
         snippet: 'after standup',
         matches: [{ start: 6, end: 13 }],
       },
@@ -89,18 +90,21 @@ const searchResponse = vi.hoisted(() => ({
   response: { status: 200 },
 }));
 
+const TodayProbe = () => <p>Today {useLocation().search}</p>;
+
 const renderPalette = () =>
   render(
     <QueryClientTestProvider>
-      <MemoryRouter initialEntries={['/today']}>
+      <MemoryRouter initialEntries={['/notes']}>
         <Routes>
           <Route
-            path="/today"
+            path="/notes"
             element={
               <NotebookSearchPalette onClose={() => {}} areaFilter="work" />
             }
           />
           <Route path="/tasks/:id" element={<p>Task page</p>} />
+          <Route path="/today" element={<TodayProbe />} />
         </Routes>
       </MemoryRouter>
     </QueryClientTestProvider>,
@@ -154,6 +158,35 @@ describe('NotebookSearchPalette', () => {
 
     await user.keyboard('{Enter}');
     expect(await screen.findByText('Task page')).toBeInTheDocument();
+  });
+
+  test('waits for a pause in typing before searching', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    server.searches.length = 0;
+    await user.type(
+      screen.getByRole('combobox', { name: 'Search notes and tasks' }),
+      'daily 19',
+    );
+    await screen.findByRole('listbox', { name: 'Results' });
+    expect(server.searches).toEqual([
+      { q: 'daily 19', area: 'work', limit: 12 },
+    ]);
+  });
+
+  test('a daily note hit opens Today on its day and area', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    await user.type(
+      screen.getByRole('combobox', { name: 'Search notes and tasks' }),
+      'standup',
+    );
+    await user.click(
+      await screen.findByRole('option', { name: /Saturday, September 19/ }),
+    );
+    expect(
+      await screen.findByText('Today ?date=2026-09-19&area=work'),
+    ).toBeInTheDocument();
   });
 
   test('This area / All areas is a radio group that rescopes the search', async () => {

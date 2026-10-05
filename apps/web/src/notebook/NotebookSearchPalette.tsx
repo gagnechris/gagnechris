@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNotebookSearchQuery, useTasksByIds } from '@gagnechris/app-core';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
@@ -15,6 +15,7 @@ type Range = { start: number; end: number };
 type Scope = 'area' | 'all';
 
 const GROUPS = ['Notes', 'Tasks'] as const;
+const SEARCH_DEBOUNCE_MS = 200;
 const SCOPE_OPTIONS = [
   { value: 'area', label: 'This area' },
   { value: 'all', label: 'All areas' },
@@ -54,12 +55,18 @@ function wordMatches(text: string, q: string): Range[] {
 
 export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
   const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(q), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [q]);
+  const typing = q.trim() !== query.trim();
   const [scope, setScope] = useState<Scope>('area');
   const area = scope === 'area' ? areaQueryParam(areaFilter) : undefined;
 
   const search = useNotebookSearchQuery(
-    { q, area, limit: 12 },
-    q.trim().length > 0,
+    { q: query, area, limit: 12 },
+    query.trim().length > 0,
   );
   const taskIds = useMemo(
     () => (search.data?.tasks ?? []).map((t) => t.id),
@@ -72,7 +79,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
   const showArea = area === undefined;
   const title = (text: string, hitArea: string) => (
     <>
-      <span>{highlight(text, wordMatches(text, q))}</span>
+      <span>{highlight(text, wordMatches(text, query))}</span>
       {showArea ? <span className="admin-badge">{hitArea}</span> : null}
     </>
   );
@@ -80,7 +87,8 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
     hits.push({
       key: `note-${h.id}`,
       group: 'Notes',
-      to: `/notes/${h.id}`,
+      // A daily note is written on Today, which keeps its date and area.
+      to: h.date ? `/today?date=${h.date}&area=${h.area}` : `/notes/${h.id}`,
       title: title(h.title, h.area),
       detail: highlight(h.snippet, h.matches),
     });
@@ -130,8 +138,10 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
           {!q.trim() ? (
             <p className="admin-hint">Type to search. Esc to close.</p>
           ) : null}
-          {search.isFetching ? <p className="admin-hint">Searching…</p> : null}
-          {q.trim() && !search.isFetching && hits.length === 0 ? (
+          {typing || search.isFetching ? (
+            <p className="admin-hint">Searching…</p>
+          ) : null}
+          {q.trim() && !typing && !search.isFetching && hits.length === 0 ? (
             <p className="admin-hint">No matches.</p>
           ) : null}
           {taskIds.length > 0 ? (
