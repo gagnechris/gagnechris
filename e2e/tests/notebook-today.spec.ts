@@ -275,6 +275,8 @@ test('Add to today’s note embeds the task in the note and takes it off Still o
     .getByRole('button', { name: `Add ${title} to today’s note` })
     .click();
   await expect.poll(() => placesOf(page, title)).toEqual(['note']);
+  // The preview shows the embed before the editor mounts; the caret lands there.
+  await expect(page.locator('.cm-content')).toBeFocused();
   await page.keyboard.type('Finance needs the PO number.');
 
   const saved = page.waitForResponse(
