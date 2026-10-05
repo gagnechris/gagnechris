@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
 import { resumeResource } from '@gagnechris/app-core';
@@ -25,14 +25,24 @@ const emptyResumeDraft = (): ResumeDraftFields =>
     hasUnpublishedChanges: false,
   });
 
-const focusRoleEnd = (roleId: string) =>
-  document.getElementById(resumeRoleEndId(roleId))?.focus();
-
 const AdminResumePage = () => {
   const [content] = useState(createResumeContentBuilder);
   const [publishBlockedRoleId, setPublishBlockedRoleId] = useState<
     string | null
   >(null);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  // A fresh object each time, so asking again for the same role refocuses.
+  const [endFocus, setEndFocus] = useState<{ roleId: string } | null>(null);
+  const focusRoleEnd = (roleId: string) => {
+    setEditingRoleId(roleId);
+    setEndFocus({ roleId });
+  };
+
+  useEffect(() => {
+    if (endFocus) {
+      document.getElementById(resumeRoleEndId(endFocus.roleId))?.focus();
+    }
+  }, [endFocus]);
   const {
     draft,
     updateDraft,
@@ -154,6 +164,8 @@ const AdminResumePage = () => {
           setField={setField}
           hasSavedDates={(item) => content.savedDates(item) !== null}
           onSave={() => void save()}
+          editingRoleId={editingRoleId}
+          setEditingRoleId={setEditingRoleId}
         />
 
         <div className="admin-editor-split__preview">

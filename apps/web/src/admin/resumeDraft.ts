@@ -116,6 +116,9 @@ const parseCutoffYear = (text: string): number | undefined => {
   return year >= 1900 && year <= 2100 ? year : undefined;
 };
 
+export const roleTitle = (role: ExperienceDraft) =>
+  role.title.trim() || 'New role';
+
 export const resumeRoleEndId = (roleId: string) => `resume-role-${roleId}-end`;
 
 export const END_BEFORE_START = 'End is before start';

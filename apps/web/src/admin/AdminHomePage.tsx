@@ -109,51 +109,66 @@ const AdminHomePage = () => {
 
       <div className="admin-editor-split">
         <form
-          className="admin-editor-fields"
+          className="admin-form"
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
             void save();
           }}
         >
-          <Field label="Name">
-            <TextInput
-              value={draft.name}
-              onChange={(e) => setField('name', e.target.value)}
-            />
-          </Field>
-          <Field label="Title">
-            <TextInput
-              value={draft.title}
-              onChange={(e) => setField('title', e.target.value)}
-            />
-          </Field>
-          <Field
-            label="About Me"
-            hint="Blank lines start a new paragraph. Quick Links and the profile photo are not editable yet."
-          >
-            <TextArea
-              rows={8}
-              value={draft.about}
-              onChange={(e) => setField('about', e.target.value)}
-            />
-          </Field>
-          <Field label="SEO title (optional)">
-            <TextInput
-              value={draft.seoTitle}
-              onChange={(e) => setField('seoTitle', e.target.value)}
-              placeholder={`${draft.name} - ${draft.title}`}
-            />
-          </Field>
-          <Field
-            label="SEO description (optional)"
-            hint="Defaults to the first 200 characters of About Me."
-          >
-            <TextArea
-              rows={3}
-              value={draft.seoDescription}
-              onChange={(e) => setField('seoDescription', e.target.value)}
-            />
-          </Field>
+          <section className="admin-form-section">
+            <h2 className="admin-form-section__title">Profile</h2>
+            <div className="admin-form-card">
+              <Field label="Name">
+                <TextInput
+                  value={draft.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                />
+              </Field>
+              <Field label="Title">
+                <TextInput
+                  value={draft.title}
+                  onChange={(e) => setField('title', e.target.value)}
+                />
+              </Field>
+            </div>
+            <p className="admin-hint">
+              Quick Links and the profile photo are not editable yet.
+            </p>
+          </section>
+          <section className="admin-form-section">
+            <h2 className="admin-form-section__title">About me</h2>
+            <div className="admin-form-card">
+              <Field label="About Me" hint="Blank lines start a new paragraph.">
+                <TextArea
+                  rows={8}
+                  value={draft.about}
+                  onChange={(e) => setField('about', e.target.value)}
+                />
+              </Field>
+            </div>
+          </section>
+          <section className="admin-form-section">
+            <h2 className="admin-form-section__title">Search and sharing</h2>
+            <div className="admin-form-card">
+              <Field label="SEO title (optional)">
+                <TextInput
+                  value={draft.seoTitle}
+                  onChange={(e) => setField('seoTitle', e.target.value)}
+                  placeholder={`${draft.name} - ${draft.title}`}
+                />
+              </Field>
+              <Field
+                label="SEO description (optional)"
+                hint="Defaults to the first 200 characters of About Me."
+              >
+                <TextArea
+                  rows={3}
+                  value={draft.seoDescription}
+                  onChange={(e) => setField('seoDescription', e.target.value)}
+                />
+              </Field>
+            </div>
+          </section>
         </form>
 
         <div className="admin-editor-split__preview">

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -41,6 +47,16 @@ const baseResume = {
   hasUnpublishedChanges: false,
 };
 
+const openRole = async (title: string) => {
+  fireEvent.click(
+    await screen.findByRole('button', { name: new RegExp(`^${title}`) }),
+  );
+  await screen.findByRole('heading', { name: title });
+};
+
+const backToRoles = () =>
+  fireEvent.click(screen.getByRole('button', { name: '← All roles' }));
+
 function renderResume() {
   const router = createMemoryRouter(
     [{ path: '/resume', element: <AdminResumePage /> }],
@@ -79,7 +95,8 @@ describe('AdminResumePage autosave', () => {
     );
 
     renderResume();
-    const bullets = await screen.findByDisplayValue('Did things');
+    await openRole('Engineer');
+    const bullets = screen.getByDisplayValue('Did things');
 
     await user.type(bullets, '{Enter}');
     expect(bullets).toHaveValue('Did things\n');
@@ -233,7 +250,7 @@ describe('AdminResumePage structured dates', () => {
       }
     ).body.content as typeof structured.content;
 
-  test('loads start, end, present, note, headline and cut-off into labelled fields', async () => {
+  test('lists roles with their dates and loads each role into labelled fields', async () => {
     renderResume();
     expect(await screen.findByLabelText('Headline (current role)')).toHaveValue(
       'Director of Software Engineering',
@@ -241,29 +258,63 @@ describe('AdminResumePage structured dates', () => {
     expect(
       screen.getByLabelText(/^Earlier roles through \(year\)/),
     ).toHaveValue(2012);
-    const starts = screen.getAllByLabelText('Start month');
-    const ends = screen.getAllByLabelText(/^End month/);
-    const present = screen.getAllByRole('checkbox', {
-      name: 'Present (current role)',
-    });
-    expect(starts.map((el) => (el as HTMLInputElement).value)).toEqual([
-      '2019-07',
-      '2014-09',
+    const roles = within(screen.getByRole('list', { name: 'Roles' }));
+    expect(
+      roles
+        .getAllByRole('button', { name: /^(Director|Architect)/ })
+        .map((row) => row.textContent),
+    ).toEqual([
+      'DirectorRo · Jul 2019 – Present',
+      'ArchitectViacom · Sep 2014 – Apr 2015',
     ]);
-    expect(starts[0]).toHaveAttribute('type', 'month');
-    expect(ends[0]).toBeDisabled();
-    expect(ends[1]).toHaveValue('2015-04');
-    expect(present[0]).toBeChecked();
-    expect(present[1]).not.toBeChecked();
-    expect(screen.getAllByLabelText(/^Note \(optional\)/)[1]).toHaveValue(
+
+    await openRole('Director');
+    const start = screen.getByLabelText('Start month');
+    expect(start).toHaveValue('2019-07');
+    expect(start).toHaveAttribute('type', 'month');
+    expect(screen.getByLabelText(/^End month/)).toBeDisabled();
+    expect(
+      screen.getByRole('checkbox', { name: 'Present (current role)' }),
+    ).toBeChecked();
+
+    backToRoles();
+    await openRole('Architect');
+    expect(screen.getByLabelText('Start month')).toHaveValue('2014-09');
+    expect(screen.getByLabelText(/^End month/)).toHaveValue('2015-04');
+    expect(
+      screen.getByRole('checkbox', { name: 'Present (current role)' }),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText(/^Note \(optional\)/)).toHaveValue(
       'contract, concurrent',
     );
   });
 
+  test('the arrow keys on a role handle reorder the roles', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderResume();
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder Director',
+    });
+    handle.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(handle).toHaveFocus();
+    expect(
+      within(screen.getByRole('list', { name: 'Roles' }))
+        .getAllByRole('button', { name: /^Reorder/ })
+        .map((b) => b.getAttribute('aria-label')),
+    ).toEqual(['Reorder Architect', 'Reorder Director']);
+
+    await vi.advanceTimersByTimeAsync(950);
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(
+      lastPutContent().experience.map((role: { title: string }) => role.title),
+    ).toEqual(['Architect', 'Director']);
+  });
+
   test('an end before start keeps the typed value, shows a linked error, sends the saved dates and is not reported as saved', async () => {
     renderResume();
-    await screen.findByLabelText('Headline (current role)');
-    const end = screen.getAllByLabelText(/^End month/)[1]!;
+    await openRole('Architect');
+    const end = screen.getByLabelText(/^End month/);
 
     fireEvent.change(end, { target: { value: '2013-01' } });
 
@@ -308,8 +359,8 @@ describe('AdminResumePage structured dates', () => {
 
   test('an end before start after a saved edit sends the newer saved dates', async () => {
     renderResume();
-    await screen.findByLabelText('Headline (current role)');
-    const end = screen.getAllByLabelText(/^End month/)[1]!;
+    await openRole('Architect');
+    const end = screen.getByLabelText(/^End month/);
 
     fireEvent.change(end, { target: { value: '2015-08' } });
     await vi.advanceTimersByTimeAsync(950);
@@ -340,20 +391,23 @@ describe('AdminResumePage structured dates', () => {
     const cutoff = screen.getByLabelText(/^Earlier roles through \(year\)/);
     await user.clear(cutoff);
     await user.type(cutoff, '2010');
-    fireEvent.change(screen.getAllByLabelText('Start month')[1]!, {
+    await openRole('Architect');
+    fireEvent.change(screen.getByLabelText('Start month'), {
       target: { value: '2014-10' },
     });
-    const notes = screen.getAllByLabelText(/^Note \(optional\)/);
-    await user.clear(notes[1]!);
-    await user.type(notes[1]!, 'contract');
+    const note = screen.getByLabelText(/^Note \(optional\)/);
+    await user.clear(note);
+    await user.type(note, 'contract');
 
-    const present = screen.getAllByRole('checkbox', {
+    backToRoles();
+    await openRole('Director');
+    const present = screen.getByRole('checkbox', {
       name: 'Present (current role)',
     });
-    present[0]!.focus();
+    present.focus();
     await user.keyboard(' ');
-    expect(present[0]).not.toBeChecked();
-    const firstEnd = screen.getAllByLabelText(/^End month/)[0]!;
+    expect(present).not.toBeChecked();
+    const firstEnd = screen.getByLabelText(/^End month/);
     expect(firstEnd).toBeEnabled();
     fireEvent.change(firstEnd, { target: { value: '2026-09' } });
 
@@ -385,12 +439,16 @@ describe('AdminResumePage structured dates', () => {
       },
     ]);
 
-    await user.click(present[1]!);
+    backToRoles();
+    await openRole('Architect');
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Present (current role)' }),
+    );
     await vi.advanceTimersByTimeAsync(950);
     await waitFor(() =>
       expect(lastPutContent().experience[1]).toMatchObject({ end: null }),
     );
-    expect(screen.getAllByLabelText(/^End month/)[1]).toBeDisabled();
+    expect(screen.getByLabelText(/^End month/)).toBeDisabled();
   });
 });
 
@@ -450,7 +508,8 @@ describe('AdminResumePage publish with an end before start', () => {
   test('publishing a role that has saved dates publishes a draft that still has them', async () => {
     const user = userEvent.setup();
     renderResume();
-    const end = await screen.findByDisplayValue('2015-04');
+    await openRole('Architect');
+    const end = screen.getByDisplayValue('2015-04');
 
     fireEvent.change(end, { target: { value: '2013-01' } });
     await user.click(screen.getByRole('button', { name: 'Publish changes' }));
@@ -471,11 +530,14 @@ describe('AdminResumePage publish with an end before start', () => {
   test('publish is blocked while a new role with no saved dates has an end before start', async () => {
     const user = userEvent.setup();
     renderResume();
-    await screen.findByDisplayValue('2015-04');
+    await screen.findByRole('button', { name: /^Architect/ });
 
     await user.click(screen.getByRole('button', { name: 'Add role' }));
-    const start = screen.getAllByLabelText('Start month')[1]!;
-    const end = screen.getAllByLabelText(/^End month/)[1]!;
+    expect(
+      await screen.findByRole('heading', { name: 'New role' }),
+    ).toHaveFocus();
+    const start = screen.getByLabelText('Start month');
+    const end = screen.getByLabelText(/^End month/);
     fireEvent.change(start, { target: { value: '2020-05' } });
     fireEvent.change(end, { target: { value: '2020-01' } });
     expect(
@@ -493,15 +555,18 @@ describe('AdminResumePage publish with an end before start', () => {
     const link = screen.getByRole('link', { name: 'Fix End month' });
     expect(link).toHaveAttribute('href', `#${end.id}`);
 
-    screen.getAllByLabelText('Start month')[0]!.focus();
-    await user.click(link);
-    expect(end).toHaveFocus();
+    backToRoles();
+    expect(screen.queryByLabelText(/^End month/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Fix End month' }));
+    expect(screen.getByLabelText(/^End month/)).toHaveFocus();
 
     fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(post).not.toHaveBeenCalled();
 
-    fireEvent.change(end, { target: { value: '2020-06' } });
+    fireEvent.change(screen.getByLabelText(/^End month/), {
+      target: { value: '2020-06' },
+    });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Publish changes' }));
     await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
