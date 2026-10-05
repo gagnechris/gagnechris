@@ -52,11 +52,7 @@ const renderPalette = () =>
           <Route
             path="/today"
             element={
-              <NotebookSearchPalette
-                open
-                onClose={() => {}}
-                areaFilter="work"
-              />
+              <NotebookSearchPalette onClose={() => {}} areaFilter="work" />
             }
           />
           <Route path="/tasks/:id" element={<p>Task page</p>} />

@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
 
@@ -236,7 +236,7 @@ function renderToday(date: string | null = '2026-10-02') {
     [
       {
         path: '/',
-        element: <NotebookLayout />,
+        element: <NotebookLayout user={testAuthUser} />,
         children: [{ path: 'today', element: <NotebookTodayPage /> }],
       },
     ],

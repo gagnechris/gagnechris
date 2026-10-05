@@ -8,6 +8,7 @@ import {
 import { createUlid } from '../lib/ulid';
 import { areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
+import { useNotebookExport } from './useNotebookExport';
 
 export default function NotebookNotesPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
@@ -22,6 +23,11 @@ export default function NotebookNotesPage() {
   });
 
   const createMutation = useCreateNoteMutation();
+  const {
+    exportZip,
+    busy: exportBusy,
+    error: exportError,
+  } = useNotebookExport();
 
   const items = useMemo(() => {
     const all = notesQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -64,15 +70,32 @@ export default function NotebookNotesPage() {
                 : ' · Personal'}
           </p>
         </div>
-        <button
-          type="button"
-          className="admin-btn admin-btn--primary"
-          disabled={createMutation.isPending}
-          onClick={() => void createPage()}
-        >
-          New page
-        </button>
+        <div className="admin-panel__actions">
+          <button
+            type="button"
+            className="admin-btn"
+            onClick={() => void exportZip()}
+            disabled={exportBusy}
+            aria-busy={exportBusy}
+            title="Download every note and task as markdown and JSON"
+          >
+            {exportBusy ? 'Exporting…' : 'Export'}
+          </button>
+          <button
+            type="button"
+            className="admin-btn admin-btn--primary"
+            disabled={createMutation.isPending}
+            onClick={() => void createPage()}
+          >
+            New page
+          </button>
+        </div>
       </div>
+      {exportError ? (
+        <p className="admin-panel__error" role="alert">
+          Export failed: {exportError}
+        </p>
+      ) : null}
 
       <div className="admin-toolbar">
         <input

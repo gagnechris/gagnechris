@@ -8,7 +8,7 @@ import {
   type Note,
   type Task,
 } from '@gagnechris/shared';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
 
@@ -200,7 +200,7 @@ function renderToday() {
     [
       {
         path: '/',
-        element: <NotebookLayout />,
+        element: <NotebookLayout user={testAuthUser} />,
         children: [{ path: 'today', element: <NotebookTodayPage /> }],
       },
     ],

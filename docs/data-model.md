@@ -456,7 +456,7 @@ Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&start
 
 ### Human export
 
-No dedicated export API. The admin **Export** button pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). Task embeds are written as plain checklist lines, so exported notes contain no `{{task:…}}` tokens. See `infra/RUNBOOK.md` (human export vs PITR).
+No dedicated export API. The **Export** button on the Notebook's Notes page pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). Task embeds are written as plain checklist lines, so exported notes contain no `{{task:…}}` tokens. See `infra/RUNBOOK.md` (human export vs PITR).
 
 ## Conventions
 

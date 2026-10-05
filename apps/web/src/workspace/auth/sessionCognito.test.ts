@@ -13,7 +13,9 @@ vi.mock('aws-amplify/auth', () => ({
 }));
 vi.mock('./config', () => ({ ensureAmplifyConfigured: vi.fn() }));
 
+import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import {
+  getAuthUser,
   RETURN_TO_KEY,
   redirectToSignIn,
   safeReturnTo,
@@ -31,6 +33,30 @@ describe('Cognito session', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     window.history.replaceState(null, '', '/');
+  });
+
+  test('reads the Cognito groups from the ID token', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      userId: 'u1',
+      username: 'u1',
+    });
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'access', payload: {} },
+        idToken: {
+          toString: () => 'id',
+          payload: {
+            email: 'cms@example.com',
+            'cognito:groups': ['site-admin'],
+          },
+        },
+      },
+    });
+    expect(await getAuthUser()).toEqual({
+      label: 'cms@example.com',
+      userId: 'u1',
+      groups: ['site-admin'],
+    });
   });
 
   test("signs out of this app only, so the other app's session survives", async () => {
