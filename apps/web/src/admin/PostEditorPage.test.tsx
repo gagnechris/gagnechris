@@ -772,6 +772,10 @@ describe('PostEditorPage preview', () => {
     });
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   test('renders the body exactly as the published article does', async () => {
     const { container } = renderEditor();
     await screen.findByDisplayValue('Hello');
@@ -783,10 +787,44 @@ describe('PostEditorPage preview', () => {
     });
     const publishedBody = published.querySelector('.post-content');
     const previewBody = container.querySelector(
-      '.admin-post-preview .post-page > .post-content',
+      '.admin-body-preview .post-page > .post-content',
     );
     expect(publishedBody?.querySelector('figcaption')).not.toBeNull();
     expect(previewBody?.outerHTML).toBe(publishedBody?.outerHTML);
     expect(screen.queryByTestId('preview')).not.toBeInTheDocument();
+  });
+
+  test('root-relative links and images in the body open on the public site', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    get.mockResolvedValue({
+      data: {
+        ...basePost,
+        bodyMarkdown:
+          'Read [the welcome post](/posts/welcome) or [elsewhere](https://example.com/x).\n\n![Screenshot](/media/2026/10/shot.png)',
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+    const { container } = renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    const preview = container.querySelector<HTMLElement>(
+      '.admin-body-preview',
+    )!;
+    const link = within(preview).getByRole('link', {
+      name: 'the welcome post',
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://gagnechris.com/posts/welcome',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(
+      within(preview).getByRole('link', { name: 'elsewhere' }),
+    ).toHaveAttribute('href', 'https://example.com/x');
+    expect(
+      within(preview).getByRole('img', { name: 'Screenshot' }),
+    ).toHaveAttribute('src', 'https://gagnechris.com/media/2026/10/shot.png');
   });
 });
