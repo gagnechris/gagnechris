@@ -164,6 +164,14 @@ export function comingUpDayLabel(date: string, day: string): string {
     : formatTaskDay(date);
 }
 
+/** `Sat` within the coming week, else `Oct 12`. */
+export function comingUpShortLabel(date: string, day: string): string {
+  const n = daysBetween(day, date);
+  return n > 0 && n < 7
+    ? formatTaskDay(date).slice(0, 3)
+    : formatTaskDay(date, false);
+}
+
 /** Snooze counts from the later of the page's day and today. */
 export function snoozeBaseDay(day: string, today: string): string {
   return day > today ? day : today;
