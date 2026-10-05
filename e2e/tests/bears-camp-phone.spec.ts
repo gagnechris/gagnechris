@@ -54,8 +54,9 @@ const noHorizontalScroll = async (page: Page) => {
 const openCamp = async (page: Page, url: string) => {
   await page.clock.install({ time: EVENING });
   await page.goto(url);
-  // Hold the clock so the evening only moves when the test says so.
-  await page.clock.pauseAt(new Date(EVENING.getTime() + 1_000));
+  // Hold the clock so the evening only moves when the test says so. The
+  // page load runs on real time first, so pause well after it.
+  await page.clock.pauseAt(new Date(EVENING.getTime() + 5 * 60_000));
   await expect(
     page.getByRole('button', { name: 'Start the evening' }),
   ).toBeVisible();
