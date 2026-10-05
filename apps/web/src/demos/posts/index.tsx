@@ -38,13 +38,22 @@ const MarkdownEditor = lazy(() => import('../../kit/markdown/MarkdownEditor'));
 
 type View = 'post' | 'home';
 
+const postsDemoNote = (
+  <>
+    <span className="posts-demo__note-side-by-side">
+      {POSTS_DEMO_NOTE.sideBySide}
+    </span>
+    <span className="posts-demo__note-stacked">{POSTS_DEMO_NOTE.stacked}</span>
+  </>
+);
+
 export default function PostsDemo() {
   const { state, dispatch, reset } = useDemoReducer(
     postsDemoReducer,
     seedPostsDemo,
   );
   return (
-    <DemoFrame layout="split" note={POSTS_DEMO_NOTE} onReset={reset}>
+    <DemoFrame layout="split" note={postsDemoNote} onReset={reset}>
       {(resetButton) => (
         <PostsDemoBody
           state={state}

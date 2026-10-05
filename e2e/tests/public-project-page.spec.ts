@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import { expect, requireEnv, test, type Seed } from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
@@ -430,9 +430,7 @@ test.describe('the Posts demo on the built site', () => {
     expect(fetched(demoFile)).toBe(true);
     expect(fetched(editorFile)).toBe(true);
 
-    const note = slot.getByText(
-      'Write on the left, publish, watch the right. Nothing is saved.',
-    );
+    const note = await expectPostsDemoNote(slot, SIDE_BY_SIDE_NOTE);
     const label = slot.getByRole('heading', { name: 'Try it' });
     expect(
       Math.abs((await note.boundingBox())!.y - (await label.boundingBox())!.y),
@@ -510,7 +508,7 @@ test.describe('the Posts demo on the built site', () => {
     ).toEqual([]);
   });
 
-  test('on a phone the panes stack, editor first, with no sideways scroll', async ({
+  test('on a phone the panes stack, editor first, the note says above and below, with no sideways scroll', async ({
     page,
     seed,
     prefix,
@@ -524,11 +522,7 @@ test.describe('the Posts demo on the built site', () => {
     const editor = slot.getByRole('region', { name: 'Editor' });
     const publicSite = slot.getByRole('region', { name: 'Public site' });
     await expect(editor.getByRole('textbox', { name: 'Body' })).toBeVisible();
-    await expect(
-      slot.getByText(
-        'Write on the left, publish, watch the right. Nothing is saved.',
-      ),
-    ).toBeVisible();
+    await expectPostsDemoNote(slot, STACKED_NOTE);
 
     const e = (await editor.boundingBox())!;
     const p = (await publicSite.boundingBox())!;
@@ -550,5 +544,22 @@ test.describe('the Posts demo on the built site', () => {
     );
   });
 });
+
+const SIDE_BY_SIDE_NOTE =
+  'Write on the left, publish, watch the right. Nothing is saved.';
+const STACKED_NOTE = 'Write above, publish, watch below. Nothing is saved.';
+
+/** Exactly one wording is shown and exposed to assistive tech. */
+const expectPostsDemoNote = async (slot: Locator, wording: string) => {
+  const note = slot.locator('.demo-frame__note--label');
+  await expect(note.getByText(wording, { exact: true })).toBeVisible();
+  const other = wording === STACKED_NOTE ? SIDE_BY_SIDE_NOTE : STACKED_NOTE;
+  await expect(note.getByText(other, { exact: true })).toBeHidden();
+  expect(await note.evaluate((el) => (el as HTMLElement).innerText)).toBe(
+    wording,
+  );
+  expect(await note.ariaSnapshot()).toBe(`- paragraph: ${wording}`);
+  return note;
+};
 
 const prefixOf = (slug: string) => slug.replace(/-project$/, '');

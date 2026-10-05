@@ -278,8 +278,21 @@
   color: var(--neutral-600);
 }
 
+/* display:none, not visually hidden, so screen readers get one wording. */
+.posts-demo__note-stacked {
+  display: none;
+}
+
 /* Stacked, editor first. */
 @media (max-width: 760px) {
+  .posts-demo__note-side-by-side {
+    display: none;
+  }
+
+  .posts-demo__note-stacked {
+    display: inline;
+  }
+
   .posts-demo__panes {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;

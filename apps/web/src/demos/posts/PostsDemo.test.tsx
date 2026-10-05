@@ -114,7 +114,8 @@ describe('PostsDemo', () => {
 
   test('in Draft the public side shows only what is live and the post page is not there yet', async () => {
     const { editor, site, page, show } = await setup();
-    expect(screen.getByText(POSTS_DEMO_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(POSTS_DEMO_NOTE.sideBySide)).toBeInTheDocument();
+    expect(screen.getByText(POSTS_DEMO_NOTE.stacked)).toBeInTheDocument();
     expect(within(editor).getByText('draft')).toBeInTheDocument();
     expect(
       within(editor).getByText('/posts/hello-from-the-demo'),
