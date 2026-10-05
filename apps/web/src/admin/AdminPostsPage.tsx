@@ -9,6 +9,10 @@ import { StatusBadge } from '../kit/StatusBadge';
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';
 
+// Mutation responses are upserted into the list cache, so a row may arrive without its timestamps.
+const byNewest = (a?: string | null, b?: string | null): number =>
+  (b ?? '').localeCompare(a ?? '');
+
 const formatDate = (iso: string | null): string => {
   if (!iso) {
     return '—';
@@ -67,9 +71,9 @@ export default function AdminPostsPage() {
         return a.title.localeCompare(b.title);
       }
       if (sort === 'published') {
-        return (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+        return byNewest(a.publishedAt, b.publishedAt);
       }
-      return b.updatedAt.localeCompare(a.updatedAt);
+      return byNewest(a.updatedAt, b.updatedAt);
     });
     return list;
   }, [posts, query, status, sort]);
