@@ -387,7 +387,7 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 **Show-on date and someday.** `someday` is a separate boolean, not a sentinel `startDate`, so `startDate` is always a real calendar date or `null`, Upcoming can order by it without excluding a magic value, and a later deadline field can sit beside it. The API keeps the two exclusive: a body with `someday: true` and a non-null `startDate` is **400**; `PUT` with `someday: true` clears `startDate`, and `PUT` with a non-null `startDate` clears `someday`.
 
-**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), and its start-date queries also read the `DUE#` prefix, so these tasks show on the same day before and after `scripts/migrate-task-start-dates.ts` runs (see `infra/RUNBOOK.md`). Any API write to such a row stores `startDate` and rekeys it to `START#`.
+**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), but its start-date queries read only `START#`, `UPDATED#` and `SOMEDAY#`, so a dated row still keyed `DUE#` shows in no Today or Upcoming list until `scripts/migrate-task-start-dates.ts` rekeys it (see `infra/RUNBOOK.md`). Any API write to such a row also stores `startDate` and rekeys it to `START#`.
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 
@@ -419,14 +419,14 @@ API surface: Notebook repositories use `VersionedRepository` with the `ownerScop
 
 Start-date filters (at most one of `startOnOrBefore`, `startAfter`, `startOn`; `someday=true` with any of them is **400**):
 
-| Filter                        | Matches                                | GSI1 sort-key ranges per (area, status)                             |
-| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| `startOnOrBefore=<d>` (Today) | `startDate` ≤ d or `null`, not someday | `START#` … `START#<d>#TASK~`, `DUE#` … `DUE#<d>#TASK~`, `UPDATED#*` |
-| `startAfter=<d>` (Upcoming)   | `startDate` &gt; d, not someday        | `START#<d>#TASK~` … `START#\uffff`, same for `DUE#`                 |
-| `startOn=<d>`                 | `startDate` = d                        | `START#<d>#…`, `DUE#<d>#…`                                          |
-| `someday=true` / `false`      | someday tasks / everything else        | `SOMEDAY#*` / whole partition, filtered                             |
+| Filter                        | Matches                                | GSI1 sort-key ranges per (area, status)   |
+| ----------------------------- | -------------------------------------- | ----------------------------------------- |
+| `startOnOrBefore=<d>` (Today) | `startDate` ≤ d or `null`, not someday | `START#` … `START#<d>#TASK~`, `UPDATED#*` |
+| `startAfter=<d>` (Upcoming)   | `startDate` &gt; d, not someday        | `START#<d>#TASK~` … `START#\uffff`        |
+| `startOn=<d>`                 | `startDate` = d                        | `START#<d>#…`                             |
+| `someday=true` / `false`      | someday tasks / everything else        | `SOMEDAY#*` / whole partition, filtered   |
 
-Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&startAfter=<local today>`. The `DUE#` ranges cover rows the start-date migration has not reached. `priority`, `dueOn` and `dueBefore` have no key condition: they filter each page, so a page can hold fewer than `limit` items while `nextCursor` is set. List sort is applied **on the server** within each page: carried over (open, `startDate` &lt; `today`), then earlier start dates, then `startDate: null`, then someday, then priority, then id. Pages are not globally sorted across partitions; clients that need one order (Upcoming by date) sort after loading every page.
+Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&startAfter=<local today>`. `priority`, `dueOn` and `dueBefore` have no key condition: they filter each page, so a page can hold fewer than `limit` items while `nextCursor` is set. List sort is applied **on the server** within each page: carried over (open, `startDate` &lt; `today`), then earlier start dates, then `startDate: null`, then someday, then priority, then id. Pages are not globally sorted across partitions; clients that need one order (Upcoming by date) sort after loading every page.
 
 ### Search HTTP API
 

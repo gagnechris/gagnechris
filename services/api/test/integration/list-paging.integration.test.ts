@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, it } from 'vitest';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import type { RouteDef } from '../../src/router.js';
 import {
@@ -12,10 +12,8 @@ import {
   corpusNote,
   corpusTask,
   expectExactIds,
-  PAGING_USER,
   SCHEDULE_QUERIES,
   seedPagingCorpus,
-  storeAsLegacyTask,
   walkRoute,
 } from '../support/paging-corpus.js';
 
@@ -62,16 +60,7 @@ describe('list paging (DynamoDB Local)', () => {
     }
   }, 120_000);
 
-  it('tasks: start-date and someday filters page every row, migrated or not', async () => {
-    // Every third scheduled task is stored without startDate, keyed DUE#.
-    let legacy = 0;
-    for (const i of range(N)) {
-      const t = corpusTask(i);
-      if (i % 3 !== 0 || t.someday) continue;
-      await storeAsLegacyTask(doc, tableName, PAGING_USER, t.id, t.startDate);
-      legacy += 1;
-    }
-    expect(legacy).toBeGreaterThan(20);
+  it('tasks: start-date and someday filters page every row', async () => {
     for (const { query, matches } of SCHEDULE_QUERIES) {
       for (const area of [undefined, ...AREAS]) {
         for (const open of [undefined, 'true'] as const) {
