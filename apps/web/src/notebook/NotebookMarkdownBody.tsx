@@ -85,12 +85,15 @@ export function NotebookMarkdownBody({
       (e) => e.id === highlightTaskId,
     );
     if (!embed) return;
+    // The caret lands on the empty line under the embed, ready for context.
+    const line = view.state.doc.line(
+      Math.min(embed.line + 2, view.state.doc.lines),
+    );
     view.dispatch({
-      effects: EditorView.scrollIntoView(
-        view.state.doc.line(embed.line + 1).from,
-        { y: 'center' },
-      ),
+      selection: { anchor: line.to },
+      effects: EditorView.scrollIntoView(line.to, { y: 'center' }),
     });
+    view.focus();
     const frame = requestAnimationFrame(() => {
       onHighlighted?.();
       const el = view.dom.querySelector(

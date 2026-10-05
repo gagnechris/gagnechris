@@ -97,6 +97,7 @@ function TodayEditor({
   onUnsavedChange,
   onEmbeddedIds,
   appendEmbedRef,
+  onNoteReady,
   highlightTaskId,
   onHighlighted,
 }: {
@@ -108,6 +109,7 @@ function TodayEditor({
   onEmbeddedIds: (ids: ReadonlySet<string> | null) => void;
   /** Set while the note can take a new embed line. */
   appendEmbedRef: MutableRefObject<((taskId: string) => void) | null>;
+  onNoteReady: (ready: boolean) => void;
   highlightTaskId: string | null;
   onHighlighted: () => void;
 }) {
@@ -160,10 +162,12 @@ function TodayEditor({
         ...prev,
         bodyMarkdown: appendTaskEmbed(prev.bodyMarkdown, taskId),
       }));
+    onNoteReady(true);
     return () => {
       appendEmbedRef.current = null;
+      onNoteReady(false);
     };
-  }, [appendEmbedRef, ready, updateDraft]);
+  }, [appendEmbedRef, onNoteReady, ready, updateDraft]);
 
   if (loadError || isLoading || !entity) {
     return (
@@ -220,9 +224,10 @@ function TodayEditor({
   );
 }
 
+/** The embed, then an empty line for the context written under it. */
 function appendTaskEmbed(markdown: string, taskId: string): string {
   const body = markdown.replace(/\s+$/, '');
-  return `${body}${body ? '\n' : ''}{{task:${taskId}}}\n`;
+  return `${body}${body ? '\n\n' : ''}{{task:${taskId}}}\n\n`;
 }
 
 const AREA_LABELS: Record<NotebookAreaFilter, string> = {
@@ -237,6 +242,7 @@ export default function NotebookTodayPage() {
   const openSearch = useOpenWorkspaceSearch();
   const stripRef = useRef<HTMLButtonElement>(null);
   const appendEmbedRef = useRef<((taskId: string) => void) | null>(null);
+  const [noteReady, setNoteReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
@@ -323,12 +329,13 @@ export default function NotebookTodayPage() {
     setSheetOpen(false);
     stripRef.current?.focus();
   };
+  // The editor takes focus on the new line, so context can be typed at once.
   const addToNote = (taskId: string) => {
     appendEmbedRef.current?.(taskId);
     setSheetOpen(false);
     setHighlightTaskId(taskId);
-    stripRef.current?.focus();
   };
+  const canAddToNote = noteReady && date === today;
 
   // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
@@ -462,6 +469,7 @@ export default function NotebookTodayPage() {
               onUnsavedChange={onUnsavedChange}
               onEmbeddedIds={onEmbeddedIds}
               appendEmbedRef={appendEmbedRef}
+              onNoteReady={setNoteReady}
               highlightTaskId={highlightTaskId}
               onHighlighted={clearHighlight}
             />
@@ -497,6 +505,7 @@ export default function NotebookTodayPage() {
             onDrop={(id) =>
               withTask(id, (task) => void patch(task, { status: 'dropped' }))
             }
+            onAddToNote={canAddToNote ? addToNote : undefined}
           />
           <ComingUpPanel
             days={buckets.comingUp}
@@ -506,6 +515,7 @@ export default function NotebookTodayPage() {
             onToggle={(id) => withTask(id, (task) => void toggle(task))}
             taskTo={(task) => `/tasks/${task.id}`}
             upcomingTo={UPCOMING_ROUTE}
+            onAddToNote={canAddToNote ? addToNote : undefined}
           />
           <TaskSyntaxCheatSheet />
         </aside>
@@ -527,7 +537,7 @@ export default function NotebookTodayPage() {
           onDrop={(id) =>
             withTask(id, (task) => void patch(task, { status: 'dropped' }))
           }
-          onAddToNote={readOnly ? undefined : addToNote}
+          onAddToNote={canAddToNote ? addToNote : undefined}
           taskTo={(task) => `/tasks/${task.id}`}
         />
       ) : null}
