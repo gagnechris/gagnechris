@@ -348,9 +348,19 @@ lede Newsreader italic 24px / 1.4, `inkSoft`; 48px to the cards. Card titles
 are Newsreader 28px / 500. The notes below the cards are Newsreader 19px / 1.6
 in #2b3138, and the tips heading Newsreader 32px / 500. On the game pages, the
 back link is Inter 14px / 500 in `link`, underlined, and the title Newsreader
-40px / 500 (32px on phones). On phones (Phone · Bears landing, measured) the
-kicker is Inter 12px / 600, tracked 0.1em, 2px above a 40px title, and the
-lede is 20px (not drawn: the artboard has no lede).
+40px / 500 (32px on phones).
+
+### Bears landing on phones
+
+Phone · Bears landing, measured at 393px from the centre of the header photo.
+
+| Element   | Value                                                                                                                                                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Heading   | Kicker Inter 12px / 600, tracked 0.1em, cap top 48.5px below the photo centre (8px higher than the other phone pages, as drawn); title Newsreader 40px / 1.05 on two lines ("Don’t Feed the / Bears"), 2px below the kicker. No lede |
+| Cards     | 14px apart, the first 25px below the title; 1px `neutral-200` border, 16px radius; art 110px tall                                                                                                                                    |
+| Card body | 13px top and 16px side and bottom padding; kicker Inter 12px; title Newsreader 26px / 500; one sentence in Newsreader 16px / 1.45, `inkSoft`, 5px below; the 44px button 12px below that. No details line                            |
+| Card copy | Camp Rules: "Put food away and keep bears out until dark." Stay Wild: "Fatten up on berries and reach the den before snow."                                                                                                          |
+| Below     | The Vermont Fish & Wildlife note and the tips, at their phone sizes (not drawn)                                                                                                                                                      |
 
 ### Camp Rules on phones
 
