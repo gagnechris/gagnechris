@@ -271,11 +271,13 @@ test('Add to today’s note embeds the task in the note and takes it off Still o
   await panelsLoaded(page);
   await expect.poll(() => placesOf(page, title)).toEqual(['still-open']);
 
+  // Typing just before adding makes the editor hold back the new value.
+  await page.locator('.cm-content').click();
+  await page.keyboard.type('Standup');
   await page
     .getByRole('button', { name: `Add ${title} to today’s note` })
     .click();
   await expect.poll(() => placesOf(page, title)).toEqual(['note']);
-  // The preview shows the embed before the editor mounts; the caret lands there.
   await expect(page.locator('.cm-content')).toBeFocused();
   await page.keyboard.type('Finance needs the PO number.');
 
