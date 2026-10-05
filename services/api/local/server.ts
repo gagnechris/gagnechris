@@ -105,18 +105,26 @@ const fakeContext = {
   succeed: () => undefined,
 } as Context;
 
+// One rebuild at a time: a rebuild that read the table before a publish can
+// then never write after the rebuild that has it, so once a publish responds
+// the site keeps the item until something else changes it.
+let rebuilds: Promise<void> = Promise.resolve();
+
 async function maybeRebuild(method: string, path: string, status: number) {
   if (status < 200 || status >= 300) return;
   // Local stand-in for stream filter Keys.sk == PUBLISHED (see isPublishRelevant).
   if (!isPublishRelevantAdminMutation(method, path)) {
     return;
   }
-  try {
-    const result = await rebuildPublishedSite();
-    console.info('[local-api] publisher rebuild', result);
-  } catch (err) {
-    console.error('[local-api] publisher rebuild failed', err);
-  }
+  rebuilds = rebuilds.then(async () => {
+    try {
+      const result = await rebuildPublishedSite();
+      console.info('[local-api] publisher rebuild', result);
+    } catch (err) {
+      console.error('[local-api] publisher rebuild failed', err);
+    }
+  });
+  await rebuilds;
 }
 
 if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {

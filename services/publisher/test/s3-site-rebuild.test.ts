@@ -285,7 +285,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     );
     expect(storage.deletes).not.toContain(`blog/${corrupt.slug}/index.html`);
 
-    // listPublishedPosts called once (catalog only; KVS uses in-memory union).
+    // Once to render and once to check it settled; KVS uses the in-memory union.
     const gsiCalls = ddbSend.mock.calls.filter(
       (call) =>
         call[0] &&
@@ -300,7 +300,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
           }
         ).input?.ExpressionAttributeValues?.[':pk'] === 'STATUS#published',
     );
-    expect(gsiCalls).toHaveLength(1);
+    expect(gsiCalls).toHaveLength(2);
   });
 
   it('renders a just-published post missing from GSI via stream NewImage', async () => {

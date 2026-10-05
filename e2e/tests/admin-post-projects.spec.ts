@@ -33,7 +33,7 @@ test('tag a post with a project from the editor; the post shows Part of and the 
   await box.focus();
   await page.keyboard.press('Space');
   await expect(box).toBeChecked();
-  await page.getByRole('button', { name: 'Save' }).click();
+  // Autosave, not the Save button: once autosave lands, Save is disabled.
   await expect(
     page.getByRole('status').filter({ hasText: /^Saved$/ }),
   ).toBeVisible();
