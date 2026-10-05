@@ -1,6 +1,9 @@
 import type { Note, Task } from '@gagnechris/app-core';
 import { replaceTaskEmbeds, taskEmbedFallbackLine } from '@gagnechris/shared';
 
+/** General-purpose flag bit 11: file names are UTF-8, not CP437. */
+const UTF8_NAMES = 0x0800;
+
 /** Minimal ZIP (store / no compression) for browser downloads. */
 export function buildZip(files: Record<string, string | Uint8Array>): Blob {
   const encoder = new TextEncoder();
@@ -47,7 +50,7 @@ export function buildZip(files: Record<string, string | Uint8Array>): Blob {
     const local = concat([
       u32(0x04034b50),
       u16(20),
-      u16(0),
+      u16(UTF8_NAMES),
       u16(0),
       u16(0),
       u16(0),
@@ -64,7 +67,7 @@ export function buildZip(files: Record<string, string | Uint8Array>): Blob {
       u32(0x02014b50),
       u16(20),
       u16(20),
-      u16(0),
+      u16(UTF8_NAMES),
       u16(0),
       u16(0),
       u16(0),
@@ -100,30 +103,24 @@ export function buildZip(files: Record<string, string | Uint8Array>): Blob {
   });
 }
 
-function yamlEscape(value: string): string {
-  if (/[:#\n"'\\]/.test(value) || value.trim() !== value) {
-    return JSON.stringify(value);
-  }
-  return value;
-}
-
 /** Exported files read on their own: embeds become plain checklist lines. */
 export function noteToMarkdown(
   note: Note,
   tasksById: ReadonlyMap<string, Pick<Task, 'title' | 'status'>> = new Map(),
 ): string {
+  // A JSON string is a YAML double-quoted scalar, so every value reads back as
+  // the same string: no plain-scalar typing (`true`, `2026`, `null`) or syntax.
+  const q = (value: string) => JSON.stringify(value);
   const tags =
-    note.tags.length > 0
-      ? `\ntags: [${note.tags.map((t) => JSON.stringify(t)).join(', ')}]`
-      : '';
-  const dateLine = note.date ? `\ndate: ${note.date}` : '';
+    note.tags.length > 0 ? `\ntags: [${note.tags.map(q).join(', ')}]` : '';
+  const dateLine = note.date ? `\ndate: ${q(note.date)}` : '';
   const frontmatter = `---
-id: ${note.id}
-area: ${note.area}
-type: ${note.type}${dateLine}
-title: ${yamlEscape(note.title)}
+id: ${q(note.id)}
+area: ${q(note.area)}
+type: ${q(note.type)}${dateLine}
+title: ${q(note.title)}
 pinned: ${note.pinned}${tags}
-updatedAt: ${note.updatedAt}
+updatedAt: ${q(note.updatedAt)}
 ---
 
 `;

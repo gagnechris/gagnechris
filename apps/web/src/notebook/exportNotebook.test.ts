@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { parse } from 'yaml';
 import type { Note, Task } from '@gagnechris/app-core';
 import {
   buildNotebookExportZip,
@@ -34,10 +35,54 @@ describe('exportNotebook', () => {
 
   test('renders markdown with frontmatter', () => {
     const md = noteToMarkdown(note());
-    expect(md).toContain('id: 01ARZ3NDEKTSV4RRFFQ48JMNO2');
-    expect(md).toContain('title: Hello World');
+    expect(md).toContain('id: "01ARZ3NDEKTSV4RRFFQ48JMNO2"');
+    expect(md).toContain('title: "Hello World"');
     expect(md).toContain('Body **here**');
     expect(noteExportPath(note())).toMatch(/^notes\/pages\//);
+  });
+
+  test('frontmatter reads back as the same strings in a YAML parser', () => {
+    const titles = [
+      '[WIP] plan',
+      '- todo',
+      '*star',
+      '@home',
+      '%pct',
+      '? q',
+      '`tick`',
+      '> quote',
+      ',comma',
+      '|pipe',
+      'true',
+      '2026',
+      '0x1F',
+      'null',
+      '~',
+      '&anchor',
+      '{x}',
+      'a: b # c',
+      ' padded ',
+      'line\nbreak',
+      'quote " and \\',
+      'Ünïcode 日本 🎉',
+      '',
+    ];
+    for (const title of titles) {
+      const md = noteToMarkdown(
+        note({ title, type: 'daily', date: '2026-10-05', tags: ['yes', '1'] }),
+      );
+      const front = parse(md.split('---\n')[1]!) as Record<string, unknown>;
+      expect(front, title).toEqual({
+        id: '01ARZ3NDEKTSV4RRFFQ48JMNO2',
+        area: 'work',
+        type: 'daily',
+        date: '2026-10-05',
+        title,
+        pinned: false,
+        tags: ['yes', '1'],
+        updatedAt: '2026-10-02T12:00:00.000Z',
+      });
+    }
   });
 
   test('keeps accents and non-Latin letters in file names', () => {
@@ -85,9 +130,14 @@ describe('exportNotebook', () => {
     expect(blob.type).toBe('application/zip');
     expect(blob.size).toBeGreaterThan(40);
     const buf = new Uint8Array(await blob.arrayBuffer());
-    // ZIP local file header signature
-    expect(buf[0]).toBe(0x50);
-    expect(buf[1]).toBe(0x4b);
+    const view = new DataView(buf.buffer);
+    expect(view.getUint32(0, true)).toBe(0x04034b50);
+    // Bit 11: names are UTF-8, so unzip tools keep non-Latin file names.
+    expect(view.getUint16(6, true) & 0x0800).toBe(0x0800);
+    const central = buf.findIndex(
+      (_, i) => view.getUint32(i, true) === 0x02014b50,
+    );
+    expect(view.getUint16(central + 8, true) & 0x0800).toBe(0x0800);
   });
   test('replaces task embeds with titles and checked state', async () => {
     const base: Task = {
