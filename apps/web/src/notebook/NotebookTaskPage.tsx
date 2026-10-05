@@ -4,6 +4,7 @@ import { Field, Select, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { TaskMentions } from './TaskMentions';
 import { useTaskToggle } from './useTaskToggle';
 import {
   emptyTaskDraft,
@@ -224,6 +225,8 @@ export default function NotebookTaskPage() {
           updateDraft((prev) => ({ ...prev, description }))
         }
       />
+
+      <TaskMentions taskId={entity.id} homeNoteId={entity.noteId} />
     </section>
   );
 }
