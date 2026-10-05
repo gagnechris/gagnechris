@@ -492,7 +492,7 @@ Distinct from PITR / AWS Backup: the **Export** button on the Notebook's Notes p
 
 Archive layout:
 
-- `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`); task embeds are written as `- [ ] Title` / `- [x] Title`
+- `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`; every string is double-quoted, so any YAML parser reads it back unchanged); task embeds are written as described in `docs/data-model.md` (Task embeds)
 - `tasks.json` — all non-deleted tasks
 - `README.md` — short description of the archive
 
