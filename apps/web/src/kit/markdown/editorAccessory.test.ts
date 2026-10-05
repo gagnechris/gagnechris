@@ -2,6 +2,9 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import {
+  insertCodeBlock,
+  insertImages,
+  insertLink,
   makeTaskLine,
   startPriority,
   startTaskDate,
@@ -10,13 +13,18 @@ import {
 
 let view: EditorView | undefined;
 
-/** `|` marks the caret. */
+/** `|` marks the caret; `[` and `]` mark a selection instead. */
 function editor(text: string) {
   const caret = text.indexOf('|');
+  const from = text.indexOf('[');
+  const selection =
+    caret >= 0
+      ? EditorSelection.cursor(caret)
+      : EditorSelection.range(from, text.indexOf(']') - 1);
   view = new EditorView({
     state: EditorState.create({
-      doc: text.replace('|', ''),
-      selection: EditorSelection.cursor(caret),
+      doc: caret >= 0 ? text.replace('|', '') : text.replace(/[[\]]/g, ''),
+      selection,
     }),
     parent: document.body,
   });
@@ -68,5 +76,49 @@ describe('editor accessory commands', () => {
     expect(shown(v)).toBe('Plan|');
     toggleLinePrefix(v, '- ');
     expect(shown(v)).toBe('- Plan|');
+  });
+});
+
+const selected = (v: EditorView) => {
+  const { from, to } = v.state.selection.main;
+  return v.state.sliceDoc(from, to);
+};
+
+describe('body toolbar commands', () => {
+  test('Link wraps the selection and selects the URL', () => {
+    const v = editor('See [the docs] here');
+    insertLink(v);
+    expect(v.state.doc.toString()).toBe('See [the docs](https://) here');
+    expect(selected(v)).toBe('https://');
+  });
+
+  test('Link with no selection inserts placeholder text', () => {
+    const v = editor('See |');
+    insertLink(v);
+    expect(v.state.doc.toString()).toBe('See [link text](https://)');
+  });
+
+  test('Code block fences the selection on lines of its own', () => {
+    const v = editor('Run [npm test] now');
+    insertCodeBlock(v);
+    expect(v.state.doc.toString()).toBe('Run \n```\nnpm test\n```\n now');
+    expect(selected(v)).toBe('npm test');
+  });
+
+  test('Code block on an empty line puts the caret inside the fence', () => {
+    const v = editor('Intro\n|');
+    insertCodeBlock(v);
+    expect(shown(v)).toBe('Intro\n```\n|\n```');
+  });
+
+  test('Images insert one per paragraph at the caret', () => {
+    const v = editor('Before |');
+    insertImages(v, [
+      { alt: 'one', path: '/media/1.png' },
+      { alt: 'two', path: '/media/2.png' },
+    ]);
+    expect(shown(v)).toBe(
+      'Before ![one](/media/1.png)\n\n![two](/media/2.png)|',
+    );
   });
 });

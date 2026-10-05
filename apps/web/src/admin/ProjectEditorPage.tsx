@@ -45,7 +45,6 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
   const getClient = useGetApiClient();
   const deleteMutation = useDeleteProjectMutation();
   const [slugManual, setSlugManual] = useState(false);
-  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
   const [publishBlocked, setPublishBlocked] = useState(false);
 
   const {
@@ -219,8 +218,6 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
       <MarkdownBodyEditor
         value={draft.bodyMarkdown}
         onChange={(value) => setField('bodyMarkdown', value)}
-        mobilePane={mobilePane}
-        setMobilePane={setMobilePane}
         onUploadImages={handleUploadImages}
         preview={<ProjectBodyPreview markdown={draft.bodyMarkdown} />}
       />

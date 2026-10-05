@@ -46,19 +46,10 @@ export function EditorActionBar({
         <SaveIndicator saveState={saveState} dirty={dirty} />
       </div>
       <div className="admin-actions">
+        {extraActions}
         {viewLiveHref ? (
           <Button href={viewLiveHref} target="_blank" rel="noopener noreferrer">
             View live
-          </Button>
-        ) : null}
-        {showPublish ? (
-          <Button variant="primary" disabled={busy} onClick={onPublish}>
-            {hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-          </Button>
-        ) : null}
-        {hasUnpublishedChanges ? (
-          <Button disabled={busy} onClick={onDiscard}>
-            Discard changes
           </Button>
         ) : null}
         {status === 'published' ? (
@@ -66,10 +57,22 @@ export function EditorActionBar({
             Unpublish
           </Button>
         ) : null}
+        {hasUnpublishedChanges ? (
+          <Button disabled={busy} onClick={onDiscard}>
+            Discard changes
+          </Button>
+        ) : null}
         <Button disabled={busy || !dirty} onClick={onSave}>
           Save
         </Button>
-        {extraActions}
+        {showPublish ? (
+          <Button variant="primary" disabled={busy} onClick={onPublish}>
+            {hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
+            <kbd className="admin-kbd" aria-hidden="true">
+              ⌘⏎
+            </kbd>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

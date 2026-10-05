@@ -72,3 +72,55 @@ export function startPriority(view: EditorView) {
 export function hideKeyboard(view: EditorView) {
   view.contentDOM.blur();
 }
+
+/** `[selection](https://)` with the URL selected, ready to paste over. */
+export function insertLink(view: EditorView) {
+  const { from, to } = view.state.selection.main;
+  const text = view.state.sliceDoc(from, to) || 'link text';
+  const url = 'https://';
+  const insert = `[${text}](${url})`;
+  const urlStart = from + text.length + 3;
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: urlStart, head: urlStart + url.length },
+    userEvent: 'input',
+  });
+  view.focus();
+}
+
+/** Fences the selection (or an empty block) on lines of its own. */
+export function insertCodeBlock(view: EditorView) {
+  const { from, to } = view.state.selection.main;
+  const doc = view.state.doc;
+  const body = view.state.sliceDoc(from, to);
+  const before =
+    from > 0 && doc.sliceString(from - 1, from) !== '\n' ? '\n' : '';
+  const after =
+    to < doc.length && doc.sliceString(to, to + 1) !== '\n' ? '\n' : '';
+  const insert = `${before}\`\`\`\n${body}\n\`\`\`${after}`;
+  const bodyStart = from + before.length + 4;
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: bodyStart, head: bodyStart + body.length },
+    userEvent: 'input',
+  });
+  view.focus();
+}
+
+/** Image markdown at the caret, one image per paragraph. */
+export function insertImages(
+  view: EditorView,
+  images: readonly { alt: string; path: string }[],
+) {
+  if (images.length === 0) return;
+  const insert = images
+    .map(({ alt, path }) => `![${alt}](${path})`)
+    .join('\n\n');
+  const { from, to } = view.state.selection.main;
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length },
+    userEvent: 'input',
+  });
+  view.focus();
+}

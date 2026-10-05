@@ -6,6 +6,7 @@ import { byNewest } from '../kit/byNewest';
 import { Button } from '../kit/Button';
 import { TextInput, Select } from '../kit/Field';
 import { StatusBadge } from '../kit/StatusBadge';
+import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 
 type StatusFilter = 'all' | 'draft' | 'published';
 type SortKey = 'updated' | 'published' | 'title';
@@ -89,14 +90,18 @@ export default function AdminPostsPage() {
 
   const creating = createMutation.isPending;
 
+  const counts = {
+    all: posts?.length ?? 0,
+    draft: posts?.filter((p) => p.status === 'draft').length ?? 0,
+    published: posts?.filter((p) => p.status === 'published').length ?? 0,
+  };
+
   return (
     <section className="admin-panel">
-      <div className="admin-panel__header">
+      <div className="admin-panel__header admin-page-header">
         <div>
+          <p className="admin-eyebrow">Site</p>
           <h1>Posts</h1>
-          <p className="admin-panel__lede">
-            Draft and published posts. Click a row to edit.
-          </p>
         </div>
         <Button
           variant="primary"
@@ -108,31 +113,51 @@ export default function AdminPostsPage() {
       </div>
 
       <div className="admin-toolbar">
-        <TextInput
-          type="search"
-          placeholder="Search title, slug, tags…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search posts"
-        />
-        <Select
+        <SegmentedRadio
+          label="Filter by status"
+          className="admin-status-filter"
+          options={[
+            { value: 'all', label: 'All', count: counts.all },
+            { value: 'draft', label: 'Drafts', count: counts.draft },
+            { value: 'published', label: 'Published', count: counts.published },
+          ]}
           value={status}
-          onChange={(e) => setStatus(e.target.value as StatusFilter)}
-          aria-label="Filter by status"
-        >
-          <option value="all">All statuses</option>
-          <option value="draft">Drafts</option>
-          <option value="published">Published</option>
-        </Select>
-        <Select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          aria-label="Sort posts"
-        >
-          <option value="updated">Sort by updated</option>
-          <option value="published">Sort by published</option>
-          <option value="title">Sort by title</option>
-        </Select>
+          onChange={setStatus}
+        />
+        <div className="admin-search">
+          <svg
+            className="admin-search__icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <TextInput
+            type="search"
+            placeholder="Search title, slug, tags"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search posts"
+          />
+        </div>
+        <label className="admin-sort">
+          Sort
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+          >
+            <option value="updated">Last updated</option>
+            <option value="published">Published date</option>
+            <option value="title">Title</option>
+          </Select>
+        </label>
       </div>
 
       {error ? (
@@ -145,27 +170,57 @@ export default function AdminPostsPage() {
         <p>No posts match. Create a draft to get started.</p>
       ) : null}
       {visible.length > 0 ? (
-        <ul className="admin-post-list">
-          {visible.map((post) => (
-            <li key={post.id}>
-              <Link
-                to={`/posts/${post.id}`}
-                className="admin-post-list__item admin-post-list__link"
-              >
-                <span className="admin-post-list__title">{post.title}</span>
-                <span className="admin-post-list__meta">
-                  <StatusBadge status={post.status} />
-                  <code>/{post.slug}</code>
-                  <span className="admin-post-list__date">
+        <div className="admin-table-box">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">Title</th>
+                <th scope="col" className="admin-table__status">
+                  Status
+                </th>
+                <th scope="col" className="admin-table__slug">
+                  Slug
+                </th>
+                <th scope="col" className="admin-table__date">
+                  {sort === 'published' ? 'Published' : 'Updated'}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((post) => (
+                <tr key={post.id}>
+                  <td>
+                    <Link
+                      to={`/posts/${post.id}`}
+                      className="admin-table__link"
+                    >
+                      <span className="admin-table__title">{post.title}</span>
+                      {post.tags?.length ? (
+                        <span className="admin-table__sub">
+                          {post.tags.join(', ')}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </td>
+                  <td>
+                    <span className="admin-table__badges">
+                      <StatusBadge
+                        status={post.status}
+                        hasUnpublishedChanges={post.hasUnpublishedChanges}
+                      />
+                    </span>
+                  </td>
+                  <td className="admin-table__slug">/{post.slug}</td>
+                  <td className="admin-table__date">
                     {sort === 'published'
                       ? formatDate(post.publishedAt)
                       : formatDate(post.updatedAt)}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
       {hasNextPage ? (
         <Button
@@ -175,6 +230,9 @@ export default function AdminPostsPage() {
           {isFetchingNextPage ? 'Loading…' : 'Load more'}
         </Button>
       ) : null}
+      <p className="admin-hint">
+        Publishing regenerates the post page, RSS and sitemap.
+      </p>
     </section>
   );
 }

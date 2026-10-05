@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 
-type Option<T extends string> = { value: T; label: string };
+type Option<T extends string> = { value: T; label: string; count?: number };
 
 type Props<T extends string> = {
   label: string;
@@ -63,6 +63,9 @@ export default function SegmentedRadio<T extends string>({
           onKeyDown={(e) => onKeyDown(e, i)}
         >
           {option.label}
+          {option.count === undefined ? null : (
+            <span className="workspace-segmented__count">{option.count}</span>
+          )}
         </button>
       ))}
     </div>
