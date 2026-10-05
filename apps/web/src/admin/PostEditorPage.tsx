@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
 import {
+  mergeEditorSeo,
   postResource,
   useDeletePostMutation,
   useGetApiClient,
@@ -12,7 +13,7 @@ import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { emptyPostDraft, parsePostTags, postDraftFromPost } from './postDraft';
 import {
   PostEditorBody,
-  PostEditorMeta,
+  PostEditorDetails,
   PostEditorTitle,
   type PostDraftFields,
 } from './PostEditorSections';
@@ -43,7 +44,6 @@ function PostEditorPageInner({ postId }: { postId: string }) {
   const projectsQuery = useProjectsQuery();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const [slugManual, setSlugManual] = useState(false);
-  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
 
   const {
     draft,
@@ -64,7 +64,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     initialDraft: emptyPostDraft(),
     toDraft: postDraftFromPost,
     getEntityId: (entity) => entity.id,
-    toPayload: (current) => ({
+    toPayload: (current, entity) => ({
       title: current.title.trim() || 'Untitled',
       slug: current.slug.trim() || EMPTY_SLUG_FALLBACK,
       excerpt: current.excerpt,
@@ -72,6 +72,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
       tags: parsePostTags(current.tagsText),
       projectIds: current.projectIds,
       coverImage: current.coverImage.trim() || null,
+      seo: mergeEditorSeo(entity.seo, current),
     }),
     conflictMessage:
       'Conflict — another save updated this post. Reload and try again.',
@@ -163,34 +164,39 @@ function PostEditorPageInner({ postId }: { postId: string }) {
         }
       />
 
-      <PostEditorTitle
-        title={draft.title}
-        titleRef={titleRef}
-        onChange={(value) => setField('title', value)}
-      />
+      <div className="admin-post-editor">
+        <div className="admin-post-editor__main">
+          <PostEditorTitle
+            title={draft.title}
+            titleRef={titleRef}
+            onChange={(value) => setField('title', value)}
+          />
 
-      {saveError ? (
-        <p className="admin-panel__error" role="alert">
-          {saveError}
-        </p>
-      ) : null}
+          {saveError ? (
+            <p className="admin-panel__error" role="alert">
+              {saveError}
+            </p>
+          ) : null}
 
-      <PostEditorMeta
-        draft={draft}
-        setField={setField}
-        setSlugManual={setSlugManual}
-        onSave={() => void save()}
-        projects={projectsQuery.data}
-        projectsError={projectsQuery.error ? 'Could not load projects.' : null}
-      />
+          <PostEditorBody
+            draft={draft}
+            setField={setField}
+            onUploadImages={handleUploadImages}
+          />
+        </div>
 
-      <PostEditorBody
-        draft={draft}
-        mobilePane={mobilePane}
-        setMobilePane={setMobilePane}
-        setField={setField}
-        onUploadImages={handleUploadImages}
-      />
+        <PostEditorDetails
+          draft={draft}
+          setField={setField}
+          setSlugManual={setSlugManual}
+          onSave={() => void save()}
+          onUploadImages={handleUploadImages}
+          projects={projectsQuery.data}
+          projectsError={
+            projectsQuery.error ? 'Could not load projects.' : null
+          }
+        />
+      </div>
     </section>
   );
 }

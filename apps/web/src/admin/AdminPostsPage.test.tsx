@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -63,6 +63,48 @@ describe('AdminPostsPage', () => {
     });
   });
 
+  test('filters by status, with a count on each option', async () => {
+    const user = userEvent.setup();
+    get.mockResolvedValue({
+      data: {
+        items: [
+          makePost(),
+          makePost({
+            id: '01LIVE',
+            slug: 'live',
+            title: 'Live one',
+            tags: ['aws', 'cdk'],
+            status: 'published',
+            publishedAt: '2026-09-20T00:00:00.000Z',
+          }),
+        ],
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <AdminPostsPage />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    await screen.findByText('Hello');
+    const filter = screen.getByRole('radiogroup', { name: 'Filter by status' });
+    expect(
+      within(filter)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['All2', 'Drafts1', 'Published1']);
+    expect(screen.getByText('aws, cdk')).toBeInTheDocument();
+    expect(screen.getByText('/live')).toBeInTheDocument();
+
+    await user.click(within(filter).getByRole('radio', { name: /Published/ }));
+    expect(screen.queryByText('Hello')).not.toBeInTheDocument();
+    expect(screen.getByText('Live one')).toBeInTheDocument();
+  });
+
   test('creates a draft and navigates to the editor', async () => {
     const user = userEvent.setup();
     post.mockResolvedValue({
@@ -115,10 +157,10 @@ describe('AdminPostsPage', () => {
     expect(await screen.findByText('Untitled')).toBeInTheDocument();
     const titles = screen
       .getAllByRole('link')
-      .map((a) => a.querySelector('.admin-post-list__title')?.textContent);
+      .map((a) => a.querySelector('.admin-table__title')?.textContent);
     expect(titles).toEqual(['Hello', 'Untitled']);
 
-    await user.selectOptions(screen.getByLabelText('Sort posts'), 'published');
+    await user.selectOptions(screen.getByLabelText('Sort'), 'published');
     expect(screen.getByText('Untitled')).toBeInTheDocument();
   });
 });

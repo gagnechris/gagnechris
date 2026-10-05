@@ -11,6 +11,8 @@ export const emptyPostDraft = (): PostDraftFields => ({
   tagsText: '',
   projectIds: [],
   coverImage: '',
+  seoTitle: '',
+  seoDescription: '',
 });
 
 export const postDraftFromPost = (post: Post): PostDraftFields => ({
@@ -21,6 +23,8 @@ export const postDraftFromPost = (post: Post): PostDraftFields => ({
   tagsText: post.tags.join(', '),
   projectIds: post.projectIds,
   coverImage: post.coverImage ?? '',
+  seoTitle: post.seo?.title ?? '',
+  seoDescription: post.seo?.description ?? '',
 });
 
 export const parsePostTags = (text: string): string[] =>

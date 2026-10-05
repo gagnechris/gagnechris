@@ -828,3 +828,99 @@ describe('PostEditorPage preview', () => {
     ).toHaveAttribute('src', 'https://gagnechris.com/media/2026/10/shot.png');
   });
 });
+
+describe('PostEditorPage Details panel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/api/admin/projects'
+          ? { data: [], error: undefined, response: { status: 200 } }
+          : {
+              data: { ...basePost, tags: ['aws'] },
+              error: undefined,
+              response: { status: 200 },
+            },
+      ),
+    );
+    put.mockResolvedValue({
+      data: { ...basePost, version: 2 },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('tags are chips: Enter adds one, × removes one', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const panel = await screen.findByRole('complementary', {
+      name: 'Post details',
+    });
+    const tags = within(panel).getByRole('list', { name: 'Post tags' });
+    expect(within(tags).getByText('aws')).toBeInTheDocument();
+
+    await user.type(within(panel).getByLabelText('Tags'), 'Engineering{Enter}');
+    await user.type(within(panel).getByLabelText('Tags'), 'AWS{Enter}');
+    await user.click(
+      within(panel).getByRole('button', { name: 'Remove tag aws' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(put.mock.calls[0]?.[1]).toMatchObject({
+      body: { tags: ['Engineering'] },
+    });
+  });
+
+  test('saves SEO overrides, and clears them when emptied', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    await user.click(screen.getByText('SEO overrides'));
+    await user.type(screen.getByLabelText('SEO title'), 'Search title');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(put.mock.calls[0]?.[1]).toMatchObject({
+      body: { seo: { title: 'Search title' } },
+    });
+
+    await user.clear(screen.getByLabelText('SEO title'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(put.mock.calls[1]?.[1]).toMatchObject({ body: { seo: null } });
+  });
+
+  test('an uploaded cover image becomes the cover', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({
+      data: {
+        uploadUrl: 'https://uploads.example/put',
+        headers: {},
+        publicPath: '/media/cover.png',
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(null, { status: 200 }))),
+    );
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    await user.upload(
+      screen.getByLabelText('Upload cover image'),
+      new File(['png'], 'cover.png', { type: 'image/png' }),
+    );
+    expect(
+      await screen.findByRole('img', { name: 'Cover image' }),
+    ).toHaveAttribute('src', '/media/cover.png');
+    expect(screen.getByLabelText('Cover image URL')).toHaveValue(
+      '/media/cover.png',
+    );
+  });
+});
