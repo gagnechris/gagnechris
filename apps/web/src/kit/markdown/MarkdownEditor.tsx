@@ -13,6 +13,7 @@ import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 export type MarkdownEditorHandle = {
   focus: () => void;
   insertText: (text: string) => void;
+  view: () => EditorView | undefined;
 };
 
 type MarkdownEditorProps = {
@@ -96,6 +97,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
           selection: { anchor: from + text.length },
         });
       },
+      view: () => cmRef.current?.view,
     }));
 
     const extensions = useMemo(() => {

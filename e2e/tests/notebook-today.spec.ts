@@ -256,38 +256,63 @@ test('each task appears in exactly one place on the page', async ({
   );
 });
 
-test('at 390px wide Today has no horizontal scroll, Snooze menu open', async ({
+test('at 390px the note fills the page and the strip opens Still open and Coming up in a sheet', async ({
   page,
   apps,
   signIn,
   seed,
   prefix,
 }) => {
-  const title = `${prefix} a fairly long task title that has to wrap on a phone`;
-  await seedTask(seed, { title, startDate: '2026-09-29' });
+  const carried = `${prefix} a fairly long task title that has to wrap on a phone`;
+  const dropped = `${prefix} recruiter email`;
+  const coming = `${prefix} brand fonts`;
+  await seedTask(seed, { title: carried, startDate: '2026-09-29' });
+  await seedTask(seed, { title: dropped, startDate: '2026-09-30' });
+  await seedTask(seed, { title: coming, startDate: '2026-10-05' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
   await page.goto(`${apps.notebook}/today`);
-  await expect(stillOpen(page).getByText(title)).toBeVisible();
-  await page
-    .getByRole('combobox', { name: `Snooze ${title} to another day` })
-    .click();
+  await panelsLoaded(page);
   await expect(
-    page.getByRole('option', { name: 'Tomorrow, Sat, Oct 3' }),
-  ).toBeVisible();
+    page.getByRole('complementary', { name: 'Today tasks' }),
+  ).toBeHidden();
 
-  const box = await page
-    .getByRole('listbox', { name: 'Show this task on…' })
-    .filter({ visible: true })
-    .boundingBox();
-  expect(box!.x).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-
+  const strip = page.getByRole('button', {
+    name: '2 still open, 1 coming up. Show list',
+  });
+  await strip.click();
+  const sheet = page.getByRole('dialog', { name: 'Today’s tasks' });
+  await expect(sheet.getByText(carried)).toBeVisible();
+  await expect(
+    sheet.getByRole('tab', { name: 'Still open · 2' }),
+  ).toBeFocused();
   const overflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -
       document.documentElement.clientWidth,
   );
   expect(overflow).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(strip).toBeFocused();
+
+  await strip.click();
+  await sheet
+    .getByRole('button', { name: `More actions for ${dropped}` })
+    .click();
+  await sheet.getByRole('button', { name: `Drop ${dropped}` }).click();
+  await expect(sheet.getByText(dropped)).toHaveCount(0);
+
+  await sheet.getByRole('tab', { name: 'Coming up · 1' }).click();
+  await sheet
+    .getByRole('button', { name: `Add ${coming} to today’s note` })
+    .click();
+  await expect(sheet).toBeHidden();
+  await expect(
+    page.locator('.markdown-editor').getByText(coming, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '1 still open, 0 coming up. Show list' }),
+  ).toBeFocused();
 });

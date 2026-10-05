@@ -118,3 +118,61 @@
   margin: 0;
   color: var(--neutral-600);
 }
+
+/* Phones: chips in a row on top of the editor's accessory bar. */
+.task-syntax__menu--docked {
+  position: fixed;
+  top: auto;
+  right: 0;
+  bottom: calc(var(--keyboard-inset-bottom, 0px) + 3.25rem);
+  left: 0;
+  z-index: 46;
+  width: auto;
+  padding: 10px 12px 4px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: var(--neutral-50);
+  box-shadow: none;
+}
+
+.task-syntax__menu--docked .task-syntax__heading {
+  margin: 0 0 6px 4px;
+  font-size: 0.75rem;
+}
+
+.task-syntax__menu--docked .task-syntax__options {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 6px;
+  overflow-x: auto;
+}
+
+.task-syntax__menu--docked .task-syntax__option {
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 10px;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.task-syntax__menu--docked .task-syntax__option[aria-selected='true'] {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+}
+
+.task-syntax__menu--docked .task-syntax__detail {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.task-syntax__menu--docked .task-syntax__hint {
+  display: none;
+}

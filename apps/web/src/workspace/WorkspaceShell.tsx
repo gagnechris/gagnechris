@@ -15,6 +15,7 @@ import { signOutUser, type AuthUser } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
+import { WorkspaceSearchContext } from './workspaceSearch';
 import '../kit/kit.css';
 import './workspace.css';
 
@@ -319,7 +320,9 @@ export function WorkspaceFrame({
           </div>
         </aside>
         <main className="admin-main workspace-main">
-          {children ?? <Outlet />}
+          <WorkspaceSearchContext.Provider value={openSearch}>
+            {children ?? <Outlet />}
+          </WorkspaceSearchContext.Provider>
         </main>
       </div>
       {moreOpen ? (
