@@ -17,6 +17,7 @@ export type SearchHit = {
   id: string;
   area: NotebookArea;
   title: string;
+  date?: string;
   snippet: string;
   matches: { start: number; end: number }[];
 };
@@ -98,6 +99,7 @@ export async function searchNotebook(
         id: note.id,
         area: note.area,
         title: ranked.title,
+        ...(note.type === 'daily' && note.date ? { date: note.date } : {}),
         snippet: ranked.snippet,
         matches: ranked.matches,
         score: ranked.score,

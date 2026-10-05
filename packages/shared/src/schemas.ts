@@ -883,6 +883,10 @@ export const NotebookSearchHitSchema = z.object({
   id: z.string().min(1),
   area: NotebookAreaSchema,
   title: z.string(),
+  date: z
+    .string()
+    .optional()
+    .describe("A daily note's day (yyyy-mm-dd); absent for pages and tasks"),
   snippet: z.string(),
   matches: z.array(
     z.object({
