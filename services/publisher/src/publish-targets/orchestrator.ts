@@ -1,3 +1,4 @@
+import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type { Post } from '@gagnechris/shared';
 import {
   isFullRebuildScope,
@@ -5,6 +6,7 @@ import {
   type RebuildScope,
 } from '../rebuild-scope.js';
 import { mapWithConcurrency, PUT_CONCURRENCY } from '../concurrency.js';
+import { logger, metrics } from '../observability.js';
 import { listItemToFeedPost, readPublishedListItems } from '../posts.js';
 import type { RebuildResult } from '../rebuild-result.js';
 import {
@@ -160,12 +162,77 @@ export async function retainLivePosts(
     .map(listItemToFeedPost);
 }
 
-export async function runPublishTargets(options: {
+type RunOptions = {
   scope?: RebuildScope;
   storage: SiteStorage;
   sources: RebuildSiteSources;
   targets?: readonly PublishTarget[];
-}): Promise<RebuildResult> {
+};
+
+export const MAX_PUBLISH_PASSES = 4;
+
+/** Wraps sources so the data a pass rendered from can be read again and compared. */
+function recordedSources(sources: RebuildSiteSources) {
+  const seen = new Map<keyof RebuildSiteSources, string>();
+  const recorded = {} as RebuildSiteSources;
+  for (const name of Object.keys(sources) as (keyof RebuildSiteSources)[]) {
+    recorded[name] = (async () => {
+      const value = await sources[name]();
+      if (!seen.has(name)) seen.set(name, JSON.stringify(value));
+      return value;
+    }) as never;
+  }
+  const changed = async (): Promise<(keyof RebuildSiteSources)[]> => {
+    const names = [...seen.keys()];
+    const now = await Promise.all(
+      names.map(async (name) => JSON.stringify(await sources[name]())),
+    );
+    return names.filter((name, i) => now[i] !== seen.get(name));
+  };
+  return { recorded, changed };
+}
+
+/**
+ * Stream shards and `republishAll` run rebuilds in parallel, and each writes
+ * every index it touches from the data it read. One that read before another
+ * publish and wrote after it would drop that item, so a pass whose data has
+ * changed by the time its writes land runs again. The last write to any
+ * index then comes from a pass that read every publish committed before it
+ * finished.
+ */
+export async function runPublishTargets(
+  options: RunOptions,
+): Promise<RebuildResult> {
+  const removedSlugs = new Set<string>();
+  const invalidated = new Set<string>();
+  for (let pass = 1; ; pass += 1) {
+    const { recorded, changed } = recordedSources(options.sources);
+    const result = await runPublishPass({ ...options, sources: recorded });
+    result.removedSlugs.forEach((slug) => removedSlugs.add(slug));
+    result.invalidated.forEach((path) => invalidated.add(path));
+    const merged = {
+      ...result,
+      removedSlugs: [...removedSlugs],
+      invalidated: [...invalidated],
+    };
+    const stale = await changed();
+    if (stale.length === 0) return merged;
+    if (pass === MAX_PUBLISH_PASSES) {
+      logger.warn('Published data kept changing during the rebuild', {
+        pass,
+        changed: stale,
+      });
+      metrics.addMetric('RebuildUnsettled', MetricUnit.Count, 1);
+      return merged;
+    }
+    logger.info('Published data changed during the rebuild; rebuilding', {
+      pass,
+      changed: stale,
+    });
+  }
+}
+
+async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
   const scope = options.scope ?? fullRebuildScope();
   const { storage, sources } = options;
   const targets = options.targets ?? getPublishTargets();

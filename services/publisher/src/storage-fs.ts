@@ -1,14 +1,18 @@
+import { randomUUID } from 'node:crypto';
 import {
   access,
   mkdir,
   readdir,
   readFile,
+  rename,
   rm,
   writeFile,
 } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { requireEnv } from './config.js';
 import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
+
+const TMP_SUFFIX = '.publisher-tmp';
 
 async function walkFiles(root: string, prefix: string): Promise<string[]> {
   const abs = join(root, prefix);
@@ -24,7 +28,7 @@ async function walkFiles(root: string, prefix: string): Promise<string[]> {
     const rel = prefix ? `${prefix}${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       out.push(...(await walkFiles(root, `${rel}/`)));
-    } else if (entry.isFile()) {
+    } else if (entry.isFile() && !entry.name.endsWith(TMP_SUFFIX)) {
       out.push(rel);
     }
   }
@@ -79,7 +83,16 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
       await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, next);
+      // writeFile truncates in place, so the local site would serve a
+      // concurrent request an empty or half-written page. S3 PUTs are atomic.
+      const tmp = `${path}.${randomUUID()}${TMP_SUFFIX}`;
+      try {
+        await writeFile(tmp, next);
+        await rename(tmp, path);
+      } catch (err) {
+        await rm(tmp, { force: true });
+        throw err;
+      }
       return true;
     },
 

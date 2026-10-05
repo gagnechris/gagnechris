@@ -59,6 +59,7 @@ export const emptyDailyPlaceholder = (
     bodyMarkdown: '',
     tags: [],
     pinned: false,
+    taskIds: [],
     version: 0,
     createdAt: now,
     updatedAt: now,

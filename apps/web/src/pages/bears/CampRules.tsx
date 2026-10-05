@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import CampRulesGame from '../../games/bears/camp/CampRulesGame';
+import CampRulesGame, {
+  type CampMode,
+} from '../../games/bears/camp/CampRulesGame';
+import { campShortDate, dailyCampKey } from '../../games/bears/camp/dailyCamp';
 import BearsPageMeta from '../../games/bears/shared/BearsPageMeta';
 import SkipToTips from '../../games/bears/shared/SkipToTips';
 import SoundToggle from '../../games/bears/shared/SoundToggle';
@@ -14,6 +17,8 @@ const CampRules = () => {
   const [searchParams] = useSearchParams();
   const from = bearsFromParam(searchParams);
   const [soundOn, setSoundOn] = useState(false);
+  const [mode, setMode] = useState<CampMode>('daily');
+  const dailyKey = useMemo(() => dailyCampKey(new Date()), []);
 
   return (
     <div className="bears-game-page">
@@ -21,6 +26,11 @@ const CampRules = () => {
       <BearsGameHeader
         title="Camp Rules"
         from={from}
+        aside={
+          mode === 'daily'
+            ? `Daily camp · ${campShortDate(dailyKey)}`
+            : 'Random camp'
+        }
         actions={
           <>
             <SoundToggle on={soundOn} onToggle={() => setSoundOn((v) => !v)} />
@@ -29,7 +39,12 @@ const CampRules = () => {
         }
       />
       <main>
-        <CampRulesGame from={from} soundOn={soundOn} />
+        <CampRulesGame
+          from={from}
+          soundOn={soundOn}
+          dailyKey={dailyKey}
+          onModeChange={setMode}
+        />
       </main>
     </div>
   );

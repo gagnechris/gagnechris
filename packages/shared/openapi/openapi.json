@@ -1727,6 +1727,14 @@
           "pinned": {
             "type": "boolean"
           },
+          "taskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            },
+            "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+          },
           "version": {
             "type": "integer",
             "minimum": 0
@@ -1753,6 +1761,7 @@
           "bodyMarkdown",
           "tags",
           "pinned",
+          "taskIds",
           "version",
           "createdAt",
           "updatedAt",
@@ -1809,6 +1818,14 @@
                 "pinned": {
                   "type": "boolean"
                 },
+                "taskIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                },
                 "version": {
                   "type": "integer",
                   "minimum": 0
@@ -1835,6 +1852,7 @@
                 "bodyMarkdown",
                 "tags",
                 "pinned",
+                "taskIds",
                 "version",
                 "createdAt",
                 "updatedAt",
@@ -2105,6 +2123,14 @@
               "pinned": {
                 "type": "boolean"
               },
+              "taskIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                },
+                "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+              },
               "version": {
                 "type": "integer",
                 "minimum": 0
@@ -2131,6 +2157,7 @@
               "bodyMarkdown",
               "tags",
               "pinned",
+              "taskIds",
               "version",
               "createdAt",
               "updatedAt",
@@ -2938,6 +2965,14 @@
                   "pinned": {
                     "type": "boolean"
                   },
+                  "taskIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                  },
                   "version": {
                     "type": "integer",
                     "minimum": 0
@@ -2964,6 +2999,7 @@
                   "bodyMarkdown",
                   "tags",
                   "pinned",
+                  "taskIds",
                   "version",
                   "createdAt",
                   "updatedAt",
@@ -3277,6 +3313,14 @@
                       "pinned": {
                         "type": "boolean"
                       },
+                      "taskIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                        },
+                        "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                      },
                       "version": {
                         "type": "integer",
                         "minimum": 0
@@ -3303,6 +3347,7 @@
                       "bodyMarkdown",
                       "tags",
                       "pinned",
+                      "taskIds",
                       "version",
                       "createdAt",
                       "updatedAt",
@@ -3623,6 +3668,14 @@
                             "pinned": {
                               "type": "boolean"
                             },
+                            "taskIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                              },
+                              "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                            },
                             "version": {
                               "type": "integer",
                               "minimum": 0
@@ -3649,6 +3702,7 @@
                             "bodyMarkdown",
                             "tags",
                             "pinned",
+                            "taskIds",
                             "version",
                             "createdAt",
                             "updatedAt",
@@ -13842,6 +13896,14 @@
                           "pinned": {
                             "type": "boolean"
                           },
+                          "taskIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                          },
                           "version": {
                             "type": "integer",
                             "minimum": 0
@@ -13868,6 +13930,7 @@
                           "bodyMarkdown",
                           "tags",
                           "pinned",
+                          "taskIds",
                           "version",
                           "createdAt",
                           "updatedAt",
@@ -14155,6 +14218,14 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "taskIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -14181,6 +14252,7 @@
                     "bodyMarkdown",
                     "tags",
                     "pinned",
+                    "taskIds",
                     "version",
                     "createdAt",
                     "updatedAt",
@@ -14491,6 +14563,14 @@
                         "pinned": {
                           "type": "boolean"
                         },
+                        "taskIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                          },
+                          "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                        },
                         "version": {
                           "type": "integer",
                           "minimum": 0
@@ -14517,6 +14597,7 @@
                         "bodyMarkdown",
                         "tags",
                         "pinned",
+                        "taskIds",
                         "version",
                         "createdAt",
                         "updatedAt",
@@ -14885,6 +14966,14 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "taskIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -14911,6 +15000,7 @@
                     "bodyMarkdown",
                     "tags",
                     "pinned",
+                    "taskIds",
                     "version",
                     "createdAt",
                     "updatedAt",
@@ -15272,6 +15362,14 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "taskIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -15298,6 +15396,7 @@
                     "bodyMarkdown",
                     "tags",
                     "pinned",
+                    "taskIds",
                     "version",
                     "createdAt",
                     "updatedAt",
@@ -15606,6 +15705,14 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "taskIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -15632,6 +15739,7 @@
                     "bodyMarkdown",
                     "tags",
                     "pinned",
+                    "taskIds",
                     "version",
                     "createdAt",
                     "updatedAt",
@@ -16021,6 +16129,14 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "taskIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -16047,6 +16163,7 @@
                     "bodyMarkdown",
                     "tags",
                     "pinned",
+                    "taskIds",
                     "version",
                     "createdAt",
                     "updatedAt",
@@ -19694,6 +19811,14 @@
                                       "pinned": {
                                         "type": "boolean"
                                       },
+                                      "taskIds": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                                        },
+                                        "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                                      },
                                       "version": {
                                         "type": "integer",
                                         "minimum": 0
@@ -19720,6 +19845,7 @@
                                       "bodyMarkdown",
                                       "tags",
                                       "pinned",
+                                      "taskIds",
                                       "version",
                                       "createdAt",
                                       "updatedAt",

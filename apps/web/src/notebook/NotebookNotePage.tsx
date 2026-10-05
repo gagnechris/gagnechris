@@ -139,6 +139,7 @@ export default function NotebookNotePage() {
       </label>
 
       <NotebookMarkdownBody
+        note={entity}
         value={draft.bodyMarkdown}
         onChange={(bodyMarkdown) =>
           updateDraft((prev) => ({ ...prev, bodyMarkdown }))

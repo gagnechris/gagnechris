@@ -106,4 +106,30 @@ describe('filesystem site storage', () => {
       '<html>a</html>',
     );
   });
+
+  it('a read during a put sees the old or the new file, never a partial one', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    const storage = createFilesystemSiteStorage(root);
+    const key = 'posts/index.html';
+    const versions = ['a', 'b', 'c', 'd'].map((c) => c.repeat(4 * 1024 * 1024));
+    await storage.put(key, versions[0]!, 'text/html', 'x');
+
+    const seen = new Set<number | undefined>();
+    let writing = true;
+    const reader = (async () => {
+      while (writing) {
+        const body = await storage.read(key);
+        seen.add(body === undefined ? undefined : versions.indexOf(body));
+      }
+    })();
+    for (const body of versions.slice(1)) {
+      await storage.put(key, body, 'text/html', 'x');
+    }
+    writing = false;
+    await reader;
+
+    expect(seen.has(-1)).toBe(false);
+    expect(seen.has(undefined)).toBe(false);
+    expect(await storage.list('posts/')).toEqual([key]);
+  });
 });

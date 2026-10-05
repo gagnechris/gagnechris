@@ -1,4 +1,5 @@
 import type { Note, Task } from '@gagnechris/app-core';
+import { replaceTaskEmbeds, taskEmbedFallbackLine } from '@gagnechris/shared';
 
 /** Minimal ZIP (store / no compression) for browser downloads. */
 export function buildZip(files: Record<string, string | Uint8Array>): Blob {
@@ -106,7 +107,11 @@ function yamlEscape(value: string): string {
   return value;
 }
 
-export function noteToMarkdown(note: Note): string {
+/** Exported files read on their own: embeds become plain checklist lines. */
+export function noteToMarkdown(
+  note: Note,
+  tasksById: ReadonlyMap<string, Pick<Task, 'title' | 'status'>> = new Map(),
+): string {
   const tags =
     note.tags.length > 0
       ? `\ntags: [${note.tags.map((t) => JSON.stringify(t)).join(', ')}]`
@@ -122,7 +127,10 @@ updatedAt: ${note.updatedAt}
 ---
 
 `;
-  return `${frontmatter}${note.bodyMarkdown.trimEnd()}\n`;
+  const body = replaceTaskEmbeds(note.bodyMarkdown, (embed) =>
+    taskEmbedFallbackLine(embed, tasksById.get(embed.id)),
+  );
+  return `${frontmatter}${body.trimEnd()}\n`;
 }
 
 export function noteExportPath(note: Note): string {
@@ -141,19 +149,17 @@ export function buildNotebookExportZip(
   tasks: Task[],
 ): { blob: Blob; fileCount: number } {
   const files: Record<string, string> = {};
+  const liveTasks = tasks.filter((t) => !t.deleted);
+  const tasksById = new Map(liveTasks.map((t) => [t.id, t]));
   for (const note of notes.filter((n) => !n.deleted)) {
-    files[noteExportPath(note)] = noteToMarkdown(note);
+    files[noteExportPath(note)] = noteToMarkdown(note, tasksById);
   }
-  files['tasks.json'] = `${JSON.stringify(
-    tasks.filter((t) => !t.deleted),
-    null,
-    2,
-  )}\n`;
+  files['tasks.json'] = `${JSON.stringify(liveTasks, null, 2)}\n`;
   files['README.md'] = `# Notebook export
 
 Generated for personal backup / migration.
 
-- \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter)
+- \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\` / \`- [x] Title\`
 - \`tasks.json\` — all non-deleted tasks
 
 This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).

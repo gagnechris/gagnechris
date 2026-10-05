@@ -118,6 +118,10 @@
   color: var(--neutral-600);
 }
 
+.bears-card__text--phone {
+  display: none;
+}
+
 .bears-card__details {
   margin: 0;
   font-size: var(--text-sm);
@@ -167,11 +171,60 @@
   }
 
   .bears-landing h1 {
+    max-width: 8em;
     font-size: 2.5rem;
+    line-height: 1.05;
   }
 
-  .bears-landing__lede {
-    font-size: 1.25rem;
+  .bears-landing__header {
+    margin-top: -8px;
+    margin-bottom: 13px;
+  }
+
+  .bears-landing__lede,
+  .bears-card__text:not(.bears-card__text--phone),
+  .bears-card__details {
+    display: none;
+  }
+
+  .bears-landing__cards {
+    gap: 14px;
+  }
+
+  .bears-card {
+    border-radius: 16px;
+  }
+
+  .bears-card__art {
+    height: 110px;
+  }
+
+  .bears-card__body {
+    gap: 0;
+    padding: 13px var(--space-4) var(--space-4);
+  }
+
+  .bears-card__kicker {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .bears-card__title {
+    margin-top: 1px;
+    font-size: 1.625rem;
+  }
+
+  .bears-card .bears-card__text--phone {
+    display: block;
+    margin-top: 5px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.45;
+    color: var(--color-ink-soft);
+  }
+
+  .bears-card__cta {
+    margin-top: 12px;
   }
 
   .bears-landing__note {

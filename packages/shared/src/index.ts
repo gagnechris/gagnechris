@@ -78,6 +78,16 @@ export {
 } from './post-reading.js';
 export { createUlid, type RandomBytes } from './ulid.js';
 export {
+  findTaskEmbeds,
+  parseTaskEmbedLine,
+  replaceTaskEmbeds,
+  taskEmbedFallbackLine,
+  taskEmbedIds,
+  taskEmbedToken,
+  type TaskEmbed,
+  type TaskEmbedMarkdownTask,
+} from './task-embeds.js';
+export {
   isSafeLinkHref,
   LINK_HREF_MAX_LENGTH,
   POST_LINK_SCHEMES,

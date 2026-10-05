@@ -24,6 +24,8 @@ type EndCardProps = {
   lede?: string;
   /** 0–3; omit to hide the rating. */
   paws?: number;
+  /** One-line stats beside the paws; hidden unless the page CSS shows it. */
+  summary?: string;
   stats: readonly EndStat[];
   tip: BearTip;
   tipKicker?: string;
@@ -31,6 +33,7 @@ type EndCardProps = {
   onPlayAgain: () => void;
   onTipLinkClick: () => void;
   extraActions?: ReactNode;
+  className?: string;
 };
 
 const OTHER_SIDE_LABEL: Readonly<Record<BearsGame, string>> = {
@@ -46,6 +49,7 @@ const EndCard = ({
   title,
   lede,
   paws,
+  summary,
   stats,
   tip,
   tipKicker = 'Bear tip',
@@ -53,13 +57,14 @@ const EndCard = ({
   onPlayAgain,
   onTipLinkClick,
   extraActions,
+  className,
 }: EndCardProps) => {
   const titleId = useId();
   const other = otherGame(game);
 
   return (
     <section
-      className={`bears-end bears-end--${outcome}`}
+      className={`bears-end bears-end--${outcome}${className ? ` ${className}` : ''}`}
       role="dialog"
       aria-labelledby={titleId}
     >
@@ -68,7 +73,16 @@ const EndCard = ({
         {title}
       </h2>
       {lede ? <p className="bears-end__lede">{lede}</p> : null}
-      {paws === undefined ? null : <Paws count={paws} />}
+      {summary === undefined ? (
+        paws === undefined ? null : (
+          <Paws count={paws} />
+        )
+      ) : (
+        <div className="bears-end__rating">
+          {paws === undefined ? null : <Paws count={paws} />}
+          <p className="bears-end__summary">{summary}</p>
+        </div>
+      )}
       <dl className="bears-end__stats">
         {stats.map((s) => (
           <div key={s.label} className="bears-end__stat">

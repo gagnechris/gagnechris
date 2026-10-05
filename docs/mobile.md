@@ -5,7 +5,7 @@
 1. `GET /api/health` (public client, parsed with `HealthResponseSchema`)
 2. `GET /api/admin/home` (authed client), then shows the result's version and status
 
-The app has no local store and no offline support. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids.
+The app has no local store and no offline support, and it does not render notes yet. When it does, it should parse task embeds (`{{task:<ULID>}}` lines, see [data-model.md](./data-model.md#task-embeds)) with the shared helpers and render them from the task records, or fall back to `taskEmbedFallbackLine` so a raw token never shows. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids.
 
 ## What it imports
 

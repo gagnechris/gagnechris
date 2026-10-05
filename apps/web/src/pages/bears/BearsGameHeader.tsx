@@ -6,11 +6,18 @@ type BearsGameHeaderProps = {
   title: string;
   from: string;
   actions?: ReactNode;
+  /** Beside the title on phones only. */
+  aside?: ReactNode;
 };
 
-const BearsGameHeader = ({ title, from, actions }: BearsGameHeaderProps) => (
+const BearsGameHeader = ({
+  title,
+  from,
+  actions,
+  aside,
+}: BearsGameHeaderProps) => (
   <header className="bears-game-page__header">
-    <div>
+    <div className="bears-game-page__heading">
       <Link
         to={withFrom(BEARS_LANDING_PATH, from)}
         className="bears-game-page__back"
@@ -22,7 +29,14 @@ const BearsGameHeader = ({ title, from, actions }: BearsGameHeaderProps) => (
           Don’t Feed the Bears
         </span>
       </Link>
-      <h1>{title}</h1>
+      {aside ? (
+        <div className="bears-game-page__title-row">
+          <h1>{title}</h1>
+          <p className="bears-game-page__aside">{aside}</p>
+        </div>
+      ) : (
+        <h1>{title}</h1>
+      )}
     </div>
     {actions ? <div className="bears-game-page__actions">{actions}</div> : null}
   </header>

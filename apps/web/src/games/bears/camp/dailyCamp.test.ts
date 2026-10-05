@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   campResultLine,
+  campShareText,
+  campShortDate,
   dailyCampKey,
   dailyCampRngs,
   seededCampRngs,
@@ -51,5 +53,15 @@ describe('dailyCamp', () => {
         habituated: true,
       }),
     ).toContain('··· the bears got too comfortable');
+  });
+
+  test('share text is the short one-line summary', () => {
+    expect(campShortDate('2026-10-04')).toBe('Oct 4');
+    expect(campShareText({ key: '2026-10-04', seconds: 60, saves: 3 })).toBe(
+      'Camp Rules · Oct 4 · held 60s, 3 saves',
+    );
+    expect(campShareText({ key: '2026-01-09', seconds: 17, saves: 1 })).toBe(
+      'Camp Rules · Jan 9 · held 17s, 1 save',
+    );
   });
 });

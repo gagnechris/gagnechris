@@ -353,9 +353,29 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 | `bodyMarkdown`            | Markdown body                                    |
 | `tags`                    | `string[]` (normalized on write)                 |
 | `pinned`                  | Boolean                                          |
+| `taskIds`                 | Embedded task ids; see Task embeds               |
 | `version`                 | Optimistic concurrency                           |
 | `createdAt` / `updatedAt` | ISO-8601 UTC ms                                  |
 | `deleted`                 | Soft-delete flag (tombstone window on GSI3)      |
+
+### Task embeds
+
+A note embeds a task with a line that holds only the token `{{task:<ULID>}}`, optionally indented with spaces or tabs:
+
+```markdown
+## Standup
+
+{{task:01J9Z8X7W6V5T4S3R2Q1P0N9M8}}
+Context written under the task.
+```
+
+- The note stores the reference only. Title, checked state, show-on date and priority always come from the task record, so completing or renaming a task changes every note that embeds it.
+- Only whole lines are embeds. A token inside other text, after a list marker, or inside a fenced code block is plain text.
+- The same task can be embedded in many notes. The task's `noteId` stays its home note (where it was created).
+- `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. Rows written before embeds have no `taskIds` attribute and derive it on read.
+- Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
+- A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
+- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. A deleted task renders as a muted "Deleted task" row.
 
 ### Task fields
 
@@ -430,13 +450,13 @@ Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&start
 
 ### Search HTTP API
 
-| Method | Path                   | Notes                                                                                                                                                                                                                                                                                                                   |
-| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/notebook/search` | JSON body: `q` (required), optional `area`, `limit` (max 50). POST so search terms never appear in a URL or access log; `GET` returns 405. Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas) and filters in memory; response groups `notes[]` / `tasks[]` with snippet + match ranges. |
+| Method | Path                   | Notes                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/notebook/search` | JSON body: `q` (required), optional `area`, `limit` (max 50). POST so search terms never appear in a URL or access log; `GET` returns 405. Scans the caller's notes and tasks (up to 2,000 of each, fully paged across areas) and filters in memory; note bodies are matched with task embeds replaced by the task's title. Response groups `notes[]` / `tasks[]` with snippet + match ranges. |
 
 ### Human export
 
-No dedicated export API. The admin **Export** button pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). See `infra/RUNBOOK.md` (human export vs PITR).
+No dedicated export API. The admin **Export** button pages the notes and tasks list endpoints in the browser and builds a ZIP (Markdown + `tasks.json`). Task embeds are written as plain checklist lines, so exported notes contain no `{{task:…}}` tokens. See `infra/RUNBOOK.md` (human export vs PITR).
 
 ## Conventions
 

@@ -249,7 +249,9 @@ test('desktop Home keeps the All posts link', async ({ page, seed }) => {
 test('phone header: 32px photo, 19px name', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${site()}/contact`);
-  const photo = await page.locator('.site-header__photo').boundingBox();
-  expect(photo!.width).toBe(32);
+  // The app replaces the prerendered header when it mounts, so a box read
+  // from the prerendered photo can come back null.
+  const photo = page.locator('.site-header__photo');
+  await expect.poll(async () => (await photo.boundingBox())?.width).toBe(32);
   await expectFontSizes(page, { '.site-header__name': 19 });
 });

@@ -47,6 +47,9 @@ afterwards:
 3. Local API + publisher (`services/api/local/server.ts`) and static site
    (`static-server.ts`, `E2E_SITE_URL`), which runs the real apex
    viewer-request function and returns its redirects with their headers.
+   The API runs one rebuild at a time and answers a publish only after its
+   rebuild, so the item is in the site from then on; the filesystem storage
+   replaces files by rename, so a page read mid-rebuild is never partial.
    The KeyValueStore is `e2e/.stack/<run>/kvs.json` (`LOCAL_KVS_FILE`),
    seeded with both sentinels so unknown slugs 404 as in prod.
    `tests/apex-cutover.spec.ts` checks the old apex `/admin*` and `/auth*`
@@ -63,7 +66,7 @@ afterwards:
    `E2E_COGNITO` in `e2e/stack.ts`) served by `vite preview`.
    `tests/app-auth.spec.ts` signs in to these through a stubbed managed login
    on `https://auth.e2e.test` (routed in the browser; nothing leaves the
-   machine). `tests/apex-cutover.spec.ts` serves the public dev server as
+   machine). `tests/apex-cutover.spec.ts` serves the built site as
    `https://gagnechris.com` the same way, to check that the public bundle
    deletes leftover `CognitoIdentityServiceProvider.*` cookies and
    `localStorage` keys

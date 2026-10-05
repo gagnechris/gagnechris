@@ -301,6 +301,26 @@ The phone artboard is 393 wide; values for 390px are taken from it.
 | At 390px         | Title 40px, headline 20px, summary 19px. Download PDF spans the column, 48px tall, 8px radius, Inter 15px. Dates stack 4px above the role; role title 22px, bullets 17px / 1.5; earlier rows, skill labels and education stack the same way                                                                                                                                                |
 | Not drawn        | The phone artboard shows no summary, LinkedIn or Get in touch; the page keeps them below the headline and button. Unpublished: title, "Resume available on request." as the summary, LinkedIn and Get in touch                                                                                                                                                                             |
 
+## Resume PDF
+
+No artboard; the print layout follows the Resume page. Drawn by
+`services/publisher/src/resume-pdf.ts`, fonts in `services/publisher/assets/fonts/`.
+
+| Element        | Value                                                                                                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page           | US Letter (612×792pt), 0.6in margins, at most two pages                                                                                                                                             |
+| Header         | Name Newsreader Medium 24pt; current role (`content.headline`, else "Title at Company" of the role with no end) Newsreader italic 12pt `inkSoft`; contact line Inter 8.5pt `neutral-600` with links |
+| Summary        | Newsreader 10.5pt / 14.5pt, #2b3138                                                                                                                                                                 |
+| Section labels | EXPERIENCE, STRENGTHS AND SKILLS, EDUCATION: Inter Bold 8pt uppercase, 0.5pt tracking, 0.75pt ink rule below                                                                                        |
+| Date column    | 100pt + 16pt gap; Inter 9pt tabular figures, `neutral-600`, "Jul 2019 – Present", on the role's first baseline                                                                                      |
+| Role           | Title Newsreader Medium 12pt ink, "at Company" italic `inkSoft`; 0.5pt `neutral-200` rule between roles                                                                                             |
+| Bullets        | Newsreader 10.5pt / 13.6pt, #2b3138, "•" markers, 10pt indent                                                                                                                                       |
+| Fit            | If the resume runs past two pages, ended roles drop to one line (date + "Title at Company", 10.5pt), oldest first, until it fits                                                                    |
+| Skills         | Competencies joined with " · "; `Label: value` rows with the label in the date column (Inter Bold 8pt `neutral-700`), value Newsreader 10.5pt                                                       |
+| Education      | `year` as stored in the date column; title Newsreader 10.5pt; "Institution, Location" italic 9.5pt `inkSoft`                                                                                        |
+| Fonts          | Newsreader 16pt static cut (Regular, Italic, Medium) and Inter (Regular, Bold), subset; characters Newsreader lacks use Inter, then `?`                                                             |
+| Text           | Drawn in reading order (date, role, bullets), no ligatures, so copy-paste and ATS extraction get plain text                                                                                         |
+
 ## Contact (Phone · Contact, measured)
 
 Measured on the 393px Phone · Contact artboard; desktop values (not drawn)
@@ -348,9 +368,51 @@ lede Newsreader italic 24px / 1.4, `inkSoft`; 48px to the cards. Card titles
 are Newsreader 28px / 500. The notes below the cards are Newsreader 19px / 1.6
 in #2b3138, and the tips heading Newsreader 32px / 500. On the game pages, the
 back link is Inter 14px / 500 in `link`, underlined, and the title Newsreader
-40px / 500 (32px on phones). On phones (Phone · Bears landing, measured) the
-kicker is Inter 12px / 600, tracked 0.1em, 2px above a 40px title, and the
-lede is 20px (not drawn: the artboard has no lede).
+40px / 500 (32px on phones).
+
+### Bears landing on phones
+
+Phone · Bears landing, measured at 393px from the centre of the header photo.
+
+| Element   | Value                                                                                                                                                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Heading   | Kicker Inter 12px / 600, tracked 0.1em, cap top 48.5px below the photo centre (8px higher than the other phone pages, as drawn); title Newsreader 40px / 1.05 on two lines ("Don’t Feed the / Bears"), 2px below the kicker. No lede |
+| Cards     | 14px apart, the first 25px below the title; 1px `neutral-200` border, 16px radius; art 110px tall                                                                                                                                    |
+| Card body | 13px top and 16px side and bottom padding; kicker Inter 12px; title Newsreader 26px / 500; one sentence in Newsreader 16px / 1.45, `inkSoft`, 5px below; the 44px button 12px below that. No details line                            |
+| Card copy | Camp Rules: "Put food away and keep bears out until dark." Stay Wild: "Fatten up on berries and reach the den before snow."                                                                                                          |
+| Below     | The Vermont Fish & Wildlife note and the tips, at their phone sizes (not drawn)                                                                                                                                                      |
+
+### Camp Rules on phones
+
+Phone · Camp Rules (portrait) and Phone · Camp Rules end, at `max-width: 480px`.
+Wider viewports keep the desktop game.
+
+| Element      | Value                                                                                                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily label  | "Daily camp · Oct 4" ("Random camp" for a random one), Inter 14px `neutral-600`, on the title's baseline at the right                                                                                                         |
+| HUD          | Four equal columns: Time, Snacks ("1/3"), Saves, Score; labels Inter 12px / 600, values 22px / 700; 12px padding                                                                                                              |
+| Field        | 2:3, taller than wide; items and bears are at least 72×72 targets                                                                                                                                                             |
+| End screen   | Replaces the HUD and field: kicker Inter 13px / 600, title Newsreader 34px / 500, paws with "60s · 3 saves · score 675" in Inter 15px `neutral-600`, the tip (heading Newsreader 22px) with its underlined source link        |
+| End actions  | Play again full width; Share result and the other game side by side, 50px tall, 12px radius                                                                                                                                   |
+| Share result | Touch screens with Web Share open the share sheet with "Camp Rules · Oct 4 · held 60s, 3 saves" and the game URL; closing the sheet does nothing. Elsewhere, and if sharing fails, the button is Copy result as on desktop    |
+| Not as drawn | The back link, Sound and Skip to the bear tips stay above the HUD; the noise line stays under the HUD stats; the other game keeps "Now play as the bear"; Random camp and Back to Don’t Feed the Bears stay under the actions |
+| Not built    | The artboard's haptic on save and on share in the iOS app: the app does not embed the site                                                                                                                                    |
+
+### Camp Rules on phones
+
+Phone · Camp Rules (portrait) and Phone · Camp Rules end, at `max-width: 480px`.
+Wider viewports keep the desktop game.
+
+| Element      | Value                                                                                                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily label  | "Daily camp · Oct 4" ("Random camp" for a random one), Inter 14px `neutral-600`, on the title's baseline at the right                                                                                                         |
+| HUD          | Four equal columns: Time, Snacks ("1/3"), Saves, Score; labels Inter 12px / 600, values 22px / 700; 12px padding                                                                                                              |
+| Field        | 2:3, taller than wide; items and bears are at least 72×72 targets                                                                                                                                                             |
+| End screen   | Replaces the HUD and field: kicker Inter 13px / 600, title Newsreader 34px / 500, paws with "60s · 3 saves · score 675" in Inter 15px `neutral-600`, the tip (heading Newsreader 22px) with its underlined source link        |
+| End actions  | Play again full width; Share result and the other game side by side, 50px tall, 12px radius                                                                                                                                   |
+| Share result | Touch screens with Web Share open the share sheet with "Camp Rules · Oct 4 · held 60s, 3 saves" and the game URL; closing the sheet does nothing. Elsewhere, and if sharing fails, the button is Copy result as on desktop    |
+| Not as drawn | The back link, Sound and Skip to the bear tips stay above the HUD; the noise line stays under the HUD stats; the other game keeps "Now play as the bear"; Random camp and Back to Don’t Feed the Bears stay under the actions |
+| Not built    | The artboard's haptic on save and on share in the iOS app: the app does not embed the site                                                                                                                                    |
 
 ## Colours
 

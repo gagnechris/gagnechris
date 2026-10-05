@@ -492,7 +492,7 @@ Distinct from PITR / AWS Backup: the admin Notebook chrome **Export** button dow
 
 Archive layout:
 
-- `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`)
+- `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`); task embeds are written as `- [ ] Title` / `- [x] Title`
 - `tasks.json` — all non-deleted tasks
 - `README.md` — short description of the archive
 

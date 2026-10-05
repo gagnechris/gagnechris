@@ -4727,6 +4727,8 @@ export interface paths {
                                 bodyMarkdown: string;
                                 tags: string[];
                                 pinned: boolean;
+                                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                                taskIds: string[];
                                 version: number;
                                 /** Format: date-time */
                                 createdAt: string;
@@ -4868,6 +4870,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -5033,6 +5037,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -5186,6 +5192,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -5385,6 +5393,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -5535,6 +5545,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -5730,6 +5742,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
                             version: number;
                             /** Format: date-time */
                             createdAt: string;
@@ -7376,6 +7390,8 @@ export interface paths {
                                     bodyMarkdown: string;
                                     tags: string[];
                                     pinned: boolean;
+                                    /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                                    taskIds: string[];
                                     version: number;
                                     /** Format: date-time */
                                     createdAt: string;
@@ -8224,6 +8240,8 @@ export interface components {
             bodyMarkdown: string;
             tags: string[];
             pinned: boolean;
+            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+            taskIds: string[];
             version: number;
             /** Format: date-time */
             createdAt: string;
@@ -8244,6 +8262,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                taskIds: string[];
                 version: number;
                 /** Format: date-time */
                 createdAt: string;
@@ -8333,6 +8353,8 @@ export interface components {
             bodyMarkdown: string;
             tags: string[];
             pinned: boolean;
+            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+            taskIds: string[];
             version: number;
             /** Format: date-time */
             createdAt: string;
@@ -8555,6 +8577,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                taskIds: string[];
                 version: number;
                 /** Format: date-time */
                 createdAt: string;
@@ -8637,6 +8661,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                taskIds: string[];
                 version: number;
                 /** Format: date-time */
                 createdAt: string;
@@ -8719,6 +8745,8 @@ export interface components {
                     bodyMarkdown: string;
                     tags: string[];
                     pinned: boolean;
+                    /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                    taskIds: string[];
                     version: number;
                     /** Format: date-time */
                     createdAt: string;

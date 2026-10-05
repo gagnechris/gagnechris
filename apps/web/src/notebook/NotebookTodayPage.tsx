@@ -128,6 +128,8 @@ function TodayEditor({
         {entity.version === 0 ? ' · not saved yet' : ''}
       </p>
       <NotebookMarkdownBody
+        note={entity}
+        ensureNoteSaved={save}
         value={draft.bodyMarkdown}
         onChange={(bodyMarkdown) =>
           updateDraft((prev) => ({ ...prev, bodyMarkdown }))

@@ -100,6 +100,44 @@ describe('search handlers', () => {
     expect(body.tasks[0]?.title).toMatch(/Ship/i);
   });
 
+  it('matches and shows embedded tasks by title, never the raw token', async () => {
+    const { doc } = createMemoryDoc();
+    const notes = new NotesRepository(doc, TABLE);
+    const tasks = new TasksRepository(doc, TABLE);
+    const routes = createSearchRoutes({ notes, tasks });
+    await tasks.createFromRequest(USER, {
+      id: TASK_ID,
+      area: 'work',
+      title: 'Call Sam',
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      tags: [],
+    });
+    await notes.createFromRequest(USER, {
+      id: NOTE_ID,
+      area: 'work',
+      type: 'page',
+      title: 'Standup',
+      bodyMarkdown: `Follow up\n{{task:${TASK_ID}}}`,
+      tags: [],
+      pinned: false,
+    });
+
+    const res = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/search', { body: { q: 'sam' } }),
+      'POST',
+      '/api/notebook/search',
+    );
+    const body = JSON.parse(res!.body as string) as {
+      notes: Array<{ id: string; snippet: string }>;
+    };
+    const hit = body.notes.find((n) => n.id === NOTE_ID);
+    expect(hit?.snippet).toContain('Call Sam');
+    expect(hit?.snippet).not.toContain('{{task:');
+  });
+
   it('rejects GET with q in the URL; search is POST-only', async () => {
     const routes = createSearchRoutes();
     const res = await dispatchRoutes(
