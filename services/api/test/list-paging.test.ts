@@ -15,6 +15,7 @@ import {
   corpusNote,
   corpusTask,
   expectExactIds,
+  SCHEDULE_QUERIES,
   seedPagingCorpus,
   testUlid,
   walkRoute,
@@ -92,6 +93,42 @@ describe('multi-partition list paging', () => {
     }
   });
 
+  it('start-date and someday filters page completely across areas and open statuses', async () => {
+    const { doc } = createMemoryDoc();
+    const { routes } = await seedPagingCorpus(doc, TABLE, {
+      notes: 0,
+      tasks: N,
+    });
+    for (const { query, matches } of SCHEDULE_QUERIES) {
+      for (const area of [undefined, ...AREAS]) {
+        for (const status of [undefined, 'todo'] as const) {
+          for (const open of [undefined, 'true'] as const) {
+            const got = await walkRoute(routes, '/api/notebook/tasks', {
+              limit: '7',
+              ...query,
+              ...(area ? { area } : {}),
+              ...(status ? { status } : {}),
+              ...(open ? { open } : {}),
+            });
+            const expected = range(N)
+              .map(corpusTask)
+              .filter(
+                (t) =>
+                  matches(t) &&
+                  (!area || t.area === area) &&
+                  (status ? t.status === status : !open || t.status !== 'done'),
+              )
+              .map((t) => t.id);
+            if (!area && !status && !open) {
+              expect(expected.length).toBeGreaterThan(0);
+            }
+            expectExactIds(got, expected);
+          }
+        }
+      }
+    }
+  });
+
   it('rejects a foreign or malformed composite cursor with 400', async () => {
     const { doc } = createMemoryDoc();
     const { routes } = await seedPagingCorpus(doc, TABLE, {
@@ -112,7 +149,7 @@ describe('multi-partition list paging', () => {
     }
   });
 
-  it('120 done past-due tasks never bury 3 open tasks due today', async () => {
+  it('120 done past tasks never bury 3 open tasks starting today', async () => {
     const { doc } = createMemoryDoc();
     const repo = new TasksRepository(
       doc,
@@ -128,7 +165,7 @@ describe('multi-partition list paging', () => {
         description: '',
         priority: 'high',
         status: 'done',
-        dueDate: '2026-09-01',
+        startDate: '2026-09-01',
         tags: [],
       });
     }
@@ -140,7 +177,7 @@ describe('multi-partition list paging', () => {
         description: '',
         priority: 'low',
         status: 'todo',
-        dueDate: '2026-10-02',
+        startDate: '2026-10-02',
         tags: [],
       });
     }
@@ -161,12 +198,14 @@ describe('multi-partition list paging', () => {
     ]);
   });
 
-  it("overdue ranking skips done tasks and uses the caller's day", () => {
+  it("carried-over ranking skips done tasks and uses the caller's day", () => {
     const base = {
       userId: 'u',
       area: 'work' as const,
       description: '',
       priority: 'med' as const,
+      dueDate: null,
+      someday: false,
       completedAt: null,
       noteId: null,
       tags: [],
@@ -181,28 +220,28 @@ describe('multi-partition list paging', () => {
         id: testUlid('S', 1),
         title: 'done past',
         status: 'done',
-        dueDate: '2026-09-01',
+        startDate: '2026-09-01',
       },
       {
         ...base,
         id: testUlid('S', 2),
-        title: 'due local today',
+        title: 'starts local today',
         status: 'todo',
-        dueDate: '2026-10-02',
+        startDate: '2026-10-02',
       },
       {
         ...base,
         id: testUlid('S', 3),
         title: 'open past',
         status: 'todo',
-        dueDate: '2026-09-30',
+        startDate: '2026-09-30',
       },
     ];
     // At 8pm in New York it is already 2026-10-03 in UTC; the local day wins.
     expect(sortTasksForList(items, '2026-10-02').map((t) => t.title)).toEqual([
       'open past',
       'done past',
-      'due local today',
+      'starts local today',
     ]);
   });
 

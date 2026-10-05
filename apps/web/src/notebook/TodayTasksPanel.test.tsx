@@ -14,6 +14,8 @@ type Task = {
   priority: 'low' | 'med' | 'high';
   status: 'todo' | 'in_progress' | 'done';
   dueDate: string | null;
+  startDate: string | null;
+  someday: boolean;
   completedAt: string | null;
   noteId: string | null;
   tags: string[];
@@ -25,6 +27,7 @@ type Task = {
 
 const state = vi.hoisted(() => ({
   tasks: [] as Task[],
+  created: [] as Record<string, unknown>[],
   failComplete: false,
 }));
 
@@ -34,7 +37,12 @@ vi.mock('../workspace/api/client', () => ({
       path: string,
       init?: {
         params?: {
-          query?: { status?: string; open?: string; dueOn?: string };
+          query?: {
+            status?: string;
+            open?: string;
+            startOn?: string;
+            someday?: string;
+          };
         };
       },
     ) => {
@@ -49,7 +57,8 @@ vi.mock('../workspace/api/client', () => ({
                 (q.status
                   ? t.status === q.status
                   : q.open !== 'true' || t.status !== 'done') &&
-                (!q.dueOn || t.dueDate === q.dueOn),
+                (!q.startOn || t.startDate === q.startOn) &&
+                (!q.someday || t.someday === (q.someday === 'true')),
             ),
           },
           error: undefined,
@@ -71,6 +80,7 @@ vi.mock('../workspace/api/client', () => ({
     ) => {
       if (path === '/api/notebook/tasks') {
         const body = init?.body ?? {};
+        state.created.push(body);
         const now = '2026-10-02T12:00:00.000Z';
         const task: Task = {
           id: String(body.id),
@@ -81,6 +91,8 @@ vi.mock('../workspace/api/client', () => ({
           priority: (body.priority as Task['priority']) ?? 'med',
           status: 'todo',
           dueDate: (body.dueDate as string | null | undefined) ?? null,
+          startDate: (body.startDate as string | null | undefined) ?? null,
+          someday: body.someday === true,
           completedAt: null,
           noteId: null,
           tags: [],
@@ -130,6 +142,7 @@ vi.mock('../workspace/api/client', () => ({
 describe('TodayTasksPanel', () => {
   beforeEach(() => {
     state.failComplete = false;
+    state.created = [];
     state.tasks = [
       {
         id: '01ARZ3NDEKTSV4RRFFQ48JMTC5',
@@ -139,7 +152,9 @@ describe('TodayTasksPanel', () => {
         description: '',
         priority: 'high',
         status: 'todo',
-        dueDate: '2026-10-02',
+        dueDate: null,
+        startDate: '2026-10-02',
+        someday: false,
         completedAt: null,
         noteId: null,
         tags: [],
@@ -151,7 +166,7 @@ describe('TodayTasksPanel', () => {
     ];
   });
 
-  test('lists due today, completes, and shows tomorrow after 18:00', async () => {
+  test('lists tasks for today, completes, and shows tomorrow after 18:00', async () => {
     const user = userEvent.setup();
     const evening = new Date(2026, 9, 2, 19, 0, 0);
 
@@ -164,7 +179,7 @@ describe('TodayTasksPanel', () => {
     );
 
     expect(await screen.findByText('Pay bills')).toBeInTheDocument();
-    expect(screen.getByText('0/1 due today')).toBeInTheDocument();
+    expect(screen.getByText('0/1 for today')).toBeInTheDocument();
     expect(screen.getByText(/Tomorrow \(2026-10-03\)/)).toBeInTheDocument();
 
     await user.click(
@@ -173,6 +188,44 @@ describe('TodayTasksPanel', () => {
     await waitFor(() => {
       expect(state.tasks[0]?.status).toBe('done');
     });
+  });
+
+  test('shows unscheduled tasks now and hides someday and later ones', async () => {
+    const base = state.tasks[0]!;
+    state.tasks = [
+      {
+        ...base,
+        id: '01ARZ3NDEKTSV4RRFFQ48JMTD1',
+        title: 'Now',
+        startDate: null,
+      },
+      {
+        ...base,
+        id: '01ARZ3NDEKTSV4RRFFQ48JMTD2',
+        title: 'Some day',
+        startDate: null,
+        someday: true,
+      },
+      {
+        ...base,
+        id: '01ARZ3NDEKTSV4RRFFQ48JMTD3',
+        title: 'Next week',
+        startDate: '2026-10-09',
+      },
+    ];
+
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <TodayTasksPanel area="work" now={new Date(2026, 9, 2, 9, 0, 0)} />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    expect(await screen.findByText('Now')).toBeInTheDocument();
+    expect(screen.getByText('0/1 for today')).toBeInTheDocument();
+    expect(screen.queryByText('Some day')).not.toBeInTheDocument();
+    expect(screen.queryByText('Next week')).not.toBeInTheDocument();
   });
 
   test('a failed complete rolls back and shows an error', async () => {
@@ -200,7 +253,7 @@ describe('TodayTasksPanel', () => {
     expect(state.tasks[0]?.status).toBe('todo');
   });
 
-  test('a lone due word asks for a title instead of doing nothing', async () => {
+  test('a lone day word asks for a title instead of doing nothing', async () => {
     const user = userEvent.setup();
 
     render(
@@ -217,7 +270,7 @@ describe('TodayTasksPanel', () => {
     );
 
     expect(
-      await screen.findByText('Add a title before the due date.'),
+      await screen.findByText('Add a title before the date.'),
     ).toBeInTheDocument();
     expect(state.tasks).toHaveLength(1);
   });

@@ -2295,6 +2295,14 @@
             "nullable": true,
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "someday": {
+            "type": "boolean"
+          },
           "completedAt": {
             "type": "string",
             "nullable": true,
@@ -2336,6 +2344,8 @@
           "priority",
           "status",
           "dueDate",
+          "startDate",
+          "someday",
           "completedAt",
           "noteId",
           "tags",
@@ -2396,6 +2406,14 @@
                   "nullable": true,
                   "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                 },
+                "startDate": {
+                  "type": "string",
+                  "nullable": true,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "someday": {
+                  "type": "boolean"
+                },
                 "completedAt": {
                   "type": "string",
                   "nullable": true,
@@ -2437,6 +2455,8 @@
                 "priority",
                 "status",
                 "dueDate",
+                "startDate",
+                "someday",
                 "completedAt",
                 "noteId",
                 "tags",
@@ -2503,6 +2523,15 @@
             "nullable": true,
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Day the task shows on Today; omitted or null means now"
+          },
+          "someday": {
+            "type": "boolean"
+          },
           "noteId": {
             "type": "string",
             "nullable": true,
@@ -2568,6 +2597,14 @@
             "nullable": true,
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "someday": {
+            "type": "boolean"
+          },
           "noteId": {
             "type": "string",
             "nullable": true,
@@ -2617,7 +2654,30 @@
           "dueBefore": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "Tasks due strictly before this date (overdue-style ranges)"
+            "description": "Tasks due strictly before this date"
+          },
+          "startOn": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Tasks whose startDate is this date"
+          },
+          "startOnOrBefore": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Tasks that show on this day: startDate on or before it, or null; never someday"
+          },
+          "startAfter": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Tasks whose startDate is after this date (Upcoming); never someday"
+          },
+          "someday": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Only someday tasks (true) or only scheduled tasks (false)"
           },
           "noteId": {
             "type": "string",
@@ -2635,7 +2695,7 @@
           "today": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today"
+            "description": "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today"
           },
           "cursor": {
             "type": "string",
@@ -3033,6 +3093,14 @@
                     "nullable": true,
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
+                  "startDate": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "someday": {
+                    "type": "boolean"
+                  },
                   "completedAt": {
                     "type": "string",
                     "nullable": true,
@@ -3074,6 +3142,8 @@
                   "priority",
                   "status",
                   "dueDate",
+                  "startDate",
+                  "someday",
                   "completedAt",
                   "noteId",
                   "tags",
@@ -3362,6 +3432,14 @@
                         "nullable": true,
                         "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                       },
+                      "startDate": {
+                        "type": "string",
+                        "nullable": true,
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "someday": {
+                        "type": "boolean"
+                      },
                       "completedAt": {
                         "type": "string",
                         "nullable": true,
@@ -3403,6 +3481,8 @@
                       "priority",
                       "status",
                       "dueDate",
+                      "startDate",
+                      "someday",
                       "completedAt",
                       "noteId",
                       "tags",
@@ -3698,6 +3778,14 @@
                               "nullable": true,
                               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                             },
+                            "startDate": {
+                              "type": "string",
+                              "nullable": true,
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                            },
+                            "someday": {
+                              "type": "boolean"
+                            },
                             "completedAt": {
                               "type": "string",
                               "nullable": true,
@@ -3739,6 +3827,8 @@
                             "priority",
                             "status",
                             "dueDate",
+                            "startDate",
+                            "someday",
                             "completedAt",
                             "noteId",
                             "tags",
@@ -16210,7 +16300,7 @@
     },
     "/api/notebook/tasks": {
       "get": {
-        "summary": "List tasks for the authenticated user (server-sorted: overdue, due date, priority)",
+        "summary": "List tasks for the authenticated user (server-sorted: carried over, start date, priority)",
         "tags": [
           "Notebook"
         ],
@@ -16273,11 +16363,58 @@
             "schema": {
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-              "description": "Tasks due strictly before this date (overdue-style ranges)"
+              "description": "Tasks due strictly before this date"
             },
             "required": false,
-            "description": "Tasks due strictly before this date (overdue-style ranges)",
+            "description": "Tasks due strictly before this date",
             "name": "dueBefore",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Tasks whose startDate is this date"
+            },
+            "required": false,
+            "description": "Tasks whose startDate is this date",
+            "name": "startOn",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Tasks that show on this day: startDate on or before it, or null; never someday"
+            },
+            "required": false,
+            "description": "Tasks that show on this day: startDate on or before it, or null; never someday",
+            "name": "startOnOrBefore",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Tasks whose startDate is after this date (Upcoming); never someday"
+            },
+            "required": false,
+            "description": "Tasks whose startDate is after this date (Upcoming); never someday",
+            "name": "startAfter",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "Only someday tasks (true) or only scheduled tasks (false)"
+            },
+            "required": false,
+            "description": "Only someday tasks (true) or only scheduled tasks (false)",
+            "name": "someday",
             "in": "query"
           },
           {
@@ -16309,10 +16446,10 @@
             "schema": {
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-              "description": "Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today"
+              "description": "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today"
             },
             "required": false,
-            "description": "Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today",
+            "description": "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
             "name": "today",
             "in": "query"
           },
@@ -16393,6 +16530,14 @@
                             "nullable": true,
                             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                           },
+                          "startDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "someday": {
+                            "type": "boolean"
+                          },
                           "completedAt": {
                             "type": "string",
                             "nullable": true,
@@ -16434,6 +16579,8 @@
                           "priority",
                           "status",
                           "dueDate",
+                          "startDate",
+                          "someday",
                           "completedAt",
                           "noteId",
                           "tags",
@@ -16653,6 +16800,15 @@
                     "nullable": true,
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
+                  "startDate": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Day the task shows on Today; omitted or null means now"
+                  },
+                  "someday": {
+                    "type": "boolean"
+                  },
                   "noteId": {
                     "type": "string",
                     "nullable": true,
@@ -16738,6 +16894,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -16779,6 +16943,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -17111,6 +17277,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -17152,6 +17326,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -17520,6 +17696,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -17561,6 +17745,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -17899,6 +18085,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -17940,6 +18134,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -18197,6 +18393,14 @@
                     "nullable": true,
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
+                  "startDate": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "someday": {
+                    "type": "boolean"
+                  },
                   "noteId": {
                     "type": "string",
                     "nullable": true,
@@ -18276,6 +18480,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -18317,6 +18529,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -18710,6 +18924,14 @@
                       "nullable": true,
                       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                     },
+                    "startDate": {
+                      "type": "string",
+                      "nullable": true,
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "someday": {
+                      "type": "boolean"
+                    },
                     "completedAt": {
                       "type": "string",
                       "nullable": true,
@@ -18751,6 +18973,8 @@
                     "priority",
                     "status",
                     "dueDate",
+                    "startDate",
+                    "someday",
                     "completedAt",
                     "noteId",
                     "tags",
@@ -19625,6 +19849,14 @@
                                         "nullable": true,
                                         "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                                       },
+                                      "startDate": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                      },
+                                      "someday": {
+                                        "type": "boolean"
+                                      },
                                       "completedAt": {
                                         "type": "string",
                                         "nullable": true,
@@ -19666,6 +19898,8 @@
                                       "priority",
                                       "status",
                                       "dueDate",
+                                      "startDate",
+                                      "someday",
                                       "completedAt",
                                       "noteId",
                                       "tags",

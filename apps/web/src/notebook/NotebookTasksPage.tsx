@@ -15,7 +15,7 @@ import { TaskRow } from '../kit/tasks/TaskRow';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
-type DueFilter = '' | 'overdue' | 'today' | 'week' | 'none';
+type ShowOnFilter = '' | 'earlier' | 'today' | 'week' | 'none' | 'someday';
 
 function endOfLocalWeek(today: string): string {
   const d = parseLocalDate(today);
@@ -26,15 +26,23 @@ function endOfLocalWeek(today: string): string {
   return addLocalDays(today, toSat);
 }
 
-function matchesDueFilter(task: Task, due: DueFilter, today: string): boolean {
-  if (!due) return true;
-  if (due === 'none') return task.dueDate === null;
-  if (due === 'today') return task.dueDate === today;
-  if (due === 'overdue') return task.dueDate !== null && task.dueDate < today;
-  if (due === 'week') {
-    if (!task.dueDate) return false;
+function matchesShowOnFilter(
+  task: Task,
+  showOn: ShowOnFilter,
+  today: string,
+): boolean {
+  if (!showOn) return true;
+  if (showOn === 'someday') return task.someday;
+  if (task.someday) return false;
+  if (showOn === 'none') return task.startDate === null;
+  if (showOn === 'today') return task.startDate === today;
+  if (showOn === 'earlier') {
+    return task.startDate !== null && task.startDate < today;
+  }
+  if (showOn === 'week') {
+    if (!task.startDate) return false;
     const weekEnd = endOfLocalWeek(today);
-    return task.dueDate >= today && task.dueDate <= weekEnd;
+    return task.startDate >= today && task.startDate <= weekEnd;
   }
   return true;
 }
@@ -47,15 +55,15 @@ export default function NotebookTasksPage() {
   const [quickAdd, setQuickAdd] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
-  const [due, setDue] = useState<DueFilter>('');
+  const [showOn, setShowOn] = useState<ShowOnFilter>('');
   const [showCompleted, setShowCompleted] = useState(false);
 
   const listQuery: {
     area?: NotebookArea;
     status?: TaskStatus;
     priority?: TaskPriority;
-    dueOn?: string;
-    dueBefore?: string;
+    startOn?: string;
+    someday?: boolean;
     open?: boolean;
     today: string;
     limit: number;
@@ -66,8 +74,8 @@ export default function NotebookTasksPage() {
   };
   if (status) listQuery.status = status;
   if (priority) listQuery.priority = priority;
-  if (due === 'today') listQuery.dueOn = today;
-  if (due === 'overdue') listQuery.dueBefore = today;
+  if (showOn === 'today') listQuery.startOn = today;
+  if (showOn === 'someday') listQuery.someday = true;
 
   // Default view reads open tasks only; Completed loads when expanded, so a
   // pile of done tasks can never push open ones off the page.
@@ -87,12 +95,12 @@ export default function NotebookTasksPage() {
     const completed = status
       ? main
       : (completedQuery.data?.pages.flatMap((page) => page.items) ?? []);
-    const matches = (t: Task) => matchesDueFilter(t, due, today);
+    const matches = (t: Task) => matchesShowOnFilter(t, showOn, today);
     return {
       openItems: main.filter((t) => t.status !== 'done' && matches(t)),
       doneItems: completed.filter((t) => t.status === 'done' && matches(t)),
     };
-  }, [tasksQuery.data, completedQuery.data, status, due, today]);
+  }, [tasksQuery.data, completedQuery.data, status, showOn, today]);
   const completedSource = status ? tasksQuery : completedQuery;
   const showCompletedSection =
     status === 'done' || (!status && (doneItems.length > 0 || !showCompleted));
@@ -100,7 +108,7 @@ export default function NotebookTasksPage() {
   const submitQuickAdd = async () => {
     const parsed = parseTaskQuickAdd(quickAdd, today);
     if (!parsed.title) {
-      setQuickAddHint('Add a title before the due date.');
+      setQuickAddHint('Add a title before the date.');
       return;
     }
     setQuickAddHint(null);
@@ -113,7 +121,7 @@ export default function NotebookTasksPage() {
       description: '',
       priority: parsed.priority,
       status: 'todo',
-      dueDate: parsed.dueDate,
+      startDate: parsed.startDate,
       tags: [],
     });
     setQuickAdd('');
@@ -205,18 +213,19 @@ export default function NotebookTasksPage() {
           </select>
         </label>
         <label className="admin-field">
-          <span className="admin-field__label">Due</span>
+          <span className="admin-field__label">Show on</span>
           <select
             className="admin-input"
-            value={due}
-            onChange={(e) => setDue(e.target.value as DueFilter)}
-            aria-label="Filter by due date"
+            value={showOn}
+            onChange={(e) => setShowOn(e.target.value as ShowOnFilter)}
+            aria-label="Filter by show-on date"
           >
             <option value="">Any</option>
-            <option value="overdue">Overdue</option>
+            <option value="earlier">Before today</option>
             <option value="today">Today</option>
             <option value="week">This week</option>
             <option value="none">No date</option>
+            <option value="someday">Someday</option>
           </select>
         </label>
       </div>
@@ -308,7 +317,11 @@ function TaskListRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
       meta={
         <>
           {task.area}
-          {task.dueDate ? ` · due ${task.dueDate}` : ' · no due date'}
+          {task.someday
+            ? ' · someday'
+            : task.startDate
+              ? ` · shows ${task.startDate}`
+              : ' · no date'}
         </>
       }
     />

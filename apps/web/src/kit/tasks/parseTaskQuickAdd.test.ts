@@ -6,7 +6,7 @@ describe('parseTaskQuickAdd', () => {
     expect(parseTaskQuickAdd('Ship it !high tomorrow', '2026-10-02')).toEqual({
       title: 'Ship it',
       priority: 'high',
-      dueDate: '2026-10-03',
+      startDate: '2026-10-03',
     });
   });
 
@@ -14,7 +14,7 @@ describe('parseTaskQuickAdd', () => {
     expect(parseTaskQuickAdd('standup today', '2026-10-02')).toEqual({
       title: 'standup',
       priority: 'med',
-      dueDate: '2026-10-02',
+      startDate: '2026-10-02',
     });
   });
 
@@ -22,15 +22,15 @@ describe('parseTaskQuickAdd', () => {
     expect(parseTaskQuickAdd('  Buy milk  ', '2026-10-02')).toEqual({
       title: 'Buy milk',
       priority: 'med',
-      dueDate: null,
+      startDate: null,
     });
   });
 
-  test('keeps due words inside a title', () => {
+  test('keeps day words inside a title', () => {
     expect(parseTaskQuickAdd('Plan for Today show', '2026-10-02')).toEqual({
       title: 'Plan for Today show',
       priority: 'med',
-      dueDate: null,
+      startDate: null,
     });
   });
 
@@ -38,7 +38,7 @@ describe('parseTaskQuickAdd', () => {
     expect(parseTaskQuickAdd('Ship it tomorrow !high', '2026-10-02')).toEqual({
       title: 'Ship it',
       priority: 'high',
-      dueDate: '2026-10-03',
+      startDate: '2026-10-03',
     });
   });
 
@@ -46,7 +46,7 @@ describe('parseTaskQuickAdd', () => {
     expect(parseTaskQuickAdd('tomorrow', '2026-10-02')).toEqual({
       title: '',
       priority: 'med',
-      dueDate: '2026-10-03',
+      startDate: '2026-10-03',
     });
   });
 });

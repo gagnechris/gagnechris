@@ -45,6 +45,8 @@ describe('create-payload hash', () => {
       priority: 'med',
       status: 'todo',
       dueDate: null,
+      startDate: null,
+      someday: false,
       noteId: null,
       tags: [],
     });

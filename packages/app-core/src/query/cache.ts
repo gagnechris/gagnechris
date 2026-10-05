@@ -1,4 +1,5 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
+import { taskMatchesSchedule } from '@gagnechris/shared';
 import type { Home, Note, Post, Project, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
 
@@ -246,8 +247,16 @@ const taskMatches = (
   ) {
     return false;
   }
-  return true;
+  return taskMatchesSchedule(task, {
+    startOn: stringFilter(filters.startOn),
+    startOnOrBefore: stringFilter(filters.startOnOrBefore),
+    startAfter: stringFilter(filters.startAfter),
+    someday: typeof filters.someday === 'boolean' ? filters.someday : undefined,
+  });
 };
+
+const stringFilter = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
 export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
   queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>

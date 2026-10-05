@@ -455,24 +455,33 @@ export type TasksPage = {
   nextCursor?: string;
 };
 
-/** `open` is a boolean here; {@link fetchTasksPage} sends the wire string. */
+/** Flags are booleans here; {@link fetchTasksPage} sends the wire strings. */
 export type ListTasksQuery = Omit<
   components['schemas']['ListTasksQuery'],
-  'open'
+  'open' | 'someday'
 > & {
   open?: boolean;
+  someday?: boolean;
 };
+
+const wireFlag = (value: boolean | undefined) =>
+  value === undefined
+    ? undefined
+    : value
+      ? ('true' as const)
+      : ('false' as const);
 
 export const fetchTasksPage = async (
   client: ApiClient,
   query: ListTasksQuery = {},
 ): Promise<TasksPage> => {
-  const { open, ...rest } = query;
+  const { open, someday, ...rest } = query;
   const result = await client.GET('/api/notebook/tasks', {
     params: {
       query: {
         ...rest,
-        ...(open !== undefined ? { open: open ? 'true' : 'false' } : {}),
+        ...(open !== undefined ? { open: wireFlag(open) } : {}),
+        ...(someday !== undefined ? { someday: wireFlag(someday) } : {}),
       },
     },
   });

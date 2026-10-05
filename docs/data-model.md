@@ -333,7 +333,7 @@ Clients:
 Notebook notes/tasks use **owner-scoped** keys so a second Cognito user
 (or recreated pool `sub`) cannot read, mutate, or collide with another user's rows.
 Access patterns: daily note by `(user, area, date)`, notes by area/date (calendar),
-tasks by area/status/due, tasks linked to a note.
+tasks by area/status/start date, tasks linked to a note.
 
 Wire types live in `@gagnechris/shared` (`NoteSchema`, `TaskSchema`, sync variants).
 Dynamo item schemas and mappers live in `@gagnechris/data`
@@ -359,29 +359,35 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 ### Task fields
 
-| Attr                               | Notes                                      |
-| ---------------------------------- | ------------------------------------------ |
-| `id`                               | Client ULID                                |
-| `userId`                           | Cognito `sub`                              |
-| `area`                             | `work` \| `personal`                       |
-| `title`                            | Required non-empty                         |
-| `description`                      | Markdown (may be empty)                    |
-| `priority`                         | `low` \| `med` \| `high`                   |
-| `status`                           | `todo` \| `in_progress` \| `done`          |
-| `dueDate`                          | Optional `yyyy-mm-dd`; `null` when undated |
-| `completedAt`                      | ISO-8601 when done; otherwise `null`       |
-| `noteId`                           | Optional link to a note                    |
-| `tags`                             | `string[]`                                 |
-| `version` / timestamps / `deleted` | Same concurrency model as notes            |
+| Attr                               | Notes                                                                                                                             |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                               | Client ULID                                                                                                                       |
+| `userId`                           | Cognito `sub`                                                                                                                     |
+| `area`                             | `work` \| `personal`                                                                                                              |
+| `title`                            | Required non-empty                                                                                                                |
+| `description`                      | Markdown (may be empty)                                                                                                           |
+| `priority`                         | `low` \| `med` \| `high`                                                                                                          |
+| `status`                           | `todo` \| `in_progress` \| `done`                                                                                                 |
+| `dueDate`                          | Optional `yyyy-mm-dd`; `null` when undated. Stored and returned; the web UI never sets it and it does not drive Today or Upcoming |
+| `startDate`                        | Show-on day (`yyyy-mm-dd`): the task shows on Today from this day. `null` means now. Omitted on create → `null`                   |
+| `someday`                          | Boolean. Someday tasks never show on Today and always have `startDate: null`                                                      |
+| `completedAt`                      | ISO-8601 when done; otherwise `null`                                                                                              |
+| `noteId`                           | Optional link to a note                                                                                                           |
+| `tags`                             | `string[]`                                                                                                                        |
+| `version` / timestamps / `deleted` | Same concurrency model as notes                                                                                                   |
 
 ### Keys
 
-| Entity           | `pk`                                   | `sk`   | GSI1 / GSI2                                                                                                                       |
-| ---------------- | -------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Note             | `USER#<sub>#NOTE#<noteId>`             | `META` | GSI1: `USER#<sub>#AREA#<work\|personal>` / `DATE#<yyyy-mm-dd>#NOTE#<id>` (daily) or `PAGE#<updatedAt>#NOTE#<id>` (pages)          |
-| Daily note claim | `USER#<sub>#DAILY#<area>#<yyyy-mm-dd>` | `NOTE` | — (one daily note per user/area/day; item stores `noteId`)                                                                        |
-| Task             | `USER#<sub>#TASK#<taskId>`             | `META` | GSI1: `USER#<sub>#AREA#<area>#STATUS#<todo\|in_progress\|done>` / `DUE#<date>#TASK#<id>` or `UPDATED#<ts>#TASK#<id>` when undated |
-| Tasks for a note | (task META)                            | `META` | GSI2: `USER#<sub>#NOTE#<noteId>#TASKS` / `TASK#<taskId>`                                                                          |
+| Entity           | `pk`                                   | `sk`   | GSI1 / GSI2                                                                                                                                                                     |
+| ---------------- | -------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Note             | `USER#<sub>#NOTE#<noteId>`             | `META` | GSI1: `USER#<sub>#AREA#<work\|personal>` / `DATE#<yyyy-mm-dd>#NOTE#<id>` (daily) or `PAGE#<updatedAt>#NOTE#<id>` (pages)                                                        |
+| Daily note claim | `USER#<sub>#DAILY#<area>#<yyyy-mm-dd>` | `NOTE` | — (one daily note per user/area/day; item stores `noteId`)                                                                                                                      |
+| Task             | `USER#<sub>#TASK#<taskId>`             | `META` | GSI1: `USER#<sub>#AREA#<area>#STATUS#<todo\|in_progress\|done>` / `START#<startDate>#TASK#<id>`, `UPDATED#<ts>#TASK#<id>` when `startDate` is null, or `SOMEDAY#<ts>#TASK#<id>` |
+| Tasks for a note | (task META)                            | `META` | GSI2: `USER#<sub>#NOTE#<noteId>#TASKS` / `TASK#<taskId>`                                                                                                                        |
+
+**Show-on date and someday.** `someday` is a separate boolean, not a sentinel `startDate`, so `startDate` is always a real calendar date or `null`, Upcoming can order by it without excluding a magic value, and a later deadline field can sit beside it. The API keeps the two exclusive: a body with `someday: true` and a non-null `startDate` is **400**; `PUT` with `someday: true` clears `startDate`, and `PUT` with a non-null `startDate` clears `someday`.
+
+**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), and its start-date queries also read the `DUE#` prefix, so these tasks show on the same day before and after `scripts/migrate-task-start-dates.ts` runs (see `infra/RUNBOOK.md`). Any API write to such a row stores `startDate` and rekeys it to `START#`.
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 
@@ -403,15 +409,24 @@ API surface: Notebook repositories use `VersionedRepository` with the `ownerScop
 
 ### Tasks HTTP API
 
-| Method                   | Path                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`                    | `/api/notebook/tasks`               | Query: `area`, `status`, `priority`, `dueOn`, `dueBefore`, `noteId`, `open` (`true` = todo + in_progress only), `today` (caller's local `yyyy-mm-dd` for overdue ranking; default UTC), `cursor`, `limit`. Single area+status uses GSI1; `noteId` uses GSI2. Multi-partition lists walk (area, status) partitions in order with a composite `mp.` cursor, so every task is returned exactly once. Done tasks never rank as overdue. |
-| `POST`                   | `/api/notebook/tasks`               | Client ULID create; idempotent. `noteId` (create and `PUT`) must be the caller's live note, else **400** `fields.noteId=not_found`                                                                                                                                                                                                                                                                                                  |
-| `GET` / `PUT` / `DELETE` | `/api/notebook/tasks/{id}`          | Soft-delete tombstone; `If-Match` / body `version`                                                                                                                                                                                                                                                                                                                                                                                  |
-| `POST`                   | `/api/notebook/tasks/{id}/complete` | Sets `status=done` and `completedAt`                                                                                                                                                                                                                                                                                                                                                                                                |
-| `POST`                   | `/api/notebook/tasks/{id}/reopen`   | Sets `status=todo` (from `done`; other statuses unchanged), clears `completedAt`                                                                                                                                                                                                                                                                                                                                                    |
+| Method                   | Path                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`                    | `/api/notebook/tasks`               | Query: `area`, `status`, `priority`, `startOnOrBefore`, `startAfter`, `startOn`, `someday` (`true` / `false`), `dueOn`, `dueBefore`, `noteId`, `open` (`true` = todo + in_progress only), `today` (caller's local `yyyy-mm-dd` for carried-over ranking; default UTC), `cursor`, `limit`. Single area+status uses GSI1; `noteId` uses GSI2. Multi-partition lists walk (area, status, sort-key range) partitions in order with a composite `mp.` cursor, so every task is returned exactly once. Done tasks never rank as carried over. |
+| `POST`                   | `/api/notebook/tasks`               | Client ULID create; idempotent. `noteId` (create and `PUT`) must be the caller's live note, else **400** `fields.noteId=not_found`                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `GET` / `PUT` / `DELETE` | `/api/notebook/tasks/{id}`          | Soft-delete tombstone; `If-Match` / body `version`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `POST`                   | `/api/notebook/tasks/{id}/complete` | Sets `status=done` and `completedAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `POST`                   | `/api/notebook/tasks/{id}/reopen`   | Sets `status=todo` (from `done`; other statuses unchanged), clears `completedAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
-`dueBefore` / `dueOn` key conditions use the `DUE#` prefix only (undated `UPDATED#…` rows are excluded). List sort is applied **on the server**: overdue (`dueDate` &lt; UTC today), then earlier due dates, then priority, then id.
+Start-date filters (at most one of `startOnOrBefore`, `startAfter`, `startOn`; `someday=true` with any of them is **400**):
+
+| Filter                        | Matches                                | GSI1 sort-key ranges per (area, status)                             |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| `startOnOrBefore=<d>` (Today) | `startDate` ≤ d or `null`, not someday | `START#` … `START#<d>#TASK~`, `DUE#` … `DUE#<d>#TASK~`, `UPDATED#*` |
+| `startAfter=<d>` (Upcoming)   | `startDate` &gt; d, not someday        | `START#<d>#TASK~` … `START#\uffff`, same for `DUE#`                 |
+| `startOn=<d>`                 | `startDate` = d                        | `START#<d>#…`, `DUE#<d>#…`                                          |
+| `someday=true` / `false`      | someday tasks / everything else        | `SOMEDAY#*` / whole partition, filtered                             |
+
+Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&startAfter=<local today>`. The `DUE#` ranges cover rows the start-date migration has not reached. `priority`, `dueOn` and `dueBefore` have no key condition: they filter each page, so a page can hold fewer than `limit` items while `nextCursor` is set. List sort is applied **on the server** within each page: carried over (open, `startDate` &lt; `today`), then earlier start dates, then `startDate: null`, then someday, then priority, then id. Pages are not globally sorted across partitions; clients that need one order (Upcoming by date) sort after loading every page.
 
 ### Search HTTP API
 

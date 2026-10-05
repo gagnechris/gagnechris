@@ -13,6 +13,8 @@ const base = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   priority: 'med',
   status: 'todo',
   dueDate: null,
+  startDate: null,
+  someday: false,
   completedAt: null,
   noteId: null,
   tags: [],
@@ -24,35 +26,38 @@ const base = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
 });
 
 describe('bucketTodayTasks', () => {
-  test('splits overdue, due today, in progress, done today, tomorrow', () => {
+  test('splits carried over, today, in progress, done today, tomorrow', () => {
     const buckets = bucketTodayTasks(
       [
-        base({ id: 'a', title: 'late', dueDate: '2026-10-01' }),
-        base({ id: 'b', title: 'today', dueDate: '2026-10-02' }),
+        base({ id: 'a', title: 'late', startDate: '2026-10-01' }),
+        base({ id: 'b', title: 'today', startDate: '2026-10-02' }),
         base({
           id: 'c',
           title: 'wip',
           status: 'in_progress',
-          dueDate: null,
+          startDate: null,
         }),
         base({
           id: 'd',
           title: 'done',
-          dueDate: '2026-10-02',
+          startDate: '2026-10-02',
           status: 'done',
           completedAt: '2026-10-02T10:00:00.000Z',
         }),
-        base({ id: 'e', title: 'tmr', dueDate: '2026-10-03' }),
+        base({ id: 'e', title: 'tmr', startDate: '2026-10-03' }),
+        base({ id: 'f', title: 'now', startDate: null }),
+        base({ id: 'g', title: 'later', someday: true }),
+        base({ id: 'h', title: 'next week', startDate: '2026-10-09' }),
       ],
       '2026-10-02',
     );
 
-    expect(buckets.overdue.map((t) => t.id)).toEqual(['a']);
-    expect(buckets.dueToday.map((t) => t.id)).toEqual(['b']);
+    expect(buckets.carriedOver.map((t) => t.id)).toEqual(['a']);
+    expect(buckets.startsToday.map((t) => t.id)).toEqual(['b', 'f']);
     expect(buckets.inProgress.map((t) => t.id)).toEqual(['c']);
     expect(buckets.doneToday.map((t) => t.id)).toEqual(['d']);
     expect(buckets.tomorrow.map((t) => t.id)).toEqual(['e']);
-    expect(todayProgress(buckets)).toEqual({ done: 1, total: 2 });
+    expect(todayProgress(buckets)).toEqual({ done: 1, total: 3 });
   });
 });
 

@@ -3,11 +3,13 @@ import {
   CreateNoteRequestSchema,
   CreateTaskRequestSchema,
   decodeSyncChangesResponse,
+  ListTasksQuerySchema,
   NoteSchema,
   SYNC_CHANGE_TYPES,
   SyncChangeSchema,
   SyncChangesResponseSchema,
   TaskSchema,
+  UpdateTaskRequestSchema,
 } from './schemas.js';
 
 const ts = '2026-10-02T12:00:00.000Z';
@@ -94,6 +96,8 @@ describe('Notebook schemas', () => {
         priority: 'high',
         status: 'in_progress',
         dueDate: '2026-10-03',
+        startDate: '2026-10-03',
+        someday: false,
         completedAt: null,
         noteId: null,
         tags: [],
@@ -103,6 +107,49 @@ describe('Notebook schemas', () => {
         deleted: false,
       }).status,
     ).toBe('in_progress');
+  });
+
+  it('rejects a someday task with a startDate and conflicting start filters', () => {
+    const base = { id: ulid, area: 'work', title: 'Ship it' };
+    expect(
+      CreateTaskRequestSchema.safeParse({
+        ...base,
+        someday: true,
+        startDate: '2026-10-03',
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateTaskRequestSchema.safeParse({ ...base, someday: true }).success,
+    ).toBe(true);
+    expect(
+      UpdateTaskRequestSchema.safeParse({
+        someday: true,
+        startDate: '2026-10-03',
+      }).success,
+    ).toBe(false);
+    expect(
+      UpdateTaskRequestSchema.safeParse({ someday: true, startDate: null })
+        .success,
+    ).toBe(true);
+
+    expect(
+      ListTasksQuerySchema.safeParse({
+        startOnOrBefore: '2026-10-03',
+        startAfter: '2026-10-03',
+      }).success,
+    ).toBe(false);
+    expect(
+      ListTasksQuerySchema.safeParse({
+        someday: 'true',
+        startOnOrBefore: '2026-10-03',
+      }).success,
+    ).toBe(false);
+    expect(
+      ListTasksQuerySchema.parse({
+        someday: 'false',
+        startAfter: '2026-10-03',
+      }),
+    ).toMatchObject({ someday: false, startAfter: '2026-10-03' });
   });
 
   it('discriminates SyncChange note and task variants', () => {

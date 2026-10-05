@@ -172,15 +172,31 @@ export default function NotebookTaskPage() {
         </Select>
       </Field>
 
-      <Field label="Due date">
+      <Field label="Show on" hint="Empty shows it on Today now.">
         <TextInput
           type="date"
-          value={draft.dueDate}
+          value={draft.startDate}
+          disabled={draft.someday}
           onChange={(e) =>
-            updateDraft((prev) => ({ ...prev, dueDate: e.target.value }))
+            updateDraft((prev) => ({ ...prev, startDate: e.target.value }))
           }
         />
       </Field>
+
+      <label className="admin-check">
+        <input
+          type="checkbox"
+          checked={draft.someday}
+          onChange={(e) =>
+            updateDraft((prev) => ({
+              ...prev,
+              someday: e.target.checked,
+              startDate: e.target.checked ? '' : prev.startDate,
+            }))
+          }
+        />
+        Someday (never shows on Today)
+      </label>
 
       <Field label="Linked note id (optional)">
         <TextInput

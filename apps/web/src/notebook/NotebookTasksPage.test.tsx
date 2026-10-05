@@ -15,6 +15,8 @@ type Task = {
   priority: 'low' | 'med' | 'high';
   status: 'todo' | 'in_progress' | 'done';
   dueDate: string | null;
+  startDate: string | null;
+  someday: boolean;
   completedAt: string | null;
   noteId: string | null;
   tags: string[];
@@ -26,6 +28,7 @@ type Task = {
 
 const state = vi.hoisted(() => ({
   tasks: [] as Task[],
+  created: [] as Record<string, unknown>[],
 }));
 
 vi.mock('../workspace/api/client', () => ({
@@ -34,7 +37,12 @@ vi.mock('../workspace/api/client', () => ({
       path: string,
       init?: {
         params?: {
-          query?: { status?: string; open?: string; dueOn?: string };
+          query?: {
+            status?: string;
+            open?: string;
+            startOn?: string;
+            someday?: string;
+          };
         };
       },
     ) => {
@@ -49,7 +57,8 @@ vi.mock('../workspace/api/client', () => ({
                 (q.status
                   ? t.status === q.status
                   : q.open !== 'true' || t.status !== 'done') &&
-                (!q.dueOn || t.dueDate === q.dueOn),
+                (!q.startOn || t.startDate === q.startOn) &&
+                (!q.someday || t.someday === (q.someday === 'true')),
             ),
           },
           error: undefined,
@@ -71,6 +80,7 @@ vi.mock('../workspace/api/client', () => ({
     ) => {
       if (path === '/api/notebook/tasks') {
         const body = init?.body ?? {};
+        state.created.push(body);
         const now = '2026-10-02T12:00:00.000Z';
         const task: Task = {
           id: String(body.id),
@@ -81,6 +91,8 @@ vi.mock('../workspace/api/client', () => ({
           priority: (body.priority as Task['priority']) ?? 'med',
           status: (body.status as Task['status']) ?? 'todo',
           dueDate: (body.dueDate as string | null | undefined) ?? null,
+          startDate: (body.startDate as string | null | undefined) ?? null,
+          someday: body.someday === true,
           completedAt: null,
           noteId: (body.noteId as string | null | undefined) ?? null,
           tags: Array.isArray(body.tags) ? (body.tags as string[]) : [],
@@ -161,6 +173,7 @@ describe('NotebookTasksPage', () => {
   beforeEach(() => {
     localStorage.clear();
     state.tasks = [];
+    state.created = [];
   });
 
   test('quick-adds a task and completes it', async () => {
@@ -193,8 +206,28 @@ describe('NotebookTasksPage', () => {
     expect(await screen.findByText(/Completed \(1\)/)).toBeInTheDocument();
   });
 
-  test('120 done past-due tasks do not hide 3 open tasks', async () => {
-    const mk = (i: number, status: Task['status'], dueDate: string): Task => ({
+  test('quick-add sets the show-on date and never dueDate', async () => {
+    const user = userEvent.setup();
+    renderTasks();
+
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Quick add task' }),
+      'Call bank tomorrow{Enter}',
+    );
+
+    expect(await screen.findByText('Call bank')).toBeInTheDocument();
+    expect(state.created).toHaveLength(1);
+    expect(state.created[0]?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(state.created[0]).not.toHaveProperty('dueDate');
+    expect(screen.getByText(/shows \d{4}-\d{2}-\d{2}/)).toBeInTheDocument();
+  });
+
+  test('120 done past tasks do not hide 3 open tasks', async () => {
+    const mk = (
+      i: number,
+      status: Task['status'],
+      startDate: string,
+    ): Task => ({
       id: `01TASKPILE${String(i).padStart(16, '0')}`,
       userId: 'u1',
       area: 'work',
@@ -202,7 +235,9 @@ describe('NotebookTasksPage', () => {
       description: '',
       priority: 'high',
       status,
-      dueDate,
+      dueDate: null,
+      startDate,
+      someday: false,
       completedAt: status === 'done' ? '2026-09-01T12:00:00.000Z' : null,
       noteId: null,
       tags: [],
