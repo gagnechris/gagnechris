@@ -32,7 +32,9 @@ import {
   type CampState,
 } from './campLogic';
 import {
+  CAMP_SHARE_URL,
   campResultLine,
+  campShareText,
   dailyCampKey,
   dailyCampRngs,
   randomCampRngs,
@@ -47,13 +49,46 @@ const ACTION_LABEL_MS = 1_200;
 const MAX_FRAME_MS = 250;
 
 type Screen = 'ready' | 'playing' | 'over';
-type Mode = 'daily' | 'free';
+export type CampMode = 'daily' | 'free';
 type Toast = { id: number; text: string };
 
 type CampRulesGameProps = {
   from: string;
   soundOn: boolean;
+  dailyKey?: string;
+  onModeChange?: (mode: CampMode) => void;
 };
+
+// Desktop browsers implement Web Share too, but there the result is copied;
+// only touch screens get the share sheet.
+function canShareResult(data: ShareData): boolean {
+  if (typeof navigator.share !== 'function') return false;
+  if (!window.matchMedia?.('(pointer: coarse)').matches) return false;
+  try {
+    return navigator.canShare ? navigator.canShare(data) : true;
+  } catch {
+    return false;
+  }
+}
+
+const ShareIcon = () => (
+  <svg
+    viewBox="0 0 20 20"
+    width="18"
+    height="18"
+    aria-hidden="true"
+    className="camp-share__icon"
+  >
+    <path
+      d="M10 13V3M6 7l4-4 4 4M4 11v5h12v-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 function toastFor(event: CampEvent): string | null {
   switch (event.type) {
@@ -68,11 +103,19 @@ function toastFor(event: CampEvent): string | null {
   }
 }
 
-const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
+const CampRulesGame = ({
+  from,
+  soundOn,
+  dailyKey: dailyKeyProp,
+  onModeChange,
+}: CampRulesGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
-  const dailyKey = useMemo(() => dailyCampKey(new Date()), []);
+  const dailyKey = useMemo(
+    () => dailyKeyProp ?? dailyCampKey(new Date()),
+    [dailyKeyProp],
+  );
   const [screen, setScreen] = useState<Screen>('ready');
-  const [mode, setMode] = useState<Mode>('daily');
+  const [mode, setMode] = useState<CampMode>('daily');
   const [state, setState] = useState<CampState>(createCampState);
   const [toast, setToast] = useState<Toast | null>(null);
   const [justPutAway, setJustPutAway] = useState<{
@@ -163,13 +206,14 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  const begin = (nextMode: Mode) => {
+  const begin = (nextMode: CampMode) => {
     rngsRef.current =
       nextMode === 'daily' ? dailyCampRngs(dailyKey) : randomCampRngs();
     const fresh = createCampState();
     stateRef.current = fresh;
     setState(fresh);
     setMode(nextMode);
+    onModeChange?.(nextMode);
     setToast(null);
     setJustPutAway(null);
     setCopyStatus('idle');
@@ -185,6 +229,27 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
   const onNoise = (bearId: string) => {
     if (screen !== 'playing') return;
     commit(makeNoise(stateRef.current, bearId));
+  };
+
+  const shareData = (final: CampState): ShareData => ({
+    title: 'Camp Rules',
+    text: campShareText({
+      key: dailyKey,
+      seconds: Math.floor(final.t / 1000),
+      saves: final.saves,
+    }),
+    url: CAMP_SHARE_URL,
+  });
+
+  const onShareResult = async () => {
+    const data = shareData(stateRef.current);
+    if (!canShareResult(data)) return onCopyResult();
+    try {
+      await navigator.share(data);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      await onCopyResult();
+    }
   };
 
   const onCopyResult = async () => {
@@ -204,6 +269,7 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
     }
   };
 
+  const canShare = screen === 'over' && canShareResult(shareData(state));
   const p = roundProgress(state.t);
   const score = campScore(state);
   const habituated = state.phase === 'habituated';
@@ -218,11 +284,13 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
     <div className={`camp${reducedMotion ? ' camp--reduced' : ''}`}>
       <div className="camp-hud">
         <div className="camp-hud__stat">
-          <span className="camp-hud__label">Time left</span>
+          <span className="camp-hud__label camp-hud__long">Time left</span>
+          <span className="camp-hud__label camp-hud__short">Time</span>
           <span className="camp-hud__value">{secondsLeft(state)}s</span>
         </div>
         <div className="camp-hud__stat">
-          <span className="camp-hud__label">Bear snacks</span>
+          <span className="camp-hud__label camp-hud__long">Bear snacks</span>
+          <span className="camp-hud__label camp-hud__short">Snacks</span>
           <span
             className="camp-hud__meter"
             role="img"
@@ -238,6 +306,9 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
                 }
               />
             ))}
+            <span className="camp-hud__count">
+              {state.snacks}/{SNACK_LIMIT}
+            </span>
           </span>
         </div>
         <div className="camp-hud__stat">
@@ -398,6 +469,8 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
                     : 'You held camp together until dark.'
               }
               paws={campPaws(state)}
+              summary={`${Math.floor(state.t / 1000)}s · ${state.saves} ${state.saves === 1 ? 'save' : 'saves'} · score ${score}`}
+              className="camp-end"
               stats={[
                 { label: 'Time', value: `${Math.floor(state.t / 1000)}s` },
                 { label: 'Saves', value: state.saves },
@@ -413,14 +486,21 @@ const CampRulesGame = ({ from, soundOn }: CampRulesGameProps) => {
                   {mode === 'daily' ? (
                     <button
                       type="button"
-                      className="camp-link-btn"
-                      onClick={() => void onCopyResult()}
+                      className="camp-link-btn camp-share"
+                      onClick={() => void onShareResult()}
                     >
-                      {copyStatus === 'copied'
-                        ? 'Copied!'
-                        : copyStatus === 'failed'
-                          ? 'Couldn’t copy'
-                          : 'Copy result'}
+                      {copyStatus === 'copied' ? (
+                        'Copied!'
+                      ) : copyStatus === 'failed' ? (
+                        'Couldn’t copy'
+                      ) : canShare ? (
+                        <>
+                          <ShareIcon />
+                          Share result
+                        </>
+                      ) : (
+                        'Copy result'
+                      )}
                     </button>
                   ) : null}
                   <button

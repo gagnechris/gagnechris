@@ -52,6 +52,11 @@
   background: var(--accent-gold);
 }
 
+.camp-hud__short,
+.camp-hud__count {
+  display: none;
+}
+
 .camp-hud__noise {
   margin-left: auto;
   font-size: 13px;
@@ -356,6 +361,11 @@
   text-decoration: underline;
 }
 
+.camp-share__icon {
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+
 .camp-note {
   margin: 0;
   font-size: 13px;
@@ -432,6 +442,237 @@
 
   .camp-overlay {
     padding: var(--space-3);
+  }
+}
+
+/* Phone · Camp Rules (portrait) and Phone · Camp Rules end. */
+@media (max-width: 480px) {
+  .camp {
+    gap: 10px;
+  }
+
+  .camp-hud {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .camp-hud__long,
+  .camp-hud__slot {
+    display: none;
+  }
+
+  .camp-hud__short {
+    display: block;
+  }
+
+  .camp-hud__label {
+    font-size: 12px;
+  }
+
+  .camp-hud__value,
+  .camp-hud__count {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .camp-hud__meter {
+    padding: 0;
+  }
+
+  .camp-hud__count {
+    display: block;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .camp-hud__noise {
+    grid-column: 1 / -1;
+    font-size: 12px;
+  }
+
+  .camp-hud__noise:empty {
+    display: none;
+  }
+
+  .camp-field {
+    aspect-ratio: 2 / 3;
+  }
+
+  /* One-handed play: every tap target is at least 72px square. */
+  .camp-item {
+    width: 72px;
+    min-height: 72px;
+    padding: 6px 4px;
+  }
+
+  .camp-item svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .camp-item__label {
+    font-size: 11px;
+  }
+
+  .camp-item__badge {
+    font-size: 10px;
+  }
+
+  .camp-bear {
+    width: 72px;
+    height: 72px;
+  }
+
+  .camp-toast {
+    font-size: 15px;
+  }
+
+  /*
+   * The end screen is the page, not a card over the field. It covers the
+   * field's pieces instead of hiding them: hiding them from the end state
+   * shifts Chromium's desktop rendering of the field by a colour level.
+   */
+  .camp-hud:has(+ .camp-field > .camp-overlay--end) {
+    display: none;
+  }
+
+  .camp-overlay--end {
+    padding: 0;
+    background: white;
+  }
+
+  .camp-field:has(> .camp-overlay--end) {
+    clip-path: none;
+  }
+
+  .camp-end.bears-end {
+    max-width: none;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .camp-end .bears-end__kicker {
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
+
+  .camp-end .bears-end__title {
+    margin-bottom: 18px;
+    font-family: var(--font-serif);
+    font-size: 34px;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+
+  .camp-end .bears-end__rating {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: 18px;
+  }
+
+  .camp-end .bears-paws {
+    margin: 0;
+  }
+
+  .camp-end .bears-end__summary {
+    display: block;
+    margin: 0;
+    font-size: 15px;
+    color: var(--neutral-600);
+  }
+
+  .camp-end .bears-end__stats {
+    display: none;
+  }
+
+  .camp-end .bears-end__tip {
+    margin-bottom: 14px;
+    padding: var(--space-4);
+    border-radius: 12px;
+  }
+
+  .camp-end .bears-end__tip h3 {
+    margin: 2px 0 6px;
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 500;
+  }
+
+  .camp-end .bears-end__tip p {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .camp-end .bears-end__tip a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: -10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .camp-end .bears-end__actions {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: var(--space-2) 9px;
+  }
+
+  .camp-end .bears-end__actions > * {
+    min-height: 50px;
+    font-size: 15px;
+  }
+
+  .camp-end .bears-btn--primary {
+    grid-column: 1 / -1;
+    border-radius: 12px;
+    font-size: 17px;
+  }
+
+  .camp-end .bears-btn--ghost {
+    order: 2;
+    padding-inline: var(--space-2);
+    border-radius: 12px;
+    border-color: var(--neutral-300);
+  }
+
+  .camp-end .camp-share {
+    order: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--neutral-300);
+    border-radius: 12px;
+    background: white;
+    color: var(--neutral-900);
+    font-weight: 700;
+  }
+
+  .camp-end .camp-share:hover {
+    background-color: white;
+    text-decoration: none;
+  }
+
+  .camp-end .camp-share__icon {
+    margin-right: 8px;
+    vertical-align: baseline;
+  }
+
+  .camp-end .camp-link-btn:not(.camp-share) {
+    order: 3;
+    grid-column: 1 / -1;
   }
 }
 

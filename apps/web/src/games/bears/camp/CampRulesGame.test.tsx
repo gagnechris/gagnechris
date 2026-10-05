@@ -29,6 +29,12 @@ const advance = (ms: number) => {
 const start = (label = 'Start the evening') =>
   fireEvent.click(screen.getByRole('button', { name: label }));
 
+const playToEnd = () => {
+  renderGame();
+  start();
+  advance(60_000);
+};
+
 describe('CampRulesGame', () => {
   beforeEach(() => {
     vi.useFakeTimers({
@@ -136,6 +142,139 @@ describe('CampRulesGame', () => {
       expect.stringMatching(/^Camp Rules 2026-10-03: /),
     );
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
+  });
+
+  describe('share result', () => {
+    const coarsePointer = (coarse: boolean) =>
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            matches: coarse && query === '(pointer: coarse)',
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          }) as unknown as MediaQueryList,
+      );
+
+    const stubShare = (share: ReturnType<typeof vi.fn>) => {
+      Object.defineProperty(navigator, 'share', {
+        value: share,
+        configurable: true,
+      });
+      Object.defineProperty(navigator, 'canShare', {
+        value: () => true,
+        configurable: true,
+      });
+    };
+
+    const stubClipboard = () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+      return writeText;
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      Reflect.deleteProperty(navigator, 'share');
+      Reflect.deleteProperty(navigator, 'canShare');
+    });
+
+    test('opens the share sheet with the one-line summary on touch screens', async () => {
+      coarsePointer(true);
+      const share = vi.fn().mockResolvedValue(undefined);
+      stubShare(share);
+      const writeText = stubClipboard();
+      playToEnd();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Share result' }));
+      });
+
+      expect(share).toHaveBeenCalledWith({
+        title: 'Camp Rules',
+        text: expect.stringMatching(
+          /^Camp Rules · Oct 3 · held \d+s, \d+ saves?$/,
+        ),
+        url: 'https://gagnechris.com/dont-feed-the-bears/camp',
+      });
+      expect(writeText).not.toHaveBeenCalled();
+    });
+
+    test('closing the share sheet does not copy', async () => {
+      coarsePointer(true);
+      stubShare(
+        vi.fn().mockRejectedValue(new DOMException('cancel', 'AbortError')),
+      );
+      const writeText = stubClipboard();
+      playToEnd();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Share result' }));
+      });
+
+      expect(writeText).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole('button', { name: 'Share result' }),
+      ).toBeInTheDocument();
+    });
+
+    test('copies the result when sharing fails', async () => {
+      coarsePointer(true);
+      stubShare(
+        vi.fn().mockRejectedValue(new DOMException('no', 'NotAllowedError')),
+      );
+      const writeText = stubClipboard();
+      playToEnd();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Share result' }));
+      });
+
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringMatching(/^Camp Rules 2026-10-03: /),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Copied!' }),
+      ).toBeInTheDocument();
+    });
+
+    test('desktop copies even when the browser can share', async () => {
+      coarsePointer(false);
+      const share = vi.fn().mockResolvedValue(undefined);
+      stubShare(share);
+      const writeText = stubClipboard();
+      playToEnd();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copy result' }));
+      });
+
+      expect(share).not.toHaveBeenCalled();
+      expect(writeText).toHaveBeenCalled();
+    });
+
+    test('touch screens without Web Share copy the result', async () => {
+      coarsePointer(true);
+      const writeText = stubClipboard();
+      playToEnd();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Copy result' }));
+      });
+
+      expect(writeText).toHaveBeenCalled();
+    });
+  });
+
+  test('the end card summarizes the evening in one line', () => {
+    playToEnd();
+
+    expect(
+      screen.getByText(/^\d+s · \d+ saves? · score \d+$/),
+    ).toBeInTheDocument();
   });
 
   test('random camp has no copy result and can switch back', () => {
