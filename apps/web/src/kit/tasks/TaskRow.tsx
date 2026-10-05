@@ -7,15 +7,18 @@ type RowTask = Pick<Task, 'title' | 'priority' | 'status'>;
 export function TaskCheckbox({
   task,
   onToggle,
+  disabled,
 }: {
   task: Pick<Task, 'title' | 'status'>;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   const done = task.status === 'done';
   return (
     <input
       type="checkbox"
       checked={done}
+      disabled={disabled}
       onChange={onToggle}
       aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
     />
@@ -28,7 +31,7 @@ type TaskRowProps = {
   meta: ReactNode;
   /** Without a route the title is plain text. */
   to?: string;
-  /** `list` strikes through done tasks and labels in-progress ones; `today` is the compact panel row. */
+  /** `list` strikes through done and dropped tasks and labels in-progress and dropped ones; `today` is the compact panel row. */
   variant: 'list' | 'today';
 };
 
@@ -41,13 +44,13 @@ const titleLinkStyle: CSSProperties = {
 
 export function TaskRow({ task, onToggle, meta, to, variant }: TaskRowProps) {
   const list = variant === 'list';
-  const done = task.status === 'done';
+  const closed = task.status === 'done' || task.status === 'dropped';
   const body = (
     <>
       <span
         className="admin-post-list__title"
         style={
-          list && done
+          list && closed
             ? { textDecoration: 'line-through', opacity: 0.7 }
             : undefined
         }
@@ -58,6 +61,9 @@ export function TaskRow({ task, onToggle, meta, to, variant }: TaskRowProps) {
           <span className="admin-badge admin-badge--published">
             in progress
           </span>
+        ) : null}
+        {list && task.status === 'dropped' ? (
+          <span className="admin-badge">dropped</span>
         ) : null}
       </span>
       <span className="admin-post-list__meta">{meta}</span>

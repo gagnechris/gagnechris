@@ -223,7 +223,7 @@ describe('Today after deleting its daily note', () => {
     });
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     expect(editor).toHaveValue('');
-    expect(screen.getByText(/not saved yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Not saved yet/)).toBeInTheDocument();
 
     await user.type(editor, 'fresh start');
     await waitFor(

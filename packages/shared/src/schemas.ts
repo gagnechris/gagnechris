@@ -507,9 +507,24 @@ export const TaskPrioritySchema = z.enum(['low', 'med', 'high']);
 
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
 
-export const TaskStatusSchema = z.enum(['todo', 'in_progress', 'done']);
+/** `dropped` closes a task without doing it; like `done`, it is not open. */
+export const TaskStatusSchema = z.enum([
+  'todo',
+  'in_progress',
+  'done',
+  'dropped',
+]);
 
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+
+export const OPEN_TASK_STATUSES = [
+  'todo',
+  'in_progress',
+] as const satisfies readonly TaskStatus[];
+
+export function isOpenTaskStatus(status: TaskStatus): boolean {
+  return status === 'todo' || status === 'in_progress';
+}
 
 /** Well under DynamoDB's 400 KB item cap so oversize is a 413, not a 500. */
 export const NOTEBOOK_TEXT_MAX_BYTES = 100_000;
@@ -821,7 +836,9 @@ export const ListTasksQuerySchema = z
       .enum(['true', 'false'])
       .transform((v) => v === 'true')
       .optional()
-      .describe('Only todo and in_progress tasks (ignored when status is set)'),
+      .describe(
+        'Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)',
+      ),
     today: CalendarDateSchema.optional().describe(
       "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
     ),

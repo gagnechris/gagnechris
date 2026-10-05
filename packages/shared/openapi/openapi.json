@@ -2314,7 +2314,8 @@
             "enum": [
               "todo",
               "in_progress",
-              "done"
+              "done",
+              "dropped"
             ]
           },
           "dueDate": {
@@ -2425,7 +2426,8 @@
                   "enum": [
                     "todo",
                     "in_progress",
-                    "done"
+                    "done",
+                    "dropped"
                   ]
                 },
                 "dueDate": {
@@ -2541,7 +2543,8 @@
             "enum": [
               "todo",
               "in_progress",
-              "done"
+              "done",
+              "dropped"
             ],
             "default": "todo"
           },
@@ -2616,7 +2619,8 @@
             "enum": [
               "todo",
               "in_progress",
-              "done"
+              "done",
+              "dropped"
             ]
           },
           "dueDate": {
@@ -2662,7 +2666,8 @@
             "enum": [
               "todo",
               "in_progress",
-              "done"
+              "done",
+              "dropped"
             ]
           },
           "priority": {
@@ -2717,7 +2722,7 @@
               "true",
               "false"
             ],
-            "description": "Only todo and in_progress tasks (ignored when status is set)"
+            "description": "Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)"
           },
           "today": {
             "type": "string",
@@ -3121,7 +3126,8 @@
                     "enum": [
                       "todo",
                       "in_progress",
-                      "done"
+                      "done",
+                      "dropped"
                     ]
                   },
                   "dueDate": {
@@ -3469,7 +3475,8 @@
                         "enum": [
                           "todo",
                           "in_progress",
-                          "done"
+                          "done",
+                          "dropped"
                         ]
                       },
                       "dueDate": {
@@ -3824,7 +3831,8 @@
                               "enum": [
                                 "todo",
                                 "in_progress",
-                                "done"
+                                "done",
+                                "dropped"
                               ]
                             },
                             "dueDate": {
@@ -16445,7 +16453,8 @@
               "enum": [
                 "todo",
                 "in_progress",
-                "done"
+                "done",
+                "dropped"
               ]
             },
             "required": false,
@@ -16552,10 +16561,10 @@
                 "true",
                 "false"
               ],
-              "description": "Only todo and in_progress tasks (ignored when status is set)"
+              "description": "Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)"
             },
             "required": false,
-            "description": "Only todo and in_progress tasks (ignored when status is set)",
+            "description": "Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)",
             "name": "open",
             "in": "query"
           },
@@ -16639,7 +16648,8 @@
                             "enum": [
                               "todo",
                               "in_progress",
-                              "done"
+                              "done",
+                              "dropped"
                             ]
                           },
                           "dueDate": {
@@ -16908,7 +16918,8 @@
                     "enum": [
                       "todo",
                       "in_progress",
-                      "done"
+                      "done",
+                      "dropped"
                     ],
                     "default": "todo"
                   },
@@ -17003,7 +17014,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -17386,7 +17398,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -17805,7 +17818,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -18194,7 +18208,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -18502,7 +18517,8 @@
                     "enum": [
                       "todo",
                       "in_progress",
-                      "done"
+                      "done",
+                      "dropped"
                     ]
                   },
                   "dueDate": {
@@ -18589,7 +18605,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -19033,7 +19050,8 @@
                       "enum": [
                         "todo",
                         "in_progress",
-                        "done"
+                        "done",
+                        "dropped"
                       ]
                     },
                     "dueDate": {
@@ -19967,7 +19985,8 @@
                                         "enum": [
                                           "todo",
                                           "in_progress",
-                                          "done"
+                                          "done",
+                                          "dropped"
                                         ]
                                       },
                                       "dueDate": {
