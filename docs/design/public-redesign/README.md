@@ -372,6 +372,22 @@ back link is Inter 14px / 500 in `link`, underlined, and the title Newsreader
 kicker is Inter 12px / 600, tracked 0.1em, 2px above a 40px title, and the
 lede is 20px (not drawn: the artboard has no lede).
 
+### Camp Rules on phones
+
+Phone · Camp Rules (portrait) and Phone · Camp Rules end, at `max-width: 480px`.
+Wider viewports keep the desktop game.
+
+| Element      | Value                                                                                                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daily label  | "Daily camp · Oct 4" ("Random camp" for a random one), Inter 14px `neutral-600`, on the title's baseline at the right                                                                                                         |
+| HUD          | Four equal columns: Time, Snacks ("1/3"), Saves, Score; labels Inter 12px / 600, values 22px / 700; 12px padding                                                                                                              |
+| Field        | 2:3, taller than wide; items and bears are at least 72×72 targets                                                                                                                                                             |
+| End screen   | Replaces the HUD and field: kicker Inter 13px / 600, title Newsreader 34px / 500, paws with "60s · 3 saves · score 675" in Inter 15px `neutral-600`, the tip (heading Newsreader 22px) with its underlined source link        |
+| End actions  | Play again full width; Share result and the other game side by side, 50px tall, 12px radius                                                                                                                                   |
+| Share result | Touch screens with Web Share open the share sheet with "Camp Rules · Oct 4 · held 60s, 3 saves" and the game URL; closing the sheet does nothing. Elsewhere, and if sharing fails, the button is Copy result as on desktop    |
+| Not as drawn | The back link, Sound and Skip to the bear tips stay above the HUD; the noise line stays under the HUD stats; the other game keeps "Now play as the bear"; Random camp and Back to Don’t Feed the Bears stay under the actions |
+| Not built    | The artboard's haptic on save and on share in the iOS app: the app does not embed the site                                                                                                                                    |
+
 ## Colours
 
 | Token           | Value   | Use                                                                |

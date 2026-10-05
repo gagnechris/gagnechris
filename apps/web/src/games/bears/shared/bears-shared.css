@@ -201,3 +201,7 @@
     padding: var(--space-4);
   }
 }
+
+.bears-end__summary {
+  display: none;
+}

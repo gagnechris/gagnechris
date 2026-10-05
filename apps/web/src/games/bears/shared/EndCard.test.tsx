@@ -84,6 +84,16 @@ describe('EndCard', () => {
     expect(onPlayAgain).toHaveBeenCalled();
   });
 
+  test('puts the one-line summary beside the paws', () => {
+    renderCard({ summary: '60s · 3 saves · score 675', className: 'camp-end' });
+
+    const summary = screen.getByText('60s · 3 saves · score 675');
+    expect(summary.parentElement).toContainElement(
+      screen.getByRole('img', { name: '2 of 3 paws' }),
+    );
+    expect(screen.getByRole('dialog')).toHaveClass('bears-end', 'camp-end');
+  });
+
   test('hides the rating when paws is omitted', () => {
     renderCard({ paws: undefined });
 

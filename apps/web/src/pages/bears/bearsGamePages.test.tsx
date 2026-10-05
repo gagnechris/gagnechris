@@ -37,6 +37,23 @@ describe('Camp Rules page', () => {
     ).toHaveAttribute('href', '/dont-feed-the-bears?from=404#tips');
   });
 
+  test('labels today’s camp beside the title, or a random one', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 4, 18, 0));
+    try {
+      renderAt('/dont-feed-the-bears/camp', <CampRules />);
+
+      expect(screen.getByText('Daily camp · Oct 4')).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Or play a random camp' }),
+      );
+      expect(screen.getByText('Random camp')).toBeInTheDocument();
+      expect(screen.queryByText('Daily camp · Oct 4')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('sound starts off', () => {
     renderAt('/dont-feed-the-bears/camp', <CampRules />);
 
