@@ -10,6 +10,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import { taskDateToken } from '@gagnechris/shared';
 import { useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { PHONE_QUERY, useMediaQuery } from '../useMediaQuery';
 import { TaskDateMenu } from '../tasks/TaskDateMenu';
 import {
   openTaskDateQuery,
@@ -232,6 +233,7 @@ export function useTaskDateMenuEditor({
   const baseId = useId();
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [picked, setPicked] = useState('');
+  const docked = useMediaQuery(PHONE_QUERY);
 
   const extensions = useMemo(
     () => [
@@ -275,6 +277,7 @@ export function useTaskDateMenuEditor({
         if (view) chooseTaskDate(view, value, item);
       }}
       hint={hint}
+      docked={docked}
       style={
         snap?.anchor
           ? {

@@ -1195,3 +1195,100 @@
   flex: none;
   min-height: 2.75rem;
 }
+
+.notebook-today__phone-tools,
+.notebook-today__strip,
+.notebook-today__calendar-icon {
+  display: none;
+}
+
+/* Phones: the note fills the page; the task lists live in a bottom sheet. */
+@media (max-width: 767px) {
+  .notebook-today__side,
+  .notebook-today__kicker,
+  .notebook-today__day-nav [aria-label='Jump to today']:disabled {
+    display: none;
+  }
+
+  .notebook-today__day-nav > .admin-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .notebook-today__calendar > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notebook-today__calendar > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .notebook-today__calendar-icon {
+    display: block;
+  }
+
+  .notebook-today__calendar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .notebook-today__area {
+    max-width: 7.5rem;
+  }
+
+  .notebook-today__phone-tools {
+    display: flex;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+
+  .notebook-today__area {
+    width: auto;
+    min-height: 44px;
+  }
+
+  .notebook-today__search {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .notebook-today__strip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: var(--space-3);
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--primary-50);
+    color: var(--primary-800);
+    font: inherit;
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .notebook-today__strip strong {
+    font-weight: 600;
+  }
+
+  .notebook-today__strip-text {
+    flex: 1;
+  }
+}

@@ -20,6 +20,8 @@ type Props = {
   picker: Picker | null;
   hint: string;
   style?: CSSProperties;
+  /** A row of chips above the phone keyboard's accessory bar. */
+  docked?: boolean;
 };
 
 /** The `@` date menu; the field that owns the caret handles the keys. */
@@ -33,6 +35,7 @@ export function TaskDateMenu({
   picker,
   hint,
   style,
+  docked,
 }: Props) {
   const ids = taskDateMenuIds(baseId);
   const pickerRef = useRef<HTMLInputElement>(null);
@@ -44,10 +47,10 @@ export function TaskDateMenu({
   return (
     <>
       <div
-        className="task-syntax__menu"
+        className={`task-syntax__menu${docked ? ' task-syntax__menu--docked' : ''}`}
         data-task-date-menu=""
         hidden={!open}
-        style={style}
+        style={docked ? undefined : style}
       >
         <p className="task-syntax__heading" id={ids.heading}>
           Show this task on…

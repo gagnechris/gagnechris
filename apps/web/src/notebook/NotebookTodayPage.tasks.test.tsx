@@ -442,6 +442,47 @@ describe('Today tasks', () => {
     expect(within(comingUp()).getByText('Renew card')).toBeInTheDocument();
   });
 
+  test('the phone strip opens both lists in a sheet; + Note embeds the task and focus returns to the strip', async () => {
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+    addTask(task(8, { title: 'Reply to recruiter', startDate: '2026-09-30' }));
+    addTask(task(9, { title: 'Brand fonts', startDate: '2026-10-05' }));
+    const user = userEvent.setup();
+    renderToday();
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
+    await waitForPanels();
+
+    const strip = screen.getByRole('button', {
+      name: '1 still open, 1 coming up. Show list',
+    });
+    await user.click(strip);
+    let sheet = screen.getByRole('dialog', { name: 'Today’s tasks' });
+    expect(
+      within(sheet).getByRole('tab', { name: 'Still open · 1' }),
+    ).toHaveFocus();
+    expect(within(sheet).getByText('Scheduled Sep 30')).toBeTruthy();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(strip).toHaveFocus();
+
+    await user.click(strip);
+    sheet = screen.getByRole('dialog', { name: 'Today’s tasks' });
+    await user.click(within(sheet).getByRole('tab', { name: 'Coming up · 1' }));
+    await user.click(
+      within(sheet).getByRole('button', {
+        name: 'Add Brand fonts to today’s note',
+      }),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(strip).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Note body' })).toHaveValue(
+      `{{task:${ULID(9)}}}\n`,
+    );
+    await waitFor(() =>
+      expect(within(comingUp()).queryByText('Brand fonts')).toBeNull(),
+    );
+    expect(strip).toHaveAccessibleName('1 still open, 0 coming up. Show list');
+  });
+
   test('the Snooze menu sets another day; a failed write brings the row back', async () => {
     vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
     addTask(task(10, { title: 'Plan Q4 posts', startDate: '2026-10-01' }));

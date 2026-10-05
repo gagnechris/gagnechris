@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   dailyNoteResource,
@@ -27,6 +34,13 @@ import {
   ComingUpPanel,
   StillOpenPanel,
 } from '../kit/tasks/TodayPanels';
+import { TodaySheet } from '../kit/tasks/TodaySheet';
+import ShellIcon from '../workspace/ui/ShellIcon';
+import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
+import {
+  NOTEBOOK_AREA_FILTERS,
+  type NotebookAreaFilter,
+} from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
 import { snoozeBaseDay } from '../kit/tasks/todayTaskBuckets';
 import { useLocalToday } from './useLocalToday';
@@ -82,6 +96,9 @@ function TodayEditor({
   today,
   onUnsavedChange,
   onEmbeddedIds,
+  appendEmbedRef,
+  highlightTaskId,
+  onHighlighted,
 }: {
   area: NotebookArea;
   date: string;
@@ -89,6 +106,10 @@ function TodayEditor({
   onUnsavedChange: (unsaved: boolean) => void;
   /** The draft's embeds, which are what the note shows; null while loading. */
   onEmbeddedIds: (ids: ReadonlySet<string> | null) => void;
+  /** Set while the note can take a new embed line. */
+  appendEmbedRef: MutableRefObject<((taskId: string) => void) | null>;
+  highlightTaskId: string | null;
+  onHighlighted: () => void;
 }) {
   const {
     draft,
@@ -131,6 +152,18 @@ function TodayEditor({
   useEffect(() => {
     onEmbeddedIds(ready ? new Set(taskEmbedIds(body)) : null);
   }, [onEmbeddedIds, ready, body]);
+
+  useEffect(() => {
+    if (!ready) return;
+    appendEmbedRef.current = (taskId) =>
+      updateDraft((prev) => ({
+        ...prev,
+        bodyMarkdown: appendTaskEmbed(prev.bodyMarkdown, taskId),
+      }));
+    return () => {
+      appendEmbedRef.current = null;
+    };
+  }, [appendEmbedRef, ready, updateDraft]);
 
   if (loadError || isLoading || !entity) {
     return (
@@ -180,13 +213,33 @@ function TodayEditor({
         onChange={(bodyMarkdown) =>
           updateDraft((prev) => ({ ...prev, bodyMarkdown }))
         }
+        highlightTaskId={highlightTaskId}
+        onHighlighted={onHighlighted}
       />
     </>
   );
 }
 
+function appendTaskEmbed(markdown: string, taskId: string): string {
+  const body = markdown.replace(/\s+$/, '');
+  return `${body}${body ? '\n' : ''}{{task:${taskId}}}\n`;
+}
+
+const AREA_LABELS: Record<NotebookAreaFilter, string> = {
+  work: 'Work',
+  personal: 'Personal',
+  all: 'All',
+};
+
 export default function NotebookTodayPage() {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
+  const { areaFilter, setAreaFilter } =
+    useOutletContext<NotebookOutletContext>();
+  const openSearch = useOpenWorkspaceSearch();
+  const stripRef = useRef<HTMLButtonElement>(null);
+  const appendEmbedRef = useRef<((taskId: string) => void) | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
+  const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
   const unsavedRef = useRef(false);
@@ -257,6 +310,25 @@ export default function NotebookTodayPage() {
     if (task) run(task);
   };
   const readOnly = writingArea === null;
+  const comingUpCount = buckets.comingUp.reduce(
+    (n, d) => n + d.tasks.length,
+    0,
+  );
+  const tasksLoading = loading.stillOpen || loading.comingUp;
+  const tasksError = loadError
+    ? 'Could not load tasks.'
+    : (patchError ?? toggleError ?? null);
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    stripRef.current?.focus();
+  };
+  const addToNote = (taskId: string) => {
+    appendEmbedRef.current?.(taskId);
+    setSheetOpen(false);
+    setHighlightTaskId(taskId);
+    stripRef.current?.focus();
+  };
 
   // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
@@ -299,14 +371,88 @@ export default function NotebookTodayPage() {
               ›
             </button>
             <details className="notebook-today__calendar">
-              <summary>Calendar</summary>
+              <summary>
+                <svg
+                  className="notebook-today__calendar-icon"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM16 2v4M8 2v4M3 10h18"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="notebook-today__calendar-label">Calendar</span>
+              </summary>
               <NotebookCalendar
                 selected={date}
                 onSelect={setDate}
                 markedDates={datesQuery.data}
               />
             </details>
+            <span className="notebook-today__phone-tools">
+              <select
+                className="admin-input notebook-today__area"
+                aria-label="Notebook area"
+                value={areaFilter}
+                onChange={(e) =>
+                  setAreaFilter(e.target.value as NotebookAreaFilter)
+                }
+              >
+                {NOTEBOOK_AREA_FILTERS.map((area) => (
+                  <option key={area} value={area}>
+                    {AREA_LABELS[area]}
+                  </option>
+                ))}
+              </select>
+              {openSearch ? (
+                <button
+                  type="button"
+                  className="admin-btn notebook-today__search"
+                  aria-label="Search"
+                  onClick={openSearch}
+                >
+                  <ShellIcon name="search" />
+                </button>
+              ) : null}
+            </span>
           </div>
+          <button
+            ref={stripRef}
+            type="button"
+            className="notebook-today__strip"
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
+            aria-label={
+              tasksLoading
+                ? 'Today’s tasks. Show list'
+                : `${stillOpenRows.length} still open, ${comingUpCount} coming up. Show list`
+            }
+            onClick={() => setSheetOpen(true)}
+          >
+            <span className="notebook-today__strip-text">
+              <strong>
+                {tasksLoading ? '…' : stillOpenRows.length} still open
+              </strong>{' '}
+              · {tasksLoading ? '…' : comingUpCount} coming up
+            </span>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path
+                d="m18 15-6-6-6 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           {writingArea ? (
             <TodayEditor
               key={`${writingArea}:${date}`}
@@ -315,6 +461,9 @@ export default function NotebookTodayPage() {
               today={today}
               onUnsavedChange={onUnsavedChange}
               onEmbeddedIds={onEmbeddedIds}
+              appendEmbedRef={appendEmbedRef}
+              highlightTaskId={highlightTaskId}
+              onHighlighted={clearHighlight}
             />
           ) : (
             <>
@@ -340,11 +489,7 @@ export default function NotebookTodayPage() {
             snoozeFrom={snoozeBaseDay(date, today)}
             readOnly={readOnly}
             loading={loading.stillOpen}
-            error={
-              loadError
-                ? 'Could not load tasks.'
-                : (patchError ?? toggleError ?? null)
-            }
+            error={tasksError}
             onToggle={(id) => withTask(id, (task) => void toggle(task))}
             onSnooze={(id, schedule) =>
               withTask(id, (task) => void patch(task, schedule))
@@ -365,6 +510,27 @@ export default function NotebookTodayPage() {
           <TaskSyntaxCheatSheet />
         </aside>
       </div>
+      {sheetOpen ? (
+        <TodaySheet
+          stillOpen={stillOpenRows}
+          comingUp={buckets.comingUp}
+          day={date}
+          snoozeFrom={snoozeBaseDay(date, today)}
+          readOnly={readOnly}
+          loading={tasksLoading}
+          error={tasksError}
+          onClose={closeSheet}
+          onToggle={(id) => withTask(id, (task) => void toggle(task))}
+          onSnooze={(id, schedule) =>
+            withTask(id, (task) => void patch(task, schedule))
+          }
+          onDrop={(id) =>
+            withTask(id, (task) => void patch(task, { status: 'dropped' }))
+          }
+          onAddToNote={readOnly ? undefined : addToNote}
+          taskTo={(task) => `/tasks/${task.id}`}
+        />
+      ) : null}
     </section>
   );
 }

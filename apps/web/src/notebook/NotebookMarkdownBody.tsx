@@ -1,8 +1,21 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { EditorView } from '@codemirror/view';
+import { findTaskEmbeds } from '@gagnechris/shared';
+import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
+import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
 import MarkdownPreview from '../kit/markdown/MarkdownPreview';
 import '../kit/markdown/markdown.css';
+import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds, type EmbedNote } from './useNoteTaskEmbeds';
 
@@ -15,7 +28,14 @@ type Props = {
   note?: EmbedNote;
   ensureNoteSaved?: () => Promise<unknown>;
   hint?: string;
+  /** Scrolls this task's embed into view and flashes it, once it is in `value`. */
+  highlightTaskId?: string | null;
+  onHighlighted?: () => void;
 };
+
+/** Room under the caret for the accessory bar and the docked date chips. */
+const PHONE_SCROLL_MARGIN = 160;
+const FLASH_MS = 2000;
 
 /** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({
@@ -24,8 +44,14 @@ export function NotebookMarkdownBody({
   note,
   ensureNoteSaved,
   hint,
+  highlightTaskId,
+  onHighlighted,
 }: Props) {
   const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
+  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const getView = useCallback(() => editorRef.current?.view(), []);
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [focused, setFocused] = useState(false);
   const embeds = useNoteTaskEmbeds({
     markdown: value,
     note: note ?? null,
@@ -41,9 +67,41 @@ export function NotebookMarkdownBody({
       taskListToggle(),
       ...(withTasks ? dateMenu.extensions : []),
       ...embeds.extensions,
+      EditorView.updateListener.of((update) => {
+        if (update.focusChanged) setFocused(update.view.hasFocus);
+      }),
+      ...(phone
+        ? [EditorView.scrollMargins.of(() => ({ bottom: PHONE_SCROLL_MARGIN }))]
+        : []),
     ],
-    [embeds.extensions, dateMenu.extensions, withTasks],
+    [embeds.extensions, dateMenu.extensions, withTasks, phone],
   );
+
+  useEffect(() => {
+    if (!highlightTaskId) return;
+    const view = editorRef.current?.view();
+    if (!view) return;
+    const embed = findTaskEmbeds(view.state.doc.toString()).find(
+      (e) => e.id === highlightTaskId,
+    );
+    if (!embed) return;
+    view.dispatch({
+      effects: EditorView.scrollIntoView(
+        view.state.doc.line(embed.line + 1).from,
+        { y: 'center' },
+      ),
+    });
+    const frame = requestAnimationFrame(() => {
+      onHighlighted?.();
+      const el = view.dom.querySelector(
+        `.cm-task-embed[data-task-id="${highlightTaskId}"]`,
+      );
+      if (!el) return;
+      el.classList.add('cm-task-embed--flash');
+      setTimeout(() => el.classList.remove('cm-task-embed--flash'), FLASH_MS);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightTaskId, onHighlighted, value]);
 
   return (
     <>
@@ -71,6 +129,7 @@ export function NotebookMarkdownBody({
         <div className="markdown-split" data-pane={mobilePane}>
           <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
             <MarkdownEditor
+              ref={editorRef}
               value={value}
               onChange={onChange}
               extensions={extensions}
@@ -85,6 +144,9 @@ export function NotebookMarkdownBody({
         </div>
       </div>
       {embeds.portals}
+      {phone && focused ? (
+        <EditorAccessoryBar getView={getView} tasks={withTasks} />
+      ) : null}
       {withTasks ? dateMenu.menu : null}
       {embeds.toggleError ? (
         <p className="admin-panel__error" role="alert">
