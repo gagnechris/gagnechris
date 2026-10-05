@@ -88,6 +88,9 @@ export function taskEmbedFallbackLine(
   task: TaskEmbedMarkdownTask | undefined,
 ): string {
   if (!task) return `${embed.indent}- [ ] (deleted task)`;
+  if (task.status === 'dropped') {
+    return `${embed.indent}- [ ] ~~${task.title}~~ (dropped)`;
+  }
   const box = task.status === 'done' ? 'x' : ' ';
   return `${embed.indent}- [${box}] ${task.title}`;
 }

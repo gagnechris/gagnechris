@@ -161,7 +161,7 @@ export function buildNotebookExportZip(
 
 Generated for personal backup / migration.
 
-- \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\` / \`- [x] Title\`
+- \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\`, \`- [x] Title\` when done and \`- [ ] ~~Title~~ (dropped)\` when dropped
 - \`tasks.json\` — all non-deleted tasks
 
 This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).
