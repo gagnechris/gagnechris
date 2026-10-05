@@ -158,7 +158,7 @@ export class PublisherStack extends Stack {
             const fontsSrc = join(inputDir, 'services/publisher/assets/fonts');
             return [
               `mkdir -p "${outputDir}/assets/fonts"`,
-              `cp "${fontsSrc}/Inter-Regular.ttf" "${fontsSrc}/Inter-Bold.ttf" "${outputDir}/assets/fonts/"`,
+              `cp "${fontsSrc}"/*.ttf "${fontsSrc}"/*-OFL.txt "${outputDir}/assets/fonts/"`,
             ];
           },
         },

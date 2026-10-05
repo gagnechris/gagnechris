@@ -301,6 +301,26 @@ The phone artboard is 393 wide; values for 390px are taken from it.
 | At 390px         | Title 40px, headline 20px, summary 19px. Download PDF spans the column, 48px tall, 8px radius, Inter 15px. Dates stack 4px above the role; role title 22px, bullets 17px / 1.5; earlier rows, skill labels and education stack the same way                                                                                                                                                |
 | Not drawn        | The phone artboard shows no summary, LinkedIn or Get in touch; the page keeps them below the headline and button. Unpublished: title, "Resume available on request." as the summary, LinkedIn and Get in touch                                                                                                                                                                             |
 
+## Resume PDF
+
+No artboard; the print layout follows the Resume page. Drawn by
+`services/publisher/src/resume-pdf.ts`, fonts in `services/publisher/assets/fonts/`.
+
+| Element        | Value                                                                                                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page           | US Letter (612×792pt), 0.6in margins, at most two pages                                                                                                                                             |
+| Header         | Name Newsreader Medium 24pt; current role (`content.headline`, else "Title at Company" of the role with no end) Newsreader italic 12pt `inkSoft`; contact line Inter 8.5pt `neutral-600` with links |
+| Summary        | Newsreader 10.5pt / 14.5pt, #2b3138                                                                                                                                                                 |
+| Section labels | EXPERIENCE, STRENGTHS AND SKILLS, EDUCATION: Inter Bold 8pt uppercase, 0.5pt tracking, 0.75pt ink rule below                                                                                        |
+| Date column    | 100pt + 16pt gap; Inter 9pt tabular figures, `neutral-600`, "Jul 2019 – Present", on the role's first baseline                                                                                      |
+| Role           | Title Newsreader Medium 12pt ink, "at Company" italic `inkSoft`; 0.5pt `neutral-200` rule between roles                                                                                             |
+| Bullets        | Newsreader 10.5pt / 13.6pt, #2b3138, "•" markers, 10pt indent                                                                                                                                       |
+| Fit            | If the resume runs past two pages, ended roles drop to one line (date + "Title at Company", 10.5pt), oldest first, until it fits                                                                    |
+| Skills         | Competencies joined with " · "; `Label: value` rows with the label in the date column (Inter Bold 8pt `neutral-700`), value Newsreader 10.5pt                                                       |
+| Education      | `year` as stored in the date column; title Newsreader 10.5pt; "Institution, Location" italic 9.5pt `inkSoft`                                                                                        |
+| Fonts          | Newsreader 16pt static cut (Regular, Italic, Medium) and Inter (Regular, Bold), subset; characters Newsreader lacks use Inter, then `?`                                                             |
+| Text           | Drawn in reading order (date, role, bullets), no ligatures, so copy-paste and ATS extraction get plain text                                                                                         |
+
 ## Contact (Phone · Contact, measured)
 
 Measured on the 393px Phone · Contact artboard; desktop values (not drawn)
