@@ -48,7 +48,8 @@ const pageCount = async (bytes: Uint8Array): Promise<number> =>
 
 /** Extracted text in content order, whitespace collapsed. */
 async function pdfText(bytes: Uint8Array): Promise<string> {
-  const pdf = await getDocument({ data: bytes.slice() }).promise;
+  const task = getDocument({ data: bytes.slice() });
+  const pdf = await task.promise;
   const pages: string[] = [];
   for (let n = 1; n <= pdf.numPages; n++) {
     const content = await (await pdf.getPage(n)).getTextContent();
@@ -60,7 +61,7 @@ async function pdfText(bytes: Uint8Array): Promise<string> {
         .join(''),
     );
   }
-  await pdf.destroy();
+  await task.destroy();
   return pages.join('\n').replace(/\s+/g, ' ');
 }
 
