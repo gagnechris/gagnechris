@@ -186,7 +186,7 @@ describe('NotebookTasksPage', () => {
       ).toBeInTheDocument();
     });
 
-    const input = screen.getByRole('textbox', { name: 'Quick add task' });
+    const input = screen.getByRole('combobox', { name: 'Quick add task' });
     await user.type(input, 'Ship API !high{Enter}');
 
     await waitFor(() => {
@@ -211,8 +211,8 @@ describe('NotebookTasksPage', () => {
     renderTasks();
 
     await user.type(
-      await screen.findByRole('textbox', { name: 'Quick add task' }),
-      'Call bank tomorrow{Enter}',
+      await screen.findByRole('combobox', { name: 'Quick add task' }),
+      'Call bank @tomorrow{Enter}',
     );
 
     expect(await screen.findByText('Call bank')).toBeInTheDocument();

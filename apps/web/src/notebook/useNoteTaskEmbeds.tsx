@@ -31,8 +31,10 @@ export function taskRequestFromLine(
     area: note.area,
     title: draft.title,
     description: '',
-    priority: 'med',
+    priority: draft.priority,
     status: 'todo',
+    startDate: draft.startDate,
+    someday: draft.someday,
     noteId: note.id,
     tags: [],
   };
@@ -154,7 +156,7 @@ export function useNoteTaskEmbeds({
             task: {
               title: waiting.draft.title,
               status: 'todo',
-              priority: 'med',
+              priority: waiting.draft.priority,
             },
             pending: true,
             onToggle: () => {},

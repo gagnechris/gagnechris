@@ -224,20 +224,29 @@ function typeInto(view: EditorView, text: string) {
   });
 }
 
-function pressEnter(view: EditorView) {
+const KEY_CODES: Record<string, number> = {
+  Enter: 13,
+  Escape: 27,
+  ArrowUp: 38,
+  ArrowDown: 40,
+};
+
+function press(view: EditorView, key: keyof typeof KEY_CODES) {
   act(() => {
     view.focus();
     view.contentDOM.dispatchEvent(
       new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
+        key,
+        code: key,
+        keyCode: KEY_CODES[key],
         bubbles: true,
         cancelable: true,
       }),
     );
   });
 }
+
+const pressEnter = (view: EditorView) => press(view, 'Enter');
 
 const tokenLine = (id: string) => `{{task:${id}}}`;
 const last = <T,>(items: T[]): T | undefined => items[items.length - 1];
@@ -352,6 +361,123 @@ describe('writing [ ] text in a daily note', () => {
       timeout: 3000,
     });
   }, 15_000);
+});
+
+describe('task syntax on a [ ] line in a note', () => {
+  beforeEach(() => {
+    // Friday 2026-10-02, local time.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function renderToday() {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <Outlet context={{ areaFilter: 'work' }} />,
+          children: [{ path: 'today', element: <NotebookTodayPage /> }],
+        },
+      ],
+      { initialEntries: [`/today?date=${TODAY}`] },
+    );
+    return render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+  }
+
+  test('[ ] Call Sam @mon !high creates one task on next Monday with high priority', async () => {
+    const { container } = renderToday();
+    const view = await editorView(container);
+    act(() => view.focus());
+
+    typeInto(view, '[ ] Call Sam @mon !high');
+    pressEnter(view);
+
+    await waitFor(() => expect(api.taskPosts.length).toBeGreaterThan(0), {
+      timeout: 5000,
+    });
+    await waitFor(() => expect(api.tasks.size).toBe(1), { timeout: 5000 });
+    const ids = new Set(api.taskPosts.map((b) => b.id));
+    expect(ids.size).toBe(1);
+    expect(last(api.taskPosts)).toMatchObject({
+      title: 'Call Sam',
+      startDate: '2026-10-05',
+      someday: false,
+      priority: 'high',
+      noteId: api.daily!.id,
+    });
+    expect(view.state.doc.line(1).text).toBe(tokenLine([...ids][0] as string));
+  });
+
+  test('@ opens the date menu on the line; arrows, Enter and Esc drive it', async () => {
+    const { container } = renderToday();
+    const view = await editorView(container);
+    act(() => view.focus());
+
+    typeInto(view, '[ ] Match fonts @');
+    const listbox = await screen.findByRole('listbox', {
+      name: 'Show this task on…',
+    });
+    expect(
+      within(listbox)
+        .getAllByRole('option')
+        .map((o) => o.getAttribute('aria-label')),
+    ).toEqual([
+      'Tomorrow, Sat, Oct 3',
+      'Monday, Oct 5',
+      'Next week, Mon, Oct 5',
+      'Someday, No date, parked',
+      'Pick a date…',
+    ]);
+    const content = view.contentDOM;
+    expect(content).toHaveAttribute('aria-controls', listbox.id);
+    expect(content).toHaveAttribute('aria-haspopup', 'listbox');
+    const active = () =>
+      document.getElementById(content.getAttribute('aria-activedescendant')!);
+    expect(active()).toHaveAttribute('aria-selected', 'true');
+    expect(active()).toHaveTextContent('Tomorrow');
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((el) => el.textContent?.startsWith('5 date options.')),
+    ).toBe(true);
+    expect(
+      screen.getByText('Stays in this note. Shows up on Today from that date.'),
+    ).toHaveAttribute('id', content.getAttribute('aria-describedby'));
+
+    press(view, 'ArrowDown');
+    expect(active()).toHaveTextContent('Monday');
+    press(view, 'Escape');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(content).not.toHaveAttribute('aria-activedescendant');
+    expect(view.state.doc.toString()).toBe('[ ] Match fonts @');
+
+    typeInto(view, 'ne');
+    expect(
+      within(await screen.findByRole('listbox', { name: 'Show this task on…' }))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Next weekMon, Oct 5']);
+    press(view, 'Enter');
+    expect(view.state.doc.toString()).toBe('[ ] Match fonts @next week ');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(api.taskPosts).toEqual([]);
+
+    pressEnter(view);
+    await waitFor(() => expect(api.taskPosts.length).toBeGreaterThan(0), {
+      timeout: 5000,
+    });
+    expect(last(api.taskPosts)).toMatchObject({
+      title: 'Match fonts',
+      startDate: '2026-10-05',
+    });
+  });
 });
 
 describe('one task embedded in two notes', () => {

@@ -137,19 +137,25 @@ describe('task start-date migration (DynamoDB Local)', () => {
       ),
     );
 
-  it('legacy rows already show on their dueDate before the migration runs', async () => {
+  const migratedViews = () => ({
+    today: [idOf('past'), idOf('today'), idOf('undated'), NEW_NOW].sort(),
+    upcoming: [idOf('future')],
+    doneToday: [idOf('doneToday')],
+  });
+
+  it('reads an unmigrated row as starting on its dueDate, outside the start-date views', async () => {
     expect((await raw(idOf('past'))).startDate).toBeUndefined();
     expect((await raw(idOf('past'))).gsi1sk).toMatch(/^DUE#2026-09-28#/);
 
-    expect(await views()).toEqual({
-      today: [idOf('past'), idOf('today'), idOf('undated'), NEW_NOW].sort(),
-      upcoming: [idOf('future')],
-      doneToday: [idOf('doneToday')],
-    });
     expect(await repo.get(USER, idOf('future'))).toMatchObject({
       startDate: '2026-10-11',
       dueDate: '2026-10-11',
       someday: false,
+    });
+    expect(await views()).toEqual({
+      today: [idOf('undated'), NEW_NOW].sort(),
+      upcoming: [],
+      doneToday: [],
     });
   });
 
@@ -176,8 +182,7 @@ describe('task start-date migration (DynamoDB Local)', () => {
     expect(taskStartDateMigrationExitCode(await run('verify'))).toBe(2);
   });
 
-  it('--apply keeps every task on the same day, changes nothing served, and is idempotent', async () => {
-    const viewsBefore = await views();
+  it('--apply puts every task in its start-date view, changes nothing served, and is idempotent', async () => {
     const servedBefore = await served();
     const feedBefore = await new SyncLedger(doc, tableName).queryChangesSince(
       USER,
@@ -197,7 +202,7 @@ describe('task start-date migration (DynamoDB Local)', () => {
     expect((await raw(idOf('tombstone'))).gsi1sk).toBeUndefined();
     expect((await raw(NEW_NOW)).startDate).toBeNull();
 
-    expect(await views()).toEqual(viewsBefore);
+    expect(await views()).toEqual(migratedViews());
     expect(await served()).toEqual(servedBefore);
     const feedAfter = await new SyncLedger(doc, tableName).queryChangesSince(
       USER,

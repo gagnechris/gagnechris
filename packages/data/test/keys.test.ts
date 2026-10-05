@@ -152,16 +152,12 @@ describe('task start-date GSI1 ranges', () => {
       .map(([name]) => name)
       .sort();
 
-  it('covers each view exactly, including rows still keyed by dueDate', () => {
+  it('covers each view exactly and never reads rows keyed by dueDate', () => {
     expect(hits(taskGsi1SkRanges.showsOn(day))).toEqual(
-      ['legacyBefore', 'legacyOn', 'now', 'startBefore', 'startOn'].sort(),
+      ['now', 'startBefore', 'startOn'].sort(),
     );
-    expect(hits(taskGsi1SkRanges.startsAfter(day))).toEqual(
-      ['legacyAfter', 'startAfter'].sort(),
-    );
-    expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(
-      ['legacyOn', 'startOn'].sort(),
-    );
+    expect(hits(taskGsi1SkRanges.startsAfter(day))).toEqual(['startAfter']);
+    expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(['startOn']);
     expect(hits(taskGsi1SkRanges.someday())).toEqual(['someday']);
   });
 });

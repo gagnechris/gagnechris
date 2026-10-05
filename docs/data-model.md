@@ -375,7 +375,7 @@ Context written under the task.
 - `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. Rows written before embeds have no `taskIds` attribute and derive it on read.
 - Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
 - A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
-- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. A deleted task renders as a muted "Deleted task" row.
+- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. A deleted task renders as a muted "Deleted task" row.
 
 ### Task fields
 
@@ -407,7 +407,7 @@ Context written under the task.
 
 **Show-on date and someday.** `someday` is a separate boolean, not a sentinel `startDate`, so `startDate` is always a real calendar date or `null`, Upcoming can order by it without excluding a magic value, and a later deadline field can sit beside it. The API keeps the two exclusive: a body with `someday: true` and a non-null `startDate` is **400**; `PUT` with `someday: true` clears `startDate`, and `PUT` with a non-null `startDate` clears `someday`.
 
-**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), and its start-date queries also read the `DUE#` prefix, so these tasks show on the same day before and after `scripts/migrate-task-start-dates.ts` runs (see `infra/RUNBOOK.md`). Any API write to such a row stores `startDate` and rekeys it to `START#`.
+**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), but its start-date queries read only `START#`, `UPDATED#` and `SOMEDAY#`, so a dated row still keyed `DUE#` shows in no Today or Upcoming list until `scripts/migrate-task-start-dates.ts` rekeys it (see `infra/RUNBOOK.md`). Any API write to such a row also stores `startDate` and rekeys it to `START#`.
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 
@@ -439,14 +439,14 @@ API surface: Notebook repositories use `VersionedRepository` with the `ownerScop
 
 Start-date filters (at most one of `startOnOrBefore`, `startAfter`, `startOn`; `someday=true` with any of them is **400**):
 
-| Filter                        | Matches                                | GSI1 sort-key ranges per (area, status)                             |
-| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| `startOnOrBefore=<d>` (Today) | `startDate` ≤ d or `null`, not someday | `START#` … `START#<d>#TASK~`, `DUE#` … `DUE#<d>#TASK~`, `UPDATED#*` |
-| `startAfter=<d>` (Upcoming)   | `startDate` &gt; d, not someday        | `START#<d>#TASK~` … `START#\uffff`, same for `DUE#`                 |
-| `startOn=<d>`                 | `startDate` = d                        | `START#<d>#…`, `DUE#<d>#…`                                          |
-| `someday=true` / `false`      | someday tasks / everything else        | `SOMEDAY#*` / whole partition, filtered                             |
+| Filter                        | Matches                                | GSI1 sort-key ranges per (area, status)   |
+| ----------------------------- | -------------------------------------- | ----------------------------------------- |
+| `startOnOrBefore=<d>` (Today) | `startDate` ≤ d or `null`, not someday | `START#` … `START#<d>#TASK~`, `UPDATED#*` |
+| `startAfter=<d>` (Upcoming)   | `startDate` &gt; d, not someday        | `START#<d>#TASK~` … `START#\uffff`        |
+| `startOn=<d>`                 | `startDate` = d                        | `START#<d>#…`                             |
+| `someday=true` / `false`      | someday tasks / everything else        | `SOMEDAY#*` / whole partition, filtered   |
 
-Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&startAfter=<local today>`. The `DUE#` ranges cover rows the start-date migration has not reached. `priority`, `dueOn` and `dueBefore` have no key condition: they filter each page, so a page can hold fewer than `limit` items while `nextCursor` is set. List sort is applied **on the server** within each page: carried over (open, `startDate` &lt; `today`), then earlier start dates, then `startDate: null`, then someday, then priority, then id. Pages are not globally sorted across partitions; clients that need one order (Upcoming by date) sort after loading every page.
+Today is `open=true&startOnOrBefore=<local today>`; Upcoming is `open=true&startAfter=<local today>`. `priority`, `dueOn` and `dueBefore` have no key condition: they filter each page, so a page can hold fewer than `limit` items while `nextCursor` is set. List sort is applied **on the server** within each page: carried over (open, `startDate` &lt; `today`), then earlier start dates, then `startDate: null`, then someday, then priority, then id. Pages are not globally sorted across partitions; clients that need one order (Upcoming by date) sort after loading every page.
 
 ### Search HTTP API
 

@@ -74,7 +74,12 @@ describe('task line helpers', () => {
   test('parseTaskLine reads `[ ] title` only', () => {
     expect(parseTaskLine('  [ ] Call Sam ')).toEqual({
       indent: '  ',
-      draft: { title: 'Call Sam' },
+      draft: {
+        title: 'Call Sam',
+        startDate: null,
+        someday: false,
+        priority: 'med',
+      },
     });
     expect(parseTaskLine('- [ ] checklist')).toBeNull();
     expect(parseTaskLine('[x] done')).toBeNull();

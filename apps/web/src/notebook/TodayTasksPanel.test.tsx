@@ -265,13 +265,72 @@ describe('TodayTasksPanel', () => {
     );
 
     await user.type(
-      await screen.findByRole('textbox', { name: 'Quick add task for today' }),
-      'tomorrow{Enter}',
+      await screen.findByRole('combobox', { name: 'Quick add task for today' }),
+      '@tomorrow{Enter}',
     );
 
     expect(
       await screen.findByText('Add a title before the date.'),
     ).toBeInTheDocument();
     expect(state.tasks).toHaveLength(1);
+  });
+
+  test('quick-add reads task syntax: @mon, @someday and !high', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <TodayTasksPanel area="work" now={new Date(2026, 9, 2, 9, 0, 0)} />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    const input = await screen.findByRole('combobox', {
+      name: 'Quick add task for today',
+    });
+    await user.type(input, 'Ask Sam for fonts @mon !high{Enter}');
+    await waitFor(() => expect(state.created).toHaveLength(1));
+    expect(state.created[0]).toMatchObject({
+      title: 'Ask Sam for fonts',
+      startDate: '2026-10-05',
+      someday: false,
+      priority: 'high',
+    });
+
+    await user.type(input, 'Try Expo Router @someday{Enter}');
+    await waitFor(() => expect(state.created).toHaveLength(2));
+    expect(state.created[1]).toMatchObject({
+      title: 'Try Expo Router',
+      startDate: null,
+      someday: true,
+    });
+
+    await user.type(input, 'Call bank tomorrow{Enter}');
+    await waitFor(() => expect(state.created).toHaveLength(3));
+    expect(state.created[2]).toMatchObject({
+      title: 'Call bank tomorrow',
+      startDate: '2026-10-02',
+    });
+  });
+
+  test('shows the Writing tasks cheat sheet', async () => {
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <TodayTasksPanel area="work" now={new Date(2026, 9, 2, 9, 0, 0)} />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    const sheet = await screen.findByRole('region', { name: 'Writing tasks' });
+    expect(sheet).toHaveTextContent(
+      '@monHide until Monday (on a Monday, the next one)',
+    );
+    expect(sheet).toHaveTextContent(
+      '[ ] textIn a note, creates a task and embeds it there',
+    );
+    expect(sheet).toHaveTextContent('@somedayPark it, no date');
+    expect(sheet).toHaveTextContent('!highPriority');
   });
 });

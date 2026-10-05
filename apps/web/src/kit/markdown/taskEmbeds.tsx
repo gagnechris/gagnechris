@@ -24,7 +24,11 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { parseTaskLine, type TaskLineDraft } from '../tasks/taskLine';
+import {
+  parseTaskLine,
+  taskLineDraftKey,
+  type TaskLineDraft,
+} from '../tasks/taskLine';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 
@@ -72,7 +76,7 @@ const convertedField = StateField.define<ReadonlyMap<string, string>>({
     if (created.length === 0) return value;
     const next = new Map(value);
     for (const effect of created) {
-      next.set(effect.value.draft.title, effect.value.id);
+      next.set(taskLineDraftKey(effect.value.draft), effect.value.id);
     }
     return next;
   },
@@ -109,7 +113,8 @@ function convertLeftLine(newId: () => string) {
     const parsed = parseTaskLine(line.text);
     if (!parsed || insideFence(doc, line.number)) return tr;
     const id =
-      tr.startState.field(convertedField).get(parsed.draft.title) ?? newId();
+      tr.startState.field(convertedField).get(taskLineDraftKey(parsed.draft)) ??
+      newId();
     return [
       tr,
       {
@@ -205,7 +210,12 @@ export function taskEmbedEditor({
       }
     }),
     EditorView.domEventHandlers({
-      blur(_event, view) {
+      blur(event, view) {
+        // Pick a date… takes focus but the line is still being written.
+        const to = event.relatedTarget;
+        if (to instanceof Element && to.closest('[data-task-date-menu]')) {
+          return false;
+        }
         if (view.dom.isConnected && view.state.field(candidateField) !== null) {
           view.dispatch({ effects: flushEffect.of(null) });
         }

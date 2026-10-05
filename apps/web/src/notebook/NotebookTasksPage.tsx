@@ -6,12 +6,16 @@ import {
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
-import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
+import {
+  parseTaskSyntax,
+  type TaskPriority,
+  type TaskStatus,
+} from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import { addLocalDays, localToday, parseLocalDate } from '../kit/calendarDates';
 import { areaQueryParam } from './notebookAreaPreference';
-import { parseTaskQuickAdd } from '../kit/tasks/parseTaskQuickAdd';
 import { TaskRow } from '../kit/tasks/TaskRow';
+import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
@@ -106,7 +110,7 @@ export default function NotebookTasksPage() {
     status === 'done' || (!status && (doneItems.length > 0 || !showCompleted));
 
   const submitQuickAdd = async () => {
-    const parsed = parseTaskQuickAdd(quickAdd, today);
+    const parsed = parseTaskSyntax(quickAdd, today);
     if (!parsed.title) {
       setQuickAddHint('Add a title before the date.');
       return;
@@ -122,6 +126,7 @@ export default function NotebookTasksPage() {
       priority: parsed.priority,
       status: 'todo',
       startDate: parsed.startDate,
+      someday: parsed.someday,
       tags: [],
     });
     setQuickAdd('');
@@ -143,8 +148,8 @@ export default function NotebookTasksPage() {
                 ? 'Work'
                 : 'Personal'}
             {' · '}
-            quick-add supports <code>!high</code> and a trailing{' '}
-            <code>today</code> / <code>tomorrow</code>
+            quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
+            <code>@oct 12</code>, <code>@someday</code> and <code>!high</code>
           </p>
         </div>
       </div>
@@ -156,13 +161,12 @@ export default function NotebookTasksPage() {
           void submitQuickAdd();
         }}
       >
-        <input
-          className="admin-input"
-          type="text"
+        <TaskSyntaxInput
+          today={today}
           placeholder="Add a task and press Enter"
           value={quickAdd}
-          onChange={(e) => {
-            setQuickAdd(e.target.value);
+          onChange={(next) => {
+            setQuickAdd(next);
             setQuickAddHint(null);
           }}
           aria-label="Quick add task"

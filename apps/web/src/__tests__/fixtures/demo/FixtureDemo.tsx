@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
+import {
+  parseTaskSyntax,
+  type TaskPriority,
+  type TaskStatus,
+} from '@gagnechris/shared';
 import { Button } from '../../../kit/Button';
 import { DemoFrame } from '../../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../../kit/demo/useDemoReducer';
-import { parseTaskQuickAdd } from '../../../kit/tasks/parseTaskQuickAdd';
 import { TaskRow } from '../../../kit/tasks/TaskRow';
 import type { ProjectDemoProps } from '../../../projects/demoLoaders';
 
@@ -29,7 +32,7 @@ const reducer = (tasks: DemoTask[], action: Action): DemoTask[] => {
         : t,
     );
   }
-  const parsed = parseTaskQuickAdd(action.input);
+  const parsed = parseTaskSyntax(action.input);
   if (!parsed.title) return tasks;
   const id = Math.max(0, ...tasks.map((t) => t.id)) + 1;
   return [

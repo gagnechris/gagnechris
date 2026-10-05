@@ -286,10 +286,9 @@ export function taskSomedayGsi1Sk(updatedAt: string, taskId: string): string {
 }
 
 /**
- * Rows stored without a `startDate` attribute, keyed by `dueDate` (which is
- * their start date). Any write rekeys them to START#; until
- * `scripts/migrate-task-start-dates.ts` has run, start-date queries must also
- * read this prefix.
+ * Rows stored without a `startDate` attribute, keyed by `dueDate`. Start-date
+ * queries do not read this prefix: `scripts/migrate-task-start-dates.ts`
+ * rekeys these rows to START#, and so does any API write.
  */
 export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
   return `DUE#${dueDate}#TASK#${taskId}`;
@@ -298,24 +297,25 @@ export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
 /** Inclusive `gsi1sk BETWEEN from AND to` on a task area/status partition. */
 export type SortKeyRange = { from: string; to: string };
 
-const START_PREFIXES = ['START#', 'DUE#'] as const;
 const prefixRange = (prefix: string): SortKeyRange => ({
   from: prefix,
   to: `${prefix}\uffff`,
 });
-// `#TASK~` sorts after every `<prefix><day>#TASK#<id>` for that day.
-const afterDay = (prefix: string, day: string) => `${prefix}${day}#TASK~`;
+// `#TASK~` sorts after every `START#<day>#TASK#<id>` for that day.
+const afterDay = (day: string) => `START#${day}#TASK~`;
 
 export const taskGsi1SkRanges = {
-  startOn: (day: string): SortKeyRange[] =>
-    START_PREFIXES.map((p) => ({ from: `${p}${day}#`, to: afterDay(p, day) })),
+  startOn: (day: string): SortKeyRange[] => [
+    { from: `START#${day}#`, to: afterDay(day) },
+  ],
   /** startDate on or before `day`, or null; never someday. */
   showsOn: (day: string): SortKeyRange[] => [
-    ...START_PREFIXES.map((p) => ({ from: p, to: afterDay(p, day) })),
+    { from: 'START#', to: afterDay(day) },
     prefixRange('UPDATED#'),
   ],
-  startsAfter: (day: string): SortKeyRange[] =>
-    START_PREFIXES.map((p) => ({ from: afterDay(p, day), to: `${p}\uffff` })),
+  startsAfter: (day: string): SortKeyRange[] => [
+    { from: afterDay(day), to: 'START#\uffff' },
+  ],
   someday: (): SortKeyRange[] => [prefixRange('SOMEDAY#')],
 };
 
