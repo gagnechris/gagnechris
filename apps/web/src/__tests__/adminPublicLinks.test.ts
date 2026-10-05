@@ -124,6 +124,43 @@ const leakyPublicLinks = (fileName: string, source: string): string[] => {
   return found;
 };
 
+const isWithPublicUrlsCall = (node: ts.Node | undefined) =>
+  node !== undefined &&
+  ts.isCallExpression(node) &&
+  ts.isIdentifier(node.expression) &&
+  node.expression.text === 'withPublicUrls';
+
+/** Rendered HTML whose root-relative links and images would resolve against the admin host. */
+const unroutedInnerHtml = (fileName: string, source: string): string[] => {
+  const file = parse(fileName, source);
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isJsxAttribute(node) &&
+      node.name.getText() === 'dangerouslySetInnerHTML'
+    ) {
+      const value =
+        node.initializer && ts.isJsxExpression(node.initializer)
+          ? node.initializer.expression
+          : undefined;
+      const html =
+        value && ts.isObjectLiteralExpression(value)
+          ? value.properties.find(
+              (p): p is ts.PropertyAssignment =>
+                ts.isPropertyAssignment(p) && p.name.getText() === '__html',
+            )?.initializer
+          : undefined;
+      if (!isWithPublicUrlsCall(html)) {
+        const { line } = file.getLineAndCharacterOfPosition(node.getStart());
+        found.push(`${fileName}:${line + 1}`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+};
+
 const adminSources = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
@@ -195,6 +232,35 @@ describe('admin links to the public site', () => {
     const found = files.flatMap((file) =>
       leakyPublicLinks(
         path.relative(srcDir, file),
+        fs.readFileSync(file, 'utf8'),
+      ),
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('flags rendered HTML not routed through withPublicUrls', () => {
+    expect(
+      unroutedInnerHtml(
+        'x.tsx',
+        [
+          '<div dangerouslySetInnerHTML={{ __html: renderPostMarkdownToHtml(md) }} />;',
+          '<div dangerouslySetInnerHTML={{ __html: html }} />;',
+          '<div dangerouslySetInnerHTML={props} />;',
+          '<div dangerouslySetInnerHTML={{ __html: withPublicUrls(renderProjectMarkdownToHtml(md)) }} />;',
+          '<div dangerouslySetInnerHTML={{ __html: withPublicUrls(previewHtml) }} />;',
+        ].join('\n'),
+      ),
+    ).toEqual(['x.tsx:1', 'x.tsx:2', 'x.tsx:3']);
+  });
+
+  it('every admin preview routes its HTML through withPublicUrls', () => {
+    const files = adminSources(adminDir);
+    expect(files.map((f) => path.basename(f))).toEqual(
+      expect.arrayContaining(['PostBodyPreview.tsx', 'ProjectBodyPreview.tsx']),
+    );
+    const found = files.flatMap((file) =>
+      unroutedInnerHtml(
+        path.relative(adminDir, file),
         fs.readFileSync(file, 'utf8'),
       ),
     );

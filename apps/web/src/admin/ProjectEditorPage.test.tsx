@@ -9,6 +9,11 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Project } from '@gagnechris/app-core';
+import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
+import {
+  projectPageView,
+  renderProjectPageBodyHtml,
+} from '@gagnechris/shared/render';
 import { QueryClientTestProvider } from '../test-utils';
 import ProjectEditorPage from './ProjectEditorPage';
 
@@ -594,5 +599,67 @@ describe('ProjectEditorPage lifecycle', () => {
     );
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+});
+
+describe('ProjectEditorPage preview', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test('renders the body exactly as the published project page does', async () => {
+    const project = {
+      ...baseProject,
+      bodyMarkdown: `${EVERY_MARKDOWN_ELEMENT}\n- **Stack** TypeScript\n- **Data** DynamoDB\n`,
+    };
+    renderEditor(project);
+    await screen.findByDisplayValue('Notebook');
+
+    const published = document.createElement('div');
+    published.innerHTML = renderProjectPageBodyHtml(projectPageView(project));
+    const publishedBody = published.querySelector(
+      '.project-page .project-main > .project-body',
+    );
+    const previewBody = document.querySelector(
+      '.admin-body-preview .project-page .project-main > .project-body',
+    );
+    expect(publishedBody?.querySelector('dl')).not.toBeNull();
+    expect(publishedBody?.querySelector('figcaption')).not.toBeNull();
+    expect(previewBody?.outerHTML).toBe(publishedBody?.outerHTML);
+    expect(screen.queryByTestId('preview')).not.toBeInTheDocument();
+  });
+
+  test('root-relative links and images in the body open on the public site', async () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
+    renderEditor({
+      ...baseProject,
+      bodyMarkdown:
+        'Read [the welcome post](/posts/welcome) or [elsewhere](https://example.com/x).\n\n![Screenshot](/media/projects/notebook.png)',
+    });
+    await screen.findByDisplayValue('Notebook');
+
+    const preview = document.querySelector<HTMLElement>('.admin-body-preview')!;
+    const link = within(preview).getByRole('link', {
+      name: 'the welcome post',
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://gagnechris.com/posts/welcome',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(
+      within(preview).getByRole('link', { name: 'elsewhere' }),
+    ).toHaveAttribute('href', 'https://example.com/x');
+    expect(
+      within(preview).getByRole('img', { name: 'Screenshot' }),
+    ).toHaveAttribute(
+      'src',
+      'https://gagnechris.com/media/projects/notebook.png',
+    );
   });
 });

@@ -1,15 +1,16 @@
 import { renderPostMarkdownToHtml } from '@gagnechris/shared/render';
+import { withPublicUrls } from './publicUrl';
 import '../pages/PostPage.css';
-import './PostBodyPreview.css';
+import './BodyPreview.css';
 
 export function PostBodyPreview({ markdown }: { markdown: string }) {
   return (
-    <div className="admin-post-preview">
+    <div className="admin-body-preview">
       <div className="post-page">
         <div
           className="post-content blog-post-body"
           dangerouslySetInnerHTML={{
-            __html: renderPostMarkdownToHtml(markdown),
+            __html: withPublicUrls(renderPostMarkdownToHtml(markdown)),
           }}
         />
       </div>

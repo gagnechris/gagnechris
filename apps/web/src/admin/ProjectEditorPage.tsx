@@ -9,6 +9,7 @@ import {
 import { Button } from '../kit/Button';
 import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
+import { ProjectBodyPreview } from './ProjectBodyPreview';
 import { ProjectEditorFields } from './ProjectEditorFields';
 import { publicUrl } from './publicUrl';
 import {
@@ -221,6 +222,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
         mobilePane={mobilePane}
         setMobilePane={setMobilePane}
         onUploadImages={handleUploadImages}
+        preview={<ProjectBodyPreview markdown={draft.bodyMarkdown} />}
       />
     </section>
   );
