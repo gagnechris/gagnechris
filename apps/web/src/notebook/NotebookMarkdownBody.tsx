@@ -36,6 +36,7 @@ type Props = {
 /** Room under the caret for the accessory bar and the docked date chips. */
 const PHONE_SCROLL_MARGIN = 160;
 const FLASH_MS = 2000;
+const HIGHLIGHT_WAIT_MS = 2000;
 
 /** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({
@@ -77,32 +78,51 @@ export function NotebookMarkdownBody({
     [embeds.extensions, dateMenu.extensions, withTasks, phone],
   );
 
+  const handledHighlight = useRef<string | null>(null);
   useEffect(() => {
-    if (!highlightTaskId) return;
-    const view = editorRef.current?.view();
-    if (!view) return;
-    const embed = findTaskEmbeds(view.state.doc.toString()).find(
-      (e) => e.id === highlightTaskId,
-    );
-    if (!embed) return;
-    // The caret lands on the empty line under the embed, ready for context.
-    const line = view.state.doc.line(
-      Math.min(embed.line + 2, view.state.doc.lines),
-    );
-    view.dispatch({
-      selection: { anchor: line.to },
-      effects: EditorView.scrollIntoView(line.to, { y: 'center' }),
-    });
-    view.focus();
-    const frame = requestAnimationFrame(() => {
-      onHighlighted?.();
-      const el = view.dom.querySelector(
-        `.cm-task-embed[data-task-id="${highlightTaskId}"]`,
+    if (!highlightTaskId) {
+      handledHighlight.current = null;
+      return;
+    }
+    if (handledHighlight.current === highlightTaskId) return;
+    let frame = 0;
+    const deadline = performance.now() + HIGHLIGHT_WAIT_MS;
+    // The editor can apply a new `value` a beat after this render: it holds
+    // external updates back while its own doc is changing.
+    const attempt = () => {
+      const view = editorRef.current?.view();
+      const embed = view
+        ? findTaskEmbeds(view.state.doc.toString()).find(
+            (e) => e.id === highlightTaskId,
+          )
+        : undefined;
+      if (!view || !embed) {
+        if (performance.now() < deadline) {
+          frame = requestAnimationFrame(attempt);
+        }
+        return;
+      }
+      handledHighlight.current = highlightTaskId;
+      // The caret lands on the empty line under the embed, ready for context.
+      const line = view.state.doc.line(
+        Math.min(embed.line + 2, view.state.doc.lines),
       );
-      if (!el) return;
-      el.classList.add('cm-task-embed--flash');
-      setTimeout(() => el.classList.remove('cm-task-embed--flash'), FLASH_MS);
-    });
+      view.dispatch({
+        selection: { anchor: line.to },
+        effects: EditorView.scrollIntoView(line.to, { y: 'center' }),
+      });
+      view.focus();
+      frame = requestAnimationFrame(() => {
+        onHighlighted?.();
+        const el = view.dom.querySelector(
+          `.cm-task-embed[data-task-id="${highlightTaskId}"]`,
+        );
+        if (!el) return;
+        el.classList.add('cm-task-embed--flash');
+        setTimeout(() => el.classList.remove('cm-task-embed--flash'), FLASH_MS);
+      });
+    };
+    attempt();
     return () => cancelAnimationFrame(frame);
   }, [highlightTaskId, onHighlighted, value]);
 
