@@ -42,6 +42,8 @@ type StillOpenProps = {
       onDrop: (id: string) => void;
       /** Rows without checkbox, Snooze or Drop. */
       readOnly?: boolean;
+      /** Without it rows have no "add to the note" button. */
+      onAddToNote?: (id: string) => void;
     }
   | {
       /** A short panel: the source under each title and a "+ Note" button. */
@@ -123,6 +125,7 @@ function FullStillOpenList({
   onSnooze,
   onDrop,
   readOnly,
+  onAddToNote,
 }: Extract<StillOpenProps, { snoozeFrom: string }>) {
   const monday = nextWeekday(snoozeFrom, 1);
   const mondayLabel = formatTaskDay(monday);
@@ -159,6 +162,9 @@ function FullStillOpenList({
             )}
             {readOnly ? null : (
               <span className="today-row__actions">
+                {onAddToNote ? (
+                  <AddToNoteButton task={task} onAdd={onAddToNote} />
+                ) : null}
                 <button
                   type="button"
                   className="today-row__icon-btn"
@@ -237,6 +243,8 @@ type ComingUpProps<T extends PanelTask> = {
   upcomingTo?: string;
   /** One list with a short day on each row instead of day groups. */
   compact?: boolean;
+  /** Without it rows have no "add to the note" button. */
+  onAddToNote?: (id: string) => void;
   readOnly?: boolean;
   loading?: boolean;
 };
@@ -250,6 +258,7 @@ export function ComingUpPanel<T extends PanelTask>({
   compact,
   readOnly,
   loading,
+  onAddToNote,
 }: ComingUpProps<T>) {
   const headingId = useId();
   const row = (task: T, date: string) => (
@@ -275,6 +284,11 @@ export function ComingUpPanel<T extends PanelTask>({
         {compact ? (
           <span className="today-row__day">
             {comingUpShortLabel(date, day)}
+          </span>
+        ) : null}
+        {!readOnly && onAddToNote ? (
+          <span className="today-row__actions">
+            <AddToNoteButton task={task} onAdd={onAddToNote} />
           </span>
         ) : null}
       </div>
@@ -315,6 +329,36 @@ export function ComingUpPanel<T extends PanelTask>({
         ))
       )}
     </section>
+  );
+}
+
+/** Appends this task's embed to today's note, so context goes under it. */
+function AddToNoteButton({
+  task,
+  onAdd,
+}: {
+  task: PanelTask;
+  onAdd: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="today-row__icon-btn"
+      aria-label={`Add ${task.title} to today’s note`}
+      title="Add to today’s note"
+      onClick={() => onAdd(task.id)}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <path
+          d="M9 1.75H4.25A1.25 1.25 0 0 0 3 3v10a1.25 1.25 0 0 0 1.25 1.25h7.5A1.25 1.25 0 0 0 13 13V5.75L9 1.75ZM9 2v3.5h3.5M8 8v4M6 10h4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }
 

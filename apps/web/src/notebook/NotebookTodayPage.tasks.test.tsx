@@ -442,7 +442,7 @@ describe('Today tasks', () => {
     expect(within(comingUp()).getByText('Renew card')).toBeInTheDocument();
   });
 
-  test('the phone strip opens both lists in a sheet; + Note embeds the task and focus returns to the strip', async () => {
+  test('the phone strip opens both lists in a sheet, and + Note puts the task in the note with the caret under it', async () => {
     vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
     addTask(task(8, { title: 'Reply to recruiter', startDate: '2026-09-30' }));
     addTask(task(9, { title: 'Brand fonts', startDate: '2026-10-05' }));
@@ -473,14 +473,78 @@ describe('Today tasks', () => {
       }),
     );
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(strip).toHaveFocus();
     expect(screen.getByRole('textbox', { name: 'Note body' })).toHaveValue(
-      `{{task:${ULID(9)}}}\n`,
+      `{{task:${ULID(9)}}}\n\n`,
     );
     await waitFor(() =>
       expect(within(comingUp()).queryByText('Brand fonts')).toBeNull(),
     );
     expect(strip).toHaveAccessibleName('1 still open, 0 coming up. Show list');
+  });
+
+  test('+ Note moves a Still open task into the note once, and never creates a second task', async () => {
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+    addTask(task(8, { title: 'Reply to recruiter', startDate: '2026-09-30' }));
+    addTask(task(9, { title: 'Brand fonts', startDate: '2026-10-05' }));
+    const user = userEvent.setup();
+    renderToday();
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
+    await waitForPanels();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Add Reply to recruiter to today’s note',
+      }),
+    );
+    const body = screen.getByRole('textbox', { name: 'Note body' });
+    expect(body).toHaveValue(`{{task:${ULID(8)}}}\n\n`);
+    await waitFor(() =>
+      expect(placesOf('Reply to recruiter')).toEqual(['note']),
+    );
+    // The row is gone, so there is no second Add for the same task.
+    expect(
+      screen.queryByRole('button', {
+        name: 'Add Reply to recruiter to today’s note',
+      }),
+    ).toBeNull();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Add Brand fonts to today’s note' }),
+    );
+    expect(body).toHaveValue(`{{task:${ULID(8)}}}\n\n{{task:${ULID(9)}}}\n\n`);
+    await waitFor(() => expect(placesOf('Brand fonts')).toEqual(['note']));
+    expect(server.writes.filter((w) => w.method === 'POST')).toEqual([]);
+  });
+
+  test('Add to today’s note is absent on another day and in All areas', async () => {
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+    addTask(task(8, { title: 'Reply to recruiter', startDate: '2026-09-30' }));
+    const user = userEvent.setup();
+    renderToday();
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
+    await waitForPanels();
+    expect(
+      screen.getByRole('button', {
+        name: 'Add Reply to recruiter to today’s note',
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }));
+    await screen.findByRole('heading', { level: 1, name: /October 1/ });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /to today’s note/ }),
+      ).toBeNull(),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Jump to today' }));
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
+    await user.click(screen.getByRole('radio', { name: 'All' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /to today’s note/ }),
+      ).toBeNull(),
+    );
   });
 
   test('the Snooze menu sets another day; a failed write brings the row back', async () => {

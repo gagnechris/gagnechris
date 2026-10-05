@@ -256,6 +256,44 @@ test('each task appears in exactly one place on the page', async ({
   );
 });
 
+test('Add to today’s note embeds the task in the note and takes it off Still open', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const title = `${prefix} reply to recruiter`;
+  await seedTask(seed, { title, startDate: '2026-09-30' });
+  await page.clock.setFixedTime(FRIDAY_MORNING);
+  await signIn();
+  await page.goto(`${apps.notebook}/today`);
+  await panelsLoaded(page);
+  await expect.poll(() => placesOf(page, title)).toEqual(['still-open']);
+
+  await page
+    .getByRole('button', { name: `Add ${title} to today’s note` })
+    .click();
+  await expect.poll(() => placesOf(page, title)).toEqual(['note']);
+  // The preview shows the embed before the editor mounts; the caret lands there.
+  await expect(page.locator('.cm-content')).toBeFocused();
+  await page.keyboard.type('Finance needs the PO number.');
+
+  const saved = page.waitForResponse(
+    (r) =>
+      r.request().method() === 'PUT' && r.url().includes('/notes/daily/work/'),
+  );
+  await page.getByRole('button', { name: 'Save' }).click();
+  expect((await saved).ok()).toBe(true);
+
+  await page.reload();
+  await panelsLoaded(page);
+  await expect.poll(() => placesOf(page, title)).toEqual(['note']);
+  await expect(page.locator('.markdown-editor')).toContainText(
+    'Finance needs the PO number.',
+  );
+});
+
 test('at 390px the note fills the page and the strip opens Still open and Coming up in a sheet', async ({
   page,
   apps,
@@ -314,5 +352,6 @@ test('at 390px the note fills the page and the strip opens Still open and Coming
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: '1 still open, 0 coming up. Show list' }),
-  ).toBeFocused();
+  ).toBeVisible();
+  await expect(page.locator('.cm-content')).toBeFocused();
 });
