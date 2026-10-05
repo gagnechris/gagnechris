@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { formatPostShortDate } from '@gagnechris/shared';
-import { expect, requireEnv, test } from '../fixtures';
+import { expect, focusJustBefore, requireEnv, test } from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -81,11 +81,8 @@ test.describe('the posts index', () => {
 
     // Safari only tabs to links with Option held.
     const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
-    await page.locator('.posts-index__rss').focus();
-    for (let i = 0; i < 50; i += 1) {
-      if (await entry.evaluate((el) => el === document.activeElement)) break;
-      await page.keyboard.press(tab);
-    }
+    await focusJustBefore(item);
+    await page.keyboard.press(tab);
     await expect(entry).toBeFocused();
     const ring = await entry.evaluate((el) => {
       const style = getComputedStyle(el);
