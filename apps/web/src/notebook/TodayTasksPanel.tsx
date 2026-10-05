@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { parseTaskSyntax } from '@gagnechris/shared';
 import {
   useCreateTaskMutation,
   useTasksQuery,
@@ -8,8 +9,9 @@ import {
 } from '@gagnechris/app-core';
 import { createUlid } from '../lib/ulid';
 import { addLocalDays, formatLocalDate } from '../kit/calendarDates';
-import { parseTaskQuickAdd } from '../kit/tasks/parseTaskQuickAdd';
 import { TaskRow } from '../kit/tasks/TaskRow';
+import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
+import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useTaskToggle } from './useTaskToggle';
 import {
   bucketTodayTasks,
@@ -63,7 +65,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
   const createArea: NotebookArea = area ?? 'work';
 
   const submitQuickAdd = async () => {
-    const parsed = parseTaskQuickAdd(quickAdd, today);
+    const parsed = parseTaskSyntax(quickAdd, today);
     if (!parsed.title) {
       setQuickAddHint('Add a title before the date.');
       return;
@@ -76,7 +78,8 @@ export default function TodayTasksPanel({ area, now }: Props) {
       description: '',
       priority: parsed.priority,
       status: 'todo',
-      startDate: parsed.startDate ?? today,
+      startDate: parsed.someday ? null : (parsed.startDate ?? today),
+      someday: parsed.someday,
       tags: [],
     });
     setQuickAdd('');
@@ -128,13 +131,12 @@ export default function TodayTasksPanel({ area, now }: Props) {
           void submitQuickAdd();
         }}
       >
-        <input
-          className="admin-input"
-          type="text"
-          placeholder="Quick-add task (shows today unless you add tomorrow)"
+        <TaskSyntaxInput
+          today={today}
+          placeholder="Quick-add task, e.g. Call bank @mon !high"
           value={quickAdd}
-          onChange={(e) => {
-            setQuickAdd(e.target.value);
+          onChange={(next) => {
+            setQuickAdd(next);
             setQuickAddHint(null);
           }}
           aria-label="Quick add task for today"
@@ -192,6 +194,8 @@ export default function TodayTasksPanel({ area, now }: Props) {
           empty="Nothing for tomorrow."
         />
       ) : null}
+
+      <TaskSyntaxCheatSheet />
     </aside>
   );
 }

@@ -21,6 +21,20 @@ export {
   taskStartsAfter,
   type TaskScheduleFilter,
 } from './task-schedule.js';
+export {
+  activeTaskDateQuery,
+  formatTaskDay,
+  localDateString,
+  matchesTaskDateQuery,
+  nextWeekday,
+  parseTaskSyntax,
+  resolveTaskDateToken,
+  taskDateMenuOptions,
+  taskDateToken,
+  type ParsedTaskSyntax,
+  type TaskDateMenuOption,
+  type TaskSchedule,
+} from './task-syntax.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export {
