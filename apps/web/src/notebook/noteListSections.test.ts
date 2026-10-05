@@ -43,6 +43,21 @@ describe('noteSections', () => {
       ['Earlier', ['fri-last-week', 'old-page']],
     ]);
   });
+
+  test('a cached row without timestamps sorts last instead of throwing', () => {
+    const partial = {
+      ...note('partial', {}),
+      updatedAt: undefined,
+    } as unknown as ListNote;
+    const sections = noteSections(
+      [partial, note('fri', { type: 'daily', date: FRI })],
+      FRI,
+    );
+    expect(sections.flatMap((s) => s.notes.map((n) => n.id))).toEqual([
+      'fri',
+      'partial',
+    ]);
+  });
 });
 
 describe('note row text', () => {

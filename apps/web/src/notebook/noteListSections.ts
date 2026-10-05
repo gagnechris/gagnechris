@@ -4,6 +4,7 @@ import {
   noteDisplayTitle,
   type Note,
 } from '@gagnechris/shared';
+import { byNewest } from '../kit/byNewest';
 import { addLocalDays, formatLocalDate } from '../kit/calendarDates';
 
 export type ListNote = Pick<
@@ -27,7 +28,7 @@ export type NoteSection<T> = {
 /** The day a note is listed under: a daily note's own date, else its last edit. */
 export function noteDay(note: ListNote): string {
   if (note.type === 'daily' && note.date) return note.date;
-  return formatLocalDate(new Date(note.updatedAt));
+  return note.updatedAt ? formatLocalDate(new Date(note.updatedAt)) : '';
 }
 
 export const noteTitle = noteDisplayTitle;
@@ -73,8 +74,7 @@ export function noteSections<T extends ListNote>(
   const weekStart = addLocalDays(today, -6);
   const sorted = [...notes].sort(
     (a, b) =>
-      noteDay(b).localeCompare(noteDay(a)) ||
-      b.updatedAt.localeCompare(a.updatedAt),
+      byNewest(noteDay(a), noteDay(b)) || byNewest(a.updatedAt, b.updatedAt),
   );
   const sections: NoteSection<T>[] = [
     { key: 'pinned', label: 'Pinned', notes: [] },

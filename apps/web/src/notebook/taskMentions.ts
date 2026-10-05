@@ -1,4 +1,5 @@
 import { findTaskEmbeds } from '@gagnechris/shared';
+import { byNewest } from '../kit/byNewest';
 import { noteDay, type ListNote } from './noteListSections';
 
 export type TaskMention<T extends ListNote> = {
@@ -57,7 +58,7 @@ export function taskMentions<T extends ListNote>(
     .sort(
       (a, b) =>
         Number(b.home) - Number(a.home) ||
-        noteDay(a.note).localeCompare(noteDay(b.note)) ||
-        a.note.updatedAt.localeCompare(b.note.updatedAt),
+        byNewest(noteDay(b.note), noteDay(a.note)) ||
+        byNewest(b.note.updatedAt, a.note.updatedAt),
     );
 }
