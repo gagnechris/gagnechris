@@ -9,6 +9,12 @@ export const NOTEBOOK_AREA_FILTERS = [
   'all',
 ] as const satisfies readonly NotebookAreaFilter[];
 
+export const NOTEBOOK_AREA_LABELS: Record<NotebookAreaFilter, string> = {
+  work: 'Work',
+  personal: 'Personal',
+  all: 'All',
+};
+
 export const NOTEBOOK_AREA_STORAGE_KEY = 'gagnechris.notebook.areaFilter';
 
 export const DEFAULT_NOTEBOOK_AREA_FILTER: NotebookAreaFilter = 'work';

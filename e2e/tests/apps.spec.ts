@@ -41,7 +41,7 @@ test('the Notebook app opens on Today and deep-links to its own pages', async ({
   await signIn();
 
   await page.goto(apps.notebook);
-  await expect(page).toHaveURL(`${apps.notebook}/today`);
+  await expect(page).toHaveURL(`${apps.notebook}/today?area=work`);
   await expect(
     page.getByRole('button', { name: 'Jump to today' }),
   ).toBeVisible();
@@ -51,7 +51,7 @@ test('the Notebook app opens on Today and deep-links to its own pages', async ({
 
   await page.goto(`${apps.notebook}/notes`);
   await page.getByRole('link', { name: 'Deep link target' }).click();
-  await expect(page).toHaveURL(`${apps.notebook}/notes/${note.id}`);
+  await expect(page).toHaveURL(`${apps.notebook}/notes/${note.id}?area=work`);
 
   await page.goto(`${apps.notebook}/posts`);
   await expect(

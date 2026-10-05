@@ -16,7 +16,7 @@ import {
 import { taskEmbedIds } from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import type { NotebookOutletContext } from './NotebookLayout';
-import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
+import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import {
   addLocalDays,
   monthBounds,
@@ -39,6 +39,7 @@ import ShellIcon from '../workspace/ui/ShellIcon';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
 import {
   NOTEBOOK_AREA_FILTERS,
+  NOTEBOOK_AREA_LABELS,
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
@@ -124,7 +125,7 @@ function TodayEditor({
     dirty,
     busy,
     saveState,
-  } = useVersionedDocEditor({
+  } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
     params: { area, date },
     initialDraft: emptyNoteDraft(),
@@ -229,12 +230,6 @@ function appendTaskEmbed(markdown: string, taskId: string): string {
   const body = markdown.replace(/\s+$/, '');
   return `${body}${body ? '\n\n' : ''}{{task:${taskId}}}\n\n`;
 }
-
-const AREA_LABELS: Record<NotebookAreaFilter, string> = {
-  work: 'Work',
-  personal: 'Personal',
-  all: 'All',
-};
 
 export default function NotebookTodayPage() {
   const { areaFilter, setAreaFilter } =
@@ -342,7 +337,11 @@ export default function NotebookTodayPage() {
   const setDate = (next: string) => {
     if (next === date) return;
     setHeldDay(null);
-    setSearchParams(next === today ? {} : { date: next });
+    setSearchParams((params) => {
+      if (next === today) params.delete('date');
+      else params.set('date', next);
+      return params;
+    });
   };
 
   return (
@@ -414,7 +413,7 @@ export default function NotebookTodayPage() {
               >
                 {NOTEBOOK_AREA_FILTERS.map((area) => (
                   <option key={area} value={area}>
-                    {AREA_LABELS[area]}
+                    {NOTEBOOK_AREA_LABELS[area]}
                   </option>
                 ))}
               </select>

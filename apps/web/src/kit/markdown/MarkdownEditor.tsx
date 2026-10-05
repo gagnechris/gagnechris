@@ -9,6 +9,7 @@ import {
   type KeyBinding,
 } from '@codemirror/view';
 import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { continueMarkdownList } from './listContinuation';
 
 export type MarkdownEditorHandle = {
   focus: () => void;
@@ -107,7 +108,11 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         history(),
         EditorView.lineWrapping,
         highlightActiveLine(),
-        cmKeymap.of([...defaultKeymap, ...historyKeymap]),
+        cmKeymap.of([
+          { key: 'Enter', run: continueMarkdownList },
+          ...defaultKeymap,
+          ...historyKeymap,
+        ]),
         // Accessible name on the real textbox (.cm-content), not only the wrapper.
         EditorView.contentAttributes.of({ 'aria-label': label }),
         // ⌘⏎ / Ctrl+Enter: no-op in the body (shell skips publish; consume so

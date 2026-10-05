@@ -1,9 +1,10 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { Note, Task } from '@gagnechris/app-core';
 import {
   buildNotebookExportZip,
   noteExportPath,
   noteToMarkdown,
+  triggerBlobDownload,
 } from './exportNotebook';
 
 const note = (overrides: Partial<Note> = {}): Note => ({
@@ -25,12 +26,38 @@ const note = (overrides: Partial<Note> = {}): Note => ({
 });
 
 describe('exportNotebook', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   test('renders markdown with frontmatter', () => {
     const md = noteToMarkdown(note());
     expect(md).toContain('id: 01ARZ3NDEKTSV4RRFFQ48JMNO2');
     expect(md).toContain('title: Hello World');
     expect(md).toContain('Body **here**');
     expect(noteExportPath(note())).toMatch(/^notes\/pages\//);
+  });
+
+  test('keeps accents and non-Latin letters in file names', () => {
+    expect(noteExportPath(note({ title: 'Ünïcode café 日本' }))).toBe(
+      'notes/pages/01ARZ3ND-unicode-cafe-日本-8JMNO2.md',
+    );
+  });
+
+  test('keeps the download URL alive after the click', () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:x',
+      revokeObjectURL: revoke,
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    triggerBlobDownload(new Blob(['x']), 'x.zip');
+    expect(revoke).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(revoke).toHaveBeenCalledWith('blob:x');
   });
 
   test('builds a zip blob with notes and tasks.json', async () => {

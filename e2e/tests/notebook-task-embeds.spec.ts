@@ -133,7 +133,7 @@ test('renaming a task changes every embed, and export writes titles instead of t
     .locator('.markdown-editor')
     .getByRole('link', { name: `Open task Old name ${prefix}` })
     .click();
-  await expect(page).toHaveURL(`${apps.notebook}/tasks/${task.id}`);
+  await expect(page).toHaveURL(`${apps.notebook}/tasks/${task.id}?area=work`);
   const renamed = `New name ${prefix}`;
   await page.getByRole('textbox', { name: 'Title' }).fill(renamed);
   await expect

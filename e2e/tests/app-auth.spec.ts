@@ -196,7 +196,7 @@ test.describe('admin and Notebook sign-in', () => {
 
     // Within the managed-login session the second app signs in without a prompt.
     await page.goto(`${notebook()}/tasks`);
-    await expect(page).toHaveURL(`${notebook()}/tasks`);
+    await expect(page).toHaveURL(`${notebook()}/tasks?area=work`);
     await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible();
     expect(login.prompts).toBe(1);
 
@@ -256,7 +256,7 @@ test.describe('admin and Notebook sign-in', () => {
     login.session = false;
     await page.goto(`${notebook()}/notes`);
     await signInThroughPrompt(page, login);
-    await expect(page).toHaveURL(`${notebook()}/notes`);
+    await expect(page).toHaveURL(`${notebook()}/notes?area=work`);
     await expect(page.getByRole('button', { name: 'New page' })).toBeVisible();
     expect(login.prompts).toBe(2);
 
@@ -276,7 +276,7 @@ test.describe('admin and Notebook sign-in', () => {
   }) => {
     await page.goto(`${notebook()}/`);
     await signInThroughPrompt(page, login);
-    await expect(page).toHaveURL(`${notebook()}/today`);
+    await expect(page).toHaveURL(`${notebook()}/today?area=work`);
     await page.goto(`${admin()}/`);
     await expect(page.getByText(USER.email)).toBeVisible();
 

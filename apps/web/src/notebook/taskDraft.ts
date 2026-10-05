@@ -1,5 +1,6 @@
 import type { Task } from '@gagnechris/app-core';
 import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
+import { parseTagsText } from './noteDraft';
 
 export type TaskDraft = {
   title: string;
@@ -33,12 +34,6 @@ export const taskDraftFromTask = (task: Task): TaskDraft => ({
   noteId: task.noteId ?? '',
   tagsText: task.tags.join(', '),
 });
-
-export const parseTagsText = (tagsText: string): string[] =>
-  tagsText
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
 
 export const taskPayloadFromDraft = (draft: TaskDraft) => ({
   title: draft.title.trim() || 'Untitled',
