@@ -15,7 +15,10 @@ import {
   type TaskMetaItem,
 } from '@gagnechris/data';
 import {
+  OPEN_TASK_STATUSES,
+  TaskStatusSchema,
   TaskSyncChangeSchema,
+  isOpenTaskStatus,
   taskMatchesSchedule,
   type CreateTaskRequest,
   type ListTasksQuery,
@@ -45,14 +48,12 @@ import { hashCreateFields } from '../data/create-hash.js';
 export const TASK_CHANGE_TYPE = 'task';
 
 const ALL_AREAS: NotebookArea[] = ['work', 'personal'];
-const ALL_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
+const ALL_STATUSES: readonly TaskStatus[] = TaskStatusSchema.options;
 const PRIORITY_RANK: Record<TaskPriority, number> = {
   high: 0,
   med: 1,
   low: 2,
 };
-
-const OPEN_STATUSES: TaskStatus[] = ['todo', 'in_progress'];
 
 export function utcToday(now = new Date()): string {
   return now.toISOString().slice(0, 10);
@@ -117,7 +118,9 @@ export function taskToChange(
 
 function isCarriedOver(task: Task, today: string): boolean {
   return (
-    task.status !== 'done' && task.startDate !== null && task.startDate < today
+    isOpenTaskStatus(task.status) &&
+    task.startDate !== null &&
+    task.startDate < today
   );
 }
 
@@ -148,7 +151,9 @@ export function sortTasksForList(items: Task[], today: string): Task[] {
 function matchesListQuery(task: Task, query: ListTasksQuery): boolean {
   if (query.area && task.area !== query.area) return false;
   if (query.status && task.status !== query.status) return false;
-  if (!query.status && query.open && task.status === 'done') return false;
+  if (!query.status && query.open && !isOpenTaskStatus(task.status)) {
+    return false;
+  }
   if (query.priority && task.priority !== query.priority) return false;
   if (query.dueOn && task.dueDate !== query.dueOn) return false;
   if (
@@ -326,13 +331,13 @@ export class TasksRepository {
   }
 
   reopen(userId: string, id: string, expected: number | 'any'): Promise<Task> {
-    // Reopen undoes completion only; an in-progress task keeps its status.
+    // Reopen undoes done or dropped only; an in-progress task keeps its status.
     return this.base.mutateIfVersion(
       { userId, id },
       expected,
       (existing, now) => ({
         ...existing,
-        status: existing.status === 'done' ? 'todo' : existing.status,
+        status: isOpenTaskStatus(existing.status) ? existing.status : 'todo',
         completedAt: null,
         updatedAt: now,
       }),
@@ -368,7 +373,7 @@ export class TasksRepository {
     const statuses = query.status
       ? [query.status]
       : query.open
-        ? OPEN_STATUSES
+        ? OPEN_TASK_STATUSES
         : ALL_STATUSES;
     const ranges = scheduleRanges(query);
     const partitions = areas.flatMap((area) =>

@@ -210,4 +210,94 @@ export const useReopenTaskMutation = () => {
   });
 };
 
+/** The fields Today's Snooze and Drop change; `someday` wins over `startDate`, as on the server. */
+export type TaskPatch = Partial<Pick<Task, 'status' | 'startDate' | 'someday'>>;
+
+export type TaskPatchVars = TaskVersionVars & { patch: TaskPatch };
+
+export const applyTaskPatch = (task: Task, patch: TaskPatch): Task => {
+  const someday =
+    patch.someday ??
+    (patch.startDate !== undefined && patch.startDate !== null
+      ? false
+      : task.someday);
+  const status = patch.status ?? task.status;
+  return {
+    ...task,
+    status,
+    someday,
+    startDate: someday
+      ? null
+      : patch.startDate !== undefined
+        ? patch.startDate
+        : task.startDate,
+    completedAt: status === 'done' ? task.completedAt : null,
+    version: task.version + 1,
+  };
+};
+
+const findCachedTask = (
+  queryClient: QueryClient,
+  id: string,
+): Task | undefined => {
+  const detail = queryClient.getQueryData<Task>(queryKeys.tasks.detail(id));
+  if (detail) return detail;
+  for (const [, data] of queryClient.getQueriesData<TasksListData>({
+    queryKey: [...queryKeys.tasks.all, 'list'],
+  })) {
+    for (const page of data?.pages ?? []) {
+      const found = page.items.find((t) => t.id === id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Applies the patch to every cached copy before the request: lists the task
+ * no longer matches drop it at once, and lists it now matches gain it.
+ */
+export const usePatchTaskMutation = () => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, version, patch }: TaskPatchVars) =>
+      updateTask(getClient(), id, { version, ...patch }),
+    onMutate: async ({ id, patch }): Promise<OptimisticContext<unknown>> => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
+      const detailKey = queryKeys.tasks.detail(id);
+      const snapshots = [
+        { queryKey: detailKey, previous: queryClient.getQueryData(detailKey) },
+        ...queryClient
+          .getQueriesData({ queryKey: [...queryKeys.tasks.all, 'list'] })
+          .map(([queryKey, previous]) => ({ queryKey, previous })),
+      ];
+      const current = findCachedTask(queryClient, id);
+      if (current) setCachedTask(queryClient, applyTaskPatch(current, patch));
+      return { previous: snapshots[0]?.previous, snapshots };
+    },
+    onError: (_error, { id }, context) => {
+      for (const snap of context?.snapshots ?? []) {
+        if (snap.previous !== undefined) {
+          queryClient.setQueryData(snap.queryKey, snap.previous);
+        }
+      }
+      // The optimistic write may have created this entry; a stale copy would
+      // outrank the next fetch by version.
+      if (context?.snapshots[0]?.previous === undefined) {
+        queryClient.removeQueries({
+          queryKey: queryKeys.tasks.detail(id),
+          exact: true,
+        });
+      }
+    },
+    onSuccess: (task) => {
+      setCachedTask(queryClient, task);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+    },
+  });
+};
+
 export const useSetTaskCache = taskResource.useSetCache;

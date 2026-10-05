@@ -1,3 +1,4 @@
+import { isOpenTaskStatus } from '@gagnechris/shared';
 import { afterAll, beforeAll, describe, it } from 'vitest';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import type { RouteDef } from '../../src/router.js';
@@ -78,7 +79,7 @@ describe('list paging (DynamoDB Local)', () => {
                 (t) =>
                   matches(t) &&
                   (!area || t.area === area) &&
-                  (!open || t.status !== 'done'),
+                  (!open || isOpenTaskStatus(t.status)),
               )
               .map((t) => t.id),
           );
@@ -104,7 +105,9 @@ describe('list paging (DynamoDB Local)', () => {
               .filter(
                 (t) =>
                   (!area || t.area === area) &&
-                  (status ? t.status === status : !open || t.status !== 'done'),
+                  (status
+                    ? t.status === status
+                    : !open || isOpenTaskStatus(t.status)),
               )
               .map((t) => t.id),
           );

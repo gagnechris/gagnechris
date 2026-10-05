@@ -1,81 +1,170 @@
-import type { Task } from '@gagnechris/shared';
-import { addLocalDays } from '../calendarDates';
+import {
+  formatTaskDay,
+  isOpenTaskStatus,
+  taskShowsOn,
+  type Note,
+  type Task,
+} from '@gagnechris/shared';
+import { addLocalDays, formatLocalDate } from '../calendarDates';
 
-type BucketTask = Pick<Task, 'deleted' | 'startDate' | 'someday' | 'status'>;
+export const COMING_UP_DAYS = 14;
 
-export type TodayTaskBuckets<T extends BucketTask = BucketTask> = {
-  carriedOver: T[];
-  startsToday: T[];
-  inProgress: T[];
-  doneToday: T[];
-  tomorrow: T[];
+export type BucketTask = Pick<
+  Task,
+  | 'id'
+  | 'version'
+  | 'deleted'
+  | 'status'
+  | 'startDate'
+  | 'someday'
+  | 'createdAt'
+>;
+
+export type ComingUpDay<T> = { date: string; tasks: T[] };
+
+export type TodayTaskBuckets<T> = {
+  /** Open tasks the day's note embeds; the note renders them. */
+  inNote: T[];
+  /** Open, showing on the day (start on or before it, or none), not in the note. */
+  stillOpen: T[];
+  /** Open, starting within the horizon after the day, not in the note; by day. */
+  comingUp: ComingUpDay<T>[];
+  /** Open tasks showing on the day, in the note or not: they show tomorrow too. */
+  carryCount: number;
 };
 
+/**
+ * Splits tasks so each lands in at most one place on Today. Carry-forward is
+ * this computation: nothing is copied when the day changes.
+ */
 export function bucketTodayTasks<T extends BucketTask>(
-  tasks: T[],
-  today: string,
+  tasks: Iterable<T>,
+  {
+    day,
+    embeddedIds,
+    horizonDays = COMING_UP_DAYS,
+  }: {
+    day: string;
+    embeddedIds: ReadonlySet<string>;
+    horizonDays?: number;
+  },
 ): TodayTaskBuckets<T> {
-  const tomorrow = addLocalDays(today, 1);
-  const carriedOver: T[] = [];
-  const startsToday: T[] = [];
-  const inProgress: T[] = [];
-  const doneToday: T[] = [];
-  const tomorrowTasks: T[] = [];
-
+  // The same task can arrive from two lists mid-refetch; keep the newest.
+  const byId = new Map<string, T>();
   for (const task of tasks) {
-    if (task.deleted || task.someday) continue;
-
-    if (task.startDate === tomorrow && task.status !== 'done') {
-      tomorrowTasks.push(task);
-    }
-
-    if (task.startDate === today && task.status === 'done') {
-      doneToday.push(task);
-      continue;
-    }
-
-    if (task.status === 'done') continue;
-
-    if (task.startDate !== null && task.startDate < today) {
-      carriedOver.push(task);
-      continue;
-    }
-
-    if (task.startDate === today) {
-      startsToday.push(task);
-      continue;
-    }
-
-    if (task.status === 'in_progress') {
-      inProgress.push(task);
-      continue;
-    }
-
-    // A null startDate means now.
-    if (task.startDate === null) startsToday.push(task);
+    const seen = byId.get(task.id);
+    if (!seen || task.version > seen.version) byId.set(task.id, task);
   }
 
-  return {
-    carriedOver,
-    startsToday,
-    inProgress,
-    doneToday,
-    tomorrow: tomorrowTasks,
+  const horizon = addLocalDays(day, horizonDays);
+  const inNote: T[] = [];
+  const stillOpen: T[] = [];
+  const upcoming = new Map<string, T[]>();
+  let carryCount = 0;
+
+  for (const task of byId.values()) {
+    if (task.deleted || !isOpenTaskStatus(task.status)) continue;
+    const showsToday = taskShowsOn(task, day);
+    if (showsToday) carryCount += 1;
+    if (embeddedIds.has(task.id)) {
+      inNote.push(task);
+      continue;
+    }
+    if (showsToday) {
+      stillOpen.push(task);
+      continue;
+    }
+    const start = task.startDate;
+    if (!task.someday && start !== null && start > day && start <= horizon) {
+      const list = upcoming.get(start) ?? [];
+      list.push(task);
+      upcoming.set(start, list);
+    }
+  }
+
+  const sinceKey = (t: T) => t.startDate ?? t.createdAt.slice(0, 10);
+  stillOpen.sort(
+    (a, b) =>
+      sinceKey(a).localeCompare(sinceKey(b)) || a.id.localeCompare(b.id),
+  );
+  const comingUp = [...upcoming.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, list]) => ({
+      date,
+      tasks: list.sort((a, b) => a.id.localeCompare(b.id)),
+    }));
+
+  return { inNote, stillOpen, comingUp, carryCount };
+}
+
+function daysBetween(from: string, to: string): number {
+  const utc = (d: string) => {
+    const [y, m, dd] = d.split('-').map(Number) as [number, number, number];
+    return Date.UTC(y, m - 1, dd);
   };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
 }
 
-export function showTomorrowPreview(
-  now: Date = new Date(),
-  hour = 18,
-): boolean {
-  return now.getHours() >= hour;
+const age = (since: string, day: string) => {
+  const n = daysBetween(since, day);
+  if (n <= 0) return 'today';
+  return n === 1 ? '1 day' : `${n} days`;
+};
+
+/** `Thu` within the past week, else `Sep 28`. */
+const dayName = (date: string, day: string) => {
+  const n = daysBetween(date, day);
+  return n >= 0 && n < 7
+    ? formatTaskDay(date).slice(0, 3)
+    : formatTaskDay(date, false);
+};
+
+export type SourceNote = Pick<Note, 'id' | 'type' | 'date' | 'title'>;
+
+export type StillOpenSource = {
+  label: string;
+  /** Where the task came from; null for a task written outside a note. */
+  noteId: string | null;
+};
+
+/** The chip on a Still open row: where the task came from and how long ago. */
+export function stillOpenSource(
+  task: Pick<Task, 'startDate' | 'noteId' | 'createdAt'>,
+  day: string,
+  note?: SourceNote,
+): StillOpenSource {
+  const noteId = task.noteId;
+  if (task.startDate !== null) {
+    return {
+      label: `Scheduled ${formatTaskDay(task.startDate, false)}`,
+      noteId,
+    };
+  }
+  const created = formatLocalDate(new Date(task.createdAt));
+  if (!noteId) {
+    return {
+      label: `Added ${dayName(created, day)} · ${age(created, day)}`,
+      noteId,
+    };
+  }
+  if (note?.type === 'daily' && note.date) {
+    return {
+      label: `${dayName(note.date, day)} note · ${age(note.date, day)}`,
+      noteId,
+    };
+  }
+  const title = note ? note.title.trim() || 'Untitled note' : 'Note';
+  return { label: `${title} · ${age(created, day)}`, noteId };
 }
 
-export function todayProgress(buckets: TodayTaskBuckets): {
-  done: number;
-  total: number;
-} {
-  const done = buckets.doneToday.length;
-  const total = done + buckets.startsToday.length;
-  return { done, total };
+/** `Tomorrow · Sat, Oct 3`, else `Mon, Oct 5`. */
+export function comingUpDayLabel(date: string, day: string): string {
+  return date === addLocalDays(day, 1)
+    ? `Tomorrow · ${formatTaskDay(date)}`
+    : formatTaskDay(date);
+}
+
+/** Snooze counts from the later of the page's day and today. */
+export function snoozeBaseDay(day: string, today: string): string {
+  return day > today ? day : today;
 }

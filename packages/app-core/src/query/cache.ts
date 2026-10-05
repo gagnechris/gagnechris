@@ -1,5 +1,5 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import { taskMatchesSchedule } from '@gagnechris/shared';
+import { isOpenTaskStatus, taskMatchesSchedule } from '@gagnechris/shared';
 import type { Home, Note, Post, Project, Resume, Task } from './api.js';
 import { queryKeys } from './keys.js';
 
@@ -227,9 +227,9 @@ const taskMatches = (
   if (filters.area !== undefined && filters.area !== task.area) return false;
   if (filters.status !== undefined) {
     if (filters.status !== task.status) return false;
-  } else if (filters.open === true && task.status === 'done') {
+  } else if (filters.open === true && !isOpenTaskStatus(task.status)) {
     return false;
-  } else if (filters.open === false && task.status !== 'done') {
+  } else if (filters.open === false && isOpenTaskStatus(task.status)) {
     return false;
   }
   if (filters.priority !== undefined && filters.priority !== task.priority) {

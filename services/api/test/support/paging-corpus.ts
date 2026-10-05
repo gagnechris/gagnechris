@@ -13,7 +13,7 @@ import { createTaskRoutes } from '../../src/tasks/handlers.js';
 
 export const PAGING_USER = 'user-paging-1';
 const AREAS = ['work', 'personal'] as const;
-const STATUSES = ['todo', 'in_progress', 'done'] as const;
+const STATUSES = ['todo', 'in_progress', 'done', 'dropped'] as const;
 const PRIORITIES = ['low', 'med', 'high'] as const;
 
 export function testUlid(prefix: string, n: number): string {
@@ -48,7 +48,7 @@ export function corpusTask(i: number) {
     id: testUlid('T', i),
     area: AREAS[i % 2]!,
     priority: PRIORITIES[i % 3]!,
-    status: STATUSES[Math.floor(i / 2) % 3]!,
+    status: STATUSES[Math.floor(i / 2) % STATUSES.length]!,
     someday,
     startDate:
       someday || i % 5 === 0

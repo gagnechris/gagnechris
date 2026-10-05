@@ -568,4 +568,82 @@ describe('tasks handlers', () => {
     );
     expect(relink?.statusCode).toBe(400);
   });
+
+  it('a dropped task is closed: open and Today lists skip it, status=dropped finds it, reopen restores it', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = new TasksRepository(
+      doc,
+      TABLE,
+      () => '2026-10-02T12:00:00.000Z',
+    );
+    const notes = new NotesRepository(doc, TABLE);
+    const routes = [
+      ...createTaskRoutes(repo, notes),
+      ...createNoteRoutes(notes),
+    ];
+    const call = async (
+      method: string,
+      path: string,
+      body?: unknown,
+      query?: Record<string, string>,
+    ) => {
+      const res = await dispatchRoutes(
+        routes,
+        adminEvent(method, path, body, undefined, query),
+        method,
+        path,
+      );
+      return { status: res?.statusCode, body: JSON.parse(res!.body as string) };
+    };
+    const ids = async (query: Record<string, string>) =>
+      (
+        (await call('GET', '/api/notebook/tasks', undefined, query)).body
+          .items as Task[]
+      ).map((t) => t.id);
+
+    await call('POST', '/api/notebook/notes', {
+      id: NOTE_ID,
+      area: 'work',
+      type: 'page',
+      title: 'Home',
+    });
+    await call('POST', '/api/notebook/tasks', {
+      id: TASK_A,
+      area: 'work',
+      title: 'Drop me',
+      noteId: NOTE_ID,
+    });
+    await call('POST', '/api/notebook/tasks', {
+      id: TASK_B,
+      area: 'work',
+      title: 'Keep me',
+      noteId: NOTE_ID,
+    });
+
+    const dropped = await call('PUT', `/api/notebook/tasks/${TASK_A}`, {
+      version: 1,
+      status: 'dropped',
+    });
+    expect(dropped.status).toBe(200);
+    expect(dropped.body).toMatchObject({
+      status: 'dropped',
+      completedAt: null,
+      deleted: false,
+    });
+
+    const today = { open: 'true', startOnOrBefore: '2026-10-02' };
+    expect(await ids(today)).toEqual([TASK_B]);
+    expect(await ids({ ...today, area: 'work' })).toEqual([TASK_B]);
+    expect(await ids({ open: 'true', noteId: NOTE_ID })).toEqual([TASK_B]);
+    expect(await ids({ status: 'dropped' })).toEqual([TASK_A]);
+    expect((await ids({})).sort()).toEqual([TASK_A, TASK_B].sort());
+
+    const reopened = await call(
+      'POST',
+      `/api/notebook/tasks/${TASK_A}/reopen`,
+      { version: 2 },
+    );
+    expect(reopened.body).toMatchObject({ status: 'todo' });
+    expect((await ids(today)).sort()).toEqual([TASK_A, TASK_B].sort());
+  });
 });

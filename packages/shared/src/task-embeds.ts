@@ -1,3 +1,5 @@
+import type { TaskStatus } from './schemas.js';
+
 /**
  * A note embeds a task as a line holding only `{{task:<ULID>}}` (optionally
  * indented). The note never stores the task's title or checked state; every
@@ -77,7 +79,7 @@ export function replaceTaskEmbeds(
 
 export type TaskEmbedMarkdownTask = {
   title: string;
-  status: 'todo' | 'in_progress' | 'done';
+  status: TaskStatus;
 };
 
 /** Plain GFM checklist line for exports and renderers without live tasks. */

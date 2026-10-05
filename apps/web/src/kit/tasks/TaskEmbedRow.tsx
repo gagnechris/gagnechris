@@ -60,10 +60,11 @@ export function TaskEmbedRow({ view }: { view: TaskEmbedView }) {
 
   const { task, schedule, pending, onToggle, to } = view;
   const done = task.status === 'done';
+  const dropped = task.status === 'dropped';
   const priority = PRIORITY_LABEL[task.priority];
   return (
     <div
-      className={`task-embed${done ? ' task-embed--done' : ''}`}
+      className={`task-embed${done ? ' task-embed--done' : ''}${dropped ? ' task-embed--dropped' : ''}`}
       data-task-status={task.status}
     >
       <input
@@ -75,6 +76,7 @@ export function TaskEmbedRow({ view }: { view: TaskEmbedView }) {
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
       />
       <span className="task-embed__title">{task.title}</span>
+      {dropped ? <span className="task-embed__pill">Dropped</span> : null}
       {schedule ? (
         <span className="task-embed__pill task-embed__pill--schedule">
           {schedule}

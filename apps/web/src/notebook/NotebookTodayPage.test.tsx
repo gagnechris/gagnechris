@@ -296,7 +296,7 @@ describe('NotebookTodayPage', () => {
     const { unmount } = renderToday();
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /Oct 2, 2026/ }),
+      await screen.findByRole('heading', { level: 1, name: /October 2/ }),
     ).toBeInTheDocument();
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     await user.clear(editor);
@@ -363,7 +363,7 @@ describe('NotebookTodayPage', () => {
       expect(state.note?.bodyMarkdown).toBe('before next');
     });
     expect(
-      await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ }),
+      await screen.findByRole('heading', { level: 1, name: /October 3/ }),
     ).toBeInTheDocument();
   });
 
@@ -475,7 +475,7 @@ describe('NotebookTodayPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Next' }));
     expect(
-      await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ }),
+      await screen.findByRole('heading', { level: 1, name: /October 3/ }),
     ).toBeInTheDocument();
     await waitFor(() => expect(state.puts).toBeGreaterThan(0));
     expect(state.note).toBeNull();
@@ -508,7 +508,7 @@ describe('NotebookTodayPage', () => {
 
     await user.type(editor, ' second');
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ });
+    await screen.findByRole('heading', { level: 1, name: /October 3/ });
     await user.click(screen.getByRole('button', { name: 'Previous' }));
 
     const back = await screen.findByRole('textbox', { name: 'Note body' });
@@ -530,18 +530,18 @@ describe('NotebookTodayPage', () => {
   test('Back steps through the days visited', async () => {
     const user = userEvent.setup();
     const { router } = renderToday();
-    await screen.findByRole('heading', { level: 1, name: /Oct 2, 2026/ });
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
 
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ });
+    await screen.findByRole('heading', { level: 1, name: /October 3/ });
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    await screen.findByRole('heading', { level: 1, name: /Oct 4, 2026/ });
+    await screen.findByRole('heading', { level: 1, name: /October 4/ });
 
     await act(async () => {
       await router.navigate(-1);
     });
     expect(
-      await screen.findByRole('heading', { level: 1, name: /Oct 3, 2026/ }),
+      await screen.findByRole('heading', { level: 1, name: /October 3/ }),
     ).toBeInTheDocument();
   });
 
@@ -549,7 +549,7 @@ describe('NotebookTodayPage', () => {
     const user = userEvent.setup();
     vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
     renderToday(null);
-    await screen.findByRole('heading', { level: 1, name: 'Today' });
+    await screen.findByText('Work notebook · Today');
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     await user.type(editor, 'late night');
 
@@ -559,7 +559,7 @@ describe('NotebookTodayPage', () => {
     });
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /Oct 20, 2026/ }),
+      screen.getByRole('heading', { level: 1, name: /October 20/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Note body' })).toBe(editor);
     expect(editor).toHaveValue('late night');
@@ -579,16 +579,18 @@ describe('NotebookTodayPage', () => {
     vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
     renderToday(null);
     await screen.findByRole('textbox', { name: 'Note body' });
-    expect(screen.getByText(/2026-10-20/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: /October 20/ }),
+    ).toBeInTheDocument();
 
     vi.setSystemTime(new Date(2026, 9, 21, 0, 0, 5));
     act(() => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    expect(await screen.findByText(/2026-10-21/)).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Today' }),
+      await screen.findByRole('heading', { level: 1, name: /October 21/ }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Work notebook · Today')).toBeInTheDocument();
   });
 });

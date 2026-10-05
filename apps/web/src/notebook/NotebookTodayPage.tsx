@@ -4,7 +4,9 @@ import {
   dailyNoteResource,
   useDailyNoteDatesQuery,
   type NotebookArea,
+  type Task,
 } from '@gagnechris/app-core';
+import { taskEmbedIds } from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
@@ -20,8 +22,16 @@ import {
   noteDraftFromNote,
   notePayloadFromDraft,
 } from './noteDraft';
-import TodayTasksPanel from './TodayTasksPanel';
+import {
+  CarryFooter,
+  ComingUpPanel,
+  StillOpenPanel,
+} from '../kit/tasks/TodayPanels';
+import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
+import { snoozeBaseDay } from '../kit/tasks/todayTaskBuckets';
 import { useLocalToday } from './useLocalToday';
+import { useTaskToggle } from './useTaskToggle';
+import { useTaskPatch, useTodayTasks } from './useTodayTasks';
 
 function resolveDate(param: string | null, today: string): string {
   if (param && parseLocalDate(param)) return param;
@@ -29,16 +39,41 @@ function resolveDate(param: string | null, today: string): string {
 }
 
 function dayHeading(date: string, today: string): string {
-  if (date === today) return 'Today';
   const parsed = parseLocalDate(date);
-  return parsed
-    ? parsed.toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : date;
+  if (!parsed) return date;
+  const sameYear = date.slice(0, 4) === today.slice(0, 4);
+  return parsed.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
+function DayTitle({
+  area,
+  date,
+  today,
+}: {
+  area: NotebookArea | null;
+  date: string;
+  today: string;
+}) {
+  const areaLabel =
+    area === 'work'
+      ? 'Work notebook'
+      : area === 'personal'
+        ? 'Personal notebook'
+        : 'All areas';
+  return (
+    <div className="notebook-today__title">
+      <p className="notebook-today__kicker">
+        {areaLabel}
+        {date === today ? ' · Today' : ''}
+      </p>
+      <h1>{dayHeading(date, today)}</h1>
+    </div>
+  );
 }
 
 function TodayEditor({
@@ -46,11 +81,14 @@ function TodayEditor({
   date,
   today,
   onUnsavedChange,
+  onEmbeddedIds,
 }: {
   area: NotebookArea;
   date: string;
   today: string;
   onUnsavedChange: (unsaved: boolean) => void;
+  /** The draft's embeds, which are what the note shows; null while loading. */
+  onEmbeddedIds: (ids: ReadonlySet<string> | null) => void;
 }) {
   const {
     draft,
@@ -88,26 +126,38 @@ function TodayEditor({
     onUnsavedChange(unsaved);
   }, [onUnsavedChange, unsaved]);
 
-  if (loadError) {
-    return (
-      <p className="admin-panel__error" role="alert">
-        {loadError}
-      </p>
-    );
-  }
+  const ready = !loadError && !isLoading && entity !== undefined;
+  const body = draft.bodyMarkdown;
+  useEffect(() => {
+    onEmbeddedIds(ready ? new Set(taskEmbedIds(body)) : null);
+  }, [onEmbeddedIds, ready, body]);
 
-  if (isLoading || !entity) {
-    return <p>Loading daily note…</p>;
+  if (loadError || isLoading || !entity) {
+    return (
+      <>
+        <div className="admin-action-bar notebook-today__header">
+          <DayTitle area={area} date={date} today={today} />
+        </div>
+        {loadError ? (
+          <p className="admin-panel__error" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          <p>Loading daily note…</p>
+        )}
+      </>
+    );
   }
 
   return (
     <>
-      <div className="admin-action-bar">
+      <div className="admin-action-bar notebook-today__header">
+        <DayTitle area={area} date={date} today={today} />
         <div className="admin-action-bar__status">
-          <h1>{dayHeading(date, today)}</h1>
           <SaveIndicator saveState={saveState} dirty={dirty} />
-        </div>
-        <div className="admin-toolbar" style={{ marginBottom: 0 }}>
+          {entity.version === 0 ? (
+            <span className="admin-hint">Not saved yet</span>
+          ) : null}
           <button
             type="button"
             className="admin-btn admin-btn--primary"
@@ -123,10 +173,6 @@ function TodayEditor({
           {saveError}
         </p>
       ) : null}
-      <p className="admin-panel__lede">
-        {area === 'work' ? 'Work' : 'Personal'} · {date}
-        {entity.version === 0 ? ' · not saved yet' : ''}
-      </p>
       <NotebookMarkdownBody
         note={entity}
         ensureNoteSaved={save}
@@ -176,6 +222,42 @@ export default function NotebookTodayPage() {
     writingArea !== null,
   );
 
+  const noteKey = writingArea ? `${writingArea}:${date}` : null;
+  const [embedded, setEmbedded] = useState<{
+    key: string;
+    ids: ReadonlySet<string> | null;
+  } | null>(null);
+  const onEmbeddedIds = useCallback(
+    (ids: ReadonlySet<string> | null) => {
+      if (noteKey) setEmbedded({ key: noteKey, ids });
+    },
+    [noteKey],
+  );
+  // With no note on the page (All), nothing is embedded.
+  const embeddedIds: ReadonlySet<string> | null = noteKey
+    ? embedded?.key === noteKey
+      ? embedded.ids
+      : null
+    : NO_IDS;
+
+  const { buckets, stillOpenRows, loading, loadError } = useTodayTasks({
+    area: writingArea ?? undefined,
+    day: date,
+    embeddedIds,
+  });
+  const { toggle, error: toggleError } = useTaskToggle();
+  const { patch, error: patchError } = useTaskPatch();
+  const tasksById = new Map<string, Task>(
+    [...buckets.stillOpen, ...buckets.comingUp.flatMap((d) => d.tasks)].map(
+      (t) => [t.id, t],
+    ),
+  );
+  const withTask = (id: string, run: (task: Task) => void) => {
+    const task = tasksById.get(id);
+    if (task) run(task);
+  };
+  const readOnly = writingArea === null;
+
   // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
   const setDate = (next: string) => {
@@ -187,37 +269,44 @@ export default function NotebookTodayPage() {
   return (
     <section className="admin-panel admin-panel--editor">
       <div className="notebook-today">
-        <aside className="notebook-today__sidebar">
+        <div className="notebook-today__main" ref={editorRef}>
           <div className="notebook-today__day-nav">
             <button
               type="button"
               className="admin-btn"
+              aria-label="Previous"
+              title="Previous day"
               onClick={() => setDate(addLocalDays(date, -1))}
             >
-              Previous
+              ‹
             </button>
             <button
               type="button"
               className="admin-btn"
+              aria-label="Jump to today"
+              disabled={date === today}
               onClick={() => setDate(today)}
             >
-              Jump to today
+              Today
             </button>
             <button
               type="button"
               className="admin-btn"
+              aria-label="Next"
+              title="Next day"
               onClick={() => setDate(addLocalDays(date, 1))}
             >
-              Next
+              ›
             </button>
+            <details className="notebook-today__calendar">
+              <summary>Calendar</summary>
+              <NotebookCalendar
+                selected={date}
+                onSelect={setDate}
+                markedDates={datesQuery.data}
+              />
+            </details>
           </div>
-          <NotebookCalendar
-            selected={date}
-            onSelect={setDate}
-            markedDates={datesQuery.data}
-          />
-        </aside>
-        <div className="notebook-today__editor" ref={editorRef}>
           {writingArea ? (
             <TodayEditor
               key={`${writingArea}:${date}`}
@@ -225,19 +314,62 @@ export default function NotebookTodayPage() {
               date={date}
               today={today}
               onUnsavedChange={onUnsavedChange}
+              onEmbeddedIds={onEmbeddedIds}
             />
           ) : (
             <>
-              <h1>{dayHeading(date, today)}</h1>
+              <div className="admin-action-bar notebook-today__header">
+                <DayTitle area={null} date={date} today={today} />
+              </div>
               <p className="admin-panel__lede">
                 Choose Work or Personal in the area switcher to write a daily
-                note. All is for browsing lists only.
+                note or act on tasks. All shows both areas, read-only.
               </p>
             </>
           )}
+          {date >= today && !loading.stillOpen ? (
+            <CarryFooter
+              count={buckets.carryCount}
+              nextDay={addLocalDays(date, 1)}
+            />
+          ) : null}
         </div>
-        <TodayTasksPanel area={writingArea ?? undefined} />
+        <aside className="notebook-today__side" aria-label="Today tasks">
+          <StillOpenPanel
+            rows={stillOpenRows}
+            snoozeFrom={snoozeBaseDay(date, today)}
+            readOnly={readOnly}
+            loading={loading.stillOpen}
+            error={
+              loadError
+                ? 'Could not load tasks.'
+                : (patchError ?? toggleError ?? null)
+            }
+            onToggle={(id) => withTask(id, (task) => void toggle(task))}
+            onSnooze={(id, schedule) =>
+              withTask(id, (task) => void patch(task, schedule))
+            }
+            onDrop={(id) =>
+              withTask(id, (task) => void patch(task, { status: 'dropped' }))
+            }
+          />
+          <ComingUpPanel
+            days={buckets.comingUp}
+            day={date}
+            readOnly={readOnly}
+            loading={loading.comingUp}
+            onToggle={(id) => withTask(id, (task) => void toggle(task))}
+            taskTo={(task) => `/tasks/${task.id}`}
+            upcomingTo={UPCOMING_ROUTE}
+          />
+          <TaskSyntaxCheatSheet />
+        </aside>
       </div>
     </section>
   );
 }
+
+const NO_IDS: ReadonlySet<string> = new Set();
+
+/** Until an Upcoming page exists, the Tasks list filtered to later show-on dates. */
+const UPCOMING_ROUTE = '/tasks?show=later';

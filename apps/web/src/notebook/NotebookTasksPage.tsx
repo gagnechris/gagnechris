@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   useCreateTaskMutation,
   useTasksQuery,
@@ -19,7 +19,20 @@ import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
-type ShowOnFilter = '' | 'earlier' | 'today' | 'week' | 'none' | 'someday';
+const SHOW_ON_FILTERS = [
+  '',
+  'earlier',
+  'today',
+  'week',
+  'later',
+  'none',
+  'someday',
+] as const;
+
+type ShowOnFilter = (typeof SHOW_ON_FILTERS)[number];
+
+const showOnParam = (value: string | null): ShowOnFilter =>
+  SHOW_ON_FILTERS.find((f) => f === value) ?? '';
 
 function endOfLocalWeek(today: string): string {
   const d = parseLocalDate(today);
@@ -39,6 +52,9 @@ function matchesShowOnFilter(
   if (showOn === 'someday') return task.someday;
   if (task.someday) return false;
   if (showOn === 'none') return task.startDate === null;
+  if (showOn === 'later') {
+    return task.startDate !== null && task.startDate > today;
+  }
   if (showOn === 'today') return task.startDate === today;
   if (showOn === 'earlier') {
     return task.startDate !== null && task.startDate < today;
@@ -59,7 +75,10 @@ export default function NotebookTasksPage() {
   const [quickAdd, setQuickAdd] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
-  const [showOn, setShowOn] = useState<ShowOnFilter>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showOn = showOnParam(searchParams.get('show'));
+  const setShowOn = (next: ShowOnFilter) =>
+    setSearchParams(next ? { show: next } : {}, { replace: true });
   const [showCompleted, setShowCompleted] = useState(false);
 
   const listQuery: {
@@ -67,6 +86,7 @@ export default function NotebookTasksPage() {
     status?: TaskStatus;
     priority?: TaskPriority;
     startOn?: string;
+    startAfter?: string;
     someday?: boolean;
     open?: boolean;
     today: string;
@@ -79,6 +99,7 @@ export default function NotebookTasksPage() {
   if (status) listQuery.status = status;
   if (priority) listQuery.priority = priority;
   if (showOn === 'today') listQuery.startOn = today;
+  if (showOn === 'later') listQuery.startAfter = today;
   if (showOn === 'someday') listQuery.someday = true;
 
   // Default view reads open tasks only; Completed loads when expanded, so a
@@ -200,6 +221,7 @@ export default function NotebookTasksPage() {
             <option value="todo">Todo</option>
             <option value="in_progress">In progress</option>
             <option value="done">Done</option>
+            <option value="dropped">Dropped</option>
           </select>
         </label>
         <label className="admin-field">
@@ -228,6 +250,7 @@ export default function NotebookTasksPage() {
             <option value="earlier">Before today</option>
             <option value="today">Today</option>
             <option value="week">This week</option>
+            <option value="later">After today</option>
             <option value="none">No date</option>
             <option value="someday">Someday</option>
           </select>
@@ -250,7 +273,10 @@ export default function NotebookTasksPage() {
       ) : null}
 
       {openItems.length > 0 ? (
-        <ul className="admin-post-list" aria-label="Open tasks">
+        <ul
+          className="admin-post-list"
+          aria-label={status === 'dropped' ? 'Dropped tasks' : 'Open tasks'}
+        >
           {openItems.map((task) => (
             <TaskListRow
               key={task.id}
