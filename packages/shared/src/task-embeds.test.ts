@@ -59,6 +59,15 @@ describe('task embeds', () => {
     );
   });
 
+  it('strikes a dropped task through so it never reads as open', () => {
+    expect(
+      taskEmbedFallbackLine(
+        { indent: '  ' },
+        { title: 'Call Sam', status: 'dropped' },
+      ),
+    ).toBe('  - [ ] ~~Call Sam~~ (dropped)');
+  });
+
   it('passes through the shared markdown sanitizer intact', () => {
     const html = renderMarkdownToHtml(`before\n\n${taskEmbedToken(A)}\n`);
     expect(html).toContain(`<p>${taskEmbedToken(A)}</p>`);

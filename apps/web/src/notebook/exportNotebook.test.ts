@@ -116,18 +116,24 @@ describe('exportNotebook', () => {
       status: 'todo',
       completedAt: null,
     };
+    const dropped: Task = {
+      ...open,
+      id: '01ARZ3NDEKTSV4RRFFQ48JMTCA',
+      title: 'Book venue',
+      status: 'dropped',
+    };
     const gone = '01ARZ3NDEKTSV4RRFFQ48JMTC9';
     const embedded = note({
-      bodyMarkdown: `Standup\n{{task:${base.id}}}\n  {{task:${open.id}}}\n{{task:${gone}}}`,
+      bodyMarkdown: `Standup\n{{task:${base.id}}}\n  {{task:${open.id}}}\n{{task:${dropped.id}}}\n{{task:${gone}}}`,
     });
 
     const { blob } = buildNotebookExportZip(
       [embedded],
-      [base, open, { ...open, id: gone, deleted: true }],
+      [base, open, dropped, { ...open, id: gone, deleted: true }],
     );
     const text = new TextDecoder().decode(await blob.arrayBuffer());
     expect(text).toContain(
-      'Standup\n- [x] Call Sam\n  - [ ] Send invoice\n- [ ] (deleted task)\n',
+      'Standup\n- [x] Call Sam\n  - [ ] Send invoice\n- [ ] ~~Book venue~~ (dropped)\n- [ ] (deleted task)\n',
     );
     expect(text).not.toContain('{{task:');
   });
