@@ -2,7 +2,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { taskResource, useDeleteTaskMutation } from '@gagnechris/app-core';
 import { Field, Select, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
-import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
+import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
+import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { TaskMentions } from './TaskMentions';
 import { useTaskToggle } from './useTaskToggle';
@@ -11,6 +12,7 @@ import {
   taskDraftFromTask,
   taskPayloadFromDraft,
 } from './taskDraft';
+import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 
 export default function NotebookTaskPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -34,7 +36,7 @@ export default function NotebookTaskPage() {
     busy,
     saveState,
     runDelete,
-  } = useVersionedDocEditor({
+  } = useWorkspaceDocEditor({
     resource: taskResource,
     params: { id },
     enabled: Boolean(id),
@@ -88,7 +90,7 @@ export default function NotebookTaskPage() {
           </Link>
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
-        <div className="admin-toolbar" style={{ marginBottom: 0 }}>
+        <div className="admin-toolbar">
           <button
             type="button"
             className="admin-btn admin-btn--primary"
@@ -128,8 +130,11 @@ export default function NotebookTaskPage() {
         </p>
       ) : null}
 
+      <h1 className="workspace-visually-hidden">
+        {entity.title || 'Untitled task'}
+      </h1>
       <p className="admin-panel__lede">
-        {entity.area === 'work' ? 'Work' : 'Personal'} task
+        {NOTEBOOK_AREA_LABELS[entity.area]} task
       </p>
 
       <Field label="Title">
@@ -200,15 +205,10 @@ export default function NotebookTaskPage() {
         Someday (never shows on Today)
       </label>
 
-      <Field label="Linked note id (optional)">
-        <TextInput
-          value={draft.noteId}
-          onChange={(e) =>
-            updateDraft((prev) => ({ ...prev, noteId: e.target.value }))
-          }
-          placeholder="ULID"
-        />
-      </Field>
+      <LinkedNotePicker
+        value={draft.noteId}
+        onChange={(noteId) => updateDraft((prev) => ({ ...prev, noteId }))}
+      />
 
       <Field label="Tags (comma-separated)">
         <TextInput

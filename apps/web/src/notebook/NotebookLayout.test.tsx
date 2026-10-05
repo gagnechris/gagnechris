@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   MemoryRouter,
+  Navigate,
   Route,
   Routes,
   useLocation,
@@ -57,7 +58,7 @@ function sectionFromPath(pathname: string): string {
 const NotebookOutletProbe = () => {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
   const { id } = useParams<{ id?: string }>();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const section = sectionFromPath(pathname);
   const areaLabel = AREA_LABELS[areaFilter];
 
@@ -69,6 +70,7 @@ const NotebookOutletProbe = () => {
           ? `${areaLabel} · note ${id} (editor arrives in a later ticket).`
           : `${areaLabel} · ${section.toLowerCase()} UI arrives in a later ticket.`}
       </p>
+      <p data-testid="location">{`${pathname}${search}`}</p>
     </section>
   );
 };
@@ -79,6 +81,7 @@ function renderNotebook(initialPath = '/today') {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/" element={<NotebookLayout user={testAuthUser} />}>
+            <Route index element={<Navigate to="today" replace />} />
             <Route path="today" element={<NotebookOutletProbe />} />
             <Route path="notes" element={<NotebookOutletProbe />} />
             <Route path="notes/:id" element={<NotebookOutletProbe />} />
@@ -123,15 +126,15 @@ describe('NotebookLayout', () => {
     const today = await within(nav).findByRole('link', {
       name: 'Today, 3 open',
     });
-    expect(today).toHaveAttribute('href', '/today');
+    expect(today).toHaveAttribute('href', '/today?area=work');
     expect(today).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'Notes' })).toHaveAttribute(
       'href',
-      '/notes',
+      '/notes?area=work',
     );
     expect(
       within(nav).getByRole('link', { name: 'All tasks' }),
-    ).toHaveAttribute('href', '/tasks');
+    ).toHaveAttribute('href', '/tasks?area=work');
     expect(
       within(nav).queryByRole('link', { name: /Posts|Resume/ }),
     ).not.toBeInTheDocument();
@@ -211,5 +214,49 @@ describe('NotebookLayout', () => {
     expect(
       screen.getByText(/Work · note 01TESTNOTEID00000000000000/i),
     ).toBeInTheDocument();
+  });
+
+  test('the area in the URL wins over the stored one and becomes the stored one', () => {
+    writeNotebookAreaFilter('work');
+    renderNotebook('/notes?area=personal');
+
+    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY)).toBe('personal');
+  });
+
+  test('a link without an area gets the stored one, keeping other params', async () => {
+    writeNotebookAreaFilter('all');
+    renderNotebook('/tasks?show=today');
+
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/tasks?show=today&area=all',
+    );
+  });
+
+  test('arrow keys move the area and the URL follows', async () => {
+    const user = userEvent.setup();
+    renderNotebook();
+
+    screen.getByRole('radio', { name: 'Work' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/today?area=personal',
+    );
+  });
+
+  test('opening the root lands on Today with the area', async () => {
+    renderNotebook('/');
+
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      '/today?area=work',
+    );
   });
 });

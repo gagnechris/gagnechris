@@ -78,7 +78,14 @@ export default function NotebookTasksPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const showOn = showOnParam(searchParams.get('show'));
   const setShowOn = (next: ShowOnFilter) =>
-    setSearchParams(next ? { show: next } : {}, { replace: true });
+    setSearchParams(
+      (params) => {
+        if (next) params.set('show', next);
+        else params.delete('show');
+        return params;
+      },
+      { replace: true },
+    );
   const [showCompleted, setShowCompleted] = useState(false);
 
   const listQuery: {

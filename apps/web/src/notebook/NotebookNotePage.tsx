@@ -2,13 +2,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { noteResource, useDeleteNoteMutation } from '@gagnechris/app-core';
 import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
-import { useVersionedDocEditor } from '../workspace/useVersionedDocEditor';
+import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import {
   emptyNoteDraft,
   noteDraftFromNote,
   notePayloadFromDraft,
 } from './noteDraft';
+import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 
 export default function NotebookNotePage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -27,7 +28,7 @@ export default function NotebookNotePage() {
     busy,
     saveState,
     runDelete,
-  } = useVersionedDocEditor({
+  } = useWorkspaceDocEditor({
     resource: noteResource,
     params: { id },
     enabled: Boolean(id),
@@ -79,7 +80,7 @@ export default function NotebookNotePage() {
           </Link>
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
-        <div className="admin-toolbar" style={{ marginBottom: 0 }}>
+        <div className="admin-toolbar">
           <button
             type="button"
             className="admin-btn admin-btn--primary"
@@ -105,8 +106,11 @@ export default function NotebookNotePage() {
         </p>
       ) : null}
 
+      <h1 className="workspace-visually-hidden">
+        {entity.title || 'Untitled page'}
+      </h1>
       <p className="admin-panel__lede">
-        {entity.area === 'work' ? 'Work' : 'Personal'} page
+        {NOTEBOOK_AREA_LABELS[entity.area]} page
       </p>
 
       <Field label="Title">

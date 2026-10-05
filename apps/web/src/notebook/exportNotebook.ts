@@ -135,8 +135,10 @@ updatedAt: ${note.updatedAt}
 
 export function noteExportPath(note: Note): string {
   const safe = (note.title.trim() || 'untitled')
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 60);
   const folder = note.type === 'daily' ? 'daily' : 'pages';
@@ -167,6 +169,8 @@ This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup rema
   return { blob: buildZip(files), fileCount: Object.keys(files).length };
 }
 
+const REVOKE_DELAY_MS = 60_000;
+
 export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -176,5 +180,6 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Safari can still be starting the download when click() returns.
+  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
 }

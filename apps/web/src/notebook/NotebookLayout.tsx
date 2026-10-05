@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { useTasksQuery } from '@gagnechris/app-core';
 import { WorkspaceFrame } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
+import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import {
   areaQueryParam,
+  isNotebookAreaFilter,
   NOTEBOOK_AREA_FILTERS,
+  NOTEBOOK_AREA_LABELS,
   readNotebookAreaFilter,
   writeNotebookAreaFilter,
   type NotebookAreaFilter,
@@ -18,11 +21,10 @@ export type NotebookOutletContext = {
   setAreaFilter: (next: NotebookAreaFilter) => void;
 };
 
-const AREA_LABELS: Record<NotebookAreaFilter, string> = {
-  work: 'Work',
-  personal: 'Personal',
-  all: 'All',
-};
+const AREA_OPTIONS = NOTEBOOK_AREA_FILTERS.map((value) => ({
+  value,
+  label: NOTEBOOK_AREA_LABELS[value],
+}));
 
 /** Same query as Today's Still open, so the two share one cache entry. */
 function useTodayOpenCount(areaFilter: NotebookAreaFilter): string | undefined {
@@ -41,15 +43,43 @@ function useTodayOpenCount(areaFilter: NotebookAreaFilter): string | undefined {
 }
 
 export default function NotebookLayout({ user }: { user: AuthUser }) {
-  const [areaFilter, setAreaFilterState] = useState<NotebookAreaFilter>(() =>
-    readNotebookAreaFilter(),
-  );
+  // The URL wins so a link or another tab opens the area it names; the
+  // stored choice fills in when a link leaves `area` off.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromUrl = searchParams.get('area');
+  const { pathname } = useLocation();
+  const areaFilter: NotebookAreaFilter = isNotebookAreaFilter(fromUrl)
+    ? fromUrl
+    : readNotebookAreaFilter();
   const todayCount = useTodayOpenCount(areaFilter);
 
+  useEffect(() => {
+    if (fromUrl === areaFilter) {
+      writeNotebookAreaFilter(areaFilter);
+      return;
+    }
+    // `/` is mid-redirect to Today; replacing its URL here would undo that.
+    if (pathname === '/') return;
+    setSearchParams(
+      (params) => {
+        params.set('area', areaFilter);
+        return params;
+      },
+      { replace: true },
+    );
+  }, [areaFilter, fromUrl, pathname, setSearchParams]);
+
   const setAreaFilter = (next: NotebookAreaFilter) => {
-    setAreaFilterState(next);
     writeNotebookAreaFilter(next);
+    setSearchParams(
+      (params) => {
+        params.set('area', next);
+        return params;
+      },
+      { replace: true },
+    );
   };
+  const withArea = (path: string) => `${path}?area=${areaFilter}`;
 
   const outletContext: NotebookOutletContext = {
     areaFilter,
@@ -61,34 +91,27 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
       app="notebook"
       user={user}
       sidebarTop={
-        <div
-          className="workspace-segmented"
-          role="radiogroup"
-          aria-label="Notebook area"
-        >
-          {NOTEBOOK_AREA_FILTERS.map((area) => (
-            <button
-              key={area}
-              type="button"
-              role="radio"
-              aria-checked={areaFilter === area}
-              className="workspace-segmented__option"
-              onClick={() => setAreaFilter(area)}
-            >
-              {AREA_LABELS[area]}
-            </button>
-          ))}
-        </div>
+        <SegmentedRadio
+          label="Notebook area"
+          options={AREA_OPTIONS}
+          value={areaFilter}
+          onChange={setAreaFilter}
+        />
       }
       sections={[
         {
           label: 'Notebook',
           items: [
-            { to: '/today', label: 'Today', icon: 'today', count: todayCount },
-            { to: '/upcoming', label: 'Upcoming', icon: 'upcoming' },
-            { to: '/notes', label: 'Notes', icon: 'notes' },
             {
-              to: '/tasks',
+              to: withArea('/today'),
+              label: 'Today',
+              icon: 'today',
+              count: todayCount,
+            },
+            { to: withArea('/upcoming'), label: 'Upcoming', icon: 'upcoming' },
+            { to: withArea('/notes'), label: 'Notes', icon: 'notes' },
+            {
+              to: withArea('/tasks'),
               label: 'All tasks',
               tabLabel: 'Tasks',
               icon: 'tasks',

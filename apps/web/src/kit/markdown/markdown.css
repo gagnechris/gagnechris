@@ -387,3 +387,8 @@
 .editor-accessory__spacer {
   flex: 1;
 }
+
+/* CodeMirror's own #888 is under 4.5:1 on the editor background. */
+.markdown-editor .cm-placeholder {
+  color: var(--neutral-500);
+}

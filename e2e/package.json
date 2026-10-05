@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@gagnechris/api-client": "*",
     "@gagnechris/shared": "*",
     "@types/node": "^22.20.5",

@@ -300,7 +300,16 @@
   cursor: pointer;
 }
 
-.workspace :is(a, button, input, select, textarea, summary):focus-visible {
+.workspace
+  :is(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role='gridcell']
+  ):focus-visible {
   outline: 2px solid var(--primary-600);
   outline-offset: 2px;
 }
@@ -696,15 +705,19 @@
   font-size: var(--text-sm);
 }
 
-.notebook-calendar__weekdays,
 .notebook-calendar__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notebook-calendar__row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.25rem;
 }
 
-.notebook-calendar__weekdays {
-  margin-bottom: 0.25rem;
+.notebook-calendar__weekday {
   font-size: var(--text-xs);
   color: var(--neutral-500);
   text-align: center;
@@ -833,6 +846,10 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
+}
+
+.admin-action-bar .admin-toolbar {
+  margin-bottom: 0;
 }
 
 .admin-actions {

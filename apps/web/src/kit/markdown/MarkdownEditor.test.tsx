@@ -253,6 +253,23 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  test('Enter in a checklist item starts the next unchecked item', async () => {
+    const { container } = render(
+      <MarkdownEditor value="- [x] milk" onChange={() => {}} />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector('.cm-content')).toBeTruthy();
+    });
+    const cmView = EditorView.findFromDOM(
+      container.querySelector('.cm-content')!,
+    )!;
+    cmView.focus();
+    cmView.dispatch({ selection: EditorSelection.cursor(10) });
+    const enter = pressModEnter(cmView, {});
+    expect(enter.defaultPrevented).toBe(true);
+    expect(cmView.state.doc.toString()).toBe('- [x] milk\n- [ ] ');
+  });
+
   test('textbox has an accessible name via contentAttributes (CHR-178)', async () => {
     const { container } = render(
       <MarkdownEditor value="x" onChange={() => {}} label="Post body" />,
