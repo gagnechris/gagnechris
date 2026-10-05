@@ -54,7 +54,7 @@ export const seedPostsDemo = (): PostsDemoState => ({
   draft: {
     title: 'Hello from the demo',
     bodyMarkdown: [
-      'This post was written on the left a moment ago.',
+      'This post was written in the editor a moment ago.',
       '',
       '## What happens next',
       '',
