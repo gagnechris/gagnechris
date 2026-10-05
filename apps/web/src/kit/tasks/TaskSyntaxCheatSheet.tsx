@@ -2,6 +2,7 @@ import { useId } from 'react';
 import './taskSyntax.css';
 
 const ROWS: [string, string][] = [
+  ['[ ] text', 'In a note, creates a task and embeds it there'],
   ['@tomorrow', 'Hide until tomorrow'],
   ['@mon', 'Hide until Monday (on a Monday, the next one)'],
   ['@next week', 'Hide until next Monday'],

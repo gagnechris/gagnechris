@@ -327,6 +327,9 @@ describe('TodayTasksPanel', () => {
     expect(sheet).toHaveTextContent(
       '@monHide until Monday (on a Monday, the next one)',
     );
+    expect(sheet).toHaveTextContent(
+      '[ ] textIn a note, creates a task and embeds it there',
+    );
     expect(sheet).toHaveTextContent('@somedayPark it, no date');
     expect(sheet).toHaveTextContent('!highPriority');
   });

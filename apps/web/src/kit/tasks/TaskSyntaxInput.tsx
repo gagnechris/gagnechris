@@ -6,23 +6,16 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent,
 } from 'react';
+import { taskDateToken } from '@gagnechris/shared';
+import { TaskDateMenu } from './TaskDateMenu';
 import {
-  activeTaskDateQuery,
-  matchesTaskDateQuery,
-  resolveTaskDateToken,
-  taskDateMenuOptions,
-  taskDateToken,
-} from '@gagnechris/shared';
+  openTaskDateQuery,
+  taskDateMenuIds,
+  taskDateMenuItems,
+  tomorrowOf,
+  type TaskDateMenuItem,
+} from './taskDateMenuItems';
 import './taskSyntax.css';
-
-type MenuOption = {
-  id: string;
-  label: string;
-  detail: string;
-  token: string | null;
-};
-
-const PICK_KEYWORDS = ['pick a date', 'date'];
 
 type Props = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -47,11 +40,8 @@ export function TaskSyntaxInput({
   ...inputProps
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const pickerRef = useRef<HTMLInputElement>(null);
   const baseId = useId();
-  const listboxId = `${baseId}-listbox`;
-  const headingId = `${baseId}-heading`;
-  const hintId = `${baseId}-hint`;
+  const ids = taskDateMenuIds(baseId);
 
   const [caret, setCaret] = useState<number | null>(null);
   const [active, setActive] = useState(0);
@@ -64,26 +54,12 @@ export function TaskSyntaxInput({
   // A fresh object per insert, so the same caret position re-runs the effect.
   const [placeCaret, setPlaceCaret] = useState<{ at: number } | null>(null);
 
-  const typed = caret === null ? null : activeTaskDateQuery(value, caret);
-  // A finished token needs no menu, so Enter still submits `Call @mon`.
-  const query =
-    typed && !resolveTaskDateToken(typed.query, today) ? typed : null;
-  const options: MenuOption[] = query
-    ? [
-        ...taskDateMenuOptions(today).filter((o) =>
-          matchesTaskDateQuery(o.keywords, query.query),
-        ),
-        ...(matchesTaskDateQuery(PICK_KEYWORDS, query.query)
-          ? [{ id: 'pick', label: 'Pick a date…', detail: '', token: null }]
-          : []),
-      ]
-    : [];
+  const query = caret === null ? null : openTaskDateQuery(value, caret, today);
+  const items = query ? taskDateMenuItems(today, query.query) : [];
   const open =
-    picking !== null ||
-    (query !== null && query.from !== dismissedAt && options.length > 0);
-  const activeIndex = Math.min(active, options.length - 1);
-  const activeOption = options[activeIndex];
-  const optionId = (id: string) => `${baseId}-option-${id}`;
+    picking !== null || (query !== null && query.from !== dismissedAt);
+  const activeIndex = Math.min(active, items.length - 1);
+  const activeItem = items[activeIndex];
 
   useLayoutEffect(() => {
     const input = inputRef.current;
@@ -108,19 +84,15 @@ export function TaskSyntaxInput({
     onChange(next);
   };
 
-  const choose = (option: MenuOption) => {
+  const choose = (item: TaskDateMenuItem) => {
     if (!query) return;
-    if (option.token) {
-      insert(query, option.token);
+    if (item.token) {
+      insert(query, item.token);
       return;
     }
     setPicking({ from: query.from, to: query.to });
-    setPicked(resolveTaskDateToken('tomorrow', today)?.startDate ?? today);
+    setPicked(tomorrowOf(today));
   };
-
-  useLayoutEffect(() => {
-    if (picking) pickerRef.current?.focus();
-  }, [picking]);
 
   const setPickedDate = () => {
     if (picking && picked) insert(picking, taskDateToken(picked, today));
@@ -135,21 +107,21 @@ export function TaskSyntaxInput({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (open && !picking && activeOption) {
+    if (open && !picking && activeItem) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const step = e.key === 'ArrowDown' ? 1 : -1;
-        setActive((activeIndex + step + options.length) % options.length);
+        setActive((activeIndex + step + items.length) % items.length);
         return;
       }
       if (e.key === 'Home' || e.key === 'End') {
         e.preventDefault();
-        setActive(e.key === 'Home' ? 0 : options.length - 1);
+        setActive(e.key === 'Home' ? 0 : items.length - 1);
         return;
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        choose(activeOption);
+        choose(activeItem);
         return;
       }
       if (e.key === 'Escape') {
@@ -181,12 +153,10 @@ export function TaskSyntaxInput({
         autoComplete="off"
         aria-autocomplete="list"
         aria-expanded={open}
-        aria-controls={listboxId}
-        aria-describedby={open ? hintId : inputProps['aria-describedby']}
+        aria-controls={ids.listbox}
+        aria-describedby={open ? ids.hint : inputProps['aria-describedby']}
         aria-activedescendant={
-          open && !picking && activeOption
-            ? optionId(activeOption.id)
-            : undefined
+          open && !picking && activeItem ? ids.option(activeItem.id) : undefined
         }
         onChange={(e) => {
           setCaret(e.target.selectionStart);
@@ -199,82 +169,25 @@ export function TaskSyntaxInput({
         onKeyDown={handleKeyDown}
         onBlur={onBlur}
       />
-      <div className="task-syntax__menu" hidden={!open}>
-        <p className="task-syntax__heading" id={headingId}>
-          Show this task on…
-        </p>
-        <ul
-          className="task-syntax__options"
-          role="listbox"
-          id={listboxId}
-          aria-labelledby={headingId}
-        >
-          {open && !picking
-            ? options.map((option, i) => (
-                <li
-                  key={option.id}
-                  id={optionId(option.id)}
-                  role="option"
-                  aria-label={
-                    option.detail
-                      ? `${option.label}, ${option.detail}`
-                      : option.label
-                  }
-                  aria-selected={i === activeIndex}
-                  className="task-syntax__option"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => choose(option)}
-                >
-                  <span>{option.label}</span>
-                  {option.detail ? (
-                    <span className="task-syntax__detail">{option.detail}</span>
-                  ) : null}
-                </li>
-              ))
-            : null}
-        </ul>
-        {picking ? (
-          <div className="task-syntax__picker">
-            <label>
-              <span>Pick a date</span>
-              <input
-                ref={pickerRef}
-                type="date"
-                className="admin-input"
-                value={picked}
-                onChange={(e) => setPicked(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    setPickedDate();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    cancelPicking();
-                  }
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              className="admin-btn"
-              disabled={!picked}
-              onClick={setPickedDate}
-            >
-              Set date
-            </button>
-          </div>
-        ) : null}
-        <p className="task-syntax__hint" id={hintId}>
-          {hint}
-        </p>
-      </div>
-      <p className="task-syntax__status" role="status" aria-live="polite">
-        {open && !picking
-          ? `${options.length} date ${options.length === 1 ? 'option' : 'options'}. Up and down to move, Enter to choose, Escape to close.`
-          : ''}
-      </p>
+      <TaskDateMenu
+        baseId={baseId}
+        open={open}
+        items={items}
+        activeIndex={activeIndex}
+        onChoose={choose}
+        onActivate={setActive}
+        hint={hint}
+        picker={
+          picking
+            ? {
+                value: picked,
+                onChange: setPicked,
+                onSet: setPickedDate,
+                onCancel: cancelPicking,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

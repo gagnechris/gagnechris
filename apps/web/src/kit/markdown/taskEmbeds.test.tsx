@@ -69,7 +69,17 @@ describe('taskEmbedEditor', () => {
     pressEnter(view);
     type(view, 'context');
 
-    expect(created).toEqual([{ id: ID_A, draft: { title: 'Call Sam' } }]);
+    expect(created).toEqual([
+      {
+        id: ID_A,
+        draft: {
+          title: 'Call Sam',
+          startDate: null,
+          someday: false,
+          priority: 'med',
+        },
+      },
+    ]);
     expect(view.state.doc.toString()).toBe(
       `Standup\n{{task:${ID_A}}}\ncontext`,
     );

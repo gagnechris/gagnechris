@@ -1,7 +1,9 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
+import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
 import MarkdownPreview from '../kit/markdown/MarkdownPreview';
 import '../kit/markdown/markdown.css';
+import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds, type EmbedNote } from './useNoteTaskEmbeds';
 
 const MarkdownEditor = lazy(() => import('../kit/markdown/MarkdownEditor'));
@@ -29,9 +31,18 @@ export function NotebookMarkdownBody({
     note: note ?? null,
     ensureNoteSaved,
   });
+  const dateMenu = useTaskDateMenuEditor({
+    today: useLocalToday(),
+    hint: 'Stays in this note. Shows up on Today from that date.',
+  });
+  const withTasks = note !== undefined;
   const extensions = useMemo(
-    () => [taskListToggle(), ...embeds.extensions],
-    [embeds.extensions],
+    () => [
+      taskListToggle(),
+      ...(withTasks ? dateMenu.extensions : []),
+      ...embeds.extensions,
+    ],
+    [embeds.extensions, dateMenu.extensions, withTasks],
   );
 
   return (
@@ -74,6 +85,7 @@ export function NotebookMarkdownBody({
         </div>
       </div>
       {embeds.portals}
+      {withTasks ? dateMenu.menu : null}
       {embeds.toggleError ? (
         <p className="admin-panel__error" role="alert">
           {embeds.toggleError}
@@ -82,7 +94,7 @@ export function NotebookMarkdownBody({
       <p className="admin-hint">
         {hint ??
           (note
-            ? '⌘S / Ctrl+S saves · `[ ] text` then Enter adds a task · checklists (`- [ ]`) toggle on click · autosave is on'
+            ? '⌘S / Ctrl+S saves · `[ ] text` then Enter adds a task, `@` picks its day · checklists (`- [ ]`) toggle on click · autosave is on'
             : '⌘S / Ctrl+S saves · checklists (`- [ ]`) toggle on click · autosave is on')}
       </p>
     </>
