@@ -51,4 +51,23 @@ describe('kit import zone', () => {
     },
     30_000,
   );
+
+  // The public Notebook demo renders Today from these with its own reducer.
+  it.each([
+    'tasks/todayTaskBuckets.ts',
+    'tasks/TodayPanels.tsx',
+    'tasks/SnoozeMenu.tsx',
+  ])(
+    '%s stays inside the zone',
+    async (file) => {
+      const [result] = await eslint.lintFiles([
+        path.join(repoRoot, 'apps/web/src/kit', file),
+      ]);
+      expect(
+        result!.messages.filter((m) => m.ruleId === 'no-restricted-imports'),
+      ).toEqual([]);
+      expect(result!.filePath).toContain(`${path.sep}kit${path.sep}`);
+    },
+    30_000,
+  );
 });

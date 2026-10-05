@@ -1,29 +1,120 @@
-import { useEffect, type ReactNode } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
+import {
+  accessLevel,
+  APP_GROUP,
+  APP_TITLE,
+  appHost,
+  appOrigin,
+  type WorkspaceAppName,
+} from './access';
 import { isDevProdApiTarget } from './api/apiTarget';
 import RequireAuth from './auth/RequireAuth';
 import { signOutUser, type AuthUser } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
+import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import '../kit/kit.css';
 import './workspace.css';
 
-type WorkspaceShellProps = {
-  title: string;
-  /** Links shown before Sign out; the nav landmark is labelled with `title`. */
-  nav?: ReactNode;
+export type ShellNavItem = {
+  to: string;
+  label: string;
+  /** Phone tab bar label when `label` is too long for it. */
+  tabLabel?: string;
+  icon: ShellIconName;
+  end?: boolean;
+  /** Hidden unless the user is in this Cognito group. */
+  group?: string;
+  count?: string;
+};
+
+export type ShellNavSection = {
+  label: string;
+  items: ShellNavItem[];
+};
+
+type WorkspaceFrameProps = {
+  app: WorkspaceAppName;
+  user: AuthUser;
+  sections: ShellNavSection[];
+  /** Above the nav, and in the phone More sheet. */
+  sidebarTop?: ReactNode;
+  /** Icon rail instead of the full sidebar, for focused editors. */
+  rail?: boolean;
+  renderSearch: (close: () => void) => ReactNode;
   /** Defaults to the route outlet. */
   children?: ReactNode;
 };
 
-function WorkspaceChrome({
-  title,
-  nav,
-  children,
+const PHONE_TABS = 4;
+
+function initials(label: string): string {
+  const name = label.split('@')[0] ?? label;
+  const parts = name.split(/[\s._-]+/).filter(Boolean);
+  const letters =
+    parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : name.slice(0, 2);
+  return letters.toUpperCase();
+}
+
+function navItemClass({ isActive }: { isActive: boolean }): string {
+  return isActive
+    ? 'workspace-nav__item workspace-nav__item--active'
+    : 'workspace-nav__item';
+}
+
+function ExternalLink({
+  href,
+  icon,
+  label,
+  detail,
+}: {
+  href: string;
+  icon: ShellIconName;
+  label: string;
+  detail?: string;
+}) {
+  return (
+    <a
+      className="workspace-nav__item"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={label}
+    >
+      <ShellIcon name={icon} />
+      <span className="workspace-nav__label">
+        {label}
+        {detail ? (
+          <span className="workspace-nav__detail">{detail}</span>
+        ) : null}
+        <span className="workspace-visually-hidden"> (opens in a new tab)</span>
+      </span>
+      <span className="workspace-nav__trail" aria-hidden="true">
+        <ShellIcon name="external" size={14} />
+      </span>
+    </a>
+  );
+}
+
+/** Sidebar, phone tab bar and ⌘K for one signed-in app. */
+export function WorkspaceFrame({
+  app,
   user,
-}: WorkspaceShellProps & { user: AuthUser }) {
+  sections,
+  sidebarTop,
+  rail = false,
+  renderSearch,
+  children,
+}: WorkspaceFrameProps) {
+  const title = APP_TITLE[app];
   const prodApi = isDevProdApiTarget();
+  const location = useLocation();
+  const [searchOpen, setSearchOpen] = useState(false);
+  // Tied to the location so any navigation closes the sheet.
+  const [moreOpenAt, setMoreOpenAt] = useState<string | null>(null);
+  const moreOpen = moreOpenAt === location.key;
   useVisualViewportCssVars();
 
   // Editors that already unmounted can still be retrying a save.
@@ -37,8 +128,103 @@ function WorkspaceChrome({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setMoreOpenAt(null);
+        setSearchOpen(true);
+      } else if (e.key === 'Escape') {
+        setMoreOpenAt(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.group || user.groups.includes(item.group),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+  const phoneOverflow = new Set(
+    visibleSections.flatMap((s) => s.items).slice(PHONE_TABS),
+  );
+
+  const otherApp: WorkspaceAppName = app === 'admin' ? 'notebook' : 'admin';
+  const openSearch = () => {
+    setMoreOpenAt(null);
+    setSearchOpen(true);
+  };
+
+  const searchButton = (
+    <button
+      type="button"
+      className="workspace-search-button"
+      onClick={openSearch}
+      title="Search everything (⌘K)"
+    >
+      <ShellIcon name="search" />
+      <span className="workspace-search-button__label">Search everything</span>
+      <kbd className="workspace-kbd" aria-hidden="true">
+        ⌘K
+      </kbd>
+    </button>
+  );
+
+  const yourApps = (
+    <nav className="workspace-apps" aria-label="Your apps">
+      <span className="workspace-nav__heading">Your apps</span>
+      {user.groups.includes(APP_GROUP[otherApp]) ? (
+        <ExternalLink
+          href={`${appOrigin(otherApp)}/`}
+          icon={otherApp === 'notebook' ? 'notebook' : 'posts'}
+          label={APP_TITLE[otherApp]}
+        />
+      ) : null}
+      <ExternalLink
+        href={`${appOrigin('public')}/`}
+        icon="globe"
+        label="Public site"
+      />
+    </nav>
+  );
+
+  const account = (
+    <div className="workspace-account">
+      <span className="workspace-account__avatar" aria-hidden="true">
+        {initials(user.label)}
+      </span>
+      <span className="workspace-account__who">
+        <span className="workspace-account__name">{user.label}</span>
+        <span className="workspace-account__level">
+          {accessLevel(user.groups)}
+        </span>
+      </span>
+      <button
+        type="button"
+        className="workspace-icon-button"
+        aria-label={`Sign out of ${title}`}
+        title={`Sign out of ${title}`}
+        onClick={() => {
+          clearPendingFlushes();
+          void signOutUser();
+        }}
+      >
+        <ShellIcon name="signOut" />
+      </button>
+    </div>
+  );
+
   return (
-    <div className="admin-shell">
+    <div
+      className={
+        rail ? 'admin-shell workspace workspace--rail' : 'admin-shell workspace'
+      }
+    >
       <title>{`${title} - Chris Gagne`}</title>
       <meta name="robots" content="noindex, nofollow" />
       {prodApi ? (
@@ -46,38 +232,145 @@ function WorkspaceChrome({
           PRODUCTION API — edits, autosave, and publish hit the live site
         </div>
       ) : null}
-      <header className="admin-header">
-        <div className="admin-brand">
-          <span className="admin-brand__title">{title}</span>
-          <span className="admin-brand__user">{user.label}</span>
-        </div>
-        <nav className="admin-nav" aria-label={title}>
-          {nav}
+      <div className="workspace__body">
+        <aside className="workspace-sidebar">
+          <div className="workspace-brand workspace-desktop">
+            <span className="workspace-brand__mark" aria-hidden="true">
+              CG
+            </span>
+            <span className="workspace-brand__text">
+              <span className="workspace-brand__title">{title}</span>
+              <span className="workspace-brand__host">{appHost(app)}</span>
+            </span>
+          </div>
+          <div className="workspace-desktop">{searchButton}</div>
+          {sidebarTop ? (
+            <div className="workspace-desktop workspace-sidebar__top">
+              {sidebarTop}
+            </div>
+          ) : null}
+          <nav className="workspace-nav" aria-label={title}>
+            {visibleSections.map((section) => (
+              <div key={section.label} className="workspace-nav__section">
+                <span className="workspace-nav__heading">{section.label}</span>
+                {section.items.map((item) => {
+                  const overflow = phoneOverflow.has(item);
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={(state) =>
+                        overflow
+                          ? `${navItemClass(state)} workspace-nav__item--overflow`
+                          : navItemClass(state)
+                      }
+                      title={item.label}
+                      aria-label={
+                        item.count
+                          ? `${item.label}, ${item.count} open`
+                          : undefined
+                      }
+                    >
+                      <ShellIcon name={item.icon} />
+                      <span className="workspace-nav__label">
+                        {item.tabLabel ? (
+                          <>
+                            <span className="workspace-nav__full">
+                              {item.label}
+                            </span>
+                            <span
+                              className="workspace-nav__short"
+                              aria-hidden="true"
+                            >
+                              {item.tabLabel}
+                            </span>
+                          </>
+                        ) : (
+                          item.label
+                        )}
+                      </span>
+                      {item.count ? (
+                        <span
+                          className="workspace-nav__count"
+                          aria-hidden="true"
+                        >
+                          {item.count}
+                        </span>
+                      ) : null}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="workspace-nav__item workspace-nav__more"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpenAt(moreOpen ? null : location.key)}
+            >
+              <ShellIcon name="more" />
+              <span className="workspace-nav__label">More</span>
+            </button>
+          </nav>
+          <div className="workspace-sidebar__footer workspace-desktop">
+            {yourApps}
+            {account}
+          </div>
+        </aside>
+        <main className="admin-main workspace-main">
+          {children ?? <Outlet />}
+        </main>
+      </div>
+      {moreOpen ? (
+        <div className="workspace-more" role="dialog" aria-label="More">
           <button
             type="button"
-            className="admin-nav__link admin-nav__button"
-            onClick={() => {
-              clearPendingFlushes();
-              void signOutUser();
-            }}
-          >
-            Sign out
-          </button>
-        </nav>
-      </header>
-      <main className="admin-main">{children ?? <Outlet />}</main>
+            className="workspace-more__backdrop"
+            aria-label="Close"
+            onClick={() => setMoreOpenAt(null)}
+          />
+          <div className="workspace-more__sheet">
+            {searchButton}
+            {sidebarTop}
+            {phoneOverflow.size > 0 ? (
+              <nav
+                className="workspace-more__pages"
+                aria-label={`More ${title}`}
+              >
+                {[...phoneOverflow].map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={navItemClass}
+                  >
+                    <ShellIcon name={item.icon} />
+                    <span className="workspace-nav__label">{item.label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+            ) : null}
+            {yourApps}
+            {account}
+          </div>
+        </div>
+      ) : null}
+      {searchOpen ? renderSearch(() => setSearchOpen(false)) : null}
     </div>
   );
 }
 
 /** Signed-in chrome shared by the admin and Notebook apps. */
-export default function WorkspaceShell(props: WorkspaceShellProps) {
+export default function WorkspaceShell({
+  children,
+}: {
+  children: (user: AuthUser) => ReactNode;
+}) {
   return (
     <RequireAuth>
       {(user) => (
-        <WorkspaceQueryProvider>
-          <WorkspaceChrome {...props} user={user} />
-        </WorkspaceQueryProvider>
+        <WorkspaceQueryProvider>{children(user)}</WorkspaceQueryProvider>
       )}
     </RequireAuth>
   );

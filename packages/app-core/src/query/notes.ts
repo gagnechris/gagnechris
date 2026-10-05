@@ -2,11 +2,13 @@ import { createUlid } from '@gagnechris/shared';
 import {
   useInfiniteQuery,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
+  ApiError,
   createNote,
   deleteNote,
   fetchDailyNote,
@@ -112,6 +114,19 @@ export const dailyNoteResource = createVersionedResource<
   },
   setCache: setCachedNote,
 });
+
+/** One detail query per id; a 404 (deleted note) is not retried. */
+export const useNotesByIds = (ids: readonly string[]) => {
+  const getClient = useGetApiClient();
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: queryKeys.notes.detail(id),
+      queryFn: () => fetchNote(getClient(), id),
+      retry: (failures: number, error: Error) =>
+        !(error instanceof ApiError && error.status === 404) && failures < 2,
+    })),
+  });
+};
 
 export const useNotesQuery = (filters: ListNotesQuery = {}) => {
   const getClient = useGetApiClient();

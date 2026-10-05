@@ -257,7 +257,7 @@ test.describe('a demo in the Try it slot', () => {
       slug,
       stage: 'live',
       bodyMarkdown: BODY,
-      demo: 'notebook',
+      demo: 'posts',
       previewImage: `/media/projects/${prefix}.png`,
     });
     await expect
@@ -307,7 +307,9 @@ test.describe('a demo in the Try it slot', () => {
       slot.getByRole('checkbox', { name: 'Complete Call Sam' }),
     ).toBeVisible();
     await page.keyboard.press(tab);
-    await expect(slot.getByRole('button', { name: 'Add' })).toBeFocused();
+    await expect(
+      slot.getByRole('button', { name: 'Add', exact: true }),
+    ).toBeFocused();
     await page.keyboard.press(tab);
     await expect(open).toBeFocused();
     await page.keyboard.press('Space');
@@ -342,27 +344,28 @@ test.describe('a demo in the Try it slot', () => {
   });
 });
 
+type Manifest = Record<
+  string,
+  { file: string; imports?: string[]; dynamicImports?: string[] }
+>;
+
+const staticFiles = (manifest: Manifest, key: string): Set<string> => {
+  const files = new Set<string>();
+  const queue = [key];
+  while (queue.length) {
+    const chunk = manifest[queue.pop()!]!;
+    if (files.has(`/${chunk.file}`)) continue;
+    files.add(`/${chunk.file}`);
+    queue.push(...(chunk.imports ?? []));
+  }
+  return files;
+};
+
+const CODEMIRROR = 'src/kit/markdown/MarkdownEditor.tsx';
+
 test.describe('the Posts demo on the built site', () => {
   const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
   const DEMO = 'src/demos/posts/index.tsx';
-  const CODEMIRROR = 'src/kit/markdown/MarkdownEditor.tsx';
-
-  type Manifest = Record<
-    string,
-    { file: string; imports?: string[]; dynamicImports?: string[] }
-  >;
-
-  const staticFiles = (manifest: Manifest, key: string): Set<string> => {
-    const files = new Set<string>();
-    const queue = [key];
-    while (queue.length) {
-      const chunk = manifest[queue.pop()!]!;
-      if (files.has(`/${chunk.file}`)) continue;
-      files.add(`/${chunk.file}`);
-      queue.push(...(chunk.imports ?? []));
-    }
-    return files;
-  };
 
   const publishPostsDemo = async (
     seed: Seed,
@@ -542,6 +545,247 @@ test.describe('the Posts demo on the built site', () => {
     await expect(publicSite.getByRole('heading', { level: 1 })).toHaveText(
       'Hello from the demo',
     );
+  });
+});
+
+test.describe('the Notebook demo on the built site', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
+  const DEMO = 'src/demos/notebook/index.tsx';
+  const SCHEDULED =
+    'Scheduled for Mon. It stays in this note and shows up under Coming up.';
+
+  const publishNotebookDemo = async (
+    seed: Seed,
+    prefix: string,
+    request: APIRequestContext,
+  ) => {
+    const slug = `${prefix}-notebook-demo`;
+    await publishProject(seed, {
+      name: `Notebook ${prefix}`,
+      slug,
+      stage: 'building',
+      bodyMarkdown: BODY,
+      demo: 'notebook',
+      previewImage: `/media/projects/${prefix}.png`,
+    });
+    await expect
+      .poll(async () =>
+        (await request.get(`${site()}/projects/${slug}`)).status(),
+      )
+      .toBe(200);
+    return slug;
+  };
+
+  test('loads lazily without CodeMirror and works from the keyboard: type, Enter, Tab to checkboxes and + Note, Space toggles; no /api requests', async ({
+    page,
+    seed,
+    prefix,
+    request,
+    browserName,
+  }) => {
+    // Safari moves focus only between text fields on plain Tab.
+    const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+    const manifest = (await (
+      await request.get(`${site()}/.vite/manifest.json`)
+    ).json()) as Manifest;
+    expect(manifest[DEMO], 'Notebook demo chunk').toBeDefined();
+    expect(manifest[DEMO]!.dynamicImports ?? []).toEqual([]);
+    const demoFile = `/${manifest[DEMO]!.file}`;
+    const editorFile = `/${manifest[CODEMIRROR]!.file}`;
+    expect(staticFiles(manifest, DEMO).has(editorFile)).toBe(false);
+    expect(staticFiles(manifest, 'index.html').has(demoFile)).toBe(false);
+
+    const slug = await publishNotebookDemo(seed, prefix, request);
+    // Friday, October 2, 2026 on the visitor's clock.
+    await page.clock.setFixedTime(new Date(2026, 9, 2, 9, 0));
+    const requests: URL[] = [];
+    page.on('request', (req) => requests.push(new URL(req.url())));
+    await page.setViewportSize({ width: 1280, height: 120 });
+    await page.goto(`${site()}/projects/${slug}`);
+    const slot = page.getByRole('region', { name: 'Try it' });
+    await expect(slot.locator('img')).toHaveAttribute(
+      'src',
+      `/media/projects/${prefix}.png`,
+    );
+    await page.waitForLoadState('networkidle');
+    const fetched = (path: string) => requests.some((u) => u.pathname === path);
+    expect(fetched(demoFile)).toBe(false);
+
+    await slot.scrollIntoViewIfNeeded();
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    const input = slot.getByRole('combobox', { name: 'New task' });
+    await expect(input).toBeVisible();
+    expect(fetched(demoFile)).toBe(true);
+    await expect(
+      slot.getByRole('heading', { name: 'Friday, October 2' }),
+    ).toBeVisible();
+    const note = slot.locator('.demo-frame__note--label');
+    await expect(note).toHaveText(
+      'Sample data, runs in your browser, nothing is saved',
+      { useInnerText: true },
+    );
+    const label = slot.getByRole('heading', { name: 'Try it' });
+    expect(
+      Math.abs((await note.boundingBox())!.y - (await label.boundingBox())!.y),
+    ).toBeLessThan(4);
+
+    const todayNote = slot.getByRole('region', { name: 'Today’s note' });
+    const stillOpen = slot.getByTestId('still-open');
+    const comingUp = slot.getByTestId('coming-up');
+    const side = (await stillOpen.boundingBox())!;
+    const main = (await todayNote.boundingBox())!;
+    expect(side.x).toBeGreaterThan(main.x + main.width);
+    await expect(stillOpen.getByText('Thu note · 1 day')).toBeVisible();
+    await expect(comingUp.locator('li')).toHaveText(['Write weekly notesSat']);
+
+    const fromInteraction = requests.length;
+    const reset = slot.getByRole('button', { name: 'Reset demo' });
+    await reset.focus();
+    await page.keyboard.press(tab);
+    await expect(
+      todayNote.getByRole('checkbox', {
+        name: 'Reopen Review publisher retry PR',
+      }),
+    ).toBeFocused();
+    await page.keyboard.press(tab);
+    const sidebar = todayNote.getByRole('checkbox', {
+      name: 'Complete Draft sidebar nav spec',
+    });
+    await expect(sidebar).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(
+      todayNote.getByRole('checkbox', {
+        name: 'Reopen Draft sidebar nav spec',
+      }),
+    ).toBeChecked();
+
+    await page.keyboard.press(tab);
+    await expect(input).toBeFocused();
+    await page.keyboard.type('Call Sam @mon !high');
+    await page.keyboard.press('Enter');
+    await expect(input).toHaveValue('');
+    const sam = todayNote.locator('.task-embed', { hasText: 'Call Sam' });
+    await expect(sam).toContainText('@Mon');
+    await expect(sam.locator('.task-embed__pill--high')).toHaveText('High');
+    await expect(comingUp.locator('li')).toHaveText([
+      'Write weekly notesSat',
+      'Call SamMon',
+    ]);
+    await expect(slot.locator('.notebook-demo__hint')).toHaveText(SCHEDULED);
+
+    await page.keyboard.press(tab);
+    await expect(
+      slot.getByRole('button', { name: 'Add', exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press(tab);
+    await page.keyboard.press(tab);
+    const plusNote = stillOpen.getByRole('button', {
+      name: 'Add Reply to recruiter email to the note',
+    });
+    await expect(plusNote).toBeFocused();
+    await expect(plusNote).toHaveText('+ Note');
+    await page.keyboard.press('Space');
+    const recruiter = todayNote.getByRole('checkbox', {
+      name: 'Complete Reply to recruiter email',
+    });
+    await expect(recruiter).toBeFocused();
+    await expect(stillOpen.getByText('Reply to recruiter email')).toHaveCount(
+      0,
+    );
+    await page.keyboard.press('Space');
+    await expect(
+      todayNote.getByRole('checkbox', {
+        name: 'Reopen Reply to recruiter email',
+      }),
+    ).toBeChecked();
+
+    await reset.click();
+    await expect(slot.getByText('Call Sam')).toHaveCount(0);
+    await expect(stillOpen.locator('li')).toHaveCount(2);
+    await expect(sidebar).not.toBeChecked();
+    await page.waitForLoadState('networkidle');
+
+    const pageOrigin = new URL(site()).origin;
+    expect(fetched(editorFile)).toBe(false);
+    expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
+    expect(
+      requests
+        .slice(fromInteraction)
+        .filter(
+          (u) => u.origin === pageOrigin && !u.pathname.endsWith('.woff2'),
+        )
+        .map(String),
+    ).toEqual([]);
+  });
+
+  test('on a phone the side panels are tabs under the note, the day is the visitor’s, with no sideways scroll', async ({
+    browser,
+    seed,
+    prefix,
+    request,
+  }) => {
+    const slug = await publishNotebookDemo(seed, prefix, request);
+    // Noon UTC on Friday is already Saturday on Kiritimati (UTC+14).
+    const context = await browser.newContext({
+      timezoneId: 'Pacific/Kiritimati',
+      viewport: { width: 390, height: 844 },
+    });
+    const page = await context.newPage();
+    await page.clock.setFixedTime(new Date('2026-10-02T12:00:00Z'));
+    await page.goto(`${site()}/projects/${slug}`);
+    const slot = page.getByRole('region', { name: 'Try it' });
+    await slot.scrollIntoViewIfNeeded();
+    const input = slot.getByRole('combobox', { name: 'New task' });
+    await expect(input).toBeVisible();
+    await expect(input).toHaveAttribute(
+      'placeholder',
+      'Try: Call Sam @mon !high',
+    );
+    await expect(
+      slot.getByRole('heading', { name: 'Saturday, October 3' }),
+    ).toBeVisible();
+    await expect(slot.getByRole('button', { name: 'Reset' })).toBeVisible();
+
+    const note = slot.locator('.demo-frame__note--label');
+    await expect(note).toHaveText('· nothing is saved', {
+      useInnerText: true,
+    });
+    const label = slot.getByRole('heading', { name: 'Try it' });
+    const n = (await note.boundingBox())!;
+    const l = (await label.boundingBox())!;
+    expect(Math.abs(n.y - l.y)).toBeLessThan(4);
+    expect(n.x).toBeGreaterThan(l.x);
+
+    await input.fill('Call Sam @mon');
+    await input.press('Enter');
+    const tabs = slot.getByRole('tab');
+    await expect(tabs).toHaveText(['Still open · 2', 'Coming up · 2']);
+    const todayNote = slot.getByRole('region', { name: 'Today’s note' });
+    const t = (await tabs.first().boundingBox())!;
+    const m = (await todayNote.boundingBox())!;
+    expect(t.y).toBeGreaterThanOrEqual(m.y + m.height - 1);
+    await expect(slot.getByRole('tabpanel')).toContainText(
+      'Reply to recruiter email',
+    );
+    await tabs.nth(1).click();
+    await expect(slot.getByRole('tabpanel')).toContainText('Call Sam');
+    await expect(slot.getByRole('tabpanel')).toContainText(
+      'Write weekly notes',
+    );
+
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(0);
+    await context.close();
   });
 });
 

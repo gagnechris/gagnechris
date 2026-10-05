@@ -56,11 +56,11 @@ afterwards:
    301s against it
 4. One Vite dev server per app (public, admin, Notebook) with
    `VITE_AUTH_MODE=local`, each on its own port, so each app is its own
-   origin as in prod. The public one sets `VITE_DEMO_FIXTURE=notebook`, so a
-   project with `demo: 'notebook'` loads the test-only fixture demo there
+   origin as in prod. The public one sets `VITE_DEMO_FIXTURE=posts`, so a
+   project with `demo: 'posts'` loads the test-only fixture demo there
    (`tests/public-project-page.spec.ts` checks that it loads lazily, resets,
    and makes no `/api` or third-party requests). The same spec drives the
-   real Posts demo on the built site
+   real Posts and Notebook demos on the built site
 5. Production builds of the admin and Notebook apps (`vite build` into
    `e2e/.stack/<run>/dist-*`, real Amplify, Cognito settings from
    `E2E_COGNITO` in `e2e/stack.ts`) served by `vite preview`.
@@ -114,7 +114,7 @@ Import `test` and `expect` from `e2e/fixtures.ts`:
 | `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)                 |
 | `seedAs` | `seedAs(user)` seeds as another user                                                    |
 
-Fake sign-in writes `{ userId, label }` to `localStorage['gagnechris.localAuthUser']`.
+Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin` and `notebook`.
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the local API turns that
 into ID-token claims with `sub=<userId>` for the matched route's app

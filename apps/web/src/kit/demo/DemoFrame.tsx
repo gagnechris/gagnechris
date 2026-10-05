@@ -11,6 +11,7 @@ type Props = { onReset: () => void } & (
       /** The note sits in the slot's label row and the demo places Reset in its own toolbar. */
       layout: 'split';
       note: ReactNode;
+      resetLabel?: ReactNode;
       children: (resetButton: ReactNode) => ReactNode;
     }
 );
@@ -41,7 +42,7 @@ export function DemoFrame(props: Props) {
         setGeneration((g) => g + 1);
       }}
     >
-      Reset
+      {(props.layout === 'split' && props.resetLabel) || 'Reset'}
     </Button>
   );
 

@@ -53,6 +53,20 @@ describe('TaskEmbedRow', () => {
     expect(screen.getByText('Deleted task')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
+
+  test('a dropped task reads as dropped, not open', () => {
+    const { container } = render(
+      <TaskEmbedRow
+        view={{
+          kind: 'task',
+          task: { title: 'Old idea', status: 'dropped', priority: 'med' },
+          onToggle: () => {},
+        }}
+      />,
+    );
+    expect(screen.getByText('Dropped')).toBeInTheDocument();
+    expect(container.querySelector('.task-embed--dropped')).not.toBeNull();
+  });
 });
 
 describe('MarkdownPreview with task embeds', () => {

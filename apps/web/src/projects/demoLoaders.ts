@@ -18,6 +18,7 @@ type DemoLoaders = Partial<Record<ProjectDemo, () => Promise<DemoModule>>>;
  */
 const loaders: DemoLoaders = {
   posts: () => import('../demos/posts'),
+  notebook: () => import('../demos/notebook'),
 };
 
 const fixtureId = import.meta.env.VITE_DEMO_FIXTURE;

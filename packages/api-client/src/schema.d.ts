@@ -5898,7 +5898,7 @@ export interface paths {
             parameters: {
                 query?: {
                     area?: "work" | "personal";
-                    status?: "todo" | "in_progress" | "done";
+                    status?: "todo" | "in_progress" | "done" | "dropped";
                     priority?: "low" | "med" | "high";
                     /** @description Tasks due on this date */
                     dueOn?: string;
@@ -5914,7 +5914,7 @@ export interface paths {
                     someday?: "true" | "false";
                     /** @description Tasks linked to a note */
                     noteId?: string;
-                    /** @description Only todo and in_progress tasks (ignored when status is set) */
+                    /** @description Only todo and in_progress tasks; done and dropped are closed (ignored when status is set) */
                     open?: "true" | "false";
                     /** @description Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today */
                     today?: string;
@@ -5944,7 +5944,7 @@ export interface paths {
                                 /** @enum {string} */
                                 priority: "low" | "med" | "high";
                                 /** @enum {string} */
-                                status: "todo" | "in_progress" | "done";
+                                status: "todo" | "in_progress" | "done" | "dropped";
                                 dueDate: string | null;
                                 startDate: string | null;
                                 someday: boolean;
@@ -6070,7 +6070,7 @@ export interface paths {
                          * @default todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in_progress" | "done";
+                        status?: "todo" | "in_progress" | "done" | "dropped";
                         dueDate?: string | null;
                         /** @description Day the task shows on Today; omitted or null means now */
                         startDate?: string | null;
@@ -6100,7 +6100,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -6282,7 +6282,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -6482,7 +6482,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -6671,7 +6671,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -6806,7 +6806,7 @@ export interface paths {
                         /** @enum {string} */
                         priority?: "low" | "med" | "high";
                         /** @enum {string} */
-                        status?: "todo" | "in_progress" | "done";
+                        status?: "todo" | "in_progress" | "done" | "dropped";
                         dueDate?: string | null;
                         startDate?: string | null;
                         someday?: boolean;
@@ -6834,7 +6834,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -7035,7 +7035,7 @@ export interface paths {
                             /** @enum {string} */
                             priority: "low" | "med" | "high";
                             /** @enum {string} */
-                            status: "todo" | "in_progress" | "done";
+                            status: "todo" | "in_progress" | "done" | "dropped";
                             dueDate: string | null;
                             startDate: string | null;
                             someday: boolean;
@@ -7427,7 +7427,7 @@ export interface paths {
                                     /** @enum {string} */
                                     priority: "low" | "med" | "high";
                                     /** @enum {string} */
-                                    status: "todo" | "in_progress" | "done";
+                                    status: "todo" | "in_progress" | "done" | "dropped";
                                     dueDate: string | null;
                                     startDate: string | null;
                                     someday: boolean;
@@ -8400,7 +8400,7 @@ export interface components {
             /** @enum {string} */
             priority: "low" | "med" | "high";
             /** @enum {string} */
-            status: "todo" | "in_progress" | "done";
+            status: "todo" | "in_progress" | "done" | "dropped";
             dueDate: string | null;
             startDate: string | null;
             someday: boolean;
@@ -8426,7 +8426,7 @@ export interface components {
                 /** @enum {string} */
                 priority: "low" | "med" | "high";
                 /** @enum {string} */
-                status: "todo" | "in_progress" | "done";
+                status: "todo" | "in_progress" | "done" | "dropped";
                 dueDate: string | null;
                 startDate: string | null;
                 someday: boolean;
@@ -8462,7 +8462,7 @@ export interface components {
              * @default todo
              * @enum {string}
              */
-            status: "todo" | "in_progress" | "done";
+            status: "todo" | "in_progress" | "done" | "dropped";
             dueDate?: string | null;
             /** @description Day the task shows on Today; omitted or null means now */
             startDate?: string | null;
@@ -8481,7 +8481,7 @@ export interface components {
             /** @enum {string} */
             priority?: "low" | "med" | "high";
             /** @enum {string} */
-            status?: "todo" | "in_progress" | "done";
+            status?: "todo" | "in_progress" | "done" | "dropped";
             dueDate?: string | null;
             startDate?: string | null;
             someday?: boolean;
@@ -8492,7 +8492,7 @@ export interface components {
             /** @enum {string} */
             area?: "work" | "personal";
             /** @enum {string} */
-            status?: "todo" | "in_progress" | "done";
+            status?: "todo" | "in_progress" | "done" | "dropped";
             /** @enum {string} */
             priority?: "low" | "med" | "high";
             /** @description Tasks due on this date */
@@ -8513,7 +8513,7 @@ export interface components {
             /** @description Tasks linked to a note */
             noteId?: string;
             /**
-             * @description Only todo and in_progress tasks (ignored when status is set)
+             * @description Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)
              * @enum {string}
              */
             open?: "true" | "false";
@@ -8615,7 +8615,7 @@ export interface components {
                 /** @enum {string} */
                 priority: "low" | "med" | "high";
                 /** @enum {string} */
-                status: "todo" | "in_progress" | "done";
+                status: "todo" | "in_progress" | "done" | "dropped";
                 dueDate: string | null;
                 startDate: string | null;
                 someday: boolean;
@@ -8698,7 +8698,7 @@ export interface components {
                 /** @enum {string} */
                 priority: "low" | "med" | "high";
                 /** @enum {string} */
-                status: "todo" | "in_progress" | "done";
+                status: "todo" | "in_progress" | "done" | "dropped";
                 dueDate: string | null;
                 startDate: string | null;
                 someday: boolean;
@@ -8782,7 +8782,7 @@ export interface components {
                     /** @enum {string} */
                     priority: "low" | "med" | "high";
                     /** @enum {string} */
-                    status: "todo" | "in_progress" | "done";
+                    status: "todo" | "in_progress" | "done" | "dropped";
                     dueDate: string | null;
                     startDate: string | null;
                     someday: boolean;

@@ -3,8 +3,6 @@ import NotebookLayout from './NotebookLayout';
 
 export default function NotebookShell() {
   return (
-    <WorkspaceShell title="Notebook">
-      <NotebookLayout />
-    </WorkspaceShell>
+    <WorkspaceShell>{(user) => <NotebookLayout user={user} />}</WorkspaceShell>
   );
 }

@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookNotePage from './NotebookNotePage';
 import NotebookTodayPage from './NotebookTodayPage';
@@ -156,7 +156,7 @@ const renderNotebook = () => {
     [
       {
         path: '/',
-        element: <NotebookLayout />,
+        element: <NotebookLayout user={testAuthUser} />,
         children: [
           { path: 'today', element: <NotebookTodayPage /> },
           { path: 'notes', element: <p>Notes list</p> },
@@ -223,7 +223,7 @@ describe('Today after deleting its daily note', () => {
     });
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     expect(editor).toHaveValue('');
-    expect(screen.getByText(/not saved yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Not saved yet/)).toBeInTheDocument();
 
     await user.type(editor, 'fresh start');
     await waitFor(

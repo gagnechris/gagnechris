@@ -155,6 +155,7 @@ test('renaming a task changes every embed, and export writes titles instead of t
     ).toBeVisible();
   }
 
+  await page.goto(`${apps.notebook}/notes`);
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export' }).click();
   const download = await downloadPromise;

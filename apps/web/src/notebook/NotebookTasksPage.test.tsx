@@ -2,7 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { QueryClientTestProvider } from '../test-utils';
+import { addLocalDays, localToday } from '../kit/calendarDates';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTasksPage from './NotebookTasksPage';
 
@@ -13,7 +14,7 @@ type Task = {
   title: string;
   description: string;
   priority: 'low' | 'med' | 'high';
-  status: 'todo' | 'in_progress' | 'done';
+  status: 'todo' | 'in_progress' | 'done' | 'dropped';
   dueDate: string | null;
   startDate: string | null;
   someday: boolean;
@@ -41,6 +42,7 @@ vi.mock('../workspace/api/client', () => ({
             status?: string;
             open?: string;
             startOn?: string;
+            startAfter?: string;
             someday?: string;
           };
         };
@@ -56,8 +58,12 @@ vi.mock('../workspace/api/client', () => ({
                 !t.deleted &&
                 (q.status
                   ? t.status === q.status
-                  : q.open !== 'true' || t.status !== 'done') &&
+                  : q.open !== 'true' ||
+                    t.status === 'todo' ||
+                    t.status === 'in_progress') &&
                 (!q.startOn || t.startDate === q.startOn) &&
+                (!q.startAfter ||
+                  (t.startDate !== null && t.startDate > q.startAfter)) &&
                 (!q.someday || t.someday === (q.someday === 'true')),
             ),
           },
@@ -151,16 +157,16 @@ vi.mock('../workspace/api/client', () => ({
   }),
 }));
 
-function renderTasks() {
+function renderTasks(entry = '/tasks') {
   const router = createMemoryRouter(
     [
       {
         path: '/',
-        element: <NotebookLayout />,
+        element: <NotebookLayout user={testAuthUser} />,
         children: [{ path: 'tasks', element: <NotebookTasksPage /> }],
       },
     ],
-    { initialEntries: ['/tasks'] },
+    { initialEntries: [entry] },
   );
   return render(
     <QueryClientTestProvider>
@@ -255,5 +261,59 @@ describe('NotebookTasksPage', () => {
     const open = await screen.findByRole('list', { name: 'Open tasks' });
     expect(open.querySelectorAll('li')).toHaveLength(3);
     expect(screen.queryByText('old 0')).not.toBeInTheDocument();
+  });
+
+  test('?show=later lists open tasks after today, and Dropped finds dropped ones', async () => {
+    const today = localToday();
+    const mk = (
+      i: number,
+      title: string,
+      startDate: string,
+      status: Task['status'] = 'todo',
+    ): Task => ({
+      id: `01TASKLATER${String(i).padStart(15, '0')}`,
+      userId: 'u1',
+      area: 'work',
+      title,
+      description: '',
+      priority: 'med',
+      status,
+      dueDate: null,
+      startDate,
+      someday: false,
+      completedAt: null,
+      noteId: null,
+      tags: [],
+      version: 1,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      updatedAt: '2026-09-01T12:00:00.000Z',
+      deleted: false,
+    });
+    state.tasks = [
+      mk(1, 'Today task', today),
+      mk(2, 'Next week task', addLocalDays(today, 7)),
+      mk(3, 'Dropped later', addLocalDays(today, 3), 'dropped'),
+    ];
+    const user = userEvent.setup();
+    renderTasks('/tasks?show=later');
+
+    const open = await screen.findByRole('list', { name: 'Open tasks' });
+    await waitFor(() => {
+      expect(open).toHaveTextContent('Next week task');
+    });
+    expect(open).not.toHaveTextContent('Today task');
+    expect(open).not.toHaveTextContent('Dropped later');
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by show-on date' }),
+    ).toHaveValue('later');
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Filter by status' }),
+      'dropped',
+    );
+    const dropped = await screen.findByRole('list', { name: 'Dropped tasks' });
+    expect(dropped).toHaveTextContent('Dropped later');
+    expect(dropped).toHaveTextContent('dropped');
+    expect(dropped).not.toHaveTextContent('Next week task');
   });
 });

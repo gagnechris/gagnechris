@@ -170,6 +170,8 @@ export async function startStack(): Promise<Stack> {
     VITE_LOCAL_SITE_ORIGIN: siteUrl,
     // The admin app's View live links; the local site stands in for gagnechris.com.
     VITE_PUBLIC_SITE_ORIGIN: siteUrl,
+    VITE_ADMIN_ORIGIN: url(ports.admin),
+    VITE_NOTEBOOK_ORIGIN: url(ports.notebook),
   };
   delete env.AWS_PROFILE;
   delete env.AWS_DEFAULT_PROFILE;
@@ -292,10 +294,11 @@ export async function startStack(): Promise<Stack> {
           '--strictPort',
         ],
         webDir,
-        // The public dev server's `notebook` Try it slot loads the test fixture demo.
+        // The public dev server's `posts` Try it slot loads the test fixture
+        // demo; the real demos are driven on the built site.
         {
           WEB_APP: app,
-          VITE_DEMO_FIXTURE: app === 'public' ? 'notebook' : undefined,
+          VITE_DEMO_FIXTURE: app === 'public' ? 'posts' : undefined,
         },
       );
       return waitFor(`Vite ${app}`, `${url(port)}/`, (s) => s === 200, logs);

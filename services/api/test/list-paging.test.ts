@@ -1,3 +1,4 @@
+import { isOpenTaskStatus } from '@gagnechris/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
@@ -82,7 +83,7 @@ describe('multi-partition list paging', () => {
                   (!area || t.area === area) &&
                   (status
                     ? t.status === status
-                    : !open || t.status !== 'done') &&
+                    : !open || isOpenTaskStatus(t.status)) &&
                   (!priority || t.priority === priority),
               )
               .map((t) => t.id);
@@ -116,7 +117,9 @@ describe('multi-partition list paging', () => {
                 (t) =>
                   matches(t) &&
                   (!area || t.area === area) &&
-                  (status ? t.status === status : !open || t.status !== 'done'),
+                  (status
+                    ? t.status === status
+                    : !open || isOpenTaskStatus(t.status)),
               )
               .map((t) => t.id);
             if (!area && !status && !open) {

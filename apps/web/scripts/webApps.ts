@@ -47,22 +47,32 @@ export const webAppFromEnv = (value: string | undefined): WebAppName => {
   return name;
 };
 
-const PROD_PUBLIC_SITE_ORIGIN = 'https://gagnechris.com';
+const PROD_ORIGINS: Record<WebAppName, string> = {
+  public: 'https://gagnechris.com',
+  admin: 'https://admin.gagnechris.com',
+  notebook: 'https://notebook.gagnechris.com',
+};
 
-/** Where the admin app links public pages; builds default to production. */
-export const publicSiteOrigin = (
+/** Where one app links another; builds default to production, dev servers to each app's dev port. */
+export const appOrigin = (
+  app: WebAppName,
   value: string | undefined,
   command: 'build' | 'serve',
 ): string => {
   const origin =
     value?.trim() ||
     (command === 'build'
-      ? PROD_PUBLIC_SITE_ORIGIN
-      : `http://localhost:${WEB_APPS.public.port}`);
+      ? PROD_ORIGINS[app]
+      : `http://localhost:${WEB_APPS[app].port}`);
   if (!URL.canParse(origin) || new URL(origin).origin !== origin) {
     throw new Error(
-      `VITE_PUBLIC_SITE_ORIGIN must be an origin like ${PROD_PUBLIC_SITE_ORIGIN} (got ${origin})`,
+      `The ${app} origin must be an origin like ${PROD_ORIGINS[app]} (got ${origin})`,
     );
   }
   return origin;
 };
+
+export const publicSiteOrigin = (
+  value: string | undefined,
+  command: 'build' | 'serve',
+): string => appOrigin('public', value, command);

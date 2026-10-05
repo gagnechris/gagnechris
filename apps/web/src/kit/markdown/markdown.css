@@ -212,7 +212,8 @@
   overflow-wrap: anywhere;
 }
 
-.task-embed--done .task-embed__title {
+.task-embed--done .task-embed__title,
+.task-embed--dropped .task-embed__title {
   text-decoration: line-through;
   color: var(--neutral-500);
 }

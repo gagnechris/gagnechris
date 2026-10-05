@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { navLinkClass } from '../workspace/ui/navLinkClass';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useTasksQuery } from '@gagnechris/app-core';
+import { WorkspaceFrame } from '../workspace/WorkspaceShell';
+import type { AuthUser } from '../workspace/auth/session';
 import {
+  areaQueryParam,
   NOTEBOOK_AREA_FILTERS,
   readNotebookAreaFilter,
   writeNotebookAreaFilter,
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
 import NotebookSearchPalette from './NotebookSearchPalette';
-import { useNotebookExport } from './useNotebookExport';
+import { useLocalToday } from './useLocalToday';
 
 export type NotebookOutletContext = {
   areaFilter: NotebookAreaFilter;
@@ -21,38 +24,32 @@ const AREA_LABELS: Record<NotebookAreaFilter, string> = {
   all: 'All',
 };
 
-function areaButtonClass(active: boolean): string {
-  return active
-    ? 'admin-nav__link admin-nav__link--active admin-nav__button'
-    : 'admin-nav__link admin-nav__button';
+/** Same query as Today's Still open, so the two share one cache entry. */
+function useTodayOpenCount(areaFilter: NotebookAreaFilter): string | undefined {
+  const day = useLocalToday();
+  const showing = useTasksQuery({
+    area: areaQueryParam(areaFilter),
+    open: true,
+    startOnOrBefore: day,
+    today: day,
+    limit: 100,
+  });
+  if (!showing.data) return undefined;
+  const count = showing.data.pages.reduce((n, p) => n + p.items.length, 0);
+  if (showing.hasNextPage) return `${count}+`;
+  return count > 0 ? String(count) : undefined;
 }
 
-export default function NotebookLayout() {
+export default function NotebookLayout({ user }: { user: AuthUser }) {
   const [areaFilter, setAreaFilterState] = useState<NotebookAreaFilter>(() =>
     readNotebookAreaFilter(),
   );
-  const [searchOpen, setSearchOpen] = useState(false);
-  const {
-    exportZip,
-    busy: exportBusy,
-    error: exportError,
-  } = useNotebookExport();
+  const todayCount = useTodayOpenCount(areaFilter);
 
   const setAreaFilter = (next: NotebookAreaFilter) => {
     setAreaFilterState(next);
     writeNotebookAreaFilter(next);
   };
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   const outletContext: NotebookOutletContext = {
     areaFilter,
@@ -60,10 +57,12 @@ export default function NotebookLayout() {
   };
 
   return (
-    <div className="admin-notebook">
-      <div className="admin-notebook__chrome">
+    <WorkspaceFrame
+      app="notebook"
+      user={user}
+      sidebarTop={
         <div
-          className="admin-notebook__areas"
+          className="workspace-segmented"
           role="radiogroup"
           aria-label="Notebook area"
         >
@@ -73,58 +72,35 @@ export default function NotebookLayout() {
               type="button"
               role="radio"
               aria-checked={areaFilter === area}
-              className={areaButtonClass(areaFilter === area)}
+              className="workspace-segmented__option"
               onClick={() => setAreaFilter(area)}
             >
               {AREA_LABELS[area]}
             </button>
           ))}
         </div>
-        <nav
-          className="admin-notebook__sections"
-          aria-label="Notebook sections"
-        >
-          <NavLink to="today" className={navLinkClass}>
-            Today
-          </NavLink>
-          <NavLink to="notes" className={navLinkClass}>
-            Notes
-          </NavLink>
-          <NavLink to="tasks" className={navLinkClass}>
-            Tasks
-          </NavLink>
-          <button
-            type="button"
-            className="admin-nav__link admin-nav__button"
-            onClick={() => setSearchOpen(true)}
-          >
-            Search
-            <kbd className="notebook-search__kbd">⌘K</kbd>
-          </button>
-          <button
-            type="button"
-            className="admin-nav__link admin-nav__button"
-            onClick={() => void exportZip()}
-            disabled={exportBusy}
-            aria-busy={exportBusy}
-          >
-            {exportBusy ? 'Exporting…' : 'Export'}
-          </button>
-        </nav>
-      </div>
-      {exportError ? (
-        <p className="admin-hint" role="alert">
-          Export failed: {exportError}
-        </p>
-      ) : null}
+      }
+      sections={[
+        {
+          label: 'Notebook',
+          items: [
+            { to: '/today', label: 'Today', icon: 'today', count: todayCount },
+            { to: '/upcoming', label: 'Upcoming', icon: 'upcoming' },
+            { to: '/notes', label: 'Notes', icon: 'notes' },
+            {
+              to: '/tasks',
+              label: 'All tasks',
+              tabLabel: 'Tasks',
+              icon: 'tasks',
+            },
+          ],
+        },
+      ]}
+      renderSearch={(close) => (
+        <NotebookSearchPalette onClose={close} areaFilter={areaFilter} />
+      )}
+    >
       <Outlet context={outletContext} />
-      {searchOpen ? (
-        <NotebookSearchPalette
-          open
-          onClose={() => setSearchOpen(false)}
-          areaFilter={areaFilter}
-        />
-      ) : null}
-    </div>
+    </WorkspaceFrame>
   );
 }
