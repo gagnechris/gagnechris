@@ -27,6 +27,7 @@ export {
   localDateString,
   matchesTaskDateQuery,
   nextWeekday,
+  noteDisplayTitle,
   parseTaskSyntax,
   resolveTaskDateToken,
   taskDateMenuOptions,

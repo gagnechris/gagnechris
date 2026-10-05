@@ -605,6 +605,22 @@
   margin-bottom: var(--space-3);
 }
 
+.workspace-search__toolbar > .admin-input {
+  flex: 1 1 14rem;
+}
+
+.workspace-search__scope {
+  flex: 0 1 14rem;
+}
+
+.workspace-search__check {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--primary-600);
+}
+
 .workspace-search__group-label {
   margin: var(--space-3) 0 var(--space-2);
   font-size: var(--text-sm);
@@ -645,6 +661,7 @@
   color: var(--neutral-700);
 }
 
+.workspace-search__hit-title mark,
 .workspace-search__hit-snippet mark {
   background: color-mix(in srgb, gold 55%, white);
   color: inherit;
@@ -1290,5 +1307,93 @@
 
   .notebook-today__strip-text {
     flex: 1;
+  }
+}
+
+.notebook-notes__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.notebook-notes__filters > .admin-input {
+  flex: 1 1 14rem;
+}
+
+.notebook-notes__type {
+  flex: 0 1 16rem;
+}
+
+.notebook-notes__section {
+  margin-top: var(--space-4);
+}
+
+.notebook-notes__section h2 {
+  margin: 0 0 6px;
+  padding: 0 var(--space-4);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--neutral-600);
+}
+
+.notebook-notes__list {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  background: white;
+}
+
+.notebook-notes__list > li + li {
+  border-top: 1px solid var(--neutral-200);
+}
+
+.notebook-notes__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: 11px var(--space-4);
+  color: inherit;
+  text-decoration: none;
+}
+
+.notebook-notes__row:hover {
+  background: var(--neutral-50);
+}
+
+.notebook-notes__title {
+  font-weight: 500;
+  color: var(--neutral-900);
+}
+
+.notebook-notes__meta {
+  display: flex;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--neutral-600);
+}
+
+.notebook-notes__first-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-notes__when {
+  flex: none;
+  white-space: pre;
+}
+
+@media (max-width: 767px) {
+  .notebook-notes__type {
+    flex: 1 1 100%;
   }
 }

@@ -72,6 +72,16 @@ const MONTH_SHORT = [
 ];
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const WEEKDAY_LONG = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** The device's calendar day, not the UTC one. */
@@ -213,6 +223,22 @@ export function formatTaskDay(day: string, withWeekday = true): string {
   if (!date) return day;
   const md = `${MONTH_SHORT[date.getUTCMonth()]} ${date.getUTCDate()}`;
   return withWeekday ? `${WEEKDAY_SHORT[date.getUTCDay()]}, ${md}` : md;
+}
+
+/** What a note is called in lists and search: a daily note by its day. */
+export function noteDisplayTitle(note: {
+  type: 'daily' | 'page';
+  date: string | null;
+  title: string;
+}): string {
+  const title = note.title.trim();
+  if (note.type === 'daily' && note.date) {
+    const date = toUtc(note.date);
+    if (date) {
+      return `${WEEKDAY_LONG[date.getUTCDay()]}, ${formatTaskDay(note.date, false)}`;
+    }
+  }
+  return title || 'Untitled';
 }
 
 /** The shortest token that resolves back to `day` from `today`. */

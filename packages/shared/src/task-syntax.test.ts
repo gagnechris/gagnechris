@@ -5,11 +5,13 @@ import {
   describe,
   expect,
   it,
+  test,
   vi,
 } from 'vitest';
 import {
   activeTaskDateQuery,
   formatTaskDay,
+  noteDisplayTitle,
   localDateString,
   parseTaskSyntax,
   taskDateMenuOptions,
@@ -327,5 +329,19 @@ describe('date menu helpers', () => {
     expect(activeTaskDateQuery('me@x', 4)).toBeNull();
     expect(activeTaskDateQuery('x @mon ', 7)).toBeNull();
     expect(activeTaskDateQuery('x @mon', 4)).toBeNull();
+  });
+});
+
+describe('noteDisplayTitle', () => {
+  test('names a daily note by its day and falls back to Untitled', () => {
+    expect(
+      noteDisplayTitle({ type: 'daily', date: '2026-10-02', title: '' }),
+    ).toBe('Friday, Oct 2');
+    expect(
+      noteDisplayTitle({ type: 'page', date: null, title: ' Ideas ' }),
+    ).toBe('Ideas');
+    expect(noteDisplayTitle({ type: 'page', date: null, title: '' })).toBe(
+      'Untitled',
+    );
   });
 });

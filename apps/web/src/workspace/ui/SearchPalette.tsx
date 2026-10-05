@@ -7,6 +7,8 @@ export type SearchHit = {
   to: string;
   title: ReactNode;
   detail?: ReactNode;
+  /** A checkbox before the title; ⌘⏎ / Ctrl+Enter toggles the active one. */
+  check?: { checked: boolean; label: string; onToggle: () => void };
 };
 
 type Props = {
@@ -107,7 +109,12 @@ export default function SearchPalette({
                 setActive((i) => Math.max(i - 1, 0));
               } else if (e.key === 'Enter' && flat[safeActive]) {
                 e.preventDefault();
-                go(flat[safeActive]!.to);
+                const hit = flat[safeActive]!;
+                if ((e.metaKey || e.ctrlKey) && hit.check) {
+                  hit.check.onToggle();
+                } else {
+                  go(hit.to);
+                }
               }
             }}
           />
@@ -146,7 +153,7 @@ export default function SearchPalette({
                     role="presentation"
                     className="workspace-search__group-label"
                   >
-                    {group}
+                    {group} · {items.length}
                   </div>
                   {items.map((hit) => {
                     const index = flat.indexOf(hit);
@@ -168,7 +175,24 @@ export default function SearchPalette({
                         onClick={() => go(hit.to)}
                       >
                         <span className="workspace-search__hit-title">
+                          {hit.check ? (
+                            // Pointer target only: the combobox owns the keys.
+                            <input
+                              type="checkbox"
+                              className="workspace-search__check"
+                              tabIndex={-1}
+                              aria-hidden="true"
+                              checked={hit.check.checked}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={hit.check.onToggle}
+                            />
+                          ) : null}
                           {hit.title}
+                          {hit.check ? (
+                            <span className="workspace-visually-hidden">
+                              , {hit.check.label}
+                            </span>
+                          ) : null}
                         </span>
                         {hit.detail ? (
                           <span className="workspace-search__hit-snippet">
