@@ -47,6 +47,15 @@ test.describe('Bears landing at 393px', () => {
 
   test('matches Phone · Bears landing', async ({ page, apps }) => {
     await page.goto(`${apps.public}${LANDING}`);
+    // fonts.ready can settle before a face is first requested; widths are
+    // only right once both self-hosted families are in.
+    await page.evaluate(() =>
+      Promise.all([
+        document.fonts.load('700 14px Inter'),
+        document.fonts.load('500 26px Newsreader'),
+        document.fonts.load('400 16px Newsreader'),
+      ]),
+    );
     await page.evaluate(() => document.fonts.ready);
 
     await expect(page.locator('.bears-landing__lede')).toBeHidden();
