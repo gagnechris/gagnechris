@@ -371,5 +371,4 @@ export default function NotebookTodayPage() {
 
 const NO_IDS: ReadonlySet<string> = new Set();
 
-/** Until an Upcoming page exists, the Tasks list filtered to later show-on dates. */
-const UPCOMING_ROUTE = '/tasks?show=later';
+const UPCOMING_ROUTE = '/upcoming';
