@@ -36,6 +36,17 @@ describe('DontFeedTheBears landing', () => {
     );
   });
 
+  test('each card carries the shorter phone copy', () => {
+    renderAt('/dont-feed-the-bears');
+
+    expect(screen.getByRole('link', { name: /camp rules/i })).toHaveTextContent(
+      'Put food away and keep bears out until dark.',
+    );
+    expect(screen.getByRole('link', { name: /stay wild/i })).toHaveTextContent(
+      'Fatten up on berries and reach the den before snow.',
+    );
+  });
+
   test('leaves direct visits without a from param', () => {
     renderAt('/dont-feed-the-bears');
 
