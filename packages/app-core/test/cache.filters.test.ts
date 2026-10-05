@@ -16,6 +16,7 @@ const note = (overrides: Partial<Note> = {}): Note => ({
   bodyMarkdown: 'hello',
   tags: [],
   pinned: false,
+  taskIds: [],
   version: 1,
   createdAt: '2026-10-09T00:00:00.000Z',
   updatedAt: '2026-10-09T00:00:00.000Z',

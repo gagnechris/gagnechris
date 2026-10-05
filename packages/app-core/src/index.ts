@@ -190,6 +190,7 @@ export {
   useDeleteTaskMutation,
   useReopenTaskMutation,
   useSetTaskCache,
+  useTasksByIds,
   useTasksQuery,
   type TaskResourceParams,
   type TaskVersionVars,

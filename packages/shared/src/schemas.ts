@@ -566,6 +566,11 @@ export const NoteSchema = z
     bodyMarkdown: z.string(),
     tags: z.array(z.string()),
     pinned: z.boolean(),
+    taskIds: z
+      .array(UlidSchema)
+      .describe(
+        'Tasks embedded in bodyMarkdown, derived by the server on every save',
+      ),
     version: z.number().int().nonnegative(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),

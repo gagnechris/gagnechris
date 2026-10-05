@@ -116,6 +116,56 @@ describe('notes handlers', () => {
     expect(JSON.parse(listed!.body as string).items).toHaveLength(1);
   });
 
+  it('derives taskIds from the body on every save and ignores client values', async () => {
+    const { doc, store } = createMemoryDoc();
+    const repo = new NotesRepository(doc, TABLE);
+    const routes = createNoteRoutes(repo);
+    const TASK_A = '01JAAAAAAAAAAAAAAAAAAAAAAA';
+    const TASK_B = '01JBBBBBBBBBBBBBBBBBBBBBBB';
+
+    const created = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/notes', {
+        id: PAGE_ID,
+        area: 'work',
+        type: 'page',
+        bodyMarkdown: `{{task:${TASK_A}}}\ntext\n{{task:${TASK_A}}}`,
+        taskIds: [TASK_B],
+      }),
+      'POST',
+      '/api/notebook/notes',
+    );
+    expect(created?.statusCode).toBe(201);
+    expect(JSON.parse(created!.body as string).taskIds).toEqual([TASK_A]);
+
+    const titleOnly = await dispatchRoutes(
+      routes,
+      adminEvent('PUT', `/api/notebook/notes/${PAGE_ID}`, {
+        version: 1,
+        title: 'Renamed',
+        taskIds: [],
+      }),
+      'PUT',
+      `/api/notebook/notes/${PAGE_ID}`,
+    );
+    expect(JSON.parse(titleOnly!.body as string).taskIds).toEqual([TASK_A]);
+
+    const updated = await dispatchRoutes(
+      routes,
+      adminEvent('PUT', `/api/notebook/notes/${PAGE_ID}`, {
+        version: 2,
+        bodyMarkdown: `  {{task:${TASK_B}}}\n\`\`\`\n{{task:${TASK_A}}}\n\`\`\``,
+      }),
+      'PUT',
+      `/api/notebook/notes/${PAGE_ID}`,
+    );
+    expect(JSON.parse(updated!.body as string).taskIds).toEqual([TASK_B]);
+    const meta = [...store.values()].find(
+      (item) => item.entityType === 'note' && item.id === PAGE_ID,
+    );
+    expect(meta?.taskIds).toEqual([TASK_B]);
+  });
+
   it('daily GET returns empty draft; PUT creates; create race loser gets daily_taken', async () => {
     const { doc } = createMemoryDoc();
     const repo = new NotesRepository(

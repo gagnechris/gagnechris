@@ -1,4 +1,10 @@
-import type { Note, NotebookArea, Task } from '@gagnechris/shared';
+import {
+  replaceTaskEmbeds,
+  taskEmbedFallbackLine,
+  type Note,
+  type NotebookArea,
+  type Task,
+} from '@gagnechris/shared';
 import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
 import { rankTextFields } from './match.js';
@@ -70,11 +76,19 @@ export async function searchNotebook(
     collectTasks(tasksRepo, userId, query.area),
   ]);
 
+  const tasksById = new Map(tasks.map((t) => [t.id, t]));
+  // Embeds match and read as the task's title, never as the raw token.
+  const searchableBody = (note: Note) =>
+    replaceTaskEmbeds(note.bodyMarkdown, (embed) => {
+      const task = tasksById.get(embed.id);
+      return task ? taskEmbedFallbackLine(embed, task) : '';
+    });
+
   const noteHits = notes
     .map((note) => {
       const ranked = rankTextFields(query.q, {
         title: note.title,
-        body: note.bodyMarkdown,
+        body: searchableBody(note),
         tags: note.tags,
       });
       if (!ranked) return undefined;

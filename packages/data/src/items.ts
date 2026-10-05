@@ -21,6 +21,7 @@ import {
 import {
   EMPTY_SLUG_FALLBACK,
   slugify as sharedSlugify,
+  taskEmbedIds,
 } from '@gagnechris/shared';
 import { deepEqual } from './deep-equal.js';
 import {
@@ -501,6 +502,8 @@ export const NoteMetaItemSchema = VersionedMetaFieldsSchema.extend({
   bodyMarkdown: z.string(),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  /** Absent on rows written before embeds; derived from the body on read. */
+  taskIds: z.array(z.string()).optional(),
 });
 
 export type NoteMetaItem = z.infer<typeof NoteMetaItemSchema>;
@@ -628,6 +631,7 @@ export function metaToNote(item: NoteMetaItem): Note {
     bodyMarkdown: item.bodyMarkdown,
     tags: item.tags,
     pinned: item.pinned,
+    taskIds: item.taskIds ?? taskEmbedIds(item.bodyMarkdown),
     version: item.version,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -684,6 +688,7 @@ export function buildNoteMetaItem(note: Note): NoteMetaItem {
     bodyMarkdown: note.bodyMarkdown,
     tags: note.tags,
     pinned: note.pinned,
+    taskIds: note.taskIds,
     version: note.version,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
