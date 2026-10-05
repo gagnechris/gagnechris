@@ -18,6 +18,7 @@ import {
 } from '@gagnechris/data';
 import {
   NoteSyncChangeSchema,
+  taskEmbedIds,
   type CreateNoteRequest,
   type ListNotesQuery,
   type Note,
@@ -332,6 +333,7 @@ export class NotesRepository {
       bodyMarkdown: body.bodyMarkdown,
       tags: normalizeTags(body.tags),
       pinned: body.pinned,
+      taskIds: taskEmbedIds(body.bodyMarkdown),
       version: 1,
       createdAt: now,
       updatedAt: now,
@@ -361,10 +363,12 @@ export class NotesRepository {
             area: 'immutable',
           });
         }
+        const bodyMarkdown = body.bodyMarkdown ?? existing.bodyMarkdown;
         return {
           ...existing,
           title: body.title ?? existing.title,
-          bodyMarkdown: body.bodyMarkdown ?? existing.bodyMarkdown,
+          bodyMarkdown,
+          taskIds: taskEmbedIds(bodyMarkdown),
           tags:
             body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
           pinned: body.pinned ?? existing.pinned,

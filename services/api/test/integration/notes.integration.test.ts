@@ -40,6 +40,34 @@ describe('notes repository (DynamoDB Local)', () => {
     registerProductionSyncAdapters();
   });
 
+  it('stores taskIds derived from the body and derives them for older rows', async () => {
+    const repo = new NotesRepository(doc, tableName);
+    const TASK = '01ARZ3NDEKTSV4RRFFQ69G5T01';
+    await repo.createFromRequest(USER_A, {
+      id: PAGE_A,
+      area: 'work',
+      type: 'page',
+      title: 'Embeds',
+      bodyMarkdown: `intro\n{{task:${TASK}}}`,
+      tags: [],
+      pinned: false,
+    });
+    const key = keys.notebook.note.meta(USER_A, PAGE_A);
+    const stored = await doc.send(
+      new GetCommand({ TableName: tableName, Key: key }),
+    );
+    expect(stored.Item?.taskIds).toEqual([TASK]);
+
+    const updated = await repo.updateFromRequest(USER_A, PAGE_A, 1, {
+      bodyMarkdown: 'no embeds',
+    });
+    expect(updated.taskIds).toEqual([]);
+
+    const { taskIds: _drop, ...legacy } = stored.Item!;
+    await doc.send(new PutCommand({ TableName: tableName, Item: legacy }));
+    expect((await repo.get(USER_A, PAGE_A))?.taskIds).toEqual([TASK]);
+  });
+
   it('isolates owners, enforces daily claim, and feeds typed note changes', async () => {
     const repo = new NotesRepository(
       doc,

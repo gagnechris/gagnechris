@@ -54,6 +54,19 @@ export class Seed {
     if (!data) throw new Error(`seed note failed: ${JSON.stringify(error)}`);
     return data;
   }
+
+  async task(input: { title: string; noteId?: string }) {
+    const { data, error } = await this.api.POST('/api/notebook/tasks', {
+      body: {
+        id: ulid(),
+        area: 'work',
+        title: input.title,
+        noteId: input.noteId ?? null,
+      },
+    });
+    if (!data) throw new Error(`seed task failed: ${JSON.stringify(error)}`);
+    return data;
+  }
 }
 
 /** Each app runs on its own origin, as in prod. */

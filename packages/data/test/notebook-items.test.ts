@@ -25,6 +25,7 @@ const dailyNote: Note = {
   bodyMarkdown: 'hello',
   tags: ['a', 'b'],
   pinned: false,
+  taskIds: [],
   version: 1,
   createdAt: ts,
   updatedAt: ts,

@@ -1,12 +1,14 @@
 import {
   useInfiniteQuery,
   useMutation,
+  useQueries,
   useQueryClient,
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
+  ApiError,
   completeTask,
   createTask,
   deleteTask,
@@ -56,6 +58,23 @@ export const useTasksQuery = (
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor,
+  });
+};
+
+/** One detail query per id; a 404 (deleted or never created) is not retried. */
+export const useTasksByIds = (
+  ids: readonly string[],
+  options: { skip?: ReadonlySet<string> } = {},
+) => {
+  const getClient = useGetApiClient();
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: queryKeys.tasks.detail(id),
+      queryFn: () => fetchTask(getClient(), id),
+      enabled: !options.skip?.has(id),
+      retry: (failures: number, error: Error) =>
+        !(error instanceof ApiError && error.status === 404) && failures < 2,
+    })),
   });
 };
 
