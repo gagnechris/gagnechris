@@ -1,4 +1,5 @@
 import {
+  noteDisplayTitle,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
   type Note,
@@ -87,7 +88,7 @@ export async function searchNotebook(
   const noteHits = notes
     .map((note) => {
       const ranked = rankTextFields(query.q, {
-        title: note.title,
+        title: noteDisplayTitle(note),
         body: searchableBody(note),
         tags: note.tags,
       });

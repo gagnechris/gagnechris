@@ -5,43 +5,88 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
 import NotebookSearchPalette from './NotebookSearchPalette';
 
+const server = vi.hoisted(() => ({
+  searches: [] as Record<string, unknown>[],
+  completed: [] as string[],
+  status: 'todo',
+}));
+
+const task = {
+  id: 't1',
+  userId: 'u1',
+  area: 'work',
+  title: 'Prep standup',
+  description: '',
+  priority: 'med',
+  status: 'todo',
+  dueDate: null,
+  startDate: null,
+  someday: false,
+  completedAt: null,
+  noteId: null,
+  tags: [],
+  version: 1,
+  createdAt: '2026-10-01T14:00:00.000Z',
+  updatedAt: '2026-10-01T14:00:00.000Z',
+  deleted: false,
+};
+
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
-    POST: async () => ({
-      data: {
-        notes: [
-          {
-            type: 'note',
-            id: 'n1',
-            area: 'work',
-            title: 'Standup notes',
-            snippet: 'standup with team',
-            matches: [{ start: 0, end: 7 }],
-          },
-          {
-            type: 'note',
-            id: 'n2',
-            area: 'work',
-            title: 'Retro',
-            snippet: 'after standup',
-            matches: [{ start: 6, end: 13 }],
-          },
-        ],
-        tasks: [
-          {
-            type: 'task',
-            id: 't1',
-            area: 'work',
-            title: 'Prep standup',
-            snippet: 'Prep standup',
-            matches: [{ start: 5, end: 12 }],
-          },
-        ],
-      },
+    GET: async () => ({
+      data: { ...task, status: server.status },
       error: undefined,
       response: { status: 200 },
     }),
+    POST: async (path: string, init?: { body?: Record<string, unknown> }) => {
+      if (path.endsWith('/complete')) {
+        server.completed.push(path);
+        server.status = 'done';
+        return {
+          data: { ...task, status: 'done', version: 2 },
+          error: undefined,
+          response: { status: 200 },
+        };
+      }
+      server.searches.push(init?.body ?? {});
+      return searchResponse;
+    },
   }),
+}));
+
+const searchResponse = vi.hoisted(() => ({
+  data: {
+    notes: [
+      {
+        type: 'note',
+        id: 'n1',
+        area: 'work',
+        title: 'Standup notes',
+        snippet: 'standup with team',
+        matches: [{ start: 0, end: 7 }],
+      },
+      {
+        type: 'note',
+        id: 'n2',
+        area: 'work',
+        title: 'Retro',
+        snippet: 'after standup',
+        matches: [{ start: 6, end: 13 }],
+      },
+    ],
+    tasks: [
+      {
+        type: 'task',
+        id: 't1',
+        area: 'work',
+        title: 'Prep standup',
+        snippet: 'Prep standup',
+        matches: [{ start: 5, end: 12 }],
+      },
+    ],
+  },
+  error: undefined,
+  response: { status: 200 },
 }));
 
 const renderPalette = () =>
@@ -82,9 +127,12 @@ describe('NotebookSearchPalette', () => {
     );
     expect(within(groups[0]!).getAllByRole('option')).toHaveLength(2);
     expect(
-      within(screen.getByRole('group', { name: 'Tasks' })).getByRole('option', {
-        name: /Prep standup/,
-      }),
+      within(screen.getByRole('group', { name: 'Tasks · 1' })).getByRole(
+        'option',
+        {
+          name: /Prep standup/,
+        },
+      ),
     ).toBeInTheDocument();
     expect(within(listbox).queryByRole('heading')).toBeNull();
     expect(within(listbox).queryByRole('list')).toBeNull();
@@ -106,5 +154,51 @@ describe('NotebookSearchPalette', () => {
 
     await user.keyboard('{Enter}');
     expect(await screen.findByText('Task page')).toBeInTheDocument();
+  });
+
+  test('This area / All areas is a radio group that rescopes the search', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    await user.type(
+      screen.getByRole('combobox', { name: 'Search notes and tasks' }),
+      'standup',
+    );
+    await screen.findByRole('listbox', { name: 'Results' });
+    expect(server.searches[server.searches.length - 1]).toMatchObject({
+      area: 'work',
+    });
+
+    const scope = screen.getByRole('radiogroup', { name: 'Search scope' });
+    const thisArea = within(scope).getByRole('radio', { name: 'This area' });
+    expect(thisArea).toHaveAttribute('aria-checked', 'true');
+    thisArea.focus();
+    await user.keyboard('{ArrowRight}');
+    const all = within(scope).getByRole('radio', { name: 'All areas' });
+    expect(all).toHaveAttribute('aria-checked', 'true');
+    expect(all).toHaveFocus();
+    await screen.findAllByText('work');
+    expect(server.searches[server.searches.length - 1]?.area).toBeUndefined();
+  });
+
+  test('a task hit is checkable, and ⌘⏎ checks off the selected one', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    const input = screen.getByRole('combobox', {
+      name: 'Search notes and tasks',
+    });
+    await user.type(input, 'standup');
+    const option = await screen.findByRole('option', {
+      name: /^Prep standup, open/,
+    });
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(option).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Control>}{Enter}{/Control}');
+    expect(
+      await screen.findByRole('option', { name: /^Prep standup, done/ }),
+    ).toBeInTheDocument();
+    expect(server.completed).toEqual(['/api/notebook/tasks/{id}/complete']);
+    expect(
+      within(option).getByRole('checkbox', { hidden: true }),
+    ).toBeChecked();
   });
 });
