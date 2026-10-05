@@ -20,6 +20,10 @@ export const notebookRoutes: RouteObject[] = [
         load: () => import('./NotebookTodayPage.tsx'),
       }),
       lazyRoute({
+        path: 'upcoming',
+        load: () => import('./NotebookUpcomingPage.tsx'),
+      }),
+      lazyRoute({
         path: 'notes',
         load: () => import('./NotebookNotesPage.tsx'),
       }),

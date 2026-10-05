@@ -99,14 +99,18 @@ export function useTodayTasks({
   };
 }
 
-/** Snooze and Drop: the row leaves at once, and comes back if the write fails. */
+/** Snooze, Drop and Do today: the row moves at once, and comes back if the write fails. */
 export function useTaskPatch() {
   const { mutateAsync } = usePatchTaskMutation();
   const [error, setError] = useState<string | null>(null);
   const patch = useCallback(
-    async (task: Pick<Task, 'id' | 'title' | 'version'>, change: TaskPatch) => {
+    async (
+      task: Pick<Task, 'id' | 'title' | 'version'>,
+      change: TaskPatch,
+      verb?: string,
+    ) => {
       setError(null);
-      const action = change.status === 'dropped' ? 'drop' : 'snooze';
+      const action = verb ?? (change.status === 'dropped' ? 'drop' : 'snooze');
       try {
         await mutateAsync({
           id: task.id,
@@ -128,7 +132,7 @@ export function useTaskPatch() {
   return { patch, error };
 }
 
-function useLoadAllPages(query: {
+export function useLoadAllPages(query: {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   isError: boolean;

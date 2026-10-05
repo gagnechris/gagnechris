@@ -85,6 +85,7 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
           label: 'Notebook',
           items: [
             { to: '/today', label: 'Today', icon: 'today', count: todayCount },
+            { to: '/upcoming', label: 'Upcoming', icon: 'upcoming' },
             { to: '/notes', label: 'Notes', icon: 'notes' },
             {
               to: '/tasks',
