@@ -488,7 +488,7 @@ If the table itself is gone (only possible after someone removed deletion protec
 
 ### Notebook human export
 
-Distinct from PITR / AWS Backup: the admin Notebook chrome **Export** button downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` while signed in.
+Distinct from PITR / AWS Backup: the **Export** button on the Notebook's Notes page downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` while signed in.
 
 Archive layout:
 

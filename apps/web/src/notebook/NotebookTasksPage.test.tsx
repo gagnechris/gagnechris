@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { addLocalDays, localToday } from '../kit/calendarDates';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTasksPage from './NotebookTasksPage';
 
@@ -162,7 +162,7 @@ function renderTasks(entry = '/tasks') {
     [
       {
         path: '/',
-        element: <NotebookLayout />,
+        element: <NotebookLayout user={testAuthUser} />,
         children: [{ path: 'tasks', element: <NotebookTasksPage /> }],
       },
     ],

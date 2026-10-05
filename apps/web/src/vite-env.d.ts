@@ -29,6 +29,9 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_FIXTURE?: string;
   /** Origin the admin links to for public pages; set in vite.config.ts. */
   readonly VITE_PUBLIC_SITE_ORIGIN: string;
+  /** The admin and Notebook apps' Your apps links; set in vite.config.ts. */
+  readonly VITE_ADMIN_ORIGIN: string;
+  readonly VITE_NOTEBOOK_ORIGIN: string;
 }
 
 interface ImportMeta {

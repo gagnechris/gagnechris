@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
@@ -27,6 +27,7 @@ vi.mock('../workspace/auth/session', () => ({
   getAuthUser: vi.fn(async () => ({
     label: 'admin@example.com',
     userId: 'u1',
+    groups: ['site-admin'],
   })),
   redirectToSignIn: vi.fn(),
   signOutUser: vi.fn(),
@@ -80,11 +81,11 @@ describe('AdminLayout', () => {
     window.dispatchEvent(queued);
     expect(queued.defaultPrevented).toBe(true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out of Admin' }));
     expect(pending.cleared).toBe(1);
   });
 
-  test('shows Posts / Home / Resume / Projects nav and posts hub when authenticated', async () => {
+  test('shows the Public site nav and posts hub when authenticated', async () => {
     render(
       <QueryClientTestProvider>
         <MemoryRouter initialEntries={['/']}>
@@ -97,24 +98,32 @@ describe('AdminLayout', () => {
       </QueryClientTestProvider>,
     );
 
-    expect(
-      await screen.findByRole('navigation', { name: 'Admin' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Posts' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
-      'href',
-      '/home',
+    const nav = await screen.findByRole('navigation', { name: 'Admin' });
+    expect(within(nav).getByRole('link', { name: 'Posts' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(screen.getByRole('link', { name: 'Resume' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute(
+    expect(
+      within(nav).getByRole('link', { name: 'Home page' }),
+    ).toHaveAttribute('href', '/home');
+    expect(
+      within(nav).getByRole('link', { name: 'Resume' }),
+    ).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Projects' })).toHaveAttribute(
       'href',
       '/projects',
     );
     expect(
-      screen.queryByRole('link', { name: 'Notebook' }),
+      within(nav).queryByRole('link', { name: /Today|Notes|tasks/ }),
     ).not.toBeInTheDocument();
+    // Public CMS only: no Notebook under Your apps.
+    const apps = screen.getByRole('navigation', { name: 'Your apps' });
     expect(
-      screen.getByRole('button', { name: 'Sign out' }),
+      within(apps).queryByRole('link', { name: /Notebook/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Public CMS')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Sign out of Admin' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: 'Posts' }),

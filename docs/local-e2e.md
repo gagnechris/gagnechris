@@ -114,7 +114,7 @@ Import `test` and `expect` from `e2e/fixtures.ts`:
 | `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)                 |
 | `seedAs` | `seedAs(user)` seeds as another user                                                    |
 
-Fake sign-in writes `{ userId, label }` to `localStorage['gagnechris.localAuthUser']`.
+Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin` and `notebook`.
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the local API turns that
 into ID-token claims with `sub=<userId>` for the matched route's app

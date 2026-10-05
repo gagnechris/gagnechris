@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   MemoryRouter,
   Route,
@@ -9,13 +9,36 @@ import {
   useOutletContext,
   useParams,
 } from 'react-router-dom';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout, { type NotebookOutletContext } from './NotebookLayout';
 import {
   NOTEBOOK_AREA_STORAGE_KEY,
   writeNotebookAreaFilter,
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
+
+const { taskQueries } = vi.hoisted(() => ({
+  taskQueries: [] as Record<string, unknown>[],
+}));
+
+vi.mock('../workspace/api/client', () => ({
+  createApiClient: () => ({
+    GET: async (
+      _path: string,
+      init: { params: { query: Record<string, unknown> } },
+    ) => {
+      taskQueries.push(init.params.query);
+      return {
+        data: {
+          items: [{ id: 't1' }, { id: 't2' }, { id: 't3' }],
+          nextCursor: undefined,
+        },
+        error: undefined,
+        response: { status: 200 },
+      };
+    },
+  }),
+}));
 
 const AREA_LABELS: Record<NotebookAreaFilter, string> = {
   work: 'Work',
@@ -55,7 +78,7 @@ function renderNotebook(initialPath = '/today') {
     <QueryClientTestProvider>
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
-          <Route path="/" element={<NotebookLayout />}>
+          <Route path="/" element={<NotebookLayout user={testAuthUser} />}>
             <Route path="today" element={<NotebookOutletProbe />} />
             <Route path="notes" element={<NotebookOutletProbe />} />
             <Route path="notes/:id" element={<NotebookOutletProbe />} />
@@ -70,13 +93,14 @@ function renderNotebook(initialPath = '/today') {
 describe('NotebookLayout', () => {
   beforeEach(() => {
     localStorage.clear();
+    taskQueries.length = 0;
   });
 
   afterEach(() => {
     localStorage.clear();
   });
 
-  test('shows area switcher and Today / Notes / Tasks links', () => {
+  test('shows the area switcher and Today / Notes / All tasks in the Notebook nav', async () => {
     renderNotebook();
 
     expect(
@@ -95,26 +119,42 @@ describe('NotebookLayout', () => {
       'false',
     );
 
-    const sections = screen.getByRole('navigation', {
-      name: 'Notebook sections',
+    const nav = screen.getByRole('navigation', { name: 'Notebook' });
+    const today = await within(nav).findByRole('link', {
+      name: 'Today, 3 open',
     });
-    expect(sections).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute(
-      'href',
-      '/today',
-    );
-    expect(screen.getByRole('link', { name: 'Notes' })).toHaveAttribute(
+    expect(today).toHaveAttribute('href', '/today');
+    expect(today).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Notes' })).toHaveAttribute(
       'href',
       '/notes',
     );
-    expect(screen.getByRole('link', { name: 'Tasks' })).toHaveAttribute(
-      'href',
-      '/tasks',
-    );
-    expect(screen.getByRole('button', { name: /Search/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument();
+    expect(
+      within(nav).getByRole('link', { name: 'All tasks' }),
+    ).toHaveAttribute('href', '/tasks');
+    expect(
+      within(nav).queryByRole('link', { name: /Posts|Resume/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Search everything' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
     expect(screen.getByText(/Work · today UI/i)).toBeInTheDocument();
+    expect(taskQueries[0]).toMatchObject({ area: 'work' });
+  });
+
+  test('⌘K opens search from any page', async () => {
+    const user = userEvent.setup();
+    renderNotebook('/notes');
+
+    await user.keyboard('{Meta>}k{/Meta}');
+    expect(
+      await screen.findByRole('combobox', { name: 'Search notes and tasks' }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('combobox', { name: 'Search notes and tasks' }),
+    ).not.toBeInTheDocument();
   });
 
   test('navigates between Today, Notes, and Tasks', async () => {
@@ -124,10 +164,10 @@ describe('NotebookLayout', () => {
     await user.click(screen.getByRole('link', { name: 'Notes' }));
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Tasks' }));
+    await user.click(screen.getByRole('link', { name: 'All tasks' }));
     expect(screen.getByRole('heading', { name: 'Tasks' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Today' }));
+    await user.click(screen.getByRole('link', { name: /^Today/ }));
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
   });
 

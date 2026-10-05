@@ -5,6 +5,13 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import type { ReactElement, ReactNode } from 'react';
 import { createApiClient } from './workspace/api/client';
+import type { AuthUser } from './workspace/auth/session';
+
+export const testAuthUser: AuthUser = {
+  label: 'chris@example.com',
+  userId: 'u1',
+  groups: ['site-admin', 'notebook'],
+};
 
 export const createTestQueryClient = () =>
   new QueryClient({

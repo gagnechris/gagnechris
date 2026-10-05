@@ -7,11 +7,7 @@ import { appShellPlugin } from './scripts/appShellPlugin.ts';
 import { bundleBoundaryPlugin } from './scripts/bundleBoundaryPlugin.ts';
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
 import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
-import {
-  publicSiteOrigin,
-  WEB_APPS,
-  webAppFromEnv,
-} from './scripts/webApps.ts';
+import { appOrigin, WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
 
 const DEFAULT_LOCAL_API = 'http://127.0.0.1:8787';
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -37,7 +33,17 @@ export default defineConfig(({ mode, command }) => {
     }
   }
 
-  const publicOrigin = publicSiteOrigin(env.VITE_PUBLIC_SITE_ORIGIN, command);
+  const publicOrigin = appOrigin(
+    'public',
+    env.VITE_PUBLIC_SITE_ORIGIN,
+    command,
+  );
+  const adminOrigin = appOrigin('admin', env.VITE_ADMIN_ORIGIN, command);
+  const notebookOrigin = appOrigin(
+    'notebook',
+    env.VITE_NOTEBOOK_ORIGIN,
+    command,
+  );
 
   const useProdApi = env.VITE_API_TARGET === 'prod';
   const proxyTarget = useProdApi
@@ -118,6 +124,8 @@ export default defineConfig(({ mode, command }) => {
     base: '/',
     define: {
       'import.meta.env.VITE_PUBLIC_SITE_ORIGIN': JSON.stringify(publicOrigin),
+      'import.meta.env.VITE_ADMIN_ORIGIN': JSON.stringify(adminOrigin),
+      'import.meta.env.VITE_NOTEBOOK_ORIGIN': JSON.stringify(notebookOrigin),
     },
     plugins,
     publicDir: path.join(appRoot, app.publicDir),

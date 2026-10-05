@@ -15,6 +15,7 @@ describe('local fake auth', () => {
     expect(await getAuthUser()).toEqual({
       label: 'local@gagnechris.com',
       userId: 'local-dev-user',
+      groups: ['site-admin', 'notebook'],
     });
     expect(await getIdToken()).toBe('local:local-dev-user');
   });
@@ -27,8 +28,21 @@ describe('local fake auth', () => {
     expect(await getAuthUser()).toEqual({
       label: 'second@example.com',
       userId: 'e2e-second',
+      groups: ['site-admin', 'notebook'],
     });
     expect(await getIdToken()).toBe('local:e2e-second');
+  });
+
+  test("takes the stored user's groups when given", async () => {
+    window.localStorage.setItem(
+      LOCAL_AUTH_USER_KEY,
+      JSON.stringify({
+        label: 'cms@example.com',
+        userId: 'e2e-cms',
+        groups: ['site-admin'],
+      }),
+    );
+    expect((await getAuthUser())?.groups).toEqual(['site-admin']);
   });
 
   test('ignores a malformed stored user', async () => {

@@ -9,6 +9,8 @@ import { ensureAmplifyConfigured } from './config';
 export type AuthUser = {
   label: string;
   userId: string;
+  /** Cognito groups from the ID token; the API enforces them, the UI only hides links. */
+  groups: readonly string[];
 };
 
 const isLocalAuth = (): boolean => import.meta.env.VITE_AUTH_MODE === 'local';
@@ -16,10 +18,18 @@ const isLocalAuth = (): boolean => import.meta.env.VITE_AUTH_MODE === 'local';
 /** Local fake auth only: browser tests switch users by writing this key. */
 export const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
 
+const LOCAL_GROUPS = ['site-admin', 'notebook'] as const;
+
 const DEFAULT_LOCAL_USER: AuthUser = {
   label: 'local@gagnechris.com',
   userId: 'local-dev-user',
+  groups: LOCAL_GROUPS,
 };
+
+const stringArray = (value: unknown): string[] | null =>
+  Array.isArray(value) && value.every((v) => typeof v === 'string')
+    ? value
+    : null;
 
 const localUser = (): AuthUser => {
   try {
@@ -33,7 +43,13 @@ const localUser = (): AuthUser => {
       typeof parsed.userId === 'string' &&
       typeof parsed.label === 'string'
     ) {
-      return { label: parsed.label, userId: parsed.userId };
+      const groups =
+        'groups' in parsed ? stringArray(parsed.groups) : LOCAL_GROUPS;
+      return {
+        label: parsed.label,
+        userId: parsed.userId,
+        groups: groups ?? LOCAL_GROUPS,
+      };
     }
   } catch {
     // Malformed value: fall back to the default user.
@@ -51,12 +67,17 @@ export const getAuthUser = async (): Promise<AuthUser | null> => {
       getCurrentUser(),
       fetchAuthSession(),
     ]);
-    const email = session.tokens?.idToken?.payload?.email;
+    const payload = session.tokens?.idToken?.payload;
+    const email = payload?.email;
     const label =
       typeof email === 'string' && email.trim() !== ''
         ? email
         : user.signInDetails?.loginId || user.username;
-    return { label, userId: user.userId };
+    return {
+      label,
+      userId: user.userId,
+      groups: stringArray(payload?.['cognito:groups']) ?? [],
+    };
   } catch {
     return null;
   }
