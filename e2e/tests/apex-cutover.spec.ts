@@ -42,16 +42,19 @@ test('the public site deletes leftover Cognito cookies and localStorage keys', a
   context,
   page,
 }) => {
-  const publicUrl = requireEnv('E2E_PUBLIC_URL');
+  const site = requireEnv('E2E_SITE_URL');
   const apex = 'https://gagnechris.com';
-  // Serve the public dev build as the apex, so Domain=gagnechris.com cookies apply.
+  // Serve the built site as the apex, so Domain=gagnechris.com cookies apply.
+  // Not the dev server: its HMR WebSocket to wss://gagnechris.com bypasses
+  // routing, and WebKit's network process can crash on it, dropping every
+  // cookie in the context.
   await context.route(/googletagmanager|google-analytics/, (route) =>
     route.abort(),
   );
   await context.route(`${apex}/**`, async (route) => {
     const url = new URL(route.request().url());
     const response = await route.fetch({
-      url: `${publicUrl}${url.pathname}${url.search}`,
+      url: `${site}${url.pathname}${url.search}`,
     });
     await route.fulfill({ response });
   });
