@@ -34,7 +34,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
   const doneTodayQuery = useTasksQuery({
     area,
     status: 'done',
-    dueOn: today,
+    startOn: today,
     today,
     limit: 100,
   });
@@ -65,7 +65,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
   const submitQuickAdd = async () => {
     const parsed = parseTaskQuickAdd(quickAdd, today);
     if (!parsed.title) {
-      setQuickAddHint('Add a title before the due date.');
+      setQuickAddHint('Add a title before the date.');
       return;
     }
     setQuickAddHint(null);
@@ -76,7 +76,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
       description: '',
       priority: parsed.priority,
       status: 'todo',
-      dueDate: parsed.dueDate ?? today,
+      startDate: parsed.startDate ?? today,
       tags: [],
     });
     setQuickAdd('');
@@ -93,8 +93,8 @@ export default function TodayTasksPanel({ area, now }: Props) {
           <h2 className="notebook-today__tasks-title">Tasks</h2>
           <p className="admin-panel__lede" style={{ margin: 0 }}>
             {progress.total > 0
-              ? `${progress.done}/${progress.total} due today`
-              : 'Nothing due today'}
+              ? `${progress.done}/${progress.total} for today`
+              : 'Nothing for today'}
             {area ? '' : ' · all areas'}
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
         <input
           className="admin-input"
           type="text"
-          placeholder="Quick-add task (defaults due today)"
+          placeholder="Quick-add task (shows today unless you add tomorrow)"
           value={quickAdd}
           onChange={(e) => {
             setQuickAdd(e.target.value);
@@ -166,16 +166,16 @@ export default function TodayTasksPanel({ area, now }: Props) {
       {tasksQuery.isPending ? <p>Loading tasks…</p> : null}
 
       <TaskSection
-        title="Overdue"
-        tasks={buckets.overdue}
+        title="Carried over"
+        tasks={buckets.carriedOver}
         onToggle={toggle}
-        empty="None overdue."
+        empty="Nothing carried over."
       />
       <TaskSection
-        title="Due today"
-        tasks={buckets.dueToday}
+        title="Today"
+        tasks={buckets.startsToday}
         onToggle={toggle}
-        empty="Nothing due today."
+        empty="Nothing for today."
       />
       <TaskSection
         title="In progress"
@@ -189,7 +189,7 @@ export default function TodayTasksPanel({ area, now }: Props) {
           title={`Tomorrow (${addLocalDays(today, 1)})`}
           tasks={buckets.tomorrow}
           onToggle={toggle}
-          empty="Nothing due tomorrow."
+          empty="Nothing for tomorrow."
         />
       ) : null}
     </aside>
@@ -227,7 +227,7 @@ function TaskSection({
               meta={
                 <>
                   {task.area}
-                  {task.dueDate ? ` · ${task.dueDate}` : ''}
+                  {task.startDate ? ` · ${task.startDate}` : ''}
                 </>
               }
             />

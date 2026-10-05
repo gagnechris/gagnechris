@@ -52,9 +52,10 @@ import {
   statusGsi1Pk,
   statusGsi1Sk,
   taskAreaStatusGsi1Pk,
-  taskDueGsi1Sk,
   taskMetaSk,
   taskPk,
+  taskSomedayGsi1Sk,
+  taskStartGsi1Sk,
   taskUpdatedGsi1Sk,
 } from './keys.js';
 
@@ -528,6 +529,9 @@ export const TaskMetaItemSchema = VersionedMetaFieldsSchema.extend({
   priority: TaskPrioritySchema,
   status: TaskStatusSchema,
   dueDate: CalendarDateSchema.nullable(),
+  /** Absent on rows the start-date migration has not reached; see {@link metaToTask}. */
+  startDate: CalendarDateSchema.nullable().optional(),
+  someday: z.boolean().optional(),
   completedAt: z.string().nullable(),
   noteId: z.string().min(1).nullable(),
   tags: z.array(z.string()),
@@ -577,6 +581,8 @@ export function taskContentEqual(
     | 'priority'
     | 'status'
     | 'dueDate'
+    | 'startDate'
+    | 'someday'
     | 'completedAt'
     | 'noteId'
     | 'tags'
@@ -589,6 +595,8 @@ export function taskContentEqual(
     | 'priority'
     | 'status'
     | 'dueDate'
+    | 'startDate'
+    | 'someday'
     | 'completedAt'
     | 'noteId'
     | 'tags'
@@ -601,6 +609,8 @@ export function taskContentEqual(
     a.priority === b.priority &&
     a.status === b.status &&
     a.dueDate === b.dueDate &&
+    a.startDate === b.startDate &&
+    a.someday === b.someday &&
     a.completedAt === b.completedAt &&
     a.noteId === b.noteId &&
     deepEqual(a.tags, b.tags)
@@ -625,6 +635,17 @@ export function metaToNote(item: NoteMetaItem): Note {
   };
 }
 
+/**
+ * A row with no `startDate` attribute shows on its `dueDate`, so tasks keep
+ * their day whether or not the start-date migration has run. An explicit
+ * `null` means now.
+ */
+export function taskStartDateOf(
+  item: Pick<TaskMetaItem, 'startDate' | 'dueDate'>,
+): string | null {
+  return item.startDate !== undefined ? item.startDate : item.dueDate;
+}
+
 export function metaToTask(item: TaskMetaItem): Task {
   return {
     id: item.id,
@@ -635,6 +656,8 @@ export function metaToTask(item: TaskMetaItem): Task {
     priority: item.priority,
     status: item.status,
     dueDate: item.dueDate,
+    startDate: taskStartDateOf(item),
+    someday: item.someday ?? false,
     completedAt: item.completedAt,
     noteId: item.noteId,
     tags: item.tags,
@@ -694,6 +717,14 @@ export function buildDailyNoteClaimItem(
   };
 }
 
+export function taskGsi1Sk(
+  task: Pick<Task, 'id' | 'startDate' | 'someday' | 'updatedAt'>,
+): string {
+  if (task.someday) return taskSomedayGsi1Sk(task.updatedAt, task.id);
+  if (task.startDate) return taskStartGsi1Sk(task.startDate, task.id);
+  return taskUpdatedGsi1Sk(task.updatedAt, task.id);
+}
+
 /** Tombstones omit list GSI keys so queries never return them. */
 export function buildTaskMetaItem(task: Task): TaskMetaItem {
   const item: TaskMetaItem = {
@@ -708,6 +739,8 @@ export function buildTaskMetaItem(task: Task): TaskMetaItem {
     priority: task.priority,
     status: task.status,
     dueDate: task.dueDate,
+    startDate: task.startDate,
+    someday: task.someday,
     completedAt: task.completedAt,
     noteId: task.noteId,
     tags: task.tags,
@@ -718,9 +751,7 @@ export function buildTaskMetaItem(task: Task): TaskMetaItem {
   };
   if (!task.deleted) {
     item.gsi1pk = taskAreaStatusGsi1Pk(task.userId, task.area, task.status);
-    item.gsi1sk = task.dueDate
-      ? taskDueGsi1Sk(task.dueDate, task.id)
-      : taskUpdatedGsi1Sk(task.updatedAt, task.id);
+    item.gsi1sk = taskGsi1Sk(task);
     if (task.noteId) {
       item.gsi2pk = noteTasksGsi2Pk(task.userId, task.noteId);
       item.gsi2sk = noteTasksGsi2Sk(task.id);

@@ -6,7 +6,8 @@ export type TaskDraft = {
   description: string;
   priority: TaskPriority;
   status: TaskStatus;
-  dueDate: string;
+  startDate: string;
+  someday: boolean;
   noteId: string;
   tagsText: string;
 };
@@ -16,7 +17,8 @@ export const emptyTaskDraft = (): TaskDraft => ({
   description: '',
   priority: 'med',
   status: 'todo',
-  dueDate: '',
+  startDate: '',
+  someday: false,
   noteId: '',
   tagsText: '',
 });
@@ -26,7 +28,8 @@ export const taskDraftFromTask = (task: Task): TaskDraft => ({
   description: task.description,
   priority: task.priority,
   status: task.status,
-  dueDate: task.dueDate ?? '',
+  startDate: task.startDate ?? '',
+  someday: task.someday,
   noteId: task.noteId ?? '',
   tagsText: task.tags.join(', '),
 });
@@ -42,7 +45,9 @@ export const taskPayloadFromDraft = (draft: TaskDraft) => ({
   description: draft.description,
   priority: draft.priority,
   status: draft.status,
-  dueDate: draft.dueDate.trim() ? draft.dueDate.trim() : null,
+  startDate:
+    !draft.someday && draft.startDate.trim() ? draft.startDate.trim() : null,
+  someday: draft.someday,
   noteId: draft.noteId.trim() ? draft.noteId.trim() : null,
   tags: parseTagsText(draft.tagsText),
 });

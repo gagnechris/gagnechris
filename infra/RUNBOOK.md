@@ -524,6 +524,18 @@ AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-resume-dates.ts --verify  #
 
 The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.
 
+### Task start-date migration
+
+`scripts/migrate-task-start-dates.ts` finds task META rows stored without a `startDate` attribute, sets `startDate` to their `dueDate` (or `null`) and `someday` to `false`, and moves dated rows' GSI1 sort key from `DUE#<date>#TASK#<id>` to `START#<date>#TASK#<id>`. The API already serves these rows that way, so nothing a client sees changes: `version`, `updatedAt` and the sync feed are untouched. Each write is conditional on the version it read and on `startDate` still being absent, so an API save in between wins. It prints one JSON line of counts (`scanned`, `tasks`, `alreadyMigrated`, `pending`, `pendingDated`, `pendingUndated`, `pendingTombstones`, `written`, `conflicts`), never ids or task text. Deploy the API first; the migration can run any time after. Re-running `--apply` is a no-op.
+
+```bash
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts           # dry run: counts
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-task-start-dates.ts --apply      # exit 1: raced an API save, re-run
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts --verify  # exit 2 while anything is unmigrated
+```
+
+The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.
+
 ### Orphaned daily-note claims
 
 `scripts/scan-orphan-daily-claims.mjs` counts daily-note claims (`USER#…#DAILY#<area>#<date>`) whose holder note META row is missing or a tombstone. The API frees these on the next create of that day, so they are harmless once deployed; the script cleans them up ahead of time. It only runs against `gagnechris-prod` or `gagnechris-local` (`DATA_TABLE_NAME`, default prod) and prints counts only (`claims`, `live`, `holderMissing`, `holderDeleted`, `malformed`, `released`, `conditionFailed`), never ids, dates or content. `--apply` deletes each orphaned claim conditional on its `noteId` being unchanged.

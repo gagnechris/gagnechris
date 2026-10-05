@@ -10,10 +10,13 @@ import {
   metaToTask,
   normalizeTags,
   parseTaskMetaItem,
+  taskGsi1SkRanges,
+  type SortKeyRange,
   type TaskMetaItem,
 } from '@gagnechris/data';
 import {
   TaskSyncChangeSchema,
+  taskMatchesSchedule,
   type CreateTaskRequest,
   type ListTasksQuery,
   type NotebookArea,
@@ -65,10 +68,18 @@ export function taskCreatePayloadHash(
     | 'priority'
     | 'status'
     | 'dueDate'
+    | 'startDate'
+    | 'someday'
     | 'noteId'
     | 'tags'
   >,
 ): string {
+  // Unscheduled creates hash exactly as before startDate existed, so a replay
+  // of an older create still matches its stored createHash.
+  const schedule =
+    t.startDate !== null || t.someday
+      ? [t.startDate ?? '', t.someday ? 'someday' : '']
+      : [];
   return hashCreateFields([
     t.userId,
     t.area,
@@ -79,6 +90,7 @@ export function taskCreatePayloadHash(
     t.dueDate ?? '',
     t.noteId ?? '',
     t.tags.join(','),
+    ...schedule,
   ]);
 }
 
@@ -103,28 +115,78 @@ export function taskToChange(
   return change;
 }
 
-function isOverdue(task: Task, today: string): boolean {
+function isCarriedOver(task: Task, today: string): boolean {
   return (
-    task.status !== 'done' && task.dueDate !== null && task.dueDate < today
+    task.status !== 'done' && task.startDate !== null && task.startDate < today
   );
 }
 
+/** Carried over (open, started before today), then by startDate, undated, someday, priority, id. */
 export function sortTasksForList(items: Task[], today: string): Task[] {
   return [...items].sort((a, b) => {
-    const aOverdue = isOverdue(a, today) ? 0 : 1;
-    const bOverdue = isOverdue(b, today) ? 0 : 1;
-    if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+    const aCarried = isCarriedOver(a, today) ? 0 : 1;
+    const bCarried = isCarriedOver(b, today) ? 0 : 1;
+    if (aCarried !== bCarried) return aCarried - bCarried;
 
-    if (a.dueDate === null && b.dueDate !== null) return 1;
-    if (a.dueDate !== null && b.dueDate === null) return -1;
-    if (a.dueDate !== null && b.dueDate !== null && a.dueDate !== b.dueDate) {
-      return a.dueDate < b.dueDate ? -1 : 1;
+    if (a.someday !== b.someday) return a.someday ? 1 : -1;
+    if (a.startDate === null && b.startDate !== null) return 1;
+    if (a.startDate !== null && b.startDate === null) return -1;
+    if (
+      a.startDate !== null &&
+      b.startDate !== null &&
+      a.startDate !== b.startDate
+    ) {
+      return a.startDate < b.startDate ? -1 : 1;
     }
 
     const pr = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
     if (pr !== 0) return pr;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
+}
+
+function matchesListQuery(task: Task, query: ListTasksQuery): boolean {
+  if (query.area && task.area !== query.area) return false;
+  if (query.status && task.status !== query.status) return false;
+  if (!query.status && query.open && task.status === 'done') return false;
+  if (query.priority && task.priority !== query.priority) return false;
+  if (query.dueOn && task.dueDate !== query.dueOn) return false;
+  if (
+    query.dueBefore &&
+    (task.dueDate === null || task.dueDate >= query.dueBefore)
+  ) {
+    return false;
+  }
+  return taskMatchesSchedule(task, query);
+}
+
+/** One entry per GSI1 range to walk; `undefined` reads the whole partition. */
+function scheduleRanges(query: ListTasksQuery): (SortKeyRange | undefined)[] {
+  if (query.someday === true) return taskGsi1SkRanges.someday();
+  if (query.startOn) return taskGsi1SkRanges.startOn(query.startOn);
+  if (query.startOnOrBefore) {
+    return taskGsi1SkRanges.showsOn(query.startOnOrBefore);
+  }
+  if (query.startAfter) return taskGsi1SkRanges.startsAfter(query.startAfter);
+  return [undefined];
+}
+
+/** Someday wins: a task is either someday or scheduled, never both. */
+export function applySchedule(
+  existing: Pick<Task, 'startDate' | 'someday'>,
+  body: { startDate?: string | null; someday?: boolean },
+): Pick<Task, 'startDate' | 'someday'> {
+  const someday =
+    body.someday ??
+    (body.startDate !== undefined && body.startDate !== null
+      ? false
+      : existing.someday);
+  if (someday) return { startDate: null, someday: true };
+  return {
+    startDate:
+      body.startDate !== undefined ? body.startDate : existing.startDate,
+    someday: false,
+  };
 }
 
 function withCompletedAt(
@@ -201,6 +263,10 @@ export class TasksRepository {
       priority: body.priority,
       status,
       dueDate: body.dueDate ?? null,
+      ...applySchedule(
+        { startDate: null, someday: false },
+        { startDate: body.startDate, someday: body.someday },
+      ),
       completedAt: withCompletedAt(status, null, now),
       noteId: body.noteId ?? null,
       tags: normalizeTags(body.tags),
@@ -231,6 +297,7 @@ export class TasksRepository {
           priority: body.priority ?? existing.priority,
           status,
           dueDate: body.dueDate !== undefined ? body.dueDate : existing.dueDate,
+          ...applySchedule(existing, body),
           noteId: body.noteId !== undefined ? body.noteId : existing.noteId,
           tags:
             body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
@@ -303,33 +370,32 @@ export class TasksRepository {
       : query.open
         ? OPEN_STATUSES
         : ALL_STATUSES;
-    const singlePartition = areas.length === 1 && statuses.length === 1;
+    const ranges = scheduleRanges(query);
+    const partitions = areas.flatMap((area) =>
+      statuses.flatMap((status) =>
+        ranges.map((range) => ({ area, status, range })),
+      ),
+    );
 
-    if (singlePartition) {
-      const page = await this.listPartition(
-        userId,
-        areas[0]!,
-        statuses[0]!,
-        query,
-      );
+    if (partitions.length === 1) {
+      const { area, status, range } = partitions[0]!;
+      const page = await this.listPartition(userId, area, status, range, query);
       return {
         items: sortTasksForList(page.items, today),
         nextCursor: page.nextCursor,
       };
     }
 
-    const partitions = areas.flatMap((area) =>
-      statuses.map((status) => ({ area, status })),
-    );
     const page = await walkPartitions(
       partitions,
       query.cursor,
       query.limit ?? 50,
-      ({ area, status }, cursor, remaining, remainingBytes) =>
+      ({ area, status, range }, cursor, remaining, remainingBytes) =>
         this.listPartition(
           userId,
           area,
           status,
+          range,
           { ...query, cursor, limit: remaining },
           remainingBytes,
         ),
@@ -356,21 +422,7 @@ export class TasksRepository {
       cursorPartition: { attr: 'gsi2pk', value: pk },
       byteBudget: PAGE_BYTE_BUDGET,
     });
-    let items = page.items;
-    if (query.area) items = items.filter((t) => t.area === query.area);
-    if (query.status) items = items.filter((t) => t.status === query.status);
-    if (query.priority) {
-      items = items.filter((t) => t.priority === query.priority);
-    }
-    if (query.dueOn) {
-      items = items.filter((t) => t.dueDate === query.dueOn);
-    }
-    if (query.dueBefore) {
-      items = items.filter(
-        (t) => t.dueDate !== null && t.dueDate < query.dueBefore!,
-      );
-    }
-    if (query.open) items = items.filter((t) => t.status !== 'done');
+    const items = page.items.filter((t) => matchesListQuery(t, query));
     return {
       items: sortTasksForList(items, query.today ?? utcToday()),
       nextCursor: page.nextCursor,
@@ -381,55 +433,39 @@ export class TasksRepository {
     userId: string,
     area: NotebookArea,
     status: TaskStatus,
+    range: SortKeyRange | undefined,
     query: ListTasksQuery,
     byteBudget = PAGE_BYTE_BUDGET,
   ): Promise<{ items: Task[]; nextCursor?: string }> {
     const pk = keys.notebook.taskAreaStatusGsi1(userId, area, status);
-    const values: Record<string, string> = { ':pk': pk };
-    let keyCondition = 'gsi1pk = :pk';
-    let sortLower: string | undefined;
-
-    if (query.dueOn) {
-      values[':from'] = `DUE#${query.dueOn}`;
-      values[':to'] = `DUE#${query.dueOn}#TASK~\uffff`;
-      keyCondition += ' AND gsi1sk BETWEEN :from AND :to';
-      sortLower = values[':from'];
-    } else if (query.dueBefore) {
-      // Strictly before dueBefore, DUE# prefix only (excludes UPDATED# undated).
-      values[':from'] = 'DUE#';
-      values[':to'] = `DUE#${query.dueBefore}`;
-      keyCondition += ' AND gsi1sk BETWEEN :from AND :to';
-      sortLower = 'DUE#';
-    }
-
     const page = await this.base.queryPage({
       IndexName: GSI1_NAME,
-      KeyConditionExpression: keyCondition,
-      ExpressionAttributeValues: values,
+      KeyConditionExpression: range
+        ? 'gsi1pk = :pk AND gsi1sk BETWEEN :from AND :to'
+        : 'gsi1pk = :pk',
+      ExpressionAttributeValues: range
+        ? { ':pk': pk, ':from': range.from, ':to': range.to }
+        : { ':pk': pk },
       ScanIndexForward: true,
       cursor: query.cursor,
       limit: query.limit,
       cursorPartition: { attr: 'gsi1pk', value: pk },
       byteBudget,
-      ...(sortLower
+      ...(range
         ? {
-            cursorSortBound: { attr: 'gsi1sk', lowerBoundInclusive: sortLower },
+            cursorSortBound: {
+              attr: 'gsi1sk',
+              lowerBoundInclusive: range.from,
+            },
           }
         : {}),
     });
-
-    let items = page.items;
-    // dueBefore BETWEEN upper bound is inclusive of `DUE#<date>` prefix alone;
-    // filter out any sk that is not strictly before the date.
-    if (query.dueBefore) {
-      items = items.filter(
-        (t) => t.dueDate !== null && t.dueDate < query.dueBefore!,
-      );
-    }
-    if (query.priority) {
-      items = items.filter((t) => t.priority === query.priority);
-    }
-    return { items, nextCursor: page.nextCursor };
+    // Key ranges narrow the read; this keeps every filter exact, including
+    // the ones (priority, due dates) that have no key condition.
+    return {
+      items: page.items.filter((t) => matchesListQuery(t, query)),
+      nextCursor: page.nextCursor,
+    };
   }
 }
 

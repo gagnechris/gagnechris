@@ -15,6 +15,12 @@ export {
   SITE_PROFILE_IMAGE_SRC,
 } from './site-config.js';
 export * from './schemas.js';
+export {
+  taskMatchesSchedule,
+  taskShowsOn,
+  taskStartsAfter,
+  type TaskScheduleFilter,
+} from './task-schedule.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export {

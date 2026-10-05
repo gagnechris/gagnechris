@@ -1,5 +1,9 @@
 import { expect } from 'vitest';
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import {
+  UpdateCommand,
+  type DynamoDBDocumentClient,
+} from '@aws-sdk/lib-dynamodb';
+import { keys } from '@gagnechris/data';
 import { makeEvent } from './make-event.js';
 import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { NotesRepository } from '../../src/notes/repository.js';
@@ -36,14 +40,47 @@ export function corpusNote(i: number) {
   };
 }
 
+export const CORPUS_TODAY = '2026-10-14';
+
 export function corpusTask(i: number) {
+  const someday = i % 7 === 3;
   return {
     id: testUlid('T', i),
     area: AREAS[i % 2]!,
     priority: PRIORITIES[i % 3]!,
     status: STATUSES[Math.floor(i / 2) % 3]!,
+    someday,
+    startDate:
+      someday || i % 5 === 0
+        ? null
+        : `2026-10-${String(1 + (i % 28)).padStart(2, '0')}`,
   };
 }
+
+type CorpusTask = ReturnType<typeof corpusTask>;
+
+/** Spelled out here, not via the shared helpers, so a helper bug fails these. */
+export const SCHEDULE_QUERIES: Array<{
+  query: Record<string, string>;
+  matches: (t: CorpusTask) => boolean;
+}> = [
+  {
+    query: { startOnOrBefore: CORPUS_TODAY },
+    matches: (t) =>
+      !t.someday && (t.startDate === null || t.startDate <= CORPUS_TODAY),
+  },
+  {
+    query: { startAfter: CORPUS_TODAY },
+    matches: (t) =>
+      !t.someday && t.startDate !== null && t.startDate > CORPUS_TODAY,
+  },
+  {
+    query: { startOn: CORPUS_TODAY },
+    matches: (t) => t.startDate === CORPUS_TODAY,
+  },
+  { query: { someday: 'true' }, matches: (t) => t.someday },
+  { query: { someday: 'false' }, matches: (t) => !t.someday },
+];
 
 export async function seedPagingCorpus(
   doc: DynamoDBDocumentClient,
@@ -85,6 +122,8 @@ export async function seedPagingCorpus(
       status: t.status,
       dueDate:
         i % 4 === 0 ? null : `2026-10-${String(1 + (i % 28)).padStart(2, '0')}`,
+      startDate: t.startDate,
+      someday: t.someday,
       tags: [],
     });
   }
@@ -135,3 +174,26 @@ export function expectExactIds(
 }
 
 export { AREAS, STATUSES, PRIORITIES };
+
+/** Rewrites a task row to the shape stored before startDate existed. */
+export async function storeAsLegacyTask(
+  doc: DynamoDBDocumentClient,
+  table: string,
+  userId: string,
+  id: string,
+  startDate: string | null,
+): Promise<void> {
+  await doc.send(
+    new UpdateCommand({
+      TableName: table,
+      Key: keys.notebook.task.meta(userId, id),
+      UpdateExpression: startDate
+        ? 'SET dueDate = :due, gsi1sk = :sk REMOVE startDate, someday'
+        : 'SET dueDate = :due REMOVE startDate, someday',
+      ExpressionAttributeValues: {
+        ':due': startDate,
+        ...(startDate ? { ':sk': keys.notebook.taskDueSk(startDate, id) } : {}),
+      },
+    }),
+  );
+}

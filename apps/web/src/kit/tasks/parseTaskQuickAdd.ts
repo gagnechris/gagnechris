@@ -4,12 +4,12 @@ import { addLocalDays, localToday } from '../calendarDates';
 export type ParsedTaskQuickAdd = {
   title: string;
   priority: TaskPriority;
-  dueDate: string | null;
+  startDate: string | null;
 };
 
 const PRIORITY_TOKEN = /(?:^|\s)!(high|med|low)(?=\s|$)/i;
-/** Due words count only at the end, so "Plan for Today show" keeps its title. */
-const TRAILING_DUE_TOKEN = /(?:^|\s)(today|tomorrow)$/i;
+/** Day words count only at the end, so "Plan for Today show" keeps its title. */
+const TRAILING_DAY_TOKEN = /(?:^|\s)(today|tomorrow)$/i;
 
 /** Strips `!high|!med|!low` anywhere and a trailing `today|tomorrow`; the rest is the title. */
 export function parseTaskQuickAdd(
@@ -18,7 +18,7 @@ export function parseTaskQuickAdd(
 ): ParsedTaskQuickAdd {
   let rest = input.trim();
   let priority: TaskPriority = 'med';
-  let dueDate: string | null = null;
+  let startDate: string | null = null;
 
   for (;;) {
     const pri = PRIORITY_TOKEN.exec(rest);
@@ -29,14 +29,14 @@ export function parseTaskQuickAdd(
     );
   }
 
-  const due = TRAILING_DUE_TOKEN.exec(rest);
-  if (due) {
-    dueDate =
-      due[1]!.toLowerCase() === 'tomorrow' ? addLocalDays(today, 1) : today;
-    rest = collapse(rest.slice(0, due.index));
+  const day = TRAILING_DAY_TOKEN.exec(rest);
+  if (day) {
+    startDate =
+      day[1]!.toLowerCase() === 'tomorrow' ? addLocalDays(today, 1) : today;
+    rest = collapse(rest.slice(0, day.index));
   }
 
-  return { title: rest, priority, dueDate };
+  return { title: rest, priority, startDate };
 }
 
 const collapse = (value: string) => value.replace(/\s+/g, ' ').trim();

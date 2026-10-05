@@ -7,6 +7,8 @@ import {
   SK_META,
   SK_PUBLISHED,
   slugify,
+  taskGsi1SkRanges,
+  type SortKeyRange,
   statusGsi1Pk,
   syncCreateClaimPk,
   syncSk,
@@ -128,5 +130,38 @@ describe('@gagnechris/data keys', () => {
     expect(ttl).toBe(
       Math.floor(at.getTime() / 1000) + SYNC_TOMBSTONE_TTL_DAYS * 86_400,
     );
+  });
+});
+
+describe('task start-date GSI1 ranges', () => {
+  const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const day = '2026-10-14';
+  const sks = {
+    startBefore: keys.notebook.taskStartSk('2026-10-13', id),
+    startOn: keys.notebook.taskStartSk(day, id),
+    startAfter: keys.notebook.taskStartSk('2026-10-15', id),
+    legacyBefore: keys.notebook.taskDueSk('2026-10-13', id),
+    legacyOn: keys.notebook.taskDueSk(day, id),
+    legacyAfter: keys.notebook.taskDueSk('2026-10-15', id),
+    now: keys.notebook.taskUpdatedSk('2026-10-20T00:00:00.000Z', id),
+    someday: keys.notebook.taskSomedaySk('2026-10-01T00:00:00.000Z', id),
+  };
+  const hits = (ranges: SortKeyRange[]) =>
+    Object.entries(sks)
+      .filter(([, sk]) => ranges.some((r) => sk >= r.from && sk <= r.to))
+      .map(([name]) => name)
+      .sort();
+
+  it('covers each view exactly, including rows still keyed by dueDate', () => {
+    expect(hits(taskGsi1SkRanges.showsOn(day))).toEqual(
+      ['legacyBefore', 'legacyOn', 'now', 'startBefore', 'startOn'].sort(),
+    );
+    expect(hits(taskGsi1SkRanges.startsAfter(day))).toEqual(
+      ['legacyAfter', 'startAfter'].sort(),
+    );
+    expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(
+      ['legacyOn', 'startOn'].sort(),
+    );
+    expect(hits(taskGsi1SkRanges.someday())).toEqual(['someday']);
   });
 });

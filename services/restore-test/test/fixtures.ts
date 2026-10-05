@@ -38,6 +38,8 @@ export function healthyItems(): Record<string, unknown>[] {
     priority: 'med',
     status: 'todo',
     dueDate: null,
+    startDate: null,
+    someday: false,
     completedAt: null,
     noteId: '01NOTE',
     tags: [],

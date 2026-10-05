@@ -32,6 +32,8 @@ const task = (overrides: Partial<Task> = {}): Task => ({
   priority: 'med',
   status: 'todo',
   dueDate: '2026-10-09',
+  startDate: null,
+  someday: false,
   completedAt: null,
   noteId: null,
   tags: [],
@@ -166,5 +168,31 @@ describe('setCachedTask respects list filters', () => {
     expect(itemsOf<Task>(qc, dueOnKey)).toEqual([]);
     expect(itemsOf<Task>(qc, overdueKey)).toHaveLength(1);
     expect(itemsOf<Task>(qc, noteKey)).toEqual([]);
+  });
+
+  test('start-date and someday filters gate inserts', () => {
+    const qc = new QueryClient();
+    const todayKey = queryKeys.tasks.list({ startOnOrBefore: '2026-10-09' });
+    const upcomingKey = queryKeys.tasks.list({ startAfter: '2026-10-09' });
+    const onKey = queryKeys.tasks.list({ startOn: '2026-10-12' });
+    const somedayKey = queryKeys.tasks.list({ someday: true });
+    for (const key of [todayKey, upcomingKey, onKey, somedayKey]) {
+      seed(qc, key, []);
+    }
+
+    setCachedTask(qc, task({ startDate: '2026-10-12' }));
+    expect(itemsOf<Task>(qc, todayKey)).toEqual([]);
+    expect(itemsOf<Task>(qc, upcomingKey)).toHaveLength(1);
+    expect(itemsOf<Task>(qc, onKey)).toHaveLength(1);
+    expect(itemsOf<Task>(qc, somedayKey)).toEqual([]);
+
+    setCachedTask(qc, task({ startDate: null, someday: true, version: 2 }));
+    expect(itemsOf<Task>(qc, todayKey)).toEqual([]);
+    expect(itemsOf<Task>(qc, upcomingKey)).toEqual([]);
+    expect(itemsOf<Task>(qc, somedayKey)).toHaveLength(1);
+
+    setCachedTask(qc, task({ startDate: null, version: 3 }));
+    expect(itemsOf<Task>(qc, todayKey)).toHaveLength(1);
+    expect(itemsOf<Task>(qc, somedayKey)).toEqual([]);
   });
 });

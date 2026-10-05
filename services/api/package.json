@@ -46,6 +46,10 @@
     "./resume/date-migration": {
       "types": "./src/resume/date-migration.ts",
       "import": "./src/resume/date-migration.ts"
+    },
+    "./tasks/start-date-migration": {
+      "types": "./src/tasks/start-date-migration.ts",
+      "import": "./src/tasks/start-date-migration.ts"
     }
   }
 }

@@ -699,7 +699,11 @@ export type UpsertDailyNoteRequest = z.infer<
   typeof UpsertDailyNoteRequestSchema
 >;
 
-/** Undated tasks sort separately from due ranges in Dynamo (UPDATED# prefix). */
+/**
+ * `startDate` is the day a task shows on Today; `null` means now. `someday`
+ * tasks never show on Today and always have a `null` startDate. `dueDate` is
+ * stored and returned but no longer drives Today or Upcoming.
+ */
 export const TaskSchema = z.object({
   id: UlidSchema,
   userId: z.string().min(1),
@@ -709,6 +713,8 @@ export const TaskSchema = z.object({
   priority: TaskPrioritySchema,
   status: TaskStatusSchema,
   dueDate: CalendarDateSchema.nullable(),
+  startDate: CalendarDateSchema.nullable(),
+  someday: z.boolean(),
   completedAt: z.string().datetime({ offset: true }).nullable(),
   noteId: z.string().min(1).nullable(),
   tags: z.array(z.string()),
@@ -727,55 +733,117 @@ export const TaskListResponseSchema = z.object({
 
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 
-export const CreateTaskRequestSchema = z.object({
-  id: UlidSchema,
-  area: NotebookAreaSchema,
-  title: NotebookTitleSchema.min(1),
-  description: NotebookTextSchema.default(''),
-  priority: TaskPrioritySchema.default('med'),
-  status: TaskStatusSchema.default('todo'),
-  dueDate: CalendarDateSchema.nullable().optional(),
-  noteId: UlidSchema.nullable().optional(),
-  tags: NotebookTagsSchema.default([]),
-});
+function rejectDatedSomeday(
+  body: { startDate?: string | null; someday?: boolean },
+  ctx: z.RefinementCtx,
+): void {
+  if (body.someday === true && body.startDate != null) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Someday tasks have no startDate',
+      path: ['startDate'],
+    });
+  }
+}
+
+export const CreateTaskRequestSchema = z
+  .object({
+    id: UlidSchema,
+    area: NotebookAreaSchema,
+    title: NotebookTitleSchema.min(1),
+    description: NotebookTextSchema.default(''),
+    priority: TaskPrioritySchema.default('med'),
+    status: TaskStatusSchema.default('todo'),
+    dueDate: CalendarDateSchema.nullable().optional(),
+    startDate: CalendarDateSchema.nullable()
+      .optional()
+      .describe('Day the task shows on Today; omitted or null means now'),
+    someday: z.boolean().optional(),
+    noteId: UlidSchema.nullable().optional(),
+    tags: NotebookTagsSchema.default([]),
+  })
+  .superRefine(rejectDatedSomeday);
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
 
-/** `version` may come from `If-Match` instead; one of the two is required. */
-export const UpdateTaskRequestSchema = z.object({
-  version: z.number().int().nonnegative().optional(),
-  area: NotebookAreaSchema.optional(),
-  title: NotebookTitleSchema.min(1).optional(),
-  description: NotebookTextSchema.optional(),
-  priority: TaskPrioritySchema.optional(),
-  status: TaskStatusSchema.optional(),
-  dueDate: CalendarDateSchema.nullable().optional(),
-  noteId: UlidSchema.nullable().optional(),
-  tags: NotebookTagsSchema.optional(),
-});
+/**
+ * `version` may come from `If-Match` instead; one of the two is required.
+ * `someday: true` clears startDate; a non-null startDate clears someday.
+ */
+export const UpdateTaskRequestSchema = z
+  .object({
+    version: z.number().int().nonnegative().optional(),
+    area: NotebookAreaSchema.optional(),
+    title: NotebookTitleSchema.min(1).optional(),
+    description: NotebookTextSchema.optional(),
+    priority: TaskPrioritySchema.optional(),
+    status: TaskStatusSchema.optional(),
+    dueDate: CalendarDateSchema.nullable().optional(),
+    startDate: CalendarDateSchema.nullable().optional(),
+    someday: z.boolean().optional(),
+    noteId: UlidSchema.nullable().optional(),
+    tags: NotebookTagsSchema.optional(),
+  })
+  .superRefine(rejectDatedSomeday);
 
 export type UpdateTaskRequest = z.infer<typeof UpdateTaskRequestSchema>;
 
-export const ListTasksQuerySchema = z.object({
-  area: NotebookAreaSchema.optional(),
-  status: TaskStatusSchema.optional(),
-  priority: TaskPrioritySchema.optional(),
-  dueOn: CalendarDateSchema.optional().describe('Tasks due on this date'),
-  dueBefore: CalendarDateSchema.optional().describe(
-    'Tasks due strictly before this date (overdue-style ranges)',
-  ),
-  noteId: z.string().min(1).optional().describe('Tasks linked to a note'),
-  open: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional()
-    .describe('Only todo and in_progress tasks (ignored when status is set)'),
-  today: CalendarDateSchema.optional().describe(
-    "Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today",
-  ),
-  cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
-});
+export const ListTasksQuerySchema = z
+  .object({
+    area: NotebookAreaSchema.optional(),
+    status: TaskStatusSchema.optional(),
+    priority: TaskPrioritySchema.optional(),
+    dueOn: CalendarDateSchema.optional().describe('Tasks due on this date'),
+    dueBefore: CalendarDateSchema.optional().describe(
+      'Tasks due strictly before this date',
+    ),
+    startOn: CalendarDateSchema.optional().describe(
+      'Tasks whose startDate is this date',
+    ),
+    startOnOrBefore: CalendarDateSchema.optional().describe(
+      'Tasks that show on this day: startDate on or before it, or null; never someday',
+    ),
+    startAfter: CalendarDateSchema.optional().describe(
+      'Tasks whose startDate is after this date (Upcoming); never someday',
+    ),
+    someday: z
+      .enum(['true', 'false'])
+      .transform((v) => v === 'true')
+      .optional()
+      .describe('Only someday tasks (true) or only scheduled tasks (false)'),
+    noteId: z.string().min(1).optional().describe('Tasks linked to a note'),
+    open: z
+      .enum(['true', 'false'])
+      .transform((v) => v === 'true')
+      .optional()
+      .describe('Only todo and in_progress tasks (ignored when status is set)'),
+    today: CalendarDateSchema.optional().describe(
+      "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
+    ),
+    cursor: z.string().min(1).optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+  })
+  .superRefine((query, ctx) => {
+    const ranges = [
+      query.startOn,
+      query.startOnOrBefore,
+      query.startAfter,
+    ].filter((v) => v !== undefined);
+    if (ranges.length > 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Use one of startOn, startOnOrBefore, startAfter',
+        path: ['startOn'],
+      });
+    }
+    if (query.someday === true && ranges.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Someday tasks have no startDate',
+        path: ['someday'],
+      });
+    }
+  });
 
 export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
 

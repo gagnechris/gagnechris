@@ -44,6 +44,8 @@ function baseTask(overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
     priority: 'med',
     status: 'todo',
     dueDate: null,
+    startDate: null,
+    someday: false,
     completedAt: null,
     noteId: null,
     tags: [],
@@ -56,20 +58,20 @@ function baseTask(overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
 }
 
 describe('sortTasksForList', () => {
-  it('orders overdue, then due date, then priority', () => {
+  it('orders carried-over, then start date, then priority', () => {
     const items = [
       baseTask({ id: 'c', title: 'undated high', priority: 'high' }),
-      baseTask({ id: 'b', title: 'due tomorrow', dueDate: '2026-10-03' }),
+      baseTask({ id: 'b', title: 'starts tomorrow', startDate: '2026-10-03' }),
       baseTask({
         id: 'a',
-        title: 'overdue low',
-        dueDate: '2026-10-01',
+        title: 'carried low',
+        startDate: '2026-10-01',
         priority: 'low',
       }),
       baseTask({
         id: 'd',
-        title: 'overdue high',
-        dueDate: '2026-09-30',
+        title: 'carried high',
+        startDate: '2026-09-30',
         priority: 'high',
       }),
     ];
@@ -87,6 +89,94 @@ describe('tasks handlers', () => {
     process.env.DATA_TABLE_NAME = TABLE;
     clearSyncEntities();
     registerProductionSyncAdapters();
+  });
+
+  it('round-trips startDate and someday through create, get, and If-Match updates', async () => {
+    const { doc } = createMemoryDoc();
+    const repo = new TasksRepository(
+      doc,
+      TABLE,
+      () => '2026-10-02T12:00:00.000Z',
+    );
+    const routes = createTaskRoutes(repo);
+    const path = `/api/notebook/tasks/${TASK_C}`;
+    const put = (body: unknown, ifMatch: string) =>
+      dispatchRoutes(
+        routes,
+        adminEvent('PUT', path, body, { 'if-match': ifMatch }),
+        'PUT',
+        path,
+      );
+
+    const created = await dispatchRoutes(
+      routes,
+      adminEvent('POST', '/api/notebook/tasks', {
+        id: TASK_C,
+        area: 'work',
+        title: 'Plan offsite',
+        startDate: '2026-10-05',
+      }),
+      'POST',
+      '/api/notebook/tasks',
+    );
+    expect(created?.statusCode).toBe(201);
+    expect(created?.headers?.ETag).toBe('"1"');
+    expect(JSON.parse(created!.body as string)).toMatchObject({
+      startDate: '2026-10-05',
+      someday: false,
+      dueDate: null,
+    });
+
+    const got = await dispatchRoutes(
+      routes,
+      adminEvent('GET', path),
+      'GET',
+      path,
+    );
+    expect(JSON.parse(got!.body as string)).toMatchObject({
+      startDate: '2026-10-05',
+      someday: false,
+    });
+
+    const someday = await put({ someday: true }, '"1"');
+    expect(someday?.statusCode).toBe(200);
+    expect(someday?.headers?.ETag).toBe('"2"');
+    expect(JSON.parse(someday!.body as string)).toMatchObject({
+      startDate: null,
+      someday: true,
+      version: 2,
+    });
+
+    const stale = await put({ startDate: '2026-10-09' }, '"1"');
+    expect(stale?.statusCode).toBe(412);
+
+    const both = await put({ someday: true, startDate: '2026-10-09' }, '"2"');
+    expect(both?.statusCode).toBe(400);
+
+    const scheduled = await put({ startDate: '2026-10-09' }, '"2"');
+    expect(scheduled?.statusCode).toBe(200);
+    expect(scheduled?.headers?.ETag).toBe('"3"');
+    expect(JSON.parse(scheduled!.body as string)).toMatchObject({
+      startDate: '2026-10-09',
+      someday: false,
+      version: 3,
+    });
+
+    const list = async (query: Record<string, string>) => {
+      const res = await dispatchRoutes(
+        routes,
+        adminEvent('GET', '/api/notebook/tasks', undefined, undefined, query),
+        'GET',
+        '/api/notebook/tasks',
+      );
+      expect(res?.statusCode).toBe(200);
+      return (JSON.parse(res!.body as string) as { items: Task[] }).items.map(
+        (t) => t.id,
+      );
+    };
+    expect(await list({ startAfter: '2026-10-08' })).toEqual([TASK_C]);
+    expect(await list({ startOnOrBefore: '2026-10-08' })).toEqual([]);
+    expect(await list({ someday: 'true' })).toEqual([]);
   });
 
   it('creates, gets, updates with If-Match, completes, reopens, and lists', async () => {

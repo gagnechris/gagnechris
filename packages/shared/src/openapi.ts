@@ -885,7 +885,7 @@ export function buildOpenApiDocument() {
     path: '/api/notebook/tasks',
     noun: 'task',
     listSummary:
-      'List tasks for the authenticated user (server-sorted: overdue, due date, priority)',
+      'List tasks for the authenticated user (server-sorted: carried over, start date, priority)',
     entity: TaskSchema,
     listQuery: ListTasksQuerySchema,
     listResponse: TaskListResponseSchema,

@@ -42,6 +42,8 @@ describe('exportNotebook', () => {
       priority: 'med',
       status: 'todo',
       dueDate: null,
+      startDate: null,
+      someday: false,
       completedAt: null,
       noteId: null,
       tags: [],

@@ -272,15 +272,52 @@ export function taskAreaStatusGsi1Pk(
   return `USER#${userId}#AREA#${area}#STATUS#${status}`;
 }
 
-/** Undated tasks must not use this prefix; see {@link taskUpdatedGsi1Sk}. */
+export function taskStartGsi1Sk(startDate: string, taskId: string): string {
+  return `START#${startDate}#TASK#${taskId}`;
+}
+
+/** A null startDate (shows now) that is not someday. */
+export function taskUpdatedGsi1Sk(updatedAt: string, taskId: string): string {
+  return `UPDATED#${updatedAt}#TASK#${taskId}`;
+}
+
+export function taskSomedayGsi1Sk(updatedAt: string, taskId: string): string {
+  return `SOMEDAY#${updatedAt}#TASK#${taskId}`;
+}
+
+/**
+ * Rows stored without a `startDate` attribute, keyed by `dueDate` (which is
+ * their start date). Any write rekeys them to START#; until
+ * `scripts/migrate-task-start-dates.ts` has run, start-date queries must also
+ * read this prefix.
+ */
 export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
   return `DUE#${dueDate}#TASK#${taskId}`;
 }
 
-/** Keeps undated tasks out of due/overdue ranges. */
-export function taskUpdatedGsi1Sk(updatedAt: string, taskId: string): string {
-  return `UPDATED#${updatedAt}#TASK#${taskId}`;
-}
+/** Inclusive `gsi1sk BETWEEN from AND to` on a task area/status partition. */
+export type SortKeyRange = { from: string; to: string };
+
+const START_PREFIXES = ['START#', 'DUE#'] as const;
+const prefixRange = (prefix: string): SortKeyRange => ({
+  from: prefix,
+  to: `${prefix}\uffff`,
+});
+// `#TASK~` sorts after every `<prefix><day>#TASK#<id>` for that day.
+const afterDay = (prefix: string, day: string) => `${prefix}${day}#TASK~`;
+
+export const taskGsi1SkRanges = {
+  startOn: (day: string): SortKeyRange[] =>
+    START_PREFIXES.map((p) => ({ from: `${p}${day}#`, to: afterDay(p, day) })),
+  /** startDate on or before `day`, or null; never someday. */
+  showsOn: (day: string): SortKeyRange[] => [
+    ...START_PREFIXES.map((p) => ({ from: p, to: afterDay(p, day) })),
+    prefixRange('UPDATED#'),
+  ],
+  startsAfter: (day: string): SortKeyRange[] =>
+    START_PREFIXES.map((p) => ({ from: afterDay(p, day), to: `${p}\uffff` })),
+  someday: (): SortKeyRange[] => [prefixRange('SOMEDAY#')],
+};
 
 export function noteTasksGsi2Pk(userId: string, noteId: string): string {
   return `USER#${userId}#NOTE#${noteId}#TASKS`;
@@ -404,6 +441,10 @@ export const keys = {
       notePageGsi1Sk(updatedAt, noteId),
     taskAreaStatusGsi1: (userId: string, area: string, status: string) =>
       taskAreaStatusGsi1Pk(userId, area, status),
+    taskStartSk: (startDate: string, taskId: string) =>
+      taskStartGsi1Sk(startDate, taskId),
+    taskSomedaySk: (updatedAt: string, taskId: string) =>
+      taskSomedayGsi1Sk(updatedAt, taskId),
     taskDueSk: (dueDate: string, taskId: string) =>
       taskDueGsi1Sk(dueDate, taskId),
     taskUpdatedSk: (updatedAt: string, taskId: string) =>

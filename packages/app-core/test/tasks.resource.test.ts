@@ -13,6 +13,8 @@ const sample = (overrides: Partial<Task> = {}): Task => ({
   priority: 'high',
   status: 'todo',
   dueDate: '2026-10-01',
+  startDate: null,
+  someday: false,
   completedAt: null,
   noteId: null,
   tags: [],

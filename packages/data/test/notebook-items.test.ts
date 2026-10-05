@@ -49,6 +49,8 @@ const task: Task = {
   priority: 'med',
   status: 'todo',
   dueDate: '2026-10-03',
+  startDate: '2026-10-03',
+  someday: false,
   completedAt: null,
   noteId: dailyNote.id,
   tags: [],
@@ -78,7 +80,7 @@ describe('Notebook Dynamo items', () => {
     expect(tombstone.gsi1sk).toBeUndefined();
   });
 
-  it('builds daily claim and task META with DUE# / note GSI2', () => {
+  it('builds daily claim and task META with START# / note GSI2', () => {
     const claim = buildDailyNoteClaimItem(
       'sub-1',
       'work',
@@ -98,7 +100,9 @@ describe('Notebook Dynamo items', () => {
     const item = buildTaskMetaItem(task);
     expect(item.pk).toBe('USER#sub-1#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0');
     expect(item.gsi1pk).toBe('USER#sub-1#AREA#personal#STATUS#todo');
-    expect(item.gsi1sk).toBe('DUE#2026-10-03#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0');
+    expect(item.gsi1sk).toBe(
+      'START#2026-10-03#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0',
+    );
     expect(item.gsi2pk).toBe(
       'USER#sub-1#NOTE#01ARZ3NDEKTSV4RRFFQ48JMCZC#TASKS',
     );
@@ -106,16 +110,37 @@ describe('Notebook Dynamo items', () => {
     expect(metaToTask(parseTaskMetaItem(item))).toEqual(task);
   });
 
-  it('uses UPDATED# for undated tasks and omits GSI2 without noteId', () => {
+  it('uses UPDATED# for tasks with no startDate and omits GSI2 without noteId', () => {
     const undated = buildTaskMetaItem({
       ...task,
-      dueDate: null,
+      startDate: null,
       noteId: null,
     });
     expect(undated.gsi1sk).toBe(
       `UPDATED#${ts}#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0`,
     );
     expect(undated.gsi2pk).toBeUndefined();
+  });
+
+  it('keys someday tasks under SOMEDAY#, outside every start-date range', () => {
+    const item = buildTaskMetaItem({ ...task, startDate: null, someday: true });
+    expect(item.gsi1sk).toBe(`SOMEDAY#${ts}#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0`);
+    expect(metaToTask(parseTaskMetaItem(item)).someday).toBe(true);
+  });
+
+  it('reads a row stored without startDate as starting on its dueDate', () => {
+    const { startDate: _s, someday: _d, ...legacy } = buildTaskMetaItem(task);
+    legacy.gsi1sk = 'DUE#2026-10-03#TASK#01ARZ3NDEKTSV4RRFFQ48JMCT0';
+    expect(metaToTask(parseTaskMetaItem(legacy))).toEqual(task);
+
+    const undatedLegacy = { ...legacy, dueDate: null };
+    expect(metaToTask(parseTaskMetaItem(undatedLegacy))).toMatchObject({
+      startDate: null,
+      someday: false,
+    });
+
+    const explicitNull = buildTaskMetaItem({ ...task, startDate: null });
+    expect(metaToTask(parseTaskMetaItem(explicitNull)).startDate).toBeNull();
   });
 
   it('compares note/task content ignoring tag order via deepEqual', () => {
@@ -127,5 +152,7 @@ describe('Notebook Dynamo items', () => {
     ).toBe(false);
     expect(noteContentEqual(dailyNote, { ...dailyNote })).toBe(true);
     expect(taskContentEqual(task, { ...task, title: 'x' })).toBe(false);
+    expect(taskContentEqual(task, { ...task, startDate: null })).toBe(false);
+    expect(taskContentEqual(task, { ...task, someday: true })).toBe(false);
   });
 });

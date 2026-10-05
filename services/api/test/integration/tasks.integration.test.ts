@@ -123,4 +123,46 @@ describe('tasks repository (DynamoDB Local)', () => {
       [TASK_1, TASK_2, TASK_3].sort(),
     );
   });
+
+  it('round-trips startDate and someday with version-checked updates', async () => {
+    const repo = new TasksRepository(
+      doc,
+      tableName,
+      () => '2026-10-02T10:00:00.000Z',
+    );
+    const created = await repo.createFromRequest(USER_A, {
+      id: TASK_1,
+      area: 'personal',
+      title: 'Renew passport',
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      startDate: '2026-10-06',
+      tags: [],
+    });
+    expect(created).toMatchObject({ startDate: '2026-10-06', someday: false });
+    expect(await repo.getOrThrow(USER_A, TASK_1)).toEqual(created);
+
+    const someday = await repo.updateFromRequest(USER_A, TASK_1, 1, {
+      someday: true,
+    });
+    expect(someday).toMatchObject({
+      version: 2,
+      startDate: null,
+      someday: true,
+    });
+    await expect(
+      repo.updateFromRequest(USER_A, TASK_1, 1, { startDate: '2026-10-07' }),
+    ).rejects.toMatchObject({ code: 'version_conflict' });
+
+    const back = await repo.updateFromRequest(USER_A, TASK_1, 2, {
+      startDate: '2026-10-07',
+    });
+    expect(back).toMatchObject({
+      version: 3,
+      startDate: '2026-10-07',
+      someday: false,
+    });
+    expect(await repo.getOrThrow(USER_A, TASK_1)).toEqual(back);
+  });
 });

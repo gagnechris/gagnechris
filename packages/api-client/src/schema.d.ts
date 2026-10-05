@@ -5879,7 +5879,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List tasks for the authenticated user (server-sorted: overdue, due date, priority) */
+        /** List tasks for the authenticated user (server-sorted: carried over, start date, priority) */
         get: {
             parameters: {
                 query?: {
@@ -5888,13 +5888,21 @@ export interface paths {
                     priority?: "low" | "med" | "high";
                     /** @description Tasks due on this date */
                     dueOn?: string;
-                    /** @description Tasks due strictly before this date (overdue-style ranges) */
+                    /** @description Tasks due strictly before this date */
                     dueBefore?: string;
+                    /** @description Tasks whose startDate is this date */
+                    startOn?: string;
+                    /** @description Tasks that show on this day: startDate on or before it, or null; never someday */
+                    startOnOrBefore?: string;
+                    /** @description Tasks whose startDate is after this date (Upcoming); never someday */
+                    startAfter?: string;
+                    /** @description Only someday tasks (true) or only scheduled tasks (false) */
+                    someday?: "true" | "false";
                     /** @description Tasks linked to a note */
                     noteId?: string;
                     /** @description Only todo and in_progress tasks (ignored when status is set) */
                     open?: "true" | "false";
-                    /** @description Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today */
+                    /** @description Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today */
                     today?: string;
                     cursor?: string;
                     limit?: number;
@@ -5924,6 +5932,8 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "todo" | "in_progress" | "done";
                                 dueDate: string | null;
+                                startDate: string | null;
+                                someday: boolean;
                                 /** Format: date-time */
                                 completedAt: string | null;
                                 noteId: string | null;
@@ -6048,6 +6058,9 @@ export interface paths {
                          */
                         status?: "todo" | "in_progress" | "done";
                         dueDate?: string | null;
+                        /** @description Day the task shows on Today; omitted or null means now */
+                        startDate?: string | null;
+                        someday?: boolean;
                         noteId?: string | null;
                         /** @default [] */
                         tags?: string[];
@@ -6075,6 +6088,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -6255,6 +6270,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -6453,6 +6470,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -6640,6 +6659,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -6773,6 +6794,8 @@ export interface paths {
                         /** @enum {string} */
                         status?: "todo" | "in_progress" | "done";
                         dueDate?: string | null;
+                        startDate?: string | null;
+                        someday?: boolean;
                         noteId?: string | null;
                         tags?: string[];
                     };
@@ -6799,6 +6822,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -6998,6 +7023,8 @@ export interface paths {
                             /** @enum {string} */
                             status: "todo" | "in_progress" | "done";
                             dueDate: string | null;
+                            startDate: string | null;
+                            someday: boolean;
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
@@ -7386,6 +7413,8 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "todo" | "in_progress" | "done";
                                     dueDate: string | null;
+                                    startDate: string | null;
+                                    someday: boolean;
                                     /** Format: date-time */
                                     completedAt: string | null;
                                     noteId: string | null;
@@ -8351,6 +8380,8 @@ export interface components {
             /** @enum {string} */
             status: "todo" | "in_progress" | "done";
             dueDate: string | null;
+            startDate: string | null;
+            someday: boolean;
             /** Format: date-time */
             completedAt: string | null;
             noteId: string | null;
@@ -8375,6 +8406,8 @@ export interface components {
                 /** @enum {string} */
                 status: "todo" | "in_progress" | "done";
                 dueDate: string | null;
+                startDate: string | null;
+                someday: boolean;
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
@@ -8409,6 +8442,9 @@ export interface components {
              */
             status: "todo" | "in_progress" | "done";
             dueDate?: string | null;
+            /** @description Day the task shows on Today; omitted or null means now */
+            startDate?: string | null;
+            someday?: boolean;
             noteId?: string | null;
             /** @default [] */
             tags: string[];
@@ -8425,6 +8461,8 @@ export interface components {
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done";
             dueDate?: string | null;
+            startDate?: string | null;
+            someday?: boolean;
             noteId?: string | null;
             tags?: string[];
         };
@@ -8437,8 +8475,19 @@ export interface components {
             priority?: "low" | "med" | "high";
             /** @description Tasks due on this date */
             dueOn?: string;
-            /** @description Tasks due strictly before this date (overdue-style ranges) */
+            /** @description Tasks due strictly before this date */
             dueBefore?: string;
+            /** @description Tasks whose startDate is this date */
+            startOn?: string;
+            /** @description Tasks that show on this day: startDate on or before it, or null; never someday */
+            startOnOrBefore?: string;
+            /** @description Tasks whose startDate is after this date (Upcoming); never someday */
+            startAfter?: string;
+            /**
+             * @description Only someday tasks (true) or only scheduled tasks (false)
+             * @enum {string}
+             */
+            someday?: "true" | "false";
             /** @description Tasks linked to a note */
             noteId?: string;
             /**
@@ -8446,7 +8495,7 @@ export interface components {
              * @enum {string}
              */
             open?: "true" | "false";
-            /** @description Caller's local day (yyyy-mm-dd) for overdue ranking; defaults to UTC today */
+            /** @description Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today */
             today?: string;
             cursor?: string;
             limit?: number;
@@ -8544,6 +8593,8 @@ export interface components {
                 /** @enum {string} */
                 status: "todo" | "in_progress" | "done";
                 dueDate: string | null;
+                startDate: string | null;
+                someday: boolean;
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
@@ -8623,6 +8674,8 @@ export interface components {
                 /** @enum {string} */
                 status: "todo" | "in_progress" | "done";
                 dueDate: string | null;
+                startDate: string | null;
+                someday: boolean;
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
@@ -8703,6 +8756,8 @@ export interface components {
                     /** @enum {string} */
                     status: "todo" | "in_progress" | "done";
                     dueDate: string | null;
+                    startDate: string | null;
+                    someday: boolean;
                     /** Format: date-time */
                     completedAt: string | null;
                     noteId: string | null;
