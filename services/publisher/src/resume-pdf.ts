@@ -71,10 +71,16 @@ const FONT_FEATURES: Record<FaceName, Record<string, boolean>> = {
 const MISSING_GLYPH = '?';
 
 type FontkitFont = {
+  unitsPerEm: number;
   hasGlyphForCodePoint(codePoint: number): boolean;
+  layout(
+    text: string,
+    features?: Record<string, boolean>,
+  ): { glyphs: { advanceWidth: number }[] };
 };
 
-type Face = { pdf: PDFFont; fk: FontkitFont };
+/** `pdf` is unset while measuring, so the fit passes embed nothing. */
+type Face = { name: FaceName; fk: FontkitFont; pdf?: PDFFont };
 type Faces = Record<FaceName, Face>;
 
 type Style = {
@@ -88,14 +94,16 @@ type Span = { text: string; style: Style };
 type Line = Span[];
 
 type DrawCtx = {
-  doc: PDFDocument;
-  page: PDFPage;
+  doc: PDFDocument | null;
+  page: PDFPage | null;
+  pages: number;
   faces: Faces;
   y: number;
 };
 
 const fontBytesCache = new Map<FaceName, Uint8Array>();
 const fontkitCache = new Map<FaceName, FontkitFont>();
+const emWidthCache = new Map<FaceName, Map<string, number>>();
 
 function fontsDirCandidates(): string[] {
   const dirs: string[] = [];
@@ -147,6 +155,36 @@ function fontkitFont(face: FaceName): FontkitFont {
   return fk;
 }
 
+const measureFaces = (): Faces =>
+  Object.fromEntries(
+    (Object.keys(FONT_FILES) as FaceName[]).map((name) => [
+      name,
+      { name, fk: fontkitFont(name) },
+    ]),
+  ) as Faces;
+
+// The measuring and drawing passes share these widths, so both break lines
+// and pages in the same places.
+function runWidth(run: Run, size: number): number {
+  let cache = emWidthCache.get(run.face.name);
+  if (!cache) {
+    cache = new Map();
+    emWidthCache.set(run.face.name, cache);
+  }
+  let em = cache.get(run.text);
+  if (em === undefined) {
+    const { fk } = run.face;
+    em = 0;
+    for (const glyph of fk.layout(run.text, FONT_FEATURES[run.face.name])
+      .glyphs) {
+      em += glyph.advanceWidth;
+    }
+    em /= fk.unitsPerEm;
+    cache.set(run.text, em);
+  }
+  return em * size;
+}
+
 /** embedFont(subset) + drawText throw on code points Inter cannot draw. */
 export function sanitizeResumePdfText(text: string): string {
   const fk = fontkitFont('sans');
@@ -186,7 +224,7 @@ function fontRuns(faces: Faces, text: string, faceName: FaceName): Run[] {
 function textWidth(faces: Faces, text: string, style: Style): number {
   let width = 0;
   for (const run of fontRuns(faces, text, style.face)) {
-    width += run.face.pdf.widthOfTextAtSize(run.text, style.size);
+    width += runWidth(run, style.size);
   }
   return width + (style.tracking ?? 0) * [...text].length;
 }
@@ -226,20 +264,22 @@ function drawSpans(
   let cursor = x;
   for (const span of line) {
     const tracking = span.style.tracking ?? 0;
-    if (tracking) ctx.page.pushOperators(setCharacterSpacing(tracking));
+    const { page } = ctx;
+    if (page && tracking) page.pushOperators(setCharacterSpacing(tracking));
     for (const run of fontRuns(ctx.faces, span.text, span.style.face)) {
-      ctx.page.drawText(run.text, {
-        x: cursor,
-        y: baseline,
-        size: span.style.size,
-        font: run.face.pdf,
-        color: span.style.color,
-      });
+      if (page) {
+        page.drawText(run.text, {
+          x: cursor,
+          y: baseline,
+          size: span.style.size,
+          font: run.face.pdf,
+          color: span.style.color,
+        });
+      }
       cursor +=
-        run.face.pdf.widthOfTextAtSize(run.text, span.style.size) +
-        tracking * [...run.text].length;
+        runWidth(run, span.style.size) + tracking * [...run.text].length;
     }
-    if (tracking) ctx.page.pushOperators(setCharacterSpacing(0));
+    if (page && tracking) page.pushOperators(setCharacterSpacing(0));
   }
   return cursor;
 }
@@ -252,7 +292,8 @@ const lineSize = (line: Line): number =>
 
 function ensureSpace(ctx: DrawCtx, needed: number): void {
   if (ctx.y - needed >= MARGIN) return;
-  ctx.page = ctx.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  ctx.pages += 1;
+  if (ctx.doc) ctx.page = ctx.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   ctx.y = PAGE_HEIGHT - MARGIN;
 }
 
@@ -286,7 +327,7 @@ function drawLeftColumn(
 }
 
 function drawRule(ctx: DrawCtx, color: RGB, thickness: number): void {
-  ctx.page.drawLine({
+  ctx.page?.drawLine({
     start: { x: MARGIN, y: ctx.y },
     end: { x: PAGE_WIDTH - MARGIN, y: ctx.y },
     thickness,
@@ -500,6 +541,7 @@ function addLink(
   rect: [number, number, number, number],
   url: string,
 ): void {
+  if (!ctx.doc || !ctx.page) return;
   const { context } = ctx.doc;
   const annot = context.register(
     context.obj({
@@ -569,42 +611,16 @@ function resumePdfDate(resume: Resume): Date {
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
-async function layoutResumePdf(
+function layoutResume(
+  ctx: DrawCtx,
   resume: Resume,
   experience: ResumeExperience[],
   collapsed: ReadonlySet<number>,
-): Promise<PDFDocument> {
-  const doc = await PDFDocument.create();
-  doc.registerFontkit(fontkit);
-  doc.setTitle(`${sanitizeResumePdfText(resume.name)} — Resume`);
-  doc.setAuthor(sanitizeResumePdfText(resume.name));
-  // pdf-lib stamps "now" by default; pin the dates so an unchanged resume
-  // renders identical bytes and a no-op rebuild skips the put.
-  const stamp = resumePdfDate(resume);
-  doc.setCreationDate(stamp);
-  doc.setModificationDate(stamp);
-
-  const faces = {} as Faces;
-  for (const name of Object.keys(FONT_FILES) as FaceName[]) {
-    faces[name] = {
-      pdf: await doc.embedFont(fontBytes(name), {
-        subset: true,
-        features: FONT_FEATURES[name],
-      }),
-      fk: fontkitFont(name),
-    };
-  }
-
-  const ctx: DrawCtx = {
-    doc,
-    page: doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]),
-    faces,
-    y: PAGE_HEIGHT - MARGIN,
-  };
+): void {
   const drawFull = (text: string, style: Style, lineHeight: number) =>
     drawLines(
       ctx,
-      wrapSpans(faces, [{ text: normalize(text), style }], CONTENT_WIDTH),
+      wrapSpans(ctx.faces, [{ text: normalize(text), style }], CONTENT_WIDTH),
       MARGIN,
       lineHeight,
     );
@@ -654,28 +670,53 @@ async function layoutResumePdf(
       drawEducation(ctx, item);
     });
   }
-
-  return doc;
 }
+
+const newCtx = (faces: Faces, doc: PDFDocument | null = null): DrawCtx => ({
+  doc,
+  page: doc ? doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]) : null,
+  pages: 1,
+  faces,
+  y: PAGE_HEIGHT - MARGIN,
+});
 
 /**
  * Embedded Inter and Newsreader, not WinAnsi standard fonts, so Unicode text
  * renders. Ended roles drop to one line, oldest first, until the resume fits
- * on two pages.
+ * on two pages; the fit is measured without a PDF, then drawn once.
  */
 export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
   const experience = resume.content.experience.map(structuredExperience);
   const order = collapseOrder(experience);
-  for (let count = 0; ; count++) {
-    const doc = await layoutResumePdf(
-      resume,
-      experience,
-      new Set(order.slice(0, count)),
-    );
-    if (doc.getPageCount() <= MAX_PAGES || count >= order.length) {
-      return doc.save();
-    }
+  const faces = measureFaces();
+  let collapsed = new Set<number>();
+  for (let count = 0; count <= order.length; count++) {
+    collapsed = new Set(order.slice(0, count));
+    const ctx = newCtx(faces);
+    layoutResume(ctx, resume, experience, collapsed);
+    if (ctx.pages <= MAX_PAGES) break;
   }
+
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  doc.setTitle(`${sanitizeResumePdfText(resume.name)} — Resume`);
+  doc.setAuthor(sanitizeResumePdfText(resume.name));
+  // pdf-lib stamps "now" by default; pin the dates so an unchanged resume
+  // renders identical bytes and a no-op rebuild skips the put.
+  const stamp = resumePdfDate(resume);
+  doc.setCreationDate(stamp);
+  doc.setModificationDate(stamp);
+  for (const name of Object.keys(FONT_FILES) as FaceName[]) {
+    faces[name] = {
+      ...faces[name],
+      pdf: await doc.embedFont(fontBytes(name), {
+        subset: true,
+        features: FONT_FEATURES[name],
+      }),
+    };
+  }
+  layoutResume(newCtx(faces, doc), resume, experience, collapsed);
+  return doc.save();
 }
 
 const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
