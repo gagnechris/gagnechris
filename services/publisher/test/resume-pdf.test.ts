@@ -95,7 +95,15 @@ describe('resume PDF layout', () => {
       ...liveResume,
       content: { ...liveContent, experience: [...experience, ...older] },
     };
-    const bytes = await renderResumePdf(resume);
+    const create = vi.spyOn(PDFDocument, 'create');
+    let bytes: Uint8Array;
+    try {
+      bytes = await renderResumePdf(resume);
+      // Fitting is measured without building a PDF; only the final one is.
+      expect(create).toHaveBeenCalledTimes(1);
+    } finally {
+      create.mockRestore();
+    }
     expect(await pageCount(bytes)).toBe(2);
     const text = await pdfText(bytes);
     expect(text).toContain(roleLine(experience[0]!));
