@@ -1,5 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { test as base, expect, type Page } from '@playwright/test';
+import {
+  test as base,
+  expect,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { createApiClient, type ApiClient } from '@gagnechris/api-client';
 import { ulid } from 'ulid';
 
@@ -12,6 +17,30 @@ export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is unset; run via playwright.config.ts`);
   return value;
+}
+
+/**
+ * Focuses the last tabbable element before `target`, so one Tab reaches
+ * `target` or what follows it. Indexes list every test's items, so tabbing
+ * from the top of the page takes an unbounded number of presses.
+ */
+export async function focusJustBefore(target: Locator): Promise<void> {
+  await target.evaluate((el) => {
+    const before = [
+      ...document.querySelectorAll<HTMLElement>(
+        'a[href], button, input, select, textarea, [tabindex]',
+      ),
+    ].filter(
+      (t) =>
+        t.tabIndex >= 0 &&
+        t.getClientRects().length > 0 &&
+        !t.contains(el) &&
+        el.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_PRECEDING,
+    );
+    const last = before.at(-1);
+    if (last) last.focus();
+    else (document.activeElement as HTMLElement | null)?.blur();
+  });
 }
 
 /** Seeds through the local API so data passes the same validation as the UI. */

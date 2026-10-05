@@ -1,5 +1,11 @@
 import type { Page } from '@playwright/test';
-import { expect, requireEnv, test, type Seed } from '../fixtures';
+import {
+  expect,
+  focusJustBefore,
+  requireEnv,
+  test,
+  type Seed,
+} from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -118,31 +124,30 @@ test.describe('/projects', () => {
       card(page, slugs.idea).locator('a, button, [tabindex]'),
     ).toHaveCount(0);
 
-    const focusedSlugs: string[] = [];
+    // Safari only tabs to links with Option held.
     const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
-    for (let i = 0; i < 60; i += 1) {
+    for (const key of ['live', 'building', 'elsewhere'] as const) {
+      const link = card(page, slugs[key]).locator('a');
+      await focusJustBefore(card(page, slugs[key]));
       await page.keyboard.press(tab);
-      const focused = await page.evaluate(() => {
-        const el = document.activeElement as HTMLElement | null;
-        const slug = el?.closest('li.project-card')?.getAttribute('data-slug');
-        if (!el || !slug) return null;
+      await expect(link).toBeFocused();
+      const ring = await link.evaluate((el) => {
         const style = getComputedStyle(el);
         return {
-          slug,
-          outline: style.outlineStyle,
+          style: style.outlineStyle,
           width: parseFloat(style.outlineWidth),
         };
       });
-      if (!focused) continue;
-      focusedSlugs.push(focused.slug);
-      expect(focused.outline, focused.slug).not.toBe('none');
-      expect(focused.width, focused.slug).toBeGreaterThanOrEqual(2);
-      if (focused.slug === slugs.elsewhere) break;
+      expect(ring.style, key).not.toBe('none');
+      expect(ring.width, key).toBeGreaterThanOrEqual(2);
     }
-    expect(focusedSlugs).toEqual(
-      expect.arrayContaining([slugs.live, slugs.building, slugs.elsewhere]),
-    );
-    expect(focusedSlugs).not.toContain(slugs.idea);
+    await focusJustBefore(card(page, slugs.idea));
+    await page.keyboard.press(tab);
+    expect(
+      await card(page, slugs.idea).evaluate((el) =>
+        el.contains(document.activeElement),
+      ),
+    ).toBe(false);
   });
 
   test('status is text; the building pulse stops under reduced motion', async ({

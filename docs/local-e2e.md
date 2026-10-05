@@ -124,6 +124,9 @@ owner-scoped notebook data is separate per user. Any other bearer, or none, is t
 All tests share one stack and table, so isolate by `prefix` and per-test
 users rather than assuming an empty table. Seeding goes through the API
 (`@gagnechris/api-client`), so it hits the same validation as the UI.
+Indexes such as `/posts` and `/projects` list every test's items, so a
+keyboard check calls `focusJustBefore(locator)` (from `e2e/fixtures.ts`) and
+presses Tab once, rather than tabbing from the top of the page.
 
 ### CI
 
