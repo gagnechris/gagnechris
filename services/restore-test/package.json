@@ -20,8 +20,8 @@
     "@aws-lambda-powertools/logger": "^2.25.1",
     "@aws-lambda-powertools/metrics": "^2.25.1",
     "@aws-sdk/client-backup": "^3.1146.0",
-    "@aws-sdk/client-dynamodb": "^3.1143.0",
-    "@aws-sdk/lib-dynamodb": "^3.1143.0",
+    "@aws-sdk/client-dynamodb": "^3.1145.0",
+    "@aws-sdk/lib-dynamodb": "^3.1145.0",
     "@gagnechris/data": "*",
     "@gagnechris/shared": "*",
     "zod": "^4.6.5"
