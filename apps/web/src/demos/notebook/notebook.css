@@ -1,0 +1,324 @@
+/* Specs in docs/design/public-redesign/README.md (Notebook demo). */
+.notebook-demo {
+  box-sizing: border-box;
+  max-width: 992px;
+  margin-inline: auto;
+  border: 1px solid var(--neutral-200);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 6%);
+}
+
+.notebook-demo__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 62px;
+  padding: 8px 18px 8px 20px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.notebook-demo__bar .admin-btn {
+  padding: 7px 12px;
+  font-size: 0.8125rem;
+}
+
+.notebook-demo__kicker {
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--neutral-600);
+}
+
+.demo-frame .notebook-demo__day {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+
+.notebook-demo__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  align-items: start;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 0 0 15px 15px;
+  background: var(--neutral-50);
+}
+
+.notebook-demo__note {
+  min-width: 0;
+  padding: 20px 24px 18px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  background: white;
+  font-size: 0.875rem;
+}
+
+.notebook-demo__note-title {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.notebook-demo__note-text {
+  margin: 0 0 8px;
+  color: var(--neutral-800);
+}
+
+.notebook-demo__tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notebook-demo__tasks .task-embed {
+  min-height: 30px;
+}
+
+.notebook-demo__add {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--neutral-200);
+}
+
+.notebook-demo__add > .task-embed__box {
+  border-style: dashed;
+  border-color: var(--neutral-400);
+}
+
+.notebook-demo__add .task-syntax {
+  flex: 1;
+  min-width: 0;
+}
+
+.notebook-demo__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+}
+
+.notebook-demo__input::placeholder {
+  color: var(--neutral-500);
+}
+
+.notebook-demo__input:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.notebook-demo__add .admin-btn {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.notebook-demo__hint {
+  margin: 10px 0 0;
+  font-size: 0.71875rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+.notebook-demo__side {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.notebook-demo__side .today-panel + .today-panel {
+  margin-top: 0;
+}
+
+/* display:none, not visually hidden, so screen readers get one wording. */
+.notebook-demo__narrow {
+  display: none;
+}
+
+/* Phone · Project Notebook demo: the side panels become tabs under the note. */
+@media (max-width: 760px) {
+  .notebook-demo__wide {
+    display: none;
+  }
+
+  .notebook-demo__narrow {
+    display: inline;
+  }
+
+  /* On the TRY IT line, after the label. */
+  .project-demo .demo-frame__note--label:has(> .notebook-demo__narrow) {
+    position: absolute;
+    top: 0;
+    left: calc(
+      var(--site-gutter) +
+        max(0px, (100% - 2 * var(--site-gutter) - var(--project-measure)) / 2) +
+        57px
+    );
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1;
+  }
+
+  .notebook-demo {
+    max-width: none;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  .notebook-demo__bar {
+    min-height: 52px;
+    padding: 6px 12px;
+  }
+
+  .notebook-demo__kicker {
+    display: none;
+  }
+
+  .demo-frame .notebook-demo__day {
+    font-size: 1rem;
+  }
+
+  .notebook-demo__body {
+    display: block;
+    padding: 0;
+    background: none;
+  }
+
+  .notebook-demo__note {
+    padding: 14px 12px 12px;
+    border: 0;
+    border-radius: 0;
+    background: var(--neutral-50);
+    font-size: 1rem;
+  }
+
+  .notebook-demo__note-title,
+  .notebook-demo__note-text {
+    display: none;
+  }
+
+  .notebook-demo__tasks .task-embed {
+    min-height: 40px;
+  }
+
+  .notebook-demo__add {
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 0;
+  }
+
+  .notebook-demo__add > .task-embed__box {
+    display: none;
+  }
+
+  .notebook-demo__input {
+    min-height: 44px;
+    padding: 0 11px;
+    border: 1px solid var(--neutral-300);
+    border-radius: 10px;
+    background: white;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+  }
+
+  .notebook-demo__input:focus-visible {
+    outline-offset: 1px;
+  }
+
+  .notebook-demo__add .admin-btn {
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+
+  .notebook-demo__hint {
+    margin-top: 8px;
+    font-size: 0.75rem;
+  }
+
+  .notebook-demo__panels {
+    border-top: 1px solid var(--neutral-200);
+  }
+
+  .notebook-demo__tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .notebook-demo__tab {
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--neutral-600);
+    cursor: pointer;
+  }
+
+  .notebook-demo__tab[aria-selected='true'] {
+    border-bottom-color: var(--primary-600);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .notebook-demo__tab:focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: -2px;
+  }
+
+  /* The tab names the panel. */
+  .notebook-demo__tabpanel .today-panel {
+    padding: 4px 12px 8px;
+    border: 0;
+    border-top: 1px solid var(--neutral-200);
+    border-radius: 0 0 13px 13px;
+  }
+
+  .notebook-demo__tabpanel .today-panel__header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .notebook-demo__tabpanel .today-row {
+    font-size: 0.9375rem;
+  }
+
+  .notebook-demo__tabpanel .today-row--compact {
+    padding: 10px 0;
+  }
+
+  .notebook-demo__tabpanel .today-row__day {
+    font-size: 0.75rem;
+  }
+
+  .notebook-demo__tabpanel .today-row__add {
+    min-height: 36px;
+    font-size: 0.75rem;
+  }
+}
