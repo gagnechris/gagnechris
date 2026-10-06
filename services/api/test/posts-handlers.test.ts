@@ -33,6 +33,7 @@ describe('posts HTTP handlers', () => {
   const projectsRepo = { existingIds: vi.fn() };
   const repo = {
     list: vi.fn(),
+    counts: vi.fn(),
     getById: vi.fn(),
     getByIdOrThrow: vi.fn(),
     create: vi.fn(),
@@ -61,6 +62,11 @@ describe('posts HTTP handlers', () => {
 
   it('lists summary rows, 50 to a page by default', async () => {
     vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
+    vi.mocked(repo.counts).mockResolvedValue({
+      all: 1,
+      draft: 1,
+      published: 0,
+    });
     const result = await dispatch('GET', '/api/admin/posts');
     expect(result.statusCode).toBe(200);
     const [row] = JSON.parse(result.body as string).items;
@@ -70,7 +76,37 @@ describe('posts HTTP handlers', () => {
     expect(repo.list).toHaveBeenCalledWith(undefined, {
       cursor: undefined,
       limit: 50,
+      q: undefined,
     });
+  });
+
+  it('passes q and status through and returns counts on the first page only', async () => {
+    vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
+    const counts = { all: 3, draft: 1, published: 2 };
+    vi.mocked(repo.counts).mockResolvedValue(counts);
+
+    const first = await dispatch('GET', '/api/admin/posts', {
+      query: { q: '  aws ', status: 'draft' },
+    });
+    expect(JSON.parse(first.body as string).counts).toEqual(counts);
+    expect(repo.list).toHaveBeenCalledWith('draft', {
+      cursor: undefined,
+      limit: 50,
+      q: 'aws',
+    });
+
+    const next = await dispatch('GET', '/api/admin/posts', {
+      query: { cursor: 'abc' },
+    });
+    expect(JSON.parse(next.body as string)).not.toHaveProperty('counts');
+    expect(repo.counts).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an over-long q', async () => {
+    const result = await dispatch('GET', '/api/admin/posts', {
+      query: { q: 'x'.repeat(201) },
+    });
+    expect(result.statusCode).toBe(400);
   });
 
   describe('projectIds', () => {
