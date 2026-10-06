@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys, slugPk, slugPostSk } from '@gagnechris/data';
-import type { Project } from '@gagnechris/shared';
+import { CreateProjectRequestSchema, type Project } from '@gagnechris/shared';
 import { createProjectRoutes } from '../src/projects/handlers.js';
 import { ProjectsRepository } from '../src/projects/repository.js';
 import { dispatchRoutes } from '../src/router.js';
@@ -361,6 +361,55 @@ describe('projects admin API', () => {
         { version: draft.version + 1 },
       );
       expect(res.status).toBe(409);
+    });
+  });
+
+  it('a missing project is a 404 naming it', async () => {
+    const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    const res = await call('GET', `/api/admin/projects/${id}`);
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({
+      error: 'not_found',
+      message: `Project ${id} not found`,
+    });
+  });
+
+  it('checks many project ids with one BatchGet', async () => {
+    const memory = createMemoryDoc();
+    const repo = new ProjectsRepository(memory.doc, TABLE);
+    const live = await repo.create(
+      CreateProjectRequestSchema.parse({ name: 'Live' }),
+    );
+    const gone = await repo.create(
+      CreateProjectRequestSchema.parse({ name: 'Gone' }),
+    );
+    await repo.softDelete(gone.id, gone.version);
+    const send = vi.mocked(memory.doc.send);
+    send.mockClear();
+    const found = await repo.existingIds([
+      live.id,
+      gone.id,
+      '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    ]);
+    expect([...found]).toEqual([live.id]);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('stamps writes with the injected clock', async () => {
+    const memory = createMemoryDoc();
+    const repo = new ProjectsRepository(
+      memory.doc,
+      TABLE,
+      () => '2026-01-02T03:04:05.000Z',
+    );
+    const draft = await repo.create(
+      CreateProjectRequestSchema.parse({ name: 'Clocked' }),
+    );
+    const live = await repo.publish(draft.id, draft.version);
+    expect(draft.updatedAt).toBe('2026-01-02T03:04:05.000Z');
+    expect(live).toMatchObject({
+      updatedAt: '2026-01-02T03:04:05.000Z',
+      publishedAt: '2026-01-02T03:04:05.000Z',
     });
   });
 

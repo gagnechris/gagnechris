@@ -1,7 +1,7 @@
 import type { ZodType } from 'zod';
-import { ExpectedVersionRequestSchema } from '@gagnechris/shared';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
+import { siteAdminVersionedRoute } from './versioned-route.js';
 
 export type SingletonRepo<T, TUpdate> = {
   getOrCreate: () => Promise<T>;
@@ -11,72 +11,57 @@ export type SingletonRepo<T, TUpdate> = {
   discard: (expectedVersion: number) => Promise<T>;
 };
 
-export type SingletonRouteConfig<T, TUpdate> = {
+export type SingletonRouteConfig<T, TUpdate extends { version: number }> = {
   basePath: string;
+  /** Metric suffix, e.g. `Home` for `GetHome` / `PublishHome`. */
+  metricName: string;
   entitySchema: ZodType<T>;
   updateSchema: ZodType<TUpdate>;
   createRepo: () => SingletonRepo<T, TUpdate>;
 };
 
-export function createSingletonRoutes<T, TUpdate>(
+export function createSingletonRoutes<T, TUpdate extends { version: number }>(
   config: SingletonRouteConfig<T, TUpdate>,
   repo?: SingletonRepo<T, TUpdate>,
 ): RouteDef[] {
   const store = () => repo ?? config.createRepo();
-  const base = config.basePath;
+  const { basePath: base, metricName: name, entitySchema: entity } = config;
   return [
     defineRoute({
       method: 'GET',
       pattern: base,
       auth: 'site-admin',
-      metric: `Get_${base.replace(/\//g, '_')}`,
-      handler: async () =>
-        json(200, config.entitySchema.parse(await store().getOrCreate())),
+      metric: `Get${name}`,
+      handler: async () => json(200, entity.parse(await store().getOrCreate())),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'PUT',
       pattern: base,
-      auth: 'site-admin',
-      metric: `Put_${base.replace(/\//g, '_')}`,
+      metric: `Update${name}`,
       body: config.updateSchema,
-      handler: async (_ctx, { body }) =>
-        json(200, config.entitySchema.parse(await store().update(body))),
+      entity,
+      mutate: ({ body }) => store().update(body),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: `${base}/publish`,
-      auth: 'site-admin',
-      metric: `Publish_${base.replace(/\//g, '_')}`,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { body }) =>
-        json(
-          200,
-          config.entitySchema.parse(await store().publish(body.version)),
-        ),
+      metric: `Publish${name}`,
+      entity,
+      mutate: ({ body }) => store().publish(body.version),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: `${base}/unpublish`,
-      auth: 'site-admin',
-      metric: `Unpublish_${base.replace(/\//g, '_')}`,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { body }) =>
-        json(
-          200,
-          config.entitySchema.parse(await store().unpublish(body.version)),
-        ),
+      metric: `Unpublish${name}`,
+      entity,
+      mutate: ({ body }) => store().unpublish(body.version),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: `${base}/discard`,
-      auth: 'site-admin',
-      metric: `Discard_${base.replace(/\//g, '_')}`,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { body }) =>
-        json(
-          200,
-          config.entitySchema.parse(await store().discard(body.version)),
-        ),
+      metric: `Discard${name}`,
+      entity,
+      mutate: ({ body }) => store().discard(body.version),
     }),
   ];
 }

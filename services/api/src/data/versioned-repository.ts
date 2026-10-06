@@ -23,6 +23,7 @@ import {
 } from '@gagnechris/data';
 import { ZodError } from 'zod';
 import { getDocClient, requireTableName } from './client.js';
+import { systemClock, type Clock } from './clock.js';
 import { logCorruptStoredItem } from './corrupt-item.js';
 import { createHashMatches } from './create-hash.js';
 import {
@@ -167,7 +168,7 @@ export type VersionedRepositoryConfig<
   toEntity: (item: TItem) => T;
   toItem: (entity: T) => TItem;
   isDeleted?: (entity: T) => boolean;
-  nowIso?: () => string;
+  nowIso?: Clock;
   cursorKeyNames?: readonly string[];
   cursorKeysByIndex?: Readonly<Record<string, readonly string[]>>;
   sync?: SyncEntityConfig<T>;
@@ -177,6 +178,21 @@ export type VersionedRepositoryConfig<
 export type QueryPage<T> = {
   items: T[];
   nextCursor?: string;
+};
+
+export type QueryPageInput = Omit<
+  QueryCommandInput,
+  'TableName' | 'ExclusiveStartKey'
+> & {
+  cursor?: string;
+  limit?: number;
+  cursorKeyNames?: readonly string[];
+  /** Rejects cursors from another partition. */
+  cursorPartition?: { attr: string; value: string };
+  /** Rejects cursors below the range's lower bound. */
+  cursorSortBound?: { attr: string; lowerBoundInclusive: string };
+  /** JSON bytes of returned items; the first item is always returned. */
+  byteBudget?: number;
 };
 
 type ReadOpts = { consistentRead?: boolean };
@@ -197,7 +213,7 @@ export class VersionedRepository<
   }
 
   protected now(): string {
-    return this.config.nowIso?.() ?? new Date().toISOString();
+    return (this.config.nowIso ?? systemClock)();
   }
 
   protected notFound(key: TKey): NotFoundError {
@@ -206,7 +222,8 @@ export class VersionedRepository<
     );
   }
 
-  protected mapItem(raw: unknown): T {
+  /** Zod failures become DataIntegrityError (500), never a client 400. */
+  mapItem(raw: unknown): T {
     try {
       return this.config.toEntity(raw as TItem);
     } catch (error) {
@@ -600,16 +617,6 @@ export class VersionedRepository<
     return this.softDelete(key, expectedVersion, tombstone);
   }
 
-  /** Prefer {@link mutateIfVersion}, which builds `next` from a consistent read. */
-  async updateIfVersion(
-    key: TKey,
-    expectedVersion: number,
-    next: T,
-  ): Promise<T> {
-    const { raw } = await this.readForWrite(key, { allowDeleted: true });
-    return this.putIfVersion(key, expectedVersion, next, raw);
-  }
-
   private async putIfVersion(
     key: TKey,
     expectedVersion: number,
@@ -699,19 +706,7 @@ export class VersionedRepository<
     return tombstone;
   }
 
-  async queryPage(
-    input: Omit<QueryCommandInput, 'TableName' | 'ExclusiveStartKey'> & {
-      cursor?: string;
-      limit?: number;
-      cursorKeyNames?: readonly string[];
-      /** Rejects cursors from another partition. */
-      cursorPartition?: { attr: string; value: string };
-      /** Rejects cursors below the range's lower bound. */
-      cursorSortBound?: { attr: string; lowerBoundInclusive: string };
-      /** JSON bytes of returned items; the first item is always returned. */
-      byteBudget?: number;
-    },
-  ): Promise<QueryPage<T>> {
+  async queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
     const {
       cursor,
       limit,

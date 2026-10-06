@@ -1,12 +1,22 @@
-/** If-Match / ETag helpers for versioned Notebook mutations. */
+/**
+ * Versioned write routes. Notebook writes take If-Match or `body.version` and
+ * answer with an ETag; site-admin writes take `body.version` only.
+ */
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
 } from 'aws-lambda';
 import type { z, ZodType } from 'zod';
+import { ExpectedVersionRequestSchema } from '@gagnechris/shared';
 import { json, jsonWithEtag } from '../http.js';
-import { defineRoute, type RouteCtx, type RouteDef } from '../router.js';
+import {
+  defineRoute,
+  type InferOrDefault,
+  type RouteCtx,
+  type RouteDef,
+} from '../router.js';
 import { mapVersionConflict, resolveExpectedVersion } from './concurrency.js';
+import { BadRequestError } from './errors.js';
 
 export type ExpectedVersionOk = {
   ok: true;
@@ -36,7 +46,7 @@ export function requireExpectedVersion(
     }
     return { ok: true, expected, fromIfMatch };
   } catch (error) {
-    if (error instanceof SyntaxError) {
+    if (error instanceof BadRequestError) {
       return {
         ok: false,
         response: json(400, {
@@ -123,4 +133,45 @@ export function versionedMutationRoute<
       return jsonEntity(200, entity, def.respond);
     },
   });
+}
+
+/**
+ * Site-admin write: `body.version` (default body {@link ExpectedVersionRequestSchema})
+ * → `mutate` → 200 with the entity parsed through `entity`. Version conflicts
+ * and NotFoundError map to 409 / 404 in the router.
+ */
+export function siteAdminVersionedRoute<
+  TParams extends ZodType | undefined = undefined,
+  TBody extends ZodType<{ version: number }> =
+    typeof ExpectedVersionRequestSchema,
+>(def: {
+  method: 'PUT' | 'POST' | 'DELETE';
+  pattern: string;
+  metric: string;
+  params?: TParams;
+  body?: TBody;
+  entity: ZodType;
+  mutate: (input: {
+    params: InferOrDefault<TParams, Record<string, string>>;
+    body: z.infer<TBody>;
+  }) => Promise<unknown>;
+}): RouteDef {
+  return {
+    method: def.method,
+    pattern: def.pattern,
+    auth: 'site-admin',
+    metric: def.metric,
+    ...(def.params ? { params: def.params } : {}),
+    body: def.body ?? ExpectedVersionRequestSchema,
+    handler: async (_ctx, { params, body }) =>
+      json(
+        200,
+        def.entity.parse(
+          await def.mutate({
+            params: params as InferOrDefault<TParams, Record<string, string>>,
+            body: body as z.infer<TBody>,
+          }),
+        ),
+      ),
+  };
 }

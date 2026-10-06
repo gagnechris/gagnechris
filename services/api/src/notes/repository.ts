@@ -10,6 +10,7 @@ import {
   GSI1_NAME,
   buildDailyNoteClaimItem,
   buildNoteMetaItem,
+  dynamoErrorName,
   keys,
   metaToNote,
   normalizeTags,
@@ -32,6 +33,7 @@ import { BadRequestError } from '../data/errors.js';
 import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import {
   VersionedRepository,
   ownerScoped,
@@ -246,24 +248,17 @@ function dailyNoteClaimHook(
 }
 
 function isConditionalCheckFailed(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { name?: unknown }).name === 'ConditionalCheckFailedException'
-  );
+  return dynamoErrorName(error) === 'ConditionalCheckFailedException';
 }
 
 export class NotesRepository {
   private readonly base: VersionedRepository<Note, NoteMetaItem, OwnerKey>;
 
-  private readonly nowIso: () => string;
-
   constructor(
     private readonly doc: DynamoDBDocumentClient = getDocClient(),
     private readonly tableName: string = requireTableName(),
-    nowIso?: () => string,
+    private readonly nowIso: Clock = systemClock,
   ) {
-    this.nowIso = nowIso ?? (() => new Date().toISOString());
     this.base = new VersionedRepository<Note, NoteMetaItem, OwnerKey>(
       {
         conflictLabel: 'note',
@@ -275,7 +270,7 @@ export class NotesRepository {
         toEntity: (item) => metaToNote(parseNoteMetaItem(item)),
         toItem: buildNoteMetaItem,
         isDeleted: (n) => n.deleted,
-        nowIso,
+        nowIso: this.nowIso,
         cursorKeyNames: PRIMARY_CURSOR_KEYS,
         cursorKeysByIndex: {
           [GSI1_NAME]: GSI1_CURSOR_KEYS,

@@ -57,6 +57,27 @@ export class BadRequestError extends Error {
   }
 }
 
+export class InvalidCursorError extends BadRequestError {
+  constructor() {
+    super('Invalid pagination cursor');
+    this.name = 'InvalidCursorError';
+  }
+}
+
+export class InvalidHeaderError extends BadRequestError {
+  constructor(header: string) {
+    super(`Invalid ${header} header`);
+    this.name = 'InvalidHeaderError';
+  }
+}
+
+export class InvalidJsonBodyError extends BadRequestError {
+  constructor() {
+    super('Invalid JSON body');
+    this.name = 'InvalidJsonBodyError';
+  }
+}
+
 export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);

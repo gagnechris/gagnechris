@@ -9,6 +9,7 @@ import {
   BadRequestError,
   ConflictError,
   DataIntegrityError,
+  InvalidJsonBodyError,
   NotFoundError,
   PreconditionFailedError,
   ResyncRequiredError,
@@ -92,15 +93,6 @@ export function jsonWithEtag(
   };
 }
 
-export {
-  parseIfMatch,
-  parseIfMatchVersion,
-  resolveExpectedVersion,
-  mapVersionConflict,
-  type IfMatchExpectation,
-  type ExpectedVersionResolution,
-} from './data/concurrency.js';
-
 export function parseBody(event: APIGatewayProxyEventV2): unknown {
   if (!event.body) return {};
   const raw = event.isBase64Encoded
@@ -109,7 +101,7 @@ export function parseBody(event: APIGatewayProxyEventV2): unknown {
   try {
     return JSON.parse(raw) as unknown;
   } catch {
-    throw new SyntaxError('Invalid JSON body');
+    throw new InvalidJsonBodyError();
   }
 }
 
@@ -160,9 +152,6 @@ export function zodPayloadTooLarge(
 export function mapRouteError(
   error: unknown,
 ): APIGatewayProxyStructuredResultV2 | undefined {
-  if (error instanceof SyntaxError) {
-    return json(400, { error: 'bad_request', message: error.message });
-  }
   // Backstop only; prefer throwCursorValidation at the query site.
   if (isExclusiveStartKeyValidationError(error)) {
     return json(400, {

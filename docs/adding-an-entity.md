@@ -228,6 +228,7 @@ import {
   type UpdateBookmarkRequest,
 } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import { hashCreateFields } from '../data/create-hash.js';
 import { GSI1_CURSOR_KEYS } from '../data/cursor.js';
 import {
@@ -274,7 +275,7 @@ export class BookmarksRepository {
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
-    private readonly nowIso: () => string = () => new Date().toISOString(),
+    private readonly nowIso: Clock = systemClock,
   ) {
     this.base = new VersionedRepository(
       {
@@ -381,7 +382,7 @@ Repository options worth knowing:
 
 - `uniqueClaim` — extra uniqueness rows in the create transaction, with conflict resolution and release on delete (daily notes use it).
 - `cursorKeysByIndex` — default cursor keys per `IndexName` when a repository queries several indexes.
-- `nowIso` — the only clock; update and tombstone timestamps come from it, so tests inject a fixed clock.
+- `nowIso` — the only clock (a `Clock` from `data/clock.ts`, default `systemClock`); update and tombstone timestamps come from it, so tests inject a fixed clock.
 
 ## 6. Routes — `services/api/src/bookmarks/handlers.ts`
 
@@ -568,11 +569,13 @@ There is no public API: the read side is static HTML in S3.
 
 - **Publish status vs domain status.** Every publishable entity has `status: draft | published | deleted`. Name any domain lifecycle field something else (projects use `stage`).
 - **Own GSI1 partition.** META carries `gsi1pk = <THING>_STATUS#<status>`, never posts' `STATUS#…`, so `listPublishedPosts` needs no `entityType` filter. Choose `gsi1sk` for the admin list order (projects: `ORDER#<6 digits>#PROJECT#<id>`). `build…PublishedItem` drops the GSI1 keys so only META rows are on the index.
-- **Own slug partition.** Claims are `<THING>_SLUG#<slug>` / `<THING>` and redirects `<THING>_SLUG#<old>` / `REDIRECT`. A shared `SLUG#` partition would collide on `REDIRECT`. Add a `SlugClaims` entry in `data/slug-claims.ts` and build transactions with `buildSlugClaimPut`, `buildSlugChangeItems`, `buildSoftDeleteSlugRelease` and `slugClaimIndexesOf`.
+- **Own slug partition.** Claims are `<THING>_SLUG#<slug>` / `<THING>` and redirects `<THING>_SLUG#<old>` / `REDIRECT`. A shared `SLUG#` partition would collide on `REDIRECT`. Add a `SlugClaims` entry in `data/slug-claims.ts` and pass it as the repository's `slugClaims`.
 
 ### Repository and routes
 
-Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual` and `isDeleted`. Override `persistMutation` to put META (version-conditioned, index 0), the slug change items, the `PUBLISHED` put or delete, and the soft-delete slug release in one `TransactWriteItems`; pass `slugClaimIndexes` and `versionItemIndex: 0` to `runVersionedWrite` so a taken slug is `slug_taken` and a stale version wins with `current`. `publish`, `unpublish` and `discard` come from the base. Write `create` (claim + META with `attribute_not_exists`), `update` and `softDelete` the way `ProjectsRepository` does.
+Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual`, `isDeleted` and `slugClaims`, and pass the constructor's `now` clock through. The base owns every write: `insertDraft` (slug claim + META with `attribute_not_exists`), `mutate` (consistent read, version check, `updatedAt` from the clock), `softDelete`, `publish`, `unpublish` and `discard`. Each mutation is one transaction with the version-conditioned META Put at index 0, the slug rename rows, the `PUBLISHED` put or delete and the soft-delete slug release, so a taken slug is `slug_taken` and a stale version wins with `current`. Use `validatePublish` for rules a draft must meet before it goes live and `extraMutationItems` for rows that change with it (posts write tag-index rows there). `create` builds the entity and calls `insertDraft`; `update` passes a field merge to `mutate`. Lists page with `queryPage` (and `walkPartitions` across status partitions) and return drafts through `withPublishedFlags`; `existingIds` checks many ids with one BatchGet.
+
+Declare `GET` routes with `defineRoute` and `getByIdOrThrow` (404 from `NotFoundError`), and every versioned write (`PUT`, `DELETE`, `publish`, `unpublish`, `discard`) with `siteAdminVersionedRoute` from `data/versioned-route.ts`: body `version` (default body `ExpectedVersionRequestSchema`) → `mutate` → 200 with the entity parsed through `entity`. Metric names are `<Verb><Thing>` (`PublishProject`); singletons pass `metricName` to `createSingletonRoutes`.
 
 Routes live under `/admin/<things>` with `auth: 'site-admin'`; ids are `UlidSchema`. `test/router.test.ts` checks that every `/admin` route outside `/admin/users` is `site-admin` and that routes and OpenAPI operations match one to one; add an explicit list for the new prefix like the projects one. Validate any user-supplied link with `isSafeLinkHref` (`packages/shared/src/links.ts`): `POST_LINK_SCHEMES` is what the markdown sanitizer keeps in post bodies.
 

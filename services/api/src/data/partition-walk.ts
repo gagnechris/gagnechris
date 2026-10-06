@@ -1,4 +1,5 @@
 import { PAGE_BYTE_BUDGET, jsonByteLength } from './page-budget.js';
+import { InvalidCursorError } from './errors.js';
 
 // Results are grouped by partition, not globally sorted.
 
@@ -42,7 +43,7 @@ function decodeComposite(
     }
     return k === undefined ? { p } : { p, k };
   } catch {
-    throw new SyntaxError('Invalid pagination cursor');
+    throw new InvalidCursorError();
   }
 }
 

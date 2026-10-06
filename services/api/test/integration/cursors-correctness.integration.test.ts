@@ -13,6 +13,7 @@ import {
   deleteIntegrationTable,
   truncateTable,
 } from '../support/dynamo-local.js';
+import { InvalidCursorError } from '../../src/data/errors.js';
 
 const USER_A = 'user-cursor-a';
 const USER_B = 'user-cursor-b';
@@ -37,7 +38,7 @@ describe('cursor correctness (DynamoDB Local)', () => {
     registerFakeNoteSync();
   });
 
-  it('rejects other-user and changed-since sync cursors with SyntaxError (400)', async () => {
+  it('rejects other-user and changed-since sync cursors (400)', async () => {
     const repo = createFakeNotesRepo(
       doc,
       tableName,
@@ -71,7 +72,7 @@ describe('cursor correctness (DynamoDB Local)', () => {
 
     await expect(
       ledger.queryChangesSince(USER_B, { cursor: page1.nextCursor, limit: 1 }),
-    ).rejects.toBeInstanceOf(SyntaxError);
+    ).rejects.toBeInstanceOf(InvalidCursorError);
 
     // Reusing a cursor under a tighter `since` that excludes the LEK sort key.
     await expect(
@@ -80,7 +81,7 @@ describe('cursor correctness (DynamoDB Local)', () => {
         cursor: page1.nextCursor,
         limit: 1,
       }),
-    ).rejects.toBeInstanceOf(SyntaxError);
+    ).rejects.toBeInstanceOf(InvalidCursorError);
 
     const foreign = encodeCursor({
       pk: `USER#${USER_A}#NOTE#${NOTE_ID}`,
@@ -90,6 +91,6 @@ describe('cursor correctness (DynamoDB Local)', () => {
     });
     await expect(
       ledger.queryChangesSince(USER_A, { cursor: foreign, limit: 1 }),
-    ).rejects.toBeInstanceOf(SyntaxError);
+    ).rejects.toBeInstanceOf(InvalidCursorError);
   });
 });

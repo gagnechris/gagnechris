@@ -24,6 +24,7 @@ import {
 } from './support/fake-note.js';
 import { createFakeNoteRoutes } from './support/fake-note-routes.js';
 import { metrics } from '../src/observability.js';
+import { InvalidCursorError } from '../src/data/errors.js';
 
 const TABLE = 'gagnechris-test';
 const USER = 'user-1';
@@ -223,12 +224,12 @@ describe('sync feed', () => {
     );
     expect(created.version).toBe(1);
 
-    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
+    await repo.mutateIfVersion({ userId: USER, id: NOTE_ID }, 1, () => ({
       ...created,
       title: 'B',
       version: 2,
       updatedAt: times[1]!,
-    });
+    }));
 
     await repo.softDelete({ userId: USER, id: NOTE_ID }, 2, {
       ...created,
@@ -411,13 +412,13 @@ describe('sync feed', () => {
         '2026-09-28T10:00:00.000Z',
       ),
     );
-    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
+    await repo.mutateIfVersion({ userId: USER, id: NOTE_ID }, 1, () => ({
       ...created,
       title: 'B',
       body: 'two',
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
-    });
+    }));
 
     // Delayed identical create retry uses stored createHash, not current fields.
     const retried = await repo.createIdempotent(
@@ -543,7 +544,7 @@ describe('sync contract hardening', () => {
         cursor: page1.nextCursor,
         limit: 2,
       }),
-    ).rejects.toThrow(SyntaxError);
+    ).rejects.toThrow(InvalidCursorError);
     // Equivalent instant in another offset normalizes to the same binding.
     const page2 = await ledger.queryChangesSince(USER, {
       since: '2026-09-28T04:00:00.000-05:00',
@@ -664,24 +665,24 @@ describe('If-Match / ETag routes', () => {
     let note = await repo.createIdempotent(
       buildFakeNote(USER, NOTE_ID, { title: 'A' }, '2026-09-28T10:00:00.000Z'),
     );
-    note = await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 1, {
+    note = await repo.mutateIfVersion({ userId: USER, id: NOTE_ID }, 1, () => ({
       ...note,
       title: 'B',
       version: 2,
       updatedAt: '2026-09-28T11:00:00.000Z',
-    });
-    note = await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 2, {
+    }));
+    note = await repo.mutateIfVersion({ userId: USER, id: NOTE_ID }, 2, () => ({
       ...note,
       title: 'C',
       version: 3,
       updatedAt: '2026-09-28T12:00:00.000Z',
-    });
-    await repo.updateIfVersion({ userId: USER, id: NOTE_ID }, 3, {
+    }));
+    await repo.mutateIfVersion({ userId: USER, id: NOTE_ID }, 3, () => ({
       ...note,
       title: 'D',
       version: 4,
       updatedAt: '2026-09-28T13:00:00.000Z',
-    });
+    }));
     // Server is at version 4; client sends weak ETag for stale version 3.
     const routes = createFakeNoteRoutes(repo);
     const res = await dispatchRoutes(

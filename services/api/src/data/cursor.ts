@@ -1,3 +1,5 @@
+import { InvalidCursorError } from './errors.js';
+
 export function encodeCursor(
   lastEvaluatedKey: Record<string, unknown> | undefined,
 ): string | undefined {
@@ -34,7 +36,7 @@ export function decodeCursor(
     }
     return key;
   } catch {
-    throw new SyntaxError('Invalid pagination cursor');
+    throw new InvalidCursorError();
   }
 }
 
@@ -59,10 +61,10 @@ export function assertCursorMatchesQuery(
 ): void {
   if (!key) return;
   if (key[opts.partitionAttr] !== opts.partitionValue) {
-    throw new SyntaxError('Invalid pagination cursor');
+    throw new InvalidCursorError();
   }
   if (opts.binding && key[opts.binding.attr] !== opts.binding.value) {
-    throw new SyntaxError('Invalid pagination cursor');
+    throw new InvalidCursorError();
   }
   if (
     opts.sortAttr &&
@@ -74,7 +76,7 @@ export function assertCursorMatchesQuery(
       typeof sortValue !== 'string' ||
       sortValue < opts.sortLowerBoundInclusive
     ) {
-      throw new SyntaxError('Invalid pagination cursor');
+      throw new InvalidCursorError();
     }
   }
 }

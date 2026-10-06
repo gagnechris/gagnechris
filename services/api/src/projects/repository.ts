@@ -1,13 +1,6 @@
-import {
-  BatchGetCommand,
-  QueryCommand,
-  TransactWriteCommand,
-  type DynamoDBDocumentClient,
-} from '@aws-sdk/lib-dynamodb';
+import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
-  SK_META,
-  batchGetAllWithDocClient,
   buildProjectMetaItem,
   buildProjectPublishedItem,
   keys,
@@ -27,35 +20,11 @@ import {
 } from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
-import { logCorruptStoredItem } from '../data/corrupt-item.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import { GSI1_CURSOR_KEYS } from '../data/cursor.js';
-import { runDynamoWrite } from '../data/dynamo-write.js';
-import {
-  BadRequestError,
-  DataIntegrityError,
-  NotFoundError,
-} from '../data/errors.js';
-import {
-  PublishableRepository,
-  assertExpectedVersion,
-  nowIso,
-  withUnpublishedFlag,
-  type PersistPublishOptions,
-} from '../data/publishable-repository.js';
-import {
-  PROJECT_SLUG_CLAIMS,
-  buildSlugChangeItems,
-  buildSlugClaimPut,
-  buildSoftDeleteSlugRelease,
-  slugClaimIndexesOf,
-  type TransactItem,
-} from '../data/slug-claims.js';
-import {
-  VERSION_MATCH_CONDITION,
-  runVersionedWrite,
-  throwVersionConflict,
-  versionMatchValues,
-} from '../data/version-condition.js';
+import { BadRequestError } from '../data/errors.js';
+import { PublishableRepository } from '../data/publishable-repository.js';
+import { PROJECT_SLUG_CLAIMS } from '../data/slug-claims.js';
 
 /** Projects are a short hand-curated list; one admin page holds them all. */
 export const PROJECT_LIST_MAX = 500;
@@ -66,6 +35,16 @@ const normalizeStack = (stack: readonly string[]): string[] => [
   ...new Set(stack.map((s) => s.trim()).filter(Boolean)),
 ];
 
+function assertPublishable(project: Project): void {
+  const fields = projectPublishFieldErrors(project);
+  if (Object.keys(fields).length > 0) {
+    throw new BadRequestError(
+      'A project with a demo needs a preview image before it is published',
+      fields,
+    );
+  }
+}
+
 export class ProjectsRepository extends PublishableRepository<
   Project,
   ProjectMetaItem
@@ -73,6 +52,7 @@ export class ProjectsRepository extends PublishableRepository<
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
+    now: Clock = systemClock,
   ) {
     super(
       {
@@ -93,69 +73,12 @@ export class ProjectsRepository extends PublishableRepository<
         contentEqual: projectContentEqual,
         isDeleted: (p) => p.status === 'deleted',
         cursorKeyNames: GSI1_CURSOR_KEYS,
+        slugClaims: PROJECT_SLUG_CLAIMS,
+        validatePublish: assertPublishable,
       },
       doc,
       tableName,
-    );
-  }
-
-  async persistMutation(
-    before: Project,
-    after: Project,
-    options: PersistPublishOptions<Project>,
-  ): Promise<void> {
-    const items: TransactItem[] = [
-      {
-        Put: {
-          TableName: this.tableName,
-          Item: buildProjectMetaItem(after),
-          ConditionExpression: VERSION_MATCH_CONDITION,
-          ExpressionAttributeValues: versionMatchValues(before.version),
-        },
-      },
-      ...buildSlugChangeItems(
-        this.tableName,
-        before,
-        after,
-        PROJECT_SLUG_CLAIMS,
-      ),
-    ];
-    if (options.syncPublished) {
-      items.push({
-        Put: {
-          TableName: this.tableName,
-          Item: buildProjectPublishedItem(after),
-        },
-      });
-    }
-    if (options.deletePublished) {
-      items.push({
-        Delete: {
-          TableName: this.tableName,
-          Key: keys.project.published(after.id),
-        },
-      });
-    }
-    items.push(
-      ...buildSoftDeleteSlugRelease(
-        this.tableName,
-        before,
-        after,
-        PROJECT_SLUG_CLAIMS,
-      ),
-    );
-    await runVersionedWrite(
-      () => this.doc.send(new TransactWriteCommand({ TransactItems: items })),
-      'Update conflict (Project version)',
-      () =>
-        throwVersionConflict(before.version, () =>
-          this.getById(after.id, { consistentRead: true }),
-        ),
-      {
-        slugClaimIndexes: slugClaimIndexesOf(items),
-        slugTakenMessage: `Slug "${after.slug}" is already taken`,
-        versionItemIndex: 0,
-      },
+      now,
     );
   }
 
@@ -167,94 +90,36 @@ export class ProjectsRepository extends PublishableRepository<
     for (const s of statuses) {
       drafts.push(...(await this.queryStatus(s)));
     }
-    const published = await this.batchGetPublished(
-      drafts.filter((d) => d.status === 'published').map((d) => d.id),
-    );
-    const flagged = drafts.map((d) =>
-      withUnpublishedFlag(
-        d,
-        d.status === 'published' ? published.get(d.id) : undefined,
-        projectContentEqual,
+    const flagged = await this.withPublishedFlags(drafts);
+    return {
+      items: statuses.flatMap((s) =>
+        sortProjectsByOrder(flagged.filter((p) => p.status === s)),
       ),
-    );
-    const ordered: Project[] = [];
-    for (const s of statuses) {
-      ordered.push(
-        ...sortProjectsByOrder(flagged.filter((p) => p.status === s)),
-      );
-    }
-    return { items: ordered };
+    };
   }
 
   private async queryStatus(status: ListableStatus): Promise<Project[]> {
+    const pk = projectStatusGsi1Pk(status);
     const out: Project[] = [];
-    let startKey: Record<string, unknown> | undefined;
+    let cursor: string | undefined;
     do {
-      const page = await this.doc.send(
-        new QueryCommand({
-          TableName: this.tableName,
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :pk',
-          ExpressionAttributeValues: { ':pk': projectStatusGsi1Pk(status) },
-          ExclusiveStartKey: startKey,
-        }),
-      );
-      for (const item of page.Items ?? []) {
-        if (item.entityType !== 'project' || item.sk !== SK_META) continue;
-        const project = this.parseOrLog(item);
-        if (project && project.status !== 'deleted') out.push(project);
-      }
-      startKey = page.LastEvaluatedKey as Record<string, unknown> | undefined;
-    } while (startKey && out.length < PROJECT_LIST_MAX);
+      const page = await this.queryPage({
+        IndexName: GSI1_NAME,
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: { ':pk': pk },
+        cursor,
+      });
+      out.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor && out.length < PROJECT_LIST_MAX);
     return out;
   }
 
-  private async batchGetPublished(
-    ids: string[],
-  ): Promise<Map<string, Project>> {
-    const map = new Map<string, Project>();
-    const unique = [...new Set(ids)];
-    for (let i = 0; i < unique.length; i += 100) {
-      const chunk = unique.slice(i, i + 100);
-      const responses = await batchGetAllWithDocClient(
-        async (RequestItems) =>
-          this.doc.send(new BatchGetCommand({ RequestItems })),
-        {
-          [this.tableName]: {
-            Keys: chunk.map((id) => keys.project.published(id)),
-          },
-        },
-      );
-      for (const item of responses[this.tableName] ?? []) {
-        const project = this.parseOrLog(item);
-        if (project) map.set(project.id, project);
-      }
-    }
-    return map;
-  }
-
-  private parseOrLog(item: Record<string, unknown>): Project | undefined {
-    try {
-      return metaToProject(parseProjectMetaItem(item));
-    } catch (error) {
-      logCorruptStoredItem(
-        new DataIntegrityError('Corrupt stored Project', {
-          pk: typeof item.pk === 'string' ? item.pk : undefined,
-          sk: typeof item.sk === 'string' ? item.sk : undefined,
-          cause: error,
-        }),
-      );
-      return undefined;
-    }
-  }
-
   async create(input: CreateProjectRequest): Promise<Project> {
-    const id = ulid();
     const name = input.name.trim();
-    const slug = slugify(input.slug?.trim() || name);
-    const project: Project = {
-      id,
-      slug,
+    return this.insertDraft({
+      id: ulid(),
+      slug: slugify(input.slug?.trim() || name),
       name,
       pitch: input.pitch ?? '',
       stage: input.stage ?? 'idea',
@@ -268,63 +133,14 @@ export class ProjectsRepository extends PublishableRepository<
       href: input.href ?? null,
       status: 'draft',
       publishedAt: null,
-      updatedAt: nowIso(),
+      updatedAt: this.now(),
       version: 1,
       hasUnpublishedChanges: false,
-    };
-    await runDynamoWrite(
-      () =>
-        this.doc.send(
-          new TransactWriteCommand({
-            TransactItems: [
-              buildSlugClaimPut(this.tableName, PROJECT_SLUG_CLAIMS, slug, id),
-              {
-                Put: {
-                  TableName: this.tableName,
-                  Item: buildProjectMetaItem(project),
-                  ConditionExpression: 'attribute_not_exists(pk)',
-                },
-              },
-            ],
-          }),
-        ),
-      `Slug "${slug}" is already taken`,
-      {
-        slugClaimIndexes: [0],
-        slugTakenMessage: `Slug "${slug}" is already taken`,
-      },
-    );
-    return project;
-  }
-
-  async publishLoaded(
-    loaded: { draft: Project; published: Project | undefined },
-    expectedVersion: number,
-    options?: { publishedAt?: string },
-  ): Promise<Project> {
-    assertExpectedVersion(loaded.draft, expectedVersion);
-    const fields = projectPublishFieldErrors(loaded.draft);
-    if (Object.keys(fields).length > 0) {
-      throw new BadRequestError(
-        'A project with a demo needs a preview image before it is published',
-        fields,
-      );
-    }
-    return super.publishLoaded(loaded, expectedVersion, options);
+    });
   }
 
   async update(id: string, input: UpdateProjectRequest): Promise<Project> {
-    const loaded = await this.loadDraftAndPublished(id, {
-      consistentRead: true,
-    });
-    if (!loaded) throw new NotFoundError(`Project ${id} not found`);
-    const existing = withUnpublishedFlag(
-      loaded.draft,
-      loaded.published,
-      projectContentEqual,
-    );
-    assertExpectedVersion(existing, input.version);
-    const next: Project = {
+    return this.mutate(id, input.version, (existing) => ({
       ...existing,
       name: input.name?.trim() ?? existing.name,
       slug: input.slug ? slugify(input.slug) : existing.slug,
@@ -341,36 +157,6 @@ export class ProjectsRepository extends PublishableRepository<
       demo: input.demo !== undefined ? input.demo : existing.demo,
       order: input.order ?? existing.order,
       href: input.href !== undefined ? input.href : existing.href,
-      updatedAt: nowIso(),
-      version: existing.version + 1,
-      hasUnpublishedChanges: false,
-    };
-    await this.persistMutation(existing, next, {});
-    return withUnpublishedFlag(next, loaded.published, projectContentEqual);
-  }
-
-  async softDelete(id: string, expectedVersion: number): Promise<Project> {
-    const loaded = await this.loadDraftAndPublished(id, {
-      consistentRead: true,
-    });
-    if (!loaded) throw new NotFoundError(`Project ${id} not found`);
-    const existing = withUnpublishedFlag(
-      loaded.draft,
-      loaded.published,
-      projectContentEqual,
-    );
-    assertExpectedVersion(existing, expectedVersion);
-    const next: Project = {
-      ...existing,
-      status: 'deleted',
-      updatedAt: nowIso(),
-      version: existing.version + 1,
-      hasUnpublishedChanges: false,
-    };
-    await this.persistMutation(existing, next, {
-      deletePublished: loaded.published !== undefined,
-      previousPublished: loaded.published,
-    });
-    return next;
+    }));
   }
 }

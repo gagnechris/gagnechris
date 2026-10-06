@@ -5,6 +5,7 @@ import { ResumeRepository } from './repository.js';
 
 const resumeConfig = {
   basePath: '/admin/resume',
+  metricName: 'Resume',
   entitySchema: ResumeSchema,
   updateSchema: UpdateResumeRequestSchema,
   createRepo: () => new ResumeRepository(),

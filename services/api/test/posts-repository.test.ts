@@ -11,6 +11,7 @@ import {
 import type { Post } from '@gagnechris/shared';
 import { encodeCursor } from '../src/data/cursor.js';
 import { mockDocClient } from './support/mock-doc.js';
+import { InvalidCursorError } from '../src/data/errors.js';
 
 const draft: Post = {
   id: '01TESTPOSTID00000000000000',
@@ -28,6 +29,10 @@ const draft: Post = {
   version: 1,
   hasUnpublishedChanges: false,
 };
+
+function compositeCursor(p: number, k?: string): string {
+  return `mp.${Buffer.from(JSON.stringify({ p, k }), 'utf8').toString('base64url')}`;
+}
 
 function batchGetResponses(...items: Record<string, unknown>[]) {
   return {
@@ -100,7 +105,7 @@ describe('PostsRepository', () => {
     expect(page.items).toHaveLength(1);
   });
 
-  it('list returns nextCursor from LastEvaluatedKey', async () => {
+  it('list resumes from LastEvaluatedKey', async () => {
     const lek = {
       pk: postPk(draft.id),
       sk: postMetaSk(),
@@ -114,7 +119,7 @@ describe('PostsRepository', () => {
     const repo = new PostsRepository(doc, 'gagnechris-test');
     const page = await repo.list('draft', { limit: 1 });
     expect(page.items).toHaveLength(1);
-    expect(page.nextCursor).toBe(encodeCursor(lek));
+    expect(page.nextCursor).toBe(compositeCursor(0, encodeCursor(lek)));
   });
 
   it('publish flips status and bumps version', async () => {
@@ -191,18 +196,14 @@ describe('PostsRepository', () => {
     });
     expect(next.title).toBe('Draft title');
     expect(next.hasUnpublishedChanges).toBe(true);
-    const tx = send.mock.calls.find(
-      (c) =>
-        (c[0] as { constructor: { name: string } }).constructor.name ===
-        'TransactWriteCommand',
-    )![0] as {
-      input: { TransactItems: Array<Record<string, unknown>> };
-    };
-    const sks = tx.input.TransactItems.flatMap((item) => {
-      const put = item.Put as { Item?: { sk?: string } } | undefined;
-      return put?.Item?.sk ? [put.Item.sk] : [];
-    });
-    expect(sks).toEqual(['META']);
+    const writes = send.mock.calls
+      .map((c) => c[0])
+      .filter((c) =>
+        ['PutCommand', 'TransactWriteCommand'].includes(c.constructor.name),
+      );
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.constructor.name).toBe('PutCommand');
+    expect((writes[0]!.input.Item as { sk?: string }).sk).toBe('META');
   });
 
   it('publish writes PUBLISHED snapshot and clears unpublished flag', async () => {
@@ -341,14 +342,17 @@ describe('PostsRepository', () => {
     expect(draftCalls).toBe(2);
   });
 
-  it('rejects a tampered GSI cursor with SyntaxError (400)', async () => {
+  it('rejects a tampered GSI cursor (400)', async () => {
     const repo = new PostsRepository(
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    const bad = encodeCursor({ pk: 'POST#1', sk: 'META' }); // missing gsi1 keys
+    const bad = compositeCursor(
+      0,
+      encodeCursor({ pk: 'POST#1', sk: 'META' }), // missing gsi1 keys
+    );
     await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 
@@ -390,7 +394,7 @@ describe('PostsRepository', () => {
   });
 
   it('race-path update conflict includes currentVersion/current', async () => {
-    const { TransactionCanceledException } =
+    const { ConditionalCheckFailedException } =
       await import('@aws-sdk/client-dynamodb');
     let batch = 0;
     const doc = mockDocClient(async (command) => {
@@ -404,11 +408,10 @@ describe('PostsRepository', () => {
           },
         };
       }
-      if (command.constructor.name === 'TransactWriteCommand') {
-        throw new TransactionCanceledException({
-          message: 'cancelled',
+      if (command.constructor.name === 'PutCommand') {
+        throw new ConditionalCheckFailedException({
+          message: 'stale',
           $metadata: {},
-          CancellationReasons: [{ Code: 'ConditionalCheckFailed' }],
         });
       }
       return {};
@@ -461,17 +464,20 @@ describe('PostsRepository cursor + published integrity', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    const bad = Buffer.from(
-      JSON.stringify({
-        pk: 1,
-        sk: 'META',
-        gsi1pk: 'STATUS#draft',
-        gsi1sk: 'x',
-      }),
-      'utf8',
-    ).toString('base64url');
+    const bad = compositeCursor(
+      0,
+      Buffer.from(
+        JSON.stringify({
+          pk: 1,
+          sk: 'META',
+          gsi1pk: 'STATUS#draft',
+          gsi1sk: 'x',
+        }),
+        'utf8',
+      ).toString('base64url'),
+    );
     await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 
@@ -480,14 +486,17 @@ describe('PostsRepository cursor + published integrity', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    const bad = encodeCursor({
-      pk: 'POST#1',
-      sk: 'META',
-      gsi1pk: 'STATUS#published',
-      gsi1sk: 'x',
-    });
+    const bad = compositeCursor(
+      0,
+      encodeCursor({
+        pk: 'POST#1',
+        sk: 'META',
+        gsi1pk: 'STATUS#published',
+        gsi1sk: 'x',
+      }),
+    );
     await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 
@@ -496,15 +505,18 @@ describe('PostsRepository cursor + published integrity', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    const bad = encodeCursor({
-      pk: 'POST#1',
-      sk: 'META',
-      gsi1pk: 'STATUS#draft',
-      gsi1sk: 'x',
-      extra: 'nope',
-    });
+    const bad = compositeCursor(
+      0,
+      encodeCursor({
+        pk: 'POST#1',
+        sk: 'META',
+        gsi1pk: 'STATUS#draft',
+        gsi1sk: 'x',
+        extra: 'nope',
+      }),
+    );
     await expect(repo.list('draft', { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 
@@ -513,18 +525,18 @@ describe('PostsRepository cursor + published integrity', () => {
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    // Admin "all" lists published then draft; i:0 must be STATUS#published.
-    const bad = encodeCursor({
-      i: 0,
-      lek: {
+    // Admin "all" lists published then draft; partition 0 is STATUS#published.
+    const bad = compositeCursor(
+      0,
+      encodeCursor({
         pk: 'POST#1',
         sk: 'META',
         gsi1pk: 'STATUS#draft',
         gsi1sk: 'x',
-      },
-    } as unknown as Record<string, unknown>);
+      }),
+    );
     await expect(repo.list(undefined, { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 

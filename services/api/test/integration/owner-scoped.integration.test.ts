@@ -94,13 +94,13 @@ describe('owner-scoped repository (DynamoDB Local)', () => {
       repo.getOrThrow({ userId: USER_B, id: NOTE_A }),
     ).rejects.toBeInstanceOf(NotFoundError);
     await expect(
-      repo.updateIfVersion({ userId: USER_B, id: NOTE_A }, 1, {
+      repo.mutateIfVersion({ userId: USER_B, id: NOTE_A }, 1, () => ({
         ...aNote,
         userId: USER_B,
         title: 'hijack',
         version: 2,
         updatedAt: '2026-10-02T11:00:00.000Z',
-      }),
+      })),
     ).rejects.toBeInstanceOf(NotFoundError);
     await expect(
       repo.softDelete({ userId: USER_B, id: NOTE_A }, 1, {

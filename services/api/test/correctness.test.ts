@@ -6,11 +6,12 @@ import {
   unscoped,
   type VersionedEntity,
 } from '../src/data/versioned-repository.js';
-import { assertCursorMatchesQuery, encodeCursor } from '../src/data/cursor.js';
+import { assertCursorMatchesQuery } from '../src/data/cursor.js';
 import { mapRouteError } from '../src/http.js';
 import {
   ConflictError,
   DataIntegrityError,
+  InvalidCursorError,
   PreconditionFailedError,
 } from '../src/data/errors.js';
 import { metrics } from '../src/observability.js';
@@ -36,7 +37,7 @@ describe('correctness guards', () => {
         { syncPk: 'SYNC#b', syncSk: '2026-10-02T10:00:00.000Z#X#1' },
         { partitionAttr: 'syncPk', partitionValue: 'SYNC#a' },
       ),
-    ).toThrow(SyntaxError);
+    ).toThrow(InvalidCursorError);
 
     expect(() =>
       assertCursorMatchesQuery(
@@ -51,7 +52,7 @@ describe('correctness guards', () => {
           sortLowerBoundInclusive: '2026-10-02T11:00:00.000Z',
         },
       ),
-    ).toThrow(SyntaxError);
+    ).toThrow(InvalidCursorError);
 
     expect(() =>
       assertCursorMatchesQuery(
@@ -111,12 +112,13 @@ describe('correctness guards', () => {
       'test-table',
     );
 
-    await repo.updateIfVersion('n1', 1, {
+    await repo.mutateIfVersion('n1', 1, (existing) => ({
+      ...existing,
       id: 'n1',
       title: 'B',
       version: 2,
       updatedAt: '2026-10-02T01:00:00.000Z',
-    });
+    }));
 
     const get = send.mock.calls[0]![0] as GetCommand;
     expect(get).toBeInstanceOf(GetCommand);
@@ -138,6 +140,13 @@ describe('correctness guards', () => {
       1,
     );
     spy.mockRestore();
+  });
+
+  it('mapRouteError leaves a server-side SyntaxError to the 500 path', () => {
+    expect(mapRouteError(new SyntaxError('Unexpected token'))).toBeUndefined();
+    expect(mapRouteError(new InvalidCursorError())).toMatchObject({
+      statusCode: 400,
+    });
   });
 
   it('mapRouteError counts 409 and 412 as WriteConflict (fails if removed)', () => {
@@ -218,14 +227,14 @@ describe('correctness guards', () => {
     });
   });
 
-  it('multi-status cursor with out-of-range i returns SyntaxError', async () => {
+  it('multi-status cursor with an out-of-range partition is a 400', async () => {
     const repo = new PostsRepository(
       mockDocClient(async () => ({ Items: [] })),
       'gagnechris-test',
     );
-    const bad = encodeCursor({ i: 99 });
+    const bad = `mp.${Buffer.from(JSON.stringify({ p: 99 }), 'utf8').toString('base64url')}`;
     await expect(repo.list(undefined, { cursor: bad })).rejects.toBeInstanceOf(
-      SyntaxError,
+      InvalidCursorError,
     );
   });
 });

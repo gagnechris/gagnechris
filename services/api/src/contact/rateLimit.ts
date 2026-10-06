@@ -1,10 +1,10 @@
-import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import {
   UpdateCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
+  dynamoErrorName,
   rateContactIpPk,
   rateDaySk,
   rateHourSk,
@@ -58,7 +58,7 @@ export async function tryIncrementCounter(input: {
     );
     return true;
   } catch (error) {
-    if (error instanceof ConditionalCheckFailedException) {
+    if (dynamoErrorName(error) === 'ConditionalCheckFailedException') {
       return false;
     }
     throw error;

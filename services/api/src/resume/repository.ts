@@ -5,6 +5,7 @@ import {
   type UpdateResumeRequest,
 } from '@gagnechris/shared';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import { PublishableSingletonRepository } from '../data/publishable-repository.js';
 import {
   buildResumeMetaItem,
@@ -27,6 +28,7 @@ export class ResumeRepository extends PublishableSingletonRepository<
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
+    now: Clock = systemClock,
   ) {
     super(
       {
@@ -54,6 +56,7 @@ export class ResumeRepository extends PublishableSingletonRepository<
       },
       doc,
       tableName,
+      now,
     );
   }
 }

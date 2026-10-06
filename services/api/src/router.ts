@@ -69,9 +69,9 @@ export type RouteDef = {
   handler: RouteHandler;
 };
 
-type InferOrDefault<T extends ZodType | undefined, TDefault> = [T] extends [
-  ZodType,
-]
+export type InferOrDefault<T extends ZodType | undefined, TDefault> = [
+  T,
+] extends [ZodType]
   ? z.infer<T>
   : TDefault;
 

@@ -42,7 +42,7 @@ describe('hard-delete recreate guard (DynamoDB Local)', () => {
     await truncateTable(doc, tableName);
   });
 
-  it('refuses updateIfVersion after a hard DeleteItem (404, never recreated)', async () => {
+  it('refuses mutateIfVersion after a hard DeleteItem (404, never recreated)', async () => {
     const repo = new VersionedRepository<Note, NoteItem, string>(
       {
         conflictLabel: 'note',
@@ -84,12 +84,13 @@ describe('hard-delete recreate guard (DynamoDB Local)', () => {
     );
 
     await expect(
-      repo.updateIfVersion(NOTE_ID, created.version, {
+      repo.mutateIfVersion(NOTE_ID, created.version, (existing) => ({
+        ...existing,
         id: NOTE_ID,
         title: 'resurrected',
         version: 2,
         updatedAt: '2026-10-02T11:00:00.000Z',
-      }),
+      })),
     ).rejects.toBeInstanceOf(NotFoundError);
 
     expect(await repo.get(NOTE_ID)).toBeUndefined();

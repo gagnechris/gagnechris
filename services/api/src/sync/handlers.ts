@@ -8,7 +8,7 @@ import {
 } from '@gagnechris/shared';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { headerValue } from '../data/concurrency.js';
-import { UpgradeRequiredError } from '../data/errors.js';
+import { InvalidHeaderError, UpgradeRequiredError } from '../data/errors.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { SyncLedger } from './ledger.js';
@@ -29,7 +29,7 @@ export function assertClientVersionSupported(
   if (raw == null || raw === '') return;
   const version = parseClientVersion(raw);
   if (!version) {
-    throw new SyntaxError(`Invalid ${CLIENT_VERSION_HEADER} header`);
+    throw new InvalidHeaderError(CLIENT_VERSION_HEADER);
   }
   const min = parseClientVersion(minimum);
   if (!min) throw new Error(`Invalid minimum client version ${minimum}`);
