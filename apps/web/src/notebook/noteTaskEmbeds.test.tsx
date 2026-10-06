@@ -126,7 +126,14 @@ vi.mock('../workspace/api/client', () => ({
           api.taskPosts.push(body);
           // Mirrors the API: the linked note must already exist.
           if (!api.notes.has(String(body.noteId))) {
-            return fail(400, 'bad_request');
+            return {
+              ...fail(400, 'bad_request'),
+              error: {
+                error: 'bad_request',
+                message: 'noteId must reference an existing note',
+                fields: { noteId: 'not_found' },
+              },
+            };
           }
           const id = String(body.id);
           const existing = api.tasks.get(id);
