@@ -193,6 +193,8 @@ export type QueryPageInput = Omit<
   cursorSortBound?: { attr: string; lowerBoundInclusive: string };
   /** JSON bytes of returned items; the first item is always returned. */
   byteBudget?: number;
+  /** Stops after this many kept rows, resuming after the last one, so `limit` can read further than it returns. */
+  maxItems?: number;
 };
 
 type ReadOpts = { consistentRead?: boolean };
@@ -731,6 +733,7 @@ export class VersionedRepository<
       cursorPartition,
       cursorSortBound,
       byteBudget,
+      maxItems,
       ...queryInput
     } = input;
     const indexName =
@@ -790,6 +793,16 @@ export class VersionedRepository<
         bytes += size;
       }
       items.push(entity);
+      if (
+        maxItems !== undefined &&
+        items.length >= maxItems &&
+        index < rows.length - 1
+      ) {
+        return {
+          items,
+          nextCursor: encodeCursor(cursorKeyOf(raw, cursorKeys)),
+        };
+      }
     }
     return {
       items,

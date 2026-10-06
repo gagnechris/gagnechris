@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import {
-  addDays,
-  formatCalendarDay,
-  localDateString,
-  WEEKDAY_LONG,
-} from '@gagnechris/shared';
+import { addDays, formatCalendarDay, WEEKDAY_LONG } from '@gagnechris/shared';
 import {
   monthBounds,
   monthGrid,
   monthLabel,
   startOfMonth,
 } from '../kit/calendarDates';
+import { useLocalToday } from './useLocalToday';
 
 type Props = {
   selected: string;
@@ -36,7 +32,7 @@ export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
   const rows = Array.from({ length: cells.length / 7 }, (_, i) =>
     cells.slice(i * 7, i * 7 + 7),
   );
-  const today = localDateString();
+  const today = useLocalToday();
   const { to: lastDay } = monthBounds(month);
   const previousMonth = () => onSelect(addDays(month, -1));
   const nextMonth = () => onSelect(addDays(lastDay, 1));

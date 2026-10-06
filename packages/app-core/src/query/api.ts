@@ -29,15 +29,25 @@ export type ExpectedVersionRequest =
 export type NotebookArea = Note['area'];
 export type NoteType = Note['type'];
 
+export type ApiFieldErrors = Readonly<Record<string, string>>;
+
 export class ApiError extends Error {
   readonly status: number;
   readonly error?: string;
+  /** Per-field codes from a 400, e.g. `{ noteId: 'not_found' }`. */
+  readonly fields?: ApiFieldErrors;
 
-  constructor(message: string, status: number, error?: string) {
+  constructor(
+    message: string,
+    status: number,
+    error?: string,
+    fields?: ApiFieldErrors,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.error = error;
+    this.fields = fields;
   }
 }
 
@@ -57,12 +67,24 @@ function errorCodeFromBody(body: unknown): string | undefined {
   return typeof code === 'string' ? code : undefined;
 }
 
+function fieldErrorsFromBody(body: unknown): ApiFieldErrors | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const fields = (body as { fields?: unknown }).fields;
+  if (!fields || typeof fields !== 'object') return undefined;
+  const out: Record<string, string> = {};
+  for (const [key, code] of Object.entries(fields)) {
+    if (typeof code === 'string') out[key] = code;
+  }
+  return out;
+}
+
 export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
     throw new ApiError(
       `${label} (${result.response.status}).`,
       result.response.status,
       errorCodeFromBody(result.error),
+      fieldErrorsFromBody(result.error),
     );
   }
   return result.data;
@@ -86,23 +108,43 @@ export const asMutateResult = async <T>(
   }
 };
 
+export type PostCounts = NonNullable<
+  components['schemas']['PostListResponse']['counts']
+>;
+
 export type PostsPage = {
   items: PostSummary[];
   nextCursor?: string;
+  counts?: PostCounts;
+};
+
+export type PostListFilters = {
+  status?: 'draft' | 'published';
+  q?: string;
+  limit?: number;
 };
 
 export const fetchPostsPage = async (
   client: ApiClient,
   cursor?: string,
+  { status, q, limit = 100 }: PostListFilters = {},
 ): Promise<PostsPage> => {
-  // A full page: the Posts page counts, searches and sorts only what's loaded.
+  const needle = q?.trim();
   const result = await client.GET('/api/admin/posts', {
-    params: { query: { limit: 100, ...(cursor ? { cursor } : {}) } },
+    params: {
+      query: {
+        limit,
+        ...(cursor ? { cursor } : {}),
+        ...(status ? { status } : {}),
+        ...(needle ? { q: needle } : {}),
+      },
+    },
   });
   const data = unwrap(result, 'Could not load posts');
   return {
     items: data.items.filter((p) => p.status !== 'deleted'),
     nextCursor: data.nextCursor,
+    ...(data.counts ? { counts: data.counts } : {}),
   };
 };
 

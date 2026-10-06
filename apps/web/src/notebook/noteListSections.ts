@@ -1,7 +1,7 @@
 import {
   addDays,
   findTaskEmbeds,
-  localDateString,
+  localDayOf,
   type Note,
   noteDisplayTitle,
   relativeDayLabel,
@@ -29,7 +29,7 @@ export type NoteSection<T> = {
 /** The day a note is listed under: a daily note's own date, else its last edit. */
 export function noteDay(note: ListNote): string {
   if (note.type === 'daily' && note.date) return note.date;
-  return note.updatedAt ? localDateString(new Date(note.updatedAt)) : '';
+  return note.updatedAt ? localDayOf(note.updatedAt) : '';
 }
 
 export const noteTitle = noteDisplayTitle;

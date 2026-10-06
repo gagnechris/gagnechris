@@ -29,6 +29,7 @@ export {
   formatCalendarDay,
   isCalendarDay,
   localDateString,
+  localDayOf,
   MONTH_LONG,
   MONTH_SHORT,
   parseCalendarDay,
@@ -165,3 +166,4 @@ export {
   type ProjectPublishFieldErrors,
 } from './projects.js';
 export * from './users.js';
+export { postMatchesQuery } from './post-search.js';

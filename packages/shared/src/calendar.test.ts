@@ -5,6 +5,7 @@ import {
   formatCalendarDay,
   isCalendarDay,
   localDateString,
+  localDayOf,
   MONTH_SHORT,
   parseCalendarDay,
   relativeDayLabel,
@@ -120,5 +121,6 @@ describe('localDateString', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 9, 6, 23, 59));
     expect(localDateString()).toBe(TUE);
+    expect(localDayOf(new Date(2026, 9, 6, 23, 59).toISOString())).toBe(TUE);
   });
 });

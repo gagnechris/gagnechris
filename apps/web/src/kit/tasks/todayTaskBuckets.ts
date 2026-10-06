@@ -3,7 +3,7 @@ import {
   daysBetween,
   formatTaskDay,
   isOpenTaskStatus,
-  localDateString,
+  localDayOf,
   type Note,
   relativeDayLabel,
   type Task,
@@ -86,7 +86,7 @@ export function bucketTodayTasks<T extends BucketTask>(
     }
   }
 
-  const sinceKey = (t: T) => t.startDate ?? t.createdAt.slice(0, 10);
+  const sinceKey = (t: T) => t.startDate ?? localDayOf(t.createdAt);
   const overdue = (t: T) =>
     t.dueDate !== null && t.dueDate < day ? t.dueDate : null;
   const byOverdue = (a: T, b: T) => {
@@ -139,7 +139,7 @@ export function stillOpenSource(
       noteId,
     };
   }
-  const created = localDateString(new Date(task.createdAt));
+  const created = localDayOf(task.createdAt);
   if (!noteId) {
     return {
       label: `Added ${relativeDayLabel(created, day, 'past')} · ${age(created, day)}`,

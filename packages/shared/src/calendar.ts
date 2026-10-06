@@ -61,6 +61,10 @@ export function localDateString(date: Date = new Date()): string {
   return calendarDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
+/** The device's calendar day an ISO timestamp falls on. */
+export const localDayOf = (iso: string): string =>
+  localDateString(new Date(iso));
+
 /** Unchanged when `day` is not a calendar day. */
 export function addDays(day: string, delta: number): string {
   const date = parseCalendarDay(day);
