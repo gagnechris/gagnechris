@@ -298,6 +298,7 @@ const taskMatches = (
     startOn: stringFilter(filters.startOn),
     startOnOrBefore: stringFilter(filters.startOnOrBefore),
     startAfter: stringFilter(filters.startAfter),
+    startBefore: stringFilter(filters.startBefore),
     someday: typeof filters.someday === 'boolean' ? filters.someday : undefined,
   });
 };

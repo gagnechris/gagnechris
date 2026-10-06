@@ -1,9 +1,13 @@
 /**
  * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
  */
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import {
+  BatchGetCommand,
+  type DynamoDBDocumentClient,
+} from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
+  batchGetAllWithDocClient,
   GSI2_NAME,
   buildTaskMetaItem,
   keys,
@@ -161,7 +165,9 @@ function scheduleRanges(query: ListTasksQuery): (SortKeyRange | undefined)[] {
   if (query.startOnOrBefore) {
     return taskGsi1SkRanges.showsOn(query.startOnOrBefore);
   }
-  if (query.startAfter) return taskGsi1SkRanges.startsAfter(query.startAfter);
+  if (query.startAfter || query.startBefore) {
+    return taskGsi1SkRanges.startsBetween(query.startAfter, query.startBefore);
+  }
   return [undefined];
 }
 
@@ -201,8 +207,8 @@ export class TasksRepository {
   private readonly base: VersionedRepository<Task, TaskMetaItem, OwnerKey>;
 
   constructor(
-    doc: DynamoDBDocumentClient = getDocClient(),
-    tableName: string = requireTableName(),
+    private readonly doc: DynamoDBDocumentClient = getDocClient(),
+    private readonly tableName: string = requireTableName(),
     private readonly nowIso: Clock = systemClock,
   ) {
     this.base = new VersionedRepository<Task, TaskMetaItem, OwnerKey>(
@@ -239,6 +245,26 @@ export class TasksRepository {
 
   getOrThrow(userId: string, id: string): Promise<Task> {
     return this.base.getOrThrow({ userId, id });
+  }
+
+  /** Live tasks among `ids` in their order, in one BatchGetItem (ids are capped at its 100 keys). */
+  async getMany(userId: string, ids: readonly string[]): Promise<Task[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+    const responses = await batchGetAllWithDocClient(
+      (RequestItems) => this.doc.send(new BatchGetCommand({ RequestItems })),
+      {
+        [this.tableName]: {
+          Keys: unique.map((id) => keys.notebook.task.meta(userId, id)),
+        },
+      },
+    );
+    const byId = new Map<string, Task>();
+    for (const raw of responses[this.tableName] ?? []) {
+      const task = this.base.mapItem(raw);
+      if (task.userId === userId && !task.deleted) byId.set(task.id, task);
+    }
+    return unique.flatMap((id) => byId.get(id) ?? []);
   }
 
   createIdempotent(task: Task): Promise<Task> {

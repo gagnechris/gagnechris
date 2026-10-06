@@ -2563,6 +2563,142 @@
           "items"
         ]
       },
+      "TaskBatchRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "TaskBatchResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                },
+                "userId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "area": {
+                  "type": "string",
+                  "enum": [
+                    "work",
+                    "personal"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "med",
+                    "high"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress",
+                    "done",
+                    "dropped"
+                  ]
+                },
+                "dueDate": {
+                  "type": "string",
+                  "nullable": true,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "startDate": {
+                  "type": "string",
+                  "nullable": true,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "someday": {
+                  "type": "boolean"
+                },
+                "completedAt": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "date-time"
+                },
+                "noteId": {
+                  "type": "string",
+                  "nullable": true,
+                  "minLength": 1
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "deleted": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "area",
+                "title",
+                "description",
+                "priority",
+                "status",
+                "dueDate",
+                "startDate",
+                "someday",
+                "completedAt",
+                "noteId",
+                "tags",
+                "version",
+                "createdAt",
+                "updatedAt",
+                "deleted"
+              ]
+            },
+            "description": "The live tasks among the ids, in request order; deleted or unknown ids are left out"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "CreateTaskRequest": {
         "type": "object",
         "properties": {
@@ -2761,6 +2897,11 @@
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "description": "Tasks whose startDate is after this date (Upcoming); never someday"
           },
+          "startBefore": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up)"
+          },
           "someday": {
             "type": "string",
             "enum": [
@@ -2859,6 +3000,21 @@
                   "type": "string",
                   "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
                 },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress",
+                    "done",
+                    "dropped"
+                  ],
+                  "description": "Task hits: the task status"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Task hits: the task version, for completing it from the hit"
+                },
                 "snippet": {
                   "type": "string"
                 },
@@ -2922,6 +3078,21 @@
                 "date": {
                   "type": "string",
                   "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress",
+                    "done",
+                    "dropped"
+                  ],
+                  "description": "Task hits: the task status"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Task hits: the task version, for completing it from the hit"
                 },
                 "snippet": {
                   "type": "string"
@@ -19483,6 +19654,17 @@
           {
             "schema": {
               "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up)"
+            },
+            "required": false,
+            "description": "Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up)",
+            "name": "startBefore",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "enum": [
                 "true",
                 "false"
@@ -20163,6 +20345,307 @@
           },
           "413": {
             "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notebook/tasks/batch": {
+      "post": {
+        "summary": "Read up to 100 tasks by id in one request",
+        "description": "Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  }
+                },
+                "required": [
+                  "ids"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The live tasks, in request order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                          },
+                          "userId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "area": {
+                            "type": "string",
+                            "enum": [
+                              "work",
+                              "personal"
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "priority": {
+                            "type": "string",
+                            "enum": [
+                              "low",
+                              "med",
+                              "high"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "todo",
+                              "in_progress",
+                              "done",
+                              "dropped"
+                            ]
+                          },
+                          "dueDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "someday": {
+                            "type": "boolean"
+                          },
+                          "completedAt": {
+                            "type": "string",
+                            "nullable": true,
+                            "format": "date-time"
+                          },
+                          "noteId": {
+                            "type": "string",
+                            "nullable": true,
+                            "minLength": 1
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "userId",
+                          "area",
+                          "title",
+                          "description",
+                          "priority",
+                          "status",
+                          "dueDate",
+                          "startDate",
+                          "someday",
+                          "completedAt",
+                          "noteId",
+                          "tags",
+                          "version",
+                          "createdAt",
+                          "updatedAt",
+                          "deleted"
+                        ]
+                      },
+                      "description": "The live tasks among the ids, in request order; deleted or unknown ids are left out"
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {
@@ -22400,6 +22883,21 @@
                             "type": "string",
                             "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
                           },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "todo",
+                              "in_progress",
+                              "done",
+                              "dropped"
+                            ],
+                            "description": "Task hits: the task status"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Task hits: the task version, for completing it from the hit"
+                          },
                           "snippet": {
                             "type": "string"
                           },
@@ -22463,6 +22961,21 @@
                           "date": {
                             "type": "string",
                             "description": "A daily note's day (yyyy-mm-dd); absent for pages and tasks"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "todo",
+                              "in_progress",
+                              "done",
+                              "dropped"
+                            ],
+                            "description": "Task hits: the task status"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Task hits: the task version, for completing it from the hit"
                           },
                           "snippet": {
                             "type": "string"

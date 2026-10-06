@@ -159,7 +159,13 @@ describe('task start-date GSI1 ranges', () => {
     expect(hits(taskGsi1SkRanges.showsOn(day))).toEqual(
       ['now', 'startBefore', 'startOn'].sort(),
     );
-    expect(hits(taskGsi1SkRanges.startsAfter(day))).toEqual(['startAfter']);
+    expect(hits(taskGsi1SkRanges.startsBetween(day))).toEqual(['startAfter']);
+    expect(hits(taskGsi1SkRanges.startsBetween(undefined, day))).toEqual([
+      'startBefore',
+    ]);
+    expect(
+      hits(taskGsi1SkRanges.startsBetween('2026-10-12', '2026-10-15')),
+    ).toEqual(['startBefore', 'startOn']);
     expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(['startOn']);
     expect(hits(taskGsi1SkRanges.someday())).toEqual(['someday']);
   });

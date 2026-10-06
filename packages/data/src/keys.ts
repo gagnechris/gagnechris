@@ -326,8 +326,13 @@ export const taskGsi1SkRanges = {
     { from: 'START#', to: afterDay(day) },
     prefixRange('UPDATED#'),
   ],
-  startsAfter: (day: string): SortKeyRange[] => [
-    { from: afterDay(day), to: 'START#\uffff' },
+  /** startDate after `after` and before `before`; either end may be open. */
+  startsBetween: (after?: string, before?: string): SortKeyRange[] => [
+    {
+      from: after ? afterDay(after) : 'START#',
+      // `START#<day>#` sorts before every row for that day.
+      to: before ? `START#${before}#` : 'START#\uffff',
+    },
   ],
   someday: (): SortKeyRange[] => [prefixRange('SOMEDAY#')],
 };

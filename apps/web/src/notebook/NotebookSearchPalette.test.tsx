@@ -8,6 +8,7 @@ import NotebookSearchPalette from './NotebookSearchPalette';
 const server = vi.hoisted(() => ({
   searches: [] as Record<string, unknown>[],
   completed: [] as string[],
+  gets: [] as string[],
   status: 'todo',
 }));
 
@@ -33,11 +34,14 @@ const task = {
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
-    GET: async () => ({
-      data: { ...task, status: server.status },
-      error: undefined,
-      response: { status: 200 },
-    }),
+    GET: async (path: string) => {
+      server.gets.push(path);
+      return {
+        data: { ...task, status: server.status },
+        error: undefined,
+        response: { status: 200 },
+      };
+    },
     POST: async (path: string, init?: { body?: Record<string, unknown> }) => {
       if (path.endsWith('/complete')) {
         server.completed.push(path);
@@ -81,6 +85,8 @@ const searchResponse = vi.hoisted(() => ({
         id: 't1',
         area: 'work',
         title: 'Prep standup',
+        status: 'todo',
+        version: 1,
         snippet: 'Prep standup',
         matches: [{ start: 5, end: 12 }],
       },
@@ -213,7 +219,8 @@ describe('NotebookSearchPalette', () => {
     expect(server.searches[server.searches.length - 1]?.area).toBeUndefined();
   });
 
-  test('a task hit is checkable, and ⌘⏎ checks off the selected one', async () => {
+  test('a task hit is checkable, and ⌘⏎ checks off the selected one, with no task reads', async () => {
+    server.gets = [];
     const user = userEvent.setup();
     renderPalette();
     const input = screen.getByRole('combobox', {
@@ -233,5 +240,7 @@ describe('NotebookSearchPalette', () => {
     expect(
       within(option).getByRole('checkbox', { hidden: true }),
     ).toBeChecked();
+    // The hit carries status and version; the palette reads no task.
+    expect(server.gets).toEqual([]);
   });
 });

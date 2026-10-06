@@ -3,6 +3,8 @@ import {
   CreateTaskRequestSchema,
   ExpectedVersionRequestSchema,
   ListTasksQuerySchema,
+  TaskBatchRequestSchema,
+  TaskBatchResponseSchema,
   TaskListResponseSchema,
   TaskSchema,
   UlidSchema,
@@ -56,6 +58,20 @@ export function createTaskRoutes(
             items: page.items.map(parseTask),
             ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
           }),
+        );
+      },
+    }),
+    defineRoute({
+      method: 'POST',
+      pattern: '/notebook/tasks/batch',
+      auth: 'notebook',
+      metric: 'BatchGetTasks',
+      body: TaskBatchRequestSchema,
+      handler: async (ctx, { body }) => {
+        const items = await tasks().getMany(ctx.userId!, body.ids);
+        return json(
+          200,
+          TaskBatchResponseSchema.parse({ items: items.map(parseTask) }),
         );
       },
     }),

@@ -11,7 +11,7 @@ import {
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
-import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
+import { withNotebookRoutes } from '../__tests__/fixtures/tasksBatchViaGet';
 
 // Local midnight here is 04:00 UTC, so a UTC "today" would be a day ahead
 // for the last hours of every local day.
@@ -21,6 +21,7 @@ const server = vi.hoisted(() => ({
   notes: new Map<string, Note>(),
   tasks: new Map<string, Task>(),
   writes: [] as { method: string; path: string; body: unknown }[],
+  listQueries: [] as Record<string, string | undefined>[],
   /** Holds each task PUT until released. */
   putGate: null as null | Promise<void>,
 }));
@@ -73,13 +74,14 @@ const listTasks = (q: Record<string, string | undefined>) =>
       taskMatchesSchedule(t, {
         startOnOrBefore: q.startOnOrBefore,
         startAfter: q.startAfter,
+        startBefore: q.startBefore,
         startOn: q.startOn,
       }),
   );
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () =>
-    openDailyViaGet({
+    withNotebookRoutes({
       GET: async (path: string, init?: Init) => {
         const p = init?.params?.path ?? {};
         if (path === '/api/notebook/notes/daily/{area}/{date}') {
@@ -107,6 +109,7 @@ vi.mock('../workspace/api/client', () => ({
         }
         if (path === '/api/notebook/notes') return ok({ items: [] });
         if (path === '/api/notebook/tasks') {
+          server.listQueries.push(init?.params?.query ?? {});
           return ok({ items: listTasks(init?.params?.query ?? {}) });
         }
         if (path === '/api/notebook/tasks/{id}') {
@@ -250,6 +253,7 @@ describe('Today tasks', () => {
     server.notes.clear();
     server.tasks.clear();
     server.writes = [];
+    server.listQueries = [];
     server.putGate = null;
     localStorage.clear();
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -391,6 +395,24 @@ describe('Today tasks', () => {
     expect(screen.getByTestId('carry-footer')).toHaveTextContent(
       '3 open tasks will carry to Saturday if not done',
     );
+  });
+
+  test('Coming up asks only for the 14 days after the day, not every future task', async () => {
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+    addTask(task(8, { title: 'Day 14', startDate: '2026-10-16' }));
+    addTask(task(9, { title: 'Day 15', startDate: '2026-10-17' }));
+    renderToday();
+    await waitForPanels();
+    await waitFor(() => expect(placesOf('Day 14')).toEqual(['coming-up']));
+    expect(placesOf('Day 15')).toEqual([]);
+    const later = server.listQueries.filter((q) => q.startAfter);
+    expect(later.length).toBeGreaterThan(0);
+    for (const q of later) {
+      expect(q).toMatchObject({
+        startAfter: '2026-10-02',
+        startBefore: '2026-10-17',
+      });
+    }
   });
 
   test('Drop and Snooze remove the row before the server answers, and the server keeps the change', async () => {
