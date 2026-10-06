@@ -1,5 +1,10 @@
-import { formatTaskDay, isOpenTaskStatus, type Task } from '@gagnechris/shared';
-import { addLocalDays, parseLocalDate } from '../calendarDates';
+import {
+  addDays,
+  formatTaskDay,
+  isOpenTaskStatus,
+  type Task,
+  weekdayName,
+} from '@gagnechris/shared';
 import type { SourceNote } from './todayTaskBuckets';
 import { newestById } from './newestById';
 
@@ -32,21 +37,16 @@ export function groupUpcomingTasks<T extends UpcomingTask>(
 
   const groups: UpcomingGroup<T>[] = [];
   for (let n = 1; n <= WEEK_DAYS; n++) {
-    const date = addLocalDays(day, n);
+    const date = addDays(day, n);
     groups.push({
       key: date,
-      label:
-        n === 1
-          ? 'Tomorrow'
-          : (parseLocalDate(date)?.toLocaleDateString('en-US', {
-              weekday: 'long',
-            }) ?? date),
+      label: n === 1 ? 'Tomorrow' : weekdayName(date, 'long'),
       sub: formatTaskDay(date, n === 1),
       datedRows: false,
       tasks: [],
     });
   }
-  const laterFrom = addLocalDays(day, WEEK_DAYS + 1);
+  const laterFrom = addDays(day, WEEK_DAYS + 1);
   const later: UpcomingGroup<T> = {
     key: 'later',
     label: 'Later',

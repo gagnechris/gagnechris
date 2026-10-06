@@ -7,12 +7,13 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import {
+  addDays,
   parseTaskSyntax,
   type TaskPriority,
   type TaskStatus,
+  weekdayOf,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
-import { addLocalDays, parseLocalDate } from '../kit/calendarDates';
 import {
   areaQueryParam,
   NOTEBOOK_AREA_HEADINGS,
@@ -45,12 +46,10 @@ const showOnParam = (value: string | null): ShowOnFilter =>
   SHOW_ON_FILTERS.find((f) => f === value) ?? '';
 
 function endOfLocalWeek(today: string): string {
-  const d = parseLocalDate(today);
-  if (!d) return today;
+  const day = weekdayOf(today);
+  if (day === null) return today;
   // Sunday = 0 … Saturday = 6; inclusive end of this calendar week (Sat).
-  const day = d.getDay();
-  const toSat = day === 0 ? 6 : 6 - day;
-  return addLocalDays(today, toSat);
+  return addDays(today, day === 0 ? 6 : 6 - day);
 }
 
 function matchesShowOnFilter(

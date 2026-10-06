@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Button } from '../../kit/Button';
-import { parseLocalDate } from '../../kit/calendarDates';
+import { formatCalendarDay } from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
 import { TaskEmbedRow } from '../../kit/tasks/TaskEmbedRow';
@@ -127,11 +127,7 @@ function NotebookDemoBody({
         <div>
           <p className="notebook-demo__kicker">Work notebook</p>
           <h3 className="notebook-demo__day">
-            {parseLocalDate(today)?.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            }) ?? today}
+            {formatCalendarDay(today, { weekday: 'long', month: 'long' })}
           </h3>
         </div>
         {resetButton}

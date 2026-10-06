@@ -13,15 +13,17 @@ import {
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
-import { taskEmbedIds, taskEmbedToken } from '@gagnechris/shared';
+import {
+  addDays,
+  formatCalendarDay,
+  isCalendarDay,
+  taskEmbedIds,
+  taskEmbedToken,
+} from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
-import {
-  addLocalDays,
-  monthBounds,
-  parseLocalDate,
-} from '../kit/calendarDates';
+import { monthBounds } from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import {
@@ -50,19 +52,15 @@ import { useTaskToggle } from './useTaskToggle';
 import { useTaskPatch, useTodayTasks } from './useTodayTasks';
 
 function resolveDate(param: string | null, today: string): string {
-  if (param && parseLocalDate(param)) return param;
+  if (param && isCalendarDay(param)) return param;
   return today;
 }
 
 function dayHeading(date: string, today: string): string {
-  const parsed = parseLocalDate(date);
-  if (!parsed) return date;
-  const sameYear = date.slice(0, 4) === today.slice(0, 4);
-  return parsed.toLocaleDateString(undefined, {
+  return formatCalendarDay(date, {
     weekday: 'long',
     month: 'long',
-    day: 'numeric',
-    ...(sameYear ? {} : { year: 'numeric' }),
+    year: date.slice(0, 4) !== today.slice(0, 4),
   });
 }
 
@@ -247,7 +245,7 @@ export default function NotebookTodayPage() {
     }, []),
   );
   const dateParam = searchParams.get('date');
-  const followsToday = !(dateParam && parseLocalDate(dateParam));
+  const followsToday = !(dateParam && isCalendarDay(dateParam));
   useEffect(() => {
     followsTodayRef.current = followsToday && heldDay === null;
   }, [followsToday, heldDay]);
@@ -342,7 +340,7 @@ export default function NotebookTodayPage() {
               className="admin-btn"
               aria-label="Previous"
               title="Previous day"
-              onClick={() => setDate(addLocalDays(date, -1))}
+              onClick={() => setDate(addDays(date, -1))}
             >
               ‹
             </button>
@@ -360,7 +358,7 @@ export default function NotebookTodayPage() {
               className="admin-btn"
               aria-label="Next"
               title="Next day"
-              onClick={() => setDate(addLocalDays(date, 1))}
+              onClick={() => setDate(addDays(date, 1))}
             >
               ›
             </button>
@@ -474,7 +472,7 @@ export default function NotebookTodayPage() {
           {date >= today && !loading.stillOpen ? (
             <CarryFooter
               count={buckets.carryCount}
-              nextDay={addLocalDays(date, 1)}
+              nextDay={addDays(date, 1)}
             />
           ) : null}
         </div>

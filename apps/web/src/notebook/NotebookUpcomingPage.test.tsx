@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import {
+  addDays,
   isOpenTaskStatus,
-  taskMatchesSchedule,
+  localDateString,
   type Note,
   type Task,
+  taskMatchesSchedule,
 } from '@gagnechris/shared';
-import { addLocalDays, localToday } from '../kit/calendarDates';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
@@ -178,7 +179,7 @@ const group = (name: string) =>
   screen.getByRole('region', { name: new RegExp(`^${name}`) });
 
 describe('NotebookUpcomingPage', () => {
-  const today = localToday();
+  const today = localDateString();
 
   beforeEach(() => {
     server.notes.clear();
@@ -188,29 +189,25 @@ describe('NotebookUpcomingPage', () => {
   });
 
   test('lists every scheduled and parked task once, across pages', async () => {
-    addTask(
-      task(1, { title: 'Tomorrow task', startDate: addLocalDays(today, 1) }),
-    );
+    addTask(task(1, { title: 'Tomorrow task', startDate: addDays(today, 1) }));
     addTask(task(2, { title: 'Parked', someday: true }));
     addTask(task(3, { title: 'Showing now', startDate: today }));
     addTask(
       task(4, {
         title: 'Closed',
-        startDate: addLocalDays(today, 2),
+        startDate: addDays(today, 2),
         status: 'done',
       }),
     );
     addTask(
       task(5, {
         title: 'Home errand',
-        startDate: addLocalDays(today, 1),
+        startDate: addDays(today, 1),
         area: 'personal',
       }),
     );
     for (let n = 100; n < 260; n++) {
-      addTask(
-        task(n, { title: `Later ${n}`, startDate: addLocalDays(today, 30) }),
-      );
+      addTask(task(n, { title: `Later ${n}`, startDate: addDays(today, 30) }));
     }
     const note: Note = {
       id: '01ARZ3NDEKTSV4RRFFQ69G5N01',
@@ -253,9 +250,7 @@ describe('NotebookUpcomingPage', () => {
 
   test('Do today moves the task to Today’s Still open without a reload', async () => {
     const user = userEvent.setup();
-    addTask(
-      task(1, { title: 'Book flights', startDate: addLocalDays(today, 3) }),
-    );
+    addTask(task(1, { title: 'Book flights', startDate: addDays(today, 3) }));
     addTask(task(2, { title: 'Learn piano', someday: true }));
 
     renderNotebook();

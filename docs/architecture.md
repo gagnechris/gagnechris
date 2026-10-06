@@ -344,6 +344,12 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 - GA4 loads only in the public shells of the production build: `analyticsPlugin` (`apps/web/scripts/analyticsPlugin.ts`) adds gtag.js and writes `/ga.js` only when the public build runs with `GA_MEASUREMENT_ID`, which only `scripts/deploy-web.sh` sets (read from the process environment, never a `.env` file). Dev servers, `npm run preview`, local and e2e builds load no GA, and `e2e/tests/no-analytics.spec.ts` fails on any request to a Google Analytics host. The admin and Notebook shells never include it (`check:web-shells`), and the apex serves no signed-in page: old `/admin*` and `/auth*` URLs 301 to the app hosts at the edge.
 
+## Dates and locale
+
+- A calendar day is a `yyyy-mm-dd` string. `packages/shared/src/calendar.ts` is the one module for them: `parseCalendarDay` / `isCalendarDay` (rejects impossible days such as `2026-02-30`), `localDateString` (the device's day) and `localDayOf` (the device's day for an ISO timestamp), `addDays`, `daysBetween`, `weekdayOf`, the English weekday and month tables, `formatCalendarDay` and `relativeDayLabel` (`Thu` within six days on the given side, else `Oct 12`). Arithmetic runs in UTC, so a DST change never skips or repeats a day. `CalendarDateSchema` uses `isCalendarDay`, so the API answers 400 for an impossible day. `apps/web/src/kit/calendarDates.ts` only adds the month-grid helpers on top.
+- Every date shown is English (`en-US`). Calendar days go through the calendar module. Instants (ISO timestamps) pass `'en-US'` to `toLocale*String` / `Intl`, in the viewer's time zone. Public post dates use UTC (`post-date.ts`), so the prerendered HTML and the SPA agree. Nothing formats a date with the runtime's default locale (`src/__tests__/localePolicy.test.ts`).
+- Posts sort with `comparePostsNewestFirst`: `publishedAt` (else `updatedAt`) as an instant, newest first, then `id`. `posts.json`, RSS, the sitemap, Home and `/posts` use it, so they agree.
+
 ## `@gagnechris/shared` entry points
 
 | Import                            | Contents                                                                                                                 |

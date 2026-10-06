@@ -4,7 +4,7 @@ import {
   fetchTasksPage,
   useGetApiClient,
 } from '@gagnechris/app-core';
-import { localToday } from '../kit/calendarDates';
+import { localDateString } from '@gagnechris/shared';
 import { buildNotebookExportZip, triggerBlobDownload } from './exportNotebook';
 
 /** Every page of a cursor-paged list. */
@@ -40,7 +40,7 @@ export function useNotebookExport() {
         ),
       ]);
       const { blob } = buildNotebookExportZip(notes, tasks);
-      triggerBlobDownload(blob, `notebook-export-${localToday()}.zip`);
+      triggerBlobDownload(blob, `notebook-export-${localDateString()}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
     } finally {

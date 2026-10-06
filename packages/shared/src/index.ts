@@ -24,10 +24,27 @@ export {
   type TaskScheduleFilter,
 } from './task-schedule.js';
 export {
+  addDays,
+  calendarDay,
+  daysBetween,
+  formatCalendarDay,
+  isCalendarDay,
+  localDateString,
+  localDayOf,
+  MONTH_LONG,
+  MONTH_SHORT,
+  parseCalendarDay,
+  relativeDayLabel,
+  WEEKDAY_LONG,
+  WEEKDAY_SHORT,
+  weekdayName,
+  weekdayOf,
+  type CalendarDayFormat,
+} from './calendar.js';
+export {
   activeTaskDateQuery,
   activeTaskDueQuery,
   formatTaskDay,
-  localDateString,
   matchesTaskDateQuery,
   nextWeekday,
   noteDisplayTitle,
@@ -71,6 +88,7 @@ export {
   postDateAttribute,
 } from './post-date.js';
 export {
+  comparePostsNewestFirst,
   groupPostsByYear,
   POSTS_INDEX_EMPTY_TEXT,
   POSTS_INDEX_INTRO,
