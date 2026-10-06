@@ -1,3 +1,40 @@
+/* Mirrors shared/palette.ts. */
+:root {
+  --bears-ink: #16191d;
+  --bears-charcoal: #2b3138;
+  --bears-slate: #4a515a;
+  --bears-steel: #4d5871;
+  --bears-mist: #c5ccd6;
+  --bears-haze: #e5e8ed;
+  --bears-white: #ffffff;
+  --bears-bear-fur: #1d1a19;
+  --bears-muzzle: #c9a27a;
+  --bears-skin: #f2c9a0;
+  --bears-soil: #2b2018;
+  --bears-earth: #6b4f3a;
+  --bears-dirt: #8b6a4c;
+  --bears-sand: #e9dcc0;
+  --bears-pine: #2f5d50;
+  --bears-pine-light: #3f7a5f;
+  --bears-leaf: #4f8a3a;
+  --bears-moss: #5b7f3a;
+  --bears-berry: #6b2a4a;
+  --bears-beechnut: #8a5a35;
+  --bears-acorn: #a8552a;
+  --bears-rust: #c2552d;
+  --bears-rust-dark: #7a2e17;
+  --bears-autumn-far: #b5652f;
+  --bears-autumn-near: #8a4b25;
+  --bears-alert: #a3341f;
+  --bears-gold: #f4b942;
+  --bears-gold-dark: #c08a1e;
+  --bears-water: #4ea5d9;
+  --bears-water-dark: #2b6f97;
+  --bears-sky-camp: #cfe6ef;
+  --bears-sky-summer: #dbecf2;
+  --bears-sky-autumn: #f6e3c8;
+}
+
 .bears-btn {
   display: inline-flex;
   align-items: center;
@@ -57,7 +94,7 @@
 }
 
 .bears-end--lose .bears-end__kicker {
-  color: #a3341f;
+  color: var(--bears-alert);
 }
 
 .bears-end__title {

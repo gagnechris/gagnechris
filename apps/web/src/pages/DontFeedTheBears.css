@@ -76,11 +76,11 @@
 }
 
 .bears-card--camp .bears-card__art {
-  background: #cfe6ef;
+  background: var(--bears-sky-camp);
 }
 
 .bears-card--wild .bears-card__art {
-  background: #f6e3c8;
+  background: var(--bears-sky-autumn);
 }
 
 .bears-card__body {
@@ -100,7 +100,7 @@
 }
 
 .bears-card--wild .bears-card__kicker {
-  color: #8a4b25;
+  color: var(--bears-autumn-near);
 }
 
 .bears-card__title {
@@ -138,7 +138,7 @@
   font-family: var(--font-serif);
   font-size: 1.1875rem;
   line-height: 1.6;
-  color: #2b3138;
+  color: var(--bears-charcoal);
 }
 
 .bears-landing__note p {

@@ -9,8 +9,16 @@ export const BEAR_ENCOUNTER_URL =
 export const BLACK_BEAR_NATURAL_HISTORY_URL =
   'https://vtfishandwildlife.com/learn-more/vermont-critters/mammals/black-bear';
 
+export type BearTipId =
+  | 'never-feed'
+  | 'fed-bear'
+  | 'bird-feeders'
+  | 'secure-trash'
+  | 'pet-food'
+  | 'campsite';
+
 export type BearTip = {
-  id: string;
+  id: BearTipId;
   title: string;
   body: string;
   sourceUrl: string;
@@ -59,8 +67,12 @@ export const BEAR_TIPS: readonly BearTip[] = [
   },
 ] as const;
 
-export function tipById(id: string): BearTip | undefined {
-  return BEAR_TIPS.find((tip) => tip.id === id);
+const TIP_BY_ID = Object.fromEntries(
+  BEAR_TIPS.map((tip) => [tip.id, tip]),
+) as Readonly<Record<BearTipId, BearTip>>;
+
+export function tipById(id: BearTipId): BearTip {
+  return TIP_BY_ID[id];
 }
 
 export function tipAtIndex(index: number): BearTip {
