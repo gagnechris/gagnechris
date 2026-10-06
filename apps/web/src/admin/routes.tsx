@@ -39,6 +39,10 @@ export const adminRoutes: RouteObject[] = [
         path: 'resume',
         load: () => import('./AdminResumePage.tsx'),
       }),
+      lazyRoute({
+        path: 'settings/users',
+        load: () => import('./settings/AdminUsersPage.tsx'),
+      }),
       { path: '*', element: <WorkspaceNotFound /> },
     ],
   }),
