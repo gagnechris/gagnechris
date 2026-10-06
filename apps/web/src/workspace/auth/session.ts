@@ -4,6 +4,7 @@ import {
   signInWithRedirect,
   signOut,
 } from 'aws-amplify/auth';
+import { isSitePath } from '@gagnechris/shared';
 import { ensureAmplifyConfigured } from './config';
 
 export type AuthUser = {
@@ -105,8 +106,7 @@ export const RETURN_TO_KEY = 'gagnechris.authReturnTo';
 export const safeReturnTo = (value: string | null | undefined): string => {
   if (
     !value ||
-    !value.startsWith('/') ||
-    value.startsWith('//') ||
+    !isSitePath(value) ||
     value.includes('\\') ||
     /^\/auth(?:[/?#]|$)/.test(value)
   ) {

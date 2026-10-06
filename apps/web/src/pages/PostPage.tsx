@@ -1,64 +1,36 @@
-import { useLocation, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { siteUrl } from '@gagnechris/shared';
 import PostArticle from '../posts/PostArticle';
-import {
-  documentPostView,
-  loadPublishedPost,
-  type PostView,
-} from '../posts/publishedPost';
-import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
+import { documentPostView, loadPublishedPost } from '../posts/publishedPost';
+import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
 import './PostPage.css';
 import PageHead from '../components/PageHead';
 
-type Loaded = { slug: string; post: PostView | null };
-
 function PostPage() {
   const { slug = '' } = useParams<{ slug: string }>();
-  const { pathname } = useLocation();
-  const [loaded, setLoaded] = useState<Loaded | null>(() => {
-    if (coldLoadedNotFound(pathname)) return { slug, post: null };
-    const post = slug ? documentPostView(slug) : null;
-    return post ? { slug, post } : null;
-  });
-  const loadedSlug = loaded?.slug;
+  const published = usePublishedView(slug, documentPostView, loadPublishedPost);
 
-  useEffect(() => {
-    if (!slug.trim() || loadedSlug === slug) return;
-    let cancelled = false;
-    void loadPublishedPost(slug)
-      .catch((err: unknown) => {
-        console.error('Error loading post:', err);
-        return null;
-      })
-      .then((post) => {
-        if (!cancelled) setLoaded({ slug, post });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, loadedSlug]);
+  if (!slug.trim() || published.status === 'missing') return <NotFound />;
 
-  if (!slug.trim()) return <NotFound />;
-
-  const post = loaded?.slug === slug ? loaded.post : undefined;
-
-  if (post === undefined) {
+  if (published.status !== 'ready') {
     return (
       <div className="post-page">
-        <p className="post-loading">Loading post…</p>
+        {published.status === 'error' ? (
+          <p className="post-loading" role="alert">
+            Could not load this post. Check your connection and try again.
+          </p>
+        ) : (
+          <p className="post-loading">Loading post…</p>
+        )}
       </div>
     );
   }
 
-  if (!post) return <NotFound />;
-
+  const post = published.view;
   return (
     <>
-      <PageHead
-        title={post.headTitle}
-        url={`https://gagnechris.com/posts/${slug}`}
-      />
+      <PageHead title={post.headTitle} url={siteUrl(`/posts/${slug}`)} />
       <PostArticle post={post} />
     </>
   );

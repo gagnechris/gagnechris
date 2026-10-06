@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import {
   formatPostShortDate,
   groupPostsByYear,
@@ -9,6 +8,7 @@ import {
   postsYearId,
 } from '@gagnechris/shared';
 import type { PostsIndexItem } from '@gagnechris/shared/render';
+import SiteLink from '../components/SiteLink';
 
 // Markup must stay byte-identical to `renderPostsIndexBodyHtml`
 // (PostsIndexBody.test.tsx).
@@ -18,11 +18,7 @@ const PostPreview = ({ post }: { post: PostsIndexItem }) => {
   const dateAttr = postDateAttribute(post.publishedAt);
   return (
     <li className="post-preview" data-id={post.id}>
-      <Link
-        className="post-preview__link"
-        to={`/posts/${post.slug}`}
-        discover="none"
-      >
+      <SiteLink className="post-preview__link" href={`/posts/${post.slug}`}>
         <h3 className="post-preview__title">{post.title}</h3>
         {date ? (
           <time className="post-preview__date" dateTime={dateAttr || undefined}>
@@ -32,7 +28,7 @@ const PostPreview = ({ post }: { post: PostsIndexItem }) => {
         {post.excerpt ? (
           <p className="post-preview__excerpt">{post.excerpt}</p>
         ) : null}
-      </Link>
+      </SiteLink>
     </li>
   );
 };

@@ -1,46 +1,32 @@
-import { useEffect, useState } from 'react';
+import { pageTitle, siteUrl } from '@gagnechris/shared';
 import PostsIndexBody from '../posts/PostsIndexBody';
 import {
   documentPostsIndex,
   fetchPublishedPosts,
-  type PublishedPostListItem,
 } from '../posts/publishedPosts';
+import { usePublishedView } from '../prerender/usePublishedView';
 import './PostsIndex.css';
-import { pageTitle } from '@gagnechris/shared';
 import PageHead from '../components/PageHead';
 
 function PostsIndex() {
-  const [posts, setPosts] = useState<PublishedPostListItem[] | null>(
+  const published = usePublishedView(
+    'posts',
     documentPostsIndex,
+    fetchPublishedPosts,
   );
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (documentPostsIndex()) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const items = await fetchPublishedPosts();
-        if (!cancelled) setPosts(items);
-      } catch (err) {
-        console.error('Error loading posts:', err);
-        if (!cancelled) {
-          setError('Could not load posts.');
-          setPosts([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <>
-      <PageHead title={pageTitle('Posts')} url="https://gagnechris.com/posts" />
+      <PageHead title={pageTitle('Posts')} url={siteUrl('/posts')} />
       <PostsIndexBody
-        posts={posts ?? []}
-        message={error ?? (posts ? undefined : 'Loading posts…')}
+        posts={published.status === 'ready' ? published.view : []}
+        message={
+          published.status === 'loading'
+            ? 'Loading posts…'
+            : published.status === 'ready'
+              ? undefined
+              : 'Could not load posts.'
+        }
       />
     </>
   );
