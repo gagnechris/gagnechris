@@ -272,6 +272,30 @@ describe('NotebookDemo', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  test('after + Note, a quick-add keeps focus in the input', async () => {
+    const user = userEvent.setup();
+    renderDemo();
+    const note = screen.getByRole('region', { name: 'Today’s note' });
+    await user.click(
+      within(screen.getByTestId('still-open')).getByRole('button', {
+        name: 'Add Reply to recruiter email to the note',
+      }),
+    );
+    expect(
+      within(note).getByRole('checkbox', {
+        name: 'Complete Reply to recruiter email',
+      }),
+    ).toHaveFocus();
+
+    const input = screen.getByRole('combobox', { name: 'New task' });
+    await user.click(input);
+    await user.keyboard('Call Sam{Enter}');
+    expect(
+      within(note).getByRole('checkbox', { name: 'Complete Call Sam' }),
+    ).toBeVisible();
+    expect(input).toHaveFocus();
+  });
+
   test('Coming up rows show a short day and Still open rows their source note, as drawn', () => {
     renderDemo();
     const comingUp = screen.getByTestId('coming-up');
