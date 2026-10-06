@@ -2,6 +2,7 @@ import {
   CreatePostRequestSchema,
   ExpectedVersionRequestSchema,
   ListPostsQuerySchema,
+  POSTS_PAGE_SIZE,
   PostListResponseSchema,
   PostSchema,
   UpdatePostRequestSchema,
@@ -51,7 +52,7 @@ export function createPostRoutes(
       handler: async (_ctx, { query }) => {
         const page = await posts().list(query.status, {
           cursor: query.cursor,
-          limit: query.limit,
+          limit: query.limit ?? POSTS_PAGE_SIZE,
         });
         return json(200, PostListResponseSchema.parse(page));
       },

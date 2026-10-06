@@ -100,6 +100,7 @@ export {
   type NoteType,
   type NotesPage,
   type Post,
+  type PostSummary,
   type Project,
   type Resume,
   type Task,

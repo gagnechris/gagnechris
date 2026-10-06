@@ -1,6 +1,7 @@
 import type { ApiClient, components } from '@gagnechris/api-client';
 
 export type Post = components['schemas']['Post'];
+export type PostSummary = components['schemas']['PostSummary'];
 export type Project = components['schemas']['Project'];
 export type Home = components['schemas']['Home'];
 export type Resume = components['schemas']['Resume'];
@@ -82,7 +83,7 @@ export const asMutateResult = async <T>(
 };
 
 export type PostsPage = {
-  items: Post[];
+  items: PostSummary[];
   nextCursor?: string;
 };
 
@@ -90,8 +91,9 @@ export const fetchPostsPage = async (
   client: ApiClient,
   cursor?: string,
 ): Promise<PostsPage> => {
+  // A full page: the Posts page counts, searches and sorts only what's loaded.
   const result = await client.GET('/api/admin/posts', {
-    params: { query: cursor ? { cursor } : {} },
+    params: { query: { limit: 100, ...(cursor ? { cursor } : {}) } },
   });
   const data = unwrap(result, 'Could not load posts');
   return {
@@ -100,8 +102,8 @@ export const fetchPostsPage = async (
   };
 };
 
-export const fetchPosts = async (client: ApiClient): Promise<Post[]> => {
-  const all: Post[] = [];
+export const fetchPosts = async (client: ApiClient): Promise<PostSummary[]> => {
+  const all: PostSummary[] = [];
   let cursor: string | undefined;
   do {
     const page = await fetchPostsPage(client, cursor);

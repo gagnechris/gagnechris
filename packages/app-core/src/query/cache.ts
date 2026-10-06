@@ -1,6 +1,14 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { isOpenTaskStatus, taskMatchesSchedule } from '@gagnechris/shared';
-import type { Home, Note, Post, Project, Resume, Task } from './api.js';
+import type {
+  Home,
+  Note,
+  Post,
+  PostSummary,
+  Project,
+  Resume,
+  Task,
+} from './api.js';
 import { queryKeys } from './keys.js';
 
 export const preferNewerByVersion = <T extends { version: number }>(
@@ -74,7 +82,7 @@ const isInfinite = (data: unknown): boolean =>
   Boolean(data) && Array.isArray((data as { pages?: unknown }).pages);
 
 const postMatches = (
-  post: Post,
+  post: PostSummary,
   filters: Record<string, unknown>,
 ): ListMatch => {
   if (filters.q) return undefined;
@@ -119,15 +127,28 @@ const upsertIntoListCaches = <T extends { id: string; version: number }>(
   }
 };
 
+const toPostSummary = ({
+  excerpt,
+  bodyMarkdown,
+  coverImage,
+  seo,
+  ...summary
+}: Post): PostSummary => summary;
+
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
   queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
     preferNewerByVersion(prev, post),
   );
-  upsertIntoListCaches(queryClient, queryKeys.posts.list(), post, {
-    removed: post.status === 'deleted',
-    matches: postMatches,
-    seedUnfiltered: true,
-  });
+  upsertIntoListCaches(
+    queryClient,
+    queryKeys.posts.list(),
+    toPostSummary(post),
+    {
+      removed: post.status === 'deleted',
+      matches: postMatches,
+      seedUnfiltered: true,
+    },
+  );
 };
 
 export const setCachedProject = (

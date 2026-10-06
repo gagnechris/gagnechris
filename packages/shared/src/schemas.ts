@@ -102,8 +102,20 @@ export const PostSchema = z
 
 export type Post = z.infer<typeof PostSchema>;
 
+/** A list row: everything but the content, which only the editor needs. */
+export const PostSummarySchema = PostSchema.omit({
+  excerpt: true,
+  bodyMarkdown: true,
+  coverImage: true,
+  seo: true,
+});
+
+export type PostSummary = z.infer<typeof PostSummarySchema>;
+
+export const POSTS_PAGE_SIZE = 50;
+
 export const PostListResponseSchema = z.object({
-  items: z.array(PostSchema),
+  items: z.array(PostSummarySchema),
   nextCursor: z.string().min(1).optional(),
 });
 
@@ -149,7 +161,7 @@ export const ListPostsQuerySchema = z.object({
     .positive()
     .max(100)
     .optional()
-    .describe('Page size (1-100)'),
+    .describe(`Page size (1-100; default ${POSTS_PAGE_SIZE})`),
 });
 
 export type ListPostsQuery = z.infer<typeof ListPostsQuerySchema>;

@@ -20,6 +20,7 @@ import {
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
   PostListResponseSchema,
+  PostSummarySchema,
   PostSchema,
   PostSeoSchema,
   PreconditionFailedErrorResponseSchema,
@@ -516,6 +517,7 @@ export function buildOpenApiDocument() {
     PreconditionFailedErrorResponseSchema,
   );
   registry.register('Post', PostSchema);
+  registry.register('PostSummary', PostSummarySchema);
   registry.register('PostListResponse', PostListResponseSchema);
   registry.register('CreatePostRequest', CreatePostRequestSchema);
   registry.register('UpdatePostRequest', UpdatePostRequestSchema);

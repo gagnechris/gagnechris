@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
@@ -31,6 +32,37 @@ export function withApiResponseHeaders(
       'X-Content-Type-Options': 'nosniff',
       ...(opts.noStore ? { 'Cache-Control': 'no-store' } : {}),
     },
+  };
+}
+
+const GZIP_MIN_BYTES = 1024;
+
+/** Neither API Gateway nor the no-cache CloudFront `/api` behavior compresses, so large JSON is gzipped here. */
+export function gzipJsonResponse(
+  event: Pick<APIGatewayProxyEventV2, 'headers'>,
+  response: APIGatewayProxyStructuredResultV2,
+): APIGatewayProxyStructuredResultV2 {
+  const body = response.body;
+  const type = response.headers?.['Content-Type'];
+  if (
+    !body ||
+    response.isBase64Encoded ||
+    typeof type !== 'string' ||
+    !type.startsWith('application/json') ||
+    Buffer.byteLength(body) < GZIP_MIN_BYTES ||
+    !/\bgzip\b/i.test(event.headers?.['accept-encoding'] ?? '')
+  ) {
+    return response;
+  }
+  return {
+    ...response,
+    headers: {
+      ...response.headers,
+      'Content-Encoding': 'gzip',
+      Vary: 'Accept-Encoding',
+    },
+    body: gzipSync(body).toString('base64'),
+    isBase64Encoded: true,
   };
 }
 

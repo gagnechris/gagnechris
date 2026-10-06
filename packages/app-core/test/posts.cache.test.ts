@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
-import type { Post, PostsPage } from '../src/query/api.js';
+import type { Post, PostSummary, PostsPage } from '../src/query/api.js';
 import {
   setCachedHome,
   setCachedPost,
@@ -26,7 +26,15 @@ const draftPost: Post = {
   hasUnpublishedChanges: false,
 };
 
-const listItems = (queryClient: QueryClient): Post[] => {
+const summary = ({
+  excerpt,
+  bodyMarkdown,
+  coverImage,
+  seo,
+  ...rest
+}: Post): PostSummary => rest;
+
+const listItems = (queryClient: QueryClient): PostSummary[] => {
   const data = queryClient.getQueryData<{
     pages: PostsPage[];
   }>(queryKeys.posts.list());
@@ -34,13 +42,13 @@ const listItems = (queryClient: QueryClient): Post[] => {
 };
 
 describe('post cache helpers', () => {
-  test('setCachedPost upserts list + detail; deleted status drops from list', () => {
+  test('setCachedPost upserts list (summary row) + detail; deleted status drops from list', () => {
     const queryClient = new QueryClient();
     setCachedPost(queryClient, draftPost);
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
       draftPost,
     );
-    expect(listItems(queryClient)).toEqual([draftPost]);
+    expect(listItems(queryClient)).toEqual([summary(draftPost)]);
 
     const published = {
       ...draftPost,
@@ -48,7 +56,7 @@ describe('post cache helpers', () => {
       version: 2,
     };
     setCachedPost(queryClient, published);
-    expect(listItems(queryClient)).toEqual([published]);
+    expect(listItems(queryClient)).toEqual([summary(published)]);
 
     setCachedPost(queryClient, {
       ...published,
@@ -69,7 +77,7 @@ describe('post cache helpers', () => {
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
       v2,
     );
-    expect(listItems(queryClient)).toEqual([v2]);
+    expect(listItems(queryClient)).toEqual([summary(v2)]);
   });
 });
 

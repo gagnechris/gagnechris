@@ -58,11 +58,18 @@ describe('posts HTTP handlers', () => {
     );
   }
 
-  it('lists posts', async () => {
+  it('lists summary rows, 50 to a page by default', async () => {
     vi.mocked(repo.list).mockResolvedValue({ items: [samplePost] });
     const result = await dispatch('GET', '/api/admin/posts');
     expect(result.statusCode).toBe(200);
-    expect(JSON.parse(result.body as string).items).toHaveLength(1);
+    const [row] = JSON.parse(result.body as string).items;
+    expect(row).toMatchObject({ id: samplePost.id, title: 'Hello' });
+    expect(row).not.toHaveProperty('bodyMarkdown');
+    expect(row).not.toHaveProperty('seo');
+    expect(repo.list).toHaveBeenCalledWith(undefined, {
+      cursor: undefined,
+      limit: 50,
+    });
   });
 
   describe('projectIds', () => {

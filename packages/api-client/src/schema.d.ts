@@ -191,7 +191,7 @@ export interface paths {
                     status?: "draft" | "published" | "deleted";
                     /** @description Opaque pagination cursor from a previous list response */
                     cursor?: string;
-                    /** @description Page size (1-100) */
+                    /** @description Page size (1-100; default 50) */
                     limit?: number;
                 };
                 header?: never;
@@ -211,16 +211,8 @@ export interface paths {
                                 id: string;
                                 slug: string;
                                 title: string;
-                                excerpt: string;
-                                bodyMarkdown: string;
                                 tags: string[];
                                 projectIds: string[];
-                                coverImage: string | null;
-                                seo: {
-                                    title?: string;
-                                    description?: string;
-                                    ogImage?: string;
-                                } | null;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "deleted";
                                 /** Format: date-time */
@@ -9358,21 +9350,28 @@ export interface components {
             version: number;
             hasUnpublishedChanges: boolean;
         };
+        PostSummary: {
+            id: string;
+            slug: string;
+            title: string;
+            tags: string[];
+            projectIds: string[];
+            /** @enum {string} */
+            status: "draft" | "published" | "deleted";
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+            hasUnpublishedChanges: boolean;
+        };
         PostListResponse: {
             items: {
                 id: string;
                 slug: string;
                 title: string;
-                excerpt: string;
-                bodyMarkdown: string;
                 tags: string[];
                 projectIds: string[];
-                coverImage: string | null;
-                seo: {
-                    title?: string;
-                    description?: string;
-                    ogImage?: string;
-                } | null;
                 /** @enum {string} */
                 status: "draft" | "published" | "deleted";
                 /** Format: date-time */
