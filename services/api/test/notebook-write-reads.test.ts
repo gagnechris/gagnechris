@@ -19,14 +19,14 @@ const WRITES = new Set(['PutCommand', 'TransactWriteCommand', 'DeleteCommand']);
 type Sent = { constructor: { name: string }; input: Record<string, unknown> };
 
 function setup() {
-  const { doc } = createMemoryDoc();
+  const { doc, store } = createMemoryDoc();
   const repo = new NotesRepository(
     doc,
     TABLE,
     () => '2026-10-04T09:00:00.000Z',
   );
   const send = doc.send as unknown as Mock;
-  return { send, routes: createNoteRoutes(repo) };
+  return { send, store, routes: createNoteRoutes(repo) };
 }
 
 async function call(
@@ -154,5 +154,23 @@ describe('notebook writes read once before writing', () => {
     expect(deleted.status).toBe(200);
     expect(deleted.body).toMatchObject({ deleted: true, version: 2 });
     expect(readsBeforeFirstWrite(send)).toHaveLength(1);
+  });
+
+  it('a deleted note leaves every list index (the item builder drops its GSI keys)', async () => {
+    const { routes, store } = setup();
+    await put(routes, { id: D1, bodyMarkdown: 'v1' });
+    const deleted = await call(
+      routes,
+      'DELETE',
+      `/api/notebook/notes/${D1}`,
+      undefined,
+      '"1"',
+    );
+    expect(deleted.status).toBe(200);
+    const row = store.get(`USER#${USER}#NOTE#${D1}\0META`);
+    expect(row).toMatchObject({ deleted: true });
+    for (const attr of ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk']) {
+      expect(row).not.toHaveProperty(attr);
+    }
   });
 });
