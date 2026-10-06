@@ -220,8 +220,13 @@ export const useReopenTaskMutation = () => {
   });
 };
 
-/** The fields Today's Snooze and Drop change; `someday` wins over `startDate`, as on the server. */
-export type TaskPatch = Partial<Pick<Task, 'status' | 'startDate' | 'someday'>>;
+/** Fields a patch may change; `someday` wins over `startDate`, as on the server. */
+export type TaskPatch = Partial<
+  Pick<
+    Task,
+    'status' | 'startDate' | 'someday' | 'title' | 'priority' | 'dueDate'
+  >
+>;
 
 export type TaskPatchVars = TaskVersionVars & { patch: TaskPatch };
 
@@ -234,6 +239,9 @@ export const applyTaskPatch = (task: Task, patch: TaskPatch): Task => {
   const status = patch.status ?? task.status;
   return {
     ...task,
+    title: patch.title ?? task.title,
+    priority: patch.priority ?? task.priority,
+    dueDate: patch.dueDate !== undefined ? patch.dueDate : task.dueDate,
     status,
     someday,
     startDate: someday
