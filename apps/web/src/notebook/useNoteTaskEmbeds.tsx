@@ -42,13 +42,18 @@ export function taskRequestFromLine(
   };
 }
 
-/** The 400 is a note whose first save has not landed yet. */
 const RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
+
+/** The note's first save has not landed yet; any other 400 is final. */
+const isNoteNotSavedYet = (error: unknown) =>
+  error instanceof ApiError &&
+  error.status === 400 &&
+  error.fields?.noteId === 'not_found';
 
 const isRetryable = (error: unknown) =>
   !(error instanceof ApiError) ||
   error.status === 0 ||
-  error.status === 400 ||
+  isNoteNotSavedYet(error) ||
   error.status === 408 ||
   error.status === 429 ||
   error.status >= 500;
@@ -117,7 +122,7 @@ export function useNoteTaskEmbeds({
             setPendingEntry(id, { draft, failed: true });
             return;
           }
-          if (error instanceof ApiError && error.status === 400) {
+          if (isNoteNotSavedYet(error)) {
             await ensureSavedRef.current?.();
           }
           await wait(retryDelaysMs[attempt]!);

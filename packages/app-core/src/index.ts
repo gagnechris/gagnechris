@@ -38,6 +38,7 @@ export {
 export { queryKeys } from './query/keys.js';
 export {
   ApiError,
+  type ApiFieldErrors,
   asMutateResult,
   completeTask,
   errorMessage,
