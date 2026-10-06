@@ -99,25 +99,27 @@ function NotebookDemoBody({
   const phone = useMediaQuery(NOTEBOOK_DEMO_PHONE_QUERY);
   const view = notebookDemoView(state);
   const noteRef = useRef<HTMLUListElement>(null);
-  const [focusTask, setFocusTask] = useState<string | null>(null);
+  const focusTask = useRef<string | null>(null);
   const hintId = useId();
   const { today } = state;
 
-  // "+ Note" removes its own row; keep the keyboard on the task it moved.
+  // "+ Note" removes its own row; keep the keyboard on the task it moved, once.
   useEffect(() => {
-    if (!focusTask) return;
+    const id = focusTask.current;
+    if (!id) return;
+    focusTask.current = null;
     noteRef.current
-      ?.querySelector<HTMLInputElement>(`[data-task-id="${focusTask}"] input`)
+      ?.querySelector<HTMLInputElement>(`[data-task-id="${id}"] input`)
       ?.focus();
-  }, [focusTask, state.noteTaskIds]);
+  }, [state.noteTaskIds]);
 
   const stillOpen = (
     <StillOpenPanel
       compact
       rows={view.stillOpen}
       onAddToNote={(id) => {
+        focusTask.current = id;
         dispatch({ type: 'add-to-note', id });
-        setFocusTask(id);
       }}
     />
   );
