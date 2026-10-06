@@ -1,3 +1,5 @@
+import { isSitePath } from '@gagnechris/shared';
+
 // The admin app runs on its own host, so a root-relative path would open the
 // admin app instead of the public page.
 export const publicSiteOrigin = (): string =>
@@ -31,4 +33,4 @@ export const withPublicUrls = (html: string): string => {
 
 /** For images the editor shows inline: root-relative paths load from the public site. */
 export const publicImageSrc = (src: string): string =>
-  src.startsWith('/') && !src.startsWith('//') ? publicUrl(src) : src;
+  isSitePath(src) ? publicUrl(src) : src;
