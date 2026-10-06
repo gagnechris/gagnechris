@@ -54,8 +54,8 @@ export type PublishTargetContext = {
 export type PublishTargetRunResult = {
   artifacts?: PublishArtifact[];
   deleteKeys?: string[];
+  /** Sent only when an artifact was written or a delete removed something. */
   invalidationPaths?: string[];
-  removedSlugs?: string[];
   resumePublished?: boolean;
   resumeUnpublished?: boolean;
   resumePdfFailed?: boolean;

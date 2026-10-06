@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ListNote } from './noteListSections';
-import { embedContext, taskMentions } from './taskMentions';
+import { embedContext, taskMentions } from './taskMentionsData';
 
 const A = '01JAAAAAAAAAAAAAAAAAAAAAAA';
 const B = '01JBBBBBBBBBBBBBBBBBBBBBBB';

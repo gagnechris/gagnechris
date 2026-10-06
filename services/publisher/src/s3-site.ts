@@ -22,9 +22,16 @@ import {
   type PostMetaItem,
 } from '@gagnechris/data';
 import { batchGetAllWithDocClient } from '@gagnechris/data';
-import type { Home, Post, Project, Resume } from '@gagnechris/shared';
+import {
+  sortProjectsByOrder,
+  type Home,
+  type Post,
+  type Project,
+  type Resume,
+} from '@gagnechris/shared';
 import { requireEnv, siteStorageMode } from './config.js';
 import { logger, metrics } from './observability.js';
+import { sortPostsNewestFirst } from './posts.js';
 import { runPublishTargets } from './publish-targets/orchestrator.js';
 import type {
   PublishedLookup,
@@ -62,6 +69,11 @@ export function getSiteStorage(): SiteStorage {
     ? createFilesystemSiteStorage()
     : createS3SiteStorage();
 }
+
+// The overlap check compares catalogs by JSON, so BatchGet's arbitrary
+// response order must not leak into them.
+const sortedUnique = (values: Iterable<string>): string[] =>
+  [...new Set(values)].sort();
 
 function logCorruptPublished(opts: {
   label: string;
@@ -165,13 +177,9 @@ export async function listPublishedPosts(
   }
 
   return {
-    posts: posts.sort((a, b) => {
-      const aTs = a.publishedAt ?? a.updatedAt;
-      const bTs = b.publishedAt ?? b.updatedAt;
-      return bTs.localeCompare(aTs);
-    }),
-    corruptSlugs: [...new Set(corruptSlugs)],
-    corruptPostIds: [...corruptPostIds],
+    posts: sortPostsNewestFirst(posts),
+    corruptSlugs: sortedUnique(corruptSlugs),
+    corruptPostIds: sortedUnique(corruptPostIds),
   };
 }
 
@@ -214,13 +222,9 @@ export function mergeStreamPublishedPosts(
   }
 
   return {
-    posts: [...byId.values()].sort((a, b) => {
-      const aTs = a.publishedAt ?? a.updatedAt;
-      const bTs = b.publishedAt ?? b.updatedAt;
-      return bTs.localeCompare(aTs);
-    }),
-    corruptSlugs: [...corruptSlugs],
-    corruptPostIds: [...corruptPostIds],
+    posts: sortPostsNewestFirst([...byId.values()]),
+    corruptSlugs: sortedUnique(corruptSlugs),
+    corruptPostIds: sortedUnique(corruptPostIds),
   };
 }
 
@@ -286,7 +290,10 @@ export async function listPublishedProjects(
       }
     }
   }
-  return { projects, corruptSlugs: [...new Set(corruptSlugs)] };
+  return {
+    projects: sortProjectsByOrder(projects),
+    corruptSlugs: sortedUnique(corruptSlugs),
+  };
 }
 
 /** A just-published project must still render when GSI1 has not caught up. */
@@ -314,7 +321,10 @@ export function mergeStreamPublishedProjects(
       if (slug) corruptSlugs.add(slug);
     }
   }
-  return { projects: [...byId.values()], corruptSlugs: [...corruptSlugs] };
+  return {
+    projects: sortProjectsByOrder([...byId.values()]),
+    corruptSlugs: sortedUnique(corruptSlugs),
+  };
 }
 
 export async function getPublishedResume(
