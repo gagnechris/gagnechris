@@ -1,17 +1,13 @@
-import { API_SERVICE_NAME } from '@gagnechris/shared';
 import type {
   APIGatewayProxyHandlerV2,
   APIGatewayProxyStructuredResultV2,
   Context,
 } from 'aws-lambda';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
-import { Tracer } from '@aws-lambda-powertools/tracer';
 import { json, withApiResponseHeaders } from './http.js';
 import { logger, metrics } from './observability.js';
 import { dispatchRoutes, normalizePath } from './router.js';
 import { routes } from './routes.js';
-
-const tracer = new Tracer({ serviceName: API_SERVICE_NAME });
 
 export const handler: APIGatewayProxyHandlerV2 = async (
   event,
@@ -24,12 +20,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     route: `${method} ${path}`,
     requestId: event.requestContext.requestId,
   });
-  const segment = tracer.getSegment();
-  const subsegment = segment?.addNewSubsegment('handler');
-  if (subsegment) {
-    tracer.setSegment(subsegment);
-  }
-
   try {
     logger.info('request', { path });
 
@@ -48,9 +38,5 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     });
   } finally {
     metrics.publishStoredMetrics();
-    subsegment?.close();
-    if (segment) {
-      tracer.setSegment(segment);
-    }
   }
 };

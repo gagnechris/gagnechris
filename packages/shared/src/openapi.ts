@@ -1,5 +1,5 @@
 import './openapi-extend.js';
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV3,

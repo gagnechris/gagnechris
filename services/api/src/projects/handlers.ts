@@ -7,7 +7,7 @@ import {
   UlidSchema,
   UpdateProjectRequestSchema,
 } from '@gagnechris/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { ProjectsRepository } from './repository.js';

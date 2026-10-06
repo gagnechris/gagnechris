@@ -17,7 +17,7 @@ import {
   syncChangeSchemaFor,
   TaskSyncChangeSchema,
 } from '@gagnechris/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import {
   VersionedRepository,
   ownerScoped,

@@ -107,7 +107,8 @@ export class ApiStack extends Stack {
         'gagnechris HTTP API (health, contact, admin posts/media; shared data table)',
       entry: join(REPO_ROOT, 'services/api/src/handler.ts'),
       handler: 'handler',
-      memorySize: 256,
+      // More memory is more CPU: cold-start init and JSON/zod work scale with it.
+      memorySize: 1024,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
       powertoolsServiceName: API_SERVICE_NAME,
       alertsTopic,

@@ -3,7 +3,7 @@ import {
   MediaUploadUrlResponseSchema,
 } from '@gagnechris/shared';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { z } from 'zod';
+import * as z from 'zod';
 import { json } from '../http.js';
 import { defineRoute, type RouteCtx, type RouteDef } from '../router.js';
 import { createMediaUploadUrl, writeLocalMediaObject } from './storage.js';
