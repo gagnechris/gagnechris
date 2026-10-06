@@ -13,6 +13,11 @@ export function formatLocalDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** The local calendar day an ISO timestamp falls on. */
+export function localDayOf(iso: string): string {
+  return formatLocalDate(new Date(iso));
+}
+
 export function parseLocalDate(value: string): Date | null {
   if (!DATE_RE.test(value)) return null;
   const [ys, ms, ds] = value.split('-');

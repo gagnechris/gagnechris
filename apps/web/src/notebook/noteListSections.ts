@@ -5,7 +5,7 @@ import {
   type Note,
 } from '@gagnechris/shared';
 import { byNewest } from '../kit/byNewest';
-import { addLocalDays, formatLocalDate } from '../kit/calendarDates';
+import { addLocalDays, localDayOf } from '../kit/calendarDates';
 
 export type ListNote = Pick<
   Note,
@@ -28,7 +28,7 @@ export type NoteSection<T> = {
 /** The day a note is listed under: a daily note's own date, else its last edit. */
 export function noteDay(note: ListNote): string {
   if (note.type === 'daily' && note.date) return note.date;
-  return note.updatedAt ? formatLocalDate(new Date(note.updatedAt)) : '';
+  return note.updatedAt ? localDayOf(note.updatedAt) : '';
 }
 
 export const noteTitle = noteDisplayTitle;
