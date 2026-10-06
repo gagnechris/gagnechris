@@ -235,7 +235,7 @@ describe('useVersionedDocEditor remote updates (CHR-178)', () => {
     expect(result.current.dirty).toBe(false);
     expect(result.current.saveError).toBeNull();
     // Next save is bound to the adopted version, not the stale one.
-    expect(result.current.versionRef.current).toBe(2);
+    expect(result.current.boundVersion).toBe(2);
   });
 
   test('a refetch landing during our own PUT does not flash the conflict banner', async () => {

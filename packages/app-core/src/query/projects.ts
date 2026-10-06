@@ -17,6 +17,7 @@ import {
 } from './api.js';
 import { setCachedProject } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
+import { useDeleteEntityMutation } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
 
 export type ProjectResourceParams = { id: string };
@@ -71,19 +72,8 @@ export const useCreateProjectMutation = () => {
   });
 };
 
-export const useSetProjectCache = projectResource.useSetCache;
-
-export const useDeleteProjectMutation = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, version }: { id: string; version: number }) =>
-      deleteProject(getClient(), id, { version }),
-    onSuccess: (project) => {
-      setCachedProject(queryClient, project);
-    },
-  });
-};
+export const useDeleteProjectMutation = () =>
+  useDeleteEntityMutation(deleteProject, setCachedProject);
 
 export const STARTER_PROJECTS: readonly NewProjectInput[] = [
   { name: 'Posts', slug: 'posts', stage: 'live', order: 1 },

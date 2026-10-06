@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
-import { ApiError } from './query/api';
+import {
+  errorMessage,
+  useCreatePostMutation,
+  usePostsQuery,
+} from '@gagnechris/app-core';
 import { newPlaceholderSlug } from './placeholderSlug';
 import { byNewest } from '../kit/byNewest';
 import { Button } from '../kit/Button';
@@ -39,12 +42,9 @@ export default function AdminPostsPage() {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortKey>('updated');
 
-  const loadError =
-    queryError instanceof ApiError
-      ? queryError.message
-      : queryError
-        ? 'Could not load posts.'
-        : null;
+  const loadError = queryError
+    ? errorMessage(queryError, 'Could not load posts.')
+    : null;
   const error = actionError ?? loadError;
 
   const visible = useMemo(() => {
@@ -90,9 +90,7 @@ export default function AdminPostsPage() {
       });
       void navigate(`/posts/${data.id}`);
     } catch (err) {
-      setActionError(
-        err instanceof ApiError ? err.message : 'Could not create draft.',
-      );
+      setActionError(errorMessage(err, 'Could not create draft.'));
     }
   };
 

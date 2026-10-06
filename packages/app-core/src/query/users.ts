@@ -7,6 +7,7 @@ import type {
 } from '@gagnechris/shared';
 import { useGetApiClient } from '../AppApiProvider.js';
 import { unwrap } from './api.js';
+import { upsertById } from './cache.js';
 import { queryKeys } from './keys.js';
 
 export type UserAction =
@@ -28,9 +29,7 @@ function useReplaceUser() {
   const queryClient = useQueryClient();
   return (user: ManagedUser) => {
     queryClient.setQueryData<ManagedUser[]>(queryKeys.users.list(), (list) =>
-      list?.some((u) => u.id === user.id)
-        ? list.map((u) => (u.id === user.id ? user : u))
-        : [...(list ?? []), user],
+      upsertById(list ?? [], user),
     );
     void queryClient.invalidateQueries({ queryKey: queryKeys.users.list() });
   };

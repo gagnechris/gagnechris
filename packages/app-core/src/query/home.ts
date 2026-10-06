@@ -26,5 +26,3 @@ export const homeResource = createDraftPublishResource<
   discard: (client, _params, body) => discardHome(client, body),
   setCache: setCachedHome,
 });
-
-export const useSetHomeCache = homeResource.useSetCache;

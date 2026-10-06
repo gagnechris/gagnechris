@@ -1,22 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router-dom';
+import { useLatest, type ConfirmFn } from '@gagnechris/app-core';
+
+export const browserConfirm: ConfirmFn = (message) =>
+  Promise.resolve(window.confirm(message));
 
 export type VersionedDocShellOptions = {
   dirty: boolean;
   busy: boolean;
-  saveRef: { current: () => unknown };
+  save: () => unknown;
   suppressLeaveGuardRef: { current: boolean };
   /** Omit for non-publishable docs such as Notebook notes (no ⌘⏎ publish). */
-  publishRef?: { current: () => unknown };
+  publish?: () => unknown;
 };
 
 export function useVersionedDocShell({
   dirty,
   busy,
-  saveRef,
+  save,
   suppressLeaveGuardRef,
-  publishRef,
+  publish,
 }: VersionedDocShellOptions) {
+  const saveRef = useLatest(save);
+  const publishRef = useLatest(publish);
+
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!dirty || suppressLeaveGuardRef.current) return;
@@ -68,7 +75,7 @@ export function useVersionedDocShell({
         void saveRef.current();
         return;
       }
-      if (!publishRef) return;
+      if (!publishRef.current) return;
       if (meta && event.key === 'Enter') {
         const target = event.target;
         if (

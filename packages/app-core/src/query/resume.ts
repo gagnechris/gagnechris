@@ -26,7 +26,3 @@ export const resumeResource = createDraftPublishResource<
   discard: (client, _params, body) => discardResume(client, body),
   setCache: setCachedResume,
 });
-
-export const useResumeQuery = () => resumeResource.useQuery({});
-
-export const useSetResumeCache = resumeResource.useSetCache;

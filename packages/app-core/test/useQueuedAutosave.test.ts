@@ -68,10 +68,12 @@ describe('useQueuedAutosave', () => {
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved,
+        onSaved: (entity) => {
+          onSaved(entity);
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
       });
       return { ...autosave, setDraft, dirty };
@@ -129,10 +131,11 @@ describe('useQueuedAutosave', () => {
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (entity: { version: number }) => {
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
       });
       return { ...autosave, setDraft };
@@ -194,10 +197,11 @@ describe('useQueuedAutosave', () => {
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (entity: { version: number }) => {
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
       });
       return { ...autosave, setDraft, dirty };
@@ -242,10 +246,11 @@ describe('useQueuedAutosave', () => {
         dirty,
         setDirty,
         debounceMs: 900,
-        versionRef,
-        getVersion: (e) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (entity: { version: number }) => {
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
         timers: defaultTimers,
       });
@@ -305,13 +310,14 @@ describe('useQueuedAutosave', () => {
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e: { version: number }) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave: async () => ({
           ok: true as const,
           entity: { version: 2 },
         }),
-        onSaved: () => {},
+        onSaved: (entity: { version: number }) => {
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
       });
       return { ...autosave, setDraft, setDirty, dirty };
@@ -350,10 +356,11 @@ test('slug_taken 409 shows slug-taken message, not conflictMessage', async () =>
       dirty,
       setDirty,
       debounceMs: 10_000,
-      versionRef,
-      getVersion: (e: { version: number }) => e.version,
+      getBaseVersion: () => versionRef.current,
       performSave,
-      onSaved: () => {},
+      onSaved: (entity: { version: number }) => {
+        versionRef.current = entity.version;
+      },
       conflictMessage: 'Conflict — Reload and try again.',
       conflictMessages: {
         slug_taken: 'That slug is already taken. Choose a different slug.',
@@ -390,10 +397,11 @@ describe('useQueuedAutosave recovery', () => {
         dirty,
         setDirty,
         debounceMs: 900,
-        versionRef,
-        getVersion: (e: { version: number }) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (entity: { version: number }) => {
+          versionRef.current = entity.version;
+        },
         conflictMessage: 'Conflict',
         retrySignals,
       });

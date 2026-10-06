@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useGetApiClient } from './AppApiProvider.js';
+import { useEditorStore } from './editorStore.js';
 import { peekPendingFlush, takePendingFlush } from './pendingFlushes.js';
 import type { ConfirmFn, RetrySignals } from './platform.js';
-import { ApiError } from './query/api.js';
+import { ApiError, errorMessage } from './query/api.js';
 import type { VersionedResource } from './query/createVersionedResource.js';
-import { useQueuedAutosave, type SaveState } from './useQueuedAutosave.js';
+import type {
+  DraftPublishAutosave,
+  DraftPublishDoc,
+  DraftPublishHold,
+} from './useDraftPublishEditor.js';
+import { useLatest } from './useLatest.js';
+import { useQueuedAutosave } from './useQueuedAutosave.js';
 
 export type VersionedDocEntity = {
   version: number;
@@ -38,7 +45,15 @@ export type VersionedDocEditorOptions<
   retrySignals?: RetrySignals;
 };
 
-export function useVersionedDocEditor<
+/** What `useVersionedEntityEditor` layers publish, unpublish and discard on. */
+export type VersionedDocController<TEntity> = {
+  autosave: DraftPublishAutosave;
+  doc: DraftPublishDoc<TEntity>;
+  hold: DraftPublishHold;
+  getBoundVersion: () => number;
+};
+
+export function useVersionedDocController<
   TEntity extends VersionedDocEntity,
   TDraft,
   TParams,
@@ -63,100 +78,83 @@ export function useVersionedDocEditor<
   const setCache = resource.useSetCache();
   const queueKey = JSON.stringify(resource.queryKey(params));
 
-  const [draft, setDraft] = useState<TDraft>(initialDraft);
-  const [hydratedId, setHydratedId] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [boundVersion, setBoundVersion] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const versionRef = useRef(0);
-  const entityRef = useRef<TEntity | null>(null);
-  const busyRef = useRef(false);
-  const suppressLeaveGuardRef = useRef(false);
-  const onHydrateRef = useRef(onHydrate);
-  const toDraftRef = useRef(toDraft);
-  const getEntityIdRef = useRef(getEntityId);
   // A previous mount of this document may still be saving (or failing to
   // save) its last edits; hydrating before that settles shows stale text
   // and binds a version that is about to be superseded.
-  const [adopting, setAdopting] = useState(() =>
-    Boolean(peekPendingFlush(queueKey)),
-  );
-  const [adopted, setAdopted] = useState<{
-    draft: TDraft;
-    version: number;
-  } | null>(null);
+  const { state, getState, dispatch } = useEditorStore<TDraft>(() => ({
+    phase: peekPendingFlush(queueKey) ? 'adopting' : 'hydrating',
+    hydratedId: null,
+    adopted: null,
+    draft: initialDraft,
+    boundVersion: 0,
+    dirty: false,
+    busy: false,
+  }));
+  const { phase, hydratedId, draft, boundVersion, dirty, busy } = state;
+
+  const suppressLeaveGuardRef = useRef(false);
+  const onHydrateRef = useLatest(onHydrate);
+  const toDraftRef = useLatest(toDraft);
+  const getEntityIdRef = useLatest(getEntityId);
 
   useEffect(() => {
     if (!peekPendingFlush(queueKey)) return;
     let cancelled = false;
-    setAdopting(true);
+    dispatch({ type: 'adoptStart' });
     void takePendingFlush(queueKey).then((taken) => {
       if (cancelled) return;
-      if (taken && taken.outcome !== 'clean') {
-        setAdopted({ draft: taken.draft as TDraft, version: taken.version });
-      }
-      setAdopting(false);
+      dispatch({
+        type: 'adoptDone',
+        adopted:
+          taken && taken.outcome !== 'clean'
+            ? { draft: taken.draft as TDraft, version: taken.version }
+            : null,
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [queueKey]);
-
-  useEffect(() => {
-    onHydrateRef.current = onHydrate;
-  }, [onHydrate]);
-  useEffect(() => {
-    toDraftRef.current = toDraft;
-  }, [toDraft]);
-  useEffect(() => {
-    getEntityIdRef.current = getEntityId;
-  }, [getEntityId]);
+  }, [dispatch, queueKey]);
 
   const entity = query.data;
   const { error: queryError, isPending, isFetchedAfterMount } = query;
+  const entityId = entity ? getEntityIdRef.current(entity) : null;
 
   if (
     entity &&
     isFetchedAfterMount &&
-    !adopting &&
-    getEntityIdRef.current(entity) !== hydratedId
+    phase !== 'adopting' &&
+    entityId !== hydratedId
   ) {
-    setHydratedId(getEntityIdRef.current(entity));
-    if (adopted) {
-      setDraft(adopted.draft);
-      setDirty(true);
-      setBoundVersion(adopted.version);
-    } else {
-      setDraft(toDraftRef.current(entity));
-      setDirty(false);
-      setBoundVersion(entity.version);
-    }
+    const { adopted } = state;
+    dispatch({
+      type: 'hydrate',
+      id: entityId!,
+      ...(adopted
+        ? { draft: adopted.draft, version: adopted.version, dirty: true }
+        : {
+            draft: toDraftRef.current(entity),
+            version: entity.version,
+            dirty: false,
+          }),
+    });
     onHydrateRef.current?.(entity);
   }
 
   if (
     entity &&
-    hydratedId === getEntityIdRef.current(entity) &&
+    hydratedId === entityId &&
     !dirty &&
     entity.version > boundVersion
   ) {
-    setDraft(toDraftRef.current(entity));
-    setBoundVersion(entity.version);
+    dispatch({
+      type: 'replace',
+      draft: toDraftRef.current(entity),
+      version: entity.version,
+    });
   }
 
-  useEffect(() => {
-    entityRef.current = entity ?? null;
-  }, [entity]);
-
-  useEffect(() => {
-    versionRef.current = boundVersion;
-  }, [boundVersion]);
-
-  useEffect(() => {
-    busyRef.current = busy;
-  }, [busy]);
-
-  const getVersion = useCallback((e: TEntity) => e.version, []);
+  const entityRef = useLatest(entity ?? null);
 
   const performSave = useCallback(
     async (current: TDraft, version: number) => {
@@ -177,24 +175,37 @@ export function useVersionedDocEditor<
         };
       }
     },
-    [enabled, getClient, params, resource, toPayload],
+    [enabled, entityRef, getClient, params, resource, toPayload],
+  );
+
+  const getBoundVersion = useCallback(
+    () => getState().boundVersion,
+    [getState],
+  );
+
+  const setDirty = useCallback(
+    (next: boolean) => dispatch({ type: 'dirty', dirty: next }),
+    [dispatch],
   );
 
   const onSaved = useCallback(
     (saved: TEntity) => {
       setCache(saved);
-      setBoundVersion(saved.version);
+      dispatch({ type: 'bind', version: saved.version });
     },
-    [setCache],
+    [dispatch, setCache],
   );
 
   const onReplaceDraft = useCallback(
     (saved: TEntity) => {
       setCache(saved);
-      setDraft(toDraftRef.current(saved));
-      setBoundVersion(saved.version);
+      dispatch({
+        type: 'replace',
+        draft: toDraftRef.current(saved),
+        version: saved.version,
+      });
     },
-    [setCache],
+    [dispatch, setCache, toDraftRef],
   );
 
   const autosave = useQueuedAutosave({
@@ -202,8 +213,7 @@ export function useVersionedDocEditor<
     dirty,
     setDirty,
     enabled,
-    versionRef,
-    getVersion,
+    getBaseVersion: getBoundVersion,
     performSave,
     onSaved,
     conflictMessage,
@@ -222,14 +232,10 @@ export function useVersionedDocEditor<
     awaitInFlight,
     markClean,
   } = autosave;
-  const saveRef = useRef(save);
-  useEffect(() => {
-    saveRef.current = save;
-  }, [save]);
 
   const remoteConflict =
     Boolean(entity) &&
-    hydratedId === getEntityIdRef.current(entity!) &&
+    hydratedId === entityId &&
     dirty &&
     entity!.version > boundVersion &&
     // Ignore refetches that land while our own PUT is in flight; otherwise the
@@ -237,33 +243,33 @@ export function useVersionedDocEditor<
     saveState !== 'saving';
   const displayError = remoteConflict ? conflictMessage : saveError;
 
+  const isBusy = useCallback(() => getState().busy, [getState]);
+
   const withHold = useCallback(
     async (fn: () => Promise<void>) => {
-      if (!enabled || busyRef.current) return;
+      if (!enabled || isBusy()) return;
       setAutosaveHeld(true);
-      setBusy(true);
-      busyRef.current = true;
+      dispatch({ type: 'busy', busy: true });
       setSaveError(null);
       try {
         await fn();
       } finally {
         setAutosaveHeld(false);
-        setBusy(false);
-        busyRef.current = false;
+        dispatch({ type: 'busy', busy: false });
       }
     },
-    [enabled, setAutosaveHeld, setSaveError],
+    [dispatch, enabled, isBusy, setAutosaveHeld, setSaveError],
   );
 
   const runDelete = useCallback(async () => {
-    if (!deleteOpts || !enabled || busyRef.current) return;
+    if (!deleteOpts || !enabled || isBusy()) return;
     if (!(await confirm(deleteOpts.confirm))) return;
     await withHold(async () => {
       // Wait out any in-flight autosave PUT so DELETE sends the version that save
       // produced, not the one before it.
       await awaitInFlight();
       try {
-        await deleteOpts.mutate(versionRef.current);
+        await deleteOpts.mutate(getBoundVersion());
         // Clear dirty before navigation so leave-guards do not prompt.
         markClean();
         suppressLeaveGuardRef.current = true;
@@ -277,6 +283,8 @@ export function useVersionedDocEditor<
     confirm,
     deleteOpts,
     enabled,
+    getBoundVersion,
+    isBusy,
     markClean,
     setSaveError,
     withHold,
@@ -284,51 +292,55 @@ export function useVersionedDocEditor<
 
   const updateDraft = useCallback(
     (update: (prev: TDraft) => TDraft) => {
-      setDraft(update);
+      dispatch({ type: 'edit', update });
       bumpEdit();
-      setDirty(true);
     },
-    [bumpEdit],
+    [bumpEdit, dispatch],
   );
 
-  const loadError =
-    queryError instanceof ApiError
-      ? queryError.message
-      : queryError
-        ? loadErrorFallback
-        : null;
+  const loadError = queryError
+    ? errorMessage(queryError, loadErrorFallback)
+    : null;
 
   const isLoading =
     Boolean(enabled) &&
     (isPending ||
-      adopting ||
       !isFetchedAfterMount ||
       !entity ||
-      hydratedId !== getEntityIdRef.current(entity));
+      phase !== 'editing' ||
+      hydratedId !== entityId);
 
-  return {
+  const editor = {
     draft,
-    setDraft,
     updateDraft,
     entity: entity ?? null,
     dirty,
-    setDirty,
     busy,
+    boundVersion,
     save,
-    saveState: saveState as SaveState,
+    saveState,
     saveError: displayError,
     setSaveError,
     loadError,
     isLoading,
     runDelete,
-    saveRef,
     suppressLeaveGuardRef,
-    bumpEdit,
-    versionRef,
-    withHold,
-    isBusy: () => busyRef.current,
-    onEntityMeta: onSaved,
-    onReplaceDraft,
-    autosave,
   };
+
+  const controller: VersionedDocController<TEntity> = {
+    autosave,
+    doc: { dirty, setDirty, onEntityMeta: onSaved, onReplaceDraft },
+    hold: { withHold, isBusy },
+    getBoundVersion,
+  };
+
+  return { editor, controller };
+}
+
+export function useVersionedDocEditor<
+  TEntity extends VersionedDocEntity,
+  TDraft,
+  TParams,
+>(options: VersionedDocEditorOptions<TEntity, TDraft, TParams>) {
+  return useVersionedDocController(options).editor;
 }

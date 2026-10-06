@@ -3,12 +3,12 @@ import type { ConfirmFn, RetrySignals } from './platform.js';
 import type { DraftPublishResource } from './query/createDraftPublishResource.js';
 import {
   useDraftPublishEditor,
-  type DraftPublishDeleteOptions,
   type DraftPublishEditorOptions,
 } from './useDraftPublishEditor.js';
 import type { SaveState } from './useQueuedAutosave.js';
 import {
-  useVersionedDocEditor,
+  useVersionedDocController,
+  type VersionedDocDeleteOptions,
   type VersionedDocEntity,
 } from './useVersionedDocEditor.js';
 
@@ -36,7 +36,7 @@ export type VersionedEntityEditorOptions<
   unpublishConfirm: string;
   discardConfirm: string;
   loadErrorFallback?: string;
-  delete?: DraftPublishDeleteOptions;
+  delete?: VersionedDocDeleteOptions;
   onHydrate?: (entity: TEntity) => void;
   retrySignals?: RetrySignals;
   beforePublish?: DraftPublishEditorOptions<TEntity>['beforePublish'];
@@ -78,13 +78,9 @@ export function useVersionedEntityEditor<
   retrySignals,
   beforePublish,
 }: VersionedEntityEditorOptions<TEntity, TDraft, TParams>) {
-  const {
-    publish: publishRequest,
-    unpublish: unpublishRequest,
-    discard: discardRequest,
-  } = resource.useLifecycleMutators(params);
+  const lifecycle = resource.useLifecycleMutators(params);
 
-  const doc = useVersionedDocEditor({
+  const { editor, controller } = useVersionedDocController({
     resource,
     params,
     enabled,
@@ -102,48 +98,38 @@ export function useVersionedEntityEditor<
     onHydrate,
     retrySignals,
   });
+  const { getBoundVersion } = controller;
 
-  const publishMutate = useCallback(
-    () => publishRequest({ version: doc.versionRef.current }),
-    [publishRequest, doc.versionRef],
+  const publish = useCallback(
+    () => lifecycle.publish({ version: getBoundVersion() }),
+    [lifecycle.publish, getBoundVersion],
   );
-  const unpublishMutate = useCallback(
-    () => unpublishRequest({ version: doc.versionRef.current }),
-    [unpublishRequest, doc.versionRef],
+  const unpublish = useCallback(
+    () => lifecycle.unpublish({ version: getBoundVersion() }),
+    [lifecycle.unpublish, getBoundVersion],
   );
-  const discardMutate = useCallback(
-    () => discardRequest({ version: doc.versionRef.current }),
-    [discardRequest, doc.versionRef],
+  const discard = useCallback(
+    () => lifecycle.discard({ version: getBoundVersion() }),
+    [lifecycle.discard, getBoundVersion],
   );
 
-  const getVersion = useCallback((e: TEntity) => e.version, []);
-
-  const { runPublish, runUnpublish, runDiscard, publishRef } =
-    useDraftPublishEditor({
-      autosave: doc.autosave,
-      dirty: doc.dirty,
-      setDirty: doc.setDirty,
-      versionRef: doc.versionRef,
-      getVersion,
-      onEntityMeta: doc.onEntityMeta,
-      onReplaceDraft: doc.onReplaceDraft,
-      publish: publishMutate,
-      unpublish: unpublishMutate,
-      discard: discardMutate,
-      unpublishConfirm,
-      discardConfirm,
-      enabled,
-      confirm,
-      hold: { withHold: doc.withHold, isBusy: doc.isBusy },
-      beforePublish,
-    });
+  const { runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
+    autosave: controller.autosave,
+    doc: controller.doc,
+    hold: controller.hold,
+    requests: { publish, unpublish, discard },
+    confirm,
+    confirmMessages: { unpublish: unpublishConfirm, discard: discardConfirm },
+    enabled,
+    beforePublish,
+  });
 
   const actionBarProps: VersionedEntityActionBarProps = {
-    status: doc.entity?.status ?? 'draft',
-    hasUnpublishedChanges: doc.entity?.hasUnpublishedChanges ?? false,
-    saveState: doc.saveState,
-    dirty: doc.dirty,
-    busy: doc.busy,
+    status: editor.entity?.status ?? 'draft',
+    hasUnpublishedChanges: editor.entity?.hasUnpublishedChanges ?? false,
+    saveState: editor.saveState,
+    dirty: editor.dirty,
+    busy: editor.busy,
     onPublish: () => {
       void runPublish();
     },
@@ -154,33 +140,10 @@ export function useVersionedEntityEditor<
       void runDiscard();
     },
     onSave: () => {
-      void doc.save();
+      void editor.save();
     },
   };
 
-  return {
-    draft: doc.draft,
-    setDraft: doc.setDraft,
-    updateDraft: doc.updateDraft,
-    entity: doc.entity,
-    dirty: doc.dirty,
-    setDirty: doc.setDirty,
-    busy: doc.busy,
-    save: doc.save,
-    saveState: doc.saveState,
-    saveError: doc.saveError,
-    setSaveError: doc.setSaveError,
-    loadError: doc.loadError,
-    isLoading: doc.isLoading,
-    actionBarProps,
-    runPublish,
-    runUnpublish,
-    runDiscard,
-    runDelete: doc.runDelete,
-    saveRef: doc.saveRef,
-    publishRef,
-    suppressLeaveGuardRef: doc.suppressLeaveGuardRef,
-    bumpEdit: doc.bumpEdit,
-    versionRef: doc.versionRef,
-  };
+  const { boundVersion: _boundVersion, ...rest } = editor;
+  return { ...rest, actionBarProps, runPublish };
 }

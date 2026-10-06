@@ -10,6 +10,7 @@ import {
   type PendingFlush,
 } from './pendingFlushes.js';
 import { defaultTimers, type RetrySignals, type Timers } from './platform.js';
+import { useLatest } from './useLatest.js';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -24,13 +25,16 @@ type Options<TDraft, TEntity> = {
   setDirty: (dirty: boolean) => void;
   enabled?: boolean;
   debounceMs?: number;
-  versionRef: { current: number };
-  getVersion: (entity: TEntity) => number;
+  /** The version the next save sends. */
+  getBaseVersion: () => number;
   performSave: (
     draft: TDraft,
     version: number,
   ) => Promise<AutosaveResult<TEntity>>;
-  /** Do not replace the draft here. */
+  /**
+   * Must record the entity's version, which the next save reads through
+   * `getBaseVersion`. Do not replace the draft here.
+   */
   onSaved: (entity: TEntity) => void;
   conflictMessage: string;
   conflictMessages?: Record<string, string>;
@@ -66,8 +70,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   setDirty,
   enabled = true,
   debounceMs = 900,
-  versionRef,
-  getVersion,
+  getBaseVersion,
   performSave,
   onSaved,
   conflictMessage,
@@ -83,61 +86,31 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const [held, setHeld] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
 
-  const draftRef = useRef(draft);
+  const draftRef = useLatest(draft);
+  const dirtyRef = useLatest(dirty);
+  const setDirtyRef = useLatest(setDirty);
+  const getBaseVersionRef = useLatest(getBaseVersion);
+  const performSaveRef = useLatest(performSave);
+  const onSavedRef = useLatest(onSaved);
+  const timersRef = useLatest(timers);
+  const retrySignalsRef = useLatest(retrySignals);
+  const retryDelaysRef = useLatest(retryDelaysMs);
+  const queueKeyRef = useLatest(queueKey);
+  // Inline message objects must not give save() a new identity each render,
+  // which would re-arm the debounce after every failure.
+  const conflictMessageRef = useLatest(conflictMessage);
+  const conflictMessagesRef = useLatest(conflictMessages);
+
   const editGenRef = useRef(0);
   const lastSavedGenRef = useRef(0);
-  const inFlightRef = useRef(false);
   const pendingRef = useRef(false);
   const chainRef = useRef<Promise<FlushResult> | null>(null);
   const heldRef = useRef(false);
-  const setDirtyRef = useRef(setDirty);
-  const performSaveRef = useRef(performSave);
-  const onSavedRef = useRef(onSaved);
-  const getVersionRef = useRef(getVersion);
-  const timersRef = useRef(timers);
-  const dirtyRef = useRef(dirty);
   const lastFailureRetryableRef = useRef(false);
   // A signal that lands before the retry loop is armed (mid-request, or
   // between the failure and the next commit) would otherwise be lost.
   const signalledSinceSendRef = useRef(false);
   const retryNowRef = useRef<(() => void) | null>(null);
-  // Refs so inline message objects do not give save() a new identity each
-  // render, which would re-arm the debounce after every failure.
-  const conflictMessageRef = useRef(conflictMessage);
-  const conflictMessagesRef = useRef(conflictMessages);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
-
-  useEffect(() => {
-    dirtyRef.current = dirty;
-  }, [dirty]);
-
-  useEffect(() => {
-    conflictMessageRef.current = conflictMessage;
-    conflictMessagesRef.current = conflictMessages;
-  }, [conflictMessage, conflictMessages]);
-
-  useEffect(() => {
-    setDirtyRef.current = setDirty;
-  }, [setDirty]);
-
-  useEffect(() => {
-    performSaveRef.current = performSave;
-  }, [performSave]);
-
-  useEffect(() => {
-    onSavedRef.current = onSaved;
-  }, [onSaved]);
-
-  useEffect(() => {
-    getVersionRef.current = getVersion;
-  }, [getVersion]);
-
-  useEffect(() => {
-    timersRef.current = timers;
-  }, [timers]);
 
   const setAutosaveHeld = useCallback((next: boolean) => {
     heldRef.current = next;
@@ -166,7 +139,6 @@ export function useQueuedAutosave<TDraft, TEntity>({
     chainRef.current = promise;
 
     void (async () => {
-      inFlightRef.current = true;
       let outcome: FlushResult = 'error';
 
       try {
@@ -184,7 +156,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
 
           const result = await performSaveRef.current(
             current,
-            versionRef.current,
+            getBaseVersionRef.current(),
           );
           if (!result.ok) {
             const retryable = isRetryableStatus(result.status);
@@ -206,7 +178,6 @@ export function useQueuedAutosave<TDraft, TEntity>({
           }
 
           setRetryAttempt(0);
-          versionRef.current = getVersionRef.current(result.entity);
           onSavedRef.current(result.entity);
           lastSavedGenRef.current = genAtStart;
 
@@ -236,14 +207,13 @@ export function useQueuedAutosave<TDraft, TEntity>({
         setSaveState('error');
         setSaveError('Save failed.');
       } finally {
-        inFlightRef.current = false;
         chainRef.current = null;
         resolveChain(outcome);
       }
     })();
 
     return promise;
-  }, [enabled, versionRef]);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || !dirty || held) return;
@@ -256,10 +226,6 @@ export function useQueuedAutosave<TDraft, TEntity>({
 
   // The debounce will not fire again until the next edit, so retryable
   // failures need their own loop.
-  const retrySignalsRef = useRef(retrySignals);
-  useEffect(() => {
-    retrySignalsRef.current = retrySignals;
-  }, [retrySignals]);
   useEffect(() => {
     if (!enabled || !dirty) return;
     return retrySignalsRef.current?.(() => {
@@ -285,16 +251,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save]);
 
   // Unmount cancels the debounce timer; flush instead of dropping edits.
-  const saveRef = useRef(save);
-  useEffect(() => {
-    saveRef.current = save;
-  }, [save]);
-  const queueKeyRef = useRef(queueKey);
-  const retryDelaysRef = useRef(retryDelaysMs);
-  useEffect(() => {
-    queueKeyRef.current = queueKey;
-    retryDelaysRef.current = retryDelaysMs;
-  }, [queueKey, retryDelaysMs]);
+  const saveRef = useLatest(save);
   useEffect(
     () => () => {
       if (heldRef.current) return;
@@ -327,7 +284,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
         });
       const entry: PendingFlush = {
         draft: () => draftRef.current,
-        version: () => versionRef.current,
+        version: () => getBaseVersionRef.current(),
         settle: () => {
           stopped = true;
           wake?.();
@@ -356,11 +313,19 @@ export function useQueuedAutosave<TDraft, TEntity>({
       })();
       registerPendingFlush(key, entry);
     },
-    [versionRef],
+    [],
   );
 
   const awaitInFlight = useCallback((): Promise<FlushResult> => {
     return chainRef.current ?? Promise.resolve('clean');
+  }, []);
+
+  const getEditGen = useCallback(() => editGenRef.current, []);
+  const getLastSavedGen = useCallback(() => lastSavedGenRef.current, []);
+  const markClean = useCallback(() => {
+    lastSavedGenRef.current = editGenRef.current;
+    setDirtyRef.current(false);
+    setSaveState('saved');
   }, []);
 
   return {
@@ -373,13 +338,9 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setAutosaveHeld,
     /** Delete joins this so DELETE cannot race an autosave PUT. */
     awaitInFlight,
-    getEditGen: () => editGenRef.current,
-    getLastSavedGen: () => lastSavedGenRef.current,
+    getEditGen,
+    getLastSavedGen,
     /** After Discard restores server content, so a following Publish does not see a stale lastSavedGen. */
-    markClean: () => {
-      lastSavedGenRef.current = editGenRef.current;
-      setDirtyRef.current(false);
-      setSaveState('saved');
-    },
+    markClean,
   };
 }

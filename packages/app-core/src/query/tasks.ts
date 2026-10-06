@@ -5,6 +5,7 @@ import {
   useQueryClient,
   type InfiniteData,
   type QueryClient,
+  type QueryKey,
 } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
@@ -23,9 +24,11 @@ import {
   type UpdateTaskRequest,
 } from './api.js';
 import { setCachedTask } from './cache.js';
-import { createVersionedResource } from './createVersionedResource.js';
+import {
+  createVersionedResource,
+  useDeleteEntityMutation,
+} from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
-import type { OptimisticContext } from './optimistic.js';
 
 export type TaskResourceParams = { id: string };
 
@@ -90,18 +93,10 @@ export const useCreateTaskMutation = () => {
   });
 };
 
-export const useDeleteTaskMutation = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, version }: TaskVersionVars) =>
-      deleteTask(getClient(), id, { version }),
-    onSuccess: (task) => {
-      setCachedTask(queryClient, task);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
-    },
+export const useDeleteTaskMutation = () =>
+  useDeleteEntityMutation(deleteTask, setCachedTask, (queryClient) => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
   });
-};
 
 const patchTaskInListPages = (
   prev: TasksListData | undefined,
@@ -118,44 +113,59 @@ const patchTaskInListPages = (
   };
 };
 
-async function optimisticPatchTask(
+type TaskSnapshot = {
+  entries: { queryKey: QueryKey; previous: unknown }[];
+  /** Set when the optimistic write may have created the detail entry. */
+  removeDetail?: QueryKey;
+};
+
+/** Cancels task fetches and records the detail and every list, for `rollbackTask`. */
+async function snapshotTask(
   queryClient: QueryClient,
-  vars: TaskVersionVars,
-  patch: (task: Task) => Task,
-): Promise<OptimisticContext<unknown>> {
+  id: string,
+): Promise<TaskSnapshot> {
   await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
-  const snapshots: { queryKey: readonly unknown[]; previous: unknown }[] = [];
-
-  const detailKey = queryKeys.tasks.detail(vars.id);
-  const prevDetail = queryClient.getQueryData<Task>(detailKey);
-  snapshots.push({ queryKey: detailKey, previous: prevDetail });
-  queryClient.setQueryData<Task>(detailKey, (current) =>
-    current && current.id === vars.id ? patch(current) : current,
-  );
-
-  for (const [queryKey, data] of queryClient.getQueriesData<TasksListData>({
-    queryKey: [...queryKeys.tasks.all, 'list'],
-  })) {
-    snapshots.push({ queryKey, previous: data });
-    queryClient.setQueryData<TasksListData>(queryKey, (current) =>
-      patchTaskInListPages(current, vars.id, patch),
-    );
-  }
-
+  const detailKey = queryKeys.tasks.detail(id);
   return {
-    previous: snapshots[0]?.previous,
-    snapshots,
+    entries: [
+      { queryKey: detailKey, previous: queryClient.getQueryData(detailKey) },
+      ...queryClient
+        .getQueriesData({ queryKey: [...queryKeys.tasks.all, 'list'] })
+        .map(([queryKey, previous]) => ({ queryKey, previous })),
+    ],
   };
 }
 
-function restoreOptimistic(
+function rollbackTask(
   queryClient: QueryClient,
-  context: OptimisticContext<unknown> | undefined,
+  snapshot: TaskSnapshot | undefined,
 ) {
-  if (!context) return;
-  for (const snap of context.snapshots) {
-    queryClient.setQueryData(snap.queryKey, snap.previous);
+  if (!snapshot) return;
+  for (const { queryKey, previous } of snapshot.entries) {
+    if (previous !== undefined) queryClient.setQueryData(queryKey, previous);
   }
+  // A stale copy would outrank the next fetch by version.
+  if (snapshot.removeDetail) {
+    queryClient.removeQueries({ queryKey: snapshot.removeDetail, exact: true });
+  }
+}
+
+/** Patches cached copies in place; lists keep the task whether or not it still matches. */
+async function patchTaskInPlace(
+  queryClient: QueryClient,
+  id: string,
+  patch: (task: Task) => Task,
+): Promise<TaskSnapshot> {
+  const snapshot = await snapshotTask(queryClient, id);
+  queryClient.setQueryData<Task>(queryKeys.tasks.detail(id), (current) =>
+    current && current.id === id ? patch(current) : current,
+  );
+  for (const { queryKey } of snapshot.entries.slice(1)) {
+    queryClient.setQueryData<TasksListData>(queryKey, (current) =>
+      patchTaskInListPages(current, id, patch),
+    );
+  }
+  return snapshot;
 }
 
 export const useCompleteTaskMutation = () => {
@@ -166,15 +176,15 @@ export const useCompleteTaskMutation = () => {
       completeTask(getClient(), vars.id, { version: vars.version }),
     onMutate: (vars) => {
       const now = new Date().toISOString();
-      return optimisticPatchTask(queryClient, vars, (t) => ({
+      return patchTaskInPlace(queryClient, vars.id, (t) => ({
         ...t,
         status: 'done',
         completedAt: t.completedAt ?? now,
         version: t.version + 1,
       }));
     },
-    onError: (_error, _vars, context) => {
-      restoreOptimistic(queryClient, context);
+    onError: (_error, _vars, snapshot) => {
+      rollbackTask(queryClient, snapshot);
     },
     onSuccess: (task) => {
       setCachedTask(queryClient, task);
@@ -192,14 +202,14 @@ export const useReopenTaskMutation = () => {
     mutationFn: (vars: TaskVersionVars) =>
       reopenTask(getClient(), vars.id, { version: vars.version }),
     onMutate: (vars) =>
-      optimisticPatchTask(queryClient, vars, (t) => ({
+      patchTaskInPlace(queryClient, vars.id, (t) => ({
         ...t,
         status: t.status === 'done' ? 'todo' : t.status,
         completedAt: null,
         version: t.version + 1,
       })),
-    onError: (_error, _vars, context) => {
-      restoreOptimistic(queryClient, context);
+    onError: (_error, _vars, snapshot) => {
+      rollbackTask(queryClient, snapshot);
     },
     onSuccess: (task) => {
       setCachedTask(queryClient, task);
@@ -263,33 +273,16 @@ export const usePatchTaskMutation = () => {
   return useMutation({
     mutationFn: ({ id, version, patch }: TaskPatchVars) =>
       updateTask(getClient(), id, { version, ...patch }),
-    onMutate: async ({ id, patch }): Promise<OptimisticContext<unknown>> => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all });
-      const detailKey = queryKeys.tasks.detail(id);
-      const snapshots = [
-        { queryKey: detailKey, previous: queryClient.getQueryData(detailKey) },
-        ...queryClient
-          .getQueriesData({ queryKey: [...queryKeys.tasks.all, 'list'] })
-          .map(([queryKey, previous]) => ({ queryKey, previous })),
-      ];
+    onMutate: async ({ id, patch }): Promise<TaskSnapshot> => {
+      const snapshot = await snapshotTask(queryClient, id);
       const current = findCachedTask(queryClient, id);
       if (current) setCachedTask(queryClient, applyTaskPatch(current, patch));
-      return { previous: snapshots[0]?.previous, snapshots };
+      return snapshot.entries[0]!.previous === undefined
+        ? { ...snapshot, removeDetail: queryKeys.tasks.detail(id) }
+        : snapshot;
     },
-    onError: (_error, { id }, context) => {
-      for (const snap of context?.snapshots ?? []) {
-        if (snap.previous !== undefined) {
-          queryClient.setQueryData(snap.queryKey, snap.previous);
-        }
-      }
-      // The optimistic write may have created this entry; a stale copy would
-      // outrank the next fetch by version.
-      if (context?.snapshots[0]?.previous === undefined) {
-        queryClient.removeQueries({
-          queryKey: queryKeys.tasks.detail(id),
-          exact: true,
-        });
-      }
+    onError: (_error, _vars, snapshot) => {
+      rollbackTask(queryClient, snapshot);
     },
     onSuccess: (task) => {
       setCachedTask(queryClient, task);
@@ -299,5 +292,3 @@ export const usePatchTaskMutation = () => {
     },
   });
 };
-
-export const useSetTaskCache = taskResource.useSetCache;
