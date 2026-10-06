@@ -129,6 +129,131 @@ describe('StayWildGame', () => {
     ).not.toBeInTheDocument();
   });
 
+  const fatNow = () =>
+    Number(
+      screen
+        .getByRole('meter', { name: 'Winter fat' })
+        .getAttribute('aria-valuenow'),
+    );
+
+  test('a key released while paused does not keep Maple running', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    key('Escape');
+    key('ArrowRight', 'keyUp');
+    key('Escape');
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  test('pausing and resuming drop held keys', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    key('Escape');
+    key('Escape');
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  test('leaving the window drops held keys', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    act(() => {
+      fireEvent.blur(window);
+    });
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  describe('touch devices in portrait', () => {
+    const PORTRAIT = '(pointer: coarse) and (orientation: portrait)';
+    let portrait = false;
+    const listeners = new Set<() => void>();
+
+    beforeEach(() => {
+      portrait = false;
+      listeners.clear();
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            get matches() {
+              return (
+                query === '(pointer: coarse)' ||
+                (query === PORTRAIT && portrait)
+              );
+            },
+            media: query,
+            addEventListener: (_: string, cb: () => void) => listeners.add(cb),
+            removeEventListener: (_: string, cb: () => void) =>
+              listeners.delete(cb),
+          }) as unknown as MediaQueryList,
+      );
+    });
+
+    const rotate = (toPortrait: boolean) =>
+      act(() => {
+        portrait = toPortrait;
+        listeners.forEach((cb) => cb());
+      });
+
+    const resume = () =>
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Paused' })).getByRole(
+          'button',
+          { name: 'Resume' },
+        ),
+      );
+
+    test('the game does not start in portrait', () => {
+      portrait = true;
+      renderGame();
+      start();
+
+      expect(trackBearsGameStart).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole('heading', {
+          name: 'Help Maple get ready for winter',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('turning to portrait pauses, and resume waits for landscape', () => {
+      renderGame();
+      start();
+      advance(100);
+
+      rotate(true);
+      expect(
+        screen.getByRole('heading', { name: 'Paused' }),
+      ).toBeInTheDocument();
+      const fat = fatNow();
+      resume();
+      expect(
+        screen.getByRole('heading', { name: 'Paused' }),
+      ).toBeInTheDocument();
+      advance(2_000);
+      expect(fatNow()).toBe(fat);
+
+      rotate(false);
+      resume();
+      expect(
+        screen.queryByRole('heading', { name: 'Paused' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   test('a run always ends with the end card and is reported', () => {
     renderGame();
     start();
