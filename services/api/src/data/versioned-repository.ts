@@ -224,8 +224,12 @@ export class VersionedRepository<
 
   /** Zod failures become DataIntegrityError (500), never a client 400. */
   mapItem(raw: unknown): T {
+    return this.mapWith(raw, (item) => this.config.toEntity(item as TItem));
+  }
+
+  mapWith<R>(raw: unknown, parse: (raw: unknown) => R): R {
     try {
-      return this.config.toEntity(raw as TItem);
+      return parse(raw);
     } catch (error) {
       const item =
         raw && typeof raw === 'object'
@@ -706,7 +710,20 @@ export class VersionedRepository<
     return tombstone;
   }
 
-  async queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
+  queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
+    return this.queryPageAs(
+      input,
+      (raw) => this.mapItem(raw),
+      this.config.isDeleted,
+    );
+  }
+
+  /** `mapRow` must throw DataIntegrityError for corrupt rows (see {@link mapWith}); they are logged and skipped. */
+  async queryPageAs<R>(
+    input: QueryPageInput,
+    mapRow: (raw: unknown) => R,
+    isDeleted?: (row: R) => boolean,
+  ): Promise<QueryPage<R>> {
     const {
       cursor,
       limit,
@@ -747,13 +764,13 @@ export class VersionedRepository<
     } catch (error) {
       throwCursorValidation(error);
     }
-    const items: T[] = [];
+    const items: R[] = [];
     const rows = (result.Items ?? []) as Record<string, unknown>[];
     let bytes = 0;
     for (const [index, raw] of rows.entries()) {
-      let entity: T;
+      let entity: R;
       try {
-        entity = this.mapItem(raw);
+        entity = mapRow(raw);
       } catch (error) {
         if (error instanceof DataIntegrityError) {
           logCorruptStoredItem(error);
@@ -761,7 +778,7 @@ export class VersionedRepository<
         }
         throw error;
       }
-      if (this.config.isDeleted?.(entity)) continue;
+      if (isDeleted?.(entity)) continue;
       if (byteBudget !== undefined) {
         const size = jsonByteLength(entity);
         if (items.length > 0 && bytes + size > byteBudget) {
