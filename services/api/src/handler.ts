@@ -4,7 +4,7 @@ import type {
   Context,
 } from 'aws-lambda';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
-import { json, withApiResponseHeaders } from './http.js';
+import { gzipJsonResponse, json, withApiResponseHeaders } from './http.js';
 import { logger, metrics } from './observability.js';
 import { dispatchRoutes, normalizePath } from './router.js';
 import { routes } from './routes.js';
@@ -24,7 +24,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     logger.info('request', { path });
 
     const response = await dispatchRoutes(routes, event, method, path);
-    return response as APIGatewayProxyStructuredResultV2;
+    return gzipJsonResponse(
+      event,
+      response as APIGatewayProxyStructuredResultV2,
+    );
   } catch (error) {
     // Powertools reserves `message` and drops it with a WARN.
     logger.error('handler error', {

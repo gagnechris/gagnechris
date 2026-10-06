@@ -170,7 +170,11 @@ const server = createServer(async (req, res) => {
     for (const [k, v] of Object.entries(result.headers ?? {})) {
       if (v != null) res.setHeader(k, String(v));
     }
-    res.end(result.body ?? '');
+    res.end(
+      result.isBase64Encoded && result.body
+        ? Buffer.from(result.body, 'base64')
+        : (result.body ?? ''),
+    );
   } catch (err) {
     console.error(err);
     res.statusCode = 500;

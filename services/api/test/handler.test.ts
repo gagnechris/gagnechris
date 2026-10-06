@@ -1,3 +1,4 @@
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it, vi } from 'vitest';
 import {
   API_SERVICE_NAME,
@@ -154,6 +155,54 @@ describe('api handler', () => {
     } finally {
       dispatch.mockRestore();
     }
+  });
+
+  describe('gzip', () => {
+    const large = { items: Array.from({ length: 200 }, (_, i) => `post ${i}`) };
+    const respond = async (headers: Record<string, string>, body: unknown) => {
+      const dispatch = vi
+        .spyOn(router, 'dispatchRoutes')
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      try {
+        return (await handler(
+          makeEvent('GET', '/api/health', { headers }),
+          {} as never,
+          () => undefined,
+        )) as {
+          body: string;
+          isBase64Encoded?: boolean;
+          headers: Record<string, string>;
+        };
+      } finally {
+        dispatch.mockRestore();
+      }
+    };
+
+    it('gzips JSON over 1 KB when the client accepts gzip', async () => {
+      const result = await respond({ 'accept-encoding': 'gzip, br' }, large);
+      expect(result.isBase64Encoded).toBe(true);
+      expect(result.headers).toMatchObject({
+        'Content-Encoding': 'gzip',
+        Vary: 'Accept-Encoding',
+      });
+      expect(
+        JSON.parse(gunzipSync(Buffer.from(result.body, 'base64')).toString()),
+      ).toEqual(large);
+    });
+
+    it('leaves small bodies and clients without gzip alone', async () => {
+      for (const result of [
+        await respond({ 'accept-encoding': 'gzip' }, { status: 'ok' }),
+        await respond({}, large),
+      ]) {
+        expect(result.isBase64Encoded).toBeFalsy();
+        expect(result.headers['Content-Encoding']).toBeUndefined();
+      }
+    });
   });
 
   describe('response headers', () => {
