@@ -12,6 +12,7 @@ import {
   trackBearsGameStart,
   trackBearsTipLinkClick,
 } from '../../../utils/analytics';
+import { useMediaQuery } from '../../../kit/useMediaQuery';
 import { usePrefersReducedMotion } from '../camp/usePrefersReducedMotion';
 import { BEAR_FACTS } from '../facts';
 import EndCard from '../shared/EndCard';
@@ -59,6 +60,14 @@ const MAX_FRAME_MS = 250;
 const EAT_TOAST_MS = 1_400;
 const HINT_TOAST_MS = 3_200;
 const TAP_CLICK_MS = 1_000;
+// Matches the CSS that covers the stage with the turn-your-phone notice.
+const TOUCH_PORTRAIT_QUERY = '(pointer: coarse) and (orientation: portrait)';
+const JUMP_KEYS: ReadonlySet<string> = new Set([' ', 'ArrowUp', 'w', 'W']);
+const JUMP_OR_SNIFF_KEYS: ReadonlySet<string> = new Set([
+  ...JUMP_KEYS,
+  's',
+  'S',
+]);
 
 const CRUMB_COLOR: Readonly<Record<NaturalFoodKind, string>> = {
   greens: '#4f8a3a',
@@ -158,6 +167,7 @@ const TouchButton = ({
 
 const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
+  const touchPortrait = useMediaQuery(TOUCH_PORTRAIT_QUERY);
   const [screen, setScreen] = useState<Screen>('ready');
   const [state, setState] = useState<WildState>(() => createWildState());
   const [message, setMessage] = useState('');
@@ -177,12 +187,28 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const soundOnRef = useRef(soundOn);
   const screenRef = useRef(screen);
   const reducedRef = useRef(reducedMotion);
+  const touchPortraitRef = useRef(touchPortrait);
 
   useEffect(() => {
     soundOnRef.current = soundOn;
     screenRef.current = screen;
     reducedRef.current = reducedMotion;
-  }, [soundOn, screen, reducedMotion]);
+    touchPortraitRef.current = touchPortrait;
+  }, [soundOn, screen, reducedMotion, touchPortrait]);
+
+  const resetInput = useCallback(() => {
+    inputRef.current = { ...NO_INPUT };
+  }, []);
+
+  const pause = useCallback(() => {
+    if (screenRef.current !== 'playing') return;
+    resetInput();
+    setScreen('paused');
+  }, [resetInput]);
+
+  useEffect(() => {
+    if (touchPortrait && screen === 'playing') pause();
+  }, [touchPortrait, screen, pause]);
 
   useEffect(() => {
     const mql = window.matchMedia?.('(pointer: coarse)');
@@ -349,6 +375,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   }, [screen, touch, draw, handleEvents]);
 
   const begin = () => {
+    if (touchPortraitRef.current) return;
     const fresh = createWildState();
     stateRef.current = fresh;
     cameraRef.current = 0;
@@ -375,46 +402,59 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
 
   const togglePause = useCallback(() => {
     const cur = screenRef.current;
-    if (cur === 'playing') setScreen('paused');
-    else if (cur === 'paused') setScreen('playing');
-  }, []);
+    if (cur === 'playing') pause();
+    else if (cur === 'paused' && !touchPortraitRef.current) {
+      resetInput();
+      setScreen('playing');
+    }
+  }, [pause, resetInput]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent, down: boolean) => {
       const cur = screenRef.current;
-      if (cur !== 'playing' && cur !== 'paused') return;
       const k = e.key;
-      if (down && (k === 'Escape' || k === 'p' || k === 'P')) {
+      const input = inputRef.current;
+      // Releases apply on every screen so a key let go while paused cannot stick.
+      if (!down) {
+        if (k === 'ArrowLeft' || k === 'a' || k === 'A') input.left = false;
+        else if (k === 'ArrowRight' || k === 'd' || k === 'D')
+          input.right = false;
+        else if (!JUMP_OR_SNIFF_KEYS.has(k)) return;
+        if (cur === 'playing') e.preventDefault();
+        return;
+      }
+      if (cur !== 'playing' && cur !== 'paused') return;
+      if (k === 'Escape' || k === 'p' || k === 'P') {
         e.preventDefault();
         togglePause();
         return;
       }
       if (cur !== 'playing') return;
-      const input = inputRef.current;
-      if (k === 'ArrowLeft' || k === 'a' || k === 'A') input.left = down;
-      else if (k === 'ArrowRight' || k === 'd' || k === 'D') input.right = down;
-      else if (k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W') {
-        if (down && !e.repeat) input.jump = true;
+      if (k === 'ArrowLeft' || k === 'a' || k === 'A') input.left = true;
+      else if (k === 'ArrowRight' || k === 'd' || k === 'D') input.right = true;
+      else if (JUMP_KEYS.has(k)) {
+        if (!e.repeat) input.jump = true;
       } else if (k === 's' || k === 'S') {
-        if (down && !e.repeat) input.sniff = true;
+        if (!e.repeat) input.sniff = true;
       } else return;
       e.preventDefault();
     };
     const keydown = (e: KeyboardEvent) => onKey(e, true);
     const keyup = (e: KeyboardEvent) => onKey(e, false);
     const onHidden = () => {
-      if (document.hidden && screenRef.current === 'playing')
-        setScreen('paused');
+      if (document.hidden) pause();
     };
     window.addEventListener('keydown', keydown);
     window.addEventListener('keyup', keyup);
+    window.addEventListener('blur', resetInput);
     document.addEventListener('visibilitychange', onHidden);
     return () => {
       window.removeEventListener('keydown', keydown);
       window.removeEventListener('keyup', keyup);
+      window.removeEventListener('blur', resetInput);
       document.removeEventListener('visibilitychange', onHidden);
     };
-  }, [togglePause]);
+  }, [togglePause, pause, resetInput]);
 
   const level = currentLevel(state);
   const fat = Math.round(state.fat);

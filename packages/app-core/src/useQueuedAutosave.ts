@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  NOTEBOOK_TAGS_MAX,
-  NOTEBOOK_TEXT_MAX_BYTES,
-  NOTEBOOK_TITLE_MAX_LENGTH,
-} from '@gagnechris/shared';
-import {
   registerPendingFlush,
   resolvePendingFlush,
   type PendingFlush,
@@ -38,6 +33,8 @@ type Options<TDraft, TEntity> = {
   onSaved: (entity: TEntity) => void;
   conflictMessage: string;
   conflictMessages?: Record<string, string>;
+  /** Shown for a 413; each resource states its own limits. */
+  tooLargeMessage: string;
   timers?: Timers;
   retrySignals?: RetrySignals;
   /** Last entry repeats. */
@@ -48,8 +45,6 @@ type Options<TDraft, TEntity> = {
    */
   queueKey?: string;
 };
-
-export const TOO_LARGE_MESSAGE = `Too large to save: notes and descriptions are limited to ${NOTEBOOK_TEXT_MAX_BYTES / 1000} KB, titles to ${NOTEBOOK_TITLE_MAX_LENGTH} characters and tags to ${NOTEBOOK_TAGS_MAX}.`;
 
 const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 
@@ -75,6 +70,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   onSaved,
   conflictMessage,
   conflictMessages,
+  tooLargeMessage,
   timers = defaultTimers,
   retrySignals,
   retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
@@ -100,6 +96,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   // which would re-arm the debounce after every failure.
   const conflictMessageRef = useLatest(conflictMessage);
   const conflictMessagesRef = useLatest(conflictMessages);
+  const tooLargeMessageRef = useLatest(tooLargeMessage);
 
   const editGenRef = useRef(0);
   const lastSavedGenRef = useRef(0);
@@ -170,7 +167,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
               result.status === 409
                 ? (codeMessage ?? conflictMessageRef.current)
                 : result.status === 413
-                  ? TOO_LARGE_MESSAGE
+                  ? tooLargeMessageRef.current
                   : `Save failed (${result.status}).`,
             );
             outcome = 'error';

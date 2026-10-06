@@ -3,6 +3,7 @@ import * as z from 'zod';
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV3,
+  type ResponseConfig,
 } from '@asteasolutions/zod-to-openapi';
 import {
   AdminMeResponseSchema,
@@ -75,22 +76,6 @@ import {
   UserListResponseSchema,
   UserResponseSchema,
 } from './users.js';
-
-const PostIdParamsSchema = z.object({
-  id: UlidSchema.openapi({
-    description: 'Post id (ULID)',
-    type: 'string',
-    pattern: ULID_PATTERN,
-  }),
-});
-
-const ProjectIdParamsSchema = z.object({
-  id: UlidSchema.openapi({
-    description: 'Project id (ULID)',
-    type: 'string',
-    pattern: ULID_PATTERN,
-  }),
-});
 
 const MediaObjectKeyParamsSchema = z.object({
   key: z.string().min(1).openapi({
@@ -190,6 +175,18 @@ const versionedAuth = { 401: r401, 412: r412, 500: r500, 503: r503 };
 const adminAuth = { 401: r401, 500: r500, 503: r503 };
 const publicBase = { 500: r500, 503: r503 };
 
+const idParamsSchema = (Noun: string) =>
+  z.object({
+    id: UlidSchema.openapi({
+      description: `${Noun} id (ULID)`,
+      type: 'string',
+      pattern: ULID_PATTERN,
+    }),
+  });
+
+const capitalize = (noun: string) =>
+  noun.charAt(0).toUpperCase() + noun.slice(1);
+
 type NotebookEntityPathsConfig = {
   path: string;
   noun: string;
@@ -212,14 +209,8 @@ function registerNotebookEntityPaths(
   config: NotebookEntityPathsConfig,
 ) {
   const { path, noun, entity } = config;
-  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
-  const idParams = z.object({
-    id: UlidSchema.openapi({
-      description: `${Noun} id (ULID)`,
-      type: 'string',
-      pattern: ULID_PATTERN,
-    }),
-  });
+  const Noun = capitalize(noun);
+  const idParams = idParamsSchema(Noun);
   const base = { tags: ['Notebook'], security: [{ bearerAuth: [] }] };
 
   registry.registerPath({
@@ -392,93 +383,117 @@ function registerUserPaths(registry: OpenAPIRegistry) {
   });
 }
 
-function registerProjectPaths(registry: OpenAPIRegistry) {
-  const base = { tags: ['Projects'], security: [{ bearerAuth: [] }] };
-  const mutation = { 400: r400, 404: r404, 409: r409, ...adminAuth };
+type PublishableSummaries = {
+  get: string;
+  update: string;
+  publish: string;
+  unpublish: string;
+};
+
+type PublishablePathsConfig = {
+  path: string;
+  tag: string;
+  noun: string;
+  entity: z.ZodType;
+  updateRequest: z.ZodType;
+  summaries?: Partial<PublishableSummaries>;
+  /** Replaces the default 400 on publish. */
+  publish400?: ResponseConfig;
+  /** Present for collections (`/{id}` routes, list, create, delete); absent for singletons. */
+  collection?: {
+    listSummary: string;
+    listDescription: string;
+    listQuery: z.ZodObject;
+    listResponse: z.ZodType;
+    createRequest: z.ZodType;
+    deleteSummary?: string;
+  };
+};
+
+/**
+ * Get / update / publish / unpublish / discard of a draft-publish site entity;
+ * a collection adds list, create and soft-delete under `/{id}`.
+ */
+function registerPublishablePaths(
+  registry: OpenAPIRegistry,
+  config: PublishablePathsConfig,
+) {
+  const { tag, noun, entity, collection } = config;
+  const Noun = capitalize(noun);
+  const base = { tags: [tag], security: [{ bearerAuth: [] }] };
+  const summaries: PublishableSummaries = {
+    get: collection
+      ? `Get ${noun} by id`
+      : `Get ${noun} draft (seeded as draft on first read; includes hasUnpublishedChanges)`,
+    update: `Update ${noun} (optimistic concurrency via version)`,
+    publish: `Publish ${noun} (copies draft to PUBLISHED snapshot; stream rebuild)`,
+    unpublish: `Unpublish ${noun}`,
+    ...config.summaries,
+  };
+  const idParams = collection ? idParamsSchema(Noun) : undefined;
+  const entityPath = idParams ? `${config.path}/{id}` : config.path;
+  const params = idParams ? { params: idParams } : {};
+  const byId: Record<number, ResponseConfig> = idParams
+    ? { 400: r400, 404: r404 }
+    : {};
+  const mutation = { 400: r400, ...byId, 409: r409, ...adminAuth };
+
+  if (collection) {
+    registry.registerPath({
+      method: 'get',
+      path: config.path,
+      summary: collection.listSummary,
+      ...base,
+      request: { query: collection.listQuery },
+      responses: {
+        200: ok(collection.listResponse, collection.listDescription),
+        400: r400,
+        ...adminAuth,
+      },
+    });
+  }
 
   registry.registerPath({
     method: 'get',
-    path: '/api/admin/projects',
-    summary: 'List projects (published first, then drafts; by order)',
+    path: entityPath,
+    summary: summaries.get,
     ...base,
-    request: { query: ListProjectsQuerySchema },
+    ...(idParams ? { request: params } : {}),
     responses: {
-      200: ok(ProjectListResponseSchema, 'Projects'),
-      400: r400,
+      200: ok(entity, Noun),
+      ...byId,
       ...adminAuth,
     },
   });
 
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/projects',
-    summary: 'Create draft project',
-    ...base,
-    request: { body: jsonBody(CreateProjectRequestSchema) },
-    responses: {
-      201: ok(ProjectSchema, 'Created'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/api/admin/projects/{id}',
-    summary: 'Get project by id',
-    ...base,
-    request: { params: ProjectIdParamsSchema },
-    responses: {
-      200: ok(ProjectSchema, 'Project'),
-      400: r400,
-      404: r404,
-      ...adminAuth,
-    },
-  });
+  if (collection) {
+    registry.registerPath({
+      method: 'post',
+      path: config.path,
+      summary: `Create draft ${noun}`,
+      ...base,
+      request: { body: jsonBody(collection.createRequest) },
+      responses: {
+        201: ok(entity, 'Created'),
+        400: r400,
+        409: r409,
+        ...adminAuth,
+      },
+    });
+  }
 
   registry.registerPath({
     method: 'put',
-    path: '/api/admin/projects/{id}',
-    summary: 'Update project draft (optimistic concurrency via version)',
+    path: entityPath,
+    summary: summaries.update,
     ...base,
-    request: {
-      params: ProjectIdParamsSchema,
-      body: jsonBody(UpdateProjectRequestSchema),
-    },
-    responses: { 200: ok(ProjectSchema, 'Updated'), ...mutation },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/projects/{id}/publish',
-    summary:
-      'Publish project (copies draft to PUBLISHED snapshot; stream rebuild)',
-    ...base,
-    request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
-    responses: {
-      200: ok(ProjectSchema, 'Published'),
-      ...mutation,
-      400: {
-        description:
-          'Validation error. `fields.previewImage` is `required_with_demo` when the draft has a `demo` but no `previewImage`.',
-        content: {
-          'application/json': {
-            schema: ErrorResponseSchema,
-            example: {
-              error: 'bad_request',
-              message:
-                'A project with a demo needs a preview image before it is published',
-              fields: { previewImage: 'required_with_demo' },
-            },
-          },
-        },
-      },
-    },
+    request: { ...params, body: jsonBody(config.updateRequest) },
+    responses: { 200: ok(entity, 'Updated'), ...mutation },
   });
 
   for (const [action, summary, description] of [
-    ['unpublish', 'Unpublish project', 'Unpublished (draft)'],
+    ['publish', summaries.publish, 'Published'],
+    ['unpublish', summaries.unpublish, 'Unpublished (draft)'],
     [
       'discard',
       'Discard draft edits and restore from the published snapshot',
@@ -487,22 +502,30 @@ function registerProjectPaths(registry: OpenAPIRegistry) {
   ] as const) {
     registry.registerPath({
       method: 'post',
-      path: `/api/admin/projects/{id}/${action}`,
+      path: `${entityPath}/${action}`,
       summary,
       ...base,
-      request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
-      responses: { 200: ok(ProjectSchema, description), ...mutation },
+      request: { ...params, ...versionOnlyBody },
+      responses: {
+        200: ok(entity, description),
+        ...mutation,
+        ...(action === 'publish' && config.publish400
+          ? { 400: config.publish400 }
+          : {}),
+      },
     });
   }
 
-  registry.registerPath({
-    method: 'delete',
-    path: '/api/admin/projects/{id}',
-    summary: 'Soft-delete project (removes it from the live site)',
-    ...base,
-    request: { params: ProjectIdParamsSchema, ...versionOnlyBody },
-    responses: { 200: ok(ProjectSchema, 'Soft-deleted'), ...mutation },
-  });
+  if (collection) {
+    registry.registerPath({
+      method: 'delete',
+      path: entityPath,
+      summary: collection.deleteSummary ?? `Soft-delete ${noun}`,
+      ...base,
+      request: { ...params, ...versionOnlyBody },
+      responses: { 200: ok(entity, 'Soft-deleted'), ...mutation },
+    });
+  }
 }
 
 export function buildOpenApiDocument() {
@@ -594,304 +617,80 @@ export function buildOpenApiDocument() {
     },
   });
 
-  registry.registerPath({
-    method: 'get',
+  registerPublishablePaths(registry, {
     path: '/api/admin/posts',
-    summary: 'List posts (Blog CMS)',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { query: ListPostsQuerySchema },
-    responses: {
-      200: ok(PostListResponseSchema, 'Post list'),
-      400: r400,
-      ...adminAuth,
+    tag: 'Posts',
+    noun: 'post',
+    entity: PostSchema,
+    updateRequest: UpdatePostRequestSchema,
+    collection: {
+      listSummary: 'List posts (Blog CMS)',
+      listDescription: 'Post list',
+      listQuery: ListPostsQuerySchema,
+      listResponse: PostListResponseSchema,
+      createRequest: CreatePostRequestSchema,
     },
   });
 
-  registry.registerPath({
-    method: 'get',
-    path: '/api/admin/posts/{id}',
-    summary: 'Get post by id',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema },
-    responses: {
-      200: ok(PostSchema, 'Post'),
-      400: r400,
-      404: r404,
-      ...adminAuth,
+  registerPublishablePaths(registry, {
+    path: '/api/admin/projects',
+    tag: 'Projects',
+    noun: 'project',
+    entity: ProjectSchema,
+    updateRequest: UpdateProjectRequestSchema,
+    summaries: {
+      update: 'Update project draft (optimistic concurrency via version)',
     },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/posts',
-    summary: 'Create draft post',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: CreatePostRequestSchema },
+    publish400: {
+      description:
+        'Validation error. `fields.previewImage` is `required_with_demo` when the draft has a `demo` but no `previewImage`.',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+          example: {
+            error: 'bad_request',
+            message:
+              'A project with a demo needs a preview image before it is published',
+            fields: { previewImage: 'required_with_demo' },
+          },
         },
       },
     },
-    responses: {
-      201: ok(PostSchema, 'Created'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
+    collection: {
+      listSummary: 'List projects (published first, then drafts; by order)',
+      listDescription: 'Projects',
+      listQuery: ListProjectsQuerySchema,
+      listResponse: ProjectListResponseSchema,
+      createRequest: CreateProjectRequestSchema,
+      deleteSummary: 'Soft-delete project (removes it from the live site)',
     },
   });
 
-  registry.registerPath({
-    method: 'put',
-    path: '/api/admin/posts/{id}',
-    summary: 'Update post (optimistic concurrency via version)',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: PostIdParamsSchema,
-      body: {
-        content: {
-          'application/json': { schema: UpdatePostRequestSchema },
-        },
-      },
-    },
-    responses: {
-      200: ok(PostSchema, 'Updated'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/posts/{id}/publish',
-    summary:
-      'Publish post (copies draft to PUBLISHED snapshot; stream rebuild)',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema, ...versionOnlyBody },
-    responses: {
-      200: ok(PostSchema, 'Published'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/posts/{id}/unpublish',
-    summary: 'Unpublish post',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema, ...versionOnlyBody },
-    responses: {
-      200: ok(PostSchema, 'Unpublished (draft)'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/posts/{id}/discard',
-    summary: 'Discard draft edits and restore from the published snapshot',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema, ...versionOnlyBody },
-    responses: {
-      200: ok(PostSchema, 'Draft restored from published snapshot'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'delete',
-    path: '/api/admin/posts/{id}',
-    summary: 'Soft-delete post',
-    tags: ['Posts'],
-    security: [{ bearerAuth: [] }],
-    request: { params: PostIdParamsSchema, ...versionOnlyBody },
-    responses: {
-      200: ok(PostSchema, 'Soft-deleted'),
-      400: r400,
-      404: r404,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registerProjectPaths(registry);
   registerUserPaths(registry);
 
-  registry.registerPath({
-    method: 'get',
+  registerPublishablePaths(registry, {
     path: '/api/admin/home',
-    summary:
-      'Get home draft (seeded as draft on first read; includes hasUnpublishedChanges)',
-    tags: ['Home'],
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: ok(HomeSchema, 'Home'),
-      ...adminAuth,
+    tag: 'Home',
+    noun: 'home',
+    entity: HomeSchema,
+    updateRequest: UpdateHomeRequestSchema,
+    summaries: {
+      update: 'Update home content (optimistic concurrency via version)',
+      unpublish: 'Unpublish home (live index.html is left in place)',
     },
   });
 
-  registry.registerPath({
-    method: 'put',
-    path: '/api/admin/home',
-    summary: 'Update home content (optimistic concurrency via version)',
-    tags: ['Home'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: UpdateHomeRequestSchema },
-        },
-      },
-    },
-    responses: {
-      200: ok(HomeSchema, 'Updated'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/home/publish',
-    summary:
-      'Publish home (copies draft to PUBLISHED snapshot; stream rebuild)',
-    tags: ['Home'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(HomeSchema, 'Published'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/home/unpublish',
-    summary: 'Unpublish home (live index.html is left in place)',
-    tags: ['Home'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(HomeSchema, 'Unpublished (draft)'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/home/discard',
-    summary: 'Discard draft edits and restore from the published snapshot',
-    tags: ['Home'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(HomeSchema, 'Draft restored from published snapshot'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
+  registerPublishablePaths(registry, {
     path: '/api/admin/resume',
-    summary:
-      'Get resume draft (seeded as draft on first read; includes hasUnpublishedChanges)',
-    tags: ['Resume'],
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: ok(ResumeSchema, 'Resume'),
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'put',
-    path: '/api/admin/resume',
-    summary: 'Update resume (optimistic concurrency via version)',
-    tags: ['Resume'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      body: {
-        content: {
-          'application/json': { schema: UpdateResumeRequestSchema },
-        },
-      },
-    },
-    responses: {
-      200: ok(ResumeSchema, 'Updated'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/resume/publish',
-    summary:
-      'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
-    tags: ['Resume'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(ResumeSchema, 'Published'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/resume/unpublish',
-    summary: 'Unpublish resume (live HTML is left in place)',
-    tags: ['Resume'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(ResumeSchema, 'Unpublished (draft)'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/admin/resume/discard',
-    summary: 'Discard draft edits and restore from the published snapshot',
-    tags: ['Resume'],
-    security: [{ bearerAuth: [] }],
-    request: versionOnlyBody,
-    responses: {
-      200: ok(ResumeSchema, 'Draft restored from published snapshot'),
-      400: r400,
-      409: r409,
-      ...adminAuth,
+    tag: 'Resume',
+    noun: 'resume',
+    entity: ResumeSchema,
+    updateRequest: UpdateResumeRequestSchema,
+    summaries: {
+      publish:
+        'Publish resume (copies draft to PUBLISHED snapshot; regenerates PDF)',
+      unpublish:
+        'Unpublish resume (the page says "Resume available on request" and resume.pdf is deleted)',
     },
   });
 

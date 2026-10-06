@@ -46,6 +46,7 @@ redirects use dedicated items.
 | `coverImage`                       | Optional `/media/...` path                                                                  |
 | `seo`                              | Optional map: `title`, `description`, `ogImage` overrides                                   |
 | `version`                          | Number for optimistic concurrency                                                           |
+| `hasUnpublishedChanges`            | Boolean, written on every META write: published and the content differs from `PUBLISHED`    |
 | `gsi1pk`                           | `STATUS#<status>`                                                                           |
 | `gsi1sk`                           | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt`    |
 
@@ -53,7 +54,7 @@ Admin autosave writes **only** this item. Edits never change the live site.
 
 #### `POST#<postId>` / `PUBLISHED` — live snapshot
 
-Written only on `POST .../publish`. Same content attrs as META (no GSI1 keys —
+Written only on `POST .../publish`. Same content attrs as META (no `hasUnpublishedChanges`, no GSI1 keys —
 admin `STATUS#published` queries stay unique to META). The publisher stream
 filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
 `unpublish` / soft-delete removes this item.
@@ -82,16 +83,16 @@ treats redirect slugs as reserved.
 
 ### Access patterns (posts)
 
-| Need                    | How                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
-| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                 |
-| List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only), page in that order   |
-| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`             |
-| List by tag (published) | See tag items below                                                                 |
-| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                 |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                      |
-| Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                |
+| Need                    | How                                                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`)                                                                                                                                |
+| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                                                                                                                                                |
+| List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only, summary attributes via `ProjectionExpression`), page in that order; the flag comes from META, and a META row without it is compared with `PUBLISHED` |
+| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`                                                                                                                                            |
+| List by tag (published) | See tag items below                                                                                                                                                                                                |
+| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
+| Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
 ### Tag index items
 
@@ -127,22 +128,22 @@ the publisher's static `/projects` pages.
 
 #### `PROJECT#<projectId>` / `META` — editable draft
 
-| Attr                                            | Notes                                                                                                     |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `slug`                                          | URL slug (`/projects/<slug>`), claimed in its own partition                                               |
-| `name`, `pitch`                                 | Name and one-line pitch                                                                                   |
-| `stage`                                         | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
-| `stageNote`                                     | Short note shown with the stage, e.g. `since 2026`                                                        |
-| `previewImage`                                  | `/media/...` path or `null`                                                                               |
-| `bodyMarkdown`                                  | Page body (why / how sections); a list of `**Label** value` items renders as label/value rows             |
-| `stack`                                         | `string[]`, trimmed and de-duplicated                                                                     |
-| `links`                                         | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
-| `demo`                                          | `posts` \| `notebook` \| `null`                                                                           |
-| `order`                                         | Integer 0–999999; lists sort by it, then name                                                             |
-| `href`                                          | Site path or `https` URL, or `null`. When set the card links here and no project page is generated        |
-| `status`, `publishedAt`, `updatedAt`, `version` | As for posts                                                                                              |
-| `gsi1pk`                                        | `PROJECT_STATUS#<status>` (never posts' `STATUS#…`, so the published-posts query never sees projects)     |
-| `gsi1sk`                                        | `ORDER#<order, 6 digits>#PROJECT#<projectId>`                                                             |
+| Attr                                                                     | Notes                                                                                                     |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `slug`                                                                   | URL slug (`/projects/<slug>`), claimed in its own partition                                               |
+| `name`, `pitch`                                                          | Name and one-line pitch                                                                                   |
+| `stage`                                                                  | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
+| `stageNote`                                                              | Short note shown with the stage, e.g. `since 2026`                                                        |
+| `previewImage`                                                           | `/media/...` path or `null`                                                                               |
+| `bodyMarkdown`                                                           | Page body (why / how sections); a list of `**Label** value` items renders as label/value rows             |
+| `stack`                                                                  | `string[]`, trimmed and de-duplicated                                                                     |
+| `links`                                                                  | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
+| `demo`                                                                   | `posts` \| `notebook` \| `null`                                                                           |
+| `order`                                                                  | Integer 0–999999; lists sort by it, then name                                                             |
+| `href`                                                                   | Site path or `https` URL, or `null`. When set the card links here and no project page is generated        |
+| `status`, `publishedAt`, `updatedAt`, `version`, `hasUnpublishedChanges` | As for posts                                                                                              |
+| `gsi1pk`                                                                 | `PROJECT_STATUS#<status>` (never posts' `STATUS#…`, so the published-posts query never sees projects)     |
+| `gsi1sk`                                                                 | `ORDER#<order, 6 digits>#PROJECT#<projectId>`                                                             |
 
 #### `PROJECT#<projectId>` / `PUBLISHED` — live snapshot
 

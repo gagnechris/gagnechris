@@ -5402,7 +5402,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Unpublish resume (live HTML is left in place) */
+        /** Unpublish resume (the page says "Resume available on request" and resume.pdf is deleted) */
         post: {
             parameters: {
                 query?: never;

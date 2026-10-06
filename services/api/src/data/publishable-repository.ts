@@ -110,6 +110,36 @@ export type PublishableConfig<
 
 export type LoadedPair<T> = { draft: T; published: T | undefined };
 
+/** `hasUnpublishedChanges` is undefined when the META row has no stored flag. */
+export type ListRow = { status: string; hasUnpublishedChanges?: boolean };
+
+export type Flagged<R extends ListRow> = Omit<R, 'hasUnpublishedChanges'> & {
+  hasUnpublishedChanges: boolean;
+};
+
+export type ListRowSpec<R extends ListRow> = {
+  /** Read with a ProjectionExpression; omit to read whole rows. */
+  attributes?: readonly string[];
+  parse: (raw: unknown) => R;
+  idOf: (row: R) => string;
+};
+
+function withProjection(
+  input: QueryPageInput,
+  attributes: readonly string[],
+): QueryPageInput {
+  const names: Record<string, string> = { ...input.ExpressionAttributeNames };
+  const placeholders = attributes.map((attr, i) => {
+    names[`#proj${i}`] = attr;
+    return `#proj${i}`;
+  });
+  return {
+    ...input,
+    ProjectionExpression: placeholders.join(', '),
+    ExpressionAttributeNames: names,
+  };
+}
+
 const BATCH_GET_MAX_KEYS = 100;
 
 export class PublishableRepository<
@@ -245,37 +275,73 @@ export class PublishableRepository<
     return found;
   }
 
-  /** Draft rows only; pass them through {@link withPublishedFlags} before returning them. */
-  queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
-    return this.drafts.queryPage(input);
+  /**
+   * Draft rows mapped by `spec.parse`, reading only `spec.attributes` when
+   * given. The flag comes from the META row; rows that predate the stored
+   * flag fall back to comparing against PUBLISHED.
+   */
+  async queryListPage<R extends ListRow>(
+    input: QueryPageInput,
+    spec: ListRowSpec<R>,
+  ): Promise<QueryPage<Flagged<R>>> {
+    const page = await this.drafts.queryPageAs(
+      spec.attributes ? withProjection(input, spec.attributes) : input,
+      (raw) => this.drafts.mapWith(raw, spec.parse),
+      (row) => row.status === 'deleted',
+    );
+    return { ...page, items: await this.resolveFlags(page.items, spec.idOf) };
   }
 
-  /** Corrupt PUBLISHED rows are logged and read as missing so one bad row cannot fail a list. */
-  async withPublishedFlags(drafts: readonly T[]): Promise<T[]> {
-    const liveIds = new Set(
-      drafts.filter((d) => d.status === 'published').map(this.config.idOf),
-    );
-    const published = new Map<string, T>();
-    const rows = await this.batchGet(
-      [...liveIds].map((id) => this.publishedKey(id)),
-    );
-    for (const row of rows) {
-      try {
-        const entity = this.drafts.mapItem(row);
-        published.set(this.config.idOf(entity), entity);
-      } catch (error) {
-        if (!(error instanceof DataIntegrityError)) throw error;
-        logCorruptStoredItem(error);
+  /** Corrupt rows read for the fallback are logged and treated as missing so one bad row cannot fail a list. */
+  private async resolveFlags<R extends ListRow>(
+    rows: readonly R[],
+    idOf: (row: R) => string,
+  ): Promise<Flagged<R>[]> {
+    const legacyIds = [
+      ...new Set(
+        rows
+          .filter(
+            (r) =>
+              r.status === 'published' && r.hasUnpublishedChanges === undefined,
+          )
+          .map(idOf),
+      ),
+    ];
+    const computed = new Map<string, boolean>();
+    if (legacyIds.length > 0) {
+      const byKey = new Map<string, Record<string, unknown>>();
+      for (const item of await this.batchGet(
+        legacyIds.flatMap((id) => [this.metaKey(id), this.publishedKey(id)]),
+      )) {
+        byKey.set(`${String(item.pk)}\n${String(item.sk)}`, item);
+      }
+      const read = (key: ItemKey): T | undefined => {
+        const item = byKey.get(`${key.pk}\n${key.sk}`);
+        if (!item) return undefined;
+        try {
+          return this.drafts.mapItem(item);
+        } catch (error) {
+          if (!(error instanceof DataIntegrityError)) throw error;
+          logCorruptStoredItem(error);
+          return undefined;
+        }
+      };
+      for (const id of legacyIds) {
+        const draft = read(this.metaKey(id));
+        if (!draft) continue;
+        computed.set(
+          id,
+          this.flag(draft, read(this.publishedKey(id))).hasUnpublishedChanges ??
+            false,
+        );
       }
     }
-    return drafts.map((d) =>
-      this.flag(
-        d,
-        d.status === 'published'
-          ? published.get(this.config.idOf(d))
-          : undefined,
-      ),
-    );
+    return rows.map((r) => ({
+      ...r,
+      hasUnpublishedChanges:
+        r.status === 'published' &&
+        (r.hasUnpublishedChanges ?? computed.get(idOf(r)) ?? false),
+    }));
   }
 
   /** Claims the slug in the same transaction when the entity has one. */
@@ -328,14 +394,16 @@ export class PublishableRepository<
   ): Promise<T> {
     const existing = this.flag(loaded.draft, loaded.published);
     assertExpectedVersion(existing, expectedVersion);
-    const next: T = {
-      ...build(existing),
-      updatedAt: this.now(),
-      version: existing.version + 1,
-      hasUnpublishedChanges: false,
-    };
+    const next = this.flag(
+      {
+        ...build(existing),
+        updatedAt: this.now(),
+        version: existing.version + 1,
+      },
+      loaded.published,
+    );
     await this.persistMutation(existing, next, {});
-    return this.flag(next, loaded.published);
+    return next;
   }
 
   async softDelete(id: string, expectedVersion: number): Promise<T> {

@@ -67,6 +67,7 @@ describe('useVersionedDocEditor fake note (CHR-173)', () => {
         store.delete(id);
         return prev;
       },
+      tooLargeMessage: 'Too large.',
       setCache: (qc, entity) => {
         qc.setQueryData(['notebook', 'notes', entity.id], entity);
       },
@@ -182,6 +183,7 @@ describe('useVersionedDocEditor remote updates (CHR-178)', () => {
         if (gate) await gate;
         return next;
       },
+      tooLargeMessage: 'Too large.',
       setCache: (qc, entity) => {
         qc.setQueryData(['notebook', 'notes', entity.id], entity);
       },

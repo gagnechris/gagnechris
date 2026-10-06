@@ -29,6 +29,34 @@ describe('posts transactions (DynamoDB Local)', () => {
     await truncateTable(doc, tableName);
   });
 
+  it('lists summary rows with the flag stored on META', async () => {
+    const ctx = makeCtx(doc, tableName);
+    const draft = await makePost(ctx, {
+      title: 'Listed',
+      bodyMarkdown: 'live',
+    });
+    const published = await ctx.posts.publish(draft.id, draft.version);
+    await ctx.posts.update(published.id, {
+      version: published.version,
+      bodyMarkdown: 'edited',
+    });
+    const meta = await doc.send(
+      new GetCommand({ TableName: tableName, Key: keys.post.meta(draft.id) }),
+    );
+    expect(meta.Item?.hasUnpublishedChanges).toBe(true);
+
+    const page = await ctx.posts.list('published');
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        id: draft.id,
+        title: 'Listed',
+        status: 'published',
+        hasUnpublishedChanges: true,
+      }),
+    ]);
+    expect(page.items[0]).not.toHaveProperty('bodyMarkdown');
+  });
+
   it('publish, unpublish, and discard (PUBLISHED row)', async () => {
     const ctx = makeCtx(doc, tableName);
     const draft = await makePost(ctx, { title: 'Integration Post' });

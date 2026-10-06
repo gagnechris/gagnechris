@@ -30,6 +30,7 @@ import {
   useDeleteEntityMutation,
 } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
+import { NOTEBOOK_TOO_LARGE_MESSAGE } from './tooLarge.js';
 
 export type NoteResourceParams = { id: string };
 
@@ -103,6 +104,7 @@ export const noteResource = createVersionedResource<Note, NoteResourceParams>({
     updateNote(client, id, body as UpdateNoteRequest),
   delete: (client, { id }, body) => deleteNote(client, id, body),
   setCache: setCachedNote,
+  tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 
 export const dailyNoteResource = createVersionedResource<
@@ -128,6 +130,7 @@ export const dailyNoteResource = createVersionedResource<
     return saved;
   },
   setCache: setCachedNote,
+  tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 
 /** One detail query per id; a 404 (deleted note) is not retried. */

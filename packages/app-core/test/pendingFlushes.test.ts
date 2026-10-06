@@ -69,6 +69,7 @@ const setup = () => {
       store.set(id, next);
       return next;
     },
+    tooLargeMessage: 'Too large.',
     setCache: (qc, entity) => {
       qc.setQueryData(['notebook', 'notes', entity.id], entity);
     },

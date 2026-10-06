@@ -59,6 +59,24 @@ function checkDeleteCondition(
   if (!ok) throw { name: 'ConditionalCheckFailedException' };
 }
 
+function project(
+  row: Record<string, unknown>,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const expression = input.ProjectionExpression as string | undefined;
+  if (!expression) return { ...row };
+  const names = (input.ExpressionAttributeNames ?? {}) as Record<
+    string,
+    string
+  >;
+  const out: Record<string, unknown> = {};
+  for (const token of expression.split(',').map((t) => t.trim())) {
+    const attr = names[token] ?? token;
+    if (attr in row) out[attr] = row[attr];
+  }
+  return out;
+}
+
 export function createMemoryDoc(): {
   doc: DynamoDBDocumentClient;
   store: Map<string, Record<string, unknown>>;
@@ -235,7 +253,7 @@ export function createMemoryDoc(): {
       const last =
         limit && rows.length > sliced.length ? sliced.at(-1) : undefined;
       return {
-        Items: sliced.map((r) => ({ ...r })),
+        Items: sliced.map((r) => project(r, cmd.input)),
         // Like DynamoDB: base keys plus only the queried index's keys.
         LastEvaluatedKey: last
           ? {

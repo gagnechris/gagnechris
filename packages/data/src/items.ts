@@ -15,6 +15,7 @@ import {
   type Home,
   type Note,
   type Post,
+  type PostSummary,
   type Project,
   type Resume,
   type Task,
@@ -75,6 +76,8 @@ export const PublishableMetaFieldsSchema = z.object({
   updatedAt: z.string().min(1),
   /** Items missing the attribute are still treated as 0 by VERSION_MATCH_CONDITION. */
   version: z.number().int().nonnegative(),
+  /** Written on META rows only; absent on rows saved before it was stored. */
+  hasUnpublishedChanges: z.boolean().optional(),
 });
 
 export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
@@ -95,6 +98,29 @@ export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
 });
 
 export type PostMetaItem = z.infer<typeof PostMetaItemSchema>;
+
+export const PostSummaryItemSchema = PostMetaItemSchema.pick({
+  pk: true,
+  sk: true,
+  entityType: true,
+  postId: true,
+  slug: true,
+  title: true,
+  tags: true,
+  projectIds: true,
+  status: true,
+  publishedAt: true,
+  updatedAt: true,
+  version: true,
+  hasUnpublishedChanges: true,
+  gsi1pk: true,
+  gsi1sk: true,
+});
+
+export type PostSummaryItem = z.infer<typeof PostSummaryItemSchema>;
+
+export const POST_SUMMARY_ATTRIBUTES: readonly (keyof PostSummaryItem)[] =
+  Object.keys(PostSummaryItemSchema.shape) as (keyof PostSummaryItem)[];
 
 export const ProjectMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
@@ -251,6 +277,26 @@ export function metaToPost(
   };
 }
 
+export type PostListRow = Omit<PostSummary, 'hasUnpublishedChanges'> & {
+  hasUnpublishedChanges?: boolean;
+};
+
+export function parsePostSummaryItem(raw: unknown): PostListRow {
+  const item = PostSummaryItemSchema.parse(raw);
+  return {
+    id: item.postId,
+    slug: item.slug,
+    title: item.title,
+    tags: item.tags,
+    projectIds: item.projectIds ?? [],
+    status: item.status,
+    publishedAt: item.publishedAt ?? null,
+    updatedAt: item.updatedAt,
+    version: item.version,
+    hasUnpublishedChanges: item.hasUnpublishedChanges,
+  };
+}
+
 export function buildMetaItem(post: Post): PostMetaItem {
   const sortTs =
     post.status === 'published' && post.publishedAt
@@ -273,6 +319,7 @@ export function buildMetaItem(post: Post): PostMetaItem {
     coverImage: post.coverImage,
     seo: post.seo,
     version: post.version,
+    hasUnpublishedChanges: post.hasUnpublishedChanges,
     gsi1pk: statusGsi1Pk(post.status),
     gsi1sk: statusGsi1Sk(sortTs, post.id),
   };
@@ -284,7 +331,12 @@ export function buildPublishedItem(
 ): Omit<PostMetaItem, 'gsi1pk' | 'gsi1sk'> {
   const publishedAt = post.publishedAt ?? post.updatedAt;
   const meta = buildMetaItem({ ...post, status: 'published', publishedAt });
-  const { gsi1pk: _gsi1pk, gsi1sk: _gsi1sk, ...rest } = meta;
+  const {
+    gsi1pk: _gsi1pk,
+    gsi1sk: _gsi1sk,
+    hasUnpublishedChanges: _flag,
+    ...rest
+  } = meta;
   return {
     ...rest,
     sk: postPublishedSk(),
@@ -312,6 +364,18 @@ export function projectContentEqual(a: Project, b: Project): boolean {
     a.order === b.order &&
     a.href === b.href
   );
+}
+
+export type ProjectListRow = Omit<Project, 'hasUnpublishedChanges'> & {
+  hasUnpublishedChanges?: boolean;
+};
+
+export function parseProjectListRow(raw: unknown): ProjectListRow {
+  const item = parseProjectMetaItem(raw);
+  return {
+    ...metaToProject(item),
+    hasUnpublishedChanges: item.hasUnpublishedChanges,
+  };
 }
 
 export function metaToProject(
@@ -362,6 +426,7 @@ export function buildProjectMetaItem(project: Project): ProjectMetaItem {
     publishedAt: project.publishedAt,
     updatedAt: project.updatedAt,
     version: project.version,
+    hasUnpublishedChanges: project.hasUnpublishedChanges,
     gsi1pk: projectStatusGsi1Pk(project.status),
     gsi1sk: projectOrderGsi1Sk(project.order, project.id),
   };
@@ -375,6 +440,7 @@ export function buildProjectPublishedItem(
   const {
     gsi1pk: _gsi1pk,
     gsi1sk: _gsi1sk,
+    hasUnpublishedChanges: _flag,
     ...rest
   } = buildProjectMetaItem({ ...project, status: 'published', publishedAt });
   return { ...rest, sk: SK_PUBLISHED, status: 'published', publishedAt };
