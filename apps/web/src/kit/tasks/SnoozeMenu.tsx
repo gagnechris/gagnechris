@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
-import { resolveTaskDateToken, type TaskSchedule } from '@gagnechris/shared';
+import type { TaskSchedule } from '@gagnechris/shared';
 import { TaskDateMenu } from './TaskDateMenu';
 import {
   taskDateMenuIds,
@@ -24,7 +24,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
-  const items = taskDateMenuItems(baseDay, '');
+  const items = taskDateMenuItems(baseDay, '', 'start', { deadline: false });
   const activeItem = items[active];
 
   const close = () => {
@@ -34,13 +34,12 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
   };
 
   const choose = (item: TaskDateMenuItem) => {
-    if (!item.token) {
+    if (!item.schedule) {
       setPicked(tomorrowOf(baseDay));
       return;
     }
-    const schedule = resolveTaskDateToken(item.token.slice(1), baseDay);
     close();
-    if (schedule) onChoose(schedule);
+    onChoose(item.schedule);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
