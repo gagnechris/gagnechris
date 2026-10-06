@@ -353,6 +353,10 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     ['disable', 'Disable sign-in; access level unchanged'],
     ['enable', 'Enable sign-in'],
     [
+      'sign-out',
+      'Sign the user out everywhere; their open sessions end within the hour',
+    ],
+    [
       'remove',
       'Remove access: drop all groups and disable sign-in. The account and its Notebook are kept',
     ],

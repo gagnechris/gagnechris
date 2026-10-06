@@ -11,7 +11,12 @@ import { ulid } from 'ulid';
 /** Mirrors `LOCAL_AUTH_USER_KEY` in apps/web/src/workspace/auth/session.ts. */
 const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
 
-export type E2EUser = { userId: string; label: string };
+export type E2EUser = {
+  userId: string;
+  label: string;
+  /** Cognito groups; local auth defaults to all three. */
+  groups?: string[];
+};
 
 export function requireEnv(name: string): string {
   const value = process.env[name];

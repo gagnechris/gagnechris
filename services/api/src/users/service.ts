@@ -134,6 +134,13 @@ export class UserAdmin {
     return this.managedUser(id);
   }
 
+  async signOut(id: string): Promise<ManagedUser> {
+    this.assertNotSelf(id);
+    await this.requireActive(id);
+    await this.directory.signOutEverywhere(id);
+    return this.managedUser(id);
+  }
+
   async enable(id: string): Promise<ManagedUser> {
     await this.requireActive(id);
     await this.directory.enableUser(id);

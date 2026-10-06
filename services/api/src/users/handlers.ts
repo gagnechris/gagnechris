@@ -114,6 +114,7 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
     }),
     action('disable', 'UsersDisable', (users, id) => users.disable(id)),
     action('enable', 'UsersEnable', (users, id) => users.enable(id)),
+    action('sign-out', 'UsersSignOut', (users, id) => users.signOut(id)),
     action('remove', 'UsersRemove', (users, id) => users.remove(id)),
     action('resend-invite', 'UsersResendInvite', (users, id) =>
       users.resendInvite(id),

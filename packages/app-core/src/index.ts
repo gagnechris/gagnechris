@@ -161,6 +161,13 @@ export {
   type StarterProjectsResult,
 } from './query/projects.js';
 export {
+  useInviteUserMutation,
+  useSetUserAccessMutation,
+  useUserActionMutation,
+  useUsersQuery,
+  type UserAction,
+} from './query/users.js';
+export {
   homeResource,
   useSetHomeCache,
   type HomeResourceParams,

@@ -121,7 +121,7 @@ into ID-token claims with `sub=<userId>` for the matched route's app
 (`user-admin` on `/api/admin/users`, `site-admin` on the rest of `/api/admin`,
 `notebook` on `/api/notebook`), so
 owner-scoped notebook data is separate per user. Any other bearer, or none, is the default user.
-`/api/admin/users` runs against an in-memory user directory (`USER_DIRECTORY=memory`) seeded with the default user as a Full Admin.
+`/api/admin/users` runs against an in-memory user directory (`USER_DIRECTORY=memory`) seeded with the default user as a Full Admin. It lasts for the whole run, so invite `prefix`ed emails. To sign in with less access, pass `groups` to `signIn` (for example `{ ...users.owner, groups: ['site-admin'] }` for Public CMS).
 
 All tests share one stack and table, so isolate by `prefix` and per-test
 users rather than assuming an empty table. Seeding goes through the API

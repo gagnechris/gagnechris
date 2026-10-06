@@ -330,6 +330,16 @@ describe('disable, enable, remove, restore', () => {
   });
 });
 
+describe('sign out everywhere', () => {
+  it('signs another user out, never yourself', async () => {
+    const { status } = await call('POST', '/admin/users/writer/sign-out');
+    expect(status).toBe(200);
+    expect(directory.signedOut).toEqual(['writer']);
+    const self = await call('POST', '/admin/users/owner/sign-out');
+    expect(self.body.error).toBe('self_change');
+  });
+});
+
 describe('resend invite', () => {
   it('resends only while the user hasn’t signed in', async () => {
     const invited = await call('POST', '/admin/users', {
@@ -354,7 +364,7 @@ describe('no data deletion', () => {
     const userRoutes = routes.filter((r) =>
       r.pattern.startsWith('/admin/users'),
     );
-    expect(userRoutes.length).toBe(8);
+    expect(userRoutes.length).toBe(9);
     expect(userRoutes.some((r) => r.method === 'DELETE')).toBe(false);
   });
 

@@ -1,10 +1,13 @@
-import { useMatch } from 'react-router-dom';
+import { Outlet, useMatch } from 'react-router-dom';
 import WorkspaceShell, {
   WorkspaceFrame,
   type ShellNavSection,
 } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
+import { USER_ADMIN_GROUP } from '../workspace/access';
 import AdminSearchPalette from './AdminSearchPalette';
+
+export type AdminOutletContext = { user: AuthUser };
 
 const SECTIONS: ShellNavSection[] = [
   {
@@ -14,6 +17,18 @@ const SECTIONS: ShellNavSection[] = [
       { to: '/home', label: 'Home page', tabLabel: 'Home', icon: 'home' },
       { to: '/resume', label: 'Resume', icon: 'resume' },
       { to: '/projects', label: 'Projects', icon: 'projects' },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      {
+        to: '/settings/users',
+        label: 'Users & access',
+        tabLabel: 'Users',
+        icon: 'users',
+        group: USER_ADMIN_GROUP,
+      },
     ],
   },
 ];
@@ -27,7 +42,9 @@ function AdminFrame({ user }: { user: AuthUser }) {
       sections={SECTIONS}
       rail={editingPost !== null}
       renderSearch={(close) => <AdminSearchPalette onClose={close} />}
-    />
+    >
+      <Outlet context={{ user } satisfies AdminOutletContext} />
+    </WorkspaceFrame>
   );
 }
 
