@@ -22,8 +22,7 @@ const target: PublishTarget = {
       scope.touchedEntityTypes.has(NOW_ENTITY) || isFullRebuildScope(scope)
     );
   },
-  needsCatalog: () => false,
-  needsShell: () => false,
+  needs: {},
   async run() {
     return {
       artifacts: [

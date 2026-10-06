@@ -1,7 +1,9 @@
 import { renderResumePage, renderResumeUnavailablePage } from '../../render.js';
 import { buildResumePdfArtifact, RESUME_PDF_KEY } from '../../resume-pdf.js';
+import { htmlArtifact } from '../artifacts.js';
 import type { PublishArtifact, PublishTarget } from '../types.js';
-import { CACHE_HTML } from '../types.js';
+
+const RESUME_PAGE_KEY = 'resume/index.html';
 
 const target: PublishTarget = {
   id: 'resume',
@@ -10,12 +12,7 @@ const target: PublishTarget = {
   matches(scope) {
     return scope.resume;
   },
-  needsCatalog() {
-    return false;
-  },
-  needsShell() {
-    return true;
-  },
+  needs: { shell: true },
   async run(ctx) {
     const { shell, sources } = ctx;
     const lookup = await sources.getPublishedResume();
@@ -26,12 +23,7 @@ const target: PublishTarget = {
     if (lookup.status === 'ok') {
       const resume = lookup.entity;
       const artifacts: PublishArtifact[] = [
-        {
-          key: 'resume/index.html',
-          body: renderResumePage(shell, resume),
-          contentType: 'text/html; charset=utf-8',
-          cacheControl: CACHE_HTML,
-        },
+        htmlArtifact(RESUME_PAGE_KEY, renderResumePage(shell, resume)),
       ];
       const pdf = await buildResumePdfArtifact(resume);
       let resumePdfFailed = false;
@@ -49,12 +41,7 @@ const target: PublishTarget = {
     }
     return {
       artifacts: [
-        {
-          key: 'resume/index.html',
-          body: renderResumeUnavailablePage(shell),
-          contentType: 'text/html; charset=utf-8',
-          cacheControl: CACHE_HTML,
-        },
+        htmlArtifact(RESUME_PAGE_KEY, renderResumeUnavailablePage(shell)),
       ],
       deleteKeys: [RESUME_PDF_KEY],
       invalidationPaths: ['/resume*'],

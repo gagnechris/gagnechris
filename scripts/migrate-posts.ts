@@ -146,7 +146,7 @@ async function main(): Promise<void> {
 
   if (process.env.SITE_STORAGE === 'filesystem') {
     const { rebuildPublishedSite } =
-      await import('@gagnechris/publisher/s3-site');
+      await import('@gagnechris/publisher/rebuild');
     console.log('rebuild local site…');
     await rebuildPublishedSite();
   } else if (published > 0) {

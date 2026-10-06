@@ -133,7 +133,7 @@ describe('collectRebuildScope', () => {
     );
   });
 
-  it('does not treat missing entityType as a post unless pk is POST#', () => {
+  it('does not treat a row without entityType as a post', () => {
     const nonPost: DynamoDBRecord[] = [
       {
         eventID: '1',
@@ -152,7 +152,7 @@ describe('collectRebuildScope', () => {
     expect(collectRebuildScope(nonPost).feeds).toBe(false);
     expect(streamNeedsRebuild(nonPost, prodTargets)).toBe(false);
 
-    const legacyPost: DynamoDBRecord[] = [
+    const noEntityType: DynamoDBRecord[] = [
       {
         eventID: '2',
         eventName: 'INSERT',
@@ -172,9 +172,9 @@ describe('collectRebuildScope', () => {
         },
       },
     ];
-    const scope = collectRebuildScope(legacyPost);
-    expect(scope.feeds).toBe(true);
-    expect([...scope.postSlugs]).toEqual(['legacy-post']);
+    const scope = collectRebuildScope(noEntityType);
+    expect(scope.feeds).toBe(false);
+    expect(scope.postSlugs.size).toBe(0);
   });
 
   it('scopes a single post publish to that slug + feeds only', () => {

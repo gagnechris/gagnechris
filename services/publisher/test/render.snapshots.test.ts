@@ -20,7 +20,7 @@ import {
 import postsFeedsTarget from '../src/publish-targets/targets/posts-feeds.target.js';
 import homeTarget from '../src/publish-targets/targets/home.target.js';
 import type { PublishTargetContext } from '../src/publish-targets/types.js';
-import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const samplePost = (): Post => ({
   id: '01TEST',
@@ -151,25 +151,11 @@ describe('render HTML snapshots', () => {
 
   it('matches frozen JSON from real publish targets', async () => {
     const post = samplePost();
-    const storage: SiteStorage = {
-      async readShell() {
-        return shell;
-      },
-      async read() {
-        return undefined;
-      },
-      async put() {
-        return true;
-      },
-      async delete() {
-        return false;
-      },
-      async list() {
-        return [];
-      },
-      async invalidate() {},
-    };
-    const baseCtx: Omit<PublishTargetContext, 'scope' | 'published'> = {
+    const storage = memoryStorage({ shell });
+    const baseCtx: Omit<
+      PublishTargetContext,
+      'scope' | 'published' | 'feedPosts'
+    > = {
       shell,
       storage,
       sources: {
@@ -193,6 +179,7 @@ describe('render HTML snapshots', () => {
     const feeds = await postsFeedsTarget.run({
       ...baseCtx,
       published: [post],
+      feedPosts: [post],
       scope: {
         allPosts: false,
         postSlugs: new Set(),
@@ -212,6 +199,7 @@ describe('render HTML snapshots', () => {
     const home = await homeTarget.run({
       ...baseCtx,
       published: [],
+      feedPosts: [],
       scope: {
         allPosts: false,
         postSlugs: new Set(),
