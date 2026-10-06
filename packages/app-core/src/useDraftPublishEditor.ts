@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import type { ConfirmFn } from './platform.js';
+import type { MutateResult } from './query/api.js';
 import type { FlushResult, SaveState } from './useQueuedAutosave.js';
-
-type MutateResult<TEntity> = {
-  data?: TEntity;
-  error?: unknown;
-  response: { status: number };
-};
 
 export type DraftPublishAutosave = {
   save: () => Promise<FlushResult>;
@@ -15,15 +10,7 @@ export type DraftPublishAutosave = {
   getEditGen: () => number;
   getLastSavedGen: () => number;
   markClean: () => void;
-  setAutosaveHeld: (held: boolean) => void;
   awaitInFlight: () => Promise<FlushResult>;
-};
-
-/** @deprecated Prefer `VersionedDocDeleteOptions` from `useVersionedDocEditor`. */
-export type DraftPublishDeleteOptions = {
-  confirm: string;
-  mutate: (version: number) => Promise<void>;
-  onDeleted: () => void;
 };
 
 export type DraftPublishHold = {
@@ -31,45 +18,47 @@ export type DraftPublishHold = {
   isBusy: () => boolean;
 };
 
-export type DraftPublishEditorOptions<TEntity> = {
-  autosave: DraftPublishAutosave;
+export type DraftPublishDoc<TEntity> = {
   dirty: boolean;
   setDirty: (dirty: boolean) => void;
-  versionRef: { current: number };
-  getVersion: (entity: TEntity) => number;
-  /** Never replace the live draft here. */
+  /** Binds the entity's version and metadata; never replaces the live draft. */
   onEntityMeta: (entity: TEntity) => void;
+  /** Replaces the draft and bound version with the entity's. */
   onReplaceDraft: (entity: TEntity) => void;
+};
+
+export type DraftPublishRequests<TEntity> = {
   publish: () => Promise<MutateResult<TEntity>>;
   unpublish: () => Promise<MutateResult<TEntity>>;
   discard: () => Promise<MutateResult<TEntity>>;
-  unpublishConfirm: string;
-  discardConfirm: string;
-  enabled?: boolean;
-  confirm: ConfirmFn;
+};
+
+export type DraftPublishEditorOptions<TEntity> = {
+  autosave: DraftPublishAutosave;
+  doc: DraftPublishDoc<TEntity>;
   /** Shared with `useVersionedDocEditor` so publish and delete cannot race. */
   hold: DraftPublishHold;
-  /** Runs before any save or publish request; `false` or a message (shown as the save error) cancels. */
+  requests: DraftPublishRequests<TEntity>;
+  confirm: ConfirmFn;
+  confirmMessages: { unpublish: string; discard: string };
+  enabled?: boolean;
+  /**
+   * Runs when Publish is triggered and nothing holds the editor, before
+   * pending edits are flushed; `false` or a message (shown as the save error)
+   * cancels. Save, Unpublish and Discard do not consult it.
+   */
   beforePublish?: () => boolean | string;
 };
 
 /** Leave-guards and keyboard shortcuts stay in the shell; this hook has no DOM usage. */
 export function useDraftPublishEditor<TEntity>({
   autosave,
-  dirty,
-  setDirty,
-  versionRef,
-  getVersion,
-  onEntityMeta,
-  onReplaceDraft,
-  publish,
-  unpublish,
-  discard,
-  unpublishConfirm,
-  discardConfirm,
-  enabled = true,
-  confirm,
+  doc,
   hold,
+  requests,
+  confirm,
+  confirmMessages,
+  enabled = true,
   beforePublish,
 }: DraftPublishEditorOptions<TEntity>) {
   const {
@@ -81,29 +70,11 @@ export function useDraftPublishEditor<TEntity>({
     markClean,
     awaitInFlight,
   } = autosave;
+  const { dirty, setDirty, onEntityMeta, onReplaceDraft } = doc;
   const { withHold, isBusy } = hold;
-
-  const saveRef = useRef(save);
-  const publishRef = useRef<() => Promise<void>>(async () => {});
-
-  useEffect(() => {
-    saveRef.current = save;
-  }, [save]);
-
-  const applyKeepDraft = useCallback(
-    (entity: TEntity, baselineGen: number) => {
-      onEntityMeta(entity);
-      versionRef.current = getVersion(entity);
-      if (getEditGen() === baselineGen) {
-        setDirty(false);
-        setSaveState('saved');
-      } else {
-        setDirty(true);
-        setSaveState('idle');
-      }
-    },
-    [getEditGen, getVersion, onEntityMeta, setDirty, setSaveState, versionRef],
-  );
+  const { publish, unpublish, discard } = requests;
+  const { unpublish: unpublishConfirm, discard: discardConfirm } =
+    confirmMessages;
 
   // Under hold, joining an in-flight save ends that chain at 'pending' with
   // later edits unsent, so keep saving until every edit made before the click
@@ -117,6 +88,41 @@ export function useDraftPublishEditor<TEntity>({
     }
   }, [dirty, getEditGen, getLastSavedGen, save]);
 
+  /** Publish and Unpublish keep the draft; only version and status change. */
+  const flushThen = useCallback(
+    async (
+      request: () => Promise<MutateResult<TEntity>>,
+      label: string,
+    ): Promise<void> => {
+      if (!(await flushEdits())) return;
+      // Baseline is what is on the server after the flush, not the edit gen at
+      // click time (text may be typed while the flush runs).
+      const baselineGen = getLastSavedGen();
+      const { data, error, response } = await request();
+      if (error || !data) {
+        setSaveError(`${label} failed (${response.status}).`);
+        return;
+      }
+      onEntityMeta(data);
+      if (getEditGen() === baselineGen) {
+        setDirty(false);
+        setSaveState('saved');
+      } else {
+        setDirty(true);
+        setSaveState('idle');
+      }
+    },
+    [
+      flushEdits,
+      getEditGen,
+      getLastSavedGen,
+      onEntityMeta,
+      setDirty,
+      setSaveError,
+      setSaveState,
+    ],
+  );
+
   const runPublish = useCallback(async () => {
     if (!enabled || isBusy()) return;
     const verdict = beforePublish?.() ?? true;
@@ -124,55 +130,26 @@ export function useDraftPublishEditor<TEntity>({
       if (typeof verdict === 'string') setSaveError(verdict);
       return;
     }
-    await withHold(async () => {
-      if (!(await flushEdits())) return;
-      // Baseline is what is on the server after the flush, not the edit gen at
-      // click time (text may be typed while the flush runs).
-      const baselineGen = getLastSavedGen();
-      const { data, error, response } = await publish();
-      if (error || !data) {
-        setSaveError(`Publish failed (${response.status}).`);
-        return;
-      }
-      applyKeepDraft(data, baselineGen);
-    });
+    await withHold(() => flushThen(publish, 'Publish'));
   }, [
-    applyKeepDraft,
     beforePublish,
     enabled,
-    flushEdits,
-    getLastSavedGen,
+    flushThen,
     isBusy,
     publish,
     setSaveError,
     withHold,
   ]);
 
-  useEffect(() => {
-    publishRef.current = runPublish;
-  });
-
   const runUnpublish = useCallback(async () => {
     if (!enabled || isBusy()) return;
     if (!(await confirm(unpublishConfirm))) return;
-    await withHold(async () => {
-      if (!(await flushEdits())) return;
-      const baselineGen = getLastSavedGen();
-      const { data, error, response } = await unpublish();
-      if (error || !data) {
-        setSaveError(`Unpublish failed (${response.status}).`);
-        return;
-      }
-      applyKeepDraft(data, baselineGen);
-    });
+    await withHold(() => flushThen(unpublish, 'Unpublish'));
   }, [
-    applyKeepDraft,
     confirm,
     enabled,
-    flushEdits,
-    getLastSavedGen,
+    flushThen,
     isBusy,
-    setSaveError,
     unpublish,
     unpublishConfirm,
     withHold,
@@ -190,7 +167,6 @@ export function useDraftPublishEditor<TEntity>({
         return;
       }
       onReplaceDraft(data);
-      versionRef.current = getVersion(data);
       markClean();
     });
   }, [
@@ -199,20 +175,12 @@ export function useDraftPublishEditor<TEntity>({
     discard,
     discardConfirm,
     enabled,
-    getVersion,
     isBusy,
     markClean,
     onReplaceDraft,
     setSaveError,
-    versionRef,
     withHold,
   ]);
 
-  return {
-    runPublish,
-    runUnpublish,
-    runDiscard,
-    saveRef,
-    publishRef,
-  };
+  return { runPublish, runUnpublish, runDiscard };
 }

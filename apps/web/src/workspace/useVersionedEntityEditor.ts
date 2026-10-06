@@ -3,7 +3,7 @@ import {
   type VersionedEntityEditorOptions,
 } from '@gagnechris/app-core';
 import { browserRetrySignals } from './browserRetrySignals';
-import { useVersionedDocShell } from './useVersionedDocShell';
+import { browserConfirm, useVersionedDocShell } from './useVersionedDocShell';
 
 export function useVersionedEntityEditor<
   TEntity extends {
@@ -21,16 +21,16 @@ export function useVersionedEntityEditor<
 ) {
   const editor = useVersionedEntityEditorCore({
     ...options,
-    confirm: (message) => Promise.resolve(window.confirm(message)),
+    confirm: browserConfirm,
     retrySignals: browserRetrySignals,
   });
 
   useVersionedDocShell({
     dirty: editor.dirty,
     busy: editor.busy,
-    saveRef: editor.saveRef,
+    save: editor.save,
     suppressLeaveGuardRef: editor.suppressLeaveGuardRef,
-    publishRef: editor.publishRef,
+    publish: editor.runPublish,
   });
 
   return editor;

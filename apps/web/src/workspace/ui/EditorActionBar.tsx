@@ -1,21 +1,12 @@
 import type { ReactNode } from 'react';
-import type { SaveState } from '@gagnechris/app-core';
+import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
 import { Button } from '../../kit/Button';
 import { SaveIndicator } from './SaveIndicator';
 import { StatusBadge } from '../../kit/StatusBadge';
 
-export type EditorActionBarProps = {
+export type EditorActionBarProps = VersionedEntityActionBarProps & {
   leading?: ReactNode;
-  status: 'draft' | 'published' | 'deleted';
-  hasUnpublishedChanges: boolean;
-  saveState: SaveState;
-  dirty: boolean;
-  busy: boolean;
   viewLiveHref?: string | null;
-  onPublish: () => void;
-  onUnpublish: () => void;
-  onDiscard: () => void;
-  onSave: () => void;
   extraActions?: ReactNode;
 };
 

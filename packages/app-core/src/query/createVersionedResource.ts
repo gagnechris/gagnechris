@@ -1,5 +1,6 @@
 import type { ApiClient } from '@gagnechris/api-client';
 import {
+  useMutation,
   useQuery,
   useQueryClient,
   type QueryClient,
@@ -85,3 +86,28 @@ export type VersionedResource<
   TEntity extends VersionedEntity,
   TParams,
 > = ReturnType<typeof createVersionedResource<TEntity, TParams>>;
+
+/**
+ * Deletes by id and caches the returned tombstone (not `removeQueries`), so an
+ * open editor does not flash Loading or refetch.
+ */
+export const useDeleteEntityMutation = <TEntity>(
+  remove: (
+    client: ApiClient,
+    id: string,
+    body: ExpectedVersionRequest,
+  ) => Promise<TEntity>,
+  setCache: (queryClient: QueryClient, entity: TEntity) => void,
+  onDeleted?: (queryClient: QueryClient) => void,
+) => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      remove(getClient(), id, { version }),
+    onSuccess: (entity) => {
+      setCache(queryClient, entity);
+      onDeleted?.(queryClient);
+    },
+  });
+};

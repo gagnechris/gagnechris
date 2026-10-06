@@ -6,6 +6,7 @@ export {
   type Timers,
 } from './platform.js';
 export { mergeEditorSeo } from './mergeEditorSeo.js';
+export { useLatest } from './useLatest.js';
 export { clearPendingFlushes, hasPendingFlushes } from './pendingFlushes.js';
 export {
   useQueuedAutosave,
@@ -16,9 +17,10 @@ export {
 export {
   useDraftPublishEditor,
   type DraftPublishAutosave,
-  type DraftPublishDeleteOptions,
+  type DraftPublishDoc,
   type DraftPublishEditorOptions,
   type DraftPublishHold,
+  type DraftPublishRequests,
 } from './useDraftPublishEditor.js';
 export {
   useVersionedDocEditor,
@@ -38,6 +40,7 @@ export {
   ApiError,
   asMutateResult,
   completeTask,
+  errorMessage,
   createNote,
   createPost,
   createProject,
@@ -135,16 +138,10 @@ export {
   type DraftPublishResourceConfig,
 } from './query/createDraftPublishResource.js';
 export {
-  optimisticMutationHandlers,
-  type OptimisticContext,
-  type OptimisticTarget,
-} from './query/optimistic.js';
-export {
   postResource,
   useCreatePostMutation,
   useDeletePostMutation,
   usePostsQuery,
-  useSetPostCache,
   type PostResourceParams,
 } from './query/posts.js';
 export {
@@ -156,7 +153,6 @@ export {
   useCreateStarterProjectsMutation,
   useDeleteProjectMutation,
   useProjectsQuery,
-  useSetProjectCache,
   type NewProjectInput,
   type ProjectResourceParams,
   type StarterProjectsResult,
@@ -168,17 +164,8 @@ export {
   useUsersQuery,
   type UserAction,
 } from './query/users.js';
-export {
-  homeResource,
-  useSetHomeCache,
-  type HomeResourceParams,
-} from './query/home.js';
-export {
-  resumeResource,
-  useResumeQuery,
-  useSetResumeCache,
-  type ResumeResourceParams,
-} from './query/resume.js';
+export { homeResource, type HomeResourceParams } from './query/home.js';
+export { resumeResource, type ResumeResourceParams } from './query/resume.js';
 export {
   dailyNoteResource,
   emptyDailyPlaceholder,
@@ -189,7 +176,6 @@ export {
   useDeleteNoteMutation,
   useNotesByIds,
   useNotesQuery,
-  useSetNoteCache,
   type DailyNoteResourceParams,
   type NoteResourceParams,
 } from './query/notes.js';
@@ -201,7 +187,6 @@ export {
   useDeleteTaskMutation,
   usePatchTaskMutation,
   useReopenTaskMutation,
-  useSetTaskCache,
   useTasksByIds,
   useTasksQuery,
   type TaskPatch,

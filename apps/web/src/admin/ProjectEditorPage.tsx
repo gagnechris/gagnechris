@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   projectResource,
@@ -57,8 +57,12 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
       },
       redirectTo: '/projects',
     },
+    beforePublish: () => {
+      setPublishBlocked(publishInvalid);
+      return !publishInvalid;
+    },
   });
-  const { draft, save, publishRef, runPublish, actionBarProps } = editor;
+  const { draft, save, actionBarProps } = editor;
   const { setField, setSlugManual } = useDraftFields(editor, {
     slugFrom: 'name',
   });
@@ -66,20 +70,6 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
 
   const draftInvalid = hasProjectDraftErrors(draft);
   const publishInvalid = hasProjectPublishErrors(draft);
-
-  const guardedPublish = async () => {
-    if (publishInvalid) {
-      setPublishBlocked(true);
-      return;
-    }
-    setPublishBlocked(false);
-    await runPublish();
-  };
-  // The shell's Mod-Enter reads publishRef, which the editor refreshes on every
-  // render; this effect runs after that one, so the shortcut is guarded too.
-  useEffect(() => {
-    publishRef.current = guardedPublish;
-  });
 
   return (
     <EditorFrame
@@ -100,7 +90,6 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
         // Invalid fields are saved as their last saved values, so a clean save
         // does not mean everything typed is on the server.
         dirty: actionBarProps.dirty || draftInvalid,
-        onPublish: () => void guardedPublish(),
       }}
       notices={
         publishBlocked && publishInvalid ? (

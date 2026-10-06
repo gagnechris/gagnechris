@@ -19,6 +19,7 @@ import {
 } from './api.js';
 import { setCachedPost } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
+import { useDeleteEntityMutation } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
 
 export type PostResourceParams = { id: string };
@@ -58,17 +59,5 @@ export const useCreatePostMutation = () => {
   });
 };
 
-export const useSetPostCache = postResource.useSetCache;
-
-/** setCachedPost, not removeQueries, so an open editor does not flash Loading or refetch. */
-export const useDeletePostMutation = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, version }: { id: string; version: number }) =>
-      deletePost(getClient(), id, { version }),
-    onSuccess: (post) => {
-      setCachedPost(queryClient, post);
-    },
-  });
-};
+export const useDeletePostMutation = () =>
+  useDeleteEntityMutation(deletePost, setCachedPost);

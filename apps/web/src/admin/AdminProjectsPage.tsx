@@ -6,19 +6,16 @@ import {
   sortProjectsByOrder,
 } from '@gagnechris/shared';
 import {
+  errorMessage,
   useCreateProjectMutation,
   useCreateStarterProjectsMutation,
   useProjectsQuery,
 } from '@gagnechris/app-core';
-import { ApiError } from './query/api';
 import { newPlaceholderSlug } from './placeholderSlug';
 import { NEW_PROJECT_NAME } from './projectDraft';
 import { Button } from '../kit/Button';
 import { StatusBadge } from '../kit/StatusBadge';
 import './projects.css';
-
-const errorMessage = (err: unknown, fallback: string) =>
-  err instanceof ApiError ? err.message : fallback;
 
 export default function AdminProjectsPage() {
   const navigate = useNavigate();

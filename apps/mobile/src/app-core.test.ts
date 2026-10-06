@@ -24,8 +24,7 @@ describe('app-core hooks under the mobile React', () => {
         draft: 'hello',
         dirty: false,
         setDirty: () => {},
-        versionRef: { current: 1 },
-        getVersion: (entity: { version: number }) => entity.version,
+        getBaseVersion: () => 1,
         performSave: async () => ({
           ok: true as const,
           entity: { version: 2 },

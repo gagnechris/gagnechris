@@ -41,6 +41,10 @@ export class ApiError extends Error {
   }
 }
 
+/** The API's message for an `ApiError`; anything else (network, bug) gets `fallback`. */
+export const errorMessage = (err: unknown, fallback: string): string =>
+  err instanceof ApiError ? err.message : fallback;
+
 type OpenApiResult<T> = {
   data?: T;
   error?: unknown;

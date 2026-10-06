@@ -25,7 +25,10 @@ import {
   type UpdateNoteRequest,
 } from './api.js';
 import { setCachedNote } from './cache.js';
-import { createVersionedResource } from './createVersionedResource.js';
+import {
+  createVersionedResource,
+  useDeleteEntityMutation,
+} from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
 
 export type NoteResourceParams = { id: string };
@@ -199,16 +202,5 @@ export const useCreateNoteMutation = () => {
   });
 };
 
-export const useDeleteNoteMutation = () => {
-  const getClient = useGetApiClient();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, version }: { id: string; version: number }) =>
-      deleteNote(getClient(), id, { version }),
-    onSuccess: (note) => {
-      setCachedNote(queryClient, note);
-    },
-  });
-};
-
-export const useSetNoteCache = noteResource.useSetCache;
+export const useDeleteNoteMutation = () =>
+  useDeleteEntityMutation(deleteNote, setCachedNote);

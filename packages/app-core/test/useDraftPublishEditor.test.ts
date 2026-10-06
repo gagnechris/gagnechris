@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   useDraftPublishEditor,
   type DraftPublishAutosave,
+  type DraftPublishDoc,
   type DraftPublishHold,
 } from '../src/useDraftPublishEditor.js';
 import { useQueuedAutosave } from '../src/useQueuedAutosave.js';
@@ -58,30 +59,35 @@ describe('useDraftPublishEditor discard then publish', () => {
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e: Entity) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (e: Entity) => {
+          versionRef.current = e.version;
+        },
         conflictMessage: 'Conflict',
       });
       const editor = useDraftPublishEditor({
         autosave,
-        dirty,
-        setDirty,
-        versionRef,
-        getVersion: (e: Entity) => e.version,
-        onEntityMeta: () => {},
-        onReplaceDraft: (e) => {
-          setDraft(e.body);
+        doc: {
+          dirty,
+          setDirty,
+          onEntityMeta: (e: Entity) => {
+            versionRef.current = e.version;
+          },
+          onReplaceDraft: (e) => {
+            versionRef.current = e.version;
+            setDraft(e.body);
+          },
         },
-        publish,
-        unpublish: async () => ({
-          data: { version: 3, body: 'server' },
-          response: { status: 200 },
-        }),
-        discard,
-        unpublishConfirm: 'unpublish?',
-        discardConfirm: 'discard?',
+        requests: {
+          publish,
+          unpublish: async () => ({
+            data: { version: 3, body: 'server' },
+            response: { status: 200 },
+          }),
+          discard,
+        },
+        confirmMessages: { unpublish: 'unpublish?', discard: 'discard?' },
         confirm,
         hold,
       });
@@ -132,8 +138,14 @@ describe('useDraftPublishEditor async confirm', () => {
     getEditGen: () => 0,
     getLastSavedGen: () => 0,
     markClean: () => {},
-    setAutosaveHeld: () => {},
     awaitInFlight: async () => 'clean',
+  });
+
+  const stubDoc = (): DraftPublishDoc<Entity> => ({
+    dirty: false,
+    setDirty: () => {},
+    onEntityMeta: () => {},
+    onReplaceDraft: () => {},
   });
 
   const stubHold = (): DraftPublishHold => ({
@@ -156,28 +168,23 @@ describe('useDraftPublishEditor async confirm', () => {
       data: { version: 2, body: 'draft' } satisfies Entity,
       response: { status: 200 },
     }));
-    const { result } = renderHook(() => {
-      const versionRef = useRef(1);
-      return useDraftPublishEditor({
+    const { result } = renderHook(() =>
+      useDraftPublishEditor<Entity>({
         autosave: stubAutosave(),
-        dirty: false,
-        setDirty: () => {},
-        versionRef,
-        getVersion: (e: Entity) => e.version,
-        onEntityMeta: () => {},
-        onReplaceDraft: () => {},
-        publish: async () => ({
-          data: { version: 2, body: 'draft' },
-          response: { status: 200 },
-        }),
-        unpublish,
-        discard,
-        unpublishConfirm: 'unpublish?',
-        discardConfirm: 'discard?',
+        doc: stubDoc(),
+        requests: {
+          publish: async () => ({
+            data: { version: 2, body: 'draft' },
+            response: { status: 200 },
+          }),
+          unpublish,
+          discard,
+        },
+        confirmMessages: { unpublish: 'unpublish?', discard: 'discard?' },
         confirm,
         hold: stubHold(),
-      });
-    });
+      }),
+    );
     return { result, unpublish, discard };
   };
 
@@ -228,9 +235,8 @@ describe('useDraftPublishEditor discard awaits in-flight PUT', () => {
       };
     });
 
-    const { result } = renderHook(() => {
-      const versionRef = useRef(1);
-      return useDraftPublishEditor({
+    const { result } = renderHook(() =>
+      useDraftPublishEditor<Entity>({
         autosave: {
           save: async () => 'clean',
           setSaveState: () => {},
@@ -238,26 +244,26 @@ describe('useDraftPublishEditor discard awaits in-flight PUT', () => {
           getEditGen: () => 0,
           getLastSavedGen: () => 0,
           markClean: () => {},
-          setAutosaveHeld: () => {},
           awaitInFlight,
         },
-        dirty: false,
-        setDirty: () => {},
-        versionRef,
-        getVersion: (e: Entity) => e.version,
-        onEntityMeta: () => {},
-        onReplaceDraft: () => {},
-        publish: async () => ({
-          data: { version: 1, body: 'x' },
-          response: { status: 200 },
-        }),
-        unpublish: async () => ({
-          data: { version: 1, body: 'x' },
-          response: { status: 200 },
-        }),
-        discard,
-        unpublishConfirm: 'u?',
-        discardConfirm: 'd?',
+        doc: {
+          dirty: false,
+          setDirty: () => {},
+          onEntityMeta: () => {},
+          onReplaceDraft: () => {},
+        },
+        requests: {
+          publish: async () => ({
+            data: { version: 1, body: 'x' },
+            response: { status: 200 },
+          }),
+          unpublish: async () => ({
+            data: { version: 1, body: 'x' },
+            response: { status: 200 },
+          }),
+          discard,
+        },
+        confirmMessages: { unpublish: 'u?', discard: 'd?' },
         confirm: async () => true,
         hold: {
           withHold: async (fn) => {
@@ -265,8 +271,8 @@ describe('useDraftPublishEditor discard awaits in-flight PUT', () => {
           },
           isBusy: () => false,
         },
-      });
-    });
+      }),
+    );
 
     let discardDone = false;
     const p = result.current.runDiscard().then(() => {
@@ -318,10 +324,11 @@ describe('useDraftPublishEditor publish flushes edits made before the click', ()
         dirty,
         setDirty,
         debounceMs: 10_000,
-        versionRef,
-        getVersion: (e: Entity) => e.version,
+        getBaseVersion: () => versionRef.current,
         performSave,
-        onSaved: () => {},
+        onSaved: (e: Entity) => {
+          versionRef.current = e.version;
+        },
         conflictMessage: 'Conflict',
       });
       const { setAutosaveHeld } = autosave;
@@ -339,25 +346,28 @@ describe('useDraftPublishEditor publish flushes edits made before the click', ()
         },
         isBusy: () => busyRef.current,
       };
-      const editor = useDraftPublishEditor({
+      const editor = useDraftPublishEditor<Entity>({
         autosave,
-        dirty,
-        setDirty,
-        versionRef,
-        getVersion: (e: Entity) => e.version,
-        onEntityMeta: () => {},
-        onReplaceDraft: () => {},
-        publish,
-        unpublish: async () => ({
-          data: { version: 99, body: 'x' },
-          response: { status: 200 },
-        }),
-        discard: async () => ({
-          data: { version: 99, body: 'x' },
-          response: { status: 200 },
-        }),
-        unpublishConfirm: 'u?',
-        discardConfirm: 'd?',
+        doc: {
+          dirty,
+          setDirty,
+          onEntityMeta: (e) => {
+            versionRef.current = e.version;
+          },
+          onReplaceDraft: () => {},
+        },
+        requests: {
+          publish,
+          unpublish: async () => ({
+            data: { version: 99, body: 'x' },
+            response: { status: 200 },
+          }),
+          discard: async () => ({
+            data: { version: 99, body: 'x' },
+            response: { status: 200 },
+          }),
+        },
+        confirmMessages: { unpublish: 'u?', discard: 'd?' },
         confirm: async () => true,
         hold,
       });

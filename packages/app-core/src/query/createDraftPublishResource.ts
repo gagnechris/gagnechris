@@ -49,60 +49,34 @@ export function createDraftPublishResource<
 >(config: DraftPublishResourceConfig<TEntity, TParams>) {
   const base = createVersionedResource(config);
 
-  const useLifecycleMutators = (
-    params: TParams,
-  ): DraftPublishLifecycleMutators<TEntity> => {
+  type LifecycleRequest = DraftPublishResourceConfig<
+    TEntity,
+    TParams
+  >['publish'];
+
+  const useLifecycleMutator = (request: LifecycleRequest, params: TParams) => {
     const getClient = useGetApiClient();
     const queryClient = useQueryClient();
-
-    const publish = useMutation({
+    const { mutateAsync } = useMutation({
       mutationFn: (body: ExpectedVersionRequest) =>
-        config.publish(getClient(), params, body),
+        request(getClient(), params, body),
       onSuccess: (entity) => {
         config.setCache(queryClient, entity);
       },
     });
-    const unpublish = useMutation({
-      mutationFn: (body: ExpectedVersionRequest) =>
-        config.unpublish(getClient(), params, body),
-      onSuccess: (entity) => {
-        config.setCache(queryClient, entity);
-      },
-    });
-    const discard = useMutation({
-      mutationFn: (body: ExpectedVersionRequest) =>
-        config.discard(getClient(), params, body),
-      onSuccess: (entity) => {
-        config.setCache(queryClient, entity);
-      },
-    });
-
-    const publishAsync = publish.mutateAsync;
-    const unpublishAsync = unpublish.mutateAsync;
-    const discardAsync = discard.mutateAsync;
-
-    const publishFn = useCallback(
-      (body: ExpectedVersionRequest) =>
-        asMutateResult(() => publishAsync(body)),
-      [publishAsync],
+    return useCallback(
+      (body: ExpectedVersionRequest) => asMutateResult(() => mutateAsync(body)),
+      [mutateAsync],
     );
-    const unpublishFn = useCallback(
-      (body: ExpectedVersionRequest) =>
-        asMutateResult(() => unpublishAsync(body)),
-      [unpublishAsync],
-    );
-    const discardFn = useCallback(
-      (body: ExpectedVersionRequest) =>
-        asMutateResult(() => discardAsync(body)),
-      [discardAsync],
-    );
-
-    return {
-      publish: publishFn,
-      unpublish: unpublishFn,
-      discard: discardFn,
-    };
   };
+
+  const useLifecycleMutators = (
+    params: TParams,
+  ): DraftPublishLifecycleMutators<TEntity> => ({
+    publish: useLifecycleMutator(config.publish, params),
+    unpublish: useLifecycleMutator(config.unpublish, params),
+    discard: useLifecycleMutator(config.discard, params),
+  });
 
   return {
     ...base,

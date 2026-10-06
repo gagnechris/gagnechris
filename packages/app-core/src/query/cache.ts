@@ -1,4 +1,8 @@
-import type { InfiniteData, QueryClient } from '@tanstack/react-query';
+import type {
+  InfiniteData,
+  QueryClient,
+  QueryKey,
+} from '@tanstack/react-query';
 import { isOpenTaskStatus, taskMatchesSchedule } from '@gagnechris/shared';
 import type {
   Home,
@@ -16,6 +20,30 @@ export const preferNewerByVersion = <T extends { version: number }>(
   next: T,
 ): T => {
   if (prev !== undefined && prev.version > next.version) return prev;
+  return next;
+};
+
+/** Writes `entity` under `key` unless the cache already holds a newer version. */
+export const setDetail = <T extends { version: number }>(
+  queryClient: QueryClient,
+  key: QueryKey,
+  entity: T,
+): void => {
+  queryClient.setQueryData<T>(key, (prev) =>
+    preferNewerByVersion(prev, entity),
+  );
+};
+
+/** Replaces the item with the same id (through `merge`), or appends it. */
+export const upsertById = <T extends { id: string }>(
+  list: readonly T[],
+  item: T,
+  merge: (prev: T, next: T) => T = (_prev, next) => next,
+): T[] => {
+  const index = list.findIndex((x) => x.id === item.id);
+  if (index === -1) return [...list, item];
+  const next = [...list];
+  next[index] = merge(list[index]!, item);
   return next;
 };
 
@@ -136,9 +164,7 @@ const toPostSummary = ({
 }: Post): PostSummary => summary;
 
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
-  queryClient.setQueryData<Post>(queryKeys.posts.detail(post.id), (prev) =>
-    preferNewerByVersion(prev, post),
-  );
+  setDetail(queryClient, queryKeys.posts.detail(post.id), post);
   upsertIntoListCaches(
     queryClient,
     queryKeys.posts.list(),
@@ -155,37 +181,26 @@ export const setCachedProject = (
   queryClient: QueryClient,
   project: Project,
 ): void => {
-  queryClient.setQueryData<Project>(
-    queryKeys.projects.detail(project.id),
-    (prev) => preferNewerByVersion(prev, project),
-  );
+  setDetail(queryClient, queryKeys.projects.detail(project.id), project);
   // An unfetched list stays unfetched: seeding it with one row would hide the rest.
   queryClient.setQueryData<Project[]>(queryKeys.projects.list(), (prev) => {
     if (!prev) return prev;
     if (project.status === 'deleted') {
       return prev.filter((p) => p.id !== project.id);
     }
-    const index = prev.findIndex((p) => p.id === project.id);
-    if (index === -1) return [...prev, project];
-    const next = [...prev];
-    next[index] = preferNewerByVersion(prev[index], project);
-    return next;
+    return upsertById(prev, project, preferNewerByVersion);
   });
 };
 
 export const setCachedHome = (queryClient: QueryClient, home: Home): void => {
-  queryClient.setQueryData<Home>(queryKeys.home(), (prev) =>
-    preferNewerByVersion(prev, home),
-  );
+  setDetail(queryClient, queryKeys.home(), home);
 };
 
 export const setCachedResume = (
   queryClient: QueryClient,
   resume: Resume,
 ): void => {
-  queryClient.setQueryData<Resume>(queryKeys.resume(), (prev) =>
-    preferNewerByVersion(prev, resume),
-  );
+  setDetail(queryClient, queryKeys.resume(), resume);
 };
 
 const noteMatches = (
@@ -206,9 +221,7 @@ const noteMatches = (
 };
 
 export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
-  queryClient.setQueryData<Note>(queryKeys.notes.detail(note.id), (prev) =>
-    preferNewerByVersion(prev, note),
-  );
+  setDetail(queryClient, queryKeys.notes.detail(note.id), note);
   if (note.type === 'daily' && note.date) {
     const dailyKey = queryKeys.notes.daily(note.area, note.date);
     if (note.deleted) {
@@ -218,9 +231,7 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
         queryClient.removeQueries({ queryKey: dailyKey, exact: true });
       }
     } else {
-      queryClient.setQueryData<Note>(dailyKey, (prev) =>
-        preferNewerByVersion(prev, note),
-      );
+      setDetail(queryClient, dailyKey, note);
     }
     for (const [key, data] of queryClient.getQueriesData<Set<string>>({
       queryKey: [...queryKeys.notes.all, 'daily-dates'],
@@ -280,9 +291,7 @@ const stringFilter = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 export const setCachedTask = (queryClient: QueryClient, task: Task): void => {
-  queryClient.setQueryData<Task>(queryKeys.tasks.detail(task.id), (prev) =>
-    preferNewerByVersion(prev, task),
-  );
+  setDetail(queryClient, queryKeys.tasks.detail(task.id), task);
   upsertIntoListCaches(queryClient, queryKeys.tasks.list(), task, {
     removed: task.deleted,
     matches: taskMatches,

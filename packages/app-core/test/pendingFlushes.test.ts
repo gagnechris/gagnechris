@@ -156,7 +156,7 @@ describe('unsaved edits outliving their editor', () => {
     });
     await waitUntil(() => !second.result.current.isLoading, 'hydrate');
     expect(second.result.current.draft).toEqual({ body: 'hello world' });
-    expect(second.result.current.versionRef.current).toBe(2);
+    expect(second.result.current.boundVersion).toBe(2);
     expect(second.result.current.dirty).toBe(false);
 
     act(() => {
