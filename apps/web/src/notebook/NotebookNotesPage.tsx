@@ -9,7 +9,7 @@ import {
 import { taskEmbedIds, type NoteType } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { areaQueryParam } from './notebookAreaPreference';
+import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import {
   noteDay,
@@ -86,11 +86,9 @@ export default function NotebookNotesPage() {
   }, [notesQuery.data, q, today]);
 
   const createPage = async () => {
-    const createArea: NotebookArea =
-      areaFilter === 'personal' ? 'personal' : 'work';
     const note = await createMutation.mutateAsync({
       id: createUlid(),
-      area: createArea,
+      area: areaForNewItem(areaFilter),
       type: 'page',
       title: 'Untitled',
       bodyMarkdown: '',

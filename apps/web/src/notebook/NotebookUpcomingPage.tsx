@@ -1,23 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import {
-  useCreateTaskMutation,
-  useNotesByIds,
-  useTasksQuery,
-  type NotebookArea,
-  type Task,
-} from '@gagnechris/app-core';
-import { formatTaskDay, parseTaskSyntax } from '@gagnechris/shared';
+import { useNotesByIds, useTasksQuery, type Task } from '@gagnechris/app-core';
+import { formatTaskDay } from '@gagnechris/shared';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
 import { taskDue } from '../kit/tasks/taskDue';
+import type { TaskLineDraft } from '../kit/tasks/taskLine';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import type { SourceNote } from '../kit/tasks/todayTaskBuckets';
 import { groupUpcomingTasks, noteChipLabel } from '../kit/tasks/upcomingGroups';
-import { createUlid } from '../lib/ulid';
 import { areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
+import { useQuickAddTask } from './useQuickAddTask';
 import { useTaskToggle } from './useTaskToggle';
 import { useLoadAllPages, useTaskPatch } from './useTodayTasks';
 
@@ -68,41 +63,17 @@ export default function NotebookUpcomingPage() {
 
   const { toggle, error: toggleError } = useTaskToggle();
   const { patch, error: patchError } = useTaskPatch();
-  const createMutation = useCreateTaskMutation();
   const [quickAdd, setQuickAdd] = useState('');
-  const [hint, setHint] = useState<string | null>(null);
-  const [addError, setAddError] = useState<string | null>(null);
-
+  const hintAfterCreate = useCallback(
+    (draft: TaskLineDraft) =>
+      !draft.someday && (!draft.startDate || draft.startDate <= today)
+        ? `“${draft.title}” has no later date, so it shows on Today.`
+        : null,
+    [today],
+  );
+  const quickAddTask = useQuickAddTask(areaFilter, { hintAfterCreate });
   const submit = async () => {
-    const parsed = parseTaskSyntax(quickAdd, today);
-    if (!parsed.title) {
-      setHint('Add a title before the date.');
-      return;
-    }
-    setHint(null);
-    setAddError(null);
-    const createArea: NotebookArea =
-      areaFilter === 'personal' ? 'personal' : 'work';
-    try {
-      await createMutation.mutateAsync({
-        id: createUlid(),
-        area: createArea,
-        title: parsed.title,
-        description: '',
-        priority: parsed.priority,
-        status: 'todo',
-        startDate: parsed.startDate,
-        someday: parsed.someday,
-        dueDate: parsed.dueDate,
-        tags: [],
-      });
-      setQuickAdd('');
-      if (!parsed.someday && (!parsed.startDate || parsed.startDate <= today)) {
-        setHint(`“${parsed.title}” has no later date, so it shows on Today.`);
-      }
-    } catch {
-      setAddError(`Could not add “${parsed.title}”. Please try again.`);
-    }
+    if (await quickAddTask.submit(quickAdd, today)) setQuickAdd('');
   };
 
   const doToday = (task: Task) =>
@@ -113,7 +84,7 @@ export default function NotebookUpcomingPage() {
     parked.isPending ||
     scheduled.hasNextPage ||
     parked.hasNextPage;
-  const error = toggleError ?? patchError ?? addError;
+  const error = toggleError ?? patchError ?? quickAddTask.error;
 
   return (
     <section className="admin-panel notebook-upcoming">
@@ -146,22 +117,22 @@ export default function NotebookUpcomingPage() {
           value={quickAdd}
           onChange={(next) => {
             setQuickAdd(next);
-            setHint(null);
+            quickAddTask.clearMessages();
           }}
           aria-label="Schedule a task"
-          disabled={createMutation.isPending}
+          disabled={quickAddTask.pending}
         />
         <button
           type="submit"
           className="admin-btn admin-btn--primary"
-          disabled={createMutation.isPending || !quickAdd.trim()}
+          disabled={quickAddTask.pending || !quickAdd.trim()}
         >
           Add
         </button>
       </form>
-      {hint ? (
+      {quickAddTask.hint ? (
         <p className="admin-hint" role="status">
-          {hint}
+          {quickAddTask.hint}
         </p>
       ) : null}
       {error ? (
