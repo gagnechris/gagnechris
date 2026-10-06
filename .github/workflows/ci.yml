@@ -53,6 +53,8 @@ jobs:
         run: npm run check:platform-neutral-lint
       - name: TypeScript project coverage
         run: npm run check:tsconfig-coverage
+      - name: Paths that differ only by case
+        run: npm run check:case-collisions
 
       - name: Typecheck
         run: npm run typecheck
