@@ -1,6 +1,7 @@
 import type { CampItemKind } from '../facts';
+import { pawsLeft } from '../shared/rating';
 import type { Rng } from '../shared/rng';
-import { tipById, type BearTip } from '../tips';
+import { tipById, type BearTip, type BearTipId } from '../tips';
 
 export type { CampItemKind };
 
@@ -63,6 +64,24 @@ export const POINTS_PER_SAVE = 25;
 const FIRST_BEAR_AT_MS = 1_500;
 const FIRST_GUEST_AT_MS = 2_500;
 const LEAVING_SPEED_FACTOR = 2.4;
+/** Guests and bears both show up more often as dark falls. */
+const GUEST_EVERY_MS = 4_200;
+const GUEST_SPEEDUP_MS = 2_000;
+const GUEST_JITTER_MS = 1_200;
+const BEAR_EVERY_MS = 3_600;
+const BEAR_SPEEDUP_MS = 1_800;
+const BEAR_JITTER_MS = 800;
+/** Field units per second at the start, gained again by dark. */
+const BEAR_START_SPEED = 7;
+const BEAR_SPEED_GAIN = 7;
+/** Bears walk in just off either edge, somewhere in the lower field. */
+const BEAR_ENTRY_LEFT_X = -6;
+const BEAR_ENTRY_RIGHT_X = 106;
+const BEAR_ENTRY_TOP_Y = 40;
+const BEAR_ENTRY_SPAN_Y = 45;
+const BEAR_GONE_LEFT_X = -10;
+const BEAR_GONE_RIGHT_X = 110;
+const FIELD_MID_X = 50;
 const STARTS_OUT: readonly CampItemKind[] = ['trash', 'cooler', 'pet'];
 
 export type CampBear = {
@@ -146,16 +165,24 @@ export function roundProgress(t: number): number {
 }
 
 export function guestIntervalMs(atMs: number, jitter: number): number {
-  return 4_200 - 2_000 * roundProgress(atMs) + jitter * 1_200;
+  return (
+    GUEST_EVERY_MS -
+    GUEST_SPEEDUP_MS * roundProgress(atMs) +
+    jitter * GUEST_JITTER_MS
+  );
 }
 
 export function bearIntervalMs(atMs: number, jitter: number): number {
-  return 3_600 - 1_800 * roundProgress(atMs) + jitter * 800;
+  return (
+    BEAR_EVERY_MS -
+    BEAR_SPEEDUP_MS * roundProgress(atMs) +
+    jitter * BEAR_JITTER_MS
+  );
 }
 
 /** Field units per second. */
 export function bearSpeed(t: number): number {
-  return 7 + 7 * roundProgress(t);
+  return BEAR_START_SPEED + BEAR_SPEED_GAIN * roundProgress(t);
 }
 
 function pick<T>(list: readonly T[], rng: Rng): T | undefined {
@@ -193,13 +220,13 @@ export function stepCamp(state: CampState, rngs: CampRngs): CampStepResult {
 
   while (t >= nextBearAt) {
     const fromLeft = rngs.schedule() < 0.5;
-    const y = 40 + rngs.schedule() * 45;
+    const y = BEAR_ENTRY_TOP_Y + rngs.schedule() * BEAR_ENTRY_SPAN_Y;
     const jitter = rngs.schedule();
     const target = pick(kindsWhere(out, true), rngs.choice);
     if (target) {
       bears.push({
         id: `bear-${nextBearSeq}`,
-        x: fromLeft ? -6 : 106,
+        x: fromLeft ? BEAR_ENTRY_LEFT_X : BEAR_ENTRY_RIGHT_X,
         y,
         target,
         leaving: false,
@@ -212,8 +239,8 @@ export function stepCamp(state: CampState, rngs: CampRngs): CampStepResult {
   const step = (bearSpeed(t) * STEP_MS) / 1000;
   bears = bears.filter((bear) => {
     if (bear.leaving) {
-      bear.x += (bear.x < 50 ? -1 : 1) * step * LEAVING_SPEED_FACTOR;
-      return bear.x > -10 && bear.x < 110;
+      bear.x += (bear.x < FIELD_MID_X ? -1 : 1) * step * LEAVING_SPEED_FACTOR;
+      return bear.x > BEAR_GONE_LEFT_X && bear.x < BEAR_GONE_RIGHT_X;
     }
     if (!out[bear.target]) {
       bear.leaving = true;
@@ -311,9 +338,7 @@ export function campScore(state: CampState): number {
 }
 
 export function campPaws(state: CampState): number {
-  return state.phase === 'habituated'
-    ? 0
-    : Math.max(0, SNACK_LIMIT - state.snacks);
+  return state.phase === 'habituated' ? 0 : pawsLeft(state.snacks, SNACK_LIMIT);
 }
 
 export function secondsLeft(state: CampState): number {
@@ -329,7 +354,7 @@ export function mostLostItem(state: CampState): CampItemKind | null {
   return worst;
 }
 
-const TIP_FOR_ITEM: Readonly<Record<CampItemKind, string>> = {
+const TIP_FOR_ITEM: Readonly<Record<CampItemKind, BearTipId>> = {
   trash: 'secure-trash',
   feeder: 'bird-feeders',
   cooler: 'campsite',
@@ -339,5 +364,5 @@ const TIP_FOR_ITEM: Readonly<Record<CampItemKind, string>> = {
 
 export function campTip(state: CampState): BearTip {
   const worst = mostLostItem(state);
-  return tipById(worst ? TIP_FOR_ITEM[worst] : 'never-feed')!;
+  return tipById(worst ? TIP_FOR_ITEM[worst] : 'never-feed');
 }

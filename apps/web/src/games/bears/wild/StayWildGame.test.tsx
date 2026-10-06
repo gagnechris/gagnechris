@@ -1,6 +1,12 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  advance,
+  pressKey as key,
+  renderInRouter,
+  setupGameTests,
+  stubMedia,
+} from '../shared/test-utils';
 import StayWildGame from './StayWildGame';
 import { stepWild } from './wildLogic';
 import {
@@ -20,47 +26,19 @@ vi.mock('./wildLogic', async (importOriginal) => {
 });
 
 const renderGame = () =>
-  render(
-    <MemoryRouter>
-      <StayWildGame from="contact" soundOn={false} />
-    </MemoryRouter>,
-  );
-
-const advance = (ms: number) => {
-  act(() => {
-    vi.advanceTimersByTime(ms);
-  });
-};
-
-const key = (k: string, type: 'keyDown' | 'keyUp' = 'keyDown') =>
-  act(() => {
-    fireEvent[type](window, { key: k });
-  });
+  renderInRouter(<StayWildGame from="contact" soundOn={false} />);
 
 const start = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Wake up, Maple' }));
 
 describe('StayWildGame', () => {
+  setupGameTests();
+
   beforeEach(() => {
-    vi.useFakeTimers({
-      toFake: [
-        'setTimeout',
-        'clearTimeout',
-        'requestAnimationFrame',
-        'cancelAnimationFrame',
-        'performance',
-      ],
-    });
     // jsdom has no canvas; the game skips drawing without a context.
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
-    localStorage.clear();
     vi.mocked(trackBearsGameStart).mockClear();
     vi.mocked(trackBearsGameComplete).mockClear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
   test('explains the rules, then starts spring', () => {
@@ -186,33 +164,20 @@ describe('StayWildGame', () => {
   describe('touch devices in portrait', () => {
     const PORTRAIT = '(pointer: coarse) and (orientation: portrait)';
     let portrait = false;
-    const listeners = new Set<() => void>();
+    let media: ReturnType<typeof stubMedia>;
 
     beforeEach(() => {
       portrait = false;
-      listeners.clear();
-      vi.spyOn(window, 'matchMedia').mockImplementation(
-        (query: string) =>
-          ({
-            get matches() {
-              return (
-                query === '(pointer: coarse)' ||
-                (query === PORTRAIT && portrait)
-              );
-            },
-            media: query,
-            addEventListener: (_: string, cb: () => void) => listeners.add(cb),
-            removeEventListener: (_: string, cb: () => void) =>
-              listeners.delete(cb),
-          }) as unknown as MediaQueryList,
+      media = stubMedia(
+        (query) =>
+          query === '(pointer: coarse)' || (query === PORTRAIT && portrait),
       );
     });
 
-    const rotate = (toPortrait: boolean) =>
-      act(() => {
-        portrait = toPortrait;
-        listeners.forEach((cb) => cb());
-      });
+    const rotate = (toPortrait: boolean) => {
+      portrait = toPortrait;
+      media.change();
+    };
 
     const resume = () =>
       fireEvent.click(
@@ -272,15 +237,7 @@ describe('StayWildGame', () => {
 
   describe('touch controls', () => {
     beforeEach(() => {
-      vi.spyOn(window, 'matchMedia').mockImplementation(
-        (query: string) =>
-          ({
-            matches: query === '(pointer: coarse)',
-            media: query,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-          }) as unknown as MediaQueryList,
-      );
+      stubMedia((query) => query === '(pointer: coarse)');
     });
 
     const jumps = () =>
