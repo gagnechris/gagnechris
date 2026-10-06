@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { undo } from '@codemirror/commands';
 import {
   afterEach,
   beforeAll,
@@ -352,6 +353,32 @@ describe('writing [ ] text in a daily note', () => {
     expect(view.state.doc.toString()).toBe(
       `${tokenLine(id!)}\nFinance needs the PO`,
     );
+  }, 15_000);
+
+  test('undo, edit, then leaving the line updates the one task instead of orphaning it', async () => {
+    const { container } = renderToday();
+    const view = await editorView(container);
+    act(() => view.focus());
+
+    typeInto(view, '[ ] Call Sam');
+    pressEnter(view);
+    await waitFor(() => expect(api.tasks.size).toBe(1), { timeout: 5000 });
+    const [id] = [...api.tasks.keys()];
+
+    act(() => {
+      undo(view);
+    });
+    expect(view.state.doc.toString()).toBe('[ ] Call Sam');
+    typeInto(view, ' back');
+    pressEnter(view);
+
+    await waitFor(
+      () => expect(api.tasks.get(id!)?.title).toBe('Call Sam back'),
+      { timeout: 5000 },
+    );
+    expect([...api.tasks.keys()]).toEqual([id]);
+    expect(new Set(api.taskPosts.map((b) => b.id))).toEqual(new Set([id]));
+    expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n`);
   }, 15_000);
 
   test('waits for the first save of a new day before linking the task', async () => {
