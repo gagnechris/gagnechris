@@ -10,6 +10,7 @@ export {
 } from './constants.js';
 export {
   pageTitle,
+  siteUrl,
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
@@ -102,6 +103,7 @@ export {
 } from './task-embeds.js';
 export {
   isSafeLinkHref,
+  isSitePath,
   LINK_HREF_MAX_LENGTH,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,
@@ -148,3 +150,4 @@ export {
   type ProjectPublishFieldErrors,
 } from './projects.js';
 export * from './users.js';
+export { postMatchesQuery } from './post-search.js';

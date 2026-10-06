@@ -17,6 +17,7 @@ import {
 import {
   PROJECTS_PATH,
   projectHasPage,
+  siteUrl,
   projectPagePath,
   type PostProjectLink,
   type ProjectBuildLogPost,
@@ -58,7 +59,7 @@ const injectPrerender = (shellHtml: string, body: string): string => {
 export const POSTS_PATH = '/posts';
 
 export const postCanonicalUrl = (slug: string): string =>
-  `https://${APEX}${POSTS_PATH}/${slug}`;
+  siteUrl(`${POSTS_PATH}/${slug}`, APEX);
 
 /**
  * RSS guids keep the `/blog/` URL so feed readers don't re-list every post as
@@ -130,7 +131,7 @@ export const renderPostsIndexPage = (
 ): string => {
   const title = pageTitle('Posts');
   const description = 'Posts by Chris Gagne.';
-  const url = `https://${APEX}${POSTS_PATH}`;
+  const url = siteUrl(POSTS_PATH, APEX);
   const body = renderSitePageHtml('/posts', renderPostsIndexBodyHtml(posts));
 
   let html = applyPageMeta(shellHtml, {
@@ -148,7 +149,7 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   const description = escapeHtml(
     resume.seo?.description || resumeSummaryExcerpt(resume.content.summary),
   );
-  const url = `https://${APEX}/resume`;
+  const url = siteUrl('/resume', APEX);
   const image = resume.seo?.ogImage
     ? absoluteUrl(resume.seo.ogImage)
     : defaultOgImage();
@@ -172,7 +173,7 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
 export const renderResumeUnavailablePage = (shellHtml: string): string => {
   const title = pageTitle('Resume');
   const description = 'Resume available on request.';
-  const url = `https://${APEX}/resume`;
+  const url = siteUrl('/resume', APEX);
   const body = renderResumeUnavailablePrerenderHtml();
 
   let html = applyPageMeta(shellHtml, {
@@ -197,7 +198,7 @@ export const renderHomePage = (
   const description = escapeHtml(
     home.seo?.description || homeAboutExcerpt(home.about),
   );
-  const url = `https://${APEX}`;
+  const url = siteUrl('/', APEX);
   const image = home.seo?.ogImage
     ? absoluteUrl(home.seo.ogImage)
     : defaultOgImage();
@@ -217,7 +218,7 @@ export const renderHomePage = (
 };
 
 export const projectCanonicalUrl = (slug: string): string =>
-  `https://${APEX}${projectPagePath(slug)}`;
+  siteUrl(projectPagePath(slug), APEX);
 
 const projectDescription = (project: Project): string =>
   project.pitch || `${project.name}, a project by Chris Gagne.`;
@@ -229,7 +230,7 @@ export const renderProjectsIndexPage = (
   let html = applyPageMeta(shellHtml, {
     title: pageTitle('Projects'),
     description: 'What Chris Gagne is building.',
-    url: `https://${APEX}${PROJECTS_PATH}`,
+    url: siteUrl(PROJECTS_PATH, APEX),
     type: 'website',
   });
   html = injectPrerender(html, renderProjectsIndexPrerenderHtml(projects));

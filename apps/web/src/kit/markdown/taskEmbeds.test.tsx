@@ -6,6 +6,7 @@ import { taskEmbedEditor, type TaskEmbedCreate } from './taskEmbeds';
 
 const ID_A = '01JAAAAAAAAAAAAAAAAAAAAAAA';
 const ID_B = '01JBBBBBBBBBBBBBBBBBBBBBBB';
+const ID_C = '01JCCCCCCCCCCCCCCCCCCCCCCC';
 
 let view: EditorView | undefined;
 
@@ -15,7 +16,7 @@ afterEach(() => {
   view = undefined;
 });
 
-function setup(doc = '', ids = [ID_A, ID_B]) {
+function setup(doc = '', ids = [ID_A, ID_B, ID_C]) {
   const created: TaskEmbedCreate[] = [];
   const attached: string[] = [];
   const queue = [...ids];
@@ -129,6 +130,76 @@ describe('taskEmbedEditor', () => {
     type(view, '\n');
     expect(created.map((c) => c.id)).toEqual([ID_A, ID_A]);
     expect(view.state.doc.toString()).toBe(`{{task:${ID_A}}}\n`);
+  });
+
+  test('the same text twice gives two tasks', () => {
+    const { view, created } = setup('');
+    type(view, '[ ] Call Sam');
+    pressEnter(view);
+    type(view, '[ ] Call Sam');
+    pressEnter(view);
+    expect(created.map((c) => c.id)).toEqual([ID_A, ID_B]);
+    expect(view.state.doc.toString()).toBe(
+      `{{task:${ID_A}}}\n{{task:${ID_B}}}\n`,
+    );
+  });
+
+  test('undo, edit, then leaving the line keeps the same task with the new text', () => {
+    const { view, created } = setup('');
+    type(view, '[ ] Call Sam');
+    pressEnter(view);
+    undo(view);
+    expect(view.state.doc.toString()).toBe('[ ] Call Sam');
+    type(view, ' back !high');
+    view.dispatch({ selection: EditorSelection.cursor(0) });
+    view.dispatch({
+      selection: EditorSelection.cursor(view.state.doc.length),
+    });
+    type(view, '\n');
+    expect(created.map((c) => c.id)).toEqual([ID_A, ID_A]);
+    expect(created[1]!.draft).toMatchObject({
+      title: 'Call Sam back',
+      priority: 'high',
+    });
+    expect(view.state.doc.toString()).toBe(`{{task:${ID_A}}}\n`);
+  });
+
+  test('an undone id is not reused while its token is still in the doc', () => {
+    const { view, created } = setup('');
+    type(view, '[ ] Call Sam');
+    pressEnter(view);
+    // A second, separate line with the same text.
+    type(view, '[ ] Call Sam');
+    view.dispatch({ selection: EditorSelection.cursor(0) });
+    expect(created.map((c) => c.id)).toEqual([ID_A, ID_B]);
+  });
+
+  test('a pasted block converts every [ ] line exactly once', () => {
+    const { view, created } = setup('Plan\n');
+    const paste =
+      '[ ] Call Sam\n- [ ] checklist\n[ ] Book room @someday\n[ ] Ship';
+    view.dispatch({
+      changes: { from: 5, insert: paste },
+      selection: EditorSelection.cursor(5 + paste.length),
+      userEvent: 'input.paste',
+    });
+    // The caret's line converts once the caret leaves it.
+    expect(created.map((c) => c.draft.title)).toEqual([
+      'Call Sam',
+      'Book room',
+    ]);
+    pressEnter(view);
+    view.dispatch({ selection: EditorSelection.cursor(0) });
+    view.contentDOM.dispatchEvent(new FocusEvent('blur'));
+
+    expect(created.map((c) => [c.id, c.draft.title])).toEqual([
+      [ID_A, 'Call Sam'],
+      [ID_B, 'Book room'],
+      [ID_C, 'Ship'],
+    ]);
+    expect(view.state.doc.toString()).toBe(
+      `Plan\n{{task:${ID_A}}}\n- [ ] checklist\n{{task:${ID_B}}}\n{{task:${ID_C}}}\n`,
+    );
   });
 
   test('a remote replace of the document never creates a task', () => {

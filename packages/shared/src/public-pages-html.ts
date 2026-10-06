@@ -1,8 +1,9 @@
 // Package specifiers, not relative ones: the Vite config loads this file with
 // Node, which can't map `./x.js` to `./x.ts`.
 import { escapeHtml } from '@gagnechris/shared/html';
+import { pageTitle, SITE_PROJECTS_LIVE } from '@gagnechris/shared/site-config';
 
-export const NOT_FOUND_TITLE = 'Page Not Found - Chris Gagne';
+export const NOT_FOUND_TITLE = pageTitle('Page Not Found');
 export const NOT_FOUND_LABEL = '404';
 export const NOT_FOUND_HEADING = 'Page not found';
 export const NOT_FOUND_TEXT =
@@ -11,12 +12,17 @@ export const NOT_FOUND_TEXT =
 export const NOT_FOUND_DESCRIPTION =
   'That URL does not match a page on this site.';
 
-export const NOT_FOUND_LINKS = [
+const NOT_FOUND_DESTINATIONS = [
   { label: 'Home', href: '/' },
   { label: 'Posts', href: '/posts' },
   { label: 'Projects', href: '/projects' },
   { label: 'Resume', href: '/resume' },
 ] as const;
+
+export const notFoundLinks = (projects: boolean) =>
+  NOT_FOUND_DESTINATIONS.filter(({ href }) => projects || href !== '/projects');
+
+export const NOT_FOUND_LINKS = notFoundLinks(SITE_PROJECTS_LIVE);
 
 export const NOT_FOUND_BEARS = {
   label: 'Don’t feed the bears',

@@ -1,53 +1,34 @@
-import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { pageTitle, type ProjectCardView } from '@gagnechris/shared';
+import { pageTitle, PROJECTS_PATH, siteUrl } from '@gagnechris/shared';
 import ProjectsIndexBody from '../projects/ProjectsIndexBody';
 import {
   documentProjectsIndex,
   loadPublishedProjects,
 } from '../projects/publishedProjects';
-import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
+import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
 import './ProjectsIndex.css';
 import PageHead from '../components/PageHead';
 
 function ProjectsIndex() {
-  const { pathname } = useLocation();
-  const notFound = coldLoadedNotFound(pathname);
-  const [projects, setProjects] = useState<ProjectCardView[] | null>(
+  const published = usePublishedView(
+    'projects',
     documentProjectsIndex,
+    loadPublishedProjects,
   );
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (notFound || documentProjectsIndex()) return;
-    let cancelled = false;
-    loadPublishedProjects()
-      .then((items) => {
-        if (!cancelled) setProjects(items ?? []);
-      })
-      .catch((err: unknown) => {
-        console.error('Error loading projects:', err);
-        if (!cancelled) {
-          setError('Could not load projects.');
-          setProjects([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [notFound]);
-
-  if (notFound) return <NotFound />;
+  if (published.status === 'missing') return <NotFound />;
   return (
     <>
-      <PageHead
-        title={pageTitle('Projects')}
-        url="https://gagnechris.com/projects"
-      />
+      <PageHead title={pageTitle('Projects')} url={siteUrl(PROJECTS_PATH)} />
       <ProjectsIndexBody
-        projects={projects ?? []}
-        message={error ?? (projects ? undefined : 'Loading projects…')}
+        projects={published.status === 'ready' ? published.view : []}
+        message={
+          published.status === 'loading'
+            ? 'Loading projects…'
+            : published.status === 'error'
+              ? 'Could not load projects.'
+              : undefined
+        }
       />
     </>
   );

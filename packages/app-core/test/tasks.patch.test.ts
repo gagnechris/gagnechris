@@ -4,7 +4,7 @@ import { createElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 import { AppApiProvider } from '../src/AppApiProvider.js';
 import { queryKeys } from '../src/query/keys.js';
-import { usePatchTaskMutation } from '../src/query/tasks.js';
+import { applyTaskPatch, usePatchTaskMutation } from '../src/query/tasks.js';
 import type { Task } from '../src/query/api.js';
 import { act, renderHook } from './renderHook.js';
 
@@ -162,5 +162,22 @@ describe('usePatchTaskMutation', () => {
     expect(
       qc.getQueryData<Task>(queryKeys.tasks.detail(task().id)),
     ).toBeUndefined();
+  });
+});
+
+describe('applyTaskPatch', () => {
+  test('applies title, priority and deadline, keeping fields it omits', () => {
+    const next = applyTaskPatch(task({ dueDate: '2026-10-09' }), {
+      title: 'Renew card today',
+      priority: 'high',
+    });
+    expect(next).toMatchObject({
+      title: 'Renew card today',
+      priority: 'high',
+      dueDate: '2026-10-09',
+      startDate: '2026-09-28',
+      version: 4,
+    });
+    expect(applyTaskPatch(next, { dueDate: null }).dueDate).toBeNull();
   });
 });

@@ -42,6 +42,7 @@ describe('ProjectPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   test('client navigation fetches the published page from the same origin', async () => {
@@ -90,11 +91,31 @@ describe('ProjectPage', () => {
     vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, text: async () => '' }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => '',
+      }),
     );
     renderAt('/projects/missing');
     expect(
       await screen.findByRole('heading', { name: /not found/i }),
     ).toBeInTheDocument();
+  });
+
+  test.each([
+    ['a 503', () => Promise.resolve({ ok: false, status: 503 })],
+    ['a network failure', () => Promise.reject(new TypeError('offline'))],
+  ])('%s is an error, not the 404', async (_label, respond) => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(respond));
+    renderAt('/projects/notebook');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load this project',
+    );
+    expect(
+      screen.queryByRole('heading', { name: /not found/i }),
+    ).not.toBeInTheDocument();
   });
 });
