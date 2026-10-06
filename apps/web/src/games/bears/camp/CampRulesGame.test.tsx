@@ -8,7 +8,8 @@ import {
   stubMedia,
   stubShare,
 } from '../shared/test-utils';
-import CampRulesGame from './CampRulesGame';
+import { useState } from 'react';
+import CampRulesGame, { type CampMode } from './CampRulesGame';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -20,8 +21,19 @@ vi.mock('../../../utils/analytics', () => ({
   trackBearsTipLinkClick: vi.fn(),
 }));
 
-const renderGame = (from = 'resume') =>
-  renderInRouter(<CampRulesGame from={from} soundOn={false} />);
+const Camp = ({ from }: { from: string }) => {
+  const [mode, setMode] = useState<CampMode>('daily');
+  return (
+    <CampRulesGame
+      from={from}
+      soundOn={false}
+      mode={mode}
+      onModeChange={setMode}
+    />
+  );
+};
+
+const renderGame = (from = 'resume') => renderInRouter(<Camp from={from} />);
 
 const start = (label = 'Start the evening') =>
   fireEvent.click(screen.getByRole('button', { name: label }));

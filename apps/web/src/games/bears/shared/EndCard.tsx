@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { BearsGame } from '../../../utils/analytics';
+import type { BearsGame } from './games';
 import type { BearTip } from '../tips';
 import Paws from './Paws';
 import {
