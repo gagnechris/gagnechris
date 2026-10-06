@@ -779,6 +779,7 @@ describe('PostEditorPage preview', () => {
   test('renders the body exactly as the published article does', async () => {
     const { container } = renderEditor();
     await screen.findByDisplayValue('Hello');
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     const published = document.createElement('div');
     published.innerHTML = renderPostPageBodyHtml({
@@ -807,6 +808,7 @@ describe('PostEditorPage preview', () => {
     });
     const { container } = renderEditor();
     await screen.findByDisplayValue('Hello');
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     const preview = container.querySelector<HTMLElement>(
       '.admin-body-preview',

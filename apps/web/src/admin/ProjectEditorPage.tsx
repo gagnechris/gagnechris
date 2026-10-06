@@ -11,7 +11,7 @@ import { EditorActionBar } from '../workspace/ui/EditorActionBar';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { ProjectBodyPreview } from './ProjectBodyPreview';
 import { ProjectEditorFields } from './ProjectEditorFields';
-import { publicUrl } from './publicUrl';
+import { publicImageSrc, publicUrl } from './publicUrl';
 import {
   emptyProjectDraft,
   hasProjectDraftErrors,
@@ -220,6 +220,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
         onChange={(value) => setField('bodyMarkdown', value)}
         onUploadImages={handleUploadImages}
         preview={<ProjectBodyPreview markdown={draft.bodyMarkdown} />}
+        resolveImageSrc={publicImageSrc}
       />
     </section>
   );

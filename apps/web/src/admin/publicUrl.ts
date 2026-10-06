@@ -28,3 +28,7 @@ export const withPublicUrls = (html: string): string => {
   }
   return template.innerHTML;
 };
+
+/** For images the editor shows inline: root-relative paths load from the public site. */
+export const publicImageSrc = (src: string): string =>
+  src.startsWith('/') && !src.startsWith('//') ? publicUrl(src) : src;
