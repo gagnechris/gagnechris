@@ -19,6 +19,7 @@ const fetchWith = async (cached: Doc, fetched: Doc) => {
     queryKey: () => KEY,
     fetch: async () => fetched,
     update: async () => fetched,
+    tooLargeMessage: 'Too large.',
     setCache: (qc, entity) => qc.setQueryData(KEY, entity),
   });
   const wrapper = ({ children }: { children: ReactNode }) =>

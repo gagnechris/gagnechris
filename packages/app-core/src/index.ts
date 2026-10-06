@@ -132,6 +132,10 @@ export {
   type VersionedResourceConfig,
 } from './query/createVersionedResource.js';
 export {
+  NOTEBOOK_TOO_LARGE_MESSAGE,
+  siteTooLargeMessage,
+} from './query/tooLarge.js';
+export {
   createDraftPublishResource,
   type DraftPublishLifecycleMutators,
   type DraftPublishResource,
