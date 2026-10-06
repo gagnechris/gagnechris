@@ -14,14 +14,16 @@ import {
 import { Logger } from '@aws-lambda-powertools/logger';
 import {
   APEX_DOMAIN,
+  normalizeResumeText as normalize,
   PUBLISHER_SERVICE_NAME,
-  resumeRoleDates,
+  resumeView,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
-  structuredExperience,
   type Resume,
-  type ResumeEducation,
-  type ResumeExperience,
+  type ResumeEducationLine,
+  type ResumeRoleView,
+  type ResumeSkillRow,
+  type ResumeView,
 } from '@gagnechris/shared';
 
 const PAGE_WIDTH = 612; // US Letter
@@ -371,8 +373,6 @@ const LH = {
 
 const SECTION_GAP = 16;
 
-const normalize = (text: string): string => text.replace(/\s+/g, ' ').trim();
-
 function drawSectionLabel(ctx: DrawCtx, title: string, keepWith: number) {
   const ruleGap = 5;
   const below = 10;
@@ -389,25 +389,21 @@ function drawSectionLabel(ctx: DrawCtx, title: string, keepWith: number) {
 }
 
 function roleHeading(
-  item: ResumeExperience,
+  role: ResumeRoleView,
   title: Style,
   company: Style,
 ): Span[] {
-  const spans: Span[] = [{ text: normalize(item.title), style: title }];
-  if (item.company.trim()) {
-    spans.push({ text: ` at ${normalize(item.company)}`, style: company });
+  const spans: Span[] = [{ text: role.title, style: title }];
+  if (role.company) {
+    spans.push({ text: ` at ${role.company}`, style: company });
   }
   return spans;
 }
 
-function drawRole(ctx: DrawCtx, item: ResumeExperience): void {
-  const title = wrapBody(ctx, roleHeading(item, S.roleTitle, S.roleCompany));
-  const bullets = item.bullets.map((b) =>
-    wrapBody(
-      ctx,
-      [{ text: normalize(b), style: S.bullet }],
-      BODY_WIDTH - BULLET_INDENT,
-    ),
+function drawRole(ctx: DrawCtx, role: ResumeRoleView): void {
+  const title = wrapBody(ctx, roleHeading(role, S.roleTitle, S.roleCompany));
+  const bullets = role.bullets.map((b) =>
+    wrapBody(ctx, [{ text: b, style: S.bullet }], BODY_WIDTH - BULLET_INDENT),
   );
   const titleGap = 3;
   const firstBulletLines = Math.min(bullets[0]?.length ?? 0, 2);
@@ -418,14 +414,14 @@ function drawRole(ctx: DrawCtx, item: ResumeExperience): void {
 
   const top = ctx.y;
   const firstBaseline = baselineOffset(S.roleTitle.size, LH.role);
-  const dates = resumeRoleDates(item);
+  const { dates } = role;
   if (dates)
     drawLeftColumn(ctx, [{ text: dates, style: S.date }], top, firstBaseline);
   drawLines(ctx, title, BODY_X, LH.role);
-  if (item.note) {
+  if (role.note) {
     drawLeftColumn(
       ctx,
-      [{ text: normalize(item.note), style: S.note }],
+      [{ text: role.note, style: S.note }],
       top,
       firstBaseline + (dates ? LH.date : 0),
     );
@@ -446,13 +442,13 @@ function drawRole(ctx: DrawCtx, item: ResumeExperience): void {
   }
 }
 
-function drawEarlierRole(ctx: DrawCtx, item: ResumeExperience): void {
+function drawEarlierRole(ctx: DrawCtx, role: ResumeRoleView): void {
   const lines = wrapBody(
     ctx,
-    roleHeading(item, S.earlierTitle, S.earlierCompany),
+    roleHeading(role, S.earlierTitle, S.earlierCompany),
   );
   ensureSpace(ctx, lines.length * LH.earlier);
-  const dates = resumeRoleDates(item);
+  const { dates } = role;
   if (dates) {
     drawLeftColumn(
       ctx,
@@ -471,11 +467,7 @@ function drawRoleRule(ctx: DrawCtx): void {
   ctx.y -= 8;
 }
 
-/** `Label: value` is a label/value row; a line without a colon is value only. */
-function drawSkillRow(ctx: DrawCtx, line: string): void {
-  const colon = line.indexOf(':');
-  const label = colon > 0 ? normalize(line.slice(0, colon)) : '';
-  const value = normalize(colon > 0 ? line.slice(colon + 1) : line);
+function drawSkillRow(ctx: DrawCtx, { label, value }: ResumeSkillRow): void {
   const valueLines = wrapBody(ctx, [{ text: value, style: S.skillValue }]);
   const labelSpans: Span[] = [{ text: label, style: S.skillLabel }];
   const labelLines = label
@@ -497,17 +489,11 @@ function drawSkillRow(ctx: DrawCtx, line: string): void {
   ctx.y = top - height;
 }
 
-function drawEducation(ctx: DrawCtx, item: ResumeEducation): void {
-  const title = item.degreeDetail
-    ? `${item.title}, ${item.degreeDetail}`
-    : item.title;
-  const place = [item.institution, item.location]
-    .map(normalize)
-    .filter(Boolean)
-    .join(', ');
-  const titleLines = wrapBody(ctx, [
-    { text: normalize(title), style: S.eduTitle },
-  ]);
+function drawEducation(
+  ctx: DrawCtx,
+  { year, title, place }: ResumeEducationLine,
+): void {
+  const titleLines = wrapBody(ctx, [{ text: title, style: S.eduTitle }]);
   const placeLines = place
     ? wrapBody(ctx, [{ text: place, style: S.eduPlace }])
     : [];
@@ -515,10 +501,10 @@ function drawEducation(ctx: DrawCtx, item: ResumeEducation): void {
     ctx,
     titleLines.length * LH.edu + placeLines.length * LH.eduPlace,
   );
-  if (item.year.trim()) {
+  if (year) {
     drawLeftColumn(
       ctx,
-      [{ text: normalize(item.year), style: S.date }],
+      [{ text: year, style: S.date }],
       ctx.y,
       baselineOffset(S.eduTitle.size, LH.edu),
     );
@@ -575,24 +561,19 @@ function drawContactLine(ctx: DrawCtx): void {
 }
 
 /** `content.headline` as stored, else the role with no end date. */
-function currentRoleLine(
-  resume: Resume,
-  experience: ResumeExperience[],
-): string | null {
+function currentRoleLine(resume: Resume, view: ResumeView): string | null {
   const headline = resume.content.headline?.trim();
   if (headline) return normalize(headline);
-  const current = experience.find((item) => item.start && !item.end);
+  const current = view.roles.find((role) => role.start && !role.end);
   if (!current) return null;
-  return normalize(
-    current.company.trim()
-      ? `${current.title} at ${current.company}`
-      : current.title,
-  );
+  return current.company
+    ? `${current.title} at ${current.company}`
+    : current.title;
 }
 
 /** Ended roles, oldest first: the order they drop to one line to fit. */
-function collapseOrder(experience: ResumeExperience[]): number[] {
-  return experience
+function collapseOrder(roles: ResumeRoleView[]): number[] {
+  return roles
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.start && item.end)
     .sort(
@@ -614,7 +595,7 @@ function resumePdfDate(resume: Resume): Date {
 function layoutResume(
   ctx: DrawCtx,
   resume: Resume,
-  experience: ResumeExperience[],
+  view: ResumeView,
   collapsed: ReadonlySet<number>,
 ): void {
   const drawFull = (text: string, style: Style, lineHeight: number) =>
@@ -626,7 +607,7 @@ function layoutResume(
     );
 
   drawFull(resume.name, S.name, LH.name);
-  const role = currentRoleLine(resume, experience);
+  const role = currentRoleLine(resume, view);
   if (role) drawFull(role, S.headline, LH.headline);
   ctx.y -= 3;
   drawContactLine(ctx);
@@ -637,10 +618,11 @@ function layoutResume(
     drawFull(content.summary, S.summary, LH.summary);
   }
 
-  if (experience.length > 0) {
+  const { labels, roles, competencies, skills, education } = view;
+  if (roles.length > 0) {
     ctx.y -= SECTION_GAP;
-    drawSectionLabel(ctx, 'Experience', LH.role + LH.bullet * 2);
-    experience.forEach((item, i) => {
+    drawSectionLabel(ctx, labels.experience, LH.role + LH.bullet * 2);
+    roles.forEach((item, i) => {
       const short = collapsed.has(i);
       if (i > 0 && !(short && collapsed.has(i - 1))) drawRoleRule(ctx);
       if (short) drawEarlierRole(ctx, item);
@@ -648,24 +630,20 @@ function layoutResume(
     });
   }
 
-  if (content.competencies.length > 0 || content.skills.length > 0) {
+  if (competencies.length > 0 || skills.length > 0) {
     ctx.y -= SECTION_GAP;
-    drawSectionLabel(ctx, 'Strengths and skills', LH.skill * 2);
-    if (content.competencies.length > 0) {
-      drawFull(
-        content.competencies.map(normalize).join(' · '),
-        S.skillValue,
-        LH.skill,
-      );
+    drawSectionLabel(ctx, labels.skills, LH.skill * 2);
+    if (competencies.length > 0) {
+      drawFull(competencies.join(' · '), S.skillValue, LH.skill);
       ctx.y -= 6;
     }
-    for (const skill of content.skills) drawSkillRow(ctx, skill);
+    for (const skill of skills) drawSkillRow(ctx, skill);
   }
 
-  if (content.education.length > 0) {
+  if (education.length > 0) {
     ctx.y -= SECTION_GAP;
-    drawSectionLabel(ctx, 'Education', LH.edu + LH.eduPlace);
-    content.education.forEach((item, i) => {
+    drawSectionLabel(ctx, labels.education, LH.edu + LH.eduPlace);
+    education.forEach((item, i) => {
       if (i > 0) ctx.y -= 6;
       drawEducation(ctx, item);
     });
@@ -686,14 +664,14 @@ const newCtx = (faces: Faces, doc: PDFDocument | null = null): DrawCtx => ({
  * on two pages; the fit is measured without a PDF, then drawn once.
  */
 export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
-  const experience = resume.content.experience.map(structuredExperience);
-  const order = collapseOrder(experience);
+  const view = resumeView(resume);
+  const order = collapseOrder(view.roles);
   const faces = measureFaces();
   let collapsed = new Set<number>();
   for (let count = 0; count <= order.length; count++) {
     collapsed = new Set(order.slice(0, count));
     const ctx = newCtx(faces);
-    layoutResume(ctx, resume, experience, collapsed);
+    layoutResume(ctx, resume, view, collapsed);
     if (ctx.pages <= MAX_PAGES) break;
   }
 
@@ -715,7 +693,7 @@ export async function renderResumePdf(resume: Resume): Promise<Uint8Array> {
       }),
     };
   }
-  layoutResume(newCtx(faces, doc), resume, experience, collapsed);
+  layoutResume(newCtx(faces, doc), resume, view, collapsed);
   return doc.save();
 }
 

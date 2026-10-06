@@ -150,6 +150,29 @@ describe('resume PDF text', () => {
     }
   });
 
+  it('renders an empty company without "at", like the resume page', async () => {
+    const [current, ...rest] = liveContent.experience;
+    const resume: Resume = {
+      ...liveResume,
+      content: {
+        ...liveContent,
+        experience: [
+          { ...current!, title: 'Independent Consultant', company: ' ' },
+          ...rest,
+        ],
+      },
+    };
+    const text = await pdfText(await renderResumePdf(resume));
+    expect(text).toContain(
+      `${resumeRoleDates(current!)} Independent Consultant •`,
+    );
+    expect(text).not.toContain('Independent Consultant at');
+    const html = renderResumePage('<div id="root"></div>', resume);
+    expect(html).toContain(
+      '<h3 class="resume-role__title">Independent Consultant</h3>',
+    );
+  });
+
   it('copies characters Newsreader lacks through the Inter fallback', async () => {
     const text = await pdfText(
       await renderResumePdf({
