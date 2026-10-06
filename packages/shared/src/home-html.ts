@@ -1,6 +1,7 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
 import { formatPostDate, postDateAttribute } from './post-date.js';
+import { comparePostsNewestFirst } from './posts-index.js';
 import { renderProjectCardHtml } from './project-html.js';
 import { PROJECTS_PATH, type ProjectCardView } from './projects.js';
 import type { Home, Post } from './schemas.js';
@@ -63,11 +64,7 @@ export const selectHomeRecentPosts = (
   posts: readonly (HomeRecentPost & Pick<Post, 'updatedAt'>)[],
 ): HomeRecentPost[] =>
   [...posts]
-    .sort((a, b) =>
-      (b.publishedAt ?? b.updatedAt).localeCompare(
-        a.publishedAt ?? a.updatedAt,
-      ),
-    )
+    .sort(comparePostsNewestFirst)
     .slice(0, HOME_RECENT_POSTS_LIMIT)
     .map(({ id, slug, title, excerpt, publishedAt }) => ({
       id,

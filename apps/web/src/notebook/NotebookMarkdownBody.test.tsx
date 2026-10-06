@@ -58,7 +58,9 @@ describe('NotebookMarkdownBody', () => {
     });
     const preview = await screen.findByRole('region', { name: 'Preview' });
     expect(preview).toHaveFocus();
-    expect(preview.querySelector('h1')).toHaveTextContent('Plan');
+    await waitFor(() =>
+      expect(preview.querySelector('h1')).toHaveTextContent('Plan'),
+    );
     expect(screen.getByRole('button', { name: 'Preview' })).toHaveAttribute(
       'aria-pressed',
       'true',

@@ -3,7 +3,7 @@ import {
   UpdateCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import { keys } from '@gagnechris/data';
+import { keys, taskDueGsi1Sk } from '@gagnechris/data';
 import { makeEvent } from './make-event.js';
 import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { NotesRepository } from '../../src/notes/repository.js';
@@ -192,7 +192,7 @@ export async function storeAsLegacyTask(
         : 'SET dueDate = :due REMOVE startDate, someday',
       ExpressionAttributeValues: {
         ':due': startDate,
-        ...(startDate ? { ':sk': keys.notebook.taskDueSk(startDate, id) } : {}),
+        ...(startDate ? { ':sk': taskDueGsi1Sk(startDate, id) } : {}),
       },
     }),
   );

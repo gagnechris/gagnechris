@@ -7,7 +7,7 @@ import {
 } from '@gagnechris/shared';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
-import { BodyPreview } from './editor/BodyPreview';
+import { LazyBodyPreview } from './editor/LazyBodyPreview';
 import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
@@ -197,7 +197,7 @@ export function PostEditorBody({ draft, setField, onUploadImages }: BodyProps) {
       value={draft.bodyMarkdown}
       onChange={(value) => setField('bodyMarkdown', value)}
       onUploadImages={onUploadImages}
-      preview={<BodyPreview kind="post" markdown={draft.bodyMarkdown} />}
+      preview={<LazyBodyPreview kind="post" markdown={draft.bodyMarkdown} />}
       resolveImageSrc={publicImageSrc}
     />
   );

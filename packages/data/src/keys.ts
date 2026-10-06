@@ -1,4 +1,8 @@
-/** Application code must import builders from here; do not hard-code prefixes. */
+/**
+ * Application code must import builders from here; do not hard-code prefixes.
+ * Each key string has one builder function; an item key (`{ pk, sk }`) comes
+ * only from `keys`.
+ */
 
 import type { NotebookArea } from '@gagnechris/shared';
 
@@ -303,7 +307,7 @@ export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
   return `DUE#${dueDate}#TASK#${taskId}`;
 }
 
-/** Inclusive `gsi1sk BETWEEN from AND to` on a task area/status partition. */
+/** Inclusive `gsi1sk BETWEEN from AND to` on a Notebook GSI1 partition. */
 export type SortKeyRange = { from: string; to: string };
 
 const prefixRange = (prefix: string): SortKeyRange => ({
@@ -326,6 +330,18 @@ export const taskGsi1SkRanges = {
     { from: afterDay(day), to: 'START#\uffff' },
   ],
   someday: (): SortKeyRange[] => [prefixRange('SOMEDAY#')],
+};
+
+/** Sort-key ranges on a note area partition (`notebookAreaGsi1Pk`). */
+export const noteGsi1SkRanges = {
+  /** Daily notes dated `from`..`to` inclusive; either end may be open. */
+  dates: (from?: string, to?: string): SortKeyRange => ({
+    from: `DATE#${from ?? '0000-01-01'}`,
+    // `#NOTE~` sorts after every `DATE#<day>#NOTE#<id>` for that day.
+    to: `DATE#${to ?? '9999-12-31'}#NOTE~`,
+  }),
+  daily: (): SortKeyRange => prefixRange('DATE#'),
+  pages: (): SortKeyRange => prefixRange('PAGE#'),
 };
 
 export function noteTasksGsi2Pk(userId: string, noteId: string): string {
@@ -389,6 +405,11 @@ export const keys = {
   post: {
     meta: (id: string) => ({ pk: postPk(id), sk: postMetaSk() }),
     published: (id: string) => ({ pk: postPk(id), sk: postPublishedSk() }),
+    slugClaim: (slug: string) => ({ pk: slugPk(slug), sk: slugPostSk() }),
+    slugRedirect: (slug: string) => ({
+      pk: slugPk(slug),
+      sk: slugRedirectSk(),
+    }),
   },
   project: {
     meta: (id: string) => ({ pk: projectPk(id), sk: SK_META }),
@@ -412,10 +433,17 @@ export const keys = {
       published: () => ({ pk: resumePk(), sk: resumePublishedSk() }),
     },
   },
+  contact: {
+    msg: (contactId: string) => ({
+      pk: contactPk(contactId),
+      sk: contactMsgSk(),
+    }),
+  },
+  removedUser: (userId: string) => ({
+    pk: removedUsersPk(),
+    sk: removedUserSk(userId),
+  }),
   sync: {
-    pk: (userId: string) => syncPk(userId),
-    sk: (updatedAt: string, entityType: string, entityId: string) =>
-      syncSk(updatedAt, entityType, entityId),
     createClaim: (changeType: string, id: string) => ({
       pk: syncCreateClaimPk(changeType, id),
       sk: syncCreateClaimSk(),
@@ -442,25 +470,5 @@ export const keys = {
         sk: taskMetaSk(),
       }),
     },
-    areaGsi1: (userId: string, area: string) =>
-      notebookAreaGsi1Pk(userId, area),
-    noteDateSk: (noteDate: string, noteId: string) =>
-      noteDateGsi1Sk(noteDate, noteId),
-    notePageSk: (updatedAt: string, noteId: string) =>
-      notePageGsi1Sk(updatedAt, noteId),
-    taskAreaStatusGsi1: (userId: string, area: string, status: string) =>
-      taskAreaStatusGsi1Pk(userId, area, status),
-    taskStartSk: (startDate: string, taskId: string) =>
-      taskStartGsi1Sk(startDate, taskId),
-    taskSomedaySk: (updatedAt: string, taskId: string) =>
-      taskSomedayGsi1Sk(updatedAt, taskId),
-    taskDueSk: (dueDate: string, taskId: string) =>
-      taskDueGsi1Sk(dueDate, taskId),
-    taskUpdatedSk: (updatedAt: string, taskId: string) =>
-      taskUpdatedGsi1Sk(updatedAt, taskId),
-    noteTasksGsi2: (userId: string, noteId: string) =>
-      noteTasksGsi2Pk(userId, noteId),
-    noteTasksSk: (taskId: string) => noteTasksGsi2Sk(taskId),
   },
-  status: (status: string) => statusGsi1Pk(status),
 } as const;

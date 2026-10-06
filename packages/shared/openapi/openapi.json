@@ -2056,7 +2056,7 @@
             "minimum": 0,
             "exclusiveMinimum": true,
             "maximum": 100,
-            "description": "Page size (1-100)"
+            "description": "Page size (1-100; default 50)"
           }
         }
       },
@@ -2795,7 +2795,8 @@
             "type": "integer",
             "minimum": 0,
             "exclusiveMinimum": true,
-            "maximum": 100
+            "maximum": 100,
+            "description": "Page size (1-100; default 50)"
           }
         }
       },
@@ -16418,10 +16419,10 @@
               "minimum": 0,
               "exclusiveMinimum": true,
               "maximum": 100,
-              "description": "Page size (1-100)"
+              "description": "Page size (1-100; default 50)"
             },
             "required": false,
-            "description": "Page size (1-100)",
+            "description": "Page size (1-100; default 50)",
             "name": "limit",
             "in": "query"
           }
@@ -19543,9 +19544,11 @@
               "type": "integer",
               "minimum": 0,
               "exclusiveMinimum": true,
-              "maximum": 100
+              "maximum": 100,
+              "description": "Page size (1-100; default 50)"
             },
             "required": false,
+            "description": "Page size (1-100; default 50)",
             "name": "limit",
             "in": "query"
           }
