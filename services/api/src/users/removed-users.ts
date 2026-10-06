@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import {
   RemovedUserItemSchema,
-  removedUserSk,
+  keys,
   removedUsersPk,
   type RemovedUserItem,
 } from '@gagnechris/data';
@@ -48,7 +48,7 @@ export class RemovedUsersRepository {
     const result = await this.doc.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: { pk: removedUsersPk(), sk: removedUserSk(userId) },
+        Key: keys.removedUser(userId),
         ConsistentRead: true,
       }),
     );
@@ -62,8 +62,7 @@ export class RemovedUsersRepository {
     removedBy: string;
   }): Promise<RemovedUserItem> {
     const item: RemovedUserItem = {
-      pk: removedUsersPk(),
-      sk: removedUserSk(input.userId),
+      ...keys.removedUser(input.userId),
       entityType: 'removedUser',
       userId: input.userId,
       email: input.email,
@@ -81,7 +80,7 @@ export class RemovedUsersRepository {
     await this.doc.send(
       new DeleteCommand({
         TableName: this.tableName,
-        Key: { pk: removedUsersPk(), sk: removedUserSk(userId) },
+        Key: keys.removedUser(userId),
       }),
     );
   }

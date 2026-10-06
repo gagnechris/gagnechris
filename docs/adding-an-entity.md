@@ -45,7 +45,7 @@ export const BookmarkSchema = z.object({
   userId: z.string().min(1),
   url: z.string().url(),
   title: NotebookTitleSchema,
-  version: z.number().int().nonnegative(),
+  version: VersionSchema,
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   deleted: z.boolean(),
@@ -66,7 +66,7 @@ export type CreateBookmarkRequest = z.infer<typeof CreateBookmarkRequestSchema>;
 
 // `version` is optional because `If-Match` can carry it instead.
 export const UpdateBookmarkRequestSchema = z.object({
-  version: z.number().int().nonnegative().optional(),
+  version: VersionSchema.optional(),
   url: z.string().url().optional(),
   title: NotebookTitleSchema.optional(),
 });
@@ -74,7 +74,7 @@ export type UpdateBookmarkRequest = z.infer<typeof UpdateBookmarkRequestSchema>;
 
 export const ListBookmarksQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
+  limit: PageLimitSchema.optional(),
 });
 export type ListBookmarksQuery = z.infer<typeof ListBookmarksQuerySchema>;
 
@@ -136,7 +136,7 @@ export function bookmarkGsi1Sk(updatedAt: string, bookmarkId: string): string {
 }
 ```
 
-and under `keys.notebook`:
+Key strings come only from these functions. An item key (`{ pk, sk }`) comes only from `keys`, so add one under `keys.notebook`:
 
 ```ts
 bookmark: {
@@ -482,7 +482,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
 export const bookmarkRoutes: RouteDef[] = createBookmarkRoutes();
 ```
 
-Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`).
+Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`), and a `withoutVersion` handler for writes that may arrive with no version (the daily note PUT creates the day's note through it).
 
 ## 7. Route table — `services/api/src/routes.ts`
 
@@ -524,7 +524,7 @@ AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local AWS_REGION=us-east-1 \
 
 Not required for a working API entity:
 
-- **Client data layer** (`packages/app-core`): fetch / mutate functions and derived types in `src/query/api.ts` (`components['schemas']['Bookmark']`), query keys in `src/query/keys.ts`, a `setCachedBookmark` in `src/query/cache.ts` built on `upsertIntoListCaches` with a filter predicate, a resource in `src/query/bookmarks.ts` via `createVersionedResource`, and exports in `src/index.ts` (5 files).
+- **Client data layer** (`packages/app-core`): fetch / mutate functions and derived types in `src/query/api.ts` (`components['schemas']['Bookmark']`), query keys in `src/query/keys.ts`, a `setCachedBookmark` in `src/query/cache.ts` built on `upsertIntoListCaches` with a filter predicate, a resource in `src/query/bookmarks.ts` via `createVersionedResource` (with `tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE`, the save error for a 413), and exports in `src/index.ts` (5 files).
 - **Docs**: add the key layout to `docs/data-model.md`.
 
 ## Publishable site entity
@@ -545,8 +545,8 @@ There is no public API: the read side is static HTML in S3.
 
 | #   | File                                                                                                               | Change                                                                                      |
 | --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| 1   | `packages/shared/src/schemas.ts`                                                                                   | entity (`.merge(PublishableFieldsSchema)`), list, create / update / list query              |
-| 2   | `packages/shared/src/openapi.ts`                                                                                   | components + paths                                                                          |
+| 1   | `packages/shared/src/schemas.ts`                                                                                   | input fields, entity, `Create = fields.extend(…)`, `updateRequestSchema(fields)`, list      |
+| 2   | `packages/shared/src/openapi.ts`                                                                                   | components + `registerPublishablePaths` (`collection` for list / create / delete)           |
 | 3   | `packages/data/src/keys.ts`                                                                                        | `<THING>#<id>`, slug-claim partition, published GSI1 partition                              |
 | 4   | `packages/data/src/items.ts`                                                                                       | META item schema, `metaTo…`, `build…MetaItem`, `build…PublishedItem`, `…ContentEqual`       |
 | 5   | `services/api/src/data/slug-claims.ts`                                                                             | a `SlugClaims` entry for the new type                                                       |
@@ -561,7 +561,7 @@ There is no public API: the read side is static HTML in S3.
 | 14  | `scripts/deploy-web.sh`, `scripts/local/seed-shell.sh`                                                             | keep `<things>/*` out of the web deploy's `--delete`                                        |
 | 15  | `services/restore-test/src/validate.ts`                                                                            | `ENTITY_RULES` entry and `COUNT_FLOOR_ENTITY_TYPES`                                         |
 | 16  | `apps/web/src/routes.tsx`                                                                                          | a route, or the SPA mount replaces the prerender with the 404                               |
-| 17  | `packages/app-core/src/query/{api,keys,cache,<things>}.ts`, `src/index.ts`                                         | fetch / mutate functions, keys, `setCached<Thing>`, a `createDraftPublishResource`          |
+| 17  | `packages/app-core/src/query/{api,keys,cache,<things>}.ts`, `src/index.ts`                                         | fetch / mutate, keys, `setCached<Thing>`, `createDraftPublishResource` + `tooLargeMessage`  |
 | 18  | `apps/web/src/admin/{Admin<Things>Page,<Thing>EditorPage}.tsx`, `<thing>Draft.ts`, `routes.tsx`, `AdminLayout.tsx` | list, draft module, editor on `useAdminEntityEditor` + `EditorFrame`, routes and a nav link |
 | —   | `openapi.json`, `schema.d.ts`, `viewer-request-function.js`, `publish-admin-routes.generated.ts`                   | generated by `npm run openapi` and `npm run publish-surface:generate`                       |
 
@@ -573,7 +573,7 @@ There is no public API: the read side is static HTML in S3.
 
 ### Repository and routes
 
-Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual`, `isDeleted` and `slugClaims`, and pass the constructor's `now` clock through. The base owns every write: `insertDraft` (slug claim + META with `attribute_not_exists`), `mutate` (consistent read, version check, `updatedAt` from the clock), `softDelete`, `publish`, `unpublish` and `discard`. Each mutation is one transaction with the version-conditioned META Put at index 0, the slug rename rows, the `PUBLISHED` put or delete and the soft-delete slug release, so a taken slug is `slug_taken` and a stale version wins with `current`. Use `validatePublish` for rules a draft must meet before it goes live and `extraMutationItems` for rows that change with it (posts write tag-index rows there). `create` builds the entity and calls `insertDraft`; `update` passes a field merge to `mutate`. Lists page with `queryPage` (and `walkPartitions` across status partitions) and return drafts through `withPublishedFlags`; `existingIds` checks many ids with one BatchGet.
+Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual`, `isDeleted` and `slugClaims`, and pass the constructor's `now` clock through. The base owns every write: `insertDraft` (slug claim + META with `attribute_not_exists`), `mutate` (consistent read, version check, `updatedAt` from the clock), `softDelete`, `publish`, `unpublish` and `discard`. Each mutation is one transaction with the version-conditioned META Put at index 0, the slug rename rows, the `PUBLISHED` put or delete and the soft-delete slug release, so a taken slug is `slug_taken` and a stale version wins with `current`. Use `validatePublish` for rules a draft must meet before it goes live and `extraMutationItems` for rows that change with it (posts write tag-index rows there). `create` builds the entity and calls `insertDraft`; `update` passes a field merge to `mutate`. The META row stores `hasUnpublishedChanges` (have `toItem` write it and `toPublishedItem` drop it). Lists page with `queryListPage` (and `walkPartitions` across status partitions), passing `attributes` to read summary fields with a `ProjectionExpression` and a `parse` that leaves the flag undefined when the row has none, so only those rows are compared with `PUBLISHED`. A `where` predicate filters in the API; pair it with `maxItems` and a larger `limit` so a page fills; `existingIds` checks many ids with one BatchGet.
 
 Declare `GET` routes with `defineRoute` and `getByIdOrThrow` (404 from `NotFoundError`), and every versioned write (`PUT`, `DELETE`, `publish`, `unpublish`, `discard`) with `siteAdminVersionedRoute` from `data/versioned-route.ts`: body `version` (default body `ExpectedVersionRequestSchema`) → `mutate` → 200 with the entity parsed through `entity`. Metric names are `<Verb><Thing>` (`PublishProject`); singletons pass `metricName` to `createSingletonRoutes`.
 

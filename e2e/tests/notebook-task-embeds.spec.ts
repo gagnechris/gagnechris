@@ -167,3 +167,47 @@ test('renaming a task changes every embed, and export writes titles instead of t
   expect(zip).toContain(`  - [ ] ${renamed}\n`);
   expect(zip).not.toContain('{{task:');
 });
+
+test('the same [ ] line twice makes two tasks, and a multi-line insert converts every line', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} lines` });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const editor = page.getByRole('textbox', { name: 'Note body' });
+  await editor.click();
+  const same = `Call Sam ${prefix}`;
+  for (let i = 0; i < 2; i += 1) {
+    await page.keyboard.type(`[ ] ${same}`);
+    await page.keyboard.press('Enter');
+  }
+  await page.keyboard.insertText(`[ ] First ${prefix}\n[ ] Second ${prefix}\n`);
+  await page.keyboard.type('done');
+
+  const tasksInNote = async () => {
+    const { data } = await seed.api.GET('/api/notebook/tasks', {
+      params: { query: { noteId: note.id } },
+    });
+    return (data?.items ?? []).map((t) => t.title).sort();
+  };
+  await expect
+    .poll(tasksInNote)
+    .toEqual([same, same, `First ${prefix}`, `Second ${prefix}`].sort());
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET('/api/notebook/notes/{id}', {
+        params: { path: { id: note.id } },
+      });
+      return data?.bodyMarkdown;
+    })
+    .toMatch(/^(\{\{task:[0-9A-Z]{26}\}\}\n){4}done$/);
+  const { data: saved } = await seed.api.GET('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+  });
+  expect(new Set(saved?.taskIds).size).toBe(4);
+});

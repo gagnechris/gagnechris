@@ -18,48 +18,36 @@ import {
 import { mapVersionConflict, resolveExpectedVersion } from './concurrency.js';
 import { BadRequestError } from './errors.js';
 
-export type ExpectedVersionOk = {
+type ExpectedVersion = {
   ok: true;
-  expected: number | 'any';
+  expected: number | 'any' | undefined;
   fromIfMatch: boolean;
 };
 
-export type ExpectedVersionErr = {
+type ExpectedVersionErr = {
   ok: false;
   response: APIGatewayProxyStructuredResultV2;
 };
 
-export function requireExpectedVersion(
+const badRequest = (message: string): ExpectedVersionErr => ({
+  ok: false,
+  response: json(400, { error: 'bad_request', message }),
+});
+
+export function readExpectedVersion(
   event: APIGatewayProxyEventV2,
   body: { version?: number },
-): ExpectedVersionOk | ExpectedVersionErr {
+): ExpectedVersion | ExpectedVersionErr {
   try {
     const { expected, fromIfMatch } = resolveExpectedVersion(event, body);
-    if (expected === undefined) {
-      return {
-        ok: false,
-        response: json(400, {
-          error: 'bad_request',
-          message: 'Expected version required (If-Match or body.version)',
-        }),
-      };
-    }
     return { ok: true, expected, fromIfMatch };
   } catch (error) {
-    if (error instanceof BadRequestError) {
-      return {
-        ok: false,
-        response: json(400, {
-          error: 'bad_request',
-          message: error.message,
-        }),
-      };
-    }
+    if (error instanceof BadRequestError) return badRequest(error.message);
     throw error;
   }
 }
 
-export async function runVersionedMutation<T>(
+async function runVersionedMutation<T>(
   fromIfMatch: boolean,
   fn: () => Promise<T>,
 ): Promise<T> {
@@ -85,7 +73,9 @@ export type VersionedMutationInput<TParams, TBody> = {
 
 /**
  * Expected version (If-Match or body) → `precheck` → `mutate` → 200 + ETag.
- * `precheck` runs after the version check so a missing version is always 400.
+ * `precheck` runs after the version check so a missing version is always 400,
+ * unless `withoutVersion` is given: then a request with no version runs it
+ * instead of `mutate`.
  */
 export function versionedMutationRoute<
   TParams extends ZodType,
@@ -108,6 +98,10 @@ export function versionedMutationRoute<
       expected: number | 'any';
     },
   ) => Promise<T>;
+  withoutVersion?: (
+    ctx: RouteCtx,
+    input: VersionedMutationInput<z.infer<TParams>, z.infer<TBody>>,
+  ) => Promise<T>;
   respond: (entity: T) => unknown;
 }): RouteDef {
   return defineRoute({
@@ -123,13 +117,22 @@ export function versionedMutationRoute<
         params: params as z.infer<TParams>,
         body: body as z.infer<TBody>,
       };
-      const resolved = requireExpectedVersion(ctx.event, input.body);
+      const resolved = readExpectedVersion(ctx.event, input.body);
       if (!resolved.ok) return resolved.response;
+      const { expected, fromIfMatch } = resolved;
+      if (expected === undefined && !def.withoutVersion) {
+        return badRequest(
+          'Expected version required (If-Match or body.version)',
+        ).response;
+      }
       const early = await def.precheck?.(ctx, input);
       if (early) return early;
-      const entity = await runVersionedMutation(resolved.fromIfMatch, () =>
-        def.mutate(ctx, { ...input, expected: resolved.expected }),
-      );
+      const entity =
+        expected === undefined
+          ? await def.withoutVersion!(ctx, input)
+          : await runVersionedMutation(fromIfMatch, () =>
+              def.mutate(ctx, { ...input, expected }),
+            );
       return jsonEntity(200, entity, def.respond);
     },
   });

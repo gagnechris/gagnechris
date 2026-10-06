@@ -1,24 +1,34 @@
-import { GetCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  QueryCommand,
+  type DynamoDBDocumentClient,
+} from '@aws-sdk/lib-dynamodb';
 import {
   POSTS_PAGE_SIZE,
+  postMatchesQuery,
   type CreatePostRequest,
   type Post,
+  type PostCounts,
   type PostStatus,
+  type PostSummary,
   type UpdatePostRequest,
 } from '@gagnechris/shared';
 import {
   GSI1_NAME,
+  POST_SUMMARY_ATTRIBUTES,
   buildMetaItem,
   buildPublishedItem,
   metaToPost,
   normalizeTags,
   parsePostMetaItem,
+  parsePostSummaryItem,
   postContentEqual,
   postMetaSk,
   postPk,
   postPublishedSk,
   slugify,
   statusGsi1Pk,
+  type PostListRow,
   type PostMetaItem,
 } from '@gagnechris/data';
 import { ulid } from 'ulid';
@@ -32,6 +42,9 @@ import { buildTagSyncItems } from './tag-index.js';
 
 // Published first so admin "all" pages surface live posts before drafts.
 const ALL_LISTED_STATUSES: readonly PostStatus[] = ['published', 'draft'];
+
+// A search keeps few rows per read, so it reads full pages instead of `remaining`.
+const SEARCH_READ_PAGE = 200;
 
 export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   constructor(
@@ -80,30 +93,64 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   /** Results are grouped by status (see {@link walkPartitions}), newest first within each. */
   async list(
     status: PostStatus | undefined,
-    opts: { cursor?: string; limit?: number } = {},
-  ): Promise<{ items: Post[]; nextCursor?: string }> {
-    const page = await walkPartitions(
+    opts: { cursor?: string; limit?: number; q?: string } = {},
+  ): Promise<{ items: PostSummary[]; nextCursor?: string }> {
+    const q = opts.q?.trim();
+    return walkPartitions(
       status ? [status] : ALL_LISTED_STATUSES,
       opts.cursor,
       opts.limit ?? POSTS_PAGE_SIZE,
       (partition, cursor, remaining, remainingBytes) => {
         const pk = statusGsi1Pk(partition);
-        return this.queryPage({
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :pk',
-          ExpressionAttributeValues: { ':pk': pk },
-          ScanIndexForward: false,
-          cursor,
-          limit: remaining,
-          cursorPartition: { attr: 'gsi1pk', value: pk },
-          byteBudget: remainingBytes,
-        });
+        return this.queryListPage<PostListRow>(
+          {
+            IndexName: GSI1_NAME,
+            KeyConditionExpression: 'gsi1pk = :pk',
+            ExpressionAttributeValues: { ':pk': pk },
+            ScanIndexForward: false,
+            cursor,
+            limit: q ? Math.max(remaining, SEARCH_READ_PAGE) : remaining,
+            ...(q ? { maxItems: remaining } : {}),
+            cursorPartition: { attr: 'gsi1pk', value: pk },
+            byteBudget: remainingBytes,
+          },
+          {
+            attributes: POST_SUMMARY_ATTRIBUTES,
+            parse: parsePostSummaryItem,
+            idOf: (row) => row.id,
+            ...(q ? { where: (row) => postMatchesQuery(row, q) } : {}),
+          },
+        );
       },
     );
-    return {
-      items: await this.withPublishedFlags(page.items),
-      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
-    };
+  }
+
+  async counts(): Promise<PostCounts> {
+    const [published, draft] = await Promise.all([
+      this.countStatus('published'),
+      this.countStatus('draft'),
+    ]);
+    return { all: published + draft, published, draft };
+  }
+
+  private async countStatus(status: PostStatus): Promise<number> {
+    let count = 0;
+    let startKey: Record<string, unknown> | undefined;
+    do {
+      const result = await this.doc.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: GSI1_NAME,
+          KeyConditionExpression: 'gsi1pk = :pk',
+          ExpressionAttributeValues: { ':pk': statusGsi1Pk(status) },
+          Select: 'COUNT',
+          ExclusiveStartKey: startKey,
+        }),
+      );
+      count += result.Count ?? 0;
+      startKey = result.LastEvaluatedKey;
+    } while (startKey);
+    return count;
   }
 
   async create(input: CreatePostRequest): Promise<Post> {

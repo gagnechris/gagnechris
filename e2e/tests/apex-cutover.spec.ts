@@ -48,9 +48,6 @@ test('the public site deletes leftover Cognito cookies and localStorage keys', a
   // Not the dev server: its HMR WebSocket to wss://gagnechris.com bypasses
   // routing, and WebKit's network process can crash on it, dropping every
   // cookie in the context.
-  await context.route(/googletagmanager|google-analytics/, (route) =>
-    route.abort(),
-  );
   await context.route(`${apex}/**`, async (route) => {
     const url = new URL(route.request().url());
     const response = await route.fetch({

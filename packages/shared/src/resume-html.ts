@@ -1,7 +1,11 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
-import { groupResumeExperience, resumeRoleDates } from './resume-dates.js';
-import type { Resume, ResumeContent, ResumeExperience } from './schemas.js';
+import {
+  resumeView,
+  type ResumeRoleView,
+  type ResumeView,
+} from './resume-view.js';
+import type { Resume, ResumeContent } from './schemas.js';
 import { SITE_LINKEDIN_URL } from './site-config.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
 
@@ -68,116 +72,109 @@ export const renderResumeIntroHtml = ({
 
 const sectionHtml = (id: string, label: string, inner: string): string =>
   `<section class="resume-section" aria-labelledby="${id}">` +
-  `<h2 class="resume-section__label" id="${id}">${label}</h2>${inner}</section>`;
+  `<h2 class="resume-section__label" id="${id}">${escapeHtml(label)}</h2>${inner}</section>`;
 
-const roleHeadingHtml = (item: ResumeExperience): string =>
-  `${escapeHtml(item.title)} <span class="resume-role__company">at ${escapeHtml(item.company)}</span>`;
+const roleHeadingHtml = ({ title, company }: ResumeRoleView): string =>
+  company
+    ? `${escapeHtml(title)} <span class="resume-role__company">at ${escapeHtml(company)}</span>`
+    : escapeHtml(title);
 
-const roleDatesHtml = (item: ResumeExperience): string => {
-  const note = item.note
-    ? `<span class="resume-role__note">${escapeHtml(item.note)}</span>`
+const roleDatesHtml = (role: ResumeRoleView): string => {
+  const note = role.note
+    ? `<span class="resume-role__note">${escapeHtml(role.note)}</span>`
     : '';
-  return `<p class="resume-role__dates">${escapeHtml(resumeRoleDates(item))}${note}</p>`;
+  return `<p class="resume-role__dates">${escapeHtml(role.dates)}${note}</p>`;
 };
 
-const roleHtml = (item: ResumeExperience): string => {
-  const bullets = item.bullets.length
-    ? `<ul class="resume-role__bullets">${item.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>`
+const roleHtml = (role: ResumeRoleView): string => {
+  const bullets = role.bullets.length
+    ? `<ul class="resume-role__bullets">${role.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>`
     : '';
   return (
-    `<li class="resume-role">${roleDatesHtml(item)}` +
-    `<div class="resume-role__body"><h3 class="resume-role__title">${roleHeadingHtml(item)}</h3>${bullets}</div></li>`
+    `<li class="resume-role">${roleDatesHtml(role)}` +
+    `<div class="resume-role__body"><h3 class="resume-role__title">${roleHeadingHtml(role)}</h3>${bullets}</div></li>`
   );
 };
 
-const rolesHtml = (items: ResumeExperience[]): string =>
-  items.length
-    ? `<ol class="resume-roles">${items.map(roleHtml).join('')}</ol>`
+const rolesHtml = (roles: ResumeRoleView[]): string =>
+  roles.length
+    ? `<ol class="resume-roles">${roles.map(roleHtml).join('')}</ol>`
     : '';
 
 // Closed, the one-line list shows; open, the full entries inside <details>
 // replace it (a CSS sibling rule), so it needs no JS.
-const earlierRolesHtml = (items: ResumeExperience[], label: string): string =>
+const earlierRolesHtml = (roles: ResumeRoleView[], label: string): string =>
   `<div class="resume-earlier">` +
   `<details class="resume-earlier__details">` +
   `<summary class="resume-earlier__summary">` +
   `<span class="resume-earlier__label">${escapeHtml(label)}</span>` +
   `<span class="resume-earlier__toggle"><span class="resume-earlier__show">Show details</span><span class="resume-earlier__hide">Hide details</span></span>` +
-  `</summary>${rolesHtml(items)}</details>` +
+  `</summary>${rolesHtml(roles)}</details>` +
   `<ol class="resume-earlier__list">` +
-  items
+  roles
     .map(
-      (item) =>
-        `<li class="resume-earlier__item">${roleDatesHtml(item)}<p class="resume-earlier__role">${roleHeadingHtml(item)}</p></li>`,
+      (role) =>
+        `<li class="resume-earlier__item">${roleDatesHtml(role)}<p class="resume-earlier__role">${roleHeadingHtml(role)}</p></li>`,
     )
     .join('') +
   `</ol></div>`;
 
-const experienceHtml = (content: ResumeContent): string => {
-  const { recent, earlier, earlierLabel } = groupResumeExperience(content);
-  return sectionHtml(
+const experienceHtml = ({ labels, roles, earlierLabel }: ResumeView): string =>
+  sectionHtml(
     'resume-experience',
-    'Experience',
-    rolesHtml(recent) +
-      (earlierLabel ? earlierRolesHtml(earlier, earlierLabel) : ''),
+    labels.experience,
+    rolesHtml(roles.filter((role) => !role.earlier)) +
+      (earlierLabel
+        ? earlierRolesHtml(
+            roles.filter((role) => role.earlier),
+            earlierLabel,
+          )
+        : ''),
   );
-};
 
-/** `Label: value` is a label/value row; a line without a colon is value only. */
-const skillRowHtml = (line: string): string => {
-  const colon = line.indexOf(':');
-  const label = colon > 0 ? line.slice(0, colon).trim() : '';
-  const value = colon > 0 ? line.slice(colon + 1).trim() : line.trim();
-  return `<div class="resume-skill"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`;
-};
-
-const skillsHtml = (content: ResumeContent): string => {
-  const competencies = content.competencies.length
-    ? `<p class="resume-competencies">${content.competencies.map(escapeHtml).join(' · ')}</p>`
+const skillsHtml = ({ labels, competencies, skills }: ResumeView): string => {
+  const competenciesHtml = competencies.length
+    ? `<p class="resume-competencies">${competencies.map(escapeHtml).join(' · ')}</p>`
     : '';
-  const skills = content.skills.length
-    ? `<dl class="resume-skills">${content.skills.map(skillRowHtml).join('')}</dl>`
+  const skillsListHtml = skills.length
+    ? `<dl class="resume-skills">${skills
+        .map(
+          ({ label, value }) =>
+            `<div class="resume-skill"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`,
+        )
+        .join('')}</dl>`
     : '';
-  if (!competencies && !skills) return '';
+  if (!competenciesHtml && !skillsListHtml) return '';
   return sectionHtml(
     'resume-skills',
-    'Strengths and skills',
-    competencies + skills,
+    labels.skills,
+    competenciesHtml + skillsListHtml,
   );
 };
 
-const educationHtml = (items: ResumeContent['education']): string => {
-  if (!items.length) return '';
-  const entries = items
-    .map((item) => {
-      const title = item.degreeDetail
-        ? `${item.title}, ${item.degreeDetail}`
-        : item.title;
-      const place = [item.institution, item.location]
-        .filter(Boolean)
-        .join(', ');
-      return (
+const educationHtml = ({ labels, education }: ResumeView): string => {
+  if (!education.length) return '';
+  const entries = education
+    .map(
+      ({ year, title, place }) =>
         `<li class="resume-role">` +
-        `<p class="resume-role__dates">${escapeHtml(item.year)}</p>` +
+        `<p class="resume-role__dates">${escapeHtml(year)}</p>` +
         `<div class="resume-role__body"><h3 class="resume-education__title">${escapeHtml(title)}</h3>` +
-        `<p class="resume-education__place">${escapeHtml(place)}</p></div></li>`
-      );
-    })
+        `<p class="resume-education__place">${escapeHtml(place)}</p></div></li>`,
+    )
     .join('');
   return sectionHtml(
     'resume-education',
-    'Education',
+    labels.education,
     `<ol class="resume-roles resume-roles--education">${entries}</ol>`,
   );
 };
 
 /** Everything below the intro. */
-export const renderResumeSectionsHtml = (content: ResumeContent): string =>
-  [
-    experienceHtml(content),
-    skillsHtml(content),
-    educationHtml(content.education),
-  ].join('');
+export const renderResumeSectionsHtml = (content: ResumeContent): string => {
+  const view = resumeView({ content });
+  return [experienceHtml(view), skillsHtml(view), educationHtml(view)].join('');
+};
 
 export const resumeIntro = (resume: Resume): ResumeIntro => ({
   headline: resume.content.headline?.trim() || null,

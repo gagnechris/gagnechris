@@ -126,19 +126,6 @@
   padding-left: 2.25rem;
 }
 
-.admin-sort {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.8125rem;
-  color: var(--neutral-600);
-}
-
-.admin-sort .admin-input {
-  flex: none;
-  min-width: 0;
-}
-
 /* Wide tables scroll inside their own box instead of widening the page. */
 .admin-table-box {
   margin-bottom: var(--space-4);

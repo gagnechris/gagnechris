@@ -126,6 +126,30 @@ describe('renderResumeSectionsHtml', () => {
     expect(html).not.toContain('resume-role__bullets');
   });
 
+  it('renders a role with an empty company without "at", expanded and in the earlier list', () => {
+    const role = {
+      title: 'Independent Consultant',
+      company: '  ',
+      start: '2000-01',
+      end: '2001-01',
+      bullets: [],
+    };
+    const html = renderResumeSectionsHtml(
+      content({
+        experience: [role, { ...role, start: '2001-02', end: '2002-01' }],
+        earlierRolesThrough: 2001,
+      }),
+    );
+    expect(html).toContain(
+      '<h3 class="resume-role__title">Independent Consultant</h3>',
+    );
+    expect(html).toContain(
+      '<p class="resume-earlier__role">Independent Consultant</p>',
+    );
+    expect(html).not.toContain('resume-role__company');
+    expect(html).not.toMatch(/\bat\b/);
+  });
+
   it('joins competencies with dots and splits skills into label and value', () => {
     const html = renderResumeSectionsHtml(
       content({

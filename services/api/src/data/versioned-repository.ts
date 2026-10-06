@@ -12,13 +12,11 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import {
+  SYNC_CREATE_CLAIM_TTL_DAYS,
   isOptimisticLockConflict,
-  ownerSyncCreateClaimPk,
-  syncCreateClaimPk,
-  syncCreateClaimSk,
+  keys,
   syncPk,
   syncSk,
-  SYNC_CREATE_CLAIM_TTL_DAYS,
   ttlDaysFromNow,
 } from '@gagnechris/data';
 import { ZodError } from 'zod';
@@ -77,10 +75,7 @@ export function unscoped<T>(opts: {
     idOfKey: (id) => id,
     itemKey: opts.keyForId,
     owns: () => true,
-    createClaim: (changeType, id) => ({
-      pk: syncCreateClaimPk(changeType, id),
-      sk: syncCreateClaimSk(),
-    }),
+    createClaim: (changeType, id) => keys.sync.createClaim(changeType, id),
     tombstoneOmits: [],
   };
 }
@@ -103,8 +98,7 @@ export function ownerScoped<T>(opts: {
     itemKey: (key) => opts.keyForId(key.userId, key.id),
     owns: (key, entity) => opts.userIdOf(entity) === key.userId,
     createClaim: (changeType, key) => ({
-      pk: ownerSyncCreateClaimPk(key.userId, changeType, key.id),
-      sk: syncCreateClaimSk(),
+      ...keys.sync.ownerCreateClaim(key.userId, changeType, key.id),
       userId: key.userId,
     }),
     tombstoneOmits: LIST_GSI_KEYS,
@@ -193,6 +187,8 @@ export type QueryPageInput = Omit<
   cursorSortBound?: { attr: string; lowerBoundInclusive: string };
   /** JSON bytes of returned items; the first item is always returned. */
   byteBudget?: number;
+  /** Stops after this many kept rows, resuming after the last one, so `limit` can read further than it returns. */
+  maxItems?: number;
 };
 
 type ReadOpts = { consistentRead?: boolean };
@@ -224,8 +220,12 @@ export class VersionedRepository<
 
   /** Zod failures become DataIntegrityError (500), never a client 400. */
   mapItem(raw: unknown): T {
+    return this.mapWith(raw, (item) => this.config.toEntity(item as TItem));
+  }
+
+  mapWith<R>(raw: unknown, parse: (raw: unknown) => R): R {
     try {
-      return this.config.toEntity(raw as TItem);
+      return parse(raw);
     } catch (error) {
       const item =
         raw && typeof raw === 'object'
@@ -614,7 +614,7 @@ export class VersionedRepository<
       ...build(existing, this.now()),
       version: expectedVersion + 1,
     };
-    return this.softDelete(key, expectedVersion, tombstone);
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
   }
 
   private async putIfVersion(
@@ -651,11 +651,21 @@ export class VersionedRepository<
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
+    const { existing } = await this.readForWrite(key, { allowDeleted: true });
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
+  }
+
+  /** `existing` is the row just read; its unique claims are released. */
+  private async writeTombstone(
+    key: TKey,
+    expectedVersion: number,
+    tombstone: T,
+    existing: T,
+  ): Promise<T> {
     this.assertOwns(key, tombstone);
     const sync = this.config.sync;
     const clock = new Date(this.now());
     const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
-    const { existing } = await this.readForWrite(key, { allowDeleted: true });
     await runVersionedWrite(
       () =>
         this.doc.send(
@@ -706,7 +716,20 @@ export class VersionedRepository<
     return tombstone;
   }
 
-  async queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
+  queryPage(input: QueryPageInput): Promise<QueryPage<T>> {
+    return this.queryPageAs(
+      input,
+      (raw) => this.mapItem(raw),
+      this.config.isDeleted,
+    );
+  }
+
+  /** `mapRow` must throw DataIntegrityError for corrupt rows (see {@link mapWith}); they are logged and skipped. */
+  async queryPageAs<R>(
+    input: QueryPageInput,
+    mapRow: (raw: unknown) => R,
+    isDeleted?: (row: R) => boolean,
+  ): Promise<QueryPage<R>> {
     const {
       cursor,
       limit,
@@ -714,6 +737,7 @@ export class VersionedRepository<
       cursorPartition,
       cursorSortBound,
       byteBudget,
+      maxItems,
       ...queryInput
     } = input;
     const indexName =
@@ -747,13 +771,13 @@ export class VersionedRepository<
     } catch (error) {
       throwCursorValidation(error);
     }
-    const items: T[] = [];
+    const items: R[] = [];
     const rows = (result.Items ?? []) as Record<string, unknown>[];
     let bytes = 0;
     for (const [index, raw] of rows.entries()) {
-      let entity: T;
+      let entity: R;
       try {
-        entity = this.mapItem(raw);
+        entity = mapRow(raw);
       } catch (error) {
         if (error instanceof DataIntegrityError) {
           logCorruptStoredItem(error);
@@ -761,7 +785,7 @@ export class VersionedRepository<
         }
         throw error;
       }
-      if (this.config.isDeleted?.(entity)) continue;
+      if (isDeleted?.(entity)) continue;
       if (byteBudget !== undefined) {
         const size = jsonByteLength(entity);
         if (items.length > 0 && bytes + size > byteBudget) {
@@ -773,6 +797,16 @@ export class VersionedRepository<
         bytes += size;
       }
       items.push(entity);
+      if (
+        maxItems !== undefined &&
+        items.length >= maxItems &&
+        index < rows.length - 1
+      ) {
+        return {
+          items,
+          nextCursor: encodeCursor(cursorKeyOf(raw, cursorKeys)),
+        };
+      }
     }
     return {
       items,

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import StayWildGame from './StayWildGame';
+import { stepWild } from './wildLogic';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -12,6 +13,11 @@ vi.mock('../../../utils/analytics', () => ({
   trackBearsGameComplete: vi.fn(),
   trackBearsTipLinkClick: vi.fn(),
 }));
+
+vi.mock('./wildLogic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./wildLogic')>();
+  return { ...actual, stepWild: vi.fn(actual.stepWild) };
+});
 
 const renderGame = () =>
   render(
@@ -129,18 +135,206 @@ describe('StayWildGame', () => {
     ).not.toBeInTheDocument();
   });
 
+  const fatNow = () =>
+    Number(
+      screen
+        .getByRole('meter', { name: 'Winter fat' })
+        .getAttribute('aria-valuenow'),
+    );
+
+  test('a key released while paused does not keep Maple running', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    key('Escape');
+    key('ArrowRight', 'keyUp');
+    key('Escape');
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  test('pausing and resuming drop held keys', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    key('Escape');
+    key('Escape');
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  test('leaving the window drops held keys', () => {
+    renderGame();
+    start();
+
+    key('ArrowRight');
+    advance(100);
+    act(() => {
+      fireEvent.blur(window);
+    });
+    advance(2_000);
+
+    expect(fatNow()).toBe(15);
+  });
+
+  describe('touch devices in portrait', () => {
+    const PORTRAIT = '(pointer: coarse) and (orientation: portrait)';
+    let portrait = false;
+    const listeners = new Set<() => void>();
+
+    beforeEach(() => {
+      portrait = false;
+      listeners.clear();
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            get matches() {
+              return (
+                query === '(pointer: coarse)' ||
+                (query === PORTRAIT && portrait)
+              );
+            },
+            media: query,
+            addEventListener: (_: string, cb: () => void) => listeners.add(cb),
+            removeEventListener: (_: string, cb: () => void) =>
+              listeners.delete(cb),
+          }) as unknown as MediaQueryList,
+      );
+    });
+
+    const rotate = (toPortrait: boolean) =>
+      act(() => {
+        portrait = toPortrait;
+        listeners.forEach((cb) => cb());
+      });
+
+    const resume = () =>
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Paused' })).getByRole(
+          'button',
+          { name: 'Resume' },
+        ),
+      );
+
+    test('the game does not start in portrait', () => {
+      portrait = true;
+      renderGame();
+      start();
+
+      expect(trackBearsGameStart).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole('heading', {
+          name: 'Help Maple get ready for winter',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('turning to portrait pauses, and resume waits for landscape', () => {
+      renderGame();
+      start();
+      advance(100);
+
+      rotate(true);
+      expect(
+        screen.getByRole('heading', { name: 'Paused' }),
+      ).toBeInTheDocument();
+      const fat = fatNow();
+      resume();
+      expect(
+        screen.getByRole('heading', { name: 'Paused' }),
+      ).toBeInTheDocument();
+      advance(2_000);
+      expect(fatNow()).toBe(fat);
+
+      rotate(false);
+      resume();
+      expect(
+        screen.queryByRole('heading', { name: 'Paused' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('the stage is a labelled group described by the controls', () => {
+    renderGame();
+
+    expect(
+      screen.getByRole('group', { name: 'Stay Wild' }),
+    ).toHaveAccessibleDescription(
+      'Left and right arrows to move, Space to jump, S to sniff, Escape to pause.',
+    );
+  });
+
+  describe('touch controls', () => {
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            matches: query === '(pointer: coarse)',
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          }) as unknown as MediaQueryList,
+      );
+    });
+
+    const jumps = () =>
+      vi.mocked(stepWild).mock.calls.filter(([, input]) => input.jump).length;
+
+    test('Jump works from the keyboard', () => {
+      renderGame();
+      start();
+      vi.mocked(stepWild).mockClear();
+
+      // Enter and Space on a button dispatch a click with no pointer down.
+      fireEvent.click(screen.getByRole('button', { name: 'Jump' }));
+      advance(100);
+
+      expect(jumps()).toBe(1);
+    });
+
+    test('a tap on Jump jumps once, not again on the click that follows', () => {
+      renderGame();
+      start();
+      vi.mocked(stepWild).mockClear();
+      const jump = screen.getByRole('button', { name: 'Jump' });
+
+      fireEvent.pointerDown(jump);
+      advance(50);
+      fireEvent.click(jump);
+      advance(100);
+
+      expect(jumps()).toBe(1);
+    });
+
+    test('Sniff works from the keyboard', () => {
+      renderGame();
+      start();
+
+      fireEvent.click(document.querySelector('.wild-touch__sniff')!);
+      advance(100);
+
+      expect(screen.getByRole('status')).toHaveTextContent(/Sniff!/);
+    });
+  });
+
   test('a run always ends with the end card and is reported', () => {
     renderGame();
     start();
 
     key('ArrowRight');
-    for (let i = 0; i < 400 && !screen.queryByRole('dialog'); i++) {
+    for (let i = 0; i < 400 && !screen.queryByRole('region'); i++) {
       key(' ');
       advance(350);
       key(' ', 'keyUp');
     }
 
-    const card = screen.getByRole('dialog');
+    const card = screen.getByRole('region');
     expect(
       within(card).getByRole('link', { name: 'Now play as the camper' }),
     ).toHaveAttribute('href', '/dont-feed-the-bears/camp?from=contact');
@@ -150,5 +344,6 @@ describe('StayWildGame', () => {
       'contact',
       expect.any(Number),
     );
+    expect(within(card).getByRole('heading', { level: 2 })).toHaveFocus();
   });
 });

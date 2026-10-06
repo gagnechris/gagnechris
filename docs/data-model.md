@@ -46,6 +46,7 @@ redirects use dedicated items.
 | `coverImage`                       | Optional `/media/...` path                                                                  |
 | `seo`                              | Optional map: `title`, `description`, `ogImage` overrides                                   |
 | `version`                          | Number for optimistic concurrency                                                           |
+| `hasUnpublishedChanges`            | Boolean, written on every META write: published and the content differs from `PUBLISHED`    |
 | `gsi1pk`                           | `STATUS#<status>`                                                                           |
 | `gsi1sk`                           | `TS#<sortTs>#POST#<postId>` — `sortTs` is `publishedAt` when published, else `updatedAt`    |
 
@@ -53,7 +54,7 @@ Admin autosave writes **only** this item. Edits never change the live site.
 
 #### `POST#<postId>` / `PUBLISHED` — live snapshot
 
-Written only on `POST .../publish`. Same content attrs as META (no GSI1 keys —
+Written only on `POST .../publish`. Same content attrs as META (no `hasUnpublishedChanges`, no GSI1 keys —
 admin `STATUS#published` queries stay unique to META). The publisher stream
 filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
 `unpublish` / soft-delete removes this item.
@@ -82,16 +83,17 @@ treats redirect slugs as reserved.
 
 ### Access patterns (posts)
 
-| Need                    | How                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`) |
-| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                 |
-| List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only), page in that order   |
-| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`             |
-| List by tag (published) | See tag items below                                                                 |
-| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                 |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                      |
-| Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                |
+| Need                    | How                                                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`)                                                                                                                                |
+| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                                                                                                                                                |
+| List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only, summary attributes via `ProjectionExpression`), page in that order; the flag comes from META, and a META row without it is compared with `PUBLISHED` |
+| Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
+| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`                                                                                                                                            |
+| List by tag (published) | See tag items below                                                                                                                                                                                                |
+| Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
+| Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
 ### Tag index items
 
@@ -127,22 +129,22 @@ the publisher's static `/projects` pages.
 
 #### `PROJECT#<projectId>` / `META` — editable draft
 
-| Attr                                            | Notes                                                                                                     |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `slug`                                          | URL slug (`/projects/<slug>`), claimed in its own partition                                               |
-| `name`, `pitch`                                 | Name and one-line pitch                                                                                   |
-| `stage`                                         | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
-| `stageNote`                                     | Short note shown with the stage, e.g. `since 2026`                                                        |
-| `previewImage`                                  | `/media/...` path or `null`                                                                               |
-| `bodyMarkdown`                                  | Page body (why / how sections); a list of `**Label** value` items renders as label/value rows             |
-| `stack`                                         | `string[]`, trimmed and de-duplicated                                                                     |
-| `links`                                         | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
-| `demo`                                          | `posts` \| `notebook` \| `null`                                                                           |
-| `order`                                         | Integer 0–999999; lists sort by it, then name                                                             |
-| `href`                                          | Site path or `https` URL, or `null`. When set the card links here and no project page is generated        |
-| `status`, `publishedAt`, `updatedAt`, `version` | As for posts                                                                                              |
-| `gsi1pk`                                        | `PROJECT_STATUS#<status>` (never posts' `STATUS#…`, so the published-posts query never sees projects)     |
-| `gsi1sk`                                        | `ORDER#<order, 6 digits>#PROJECT#<projectId>`                                                             |
+| Attr                                                                     | Notes                                                                                                     |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `slug`                                                                   | URL slug (`/projects/<slug>`), claimed in its own partition                                               |
+| `name`, `pitch`                                                          | Name and one-line pitch                                                                                   |
+| `stage`                                                                  | `idea` \| `building` \| `live` (not `status`, which is the publish status)                                |
+| `stageNote`                                                              | Short note shown with the stage, e.g. `since 2026`                                                        |
+| `previewImage`                                                           | `/media/...` path or `null`                                                                               |
+| `bodyMarkdown`                                                           | Page body (why / how sections); a list of `**Label** value` items renders as label/value rows             |
+| `stack`                                                                  | `string[]`, trimmed and de-duplicated                                                                     |
+| `links`                                                                  | `{ label, url }[]`; `url` is a site path or an `http`, `https`, `mailto` or `tel` URL (as in post bodies) |
+| `demo`                                                                   | `posts` \| `notebook` \| `null`                                                                           |
+| `order`                                                                  | Integer 0–999999; lists sort by it, then name                                                             |
+| `href`                                                                   | Site path or `https` URL, or `null`. When set the card links here and no project page is generated        |
+| `status`, `publishedAt`, `updatedAt`, `version`, `hasUnpublishedChanges` | As for posts                                                                                              |
+| `gsi1pk`                                                                 | `PROJECT_STATUS#<status>` (never posts' `STATUS#…`, so the published-posts query never sees projects)     |
+| `gsi1sk`                                                                 | `ORDER#<order, 6 digits>#PROJECT#<projectId>`                                                             |
 
 #### `PROJECT#<projectId>` / `PUBLISHED` — live snapshot
 
@@ -392,7 +394,7 @@ Context written under the task.
 - `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. Rows written before embeds have no `taskIds` attribute and derive it on read.
 - Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
 - A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, `- [ ] ~~Title~~ (dropped)` when dropped, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
-- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. A deleted task renders as a muted "Deleted task" row.
+- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. Each `[ ]` line makes its own task, so the same text twice gives two tasks, and pasting several `[ ]` lines converts each one. Undoing a conversion brings the line back; leaving it again embeds the same task (its token is no longer in the note), and if the line was edited first the task is updated to the new text, so undo never leaves an orphan. A deleted task renders as a muted "Deleted task" row.
 
 ### Task fields
 
@@ -434,6 +436,7 @@ Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHa
 
 - **Race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser (`POST /notes` or `PUT /notes/daily/...`) gets **409 `daily_taken`** with `current` (the winner) and `currentVersion`. Nothing is dropped silently.
 - **Client merge rule (web and iOS):** on `daily_taken`, keep the local draft and show a conflict. Then either reload and adopt `current`, or re-send your text as an update to `current.id` with `version: current.version` once the user chooses to merge. Never retry the create with the losing ULID.
+- **Autosave:** `PUT /notes/daily/...` with a `version` or `If-Match` reads the note named by `id` (one consistent read) and writes it with the version condition. Only when that id is not this area and day's note does it read the claim, then update the claim's note or create one.
 - **Placeholder writers:** `PUT /notes/daily/...` with no `version` or `If-Match` when the day already exists returns 409 (`daily_taken` for a different id, `version_conflict` for the same id with changed content). Re-sending the exact create (same id and content) returns 200 with the stored note.
 - **Carry-in on open:** `POST /notes/daily/{area}/{date}/open` with a client `id` returns the day's note as `GET` does, except when no note exists: it then collects the open, non-someday tasks of that area that show on that day but are not scheduled for exactly that day (at most 100), and if there are any creates the note with that `id` and a `## Carried in` block of their embeds. The daily claim makes this happen once: a concurrent opener that loses the claim returns the winner, and an existing note (even an empty one) is never changed. With nothing to carry it returns the empty placeholder and writes nothing.
 - **Delete frees the day:** soft-deleting a daily note removes its claim in the same transaction (only if the claim still points at that note). A claim pointing at a tombstone or at a missing META row (purged tombstone, partial restore) reads as empty on `GET`, and is freed on the next create (conditional on the claim still holding that `noteId`). `scripts/scan-orphan-daily-claims.mjs` counts and releases such claims (see `infra/RUNBOOK.md`).

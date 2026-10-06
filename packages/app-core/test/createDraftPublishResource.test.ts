@@ -75,6 +75,7 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
         };
       },
       discard: async (_c, { id }) => store.get(id)!,
+      tooLargeMessage: 'Too large.',
       setCache: (qc, entity) => {
         qc.setQueryData(['admin', 'fake', entity.id], entity);
       },
