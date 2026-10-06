@@ -327,4 +327,93 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
       expect(last).toContain('there');
     });
   });
+
+  test('a new value prop replaces the doc without echoing onChange', async () => {
+    const handle = createRef<MarkdownEditorHandle>();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <MarkdownEditor ref={handle} value="one" onChange={onChange} />,
+    );
+    rerender(<MarkdownEditor ref={handle} value="two" onChange={onChange} />);
+    await waitFor(() =>
+      expect(handle.current!.view()!.state.doc.toString()).toBe('two'),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('a value that lags a keystroke does not undo it', () => {
+    vi.useFakeTimers();
+    try {
+      const handle = createRef<MarkdownEditorHandle>();
+      const onChange = vi.fn();
+      const { rerender } = render(
+        <MarkdownEditor ref={handle} value="ab" onChange={onChange} />,
+      );
+      handle.current!.insertText('c');
+      expect(onChange).toHaveBeenLastCalledWith('cab');
+      rerender(<MarkdownEditor ref={handle} value="ab" onChange={onChange} />);
+      expect(handle.current!.view()!.state.doc.toString()).toBe('cab');
+      rerender(<MarkdownEditor ref={handle} value="cab" onChange={onChange} />);
+      vi.advanceTimersByTime(500);
+      expect(handle.current!.view()!.state.doc.toString()).toBe('cab');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('readOnly blocks edits and placeholder shows on an empty doc', () => {
+    const handle = createRef<MarkdownEditorHandle>();
+    const onChange = vi.fn();
+    const { container } = render(
+      <MarkdownEditor
+        ref={handle}
+        value=""
+        onChange={onChange}
+        readOnly
+        placeholder="Write in markdown…"
+      />,
+    );
+    expect(handle.current!.view()!.state.readOnly).toBe(true);
+    handle.current!.insertText('x');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(container.querySelector('.cm-placeholder')).toHaveTextContent(
+      'Write in markdown…',
+    );
+  });
+
+  test('Tab indents inside the editor', () => {
+    const handle = createRef<MarkdownEditorHandle>();
+    const onChange = vi.fn();
+    render(<MarkdownEditor ref={handle} value="- item" onChange={onChange} />);
+    const view = handle.current!.view()!;
+    view.focus();
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Tab',
+        code: 'Tab',
+        keyCode: 9,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(view.state.doc.toString()).not.toBe('- item');
+  });
+
+  test('reports blur from the editor', () => {
+    const onBlur = vi.fn();
+    const handle = createRef<MarkdownEditorHandle>();
+    render(
+      <MarkdownEditor
+        ref={handle}
+        value="x"
+        onChange={() => undefined}
+        onBlur={onBlur}
+      />,
+    );
+    const view = handle.current!.view()!;
+    view.contentDOM.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true }),
+    );
+    expect(onBlur).toHaveBeenCalled();
+  });
 });

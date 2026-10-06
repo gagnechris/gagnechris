@@ -1,57 +1,16 @@
 import { Marked, type Token, type Tokens } from 'marked';
-import sanitizeHtml from 'sanitize-html';
 import { escapeHtml } from './html.js';
-import { POST_LINK_SCHEMES } from './links.js';
+import { sanitizeRenderedHtml } from '#sanitizer';
 
 /**
  * A local instance (no global `marked.setOptions`) keeps this module free of
  * import side effects, so public pages that only use other render helpers
- * don't bundle marked or the sanitizer.
+ * don't bundle marked or the sanitizer. `#sanitizer` is sanitize-html on the
+ * server and DOMPurify in the browser (package.json `imports`).
  */
 const markdown = /* @__PURE__ */ new Marked({ gfm: true, breaks: false });
 
-/**
- * No scripts, iframes, event handlers, inline styles, or `javascript:` /
- * `data:` URLs, so pasted HTML can't run in the admin or on published pages.
- */
-const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
-  allowedTags: [
-    ...sanitizeHtml.defaults.allowedTags,
-    'img',
-    'h1',
-    'h2',
-    'input',
-    'del',
-    's',
-  ],
-  allowedAttributes: {
-    a: ['href', 'title', 'name'],
-    img: ['src', 'alt', 'title', 'width', 'height'],
-    code: ['class'],
-    ol: ['start'],
-    th: ['align'],
-    td: ['align'],
-    input: ['type', 'checked', 'disabled'],
-  },
-  allowedClasses: {
-    code: [/^language-[\w-]+$/],
-  },
-  allowedSchemes: [...POST_LINK_SCHEMES],
-  allowedSchemesByTag: { img: ['http', 'https'] },
-  allowProtocolRelative: false,
-  // GFM task lists render `<input type="checkbox" disabled>`; nothing else.
-  exclusiveFilter: (frame) =>
-    frame.tag === 'input' && frame.attribs.type !== 'checkbox',
-  transformTags: {
-    input: (tagName, attribs) => ({
-      tagName,
-      attribs: { ...attribs, disabled: '' },
-    }),
-  },
-};
-
-export const sanitizeRenderedHtml = (html: string): string =>
-  sanitizeHtml(html, SANITIZE_OPTIONS);
+export { sanitizeRenderedHtml };
 
 export const renderMarkdownToHtml = (source: string): string => {
   const html = markdown.parse(source ?? '', { async: false }) as string;
