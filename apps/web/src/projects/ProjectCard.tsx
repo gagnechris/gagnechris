@@ -1,23 +1,12 @@
-import { Fragment, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment } from 'react';
 import { projectStageText, type ProjectCardView } from '@gagnechris/shared';
+import SiteLink from '../components/SiteLink';
 import ProjectPreview from './ProjectPreview';
 import './ProjectCard.css';
 import './ProjectStage.css';
 
 // Markup must match `renderProjectCardHtml` element for element
 // (ProjectCard.test.tsx).
-
-const CardLink = ({ href, children }: { href: string; children: ReactNode }) =>
-  href.startsWith('/') ? (
-    <Link className="project-card__link" to={href} discover="none">
-      {children}
-    </Link>
-  ) : (
-    <a className="project-card__link" href={href}>
-      {children}
-    </a>
-  );
 
 const ProjectCard = ({
   card,
@@ -58,7 +47,9 @@ const ProjectCard = ({
       data-demo={card.demo ?? undefined}
     >
       {card.href ? (
-        <CardLink href={card.href}>{inner}</CardLink>
+        <SiteLink className="project-card__link" href={card.href}>
+          {inner}
+        </SiteLink>
       ) : (
         <div className="project-card__link">{inner}</div>
       )}

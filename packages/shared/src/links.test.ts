@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isSafeLinkHref,
+  isSitePath,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,
 } from './links.js';
@@ -8,6 +9,21 @@ import { renderMarkdownToHtml } from './markdown.js';
 
 const keptByPostSanitizer = (url: string): boolean =>
   renderMarkdownToHtml(`[x](<${url}>)`).includes('href=');
+
+describe('isSitePath', () => {
+  it.each(['/', '/posts/hello', '/rss.xml', '/dont-feed-the-bears?from=x'])(
+    'is true for %s',
+    (href) => expect(isSitePath(href)).toBe(true),
+  );
+
+  it.each([
+    '//evil.example/x',
+    'https://gagnechris.com/posts',
+    'posts/hello',
+    '',
+    'mailto:me@example.com',
+  ])('is false for %s', (href) => expect(isSitePath(href)).toBe(false));
+});
 
 describe('isSafeLinkHref', () => {
   it.each([

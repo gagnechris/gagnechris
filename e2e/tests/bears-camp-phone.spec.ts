@@ -190,8 +190,9 @@ for (const width of [375, 393]) {
       await noHorizontalScroll(page);
 
       await page.clock.runFor(60_000);
-      const card = page.getByRole('dialog');
+      const card = page.getByRole('region');
       await expect(card).toBeVisible();
+      await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
       await expect(page.locator('.camp-hud')).toBeHidden();
       await expect(
         card.getByText(/^\d+s · \d+ saves? · score \d+$/),

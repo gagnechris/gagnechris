@@ -5,7 +5,7 @@ import {
   type Note,
   type Task,
 } from '@gagnechris/shared';
-import { addLocalDays, formatLocalDate } from '../calendarDates';
+import { addLocalDays, localDayOf } from '../calendarDates';
 
 export const COMING_UP_DAYS = 14;
 
@@ -83,7 +83,7 @@ export function bucketTodayTasks<T extends BucketTask>(
     }
   }
 
-  const sinceKey = (t: T) => t.startDate ?? t.createdAt.slice(0, 10);
+  const sinceKey = (t: T) => t.startDate ?? localDayOf(t.createdAt);
   const overdue = (t: T) =>
     t.dueDate !== null && t.dueDate < day ? t.dueDate : null;
   const byOverdue = (a: T, b: T) => {
@@ -152,7 +152,7 @@ export function stillOpenSource(
       noteId,
     };
   }
-  const created = formatLocalDate(new Date(task.createdAt));
+  const created = localDayOf(task.createdAt);
   if (!noteId) {
     return {
       label: `Added ${dayName(created, day)} · ${age(created, day)}`,
