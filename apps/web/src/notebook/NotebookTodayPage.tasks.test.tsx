@@ -577,6 +577,40 @@ describe('Today tasks', () => {
     );
   });
 
+  test('the Snooze menu offers only show-on days, and Someday parks the task', async () => {
+    vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
+    addTask(task(12, { title: 'Read paper', startDate: '2026-10-01' }));
+    const user = userEvent.setup();
+    renderToday();
+    await within(await screen.findByTestId('still-open')).findByText(
+      'Read paper',
+    );
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'Snooze Read paper to another day',
+      }),
+    );
+    const options = within(screen.getByRole('listbox'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(options).toEqual([
+      expect.stringContaining('Tomorrow'),
+      expect.stringContaining('Monday'),
+      expect.stringContaining('Next week'),
+      expect.stringContaining('Someday'),
+      expect.stringContaining('Pick a date…'),
+    ]);
+
+    await user.keyboard('{End}{ArrowUp}{Enter}');
+    await waitFor(() =>
+      expect(server.tasks.get(ULID(12))).toMatchObject({
+        startDate: null,
+        someday: true,
+      }),
+    );
+  });
+
   test('a Drop the server rejects puts the row back and says why', async () => {
     vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
     addTask(task(11, { title: 'Stale one', startDate: '2026-10-01' }));

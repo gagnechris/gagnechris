@@ -4,6 +4,7 @@ import {
   matchesTaskDateQuery,
   resolveTaskDateToken,
   taskDateMenuOptions,
+  type TaskSchedule,
 } from '@gagnechris/shared';
 
 export type TaskDateMenuItem = {
@@ -12,6 +13,8 @@ export type TaskDateMenuItem = {
   detail: string;
   /** Null for Pick a date…, which asks for the day first. */
   token: string | null;
+  /** What a date item sets; null for Pick a date… and Deadline…. */
+  schedule: TaskSchedule | null;
 };
 
 /** `start` is the show-on date (`@…`); `due` the deadline (`due:…`). */
@@ -49,30 +52,47 @@ export function openTaskDateQuery(
     : null;
 }
 
+/** `deadline: false` drops Deadline…, for menus that only set the show-on day. */
 export function taskDateMenuItems(
   today: string,
   query: string,
   kind: TaskDateKind = 'start',
+  { deadline = kind === 'start' }: { deadline?: boolean } = {},
 ): TaskDateMenuItem[] {
-  const dates = taskDateMenuOptions(today).filter(
-    (o) =>
-      (kind === 'start' || !o.someday) &&
-      matchesTaskDateQuery(o.keywords, query),
-  );
+  const dates: TaskDateMenuItem[] = taskDateMenuOptions(today)
+    .filter(
+      (o) =>
+        (kind === 'start' || !o.someday) &&
+        matchesTaskDateQuery(o.keywords, query),
+    )
+    .map((o) => ({
+      id: o.id,
+      label: o.label,
+      detail: o.detail,
+      token: kind === 'due' ? o.token.replace(/^@/, 'due:') : o.token,
+      schedule: { startDate: o.startDate, someday: o.someday },
+    }));
   return [
-    ...(kind === 'due'
-      ? dates.map((o) => ({ ...o, token: o.token.replace(/^@/, 'due:') }))
-      : dates),
+    ...dates,
     ...(matchesTaskDateQuery(PICK_KEYWORDS, query)
-      ? [{ id: 'pick', label: 'Pick a date…', detail: '', token: null }]
+      ? [
+          {
+            id: 'pick',
+            label: 'Pick a date…',
+            detail: '',
+            token: null,
+            schedule: null,
+          },
+        ]
       : []),
-    ...(kind === 'start' && matchesTaskDateQuery(DEADLINE_KEYWORDS, query)
+    ...(deadline && matchesTaskDateQuery(DEADLINE_KEYWORDS, query)
       ? [
           {
             id: 'deadline',
             label: 'Deadline…',
             detail: 'due:',
             token: 'due:',
+            schedule: null,
           },
         ]
       : []),
