@@ -606,6 +606,6 @@ The CloudFront function change and the IAM change deploy with CDK. Add the new `
 npm run openapi && npm run openapi:check
 npm run publish-surface:check
 npm run typecheck && npm run lint && npm test
-npm run e2e:local   # extend scripts/local/e2e.sh: publish, page live, unpublish, 404
+npm run e2e:local   # extend e2e/tests/publish-lifecycle.spec.ts: publish, page live, unpublish, 404
 npm run e2e:browser -- tests/admin-<things>.spec.ts
 ```

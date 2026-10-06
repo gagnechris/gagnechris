@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { ResumeContent } from '@gagnechris/shared';
-import { expect, requireEnv, Seed, test } from '../fixtures';
+import { expect, focusJustBefore, requireEnv, Seed, test } from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -109,11 +109,8 @@ test.describe('the resume page', () => {
     const details = page.locator('details.resume-earlier__details');
     await expect(summary).toBeVisible();
 
-    await page.locator('.resume-intro__link').last().focus();
-    for (let i = 0; i < 60; i += 1) {
-      if (await summary.evaluate((el) => el === document.activeElement)) break;
-      await page.keyboard.press('Tab');
-    }
+    await focusJustBefore(summary);
+    await page.keyboard.press('Tab');
     await expect(summary).toBeFocused();
 
     await page.keyboard.press('Enter');

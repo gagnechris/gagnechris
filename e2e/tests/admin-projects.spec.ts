@@ -1,6 +1,11 @@
 import type { Page } from '@playwright/test';
-import type { components } from '@gagnechris/api-client';
-import { expect, requireEnv, test, type Seed } from '../fixtures';
+import {
+  expect,
+  requireEnv,
+  test,
+  type ProjectInput,
+  type Seed,
+} from '../fixtures';
 
 // The local site serves the publisher's output, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -20,18 +25,8 @@ const saved = (page: Page) =>
 // disabled. The shortcut saves whatever is still pending, or nothing.
 const saveNow = (page: Page) => page.keyboard.press('ControlOrMeta+S');
 
-type CreateProject = components['schemas']['CreateProjectRequest'];
-
-const seedProject = async (
-  seed: Seed,
-  body: { name: string; slug: string } & Partial<CreateProject>,
-) => {
-  const { data, error } = await seed.api.POST('/api/admin/projects', {
-    body: { stage: 'building', bodyMarkdown: 'Seeded by e2e.', ...body },
-  });
-  if (!data) throw new Error(`seed project failed: ${JSON.stringify(error)}`);
-  return data;
-};
+const seedProject = (seed: Seed, input: ProjectInput) =>
+  seed.project({ bodyMarkdown: 'Seeded by e2e.', ...input });
 
 const openProject = async (
   page: Page,
@@ -193,20 +188,17 @@ test('a taken slug shows the slug-taken message', async ({
   prefix,
 }) => {
   const taken = `${prefix}-taken`;
-  const { data, error } = await seed.api.POST('/api/admin/projects', {
-    body: {
-      name: `${prefix} taken`,
-      slug: taken,
-      pitch: '',
-      stage: 'idea',
-      stageNote: '',
-      bodyMarkdown: '',
-      stack: [],
-      links: [],
-      order: 0,
-    },
+  await seed.project({
+    name: `${prefix} taken`,
+    slug: taken,
+    pitch: '',
+    stage: 'idea',
+    stageNote: '',
+    bodyMarkdown: '',
+    stack: [],
+    links: [],
+    order: 0,
   });
-  if (!data) throw new Error(`seed project failed: ${JSON.stringify(error)}`);
 
   await signIn();
   await page.goto(`${apps.admin}/projects`);
@@ -230,17 +222,12 @@ test('a demo with no preview image blocks Publish until an image is added', asyn
   request,
 }) => {
   const slug = `${prefix}-demo`;
-  const { data: created, error } = await seed.api.POST('/api/admin/projects', {
-    body: {
-      name: `${prefix} Demo`,
-      slug,
-      stage: 'building',
-      bodyMarkdown: 'Try it.',
-      demo: 'notebook',
-    },
+  const created = await seed.project({
+    name: `${prefix} Demo`,
+    slug,
+    bodyMarkdown: 'Try it.',
+    demo: 'notebook',
   });
-  if (!created)
-    throw new Error(`seed project failed: ${JSON.stringify(error)}`);
 
   const rejected = await seed.api.POST('/api/admin/projects/{id}/publish', {
     params: { path: { id: created.id } },
@@ -252,6 +239,12 @@ test('a demo with no preview image blocks Publish until an image is added', asyn
     fields: { previewImage: 'required_with_demo' },
   });
 
+  const publishes: string[] = [];
+  page.on('request', (req) => {
+    if (req.method() === 'POST' && req.url().endsWith('/publish')) {
+      publishes.push(req.url());
+    }
+  });
   await signIn();
   await page.goto(`${apps.admin}/projects/${created.id}`);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
@@ -269,11 +262,6 @@ test('a demo with no preview image blocks Publish until an image is added', asyn
   await expect(blocked).toBeVisible();
   await page.getByRole('heading', { name: 'Body' }).click();
   await page.keyboard.press('ControlOrMeta+Enter');
-  await page.waitForTimeout(500);
-  const { data: stillDraft } = await seed.api.GET('/api/admin/projects/{id}', {
-    params: { path: { id: created.id } },
-  });
-  expect(stillDraft).toMatchObject({ status: 'draft', version: 1 });
 
   await page.getByLabel('Upload preview image').setInputFiles({
     name: 'preview.png',
@@ -289,6 +277,8 @@ test('a demo with no preview image blocks Publish until an image is added', asyn
   await page.getByRole('heading', { name: 'Body' }).click();
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(page.getByRole('button', { name: 'Unpublish' })).toBeVisible();
+  // Any publish the two blocked attempts sent went out before this one.
+  expect(publishes).toHaveLength(1);
   await expect
     .poll(async () =>
       (await request.get(`${site()}/projects/${slug}`)).status(),
