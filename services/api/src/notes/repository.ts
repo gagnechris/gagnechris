@@ -24,8 +24,6 @@ import {
   type ListNotesQuery,
   type Note,
   type NotebookArea,
-  type NoteSyncChange,
-  type SyncChange,
   type UpdateNoteRequest,
 } from '@gagnechris/shared';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
@@ -41,6 +39,7 @@ import {
   type UniqueClaimHook,
 } from '../data/versioned-repository.js';
 import { hashCreateFields } from '../data/create-hash.js';
+import { toSyncChange } from '../sync/to-sync-change.js';
 
 export const NOTE_CHANGE_TYPE = 'note';
 
@@ -98,26 +97,11 @@ export function noteCreatePayloadHash(
   ]);
 }
 
-export function noteToChange(
-  item: Record<string, unknown>,
-): SyncChange | undefined {
-  if (item.entityType !== NOTE_CHANGE_TYPE) return undefined;
-  let entity: Note;
-  try {
-    entity = metaToNote(parseNoteMetaItem(item));
-  } catch {
-    return undefined;
-  }
-  const change: NoteSyncChange = NoteSyncChangeSchema.parse({
-    type: NOTE_CHANGE_TYPE,
-    id: entity.id,
-    version: entity.version,
-    deleted: entity.deleted,
-    updatedAt: entity.updatedAt,
-    ...(entity.deleted ? {} : { entity }),
-  });
-  return change;
-}
+export const noteToChange = toSyncChange(
+  NOTE_CHANGE_TYPE,
+  (item) => metaToNote(parseNoteMetaItem(item)),
+  NoteSyncChangeSchema,
+);
 
 async function readDailyHolder(
   doc: DynamoDBDocumentClient,

@@ -23,11 +23,9 @@ import {
   type CreateTaskRequest,
   type ListTasksQuery,
   type NotebookArea,
-  type SyncChange,
   type Task,
   type TaskPriority,
   type TaskStatus,
-  type TaskSyncChange,
   type UpdateTaskRequest,
 } from '@gagnechris/shared';
 import {
@@ -45,6 +43,7 @@ import {
 import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { hashCreateFields } from '../data/create-hash.js';
+import { toSyncChange } from '../sync/to-sync-change.js';
 
 export const TASK_CHANGE_TYPE = 'task';
 
@@ -96,26 +95,11 @@ export function taskCreatePayloadHash(
   ]);
 }
 
-export function taskToChange(
-  item: Record<string, unknown>,
-): SyncChange | undefined {
-  if (item.entityType !== TASK_CHANGE_TYPE) return undefined;
-  let entity: Task;
-  try {
-    entity = metaToTask(parseTaskMetaItem(item));
-  } catch {
-    return undefined;
-  }
-  const change: TaskSyncChange = TaskSyncChangeSchema.parse({
-    type: TASK_CHANGE_TYPE,
-    id: entity.id,
-    version: entity.version,
-    deleted: entity.deleted,
-    updatedAt: entity.updatedAt,
-    ...(entity.deleted ? {} : { entity }),
-  });
-  return change;
-}
+export const taskToChange = toSyncChange(
+  TASK_CHANGE_TYPE,
+  (item) => metaToTask(parseTaskMetaItem(item)),
+  TaskSyncChangeSchema,
+);
 
 function isCarriedOver(task: Task, today: string): boolean {
   return (
