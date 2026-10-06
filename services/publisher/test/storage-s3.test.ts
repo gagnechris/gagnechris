@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const s3Send = vi.fn();
@@ -92,5 +93,71 @@ describe('S3 site storage delete', () => {
     await expect(createS3SiteStorage().delete('resume.pdf')).rejects.toThrow(
       'AccessDenied',
     );
+  });
+});
+
+describe('S3 site storage put', () => {
+  const prevBucket = process.env.SITE_BUCKET_NAME;
+  const body = '<html>same</html>';
+  const etag = `"${createHash('md5').update(body).digest('hex')}"`;
+
+  beforeEach(() => {
+    process.env.SITE_BUCKET_NAME = 'test-bucket';
+    s3Send.mockReset();
+  });
+
+  afterEach(() => {
+    if (prevBucket === undefined) delete process.env.SITE_BUCKET_NAME;
+    else process.env.SITE_BUCKET_NAME = prevBucket;
+  });
+
+  const stored = (headers: Record<string, string | undefined>) =>
+    s3Send.mockImplementation(async (cmd: { constructor: { name: string } }) =>
+      cmd.constructor.name === 'HeadObjectCommand'
+        ? { ETag: etag, ...headers }
+        : {},
+    );
+
+  it('skips when the bytes and every header match', async () => {
+    stored({
+      ContentType: 'application/pdf',
+      CacheControl: 'public,max-age=300',
+      ContentDisposition: 'inline; filename="resume.pdf"',
+    });
+    const { createS3SiteStorage } = await import('../src/storage-s3.js');
+
+    await expect(
+      createS3SiteStorage().put(
+        'resume.pdf',
+        body,
+        'application/pdf',
+        'public,max-age=300',
+        'inline; filename="resume.pdf"',
+      ),
+    ).resolves.toBe(false);
+    expect(sentCommands()).toEqual(['HeadObjectCommand']);
+  });
+
+  it.each([
+    ['Cache-Control', { CacheControl: 'public,max-age=60' }],
+    ['Content-Type', { ContentType: 'text/plain' }],
+    ['Content-Disposition', { ContentDisposition: 'attachment' }],
+  ])('rewrites unchanged bytes when %s differs', async (_header, overrides) => {
+    stored({
+      ContentType: 'text/html; charset=utf-8',
+      CacheControl: 'public,max-age=0,must-revalidate',
+      ...overrides,
+    });
+    const { createS3SiteStorage } = await import('../src/storage-s3.js');
+
+    await expect(
+      createS3SiteStorage().put(
+        'index.html',
+        body,
+        'text/html; charset=utf-8',
+        'public,max-age=0,must-revalidate',
+      ),
+    ).resolves.toBe(true);
+    expect(sentCommands()).toEqual(['HeadObjectCommand', 'PutObjectCommand']);
   });
 });

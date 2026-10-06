@@ -29,19 +29,16 @@ const target: PublishTarget = {
       candidates = scope.slugsToRemove;
     }
 
-    const removedSlugs: string[] = [];
     const deleteKeys: string[] = [];
     for (const slug of candidates) {
       if (!slug || publishedSlugs.has(slug) || corruptPostSlugs.has(slug)) {
         continue;
       }
       deleteKeys.push(`blog/${slug}/index.html`);
-      removedSlugs.push(slug);
     }
     return {
       deleteKeys,
-      removedSlugs,
-      invalidationPaths: removedSlugs.length > 0 ? ['/blog*', '/rss.xml'] : [],
+      invalidationPaths: deleteKeys.length > 0 ? ['/blog*', '/rss.xml'] : [],
     };
   },
 };

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -70,8 +70,14 @@ export function createS3SiteStorage(): SiteStorage {
         const head = await s3.send(
           new HeadObjectCommand({ Bucket: bucket, Key: key }),
         );
-        // Single-part PutObject ETag is the quoted MD5 of the body.
-        if (head.ETag === etag) {
+        // Single-part PutObject ETag is the quoted MD5 of the body. Headers
+        // are compared too, or a header change never reaches unchanged bytes.
+        if (
+          head.ETag === etag &&
+          head.ContentType === contentType &&
+          head.CacheControl === cacheControl &&
+          (head.ContentDisposition ?? '') === (contentDisposition ?? '')
+        ) {
           return false;
         }
       } catch (err) {
@@ -144,7 +150,7 @@ export function createS3SiteStorage(): SiteStorage {
         new CreateInvalidationCommand({
           DistributionId: distributionId,
           InvalidationBatch: {
-            CallerReference: `publisher-${Date.now()}`,
+            CallerReference: `publisher-${randomUUID()}`,
             Paths: { Quantity: unique.length, Items: unique },
           },
         }),

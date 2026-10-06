@@ -29,13 +29,13 @@ import type {
 } from './types.js';
 import { PUBLISH_RESULT_BOOLEAN_FLAGS } from './types.js';
 
-type FlagAccumulator = {
-  removedSlugs: string[];
-} & Record<(typeof PUBLISH_RESULT_BOOLEAN_FLAGS)[number], boolean>;
+type FlagAccumulator = Record<
+  (typeof PUBLISH_RESULT_BOOLEAN_FLAGS)[number],
+  boolean
+>;
 
 function emptyFlagAccumulator(): FlagAccumulator {
   return {
-    removedSlugs: [],
     resumePublished: false,
     resumeUnpublished: false,
     resumePdfFailed: false,
@@ -48,9 +48,6 @@ export function mergeTargetResultFlags(
   acc: FlagAccumulator,
   result: PublishTargetRunResult,
 ): void {
-  if (result.removedSlugs?.length) {
-    acc.removedSlugs.push(...result.removedSlugs);
-  }
   for (const key of PUBLISH_RESULT_BOOLEAN_FLAGS) {
     if (result[key]) acc[key] = true;
   }
@@ -271,6 +268,7 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
   };
 
   const flags = emptyFlagAccumulator();
+  const removedSlugs: string[] = [];
   const collectedPaths: string[] = [];
   let hadChanges = false;
 
@@ -285,11 +283,9 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
       ? await deleteKeys(storage, result.deleteKeys)
       : [];
 
-    if (
-      written.length > 0 ||
-      deleted.length > 0 ||
-      (result.removedSlugs?.length ?? 0) > 0
-    ) {
+    removedSlugs.push(...postSlugsFromKeys(deleted));
+
+    if (written.length > 0 || deleted.length > 0) {
       hadChanges = true;
       if (result.invalidationPaths?.length) {
         collectedPaths.push(...result.invalidationPaths);
@@ -324,7 +320,7 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
 
   return {
     publishedCount: published.length,
-    removedSlugs: flags.removedSlugs,
+    removedSlugs,
     resumePublished: flags.resumePublished,
     resumeUnpublished: flags.resumeUnpublished,
     resumePdfFailed: flags.resumePdfFailed,
