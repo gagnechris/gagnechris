@@ -61,8 +61,6 @@ export type EntityScope<T, TKey> = {
     changeType: string,
     key: TKey,
   ) => ItemKey & Record<string, unknown>;
-  /** Attributes removed from tombstones so list indexes drop the row. */
-  tombstoneOmits: readonly string[];
 };
 
 export function unscoped<T>(opts: {
@@ -76,13 +74,13 @@ export function unscoped<T>(opts: {
     itemKey: opts.keyForId,
     owns: () => true,
     createClaim: (changeType, id) => keys.sync.createClaim(changeType, id),
-    tombstoneOmits: [],
   };
 }
 
-const LIST_GSI_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
-
-/** Another owner's rows read as missing; tombstones drop list GSI keys so lists skip them. */
+/**
+ * Another owner's rows read as missing. Tombstones leave list indexes because
+ * `toItem` (the `@gagnechris/data` item builder) omits GSI keys when deleted.
+ */
 export function ownerScoped<T>(opts: {
   keyForId: (userId: string, id: string) => ItemKey;
   idOf: (entity: T) => string;
@@ -101,7 +99,6 @@ export function ownerScoped<T>(opts: {
       ...keys.sync.ownerCreateClaim(key.userId, changeType, key.id),
       userId: key.userId,
     }),
-    tombstoneOmits: LIST_GSI_KEYS,
   };
 }
 
@@ -257,9 +254,6 @@ export class VersionedRepository<
     opts?: { ttl?: number; createHash?: string },
   ): TItem {
     const base: Record<string, unknown> = { ...this.config.toItem(entity) };
-    if (this.config.isDeleted?.(entity)) {
-      for (const attr of this.scope.tombstoneOmits) delete base[attr];
-    }
     const sync = this.config.sync;
     const syncAttrs = sync
       ? {
