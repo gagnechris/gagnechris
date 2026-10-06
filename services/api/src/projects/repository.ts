@@ -5,6 +5,7 @@ import {
   buildProjectPublishedItem,
   keys,
   metaToProject,
+  parseProjectListRow,
   parseProjectMetaItem,
   projectContentEqual,
   projectStatusGsi1Pk,
@@ -86,11 +87,10 @@ export class ProjectsRepository extends PublishableRepository<
     const statuses: ListableStatus[] = status
       ? [status]
       : ['published', 'draft'];
-    const drafts: Project[] = [];
+    const flagged: Project[] = [];
     for (const s of statuses) {
-      drafts.push(...(await this.queryStatus(s)));
+      flagged.push(...(await this.queryStatus(s)));
     }
-    const flagged = await this.withPublishedFlags(drafts);
     return {
       items: statuses.flatMap((s) =>
         sortProjectsByOrder(flagged.filter((p) => p.status === s)),
@@ -103,12 +103,15 @@ export class ProjectsRepository extends PublishableRepository<
     const out: Project[] = [];
     let cursor: string | undefined;
     do {
-      const page = await this.queryPage({
-        IndexName: GSI1_NAME,
-        KeyConditionExpression: 'gsi1pk = :pk',
-        ExpressionAttributeValues: { ':pk': pk },
-        cursor,
-      });
+      const page = await this.queryListPage(
+        {
+          IndexName: GSI1_NAME,
+          KeyConditionExpression: 'gsi1pk = :pk',
+          ExpressionAttributeValues: { ':pk': pk },
+          cursor,
+        },
+        { parse: parseProjectListRow, idOf: (row) => row.id },
+      );
       out.push(...page.items);
       cursor = page.nextCursor;
     } while (cursor && out.length < PROJECT_LIST_MAX);

@@ -4,15 +4,18 @@ import {
   type CreatePostRequest,
   type Post,
   type PostStatus,
+  type PostSummary,
   type UpdatePostRequest,
 } from '@gagnechris/shared';
 import {
   GSI1_NAME,
+  POST_SUMMARY_ATTRIBUTES,
   buildMetaItem,
   buildPublishedItem,
   metaToPost,
   normalizeTags,
   parsePostMetaItem,
+  parsePostSummaryItem,
   postContentEqual,
   postMetaSk,
   postPk,
@@ -81,29 +84,32 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
   async list(
     status: PostStatus | undefined,
     opts: { cursor?: string; limit?: number } = {},
-  ): Promise<{ items: Post[]; nextCursor?: string }> {
-    const page = await walkPartitions(
+  ): Promise<{ items: PostSummary[]; nextCursor?: string }> {
+    return walkPartitions(
       status ? [status] : ALL_LISTED_STATUSES,
       opts.cursor,
       opts.limit ?? POSTS_PAGE_SIZE,
       (partition, cursor, remaining, remainingBytes) => {
         const pk = statusGsi1Pk(partition);
-        return this.queryPage({
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :pk',
-          ExpressionAttributeValues: { ':pk': pk },
-          ScanIndexForward: false,
-          cursor,
-          limit: remaining,
-          cursorPartition: { attr: 'gsi1pk', value: pk },
-          byteBudget: remainingBytes,
-        });
+        return this.queryListPage(
+          {
+            IndexName: GSI1_NAME,
+            KeyConditionExpression: 'gsi1pk = :pk',
+            ExpressionAttributeValues: { ':pk': pk },
+            ScanIndexForward: false,
+            cursor,
+            limit: remaining,
+            cursorPartition: { attr: 'gsi1pk', value: pk },
+            byteBudget: remainingBytes,
+          },
+          {
+            attributes: POST_SUMMARY_ATTRIBUTES,
+            parse: parsePostSummaryItem,
+            idOf: (row) => row.id,
+          },
+        );
       },
     );
-    return {
-      items: await this.withPublishedFlags(page.items),
-      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
-    };
   }
 
   async create(input: CreatePostRequest): Promise<Post> {
