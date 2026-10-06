@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { localToday } from '../kit/calendarDates';
+import { localDateString } from '@gagnechris/shared';
 
 /**
  * Rolls over at midnight and when the tab comes back, so pages left open
@@ -10,7 +10,7 @@ import { localToday } from '../kit/calendarDates';
 export function useLocalToday(
   onRollover?: (previous: string, next: string) => void,
 ): string {
-  const [today, setToday] = useState(localToday);
+  const [today, setToday] = useState(() => localDateString());
   const onRolloverRef = useRef(onRollover);
   useEffect(() => {
     onRolloverRef.current = onRollover;
@@ -18,7 +18,7 @@ export function useLocalToday(
 
   useEffect(() => {
     const refresh = () => {
-      const next = localToday();
+      const next = localDateString();
       if (next === today) return;
       onRolloverRef.current?.(today, next);
       setToday(next);

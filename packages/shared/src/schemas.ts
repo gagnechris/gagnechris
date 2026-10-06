@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { isCalendarDay } from './calendar.js';
 import { API_SERVICE_NAME } from './constants.js';
 import {
   isSafeLinkHref,
@@ -522,7 +523,8 @@ export const CALENDAR_DATE_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
 
 export const CalendarDateSchema = z
   .string()
-  .regex(new RegExp(CALENDAR_DATE_PATTERN), 'Must be yyyy-mm-dd');
+  .regex(new RegExp(CALENDAR_DATE_PATTERN), 'Must be yyyy-mm-dd')
+  .refine(isCalendarDay, 'Must be a real calendar date');
 
 export type CalendarDate = z.infer<typeof CalendarDateSchema>;
 
