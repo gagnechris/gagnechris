@@ -8,33 +8,34 @@ vi.mock('./MarkdownEditor', () => ({
 }));
 
 describe('MarkdownBodyEditor', () => {
-  test('Write, Split and Preview pick the panes; Preview hides the insert toolbar', async () => {
+  test('one pane, no Write/Split/Preview tabs; Preview swaps in the given renderer and hides the insert toolbar', async () => {
     const user = userEvent.setup();
     const { container } = render(
       <MarkdownBodyEditor
-        value=""
+        value="# Hi"
         onChange={() => {}}
         onUploadImages={() => Promise.resolve([])}
-        preview={<div />}
+        preview={<div data-testid="published" />}
       />,
     );
-    const split = () => container.querySelector('.markdown-split');
     await screen.findByLabelText('Markdown');
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(container.querySelector('.markdown-single')).toHaveAttribute(
+      'data-previewing',
+      'false',
+    );
+    expect(screen.queryByTestId('published')).toBeNull();
+    expect(screen.getByRole('toolbar', { name: 'Insert' })).toBeVisible();
 
-    for (const [tab, pane] of [
-      ['Split', 'split'],
-      ['Preview', 'preview'],
-      ['Write', 'write'],
-    ] as const) {
-      await user.click(screen.getByRole('tab', { name: tab }));
-      expect(screen.getByRole('tab', { name: tab })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      );
-      expect(split()).toHaveAttribute('data-pane', pane);
-      expect(screen.queryByRole('toolbar', { name: 'Insert' }) !== null).toBe(
-        pane !== 'preview',
-      );
-    }
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('region', { name: 'Preview' })).toContainElement(
+      screen.getByTestId('published'),
+    );
+    expect(screen.getByRole('region', { name: 'Preview' })).toHaveFocus();
+    expect(screen.queryByRole('toolbar', { name: 'Insert' })).toBeNull();
+
+    await user.keyboard('{Control>}/{/Control}');
+    expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull();
+    expect(screen.getByRole('toolbar', { name: 'Insert' })).toBeVisible();
   });
 });

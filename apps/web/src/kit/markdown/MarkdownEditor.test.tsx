@@ -36,8 +36,8 @@ const SCROLL_FIX_CSS = `
   flex: 1;
   min-height: 0;
 }
-.markdown-split > .markdown-editor,
-.markdown-split > .markdown-preview {
+.markdown-single > .markdown-editor,
+.markdown-single > .markdown-preview {
   min-height: 0;
   height: min(70vh, 40rem);
 }
@@ -101,7 +101,7 @@ describe('MarkdownEditor scroll (CHR-111)', () => {
   test('long content leaves .cm-scroller scrollable (scrollTop is writable)', async () => {
     const { container } = render(
       <div className="markdown-workspace" style={{ width: 960 }}>
-        <div className="markdown-split" data-pane="edit">
+        <div className="markdown-single">
           <MarkdownEditor value={LONG_MARKDOWN} onChange={() => {}} />
           <div className="markdown-preview" aria-hidden>
             preview

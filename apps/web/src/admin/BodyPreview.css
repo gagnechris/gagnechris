@@ -22,22 +22,3 @@
   max-width: none;
   padding-inline: 0;
 }
-
-.markdown-split > .admin-body-preview {
-  min-height: 0;
-  height: min(70vh, 40rem);
-  height: min(70dvh, 40rem);
-  height: min(var(--vv-height, 70dvh), 40rem);
-}
-
-@media (max-width: 1023px) {
-  .markdown-split > .admin-body-preview {
-    height: auto;
-    min-height: min(50vh, 24rem);
-    min-height: min(50dvh, 24rem);
-  }
-
-  .markdown-split[data-pane='edit'] > .admin-body-preview {
-    display: none;
-  }
-}

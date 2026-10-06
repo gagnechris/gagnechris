@@ -1,31 +1,25 @@
-import { lazy, Suspense, useId, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useId, useMemo, useRef, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
 import type { EditorView } from '@codemirror/view';
 import MarkdownPreview from './MarkdownPreview';
 import type { MarkdownEditorHandle } from './MarkdownEditor';
 import { insertCodeBlock, insertImages, insertLink } from './editorAccessory';
+import { useEditorViewMode } from './editorViewMode';
+import { markdownImages } from './imageWidgets';
+import { livePreview } from './livePreview';
 import './markdown.css';
 
 const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
-
-export type EditorPane = 'write' | 'split' | 'preview';
-
-const PANES: readonly { value: EditorPane; label: string }[] = [
-  { value: 'write', label: 'Write' },
-  { value: 'split', label: 'Split' },
-  { value: 'preview', label: 'Preview' },
-];
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
   onUploadImages: (files: File[]) => Promise<string[]>;
-  /** Replaces the default `MarkdownPreview` pane. */
+  /** Replaces the default `MarkdownPreview` in Preview. */
   preview?: ReactNode;
+  /** Maps an image's markdown `src` to a URL this app can load. */
+  resolveImageSrc?: (src: string) => string;
 };
-
-const initialPane = (): EditorPane =>
-  window.matchMedia?.('(min-width: 1024px)').matches ? 'split' : 'write';
 
 const icon = (path: ReactNode) => (
   <svg
@@ -48,9 +42,22 @@ export function MarkdownBodyEditor({
   onChange,
   onUploadImages,
   preview,
+  resolveImageSrc,
 }: Props) {
-  const [pane, setPane] = useState<EditorPane>(initialPane);
   const editorRef = useRef<MarkdownEditorHandle>(null);
+  const mode = useEditorViewMode({
+    rawStorageKey: 'admin.rawMarkdown',
+    editorRef,
+  });
+  const extensions = useMemo(
+    () => [
+      mode.previewKeymap,
+      ...(mode.raw
+        ? []
+        : [livePreview(), markdownImages({ resolveSrc: resolveImageSrc })]),
+    ],
+    [mode.previewKeymap, mode.raw, resolveImageSrc],
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const fileId = useId();
 
@@ -74,27 +81,11 @@ export function MarkdownBodyEditor({
 
   return (
     <>
-      <div className="markdown-workspace">
+      <div className="markdown-workspace markdown-workspace--single">
         <div className="markdown-bar">
-          <div
-            className="markdown-tabs markdown-tabs--views"
-            role="tablist"
-            aria-label="Editor view"
-          >
-            {PANES.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="tab"
-                className={`markdown-tabs__btn markdown-tabs__btn--${option.value}`}
-                aria-selected={pane === option.value}
-                onClick={() => setPane(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          {pane === 'preview' ? null : (
+          {mode.previewing ? (
+            <span />
+          ) : (
             <div
               className="markdown-toolbar"
               role="toolbar"
@@ -154,22 +145,29 @@ export function MarkdownBodyEditor({
               </button>
             </div>
           )}
+          {mode.toggles}
         </div>
-        <div className="markdown-split markdown-split--views" data-pane={pane}>
+        <div
+          className="markdown-single markdown-single--reading"
+          data-previewing={mode.previewing}
+        >
           <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
             <MarkdownEditor
               ref={editorRef}
               value={value}
               onChange={onChange}
               onUploadImages={onUploadImages}
+              extensions={extensions}
+              lineNumbers={false}
             />
           </Suspense>
-          {preview ?? <MarkdownPreview markdown={value} />}
+          {mode.previewPane(preview ?? <MarkdownPreview markdown={value} />)}
         </div>
       </div>
       <p className="admin-hint">
         ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (in the body editor: no
-        publish and no blank line) · paste or drop images into the editor
+        publish and no blank line) · ⌘/ / Ctrl+/ previews · paste or drop images
+        into the editor
       </p>
     </>
   );

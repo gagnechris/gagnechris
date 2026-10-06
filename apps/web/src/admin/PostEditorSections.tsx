@@ -17,6 +17,7 @@ import { Button } from '../kit/Button';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { PostBodyPreview } from './PostBodyPreview';
+import { publicImageSrc } from './publicUrl';
 import { parsePostTags } from './postDraft';
 
 export type PostDraftFields = {
@@ -385,6 +386,7 @@ export function PostEditorBody({ draft, setField, onUploadImages }: BodyProps) {
       onChange={(value) => setField('bodyMarkdown', value)}
       onUploadImages={onUploadImages}
       preview={<PostBodyPreview markdown={draft.bodyMarkdown} />}
+      resolveImageSrc={publicImageSrc}
     />
   );
 }

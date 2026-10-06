@@ -618,6 +618,7 @@ describe('ProjectEditorPage preview', () => {
     };
     renderEditor(project);
     await screen.findByDisplayValue('Notebook');
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     const published = document.createElement('div');
     published.innerHTML = renderProjectPageBodyHtml(projectPageView(project));
@@ -641,6 +642,7 @@ describe('ProjectEditorPage preview', () => {
         'Read [the welcome post](/posts/welcome) or [elsewhere](https://example.com/x).\n\n![Screenshot](/media/projects/notebook.png)',
     });
     await screen.findByDisplayValue('Notebook');
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     const preview = document.querySelector<HTMLElement>('.admin-body-preview')!;
     const link = within(preview).getByRole('link', {
