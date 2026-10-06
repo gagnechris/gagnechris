@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Post } from '@gagnechris/app-core';
 import { QueryClientTestProvider } from '../test-utils';
 import AdminPostsPage from './AdminPostsPage';
@@ -127,7 +127,41 @@ describe('AdminPostsPage', () => {
     await screen.findByText('Hello');
     await user.click(screen.getByRole('button', { name: 'New post' }));
     expect(await screen.findByText('editor')).toBeInTheDocument();
-    expect(post).toHaveBeenCalled();
+    expect(post).toHaveBeenCalledWith('/api/admin/posts', {
+      body: expect.objectContaining({
+        title: 'Untitled',
+        slug: expect.stringMatching(/^untitled-[a-z0-9]{6}$/),
+      }),
+    });
+  });
+
+  test('two new posts in a row get different slugs', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({
+      data: makePost({ id: '01NEW', title: 'Untitled' }),
+      error: undefined,
+      response: { status: 201 },
+    });
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route path="/" element={<AdminPostsPage />} />
+            <Route path="/posts/:postId" element={<Link to="/">back</Link>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    for (let i = 0; i < 2; i += 1) {
+      await user.click(await screen.findByRole('button', { name: 'New post' }));
+      await user.click(await screen.findByRole('link', { name: 'back' }));
+    }
+    const slugs = post.mock.calls.map(
+      ([, init]) => (init as { body: { slug: string } }).body.slug,
+    );
+    expect(slugs).toHaveLength(2);
+    expect(slugs[0]).not.toBe(slugs[1]);
   });
 
   test('sorts a created row that is missing its timestamps', async () => {

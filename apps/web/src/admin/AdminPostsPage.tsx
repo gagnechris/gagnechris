@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreatePostMutation, usePostsQuery } from '@gagnechris/app-core';
 import { ApiError } from './query/api';
+import { newPlaceholderSlug } from './placeholderSlug';
 import { byNewest } from '../kit/byNewest';
 import { Button } from '../kit/Button';
 import { TextInput, Select } from '../kit/Field';
@@ -79,7 +80,14 @@ export default function AdminPostsPage() {
   const createDraft = async () => {
     setActionError(null);
     try {
-      const data = await createMutation.mutateAsync();
+      const data = await createMutation.mutateAsync({
+        title: 'Untitled',
+        slug: newPlaceholderSlug('untitled'),
+        excerpt: '',
+        bodyMarkdown: '',
+        tags: [],
+        projectIds: [],
+      });
       void navigate(`/posts/${data.id}`);
     } catch (err) {
       setActionError(

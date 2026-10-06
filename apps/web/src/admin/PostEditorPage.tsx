@@ -19,6 +19,7 @@ import {
 } from './PostEditorSections';
 import { uploadImages } from './uploadImages';
 import { publicUrl } from './publicUrl';
+import { isPlaceholderSlug } from './placeholderSlug';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 
 /** Outer shell keys the editor by postId so A→B navigation drops pending debounce. */
@@ -82,7 +83,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
       'Unpublish this post? It will leave the public Posts page.',
     discardConfirm:
       'Discard unpublished edits and restore the last published post?',
-    onHydrate: () => setSlugManual(true),
+    onHydrate: (entity) => setSlugManual(!isPlaceholderSlug(entity.slug)),
     delete: {
       confirm: 'Soft-delete this post? You can recover it later via the API.',
       mutate: async (version) => {

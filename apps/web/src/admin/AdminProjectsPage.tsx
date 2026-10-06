@@ -11,7 +11,8 @@ import {
   useProjectsQuery,
 } from '@gagnechris/app-core';
 import { ApiError } from './query/api';
-import { NEW_PROJECT_NAME, newProjectSlug } from './projectDraft';
+import { newPlaceholderSlug } from './placeholderSlug';
+import { NEW_PROJECT_NAME } from './projectDraft';
 import { Button } from '../kit/Button';
 import { StatusBadge } from '../kit/StatusBadge';
 import './projects.css';
@@ -41,7 +42,7 @@ export default function AdminProjectsPage() {
     try {
       const project = await createMutation.mutateAsync({
         name: NEW_PROJECT_NAME,
-        slug: newProjectSlug(),
+        slug: newPlaceholderSlug('untitled-project'),
         order: nextOrder,
       });
       void navigate(`/projects/${project.id}`);
