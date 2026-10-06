@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { formatPostShortDate } from './post-date.js';
-import { groupPostsByYear, postsYearId } from './posts-index.js';
+import { selectHomeRecentPosts } from './home-html.js';
+import {
+  comparePostsNewestFirst,
+  groupPostsByYear,
+  postsYearId,
+} from './posts-index.js';
 
 const post = (slug: string, publishedAt: string | null) => ({
+  id: slug,
   slug,
   publishedAt,
+  updatedAt: '2020-01-01T00:00:00.000Z',
 });
 
 describe('groupPostsByYear', () => {
@@ -51,6 +58,32 @@ describe('groupPostsByYear', () => {
 
   it('is empty for no posts', () => {
     expect(groupPostsByYear([])).toEqual([]);
+  });
+});
+
+describe('comparePostsNewestFirst', () => {
+  it('orders /posts like posts.json and Home: newest, then id on a tie', () => {
+    const at = '2026-02-01T00:00:00.000Z';
+    const input = [
+      { ...post('b', at), excerpt: '', title: 'b' },
+      { ...post('a', at), excerpt: '', title: 'a' },
+      { ...post('newer', '2026-03-01T00:00:00.000Z'), excerpt: '', title: 'n' },
+    ];
+    const expected = ['newer', 'a', 'b'];
+    expect([...input].sort(comparePostsNewestFirst).map((p) => p.id)).toEqual(
+      expected,
+    );
+    expect(groupPostsByYear(input)[0]!.posts.map((p) => p.id)).toEqual(
+      expected,
+    );
+    expect(selectHomeRecentPosts(input).map((p) => p.id)).toEqual(expected);
+  });
+
+  it('compares instants, not strings, across UTC offsets', () => {
+    // 23:00Z, though it sorts after the other as text.
+    const offset = post('offset', '2026-02-01T01:00:00.000+02:00');
+    const newer = post('newer', '2026-01-31T23:30:00.000Z');
+    expect([offset, newer].sort(comparePostsNewestFirst)[0]!.id).toBe('newer');
   });
 });
 

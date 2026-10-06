@@ -1,3 +1,13 @@
+import {
+  addDays,
+  calendarDay,
+  formatCalendarDay,
+  isCalendarDay,
+  localDateString,
+  MONTH_LONG,
+  WEEKDAY_LONG,
+  weekdayOf,
+} from './calendar.js';
 import type { TaskPriority } from './schemas.js';
 
 export type ParsedTaskSyntax = {
@@ -11,112 +21,27 @@ export type ParsedTaskSyntax = {
 
 export type TaskSchedule = { startDate: string | null; someday: boolean };
 
-const WEEKDAYS: Record<string, number> = {
-  sun: 0,
-  sunday: 0,
-  mon: 1,
-  monday: 1,
-  tue: 2,
-  tues: 2,
-  tuesday: 2,
-  wed: 3,
-  wednesday: 3,
-  thu: 4,
-  thur: 4,
-  thurs: 4,
-  thursday: 4,
-  fri: 5,
-  friday: 5,
-  sat: 6,
-  saturday: 6,
-};
+const nameIndex = (
+  names: readonly string[],
+  base: number,
+  aliases: Record<string, number>,
+): Record<string, number> => ({
+  ...Object.fromEntries(
+    names.flatMap((name, i) => [
+      [name.toLowerCase(), i + base],
+      [name.slice(0, 3).toLowerCase(), i + base],
+    ]),
+  ),
+  ...aliases,
+});
 
-const MONTHS: Record<string, number> = {
-  jan: 1,
-  january: 1,
-  feb: 2,
-  february: 2,
-  mar: 3,
-  march: 3,
-  apr: 4,
-  april: 4,
-  may: 5,
-  jun: 6,
-  june: 6,
-  jul: 7,
-  july: 7,
-  aug: 8,
-  august: 8,
-  sep: 9,
-  sept: 9,
-  september: 9,
-  oct: 10,
-  october: 10,
-  nov: 11,
-  november: 11,
-  dec: 12,
-  december: 12,
-};
+const WEEKDAYS = nameIndex(WEEKDAY_LONG, 0, { tues: 2, thur: 4, thurs: 4 });
 
-const MONTH_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const WEEKDAY_LONG = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
-
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** The device's calendar day, not the UTC one. */
-export function localDateString(now: Date = new Date()): string {
-  return ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
-}
-
-function ymd(y: number, m: number, d: number): string {
-  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
-
-// Calendar arithmetic runs in UTC so a DST change can never skip or repeat a day.
-function toUtc(day: string): Date | null {
-  const m = ISO_DATE.exec(day);
-  if (!m) return null;
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const date = new Date(Date.UTC(y, mo - 1, d));
-  date.setUTCFullYear(y);
-  return date.getUTCMonth() === mo - 1 && date.getUTCDate() === d ? date : null;
-}
-
-const fromUtc = (date: Date) =>
-  ymd(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
-
-function addDays(day: string, delta: number): string {
-  const date = toUtc(day)!;
-  date.setUTCDate(date.getUTCDate() + delta);
-  return fromUtc(date);
-}
+const MONTHS = nameIndex(MONTH_LONG, 1, { sept: 9 });
 
 /** Always 1–7 days ahead: `@mon` on a Monday is the next one, since today is `@today`. */
 export function nextWeekday(today: string, weekday: number): string {
-  const delta = (weekday - toUtc(today)!.getUTCDay() + 7) % 7;
+  const delta = (weekday - weekdayOf(today)! + 7) % 7;
   return addDays(today, delta === 0 ? 7 : delta);
 }
 
@@ -129,8 +54,8 @@ function nextMonthDay(
   const [y, m, d] = today.split('-').map(Number) as [number, number, number];
   let year = month < m || (month === m && day < d) ? y + 1 : y;
   for (let tries = 0; tries < 8; tries++, year++) {
-    const candidate = ymd(year, month, day);
-    if (toUtc(candidate)) return candidate;
+    const candidate = calendarDay(year, month, day);
+    if (isCalendarDay(candidate)) return candidate;
   }
   return null;
 }
@@ -149,7 +74,7 @@ export function resolveTaskDateToken(
   if (t === 'next week') return on(nextWeekday(today, 1));
   const weekday = WEEKDAYS[t];
   if (weekday !== undefined) return on(nextWeekday(today, weekday));
-  if (ISO_DATE.test(t)) return on(toUtc(t) ? t : null);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return on(isCalendarDay(t) ? t : null);
   const monthDay = /^([a-z]+) (\d{1,2})$/.exec(t);
   const month = monthDay ? MONTHS[monthDay[1]!] : undefined;
   if (monthDay && month !== undefined) {
@@ -241,10 +166,7 @@ const collapse = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 /** `Sat, Oct 3`, or `Oct 3` without the weekday. */
 export function formatTaskDay(day: string, withWeekday = true): string {
-  const date = toUtc(day);
-  if (!date) return day;
-  const md = `${MONTH_SHORT[date.getUTCMonth()]} ${date.getUTCDate()}`;
-  return withWeekday ? `${WEEKDAY_SHORT[date.getUTCDay()]}, ${md}` : md;
+  return formatCalendarDay(day, withWeekday ? { weekday: 'short' } : {});
 }
 
 /** What a note is called in lists and search: a daily note by its day. */
@@ -254,11 +176,8 @@ export function noteDisplayTitle(note: {
   title: string;
 }): string {
   const title = note.title.trim();
-  if (note.type === 'daily' && note.date) {
-    const date = toUtc(note.date);
-    if (date) {
-      return `${WEEKDAY_LONG[date.getUTCDay()]}, ${formatTaskDay(note.date, false)}`;
-    }
+  if (note.type === 'daily' && note.date && isCalendarDay(note.date)) {
+    return formatCalendarDay(note.date, { weekday: 'long' });
   }
   return title || 'Untitled';
 }
@@ -269,9 +188,8 @@ export function taskDateToken(
   today: string,
   prefix: '@' | 'due:' = '@',
 ): string {
-  const date = toUtc(day);
-  if (!date) return `${prefix}${day}`;
-  const short = `${MONTH_SHORT[date.getUTCMonth()]!.toLowerCase()} ${date.getUTCDate()}`;
+  if (!isCalendarDay(day)) return `${prefix}${day}`;
+  const short = formatCalendarDay(day).toLowerCase();
   return resolveTaskDateToken(short, today)?.startDate === day
     ? `${prefix}${short}`
     : `${prefix}${day}`;
