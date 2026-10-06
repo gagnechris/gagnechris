@@ -810,6 +810,7 @@ describe('PostEditorPage preview', () => {
     const { container } = renderEditor();
     await screen.findByDisplayValue('Hello');
     await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
     published.innerHTML = renderPostPageBodyHtml({
