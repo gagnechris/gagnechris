@@ -101,17 +101,17 @@ export const renderProjectsIndexBodyHtml = (
 ): string => {
   const cards = projectCardViews(projects);
   return (
-    `<div class="projects-index">` +
+    `<main class="projects-index">` +
     `<header class="projects-index__header">` +
     `<h1>${PROJECTS_INDEX_TITLE}</h1>` +
     `<p class="projects-index__intro">${escapeHtml(PROJECTS_INDEX_INTRO)}</p>` +
     `</header>` +
-    `<main>` +
+    `<div class="projects-index__list">` +
     (cards.length
       ? `<ul class="project-list">${cards.map((c) => renderProjectCardHtml(c, 'h2')).join('')}</ul>`
       : `<p class="projects-index__empty">${escapeHtml(PROJECTS_INDEX_EMPTY_TEXT)}</p>`) +
-    `</main>` +
-    `</div>`
+    `</div>` +
+    `</main>`
   );
 };
 
@@ -210,7 +210,7 @@ export const projectPageView = (
  * on a cold load.
  */
 export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
-  `<div class="project-page" data-slug="${escapeHtml(view.slug)}"${view.demo ? ` data-demo="${view.demo}"` : ''}>` +
+  `<main class="project-page" data-slug="${escapeHtml(view.slug)}"${view.demo ? ` data-demo="${view.demo}"` : ''}>` +
   `<header class="project-header">` +
   `<p class="project-back"><a href="${PROJECTS_PATH}">${PROJECTS_INDEX_TITLE}</a></p>` +
   `<p class="project-stage" data-stage="${view.stage}">${escapeHtml(projectStageText(view))}</p>` +
@@ -218,13 +218,13 @@ export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
   (view.pitch ? `<p class="project-pitch">${escapeHtml(view.pitch)}</p>` : '') +
   `</header>` +
   demoHtml(view) +
-  `<main class="project-main">` +
+  `<div class="project-main">` +
   `<div class="post-content project-body">${view.bodyHtml}</div>` +
   projectStackHtml(view.stack) +
   linksHtml(view.links) +
   buildLogHtml(view.name, view.buildLog) +
-  `</main>` +
-  `</div>`;
+  `</div>` +
+  `</main>`;
 
 export const renderProjectsIndexPrerenderHtml = (
   projects: readonly ProjectsIndexItem[],

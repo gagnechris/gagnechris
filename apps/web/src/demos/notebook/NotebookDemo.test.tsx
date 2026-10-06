@@ -181,6 +181,15 @@ describe('NotebookDemo', () => {
     fetchSpy.mockReset();
   });
 
+  test('headings sit under the slot’s h2: the day is h3 and the panels h4', () => {
+    const { container } = renderDemo();
+    expect(
+      [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map(
+        (h) => `${h.tagName} ${h.textContent}`,
+      ),
+    ).toEqual(['H3 Friday, October 2', 'H4 Still open', 'H4 Coming up']);
+  });
+
   test('keyboard only: type a task and Enter, Tab to + Note and press it, Space toggles; no requests', async () => {
     const user = userEvent.setup();
     renderDemo();

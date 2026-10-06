@@ -39,11 +39,11 @@ const postDateHtml = (iso: string | null | undefined): string => {
 const authorNoteHtml = (): string => {
   const { name, role, about, rss } = POST_AUTHOR_NOTE;
   return (
-    `<aside class="post-author" aria-label="About the author"><p>` +
+    `<section class="post-author" aria-label="About the author"><p>` +
     `<strong>${escapeHtml(name)}</strong> ${escapeHtml(role)} ` +
     `<a href="${about.href}">${escapeHtml(about.label)}</a>, or follow along via ` +
     `<a href="${rss.href}">${escapeHtml(rss.label)}</a>.` +
-    `</p></aside>`
+    `</p></section>`
   );
 };
 
@@ -62,38 +62,48 @@ const partOfHtml = (links: readonly PostProjectLink[]): string =>
       `${postPartOfSuffix(links.length)}</p>`
     : '';
 
-/**
- * `apps/web/src/posts/PostArticle.tsx` renders the same markup byte for byte
- * (PostArticle.test.tsx). `blog-post-prerender` and `data-minutes` are what
- * the SPA parses on a cold load.
- */
-export const renderPostPageBodyHtml = (
-  post: Pick<
-    Post,
-    'slug' | 'title' | 'excerpt' | 'publishedAt' | 'bodyMarkdown'
-  >,
+type PostArticleFields = Pick<
+  Post,
+  'slug' | 'title' | 'excerpt' | 'publishedAt' | 'bodyMarkdown'
+>;
+
+/** The title is `<h1>` on the post page; embeds pass the level that fits where they sit. */
+export const renderPostArticleHtml = (
+  post: PostArticleFields,
   partOf: readonly PostProjectLink[] = [],
+  headingLevel: 1 | 2 | 3 | 4 = 1,
 ): string => {
   const minutes = readingMinutes(post.bodyMarkdown);
   const date = postDateHtml(post.publishedAt);
   return (
-    `<div class="post-page">` +
     `<article class="blog-post-prerender" data-slug="${escapeHtml(post.slug)}">` +
     `<header class="post-header">` +
     `<p class="post-meta">${date}${date ? POST_META_SEPARATOR : ''}` +
     `<span class="post-reading-time" data-minutes="${minutes}">${readingTimeLabel(minutes)}</span></p>` +
-    `<h1>${escapeHtml(post.title)}</h1>` +
+    `<h${headingLevel}>${escapeHtml(post.title)}</h${headingLevel}>` +
     (post.excerpt
       ? `<p class="post-excerpt">${escapeHtml(post.excerpt)}</p>`
       : '') +
     partOfHtml(partOf) +
     `</header>` +
     `<div class="post-content blog-post-body">${renderPostMarkdownToHtml(post.bodyMarkdown)}</div>` +
-    `</article>` +
-    authorNoteHtml() +
-    `</div>`
+    `</article>`
   );
 };
+
+/**
+ * `apps/web/src/posts/PostArticle.tsx` renders the same markup byte for byte
+ * (PostArticle.test.tsx). `blog-post-prerender` and `data-minutes` are what
+ * the SPA parses on a cold load.
+ */
+export const renderPostPageBodyHtml = (
+  post: PostArticleFields,
+  partOf: readonly PostProjectLink[] = [],
+): string =>
+  `<main class="post-page">` +
+  renderPostArticleHtml(post, partOf) +
+  authorNoteHtml() +
+  `</main>`;
 
 export type PostsIndexItem = Pick<
   Post,
@@ -138,12 +148,12 @@ export const renderPostsIndexBodyHtml = (
         .join('')
     : `<p class="posts-index__empty">${POSTS_INDEX_EMPTY_TEXT}</p>`;
   return (
-    `<div class="posts-index blog-index-prerender">` +
+    `<main class="posts-index blog-index-prerender">` +
     `<header class="posts-index__header"><h1>Posts</h1>` +
     `<p class="posts-index__intro">${escapeHtml(POSTS_INDEX_INTRO)}</p>` +
     `<a class="posts-index__rss" href="${POSTS_RSS_LINK.href}">${escapeHtml(POSTS_RSS_LINK.label)}</a>` +
     `</header>` +
-    `<main>${main}</main>` +
-    `</div>`
+    `<div class="posts-index__years">${main}</div>` +
+    `</main>`
   );
 };

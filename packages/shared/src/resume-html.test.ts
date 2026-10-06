@@ -194,7 +194,7 @@ describe('renderResumePrerenderHtml', () => {
   it('renders the intro: title, italic headline, summary, Download PDF, LinkedIn, Get in touch', () => {
     const html = renderResumePrerenderHtml(resume());
     expect(html).toContain(
-      '<div class="resume-page resume-page-prerender"><header class="resume-intro">' +
+      '<main class="resume-page resume-page-prerender"><header class="resume-intro">' +
         '<h1 class="resume-intro__title">Resume</h1>' +
         '<p class="resume-intro__headline">Director of Software Engineering</p>' +
         '<p class="resume-intro__summary">Results-driven',
@@ -209,7 +209,8 @@ describe('renderResumePrerenderHtml', () => {
     expect(html).toContain(
       '<a class="resume-intro__link" href="/contact">Get in touch</a>',
     );
-    expect(html).toContain('<main class="resume-body">');
+    expect(html).toContain('<div class="resume-body">');
+    expect(html).toMatch(/<\/div><\/main><footer class="site-footer">/);
   });
 
   it('omits the headline line when it is unset or blank', () => {
@@ -251,7 +252,9 @@ describe('renderResumeUnavailablePrerenderHtml', () => {
       '<p class="resume-intro__summary">Resume available on request.</p>',
     );
     expect(html).not.toContain('resume-download');
-    expect(html).not.toContain('<main');
+    expect(html).toContain(
+      '<main class="resume-page resume-page-unavailable">',
+    );
     expect(html).toContain('>Get in touch</a>');
   });
 });

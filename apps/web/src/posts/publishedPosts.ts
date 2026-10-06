@@ -37,14 +37,19 @@ export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   );
 }
 
-/** Also reads the card list published before the year groups, until it is republished. */
+/**
+ * Also reads pages published before the year groups and before the whole
+ * index moved inside `<main>`, until they are republished.
+ */
 export function postsIndexFromDocument(
   root: ParentNode,
 ): PublishedPostListItem[] | null {
-  const main = root.querySelector('.blog-index-prerender > main');
-  if (!main) return null;
+  const index = root.querySelector(
+    'main.blog-index-prerender, .blog-index-prerender > main',
+  );
+  if (!index) return null;
 
-  return [...main.querySelectorAll('.post-preview')].flatMap((entry) => {
+  return [...index.querySelectorAll('.post-preview')].flatMap((entry) => {
     const href = entry.querySelector('a')?.getAttribute('href') ?? '';
     const slug = href.replace(/^\/posts\//, '');
     if (!slug || slug === href) return [];

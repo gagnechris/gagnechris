@@ -87,6 +87,17 @@ describe('renderMarkdownToHtml sanitizing', () => {
     expect(html).toContain('href="#top"');
   });
 
+  it('names task-list checkboxes, whatever the source said', () => {
+    const html = renderMarkdownToHtml(
+      '- [ ] Open\n- [x] Done\n\n<input type="checkbox" aria-label="Spoof">',
+    );
+    expect(html.match(/<input[^>]*>/g)).toEqual([
+      '<input disabled type="checkbox" aria-label="Task" />',
+      '<input checked disabled type="checkbox" aria-label="Task" />',
+      '<input type="checkbox" aria-label="Task" disabled />',
+    ]);
+  });
+
   it('drops non-checkbox inputs', () => {
     expect(renderMarkdownToHtml('<input type="text" value="x">')).not.toContain(
       '<input',

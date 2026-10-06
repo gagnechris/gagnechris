@@ -94,7 +94,7 @@ function Resume() {
       : ' resume-page-prerender';
 
   return (
-    <div className={`resume-page${marker}`} aria-busy={!resume || undefined}>
+    <main className={`resume-page${marker}`} aria-busy={!resume || undefined}>
       <PageHead
         title={resume?.headTitle ?? pageTitle('Resume')}
         url={siteUrl('/resume')}
@@ -128,7 +128,7 @@ function Resume() {
       </header>
 
       {showBearNote && (
-        <aside className="resume-bear-note" role="status">
+        <div className="resume-bear-note" role="status">
           <p>
             Download started. While you wait —{' '}
             <SiteLink href="/dont-feed-the-bears?from=resume">
@@ -144,16 +144,16 @@ function Resume() {
           >
             ×
           </button>
-        </aside>
+        </div>
       )}
 
       {resume?.bodyHtml ? (
-        <main
+        <div
           className="resume-body"
           dangerouslySetInnerHTML={{ __html: resume.bodyHtml }}
         />
       ) : null}
-    </div>
+    </main>
   );
 }
 

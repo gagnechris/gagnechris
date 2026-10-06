@@ -31,7 +31,7 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     ol: ['start'],
     th: ['align'],
     td: ['align'],
-    input: ['type', 'checked', 'disabled'],
+    input: ['type', 'checked', 'disabled', 'aria-label'],
   },
   allowedClasses: {
     code: [/^language-[\w-]+$/],
@@ -42,10 +42,11 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   // GFM task lists render `<input type="checkbox" disabled>`; nothing else.
   exclusiveFilter: (frame) =>
     frame.tag === 'input' && frame.attribs.type !== 'checkbox',
+  // A checkbox needs a name; the item's text follows it.
   transformTags: {
     input: (tagName, attribs) => ({
       tagName,
-      attribs: { ...attribs, disabled: '' },
+      attribs: { ...attribs, disabled: '', 'aria-label': 'Task' },
     }),
   },
 };

@@ -45,7 +45,7 @@ export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
 
   const page = root.querySelector('.resume-page-prerender');
   const summary = page?.querySelector('.resume-intro__summary');
-  const body = page?.querySelector('main.resume-body');
+  const body = page?.querySelector('.resume-body');
   if (!page || !summary || !body) return null;
 
   return {

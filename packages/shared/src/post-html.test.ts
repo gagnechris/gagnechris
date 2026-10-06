@@ -26,11 +26,13 @@ describe('renderPostPageBodyHtml', () => {
     );
   });
 
-  it('ends with the author note, and has no back links', () => {
+  it('is one <main> that holds the h1 and ends with the author note, and has no back links', () => {
     const html = renderPostPageBodyHtml(post);
+    expect(html).toMatch(/^<main class="post-page"><article [^]*<h1>/);
     expect(html).toMatch(
-      /<\/article><aside class="post-author" aria-label="About the author"><p><strong>Chris Gagne<\/strong> is an engineering leader at Ro\. <a href="\/">More about me<\/a>, or follow along via <a href="\/rss\.xml">RSS<\/a>\.<\/p><\/aside><\/div>$/,
+      /<\/article><section class="post-author" aria-label="About the author"><p><strong>Chris Gagne<\/strong> is an engineering leader at Ro\. <a href="\/">More about me<\/a>, or follow along via <a href="\/rss\.xml">RSS<\/a>\.<\/p><\/section><\/main>$/,
     );
+    expect(html).not.toContain('<aside');
     expect(html).not.toMatch(/Back to Posts|back-link/);
   });
 
@@ -68,7 +70,7 @@ describe('renderPostPageBodyHtml', () => {
       '<figure><img src="https://gagnechris.com/og-image.jpg" alt="A view of the site" /><figcaption>A caption under the image</figcaption></figure>',
       '<div class="post-table" role="region" tabindex="0" aria-label="Table 1"><table>',
       '<hr />',
-      '<input checked disabled type="checkbox" /> A finished task',
+      '<input checked disabled type="checkbox" aria-label="Task" /> A finished task',
     ]) {
       expect(html).toContain(tag);
     }
@@ -103,20 +105,23 @@ describe('renderPostsIndexBodyHtml', () => {
         publishedAt: '2026-02-01T00:00:00.000Z',
       },
     ]);
+    expect(html).toMatch(
+      /^<main class="posts-index blog-index-prerender"><header class="posts-index__header"><h1>Posts<\/h1>/,
+    );
     expect(html).toContain(
-      '<main><section class="posts-year" aria-labelledby="posts-2026"><h2 class="posts-year__label" id="posts-2026">2026</h2>' +
+      '<div class="posts-index__years"><section class="posts-year" aria-labelledby="posts-2026"><h2 class="posts-year__label" id="posts-2026">2026</h2>' +
         '<ul class="posts-year__list"><li class="post-preview" data-id="01B"><a class="post-preview__link" href="/posts/second">' +
         '<h3 class="post-preview__title">Second</h3><time class="post-preview__date" datetime="2026-02-01">Feb 1</time></a></li></ul></section>' +
         '<section class="posts-year" aria-labelledby="posts-2025"><h2 class="posts-year__label" id="posts-2025">2025</h2>' +
         '<ul class="posts-year__list"><li class="post-preview" data-id="01A"><a class="post-preview__link" href="/posts/first">' +
         '<h3 class="post-preview__title">First &amp; best</h3><time class="post-preview__date" datetime="2025-12-31">Dec 31</time>' +
-        '<p class="post-preview__excerpt">An &lt;excerpt&gt;</p></a></li></ul></section></main>',
+        '<p class="post-preview__excerpt">An &lt;excerpt&gt;</p></a></li></ul></section></div></main>',
     );
   });
 
   it('says so when nothing is published', () => {
     expect(renderPostsIndexBodyHtml([])).toContain(
-      `<main><p class="posts-index__empty">${POSTS_INDEX_EMPTY_TEXT}</p></main>`,
+      `<div class="posts-index__years"><p class="posts-index__empty">${POSTS_INDEX_EMPTY_TEXT}</p></div></main>`,
     );
   });
 });
