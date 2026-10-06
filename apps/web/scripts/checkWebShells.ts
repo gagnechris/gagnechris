@@ -56,6 +56,45 @@ function publicShellScriptProblems(
   return problems;
 }
 
+/**
+ * What every public page fetches up front, by Vite chunk name without its
+ * hash. A shared module that lands in its own chunk joins this set and adds a
+ * request to every page, so a new name has to be added here on purpose.
+ */
+export const PUBLIC_ENTRY_ASSETS: readonly string[] = [
+  'index.js',
+  'index.css',
+  'jsx-runtime.js',
+  'preload-helper.js',
+];
+
+const HASHED_ASSET = /^\/assets\/(.+)-[\w-]{8}\.(js|css)$/;
+
+function publicEntryAssetProblems(label: string, html: string): string[] {
+  const urls = [
+    ...[...html.matchAll(SCRIPT_TAG)]
+      .filter(([, attrs = '']) => /\btype=["']module["']/i.test(attrs))
+      .map(([, attrs = '']) => /\bsrc=["']([^"']*)["']/i.exec(attrs)?.[1]),
+    ...[...html.matchAll(LINK_TAG)]
+      .map(([tag]) => tag)
+      .filter((tag) =>
+        ['modulepreload', 'stylesheet'].includes(
+          attr(tag, 'rel')?.toLowerCase() ?? '',
+        ),
+      )
+      .map((tag) => attr(tag, 'href')),
+  ].filter((url): url is string => Boolean(url));
+  return urls.flatMap((url) => {
+    const match = HASHED_ASSET.exec(url);
+    const name = match ? `${match[1]}.${match[2]}` : url;
+    return PUBLIC_ENTRY_ASSETS.includes(name)
+      ? []
+      : [
+          `${label} loads ${url} on every page (allowed: ${PUBLIC_ENTRY_ASSETS.join(', ')})`,
+        ];
+  });
+}
+
 const attr = (tag: string, name: string): string | undefined =>
   new RegExp(`\\b${name}=["']([^"']*)["']`, 'i').exec(tag)?.[1];
 
@@ -216,6 +255,7 @@ export function checkWebShells(webRoot: string, gaId?: string): string[] {
         );
       }
       problems.push(...publicShellScriptProblems(dist, `dist/${shell}`, html));
+      problems.push(...publicEntryAssetProblems(`dist/${shell}`, html));
     }
   }
   const bootstrap = read(path.join(dist, 'ga.js'));
@@ -281,6 +321,6 @@ if (
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA only with GA_MEASUREMENT_ID, no inline script and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
+    'Web shells OK: GA only with GA_MEASUREMENT_ID, no inline script, only the allowed entry assets and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
   );
 }
