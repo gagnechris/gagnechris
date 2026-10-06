@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { BearsGame } from '../../../utils/analytics';
 import type { BearTip } from '../tips';
@@ -60,16 +60,26 @@ const EndCard = ({
   className,
 }: EndCardProps) => {
   const titleId = useId();
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const other = otherGame(game);
+
+  // The game controls that held focus are gone once the round ends.
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
 
   return (
     <section
       className={`bears-end bears-end--${outcome}${className ? ` ${className}` : ''}`}
-      role="dialog"
       aria-labelledby={titleId}
     >
       <p className="bears-end__kicker">{kicker}</p>
-      <h2 id={titleId} className="bears-end__title">
+      <h2
+        id={titleId}
+        ref={titleRef}
+        tabIndex={-1}
+        className="bears-end__title"
+      >
         {title}
       </h2>
       {lede ? <p className="bears-end__lede">{lede}</p> : null}
