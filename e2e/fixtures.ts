@@ -18,6 +18,9 @@ export type E2EUser = {
   groups?: string[];
 };
 
+/** Google Analytics hosts; no e2e build loads GA, so any request to one is a leak. */
+export const GA_HOST = /(?:^|\.)(?:googletagmanager|google-analytics)\.com$/;
+
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is unset; run via playwright.config.ts`);
