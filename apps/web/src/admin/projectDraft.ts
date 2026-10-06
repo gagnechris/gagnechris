@@ -1,5 +1,4 @@
 import {
-  EMPTY_SLUG_FALLBACK,
   PROJECT_ORDER_MAX,
   PROJECT_STACK_ITEM_MAX_LENGTH,
   PROJECT_STACK_MAX,
@@ -30,14 +29,6 @@ export type ProjectDraftFields = {
 };
 
 export const NEW_PROJECT_NAME = 'Untitled project';
-
-/** New projects get a throwaway slug so two of them can't collide on create. */
-export const newProjectSlug = (): string =>
-  `untitled-project-${Math.random().toString(36).slice(2, 8)}`;
-
-export const isPlaceholderSlug = (slug: string): boolean =>
-  /^untitled-project(?:-[a-z0-9]+)?$/.test(slug) ||
-  slug === EMPTY_SLUG_FALLBACK;
 
 export const emptyProjectLink = (): ProjectLinkDraft => ({
   id: newRepeaterId(),

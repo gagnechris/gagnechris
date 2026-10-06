@@ -16,11 +16,11 @@ import {
   emptyProjectDraft,
   hasProjectDraftErrors,
   hasProjectPublishErrors,
-  isPlaceholderSlug,
   projectDraftFromProject,
   projectPayload,
   type ProjectDraftFields,
 } from './projectDraft';
+import { isPlaceholderSlug } from './placeholderSlug';
 import { uploadImages } from './uploadImages';
 import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
 import './projects.css';

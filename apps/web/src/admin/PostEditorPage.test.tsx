@@ -479,6 +479,36 @@ describe('PostEditorPage delete (CHR-158)', () => {
     confirmSpy.mockRestore();
   });
 
+  test('a new post’s placeholder slug follows the title until the slug is edited', async () => {
+    const user = userEvent.setup();
+    get.mockResolvedValue({
+      data: { ...basePost, title: 'Untitled', slug: 'untitled-a1b2c3' },
+      error: undefined,
+      response: { status: 200 },
+    });
+    renderEditor();
+    await screen.findByDisplayValue('Untitled');
+
+    const title = screen.getByLabelText('Title');
+    const slug = screen.getByLabelText('Slug');
+    await user.clear(title);
+    await user.type(title, 'First Light');
+    expect(slug).toHaveValue('first-light');
+
+    await user.clear(slug);
+    await user.type(slug, 'dawn');
+    await user.type(title, ' Again');
+    expect(slug).toHaveValue('dawn');
+  });
+
+  test('a real slug stays put when the title changes', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Title'), ' world');
+    expect(screen.getByLabelText('Slug')).toHaveValue('hello');
+  });
+
   test('slug collision shows slug-taken message, not Reload (CHR-160)', async () => {
     const user = userEvent.setup();
     put.mockResolvedValue({
