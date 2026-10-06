@@ -32,60 +32,40 @@
   font-size: var(--text-lg);
 }
 
-.admin-segmented {
-  margin: 0;
-  padding: 0;
-  border: 0;
+.admin-stage {
   display: grid;
   gap: var(--space-2);
 }
 
-.admin-segmented legend {
-  padding: 0;
-  margin-bottom: var(--space-2);
+.admin-stage__label {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--neutral-600);
 }
 
-.admin-segmented__options {
+.admin-stage__options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-1);
   padding: var(--space-1);
-  border-radius: var(--radius-md);
-  background: var(--neutral-100);
 }
 
-.admin-segmented__option {
-  position: relative;
-  display: grid;
-}
-
-.admin-segmented__option input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  margin: 0;
-  cursor: pointer;
-}
-
-.admin-segmented__option span {
+.admin-stage__options .workspace-segmented__option {
+  min-height: 0;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  text-align: center;
   font-size: var(--text-sm);
+  font-weight: 400;
   color: var(--neutral-600);
 }
 
-.admin-segmented__option input:checked + span {
-  background: white;
+.admin-stage__options .workspace-segmented__option[aria-checked='true'] {
   color: var(--neutral-900);
   font-weight: 600;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 }
 
-.admin-segmented__option input:focus-visible + span {
+.admin-stage__options .workspace-segmented__option:focus-visible {
   outline: 2px solid var(--primary-500);
   outline-offset: 1px;
 }

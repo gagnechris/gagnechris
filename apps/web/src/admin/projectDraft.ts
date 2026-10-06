@@ -1,7 +1,5 @@
 import {
   PROJECT_ORDER_MAX,
-  PROJECT_STACK_ITEM_MAX_LENGTH,
-  PROJECT_STACK_MAX,
   ProjectHrefSchema,
   ProjectLinkSchema,
   projectPublishFieldErrors,
@@ -132,18 +130,6 @@ export const projectPreviewImageError = (
 
 export const hasProjectPublishErrors = (draft: ProjectDraftFields): boolean =>
   hasProjectDraftErrors(draft) || projectPreviewImageError(draft) !== undefined;
-
-/** Adds chips from typed text (comma-separated), skipping blanks and duplicates. */
-export const addStackItems = (stack: string[], text: string): string[] => {
-  const next = [...stack];
-  for (const raw of text.split(',')) {
-    const item = raw.trim().slice(0, PROJECT_STACK_ITEM_MAX_LENGTH);
-    if (!item || next.length >= PROJECT_STACK_MAX) continue;
-    if (next.some((s) => s.toLowerCase() === item.toLowerCase())) continue;
-    next.push(item);
-  }
-  return next;
-};
 
 /**
  * An invalid field sends the project's saved value instead, so autosave never

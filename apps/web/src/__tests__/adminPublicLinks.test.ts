@@ -256,7 +256,7 @@ describe('admin links to the public site', () => {
   it('every admin preview routes its HTML through withPublicUrls', () => {
     const files = adminSources(adminDir);
     expect(files.map((f) => path.basename(f))).toEqual(
-      expect.arrayContaining(['PostBodyPreview.tsx', 'ProjectBodyPreview.tsx']),
+      expect.arrayContaining(['BodyPreview.tsx', 'AdminHomePage.tsx']),
     );
     const found = files.flatMap((file) =>
       unroutedInnerHtml(

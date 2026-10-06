@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { ensureAmplifyConfigured } from './config';
@@ -77,7 +78,7 @@ export default function AuthCallback() {
 
   return (
     <div className="admin-shell admin-shell--centered">
-      <title>Signing in - Chris Gagne</title>
+      <title>{`Signing in - ${SITE_AUTHOR_NAME}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       {error ? (
         <>

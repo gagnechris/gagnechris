@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
 import {
   accessLevel,
@@ -227,7 +228,7 @@ export function WorkspaceFrame({
         rail ? 'admin-shell workspace workspace--rail' : 'admin-shell workspace'
       }
     >
-      <title>{`${title} - Chris Gagne`}</title>
+      <title>{`${title} - ${SITE_AUTHOR_NAME}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       {prodApi ? (
         <div className="admin-prod-banner" role="status" aria-live="polite">

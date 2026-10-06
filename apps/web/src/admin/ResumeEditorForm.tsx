@@ -3,22 +3,19 @@ import { Button } from '../kit/Button';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { Repeater } from '../workspace/ui/Repeater';
 import { ResumeRoleList } from './ResumeRoleList';
+import type { SetDraftField } from './editor/useDraftFields';
 import {
   emptyEducation,
   emptyExperience,
   experienceRangeError,
+  RESUME_PDF_PATH,
   resumeRoleEndId,
   roleTitle,
   type ExperienceDraft,
   type ResumeDraftFields,
 } from './resumeDraft';
 
-type SetField = <K extends keyof ResumeDraftFields>(
-  key: K,
-  value:
-    | ResumeDraftFields[K]
-    | ((prev: ResumeDraftFields[K]) => ResumeDraftFields[K]),
-) => void;
+type SetField = SetDraftField<ResumeDraftFields>;
 
 type Props = {
   draft: ResumeDraftFields;
@@ -126,7 +123,7 @@ function ResumeOverview({
             label="PDF download"
             hint="Regenerated from this content on every Publish"
           >
-            <TextInput value="/resume.pdf" readOnly aria-readonly="true" />
+            <TextInput value={RESUME_PDF_PATH} readOnly aria-readonly="true" />
           </Field>
         </div>
       </section>
