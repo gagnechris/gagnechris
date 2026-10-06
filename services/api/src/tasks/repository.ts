@@ -205,6 +205,9 @@ function withCompletedAt(
   return null;
 }
 
+/** Keeps a carried-in block readable; the rest stay in Still open. */
+const CARRY_IN_MAX = 100;
+
 export class TasksRepository {
   private readonly base: VersionedRepository<Task, TaskMetaItem, OwnerKey>;
 
@@ -409,6 +412,35 @@ export class TasksRepository {
       items: sortTasksForList(page.items, today),
       ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
     };
+  }
+
+  /**
+   * Open tasks a new daily note for `day` carries in: everything still open
+   * from earlier days. Tasks scheduled for `day` itself stay in Still open.
+   */
+  async carriedInto(
+    userId: string,
+    area: NotebookArea,
+    day: string,
+    max = CARRY_IN_MAX,
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await this.list(userId, {
+        area,
+        open: true,
+        startOnOrBefore: day,
+        today: day,
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      });
+      for (const task of page.items) {
+        if (task.startDate !== day) ids.push(task.id);
+      }
+      cursor = page.nextCursor;
+    } while (cursor && ids.length < max);
+    return ids.slice(0, max);
   }
 
   private async listByNote(

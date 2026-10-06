@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
+import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 
 type DailyNote = {
   id: string;
@@ -74,161 +75,166 @@ vi.mock('../kit/markdown/MarkdownPreview', () => ({
 }));
 
 vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: async (
-      path: string,
-      init?: { params?: { path?: { area?: string; date?: string } } },
-    ) => {
-      if (path === '/api/notebook/notes/daily/{area}/{date}') {
-        const area = init?.params?.path?.area ?? 'work';
+  createApiClient: () =>
+    openDailyViaGet({
+      GET: async (
+        path: string,
+        init?: { params?: { path?: { area?: string; date?: string } } },
+      ) => {
+        if (path === '/api/notebook/notes/daily/{area}/{date}') {
+          const area = init?.params?.path?.area ?? 'work';
+          const date = init?.params?.path?.date ?? '2026-10-02';
+          if (area !== 'work' || date !== '2026-10-02') {
+            const other = state.others[`${area}:${date}`];
+            return {
+              data: other ?? {
+                exists: false,
+                userId: 'u1',
+                area,
+                type: 'daily',
+                date,
+                title: '',
+                bodyMarkdown: '',
+                tags: [],
+                pinned: false,
+                version: 0,
+              },
+              error: undefined,
+              response: { status: 200 },
+            };
+          }
+          if (!state.note) {
+            return {
+              data: {
+                exists: false,
+                userId: 'u1',
+                area: 'work',
+                type: 'daily',
+                date: '2026-10-02',
+                title: '',
+                bodyMarkdown: '',
+                tags: [],
+                pinned: false,
+                version: 0,
+              },
+              error: undefined,
+              response: { status: 200 },
+            };
+          }
+          return {
+            data: state.note,
+            error: undefined,
+            response: { status: 200 },
+          };
+        }
+        if (path === '/api/notebook/notes') {
+          return {
+            data: { items: state.note ? [state.note] : [] },
+            error: undefined,
+            response: { status: 200 },
+          };
+        }
+        if (path === '/api/notebook/tasks') {
+          return {
+            data: { items: [] },
+            error: undefined,
+            response: { status: 200 },
+          };
+        }
+        return {
+          data: undefined,
+          error: { error: 'not_found' },
+          response: { status: 404 },
+        };
+      },
+      PUT: async (
+        _path: string,
+        init?: {
+          body?: Record<string, unknown>;
+          params?: { path?: { area?: string; date?: string } };
+        },
+      ) => {
+        state.puts += 1;
+        const offlineAtSend = state.offline;
+        if (state.putGate) await state.putGate;
+        if (offlineAtSend) throw new TypeError('Failed to fetch');
+        if (state.putDelayMs) {
+          await new Promise((resolve) => setTimeout(resolve, state.putDelayMs));
+        }
+        const body = init?.body ?? {};
+        const area = (init?.params?.path?.area ?? 'work') as DailyNote['area'];
         const date = init?.params?.path?.date ?? '2026-10-02';
         if (area !== 'work' || date !== '2026-10-02') {
-          const other = state.others[`${area}:${date}`];
+          const key = `${area}:${date}`;
+          const prevOther = state.others[key];
+          const now = new Date().toISOString();
+          state.others[key] = {
+            id: String(body.id),
+            userId: 'u1',
+            area,
+            type: 'daily',
+            date,
+            title: String(body.title ?? ''),
+            bodyMarkdown: String(body.bodyMarkdown ?? ''),
+            tags: [],
+            pinned: false,
+            version: (prevOther?.version ?? 0) + 1,
+            createdAt: prevOther?.createdAt ?? now,
+            updatedAt: now,
+            deleted: false,
+          };
           return {
-            data: other ?? {
-              exists: false,
-              userId: 'u1',
-              area,
-              type: 'daily',
-              date,
-              title: '',
-              bodyMarkdown: '',
-              tags: [],
-              pinned: false,
-              version: 0,
-            },
+            data: state.others[key],
             error: undefined,
             response: { status: 200 },
           };
         }
-        if (!state.note) {
+        const prev = state.note;
+        // Mirrors the API: a placeholder save (no version) after someone else
+        // created the day gets 409 daily_taken with the winner.
+        if (prev && body.version === undefined && body.id !== prev.id) {
           return {
-            data: {
-              exists: false,
-              userId: 'u1',
-              area: 'work',
-              type: 'daily',
-              date: '2026-10-02',
-              title: '',
-              bodyMarkdown: '',
-              tags: [],
-              pinned: false,
-              version: 0,
-            },
-            error: undefined,
-            response: { status: 200 },
+            data: undefined,
+            error: { error: 'daily_taken', message: 'Taken', current: prev },
+            response: { status: 409 },
           };
         }
+        if (
+          prev &&
+          body.version !== undefined &&
+          body.version !== prev.version
+        ) {
+          return {
+            data: undefined,
+            error: { error: 'version_conflict', message: 'Conflict' },
+            response: { status: 409 },
+          };
+        }
+        const now = new Date().toISOString();
+        state.note = {
+          id: String(body.id ?? prev?.id ?? '01TESTDAILYNOTE000000000001'),
+          userId: 'u1',
+          area: 'work',
+          type: 'daily',
+          date: init?.params?.path?.date ?? '2026-10-02',
+          title: String(body.title ?? prev?.title ?? ''),
+          bodyMarkdown: String(body.bodyMarkdown ?? prev?.bodyMarkdown ?? ''),
+          tags: Array.isArray(body.tags)
+            ? (body.tags as string[])
+            : (prev?.tags ?? []),
+          pinned: Boolean(body.pinned ?? prev?.pinned ?? false),
+          version: (prev?.version ?? 0) + 1,
+          createdAt: prev?.createdAt ?? now,
+          updatedAt: now,
+          deleted: false,
+        };
         return {
           data: state.note,
           error: undefined,
           response: { status: 200 },
         };
-      }
-      if (path === '/api/notebook/notes') {
-        return {
-          data: { items: state.note ? [state.note] : [] },
-          error: undefined,
-          response: { status: 200 },
-        };
-      }
-      if (path === '/api/notebook/tasks') {
-        return {
-          data: { items: [] },
-          error: undefined,
-          response: { status: 200 },
-        };
-      }
-      return {
-        data: undefined,
-        error: { error: 'not_found' },
-        response: { status: 404 },
-      };
-    },
-    PUT: async (
-      _path: string,
-      init?: {
-        body?: Record<string, unknown>;
-        params?: { path?: { area?: string; date?: string } };
       },
-    ) => {
-      state.puts += 1;
-      const offlineAtSend = state.offline;
-      if (state.putGate) await state.putGate;
-      if (offlineAtSend) throw new TypeError('Failed to fetch');
-      if (state.putDelayMs) {
-        await new Promise((resolve) => setTimeout(resolve, state.putDelayMs));
-      }
-      const body = init?.body ?? {};
-      const area = (init?.params?.path?.area ?? 'work') as DailyNote['area'];
-      const date = init?.params?.path?.date ?? '2026-10-02';
-      if (area !== 'work' || date !== '2026-10-02') {
-        const key = `${area}:${date}`;
-        const prevOther = state.others[key];
-        const now = new Date().toISOString();
-        state.others[key] = {
-          id: String(body.id),
-          userId: 'u1',
-          area,
-          type: 'daily',
-          date,
-          title: String(body.title ?? ''),
-          bodyMarkdown: String(body.bodyMarkdown ?? ''),
-          tags: [],
-          pinned: false,
-          version: (prevOther?.version ?? 0) + 1,
-          createdAt: prevOther?.createdAt ?? now,
-          updatedAt: now,
-          deleted: false,
-        };
-        return {
-          data: state.others[key],
-          error: undefined,
-          response: { status: 200 },
-        };
-      }
-      const prev = state.note;
-      // Mirrors the API: a placeholder save (no version) after someone else
-      // created the day gets 409 daily_taken with the winner.
-      if (prev && body.version === undefined && body.id !== prev.id) {
-        return {
-          data: undefined,
-          error: { error: 'daily_taken', message: 'Taken', current: prev },
-          response: { status: 409 },
-        };
-      }
-      if (prev && body.version !== undefined && body.version !== prev.version) {
-        return {
-          data: undefined,
-          error: { error: 'version_conflict', message: 'Conflict' },
-          response: { status: 409 },
-        };
-      }
-      const now = new Date().toISOString();
-      state.note = {
-        id: String(body.id ?? prev?.id ?? '01TESTDAILYNOTE000000000001'),
-        userId: 'u1',
-        area: 'work',
-        type: 'daily',
-        date: init?.params?.path?.date ?? '2026-10-02',
-        title: String(body.title ?? prev?.title ?? ''),
-        bodyMarkdown: String(body.bodyMarkdown ?? prev?.bodyMarkdown ?? ''),
-        tags: Array.isArray(body.tags)
-          ? (body.tags as string[])
-          : (prev?.tags ?? []),
-        pinned: Boolean(body.pinned ?? prev?.pinned ?? false),
-        version: (prev?.version ?? 0) + 1,
-        createdAt: prev?.createdAt ?? now,
-        updatedAt: now,
-        deleted: false,
-      };
-      return {
-        data: state.note,
-        error: undefined,
-        response: { status: 200 },
-      };
-    },
-  }),
+    }),
 }));
 
 function renderToday(date: string | null = '2026-10-02') {

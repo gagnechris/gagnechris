@@ -719,6 +719,14 @@ export type UpsertDailyNoteRequest = z.infer<
   typeof UpsertDailyNoteRequestSchema
 >;
 
+export const OpenDailyNoteRequestSchema = z.object({
+  id: UlidSchema.describe(
+    'Client ULID used if opening creates the daily note with carried-in tasks',
+  ),
+});
+
+export type OpenDailyNoteRequest = z.infer<typeof OpenDailyNoteRequestSchema>;
+
 /**
  * `startDate` is the day a task shows on Today; `null` means now. `someday`
  * tasks never show on Today and always have a `null` startDate. `dueDate` is

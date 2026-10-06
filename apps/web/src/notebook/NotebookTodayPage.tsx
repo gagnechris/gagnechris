@@ -127,7 +127,7 @@ function TodayEditor({
     saveState,
   } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
-    params: { area, date },
+    params: { area, date, carryIn: date === today },
     initialDraft: emptyNoteDraft(),
     toDraft: noteDraftFromNote,
     getEntityId: (note) => `${note.area}:${note.date}:${note.id}`,

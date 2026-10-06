@@ -22,6 +22,7 @@ import { createTestQueryClient, QueryClientTestProvider } from '../test-utils';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 
 const TODAY = '2026-10-02';
 const TS = '2026-10-02T12:00:00.000Z';
@@ -53,126 +54,126 @@ const fail = (status: number, error: string) => ({
 });
 
 vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: async (path: string, init?: Init) => {
-      const p = init?.params?.path ?? {};
-      if (path === '/api/notebook/notes/daily/{area}/{date}') {
-        return ok(
-          api.daily ?? {
-            exists: false,
+  createApiClient: () =>
+    openDailyViaGet({
+      GET: async (path: string, init?: Init) => {
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/notes/daily/{area}/{date}') {
+          return ok(
+            api.daily ?? {
+              exists: false,
+              userId: 'u1',
+              area: p.area,
+              type: 'daily',
+              date: p.date,
+              title: '',
+              bodyMarkdown: '',
+              tags: [],
+              pinned: false,
+              version: 0,
+            },
+          );
+        }
+        if (path === '/api/notebook/tasks/{id}') {
+          const task = api.tasks.get(p.id!);
+          return task && !task.deleted ? ok(task) : fail(404, 'not_found');
+        }
+        if (path === '/api/notebook/tasks') return ok({ items: [] });
+        if (path === '/api/notebook/notes') return ok({ items: [] });
+        return fail(404, 'not_found');
+      },
+      PUT: async (path: string, init?: Init) => {
+        const body = init?.body ?? {};
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/notes/daily/{area}/{date}') {
+          api.puts.push(String(body.bodyMarkdown));
+          const prev = api.daily;
+          api.daily = {
+            id: String(body.id),
             userId: 'u1',
-            area: p.area,
+            area: 'work',
             type: 'daily',
-            date: p.date,
+            date: p.date!,
             title: '',
-            bodyMarkdown: '',
+            bodyMarkdown: String(body.bodyMarkdown ?? prev?.bodyMarkdown ?? ''),
             tags: [],
             pinned: false,
-            version: 0,
-          },
-        );
-      }
-      if (path === '/api/notebook/tasks/{id}') {
-        const task = api.tasks.get(p.id!);
-        return task && !task.deleted ? ok(task) : fail(404, 'not_found');
-      }
-      if (path === '/api/notebook/tasks') return ok({ items: [] });
-      if (path === '/api/notebook/notes') return ok({ items: [] });
-      return fail(404, 'not_found');
-    },
-    PUT: async (path: string, init?: Init) => {
-      const body = init?.body ?? {};
-      const p = init?.params?.path ?? {};
-      if (path === '/api/notebook/notes/daily/{area}/{date}') {
-        api.puts.push(String(body.bodyMarkdown));
-        const prev = api.daily;
-        api.daily = {
-          id: String(body.id),
-          userId: 'u1',
-          area: 'work',
-          type: 'daily',
-          date: p.date!,
-          title: '',
-          bodyMarkdown: String(body.bodyMarkdown ?? prev?.bodyMarkdown ?? ''),
-          tags: [],
-          pinned: false,
-          taskIds: [],
-          version: (prev?.version ?? 0) + 1,
-          createdAt: TS,
-          updatedAt: TS,
-          deleted: false,
-        };
-        api.notes.set(api.daily.id, api.daily);
-        return ok(api.daily);
-      }
-      if (path === '/api/notebook/tasks/{id}') {
-        const prev = api.tasks.get(p.id!)!;
-        const next = {
-          ...prev,
-          title: String(body.title),
-          version: prev.version + 1,
-        };
-        api.tasks.set(next.id, next);
-        return ok(next);
-      }
-      return fail(404, 'not_found');
-    },
-    POST: async (path: string, init?: Init) => {
-      const body = init?.body ?? {};
-      const p = init?.params?.path ?? {};
-      if (path === '/api/notebook/tasks') {
-        api.taskPosts.push(body);
-        // Mirrors the API: the linked note must already exist.
-        if (!api.notes.has(String(body.noteId))) {
-          return fail(400, 'bad_request');
+            taskIds: [],
+            version: (prev?.version ?? 0) + 1,
+            createdAt: TS,
+            updatedAt: TS,
+            deleted: false,
+          };
+          api.notes.set(api.daily.id, api.daily);
+          return ok(api.daily);
         }
-        const id = String(body.id);
-        const existing = api.tasks.get(id);
-        if (existing) return ok(existing);
-        const task: Task = {
-          id,
-          userId: 'u1',
-          area: body.area as Task['area'],
-          title: String(body.title),
-          description: '',
-          priority: 'med',
-          status: 'todo',
-          dueDate: (body.dueDate as string | null | undefined) ?? null,
-          startDate: null,
-          someday: false,
-          completedAt: null,
-          noteId: String(body.noteId),
-          tags: [],
-          version: 1,
-          createdAt: TS,
-          updatedAt: TS,
-          deleted: false,
-        };
-        api.tasks.set(id, task);
-        if (api.dropNextTaskResponse) {
-          api.dropNextTaskResponse = false;
-          throw new TypeError('Failed to fetch');
+        if (path === '/api/notebook/tasks/{id}') {
+          const prev = api.tasks.get(p.id!)!;
+          const next = {
+            ...prev,
+            title: String(body.title),
+            version: prev.version + 1,
+          };
+          api.tasks.set(next.id, next);
+          return ok(next);
         }
-        return ok(task, 201);
-      }
-      const match = /^\/api\/notebook\/tasks\/\{id\}\/(complete|reopen)$/.exec(
-        path,
-      );
-      if (match) {
-        const prev = api.tasks.get(p.id!)!;
-        const done = match[1] === 'complete';
-        const next: Task = {
-          ...prev,
-          status: done ? 'done' : 'todo',
-          completedAt: done ? TS : null,
-          version: prev.version + 1,
-        };
-        api.tasks.set(next.id, next);
-        return ok(next);
-      }
-      return fail(404, 'not_found');
-    },
-  }),
+        return fail(404, 'not_found');
+      },
+      POST: async (path: string, init?: Init) => {
+        const body = init?.body ?? {};
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/tasks') {
+          api.taskPosts.push(body);
+          // Mirrors the API: the linked note must already exist.
+          if (!api.notes.has(String(body.noteId))) {
+            return fail(400, 'bad_request');
+          }
+          const id = String(body.id);
+          const existing = api.tasks.get(id);
+          if (existing) return ok(existing);
+          const task: Task = {
+            id,
+            userId: 'u1',
+            area: body.area as Task['area'],
+            title: String(body.title),
+            description: '',
+            priority: 'med',
+            status: 'todo',
+            dueDate: (body.dueDate as string | null | undefined) ?? null,
+            startDate: null,
+            someday: false,
+            completedAt: null,
+            noteId: String(body.noteId),
+            tags: [],
+            version: 1,
+            createdAt: TS,
+            updatedAt: TS,
+            deleted: false,
+          };
+          api.tasks.set(id, task);
+          if (api.dropNextTaskResponse) {
+            api.dropNextTaskResponse = false;
+            throw new TypeError('Failed to fetch');
+          }
+          return ok(task, 201);
+        }
+        const match =
+          /^\/api\/notebook\/tasks\/\{id\}\/(complete|reopen)$/.exec(path);
+        if (match) {
+          const prev = api.tasks.get(p.id!)!;
+          const done = match[1] === 'complete';
+          const next: Task = {
+            ...prev,
+            status: done ? 'done' : 'todo',
+            completedAt: done ? TS : null,
+            version: prev.version + 1,
+          };
+          api.tasks.set(next.id, next);
+          return ok(next);
+        }
+        return fail(404, 'not_found');
+      },
+    }),
 }));
 
 const TASK_ID = '01JTASKAAAAAAAAAAAAAAAAAAA';

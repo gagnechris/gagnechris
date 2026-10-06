@@ -437,6 +437,20 @@ export const fetchDailyNote = async (
   return unwrap(result, 'Could not load daily note');
 };
 
+/** Like {@link fetchDailyNote}, but a first open carries earlier open tasks in. */
+export const openDailyNote = async (
+  client: ApiClient,
+  area: NotebookArea,
+  date: string,
+  id: string,
+): Promise<DailyNoteGetResponse> => {
+  const result = await client.POST(
+    '/api/notebook/notes/daily/{area}/{date}/open',
+    { params: { path: { area, date } }, body: { id } },
+  );
+  return unwrap(result, 'Could not load daily note');
+};
+
 export const upsertDailyNote = async (
   client: ApiClient,
   area: NotebookArea,
