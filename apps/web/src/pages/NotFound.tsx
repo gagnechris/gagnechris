@@ -8,6 +8,7 @@ import {
   NOT_FOUND_TITLE,
 } from '@gagnechris/shared/public-pages';
 import './NotFound.css';
+import PageHead from '../components/PageHead';
 
 // Markup must stay byte-identical to `renderNotFoundBodyHtml`, which is also
 // the Vite 404.html prerender and the CloudFront fallback (NotFound.test.tsx).
@@ -15,8 +16,7 @@ import './NotFound.css';
 function NotFound() {
   return (
     <main className="not-found">
-      <title>{NOT_FOUND_TITLE}</title>
-      <meta name="robots" content="noindex" />
+      <PageHead title={NOT_FOUND_TITLE} url={null} />
       <p className="not-found__label">{NOT_FOUND_LABEL}</p>
       <h1>{NOT_FOUND_HEADING}</h1>
       <p className="not-found__text">{NOT_FOUND_TEXT}</p>

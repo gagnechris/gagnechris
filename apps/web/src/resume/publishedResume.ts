@@ -5,11 +5,17 @@ import {
   resumeIntro,
   type ResumeIntro,
 } from '@gagnechris/shared/render';
-import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import { pageTitle } from '@gagnechris/shared';
+import {
+  fetchPrerender,
+  fromPrerender,
+  prerenderedTitle,
+} from '../prerender/documentPrerender';
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 export type ResumeView = ResumeIntro & {
   bodyHtml: string;
+  headTitle: string;
   /** True when the publisher wrote the unpublish placeholder. */
   unavailable?: boolean;
 };
@@ -20,6 +26,7 @@ export const publishedResumeUrl = (): string => publishedSiteUrl('/resume/');
 export const fallbackResumeView = (): ResumeView => ({
   ...resumeIntro(DEFAULT_RESUME),
   bodyHtml: renderResumeSectionsHtml(DEFAULT_RESUME.content),
+  headTitle: pageTitle('Resume'),
 });
 
 export const unavailableResumeView = (): ResumeView => ({
@@ -27,6 +34,7 @@ export const unavailableResumeView = (): ResumeView => ({
   summary: RESUME_UNAVAILABLE_TEXT,
   pdfPath: null,
   bodyHtml: '',
+  headTitle: pageTitle('Resume'),
   unavailable: true,
 });
 
@@ -48,6 +56,7 @@ export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
       page.querySelector('.resume-download')?.getAttribute('href') ||
       DEFAULT_RESUME.pdfPath,
     bodyHtml: body.innerHTML,
+    headTitle: prerenderedTitle(root) ?? pageTitle('Resume'),
   };
 }
 

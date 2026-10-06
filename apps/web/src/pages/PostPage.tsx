@@ -9,6 +9,7 @@ import {
 import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
 import NotFound from './NotFound';
 import './PostPage.css';
+import PageHead from '../components/PageHead';
 
 type Loaded = { slug: string; post: PostView | null };
 
@@ -54,13 +55,9 @@ function PostPage() {
 
   return (
     <>
-      <title>{`${post.title} - Chris Gagne`}</title>
-      <link rel="canonical" href={`https://gagnechris.com/posts/${slug}`} />
-      <link
-        rel="alternate"
-        type="application/rss+xml"
-        title="Chris Gagne"
-        href="/rss.xml"
+      <PageHead
+        title={post.headTitle}
+        url={`https://gagnechris.com/posts/${slug}`}
       />
       <PostArticle post={post} />
     </>

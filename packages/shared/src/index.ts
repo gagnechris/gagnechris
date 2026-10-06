@@ -9,6 +9,7 @@ export {
   RESTORE_TEST_SERVICE_NAME,
 } from './constants.js';
 export {
+  pageTitle,
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,

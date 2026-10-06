@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { ProjectCardView } from '@gagnechris/shared';
+import { pageTitle, type ProjectCardView } from '@gagnechris/shared';
 import ProjectsIndexBody from '../projects/ProjectsIndexBody';
 import {
   documentProjectsIndex,
@@ -9,6 +9,7 @@ import {
 import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
 import NotFound from './NotFound';
 import './ProjectsIndex.css';
+import PageHead from '../components/PageHead';
 
 function ProjectsIndex() {
   const { pathname } = useLocation();
@@ -40,8 +41,10 @@ function ProjectsIndex() {
   if (notFound) return <NotFound />;
   return (
     <>
-      <title>Projects - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/projects" />
+      <PageHead
+        title={pageTitle('Projects')}
+        url="https://gagnechris.com/projects"
+      />
       <ProjectsIndexBody
         projects={projects ?? []}
         message={error ?? (projects ? undefined : 'Loading projects…')}

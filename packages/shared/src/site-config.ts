@@ -1,5 +1,8 @@
 export const SITE_AUTHOR_NAME = 'Chris Gagne' as const;
 
+export const pageTitle = (title: string): string =>
+  `${title} - ${SITE_AUTHOR_NAME}`;
+
 export const SITE_PROFILE_IMAGE_SRC = '/profile.jpg' as const;
 
 export const SITE_LINKEDIN_URL =

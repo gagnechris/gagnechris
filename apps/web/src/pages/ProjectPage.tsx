@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import type { ProjectPageView } from '@gagnechris/shared';
+import { pageTitle, type ProjectPageView } from '@gagnechris/shared';
 import ProjectPageBody from '../projects/ProjectPageBody';
 import {
   documentProjectPageView,
@@ -10,6 +10,7 @@ import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
 import NotFound from './NotFound';
 import './PostPage.css';
 import './ProjectPage.css';
+import PageHead from '../components/PageHead';
 
 type Loaded = { slug: string; project: ProjectPageView | null };
 
@@ -55,8 +56,10 @@ function ProjectPage() {
 
   return (
     <>
-      <title>{`${project.name} - Chris Gagne`}</title>
-      <link rel="canonical" href={`https://gagnechris.com/projects/${slug}`} />
+      <PageHead
+        title={pageTitle(project.name)}
+        url={`https://gagnechris.com/projects/${slug}`}
+      />
       <ProjectPageBody project={project} />
     </>
   );

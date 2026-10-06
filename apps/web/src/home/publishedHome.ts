@@ -5,7 +5,11 @@ import {
   type HomeRecentPost,
 } from '@gagnechris/shared/render';
 import type { ProjectCardView } from '@gagnechris/shared';
-import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import {
+  fetchPrerender,
+  fromPrerender,
+  prerenderedTitle,
+} from '../prerender/documentPrerender';
 import { projectCardsFromList } from '../projects/publishedProjects';
 import { fetchPublishedPosts } from '../posts/publishedPosts';
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
@@ -14,6 +18,7 @@ export type HomeView = {
   name: string;
   title: string;
   aboutHtml: string;
+  headTitle: string;
 };
 
 export type HomeDocument = HomeView & {
@@ -28,6 +33,7 @@ export const fallbackHomeView = (): HomeView => ({
   name: DEFAULT_HOME.name,
   title: DEFAULT_HOME.title,
   aboutHtml: renderHomeAboutHtml(DEFAULT_HOME.about),
+  headTitle: `${DEFAULT_HOME.name} - ${DEFAULT_HOME.title}`,
 });
 
 const recentPostsFromDocument = (main: Element): HomeRecentPost[] =>
@@ -54,10 +60,13 @@ export function homeDocumentFromRoot(root: ParentNode): HomeDocument | null {
   if (!main || !about) return null;
   const projectList = main.querySelector(':scope > section > ul.project-list');
 
+  const name = main.getAttribute('data-name') || DEFAULT_HOME.name;
+  const title = main.getAttribute('data-title') || DEFAULT_HOME.title;
   return {
-    name: main.getAttribute('data-name') || DEFAULT_HOME.name,
-    title: main.getAttribute('data-title') || DEFAULT_HOME.title,
+    name,
+    title,
     aboutHtml: about.innerHTML,
+    headTitle: prerenderedTitle(root) ?? `${name} - ${title}`,
     recentPosts: recentPostsFromDocument(main),
     projects: projectList ? projectCardsFromList(projectList) : [],
   };

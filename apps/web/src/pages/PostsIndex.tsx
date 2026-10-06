@@ -6,6 +6,8 @@ import {
   type PublishedPostListItem,
 } from '../posts/publishedPosts';
 import './PostsIndex.css';
+import { pageTitle } from '@gagnechris/shared';
+import PageHead from '../components/PageHead';
 
 function PostsIndex() {
   const [posts, setPosts] = useState<PublishedPostListItem[] | null>(
@@ -35,14 +37,7 @@ function PostsIndex() {
 
   return (
     <>
-      <title>Posts - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/posts" />
-      <link
-        rel="alternate"
-        type="application/rss+xml"
-        title="Chris Gagne"
-        href="/rss.xml"
-      />
+      <PageHead title={pageTitle('Posts')} url="https://gagnechris.com/posts" />
       <PostsIndexBody
         posts={posts ?? []}
         message={error ?? (posts ? undefined : 'Loading posts…')}

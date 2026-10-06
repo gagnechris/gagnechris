@@ -149,6 +149,7 @@ describe('postViewFromDocument on pages published before this layout', () => {
     expect(parse(html)).toEqual({
       slug: 'old',
       title: 'Old',
+      headTitle: 'Old - Chris Gagne',
       date: '2026-02-01',
       excerpt: '',
       minutes: readingMinutes(words),

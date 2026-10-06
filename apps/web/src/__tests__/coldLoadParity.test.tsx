@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+  applyPageMeta,
   DEFAULT_RESUME,
+  pageTitle,
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
@@ -14,7 +18,10 @@ import {
 import { selectHomeProjects } from '@gagnechris/shared';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
+  applyNotFoundPageMeta,
+  applyStaticPageMeta,
   NOT_FOUND_PRERENDER,
+  STATIC_PAGE_META,
   staticPagePrerender,
 } from '../../scripts/staticPageMeta';
 
@@ -127,6 +134,41 @@ const PRERENDERS: Record<string, string> = {
   '/resume': renderResumePrerenderHtml(PUBLISHED_RESUME),
 };
 
+const SHELL = readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+
+const headOf = (html: string): string =>
+  new DOMParser().parseFromString(html, 'text/html').head.innerHTML;
+
+/** As the publisher writes them; the custom SEO titles must survive the mount. */
+const publishedHead = (path: string, title: string): string =>
+  headOf(
+    applyPageMeta(SHELL, {
+      title,
+      description: 'Published description.',
+      url: `https://gagnechris.com${path === '/' ? '' : path}`,
+      type: path.startsWith('/posts/') ? 'article' : 'website',
+    }),
+  );
+
+const HEADS: Record<string, string> = {
+  '/': publishedHead('/', 'Home SEO title'),
+  '/projects': publishedHead('/projects', pageTitle('Projects')),
+  '/projects/posts': publishedHead('/projects/posts', pageTitle('Posts')),
+  '/posts': publishedHead('/posts', pageTitle('Posts')),
+  '/posts/hello-world': publishedHead('/posts/hello-world', 'Post SEO title'),
+  '/resume': publishedHead('/resume', 'Resume SEO title'),
+};
+
+const staticHead = (routePath: string): string =>
+  headOf(
+    applyStaticPageMeta(
+      SHELL,
+      STATIC_PAGE_META.find((meta) => meta.routePath === routePath)!,
+    ),
+  );
+
+const NOT_FOUND_HEAD = headOf(applyNotFoundPageMeta(SHELL));
+
 /** The markers are replaced along with everything else in `#root`. */
 const withoutMarkers = (html: string): string =>
   html.replace(/<!--prerender:(start|end)-->/g, '');
@@ -145,11 +187,17 @@ const text = (el: Element): string =>
  * modules (which snapshot it on import), then `createRoot` over the top.
  * Fetch never settles, so anything on screen came from the first render.
  */
-async function coldLoad(path: string, prerender: string) {
+async function coldLoad(path: string, prerender: string, head = '') {
   window.history.replaceState(null, '', path);
+  document.head.innerHTML = head;
   document.body.innerHTML = `<div id="root">${prerender}</div>`;
   const root = document.getElementById('root')!;
-  const before = { text: text(root), html: root.innerHTML };
+  const before = {
+    text: text(root),
+    html: root.innerHTML,
+    head: document.head.innerHTML,
+    title: document.title,
+  };
 
   vi.resetModules();
   const [{ act }, { createRoot }, router, { routes }] = await Promise.all([
@@ -197,13 +245,17 @@ describe('cold load: first React render matches the prerender', () => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     for (const page of Object.values(BEARS_PAGES)) vi.doUnmock(page);
+    document.head.innerHTML = '';
     document.body.innerHTML = '';
     window.history.replaceState(null, '', '/');
   });
 
   test.each(Object.entries(PRERENDERS))('%s', async (path, prerender) => {
-    const loaded = await coldLoad(path, prerender);
+    const loaded = await coldLoad(path, prerender, HEADS[path]);
     unmount = loaded.unmount;
+
+    expect(document.head.innerHTML).toBe(loaded.before.head);
+    expect(document.title).toBe(loaded.before.title);
 
     expect(text(loaded.root)).toBe(loaded.before.text);
     expect(text(loaded.root)).not.toMatch(/Loading/);
@@ -341,10 +393,11 @@ describe('cold load: first React render matches the prerender', () => {
     '%s served the 404 page: same DOM, no section current, no fetch',
     async (path) => {
       const prerender = withoutMarkers(NOT_FOUND_PRERENDER);
-      const loaded = await coldLoad(path, prerender);
+      const loaded = await coldLoad(path, prerender, NOT_FOUND_HEAD);
       unmount = loaded.unmount;
 
       expect(loaded.root.innerHTML).toBe(prerender);
+      expect(document.head.innerHTML).toBe(loaded.before.head);
       expect(loaded.root.querySelector('[aria-current]')).toBeNull();
       expect(fetch).not.toHaveBeenCalled();
     },
@@ -352,8 +405,10 @@ describe('cold load: first React render matches the prerender', () => {
 
   test('/contact keeps the prerendered chrome and heading, and adds the form below', async () => {
     const prerender = withoutMarkers(staticPagePrerender('contact')!);
-    const loaded = await coldLoad('/contact', prerender);
+    const loaded = await coldLoad('/contact', prerender, staticHead('contact'));
     unmount = loaded.unmount;
+
+    expect(document.head.innerHTML).toBe(loaded.before.head);
 
     const before = document.createElement('div');
     before.innerHTML = prerender;
@@ -392,17 +447,18 @@ describe('cold load: first React render matches the prerender', () => {
   );
 
   test.each(Object.keys(BEARS_PAGES))(
-    '%s: the chrome does not change when the page arrives',
+    '%s: the chrome and head do not change when the page arrives',
     async (path) => {
       const prerender = withoutMarkers(
         staticPagePrerender(path.slice(1) as 'dont-feed-the-bears')!,
       );
-      const loaded = await coldLoad(path, prerender);
+      const loaded = await coldLoad(path, prerender, staticHead(path.slice(1)));
       unmount = loaded.unmount;
 
       await vi.waitFor(() =>
         expect(loaded.root.querySelector('h1')).not.toBeNull(),
       );
+      expect(document.head.innerHTML).toBe(loaded.before.head);
       const before = document.createElement('div');
       before.innerHTML = prerender;
       expect(loaded.root.firstElementChild!.outerHTML).toBe(

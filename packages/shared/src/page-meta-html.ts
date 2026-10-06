@@ -1,8 +1,4 @@
-import {
-  replaceMeta,
-  upsertCanonical,
-  upsertMeta,
-} from '@gagnechris/shared/render';
+import { replaceMeta, upsertCanonical, upsertMeta } from './html.js';
 
 export type PageMetaInput = {
   title: string;
