@@ -115,6 +115,14 @@ vi.mock('../workspace/api/client', () => ({
       POST: async (path: string, init?: Init) => {
         if (path !== '/api/notebook/tasks') return notFound();
         server.created.push(init!.body!);
+        // Mirrors the API's title limit.
+        if (String(init!.body!.title).length > 300) {
+          return {
+            data: undefined,
+            error: { error: 'bad_request', message: 'Validation failed' },
+            response: { status: 400 },
+          };
+        }
         const created: Task = {
           ...task(0, {}),
           ...(init!.body as Partial<Task>),
@@ -302,5 +310,23 @@ describe('NotebookUpcomingPage', () => {
         '“Call mom” has no later date, so it shows on Today.',
       ),
     ).toBeInTheDocument();
+  });
+
+  test('quick add truncates an overlong title instead of failing', async () => {
+    const user = userEvent.setup();
+    renderNotebook();
+    const input = await screen.findByRole('combobox', {
+      name: 'Schedule a task',
+    });
+
+    await user.click(input);
+    await user.paste(`${'y'.repeat(350)} @someday`);
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await within(group('Someday')).findByText('y'.repeat(300)),
+    ).toBeInTheDocument();
+    expect(server.created).toHaveLength(1);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

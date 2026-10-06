@@ -147,7 +147,7 @@ bookmark: {
 },
 ```
 
-Partition keys start with `USER#<sub>#` so rows are owner-scoped. Lists use the existing `gsi1pk`/`gsi1sk` (or `gsi2pk`/`gsi2sk`) attributes, namespaced by `USER#<sub>#` so they never share a partition with posts or other users. The repository strips these four attributes from tombstones, so lists never return deleted rows.
+Partition keys start with `USER#<sub>#` so rows are owner-scoped. Lists use the existing `gsi1pk`/`gsi1sk` (or `gsi2pk`/`gsi2sk`) attributes, namespaced by `USER#<sub>#` so they never share a partition with posts or other users. `build…MetaItem` must leave these four attributes off a tombstone (see `buildTaskMetaItem`) so lists never return deleted rows; the repository does not strip them.
 
 ## 4. Stored item — `packages/data/src/items.ts`
 
