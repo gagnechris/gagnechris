@@ -59,6 +59,15 @@ describe('Cognito session', () => {
     });
   });
 
+  test('counts a session whose tokens could not be refreshed as signed out', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      userId: 'u1',
+      username: 'u1',
+    });
+    vi.mocked(fetchAuthSession).mockResolvedValue({});
+    expect(await getAuthUser()).toBeNull();
+  });
+
   test("signs out of this app only, so the other app's session survives", async () => {
     await signOutUser();
     expect(signOut).toHaveBeenCalledTimes(1);

@@ -50,6 +50,8 @@ function AdminFrame({ user }: { user: AuthUser }) {
 
 export default function AdminLayout() {
   return (
-    <WorkspaceShell>{(user) => <AdminFrame user={user} />}</WorkspaceShell>
+    <WorkspaceShell app="admin">
+      {(user) => <AdminFrame user={user} />}
+    </WorkspaceShell>
   );
 }

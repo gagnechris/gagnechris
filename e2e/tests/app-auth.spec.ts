@@ -41,6 +41,7 @@ function tokens(clientId: string) {
       token_use: 'id',
       email: USER.email,
       'cognito:username': USER.sub,
+      'cognito:groups': ['site-admin', 'notebook', 'user-admin'],
     }),
     access_token: jwt({
       ...common,
