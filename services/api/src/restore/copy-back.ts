@@ -26,10 +26,8 @@ import {
   metaToTask,
   noteContentEqual,
   notePk,
-  ownerSyncCreateClaimPk,
   parseNoteMetaItem,
   parseTaskMetaItem,
-  syncCreateClaimSk,
   syncPk,
   syncSk,
   taskContentEqual,
@@ -470,8 +468,7 @@ export async function applyCopyBack(
         Put: {
           TableName: opts.targetTable,
           Item: {
-            pk: ownerSyncCreateClaimPk(userId, entry.type, entry.id),
-            sk: syncCreateClaimSk(),
+            ...keys.sync.ownerCreateClaim(userId, entry.type, entry.id),
             entityType: 'syncCreateClaim',
             changeType: entry.type,
             entityId: entry.id,

@@ -4,7 +4,7 @@ import {
   resolveExpectedVersion,
 } from '../src/data/concurrency.js';
 import { InvalidHeaderError } from '../src/data/errors.js';
-import { requireExpectedVersion } from '../src/data/versioned-route.js';
+import { readExpectedVersion } from '../src/data/versioned-route.js';
 import { makeEvent } from './support/make-event.js';
 
 describe('If-Match parsing', () => {
@@ -54,12 +54,12 @@ describe('If-Match parsing', () => {
     });
   });
 
-  it('requireExpectedVersion maps malformed If-Match to 400', () => {
+  it('readExpectedVersion maps malformed If-Match to 400', () => {
     const event = makeEvent('PUT', '/x', {
       headers: { 'If-Match': 'abc' },
       jwtClaims: { sub: 'u' },
     });
-    const resolved = requireExpectedVersion(event, {});
+    const resolved = readExpectedVersion(event, {});
     expect(resolved.ok).toBe(false);
     if (resolved.ok) return;
     expect(resolved.response.statusCode).toBe(400);

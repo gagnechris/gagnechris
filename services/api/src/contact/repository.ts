@@ -6,8 +6,7 @@ import {
 import { ulid } from 'ulid';
 import { getDocClient, requireTableName } from '../data/client.js';
 import {
-  contactMsgSk,
-  contactPk,
+  keys,
   type ContactEmailStatus,
   type ContactMsgItem,
 } from '@gagnechris/data';
@@ -29,8 +28,7 @@ export class ContactRepository {
     const contactId = ulid();
     const createdAt = new Date().toISOString();
     const item: ContactMsgItem = {
-      pk: contactPk(contactId),
-      sk: contactMsgSk(),
+      ...keys.contact.msg(contactId),
       entityType: 'contact',
       contactId,
       name: input.name,
@@ -58,7 +56,7 @@ export class ContactRepository {
     await this.doc.send(
       new UpdateCommand({
         TableName: this.tableName,
-        Key: { pk: contactPk(contactId), sk: contactMsgSk() },
+        Key: keys.contact.msg(contactId),
         UpdateExpression: emailError
           ? 'SET emailStatus = :status, emailError = :err'
           : 'SET emailStatus = :status REMOVE emailError',

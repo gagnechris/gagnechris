@@ -690,6 +690,9 @@ export const UpdateNoteRequestSchema = z.object({
 
 export type UpdateNoteRequest = z.infer<typeof UpdateNoteRequestSchema>;
 
+/** Default page size for notes and tasks lists, one area or many. */
+export const NOTEBOOK_PAGE_SIZE = 50;
+
 export const ListNotesQuerySchema = z.object({
   area: NotebookAreaSchema.optional().describe('Filter by Work or Personal'),
   from: CalendarDateSchema.optional().describe(
@@ -704,7 +707,9 @@ export const ListNotesQuerySchema = z.object({
     .min(1)
     .optional()
     .describe('Opaque pagination cursor from a previous list response'),
-  limit: PageLimitSchema.optional().describe('Page size (1-100)'),
+  limit: PageLimitSchema.optional().describe(
+    `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+  ),
 });
 
 export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
@@ -876,7 +881,9 @@ export const ListTasksQuerySchema = z
       "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
     ),
     cursor: z.string().min(1).optional(),
-    limit: PageLimitSchema.optional(),
+    limit: PageLimitSchema.optional().describe(
+      `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+    ),
   })
   .superRefine((query, ctx) => {
     const ranges = [

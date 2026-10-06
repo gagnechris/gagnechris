@@ -9,12 +9,15 @@ import {
   keys,
   metaToTask,
   normalizeTags,
+  noteTasksGsi2Pk,
   parseTaskMetaItem,
+  taskAreaStatusGsi1Pk,
   taskGsi1SkRanges,
   type SortKeyRange,
   type TaskMetaItem,
 } from '@gagnechris/data';
 import {
+  NOTEBOOK_PAGE_SIZE,
   OPEN_TASK_STATUSES,
   TaskStatusSchema,
   TaskSyncChangeSchema,
@@ -41,6 +44,7 @@ import {
   type OwnerKey,
 } from '../data/versioned-repository.js';
 import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
+import { collectPages } from '../data/collect-pages.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { hashCreateFields } from '../data/create-hash.js';
 import { toSyncChange } from '../sync/to-sync-change.js';
@@ -382,7 +386,7 @@ export class TasksRepository {
     const page = await walkPartitions(
       partitions,
       query.cursor,
-      query.limit ?? 50,
+      query.limit ?? NOTEBOOK_PAGE_SIZE,
       ({ area, status, range }, cursor, remaining, remainingBytes) =>
         this.listPartition(
           userId,
@@ -409,23 +413,20 @@ export class TasksRepository {
     day: string,
     max = CARRY_IN_MAX,
   ): Promise<string[]> {
-    const ids: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = await this.list(userId, {
-        area,
-        open: true,
-        startOnOrBefore: day,
-        today: day,
-        limit: 100,
-        ...(cursor ? { cursor } : {}),
-      });
-      for (const task of page.items) {
-        if (task.startDate !== day) ids.push(task.id);
-      }
-      cursor = page.nextCursor;
-    } while (cursor && ids.length < max);
-    return ids.slice(0, max);
+    const carried = await collectPages(
+      (cursor) =>
+        this.list(userId, {
+          area,
+          open: true,
+          startOnOrBefore: day,
+          today: day,
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        }),
+      max,
+      (task) => task.startDate !== day,
+    );
+    return carried.map((task) => task.id);
   }
 
   private async listByNote(
@@ -433,14 +434,14 @@ export class TasksRepository {
     noteId: string,
     query: ListTasksQuery,
   ): Promise<{ items: Task[]; nextCursor?: string }> {
-    const pk = keys.notebook.noteTasksGsi2(userId, noteId);
+    const pk = noteTasksGsi2Pk(userId, noteId);
     const page = await this.base.queryPage({
       IndexName: GSI2_NAME,
       KeyConditionExpression: 'gsi2pk = :pk',
       ExpressionAttributeValues: { ':pk': pk },
       ScanIndexForward: true,
       cursor: query.cursor,
-      limit: query.limit,
+      limit: query.limit ?? NOTEBOOK_PAGE_SIZE,
       cursorPartition: { attr: 'gsi2pk', value: pk },
       byteBudget: PAGE_BYTE_BUDGET,
     });
@@ -459,7 +460,7 @@ export class TasksRepository {
     query: ListTasksQuery,
     byteBudget = PAGE_BYTE_BUDGET,
   ): Promise<{ items: Task[]; nextCursor?: string }> {
-    const pk = keys.notebook.taskAreaStatusGsi1(userId, area, status);
+    const pk = taskAreaStatusGsi1Pk(userId, area, status);
     const page = await this.base.queryPage({
       IndexName: GSI1_NAME,
       KeyConditionExpression: range
@@ -470,7 +471,7 @@ export class TasksRepository {
         : { ':pk': pk },
       ScanIndexForward: true,
       cursor: query.cursor,
-      limit: query.limit,
+      limit: query.limit ?? NOTEBOOK_PAGE_SIZE,
       cursorPartition: { attr: 'gsi1pk', value: pk },
       byteBudget,
       ...(range
