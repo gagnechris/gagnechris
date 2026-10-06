@@ -298,6 +298,11 @@ describe('stack Template assertions', () => {
     );
     expect(csp).toContain('https://www.googletagmanager.com');
     expect(csp).toContain('https://www.google-analytics.com');
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(
+      site!.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig
+        .XSSProtection,
+    ).toEqual({ Override: true, Protection: false });
     expect(csp).not.toMatch(/auth\.gagnechris\.com|cognito-idp/);
     expect(csp).not.toMatch(/s3|SiteBucket|RegionalDomainName/i);
     expect(
