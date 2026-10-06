@@ -39,12 +39,9 @@ VITE_COGNITO_NOTEBOOK_CLIENT_ID="$(ssm_value cognitoNotebookWebClientId)"
 VITE_COGNITO_AUTH_DOMAIN="$(ssm_value cognitoAuthDomain)"
 # The admin app links public pages (View live, previews) at this origin.
 VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
-# Production GA4 property. Only this build sets it, so local, preview and e2e
-# builds load no Google Analytics.
-GA_MEASUREMENT_ID="G-CDG30T24XY"
 export VITE_COGNITO_USER_POOL_ID VITE_COGNITO_ADMIN_CLIENT_ID \
   VITE_COGNITO_NOTEBOOK_CLIENT_ID VITE_COGNITO_AUTH_DOMAIN \
-  VITE_PUBLIC_SITE_ORIGIN GA_MEASUREMENT_ID
+  VITE_PUBLIC_SITE_ORIGIN
 
 npm run build -w @gagnechris/web
 npm run --silent check:web-shells

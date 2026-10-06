@@ -17,9 +17,12 @@ import {
   parsePostMetaItem,
   parseProjectMetaItem,
   parseResumeMetaItem,
+  parseSitePublishItem,
   projectStatusGsi1Pk,
+  sitePublishKey,
   statusGsi1Pk,
   type PostMetaItem,
+  type SitePublishState,
 } from '@gagnechris/data';
 import { batchGetAllWithDocClient } from '@gagnechris/data';
 import {
@@ -89,9 +92,28 @@ function logCorruptPublished(opts: {
   metrics.addMetric('DataIntegrityError', MetricUnit.Count, 1);
 }
 
+export async function getSitePublishState(
+  tableName: string,
+): Promise<SitePublishState> {
+  const result = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: sitePublishKey(),
+      ConsistentRead: true,
+    }),
+  );
+  return parseSitePublishItem(result.Item);
+}
+
+/**
+ * Ids from GSI1 and from the site publish row, then the PUBLISHED rows. The
+ * row is read consistently, so a just-published post is listed however far
+ * GSI1 lags; GSI1 still lists posts published before the row tracked them.
+ */
 export async function listPublishedPosts(
   tableName: string,
 ): Promise<PublishedPostsCatalog> {
+  const state = await getSitePublishState(tableName);
   const posts: Post[] = [];
   const corruptSlugs: string[] = [];
   const metaPostIds: string[] = [];
@@ -120,7 +142,7 @@ export async function listPublishedPosts(
       Record<string, unknown> | undefined;
   } while (exclusiveStartKey);
 
-  const uniqueIds = [...new Set(metaPostIds)];
+  const uniqueIds = [...new Set([...metaPostIds, ...state.postIds])];
   const publishedById = new Map<string, PostMetaItem>();
   const corruptPostIds = new Set<string>();
   for (let i = 0; i < uniqueIds.length; i += 100) {
@@ -183,61 +205,17 @@ export async function listPublishedPosts(
   };
 }
 
-/** A just-published post must still render when GSI1 has not caught up. */
-export function mergeStreamPublishedPosts(
-  catalog: PublishedPostsCatalog,
-  streamItems: readonly unknown[],
-): PublishedPostsCatalog {
-  if (streamItems.length === 0) return catalog;
-
-  const byId = new Map(catalog.posts.map((p) => [p.id, p]));
-  const corruptSlugs = new Set(catalog.corruptSlugs);
-  const corruptPostIds = new Set(catalog.corruptPostIds ?? []);
-
-  for (const item of streamItems) {
-    const pk =
-      typeof (item as { pk?: unknown }).pk === 'string'
-        ? (item as { pk: string }).pk
-        : undefined;
-    const sk =
-      typeof (item as { sk?: unknown }).sk === 'string'
-        ? (item as { sk: string }).sk
-        : undefined;
-    try {
-      const record = parsePostMetaItem(item);
-      if (record.status !== 'published') continue;
-      byId.set(record.postId, metaToPost(record));
-      corruptSlugs.delete(record.slug);
-      corruptPostIds.delete(record.postId);
-    } catch (error) {
-      logCorruptPublished({ label: 'post', pk, sk, err: error });
-      if (pk?.startsWith('POST#')) corruptPostIds.add(pk.slice('POST#'.length));
-      const slug =
-        typeof (item as { slug?: unknown }).slug === 'string' &&
-        (item as { slug: string }).slug
-          ? (item as { slug: string }).slug
-          : undefined;
-      if (slug) corruptSlugs.add(slug);
-    }
-  }
-
-  return {
-    posts: sortPostsNewestFirst([...byId.values()]),
-    corruptSlugs: sortedUnique(corruptSlugs),
-    corruptPostIds: sortedUnique(corruptPostIds),
-  };
-}
-
 const stringAttr = (item: unknown, name: string): string | undefined => {
   const value = (item as Record<string, unknown>)[name];
   return typeof value === 'string' && value ? value : undefined;
 };
 
-/** Same shape as {@link listPublishedPosts}: GSI1 for ids, then the PUBLISHED rows. */
+/** Same shape as {@link listPublishedPosts}: GSI1 and the site publish row for ids, then the PUBLISHED rows. */
 export async function listPublishedProjects(
   tableName: string,
 ): Promise<PublishedProjectsCatalog> {
-  const ids: string[] = [];
+  const state = await getSitePublishState(tableName);
+  const ids: string[] = [...state.projectIds];
   let exclusiveStartKey: Record<string, unknown> | undefined;
   do {
     const page = await ddb.send(
@@ -292,37 +270,6 @@ export async function listPublishedProjects(
   }
   return {
     projects: sortProjectsByOrder(projects),
-    corruptSlugs: sortedUnique(corruptSlugs),
-  };
-}
-
-/** A just-published project must still render when GSI1 has not caught up. */
-export function mergeStreamPublishedProjects(
-  catalog: PublishedProjectsCatalog,
-  streamItems: readonly unknown[],
-): PublishedProjectsCatalog {
-  if (streamItems.length === 0) return catalog;
-  const byId = new Map(catalog.projects.map((p) => [p.id, p]));
-  const corruptSlugs = new Set(catalog.corruptSlugs);
-  for (const item of streamItems) {
-    try {
-      const record = parseProjectMetaItem(item);
-      if (record.status !== 'published') continue;
-      byId.set(record.projectId, metaToProject(record));
-      corruptSlugs.delete(record.slug);
-    } catch (error) {
-      logCorruptPublished({
-        label: 'project',
-        pk: stringAttr(item, 'pk'),
-        sk: stringAttr(item, 'sk'),
-        err: error,
-      });
-      const slug = stringAttr(item, 'slug');
-      if (slug) corruptSlugs.add(slug);
-    }
-  }
-  return {
-    projects: sortProjectsByOrder([...byId.values()]),
     corruptSlugs: sortedUnique(corruptSlugs),
   };
 }
@@ -387,45 +334,30 @@ export type { RebuildSiteSources } from './publish-targets/types.js';
  * - Corrupt Resume/Post PUBLISHED rows: preserve live artifacts.
  * - Unpublished Home: re-render from `home/last-published.json` so the last
  *   published copy survives web deploys.
- * - Live posts missing from the catalog (corrupt row, or GSI lag on a stream
- *   rebuild) keep their page, KVS entry, and previous feed entry.
+ * - Live posts with a corrupt PUBLISHED row keep their page, KVS entry, and
+ *   previous feed entry.
  */
 export async function rebuildPublishedSite(options?: {
   scope?: RebuildScope;
   storage?: SiteStorage;
   sources?: RebuildSiteSources;
-  streamPublishedPosts?: readonly unknown[];
-  streamPublishedProjects?: readonly unknown[];
   targets?: readonly PublishTarget[];
 }): Promise<RebuildResult> {
   const scope = options?.scope ?? fullRebuildScope();
   const storage = options?.storage ?? getSiteStorage();
-  const streamPublishedPosts = options?.streamPublishedPosts ?? [];
-  const streamPublishedProjects = options?.streamPublishedProjects ?? [];
-  const baseSources: RebuildSiteSources =
+  const sources: RebuildSiteSources =
     options?.sources ??
     (() => {
       const tableName = requireEnv('DATA_TABLE_NAME');
       return {
+        readGeneration: async () =>
+          (await getSitePublishState(tableName)).generation,
         listPublishedPosts: () => listPublishedPosts(tableName),
         listPublishedProjects: () => listPublishedProjects(tableName),
         getPublishedResume: () => getPublishedResume(tableName),
         getPublishedHome: () => getPublishedHome(tableName),
       };
     })();
-  const sources: RebuildSiteSources = {
-    ...baseSources,
-    listPublishedPosts: async () =>
-      mergeStreamPublishedPosts(
-        await baseSources.listPublishedPosts(),
-        streamPublishedPosts,
-      ),
-    listPublishedProjects: async () =>
-      mergeStreamPublishedProjects(
-        await baseSources.listPublishedProjects(),
-        streamPublishedProjects,
-      ),
-  };
 
   return runPublishTargets({
     scope,

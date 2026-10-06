@@ -87,6 +87,7 @@ describe('project slug allowlist (local KVS file)', () => {
 
   const rebuild = (catalog: PublishedProjectsCatalog) => {
     const sources: RebuildSiteSources = {
+      readGeneration: async () => 0,
       listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
       listPublishedProjects: async () => catalog,
       getPublishedResume: async () => ({ status: 'missing' }),

@@ -4,14 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { gaBootstrap } from '../../scripts/analyticsPlugin';
 import {
   checkWebShells,
   demoChunkProblems,
 } from '../../scripts/checkWebShells';
 
-const GA_ID = 'G-X';
-const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
+const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>
 <script defer src="/ga.js"></script>`;
 const FONT_BYTES = 'wOF2';
 const FONT_HASH = createHash('sha256')
@@ -55,7 +53,7 @@ function webRoot(files: Record<string, string>): string {
   const all: Record<string, string> = {
     'dist/index.html': `<html><head>${GA_SNIPPET}</head></html>`,
     'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}</head></html>`,
-    'dist/ga.js': gaBootstrap(GA_ID),
+    'dist/ga.js': 'gtag();',
     [`dist${FONT}`]: FONT_BYTES,
     'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${FONT}') format('woff2')}`,
     'dist/.vite/manifest.json': JSON.stringify(MANIFEST),
@@ -76,17 +74,15 @@ function webRoot(files: Record<string, string>): string {
   return root;
 }
 
-const check = (root: string) => checkWebShells(root, GA_ID);
-
 describe('checkWebShells', () => {
   it('passes GA on the public shell and bundled scripts only on app shells', () => {
-    expect(check(webRoot({}))).toEqual([]);
+    expect(checkWebShells(webRoot({}))).toEqual([]);
   });
 
   it.each(['dist-admin', 'dist-notebook'])(
     'fails when %s/index.html loads GA',
     (app) => {
-      const problems = check(
+      const problems = checkWebShells(
         webRoot({
           [`${app}/index.html`]: APP_SHELL.replace(
             '</head>',
@@ -104,7 +100,7 @@ describe('checkWebShells', () => {
   );
 
   it('fails on an inline script in an app shell even without GA', () => {
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         'dist-admin/index.html': APP_SHELL.replace(
           '</head>',
@@ -116,7 +112,7 @@ describe('checkWebShells', () => {
   });
 
   it('fails on a third-party script src in an app shell', () => {
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         'dist-notebook/index.html': APP_SHELL.replace(
           '</head>',
@@ -130,7 +126,7 @@ describe('checkWebShells', () => {
   });
 
   it('fails on an inline script in the public shell', () => {
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}<script>gtag('js')</script></head></html>`,
       }),
@@ -139,7 +135,7 @@ describe('checkWebShells', () => {
   });
 
   it('fails when the public shell loads a local script the build did not write', () => {
-    const problems = check(webRoot({ 'dist/ga.js': '\0delete' }));
+    const problems = checkWebShells(webRoot({ 'dist/ga.js': '\0delete' }));
     expect(problems).toEqual([
       'dist/index.html loads a script that is not in dist: /ga.js',
       'dist/_shell.html loads a script that is not in dist: /ga.js',
@@ -147,35 +143,14 @@ describe('checkWebShells', () => {
   });
 
   it('fails when the public shell loses GA', () => {
-    const problems = check(webRoot({ 'dist/index.html': '<html></html>' }));
+    const problems = checkWebShells(
+      webRoot({ 'dist/index.html': '<html></html>' }),
+    );
     expect(problems).toEqual(['dist/index.html lost Google Analytics']);
   });
 
-  it('fails when the bootstrap configures another GA property', () => {
-    expect(check(webRoot({ 'dist/ga.js': gaBootstrap('G-OTHER') }))).toEqual([
-      `dist/ga.js does not configure ${GA_ID}`,
-    ]);
-  });
-
-  it('passes a build without GA_MEASUREMENT_ID that loads no GA', () => {
-    const root = webRoot({
-      'dist/index.html': '<html></html>',
-      'dist/_shell.html': `<html><head>${FONT_PRELOAD}</head></html>`,
-      'dist/ga.js': '\0delete',
-    });
-    expect(checkWebShells(root)).toEqual([]);
-  });
-
-  it('fails when a build without GA_MEASUREMENT_ID loads GA', () => {
-    expect(checkWebShells(webRoot({}))).toEqual([
-      'dist/index.html loads Google Analytics without GA_MEASUREMENT_ID',
-      'dist/_shell.html loads Google Analytics without GA_MEASUREMENT_ID',
-      'dist/ga.js exists without GA_MEASUREMENT_ID',
-    ]);
-  });
-
   it('fails when the Notebook manifest is not scoped to its own origin root', () => {
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         'dist-notebook/manifest.json': JSON.stringify({
           id: '/admin/notebook',
@@ -189,20 +164,20 @@ describe('checkWebShells', () => {
 
   it('fails unless the public shell preloads exactly one self-hosted font', () => {
     expect(
-      check(
+      checkWebShells(
         webRoot({
           'dist/_shell.html': `<html><head>${GA_SNIPPET}</head></html>`,
         }),
       ),
     ).toContain('dist/_shell.html preloads 0 fonts (expected 1)');
     expect(
-      check(
+      checkWebShells(
         webRoot({
           'dist/_shell.html': `<html><head>${FONT_PRELOAD}${FONT_PRELOAD.replace('serif', 'sans')}${GA_SNIPPET}</head></html>`,
         }),
       ),
     ).toContain('dist/_shell.html preloads 2 fonts (expected 1)');
-    expect(check(webRoot({ [`dist${FONT}`]: '\0delete' }))).toContain(
+    expect(checkWebShells(webRoot({ [`dist${FONT}`]: '\0delete' }))).toContain(
       `dist/_shell.html preloads a font that is not in dist: ${FONT}`,
     );
   });
@@ -210,7 +185,7 @@ describe('checkWebShells', () => {
   it('accepts a Vite-hashed font under /assets/', () => {
     const font = '/assets/serif-AbC123.woff2';
     expect(
-      check(
+      checkWebShells(
         webRoot({
           [`dist${font}`]: FONT_BYTES,
           'dist/_shell.html': `<html><head>${FONT_PRELOAD.replace(FONT, font)}${GA_SNIPPET}</head></html>`,
@@ -222,7 +197,7 @@ describe('checkWebShells', () => {
 
   it('fails when a font name does not carry a content hash, so it would not be cached as immutable', () => {
     const font = '/fonts/serif.woff2';
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         [`dist${font}`]: FONT_BYTES,
         'dist/_shell.html': `<html><head>${FONT_PRELOAD.replace(FONT, font)}${GA_SNIPPET}</head></html>`,
@@ -238,7 +213,7 @@ describe('checkWebShells', () => {
   });
 
   it('fails when a font file changes but its name keeps the old hash', () => {
-    const problems = check(webRoot({ [`dist${FONT}`]: 'wOF2 v2' }));
+    const problems = checkWebShells(webRoot({ [`dist${FONT}`]: 'wOF2 v2' }));
     expect(problems).toHaveLength(2);
     for (const problem of problems) {
       expect(problem).toContain(
@@ -249,7 +224,7 @@ describe('checkWebShells', () => {
 
   it('fails when the public CSS loads a font from another origin', () => {
     const url = 'https://fonts.gstatic.com/s/inter/v1/inter.woff2';
-    const problems = check(
+    const problems = checkWebShells(
       webRoot({
         'dist/assets/index-abc.css': `@font-face{font-family:Inter;src:url(${url}) format('woff2')}`,
       }),
@@ -260,9 +235,9 @@ describe('checkWebShells', () => {
   });
 
   it('fails when the public build manifest is missing', () => {
-    expect(check(webRoot({ 'dist/.vite/manifest.json': '\0delete' }))).toEqual([
-      'dist/.vite/manifest.json is missing',
-    ]);
+    expect(
+      checkWebShells(webRoot({ 'dist/.vite/manifest.json': '\0delete' })),
+    ).toEqual(['dist/.vite/manifest.json is missing']);
   });
 });
 

@@ -4,12 +4,13 @@ declare global {
   }
 }
 
+export const GA_MEASUREMENT_ID = 'G-CDG30T24XY';
+
 const canTrack = () => typeof window !== 'undefined' && Boolean(window.gtag);
 
 export const trackPageView = (url: string) => {
-  const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
-  if (!canTrack() || !measurementId) return;
-  window.gtag('config', measurementId, {
+  if (!canTrack()) return;
+  window.gtag('config', GA_MEASUREMENT_ID, {
     page_path: url,
   });
 };

@@ -150,7 +150,8 @@ test.describe('a project page', () => {
       { file: string; isEntry?: boolean; imports?: string[] }
     >;
     const entryKey = Object.keys(manifest).find((k) => manifest[k]!.isEntry)!;
-    const allowed = new Set<string>();
+    // The shell's analytics bootstrap is a static file, not a Vite chunk.
+    const allowed = new Set<string>(['/ga.js']);
     const queue = [entryKey];
     while (queue.length) {
       const key = queue.pop()!;
@@ -238,6 +239,7 @@ test.describe('the Try it slot', () => {
 });
 
 test.describe('a demo in the Try it slot', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
   const FIXTURE = '/src/__tests__/fixtures/demo/FixtureDemo.tsx';
 
   test('loads near the viewport, runs without the API or other origins, and resets from the keyboard', async ({
@@ -329,9 +331,11 @@ test.describe('a demo in the Try it slot', () => {
 
     const pageOrigin = new URL(origin).origin;
     expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
-    expect(requests.filter((u) => u.origin !== pageOrigin).map(String)).toEqual(
-      [],
-    );
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
     expect(
       requests
         .slice(fromInteraction)
@@ -361,6 +365,7 @@ const staticFiles = (manifest: Manifest, key: string): Set<string> => {
 const CODEMIRROR = 'src/kit/markdown/MarkdownEditor.tsx';
 
 test.describe('the Posts demo on the built site', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
   const DEMO = 'src/demos/posts/index.tsx';
 
   const publishPostsDemo = async (
@@ -491,9 +496,11 @@ test.describe('the Posts demo on the built site', () => {
 
     const pageOrigin = new URL(site()).origin;
     expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
-    expect(requests.filter((u) => u.origin !== pageOrigin).map(String)).toEqual(
-      [],
-    );
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
     // Fonts for a weight the page hadn't used yet are the only fetches left.
     expect(
       requests
@@ -543,6 +550,7 @@ test.describe('the Posts demo on the built site', () => {
 });
 
 test.describe('the Notebook demo on the built site', () => {
+  const GA = /^https:\/\/(?:www\.)?(?:googletagmanager|google-analytics)\.com$/;
   const DEMO = 'src/demos/notebook/index.tsx';
   const SCHEDULED =
     'Scheduled for Mon. It stays in this note and shows up under Coming up.';
@@ -701,9 +709,11 @@ test.describe('the Notebook demo on the built site', () => {
     const pageOrigin = new URL(site()).origin;
     expect(fetched(editorFile)).toBe(false);
     expect(requests.filter((u) => u.pathname.startsWith('/api/'))).toEqual([]);
-    expect(requests.filter((u) => u.origin !== pageOrigin).map(String)).toEqual(
-      [],
-    );
+    expect(
+      requests
+        .filter((u) => u.origin !== pageOrigin && !GA.test(u.origin))
+        .map(String),
+    ).toEqual([]);
     expect(
       requests
         .slice(fromInteraction)

@@ -163,6 +163,13 @@ function memoryStorage(): SiteStorage & {
   };
 }
 
+/** The blog KVS allowlist the rebuild asked for, resolved now. */
+async function desiredBlogSlugs(sync: unknown): Promise<string[]> {
+  const calls = vi.mocked(sync as (desired: unknown) => void).mock.calls;
+  const desired = calls[0]![0] as string[] | (() => Promise<string[]>);
+  return typeof desired === 'function' ? desired() : desired;
+}
+
 const feedsScope = (): RebuildScope => ({
   allPosts: true,
   postSlugs: new Set(),
@@ -276,8 +283,9 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     expect(sitemap).toContain(`/posts/${corrupt.slug}`);
 
     expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
-    const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0];
-    expect(desired).toEqual(expect.arrayContaining([good.slug, corrupt.slug]));
+    expect(await desiredBlogSlugs(syncViewerRequestBlogSlugs)).toEqual(
+      expect.arrayContaining([good.slug, corrupt.slug]),
+    );
 
     // HTML preserved (not orphan-deleted) and allowlisted.
     expect(await storage.read(`blog/${corrupt.slug}/index.html`)).toContain(
@@ -285,7 +293,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     );
     expect(storage.deletes).not.toContain(`blog/${corrupt.slug}/index.html`);
 
-    // Once to render and once to check it settled; KVS uses the in-memory union.
+    // Once: the settle check reads only the generation.
     const gsiCalls = ddbSend.mock.calls.filter(
       (call) =>
         call[0] &&
@@ -300,17 +308,22 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
           }
         ).input?.ExpressionAttributeValues?.[':pk'] === 'STATUS#published',
     );
-    expect(gsiCalls).toHaveLength(2);
+    expect(gsiCalls).toHaveLength(1);
   });
 
-  it('renders a just-published post missing from GSI via stream NewImage', async () => {
+  it('renders a just-published post GSI1 cannot see yet from the site publish row', async () => {
     const existing = makePost('already-live', '01EXIST000000000000000000');
     const fresh = makePost('just-published', '01FRESH000000000000000000');
+    const table = new Map([
+      [existing.id, existing],
+      [fresh.id, fresh],
+    ]);
 
     ddbSend.mockImplementation(
       async (cmd: {
         input?: {
           IndexName?: string;
+          Key?: { pk: string };
           RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
         };
       }) => {
@@ -318,9 +331,24 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
           // GSI lag: only the older post is visible.
           return { Items: [postMeta(existing)] };
         }
+        if (cmd.input?.Key?.pk === 'SITE#publish') {
+          return {
+            Item: {
+              pk: 'SITE#publish',
+              sk: 'META',
+              generation: 2,
+              postIds: new Set([existing.id, fresh.id]),
+            },
+          };
+        }
         if (cmd.input?.RequestItems) {
-          const table = Object.keys(cmd.input.RequestItems)[0]!;
-          return { Responses: { [table]: [postPublished(existing)] } };
+          const name = Object.keys(cmd.input.RequestItems)[0]!;
+          const rows = cmd.input.RequestItems[name]!.Keys.map((k) =>
+            table.get(k.pk.slice('POST#'.length)),
+          )
+            .filter((p): p is Post => p !== undefined)
+            .map((p) => postPublished(p));
+          return { Responses: { [name]: rows } };
         }
         return {};
       },
@@ -330,6 +358,10 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     const { syncViewerRequestBlogSlugs } =
       await import('../src/viewer-request-slugs.js');
     const storage = memoryStorage();
+    storage.objects.set(
+      `blog/${existing.slug}/index.html`,
+      '<html>already live</html>',
+    );
 
     await rebuildPublishedSite({
       scope: {
@@ -343,7 +375,6 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         touchedEntityTypes: new Set(),
       },
       storage,
-      streamPublishedPosts: [postPublished(fresh)],
     });
 
     expect(await storage.read(`blog/${fresh.slug}/index.html`)).toContain(
@@ -355,8 +386,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     expect(slugsJson.slugs).toEqual(
       expect.arrayContaining([existing.slug, fresh.slug]),
     );
-    const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0];
-    expect(desired).toEqual(
+    expect(await desiredBlogSlugs(syncViewerRequestBlogSlugs)).toEqual(
       expect.arrayContaining([existing.slug, fresh.slug]),
     );
   });
@@ -446,9 +476,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
 
     await rebuildPublishedSite({ scope: feedsScope(), storage });
 
-    const desired = vi.mocked(syncViewerRequestBlogSlugs).mock.calls[0]![0] as
-      string[] | (() => Promise<string[]>);
-    const slugs = typeof desired === 'function' ? await desired() : desired;
+    const slugs = await desiredBlogSlugs(syncViewerRequestBlogSlugs);
     expect(slugs).not.toContain('pending-rename');
 
     // The last published slug (from posts.json) keeps its live page, KVS
@@ -603,6 +631,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     const first = await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
@@ -620,6 +649,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     const second = await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
@@ -652,6 +682,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({
           posts: [],
           corruptSlugs: ['keep-me'],

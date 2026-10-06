@@ -363,8 +363,8 @@ describe('rebuildPublishedSite selective scope', () => {
       storage,
     });
 
-    // The retry, then the read that checks the rebuild settled.
-    expect(batchCalls).toBe(3);
+    // The first call and its UnprocessedKeys retry.
+    expect(batchCalls).toBe(2);
     const html = await storage.read('blog/welcome/index.html');
     expect(html).toContain(published.title);
     expect(html).not.toContain(draftTitle);

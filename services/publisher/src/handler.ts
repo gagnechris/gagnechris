@@ -7,8 +7,6 @@ import { getPublishTargets } from './publish-targets/registry.js';
 import type { PublishTarget } from './publish-targets/types.js';
 import {
   collectRebuildScope,
-  collectStreamPublishedPostItems,
-  collectStreamPublishedProjectItems,
   fullRebuildScope,
   streamNeedsRebuild,
 } from './rebuild-scope.js';
@@ -82,12 +80,6 @@ export const handler = async (
         return { ok: true, publishedCount: 0, removedSlugs: [] };
       }
       const scope = collectRebuildScope(event.Records);
-      const streamPublishedPosts = collectStreamPublishedPostItems(
-        event.Records,
-      );
-      const streamPublishedProjects = collectStreamPublishedProjectItems(
-        event.Records,
-      );
       logger.info('Rebuilding from stream', {
         recordCount: event.Records.length,
         allPosts: scope.allPosts,
@@ -98,15 +90,8 @@ export const handler = async (
         resume: scope.resume,
         projectIds: [...scope.projectIds],
         touchedEntityTypes: [...scope.touchedEntityTypes],
-        streamPublishedPosts: streamPublishedPosts.length,
-        streamPublishedProjects: streamPublishedProjects.length,
       });
-      const result = await rebuild({
-        scope,
-        streamPublishedPosts,
-        streamPublishedProjects,
-        targets,
-      });
+      const result = await rebuild({ scope, targets });
       return handlerSuccessFromRebuild(logger, metrics, result);
     }
 

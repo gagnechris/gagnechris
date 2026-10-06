@@ -28,21 +28,11 @@ describe('analytics utilities', () => {
 
   describe('trackPageView', () => {
     test('calls gtag with correct config parameters', () => {
-      vi.stubEnv('VITE_GA_MEASUREMENT_ID', 'G-TEST123');
       trackPageView('/test-page');
-      vi.unstubAllEnvs();
 
-      expect(mockGtag).toHaveBeenCalledWith('config', 'G-TEST123', {
+      expect(mockGtag).toHaveBeenCalledWith('config', 'G-CDG30T24XY', {
         page_path: '/test-page',
       });
-    });
-
-    test('does not call gtag without a measurement ID', () => {
-      vi.stubEnv('VITE_GA_MEASUREMENT_ID', '');
-      trackPageView('/test-page');
-      vi.unstubAllEnvs();
-
-      expect(mockGtag).not.toHaveBeenCalled();
     });
 
     test('does not call gtag when window.gtag is undefined', () => {

@@ -77,6 +77,7 @@ describe('handler + now-page fixture', () => {
           ...options,
           storage,
           sources: {
+            readGeneration: async () => 0,
             listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
             listPublishedProjects: async () => ({
               projects: [],
