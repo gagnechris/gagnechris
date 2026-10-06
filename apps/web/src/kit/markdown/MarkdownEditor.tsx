@@ -1,14 +1,32 @@
-import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { Prec, type Extension } from '@codemirror/state';
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from '@codemirror/commands';
+import {
+  Annotation,
+  Compartment,
+  EditorState,
+  Prec,
+  type Extension,
+} from '@codemirror/state';
 import {
   EditorView,
   highlightActiveLine,
   keymap as cmKeymap,
   lineNumbers as lineNumbersExt,
+  placeholder as placeholderExt,
   type KeyBinding,
 } from '@codemirror/view';
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { continueMarkdownList } from './listContinuation';
 
 export type MarkdownEditorHandle = {
@@ -57,6 +75,14 @@ function imageFilesFromList(
   return files;
 }
 
+/** Marks a doc replace that came from the `value` prop, so it isn't echoed to `onChange`. */
+const External = Annotation.define<boolean>();
+
+/** A `value` that lags the doc this long after a keystroke is stale, not a reset. */
+const TYPING_GRACE_MS = 200;
+
+const fillPane = EditorView.theme({ '& .cm-scroller': { height: '100%' } });
+
 function insertMarkdownAtCursor(view: EditorView, markdownSnippets: string[]) {
   if (markdownSnippets.length === 0) return;
   const insert = markdownSnippets.join('\n\n');
@@ -83,14 +109,18 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
     },
     ref,
   ) {
-    const cmRef = useRef<ReactCodeMirrorRef>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
+    const viewRef = useRef<EditorView | undefined>(undefined);
+    const config = useRef(new Compartment()).current;
+    const callbacks = useRef({ onChange });
+    const lastTyped = useRef(0);
 
     useImperativeHandle(ref, () => ({
       focus: () => {
-        cmRef.current?.view?.focus();
+        viewRef.current?.focus();
       },
       insertText: (text: string) => {
-        const view = cmRef.current?.view;
+        const view = viewRef.current;
         if (!view || view.state.readOnly) return;
         const { from, to } = view.state.selection.main;
         view.dispatch({
@@ -98,7 +128,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
           selection: { anchor: from + text.length },
         });
       },
-      view: () => cmRef.current?.view,
+      view: () => viewRef.current,
     }));
 
     const extensions = useMemo(() => {
@@ -135,6 +165,9 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
       if (extraExtensions && extraExtensions.length > 0) {
         base.push(...extraExtensions);
       }
+      base.push(fillPane, cmKeymap.of([indentWithTab]));
+      if (placeholder) base.push(placeholderExt(placeholder));
+      if (readOnly) base.push(EditorState.readOnly.of(true));
       if (!onUploadImages || readOnly) {
         return base;
       }
@@ -174,21 +207,73 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
       label,
       lineNumbers,
       onUploadImages,
+      placeholder,
       readOnly,
     ]);
 
+    useLayoutEffect(() => {
+      callbacks.current = { onChange };
+    });
+
+    // One view for the component's life; `extensions` and `value` sync below.
+    useLayoutEffect(() => {
+      const view = new EditorView({
+        parent: parentRef.current!,
+        state: EditorState.create({
+          doc: value,
+          extensions: [
+            config.of(extensions),
+            EditorView.updateListener.of((update) => {
+              if (
+                !update.docChanged ||
+                update.transactions.some((tr) => tr.annotation(External))
+              ) {
+                return;
+              }
+              lastTyped.current = Date.now();
+              callbacks.current.onChange(update.state.doc.toString());
+            }),
+          ],
+        }),
+      });
+      viewRef.current = view;
+      return () => {
+        view.destroy();
+        viewRef.current = undefined;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+      viewRef.current?.dispatch({ effects: config.reconfigure(extensions) });
+    }, [config, extensions]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      const apply = () => {
+        const doc = view.state.doc.toString();
+        if (value === doc) return;
+        view.dispatch({
+          changes: { from: 0, to: doc.length, insert: value },
+          annotations: External.of(true),
+        });
+      };
+      const wait = lastTyped.current + TYPING_GRACE_MS - Date.now();
+      if (wait <= 0) {
+        apply();
+        return;
+      }
+      const timer = window.setTimeout(apply, wait);
+      return () => window.clearTimeout(timer);
+    }, [value]);
+
     return (
       <div className="markdown-editor">
-        <CodeMirror
-          ref={cmRef}
-          value={value}
-          height="100%"
-          extensions={extensions}
-          onChange={onChange}
+        <div
+          ref={parentRef}
+          className="markdown-editor__view"
           onBlur={onBlur}
-          placeholder={placeholder}
-          readOnly={readOnly}
-          basicSetup={false}
         />
       </div>
     );
