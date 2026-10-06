@@ -168,31 +168,24 @@ export const resumeRoleDates = (
     ? `${formatResumeShortMonth(item.start)} – ${item.end ? formatResumeShortMonth(item.end) : 'Present'}`
     : '';
 
-export type ResumeExperienceGroups = {
-  recent: ResumeExperience[];
-  earlier: ResumeExperience[];
-  /** `Earlier roles, 1999–2012`; null when there are no earlier roles. */
-  earlierLabel: string | null;
-};
+/** Ended in or before `cutoff` (a year); an unset cutoff keeps every role recent. */
+export const isEarlierResumeRole = (
+  item: Pick<ResumeExperience, 'start' | 'end'>,
+  cutoff: number | undefined,
+): boolean =>
+  cutoff !== undefined &&
+  !!item.start &&
+  !!item.end &&
+  Number(item.end.slice(0, 4)) <= cutoff;
 
-/** Roles that ended in or before `earlierRolesThrough` (a year) are earlier roles; unset keeps every role recent. */
-export const groupResumeExperience = (
-  content: Pick<ResumeContent, 'experience' | 'earlierRolesThrough'>,
-): ResumeExperienceGroups => {
-  const items = content.experience.map(structuredExperience);
-  const cutoff = content.earlierRolesThrough;
-  const isEarlier = (item: ResumeExperience): boolean =>
-    cutoff !== undefined &&
-    !!item.start &&
-    !!item.end &&
-    Number(item.end.slice(0, 4)) <= cutoff;
-  const earlier = items.filter(isEarlier);
-  const recent = items.filter((item) => !isEarlier(item));
-  if (cutoff === undefined || earlier.length === 0) {
-    return { recent, earlier, earlierLabel: null };
-  }
+/** `Earlier roles, 1999–2012`; null when there are no earlier roles. */
+export const resumeEarlierRolesLabel = (
+  earlier: Pick<ResumeExperience, 'start'>[],
+  cutoff: number | undefined,
+): string | null => {
+  if (cutoff === undefined || earlier.length === 0) return null;
   const first = Math.min(
     ...earlier.map((item) => Number(item.start!.slice(0, 4))),
   );
-  return { recent, earlier, earlierLabel: `Earlier roles, ${first}–${cutoff}` };
+  return `Earlier roles, ${first}–${cutoff}`;
 };

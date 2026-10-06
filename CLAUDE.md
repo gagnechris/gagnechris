@@ -27,6 +27,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Web shell guard: `npm run check:web-shells` (after build: GA only in the public shell, no inline script in any shell, demo code only in lazy chunks, no third-party script in the app shells)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
 - Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
+- Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)
 - Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth)

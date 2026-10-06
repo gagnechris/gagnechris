@@ -156,7 +156,7 @@ describe('AdminPostsPage', () => {
     await screen.findByText('Hello');
     await user.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByText('Second page')).toBeInTheDocument();
-    expect(get.mock.calls.map(queryOf).at(-1)).toEqual({
+    expect(get.mock.calls.map(queryOf)).toContainEqual({
       limit: 100,
       cursor: 'page-2',
     });

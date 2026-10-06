@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildSync } from 'esbuild';
@@ -43,7 +43,8 @@ describe('API Lambda bundle', () => {
   });
 
   it('requires only the DynamoDB SDK at module load', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'api-bundle-'));
+    // macOS tmpdir is a symlink; Module._load reports the resolved parent path.
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'api-bundle-')));
     const file = join(dir, 'index.js');
     writeFileSync(file, code);
     const probe = `
