@@ -65,6 +65,7 @@ describe('useDraftPublishEditor discard then publish', () => {
           versionRef.current = e.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       const editor = useDraftPublishEditor({
         autosave,
@@ -330,6 +331,7 @@ describe('useDraftPublishEditor publish flushes edits made before the click', ()
           versionRef.current = e.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       const { setAutosaveHeld } = autosave;
       const hold: DraftPublishHold = {

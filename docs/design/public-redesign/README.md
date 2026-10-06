@@ -332,6 +332,10 @@ The phone artboard is 393 wide; values for 390px are taken from it.
 
 No artboard; the print layout follows the Resume page. Drawn by
 `services/publisher/src/resume-pdf.ts`, fonts in `services/publisher/assets/fonts/`.
+The page and the PDF render the same `resumeView(resume)`
+(`packages/shared/src/resume-view.ts`): role headings, skill rows, education
+lines and section labels, whitespace collapsed. A role with a blank company
+shows the title alone, with no "at".
 
 | Element        | Value                                                                                                                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

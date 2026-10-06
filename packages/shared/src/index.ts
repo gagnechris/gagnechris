@@ -45,16 +45,24 @@ export {
   formatResumeDateRange,
   formatResumeMonth,
   formatResumeShortMonth,
-  groupResumeExperience,
+  isEarlierResumeRole,
   parseLegacyCompanyLine,
   planResumeDateMigration,
   resumeRoleDates,
   structuredExperience,
-  type ResumeExperienceGroups,
   type LegacyCompanyLineParse,
   type ResumeDateMigrationPlan,
   type ResumeDateMigrationRow,
 } from './resume-dates.js';
+export {
+  normalizeResumeText,
+  RESUME_SECTION_LABELS,
+  resumeView,
+  type ResumeEducationLine,
+  type ResumeRoleView,
+  type ResumeSkillRow,
+  type ResumeView,
+} from './resume-view.js';
 export { EMPTY_SLUG_FALLBACK, MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export {
   formatPostDate,
@@ -140,3 +148,4 @@ export {
   type ProjectPublishFieldErrors,
 } from './projects.js';
 export * from './users.js';
+export { postMatchesQuery } from './post-search.js';

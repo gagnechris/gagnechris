@@ -81,6 +81,52 @@ describe('post cache helpers', () => {
   });
 });
 
+describe('post cache helpers: filtered lists', () => {
+  const seed = (queryClient: QueryClient, key: readonly unknown[]) =>
+    queryClient.setQueryData(key, {
+      pages: [{ items: [], counts: { all: 5, draft: 2, published: 3 } }],
+      pageParams: [undefined],
+    });
+  const items = (queryClient: QueryClient, key: readonly unknown[]) =>
+    queryClient
+      .getQueryData<{ pages: PostsPage[] }>(key)
+      ?.pages.flatMap((p) => p.items) ?? [];
+
+  test('a search list takes a matching save and drops one that stops matching', () => {
+    const queryClient = new QueryClient();
+    const key = queryKeys.posts.list({ q: 'hel' });
+    seed(queryClient, key);
+    setCachedPost(queryClient, draftPost);
+    expect(items(queryClient, key).map((p) => p.id)).toEqual(['01POST']);
+
+    setCachedPost(queryClient, {
+      ...draftPost,
+      title: 'Bye',
+      slug: 'bye',
+      version: 2,
+    });
+    expect(items(queryClient, key)).toEqual([]);
+  });
+
+  test('a status change marks lists stale so their server counts refetch', () => {
+    const queryClient = new QueryClient();
+    const key = queryKeys.posts.list({ status: 'draft' });
+    seed(queryClient, key);
+    setCachedPost(queryClient, draftPost);
+    queryClient.setQueryData(key, (prev: unknown) => prev);
+    const before = queryClient.getQueryState(key)!.isInvalidated;
+    setCachedPost(queryClient, { ...draftPost, version: 2, title: 'Edited' });
+    expect(queryClient.getQueryState(key)!.isInvalidated).toBe(before);
+
+    setCachedPost(queryClient, {
+      ...draftPost,
+      status: 'published',
+      version: 3,
+    });
+    expect(queryClient.getQueryState(key)!.isInvalidated).toBe(true);
+  });
+});
+
 describe('home/resume cache helpers', () => {
   test('setCachedHome/Resume ignore lower versions', () => {
     const queryClient = new QueryClient();

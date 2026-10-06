@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { gaBootstrap, gaMeasurementId } from './analyticsPlugin.ts';
 
 const GA = /googletagmanager|google-analytics|\bgtag\b/i;
 const SCRIPT_TAG = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
@@ -193,8 +194,11 @@ const demoEntries = (webRoot: string): string[] => {
     .filter((src) => fs.existsSync(path.join(webRoot, src)));
 };
 
-/** Returns every problem with the built shells; empty means they pass. */
-export function checkWebShells(webRoot: string): string[] {
+/**
+ * Returns every problem with the built shells; empty means they pass. With
+ * `gaId` the public shell must load that GA4 property, without it no GA at all.
+ */
+export function checkWebShells(webRoot: string, gaId?: string): string[] {
   const problems: string[] = [];
   const dist = path.join(webRoot, 'dist');
 
@@ -202,9 +206,23 @@ export function checkWebShells(webRoot: string): string[] {
     const html = read(path.join(dist, shell));
     if (html === null) problems.push(`dist/${shell} is missing`);
     else {
-      if (!GA.test(html)) problems.push(`dist/${shell} lost Google Analytics`);
+      if (gaId) {
+        if (!html.includes(`googletagmanager.com/gtag/js?id=${gaId}`)) {
+          problems.push(`dist/${shell} lost Google Analytics`);
+        }
+      } else if (GA.test(html)) {
+        problems.push(
+          `dist/${shell} loads Google Analytics without GA_MEASUREMENT_ID`,
+        );
+      }
       problems.push(...publicShellScriptProblems(dist, `dist/${shell}`, html));
     }
+  }
+  const bootstrap = read(path.join(dist, 'ga.js'));
+  if (gaId && bootstrap !== null && bootstrap !== gaBootstrap(gaId)) {
+    problems.push(`dist/ga.js does not configure ${gaId}`);
+  } else if (!gaId && bootstrap !== null) {
+    problems.push('dist/ga.js exists without GA_MEASUREMENT_ID');
   }
 
   const shell = read(path.join(dist, '_shell.html'));
@@ -254,12 +272,15 @@ if (
     path.dirname(fileURLToPath(import.meta.url)),
     '..',
   );
-  const problems = checkWebShells(webRoot);
+  const problems = checkWebShells(
+    webRoot,
+    gaMeasurementId(process.env.GA_MEASUREMENT_ID),
+  );
   if (problems.length > 0) {
     console.error(`Web shell check failed:\n  ${problems.join('\n  ')}`);
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA with no inline script and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
+    'Web shells OK: GA only with GA_MEASUREMENT_ID, no inline script and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
   );
 }

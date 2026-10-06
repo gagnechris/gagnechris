@@ -5,38 +5,47 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
 import AdminSearchPalette from './AdminSearchPalette';
 
+const postQueries = vi.hoisted(() => [] as Record<string, unknown>[]);
+
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
-    GET: async (path: string) => ({
-      data:
-        path === '/api/admin/posts'
-          ? {
-              items: [
-                {
-                  id: 'p1',
-                  title: 'Shipping the sidebar',
-                  slug: 'sidebar',
-                  tags: ['notebook'],
-                  status: 'draft',
-                },
-                {
-                  id: 'p2',
-                  title: 'Unrelated',
-                  slug: 'other',
-                  tags: [],
-                  status: 'published',
-                },
-              ],
-            }
-          : { items: [{ id: 'j1', name: 'Notebook', slug: 'notebook' }] },
-      error: undefined,
-      response: { status: 200 },
-    }),
+    GET: async (
+      path: string,
+      init?: { params?: { query?: Record<string, unknown> } },
+    ) => {
+      if (path !== '/api/admin/posts') {
+        return {
+          data: { items: [{ id: 'j1', name: 'Notebook', slug: 'notebook' }] },
+          error: undefined,
+          response: { status: 200 },
+        };
+      }
+      const query = init?.params?.query ?? {};
+      postQueries.push(query);
+      // Only the server knows about this post; nothing in a loaded list holds it.
+      const items =
+        query.q === 'notebook'
+          ? [
+              {
+                id: 'p1',
+                title: 'Shipping the sidebar',
+                slug: 'sidebar',
+                tags: ['notebook'],
+                status: 'draft',
+              },
+            ]
+          : [];
+      return {
+        data: { items },
+        error: undefined,
+        response: { status: 200 },
+      };
+    },
   }),
 }));
 
 describe('AdminSearchPalette', () => {
-  test('finds posts by tag and projects by name, then opens the editor', async () => {
+  test('searches posts on the server and projects by name, then opens the editor', async () => {
     const user = userEvent.setup();
     render(
       <QueryClientTestProvider>
@@ -58,12 +67,15 @@ describe('AdminSearchPalette', () => {
       }),
       'notebook',
     );
-    const results = await screen.findByRole('listbox', { name: 'Results' });
+    await screen.findByText('Shipping the sidebar');
+    const results = screen.getByRole('listbox', { name: 'Results' });
     const options = within(results).getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual([
       'Shipping the sidebardraft/sidebar',
       'Notebook/projects/notebook',
     ]);
+
+    expect(postQueries).toEqual([{ limit: 8, q: 'notebook' }]);
 
     await user.keyboard('{Enter}');
     expect(screen.getByText('Post editor')).toBeInTheDocument();

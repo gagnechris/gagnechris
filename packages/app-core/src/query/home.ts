@@ -10,6 +10,7 @@ import {
 import { setCachedHome } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { queryKeys } from './keys.js';
+import { siteTooLargeMessage } from './tooLarge.js';
 
 export type HomeResourceParams = Record<string, never>;
 
@@ -25,4 +26,5 @@ export const homeResource = createDraftPublishResource<
   unpublish: (client, _params, body) => unpublishHome(client, body),
   discard: (client, _params, body) => discardHome(client, body),
   setCache: setCachedHome,
+  tooLargeMessage: siteTooLargeMessage('the home page'),
 });
