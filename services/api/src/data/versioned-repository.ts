@@ -12,13 +12,11 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import {
+  SYNC_CREATE_CLAIM_TTL_DAYS,
   isOptimisticLockConflict,
-  ownerSyncCreateClaimPk,
-  syncCreateClaimPk,
-  syncCreateClaimSk,
+  keys,
   syncPk,
   syncSk,
-  SYNC_CREATE_CLAIM_TTL_DAYS,
   ttlDaysFromNow,
 } from '@gagnechris/data';
 import { ZodError } from 'zod';
@@ -77,10 +75,7 @@ export function unscoped<T>(opts: {
     idOfKey: (id) => id,
     itemKey: opts.keyForId,
     owns: () => true,
-    createClaim: (changeType, id) => ({
-      pk: syncCreateClaimPk(changeType, id),
-      sk: syncCreateClaimSk(),
-    }),
+    createClaim: (changeType, id) => keys.sync.createClaim(changeType, id),
     tombstoneOmits: [],
   };
 }
@@ -103,8 +98,7 @@ export function ownerScoped<T>(opts: {
     itemKey: (key) => opts.keyForId(key.userId, key.id),
     owns: (key, entity) => opts.userIdOf(entity) === key.userId,
     createClaim: (changeType, key) => ({
-      pk: ownerSyncCreateClaimPk(key.userId, changeType, key.id),
-      sk: syncCreateClaimSk(),
+      ...keys.sync.ownerCreateClaim(key.userId, changeType, key.id),
       userId: key.userId,
     }),
     tombstoneOmits: LIST_GSI_KEYS,
@@ -618,7 +612,7 @@ export class VersionedRepository<
       ...build(existing, this.now()),
       version: expectedVersion + 1,
     };
-    return this.softDelete(key, expectedVersion, tombstone);
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
   }
 
   private async putIfVersion(
@@ -655,11 +649,21 @@ export class VersionedRepository<
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
+    const { existing } = await this.readForWrite(key, { allowDeleted: true });
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
+  }
+
+  /** `existing` is the row just read; its unique claims are released. */
+  private async writeTombstone(
+    key: TKey,
+    expectedVersion: number,
+    tombstone: T,
+    existing: T,
+  ): Promise<T> {
     this.assertOwns(key, tombstone);
     const sync = this.config.sync;
     const clock = new Date(this.now());
     const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
-    const { existing } = await this.readForWrite(key, { allowDeleted: true });
     await runVersionedWrite(
       () =>
         this.doc.send(

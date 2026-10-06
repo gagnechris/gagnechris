@@ -47,3 +47,4 @@ export {
 } from './publish-relevance.js';
 
 export * from './items.js';
+export { deepEqual } from './deep-equal.js';
