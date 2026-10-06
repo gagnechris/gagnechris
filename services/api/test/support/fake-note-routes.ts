@@ -1,7 +1,7 @@
 /**
  * Not registered in the prod route table.
  */
-import { z } from 'zod';
+import * as z from 'zod';
 import { UlidSchema } from '@gagnechris/shared';
 import { defineRoute, type RouteDef } from '../../src/router.js';
 import {

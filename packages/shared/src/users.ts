@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const SITE_ADMIN_GROUP = 'site-admin';
 export const NOTEBOOK_GROUP = 'notebook';

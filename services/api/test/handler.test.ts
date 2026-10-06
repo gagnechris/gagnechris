@@ -3,7 +3,7 @@ import {
   API_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
 } from '@gagnechris/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import { handler } from '../src/handler.js';
 import * as router from '../src/router.js';
 import { makeEvent } from './support/make-event.js';

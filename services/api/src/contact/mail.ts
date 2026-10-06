@@ -1,13 +1,6 @@
-import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
+import type { SESv2Client } from '@aws-sdk/client-sesv2';
 
 let client: SESv2Client | undefined;
-
-function getSes(): SESv2Client {
-  if (!client) {
-    client = new SESv2Client({});
-  }
-  return client;
-}
 
 export function setSesClient(next: SESv2Client | undefined): void {
   client = next;
@@ -28,7 +21,9 @@ export async function sendOwnerEmail(input: {
 }): Promise<void> {
   const from = requireEnv('CONTACT_FROM_EMAIL');
   const to = requireEnv('CONTACT_TO_EMAIL');
-  await getSes().send(
+  const { SESv2Client, SendEmailCommand } = await import('./ses-sdk.js');
+  client ??= new SESv2Client({});
+  await client.send(
     new SendEmailCommand({
       FromEmailAddress: from,
       Destination: { ToAddresses: [to] },

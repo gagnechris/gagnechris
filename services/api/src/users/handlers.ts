@@ -9,11 +9,10 @@ import {
   UserResponseSchema,
   type ManagedUser,
 } from '@gagnechris/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import { ServiceUnavailableError } from '../data/errors.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteCtx, type RouteDef } from '../router.js';
-import { CognitoUserDirectory } from './cognito-directory.js';
 import type { UserDirectory } from './directory.js';
 import { MemoryUserDirectory, localDirectorySeed } from './memory-directory.js';
 import { RemovedUsersRepository } from './removed-users.js';
@@ -27,7 +26,7 @@ export type UserRoutesDeps = {
 let localDirectory: MemoryUserDirectory | undefined;
 
 /** `USER_DIRECTORY=memory` is the local stack's stand-in for the Cognito pool. */
-function defaultDirectory(): UserDirectory {
+async function defaultDirectory(): Promise<UserDirectory> {
   if (process.env.USER_DIRECTORY === 'memory') {
     localDirectory ??= new MemoryUserDirectory(localDirectorySeed());
     return localDirectory;
@@ -36,6 +35,8 @@ function defaultDirectory(): UserDirectory {
   if (!userPoolId) {
     throw new ServiceUnavailableError('User management is not configured');
   }
+  // Loaded here so the Cognito SDK stays out of every other route's cold start.
+  const { CognitoUserDirectory } = await import('./cognito-directory.js');
   return new CognitoUserDirectory(userPoolId);
 }
 
@@ -57,9 +58,9 @@ function assertRecentSignIn(ctx: RouteCtx, now = Date.now()): void {
 const RestoreRequestSchema = SetUserAccessRequestSchema.partial();
 
 export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
-  const admin = (ctx: RouteCtx) =>
+  const admin = async (ctx: RouteCtx) =>
     new UserAdmin(
-      deps.directory ?? defaultDirectory(),
+      deps.directory ?? (await defaultDirectory()),
       deps.removed ?? new RemovedUsersRepository(),
       ctx.userId!,
     );
@@ -99,7 +100,7 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       handler: (ctx, { params }) =>
         run(async () => {
           if (sensitive) assertRecentSignIn(ctx);
-          return userResponse(await act(admin(ctx), params.id));
+          return userResponse(await act(await admin(ctx), params.id));
         }),
     });
 
@@ -111,7 +112,9 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       metric: 'UsersList',
       handler: (ctx) =>
         run(async () =>
-          UserListResponseSchema.parse({ users: await admin(ctx).list() }),
+          UserListResponseSchema.parse({
+            users: await (await admin(ctx)).list(),
+          }),
         ),
     }),
     defineRoute({
@@ -122,7 +125,7 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       body: InviteUserRequestSchema,
       handler: (ctx, { body }) =>
         run(async () =>
-          InviteUserResponseSchema.parse(await admin(ctx).invite(body)),
+          InviteUserResponseSchema.parse(await (await admin(ctx)).invite(body)),
         ),
     }),
     defineRoute({
@@ -136,7 +139,7 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
         run(async () => {
           assertRecentSignIn(ctx);
           return userResponse(
-            await admin(ctx).setAccess(params.id, body.level),
+            await (await admin(ctx)).setAccess(params.id, body.level),
           );
         }),
     }),
@@ -160,7 +163,9 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       handler: (ctx, { params, body }) =>
         run(async () => {
           assertRecentSignIn(ctx);
-          return userResponse(await admin(ctx).restore(params.id, body.level));
+          return userResponse(
+            await (await admin(ctx)).restore(params.id, body.level),
+          );
         }),
     }),
   ];

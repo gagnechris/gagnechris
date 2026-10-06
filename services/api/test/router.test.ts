@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import * as z from 'zod';
 import { buildOpenApiDocument } from '@gagnechris/shared/openapi';
 import { handler } from '../src/handler.js';
 import { json } from '../src/http.js';

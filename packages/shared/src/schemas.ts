@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { API_SERVICE_NAME } from './constants.js';
 import {
   isSafeLinkHref,

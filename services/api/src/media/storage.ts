@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { S3Client } from '@aws-sdk/client-s3';
 import type {
   MediaContentType,
   MediaUploadUrlRequest,
@@ -19,13 +18,6 @@ const EXT_BY_TYPE: Record<MediaContentType, string> = {
 const UPLOAD_TTL_SECONDS = 15 * 60;
 
 let s3Client: S3Client | undefined;
-
-function getS3(): S3Client {
-  if (!s3Client) {
-    s3Client = new S3Client({});
-  }
-  return s3Client;
-}
 
 export function setS3Client(client: S3Client | undefined): void {
   s3Client = client;
@@ -92,13 +84,16 @@ export async function createMediaUploadUrl(
     };
   }
 
+  const { PutObjectCommand, S3Client, getSignedUrl } =
+    await import('./s3-sdk.js');
+  s3Client ??= new S3Client({});
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     ContentType: input.contentType,
     ContentLength: input.contentLength,
   });
-  const uploadUrl = await getSignedUrl(getS3(), command, {
+  const uploadUrl = await getSignedUrl(s3Client, command, {
     expiresIn: UPLOAD_TTL_SECONDS,
   });
 

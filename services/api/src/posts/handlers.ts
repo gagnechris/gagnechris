@@ -6,7 +6,7 @@ import {
   PostSchema,
   UpdatePostRequestSchema,
 } from '@gagnechris/shared';
-import { z } from 'zod';
+import * as z from 'zod';
 import { BadRequestError } from '../data/errors.js';
 import { json } from '../http.js';
 import { ProjectsRepository } from '../projects/repository.js';
