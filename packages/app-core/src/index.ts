@@ -104,6 +104,8 @@ export {
   type NoteType,
   type NotesPage,
   type Post,
+  type PostCounts,
+  type PostListFilters,
   type PostSummary,
   type Project,
   type Resume,

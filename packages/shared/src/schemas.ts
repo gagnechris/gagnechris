@@ -130,9 +130,20 @@ export type PostSummary = z.infer<typeof PostSummarySchema>;
 
 export const POSTS_PAGE_SIZE = 50;
 
+export const PostCountsSchema = z.object({
+  all: z.number().int().nonnegative(),
+  draft: z.number().int().nonnegative(),
+  published: z.number().int().nonnegative(),
+});
+
+export type PostCounts = z.infer<typeof PostCountsSchema>;
+
 export const PostListResponseSchema = z.object({
   items: z.array(PostSummarySchema),
   nextCursor: z.string().min(1).optional(),
+  counts: PostCountsSchema.optional().describe(
+    'Draft and published totals across every page, ignoring `q`. First page only (no `cursor`).',
+  ),
 });
 
 export type PostListResponse = z.infer<typeof PostListResponseSchema>;
@@ -166,8 +177,16 @@ export const UpdatePostRequestSchema = updateRequestSchema(
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
 
+export const POST_SEARCH_MAX_LENGTH = 200;
+
 export const ListPostsQuerySchema = z.object({
   status: PostStatusSchema.optional().describe('Filter by post status'),
+  q: z
+    .string()
+    .trim()
+    .max(POST_SEARCH_MAX_LENGTH)
+    .optional()
+    .describe('Case-insensitive match on title, slug or a tag'),
   cursor: z
     .string()
     .min(1)

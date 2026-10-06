@@ -108,23 +108,43 @@ export const asMutateResult = async <T>(
   }
 };
 
+export type PostCounts = NonNullable<
+  components['schemas']['PostListResponse']['counts']
+>;
+
 export type PostsPage = {
   items: PostSummary[];
   nextCursor?: string;
+  counts?: PostCounts;
+};
+
+export type PostListFilters = {
+  status?: 'draft' | 'published';
+  q?: string;
+  limit?: number;
 };
 
 export const fetchPostsPage = async (
   client: ApiClient,
   cursor?: string,
+  { status, q, limit = 100 }: PostListFilters = {},
 ): Promise<PostsPage> => {
-  // A full page: the Posts page counts, searches and sorts only what's loaded.
+  const needle = q?.trim();
   const result = await client.GET('/api/admin/posts', {
-    params: { query: { limit: 100, ...(cursor ? { cursor } : {}) } },
+    params: {
+      query: {
+        limit,
+        ...(cursor ? { cursor } : {}),
+        ...(status ? { status } : {}),
+        ...(needle ? { q: needle } : {}),
+      },
+    },
   });
   const data = unwrap(result, 'Could not load posts');
   return {
     items: data.items.filter((p) => p.status !== 'deleted'),
     nextCursor: data.nextCursor,
+    ...(data.counts ? { counts: data.counts } : {}),
   };
 };
 
