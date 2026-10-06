@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -62,6 +68,36 @@ describe('TodaySheet', () => {
     expect(first).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('the tabs are one tab stop: arrows, Home and End switch the linked panel', async () => {
+    const user = userEvent.setup();
+    const { sheet } = renderSheet();
+    const open = within(sheet).getByRole('tab', { name: /^Still open/ });
+    const coming = within(sheet).getByRole('tab', { name: /^Coming up/ });
+    expect([open.tabIndex, coming.tabIndex]).toEqual([0, -1]);
+    const panel = () => within(sheet).getByRole('tabpanel');
+    expect(open).toHaveAttribute('aria-controls', panel().id);
+
+    await user.keyboard('{End}');
+    expect(coming).toHaveFocus();
+    expect(coming).toHaveAttribute('aria-selected', 'true');
+    expect(coming).toHaveAttribute('aria-controls', panel().id);
+    expect(panel()).toHaveAttribute('aria-labelledby', coming.id);
+    await user.keyboard('{Home}');
+    expect(open).toHaveFocus();
+    expect(open).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('closing returns focus to what opened it', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    renderSheet();
+    expect(opener).not.toHaveFocus();
+    cleanup();
+    expect(opener).toHaveFocus();
+    opener.remove();
   });
 
   test('⋯ and a left swipe both reveal Snooze and Drop', async () => {
