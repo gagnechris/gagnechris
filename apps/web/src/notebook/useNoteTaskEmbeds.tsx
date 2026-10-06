@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
+  queryKeys,
   useCreateTaskMutation,
+  usePatchTaskMutation,
   useTasksByIds,
   type NotebookArea,
   type Task,
@@ -13,7 +16,7 @@ import {
   type TaskEmbedCreate,
 } from '../kit/markdown/taskEmbeds';
 import { TaskEmbedRow, type TaskEmbedView } from '../kit/tasks/TaskEmbedRow';
-import type { TaskLineDraft } from '../kit/tasks/taskLine';
+import { taskLineDraftKey, type TaskLineDraft } from '../kit/tasks/taskLine';
 import { taskDue } from '../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../kit/tasks/taskScheduleLabel';
 import { useLocalToday } from './useLocalToday';
@@ -61,13 +64,19 @@ export function useNoteTaskEmbeds({
   retryDelaysMs?: readonly number[];
 }) {
   const today = useLocalToday();
+  const queryClient = useQueryClient();
   const { mutateAsync: createTask } = useCreateTaskMutation();
+  const { mutateAsync: patchTask } = usePatchTaskMutation();
   const { toggle, error: toggleError } = useTaskToggle();
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [pending, setPending] = useState<ReadonlyMap<string, Pending>>(
     () => new Map(),
   );
   // Ids sent this session: a create is fired once per id, then only retried.
   const submitted = useRef(new Set<string>());
+  // The line's latest text per id, and the create then edits queued for it.
+  const latest = useRef(new Map<string, TaskLineDraft>());
+  const chains = useRef(new Map<string, Promise<Task | null>>());
   const noteRef = useRef(note);
   const ensureSavedRef = useRef(ensureNoteSaved);
   useEffect(() => {
@@ -87,9 +96,9 @@ export function useNoteTaskEmbeds({
   );
 
   const runCreate = useCallback(
-    async (id: string, draft: TaskLineDraft) => {
+    async (id: string, draft: TaskLineDraft): Promise<Task | null> => {
       const note = noteRef.current;
-      if (!note) return;
+      if (!note) return null;
       const body = taskRequestFromDraft(id, draft, {
         area: note.area,
         noteId: note.id,
@@ -97,13 +106,13 @@ export function useNoteTaskEmbeds({
       setPendingEntry(id, { draft, failed: false });
       for (let attempt = 0; ; attempt += 1) {
         try {
-          await createTask(body);
+          const task = await createTask(body);
           setPendingEntry(id, null);
-          return;
+          return task;
         } catch (error) {
           if (!isRetryable(error) || attempt >= retryDelaysMs.length) {
             setPendingEntry(id, { draft, failed: true });
-            return;
+            return null;
           }
           if (isNoteNotSavedYet(error)) {
             await ensureSavedRef.current?.();
@@ -115,13 +124,66 @@ export function useNoteTaskEmbeds({
     [createTask, retryDelaysMs, setPendingEntry],
   );
 
+  /** Brings the task in line with the latest text of its line. */
+  const syncDraft = useCallback(
+    async (task: Task): Promise<Task> => {
+      const draft = latest.current.get(task.id);
+      if (!draft || taskLineDraftKey(draft) === taskLineDraftKey(task)) {
+        return task;
+      }
+      const current =
+        queryClient.getQueryData<Task>(queryKeys.tasks.detail(task.id)) ?? task;
+      setSyncError(null);
+      try {
+        return await patchTask({
+          id: task.id,
+          version: current.version,
+          patch: {
+            title: draft.title,
+            startDate: draft.startDate,
+            someday: draft.someday,
+            dueDate: draft.dueDate,
+            priority: draft.priority,
+          },
+        });
+      } catch {
+        setSyncError(`Could not update “${current.title}”. Please try again.`);
+        return current;
+      }
+    },
+    [patchTask, queryClient],
+  );
+
+  const startCreate = useCallback(
+    (id: string, draft: TaskLineDraft) => {
+      chains.current.set(
+        id,
+        runCreate(id, draft).then((task) => (task ? syncDraft(task) : null)),
+      );
+    },
+    [runCreate, syncDraft],
+  );
+
   const onCreate = useCallback(
     ({ id, draft }: TaskEmbedCreate) => {
-      if (submitted.current.has(id)) return;
-      submitted.current.add(id);
-      void runCreate(id, draft);
+      latest.current.set(id, draft);
+      if (!submitted.current.has(id)) {
+        submitted.current.add(id);
+        startCreate(id, draft);
+        return;
+      }
+      // An undone conversion was edited, then left: the same task follows it.
+      setPending((prev) => {
+        const entry = prev.get(id);
+        return entry ? new Map(prev).set(id, { ...entry, draft }) : prev;
+      });
+      const prev = chains.current.get(id) ?? Promise.resolve(null);
+      chains.current.set(
+        id,
+        prev.then((task) => (task ? syncDraft(task) : null)),
+      );
     },
-    [runCreate],
+    [startCreate, syncDraft],
   );
 
   const ids = useMemo(
@@ -139,7 +201,8 @@ export function useNoteTaskEmbeds({
         ? {
             kind: 'failed',
             title: waiting.draft.title,
-            onRetry: () => void runCreate(id, waiting.draft),
+            onRetry: () =>
+              startCreate(id, latest.current.get(id) ?? waiting.draft),
           }
         : {
             kind: 'task',
@@ -182,5 +245,10 @@ export function useNoteTaskEmbeds({
   if (!note) {
     return { extensions: NO_EXTENSIONS, portals: null, toggleError: null };
   }
-  return { extensions, portals, renderEmbed, toggleError };
+  return {
+    extensions,
+    portals,
+    renderEmbed,
+    toggleError: toggleError ?? syncError,
+  };
 }

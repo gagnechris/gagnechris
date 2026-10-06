@@ -6,12 +6,13 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
-import { addLocalDays, localToday, parseLocalDate } from '../kit/calendarDates';
+import { addLocalDays, parseLocalDate } from '../kit/calendarDates';
 import { areaQueryParam } from './notebookAreaPreference';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
 import { taskDue } from '../kit/tasks/taskDue';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
+import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -67,7 +68,7 @@ function matchesShowOnFilter(
 export default function NotebookTasksPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
   const area = areaQueryParam(areaFilter);
-  const today = localToday();
+  const today = useLocalToday();
 
   const [quickAdd, setQuickAdd] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
