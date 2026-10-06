@@ -150,7 +150,8 @@ test.describe('a project page', () => {
       { file: string; isEntry?: boolean; imports?: string[] }
     >;
     const entryKey = Object.keys(manifest).find((k) => manifest[k]!.isEntry)!;
-    const allowed = new Set<string>();
+    // The shell's analytics bootstrap is a static file, not a Vite chunk.
+    const allowed = new Set<string>(['/ga.js']);
     const queue = [entryKey];
     while (queue.length) {
       const key = queue.pop()!;

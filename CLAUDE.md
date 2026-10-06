@@ -24,7 +24,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 ## Commands
 
 - Build: `npm run build` (`tsc -b`, then the public, admin and Notebook Vite builds → `apps/web/dist`, `dist-admin`, `dist-notebook`; the public build fails if it bundles admin, Notebook or auth code)
-- Web shell guard: `npm run check:web-shells` (after build: GA only in the public shell, demo code only in lazy chunks, no inline or third-party script in the app shells)
+- Web shell guard: `npm run check:web-shells` (after build: GA only in the public shell, no inline script in any shell, demo code only in lazy chunks, no third-party script in the app shells)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
 - Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
 - Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)

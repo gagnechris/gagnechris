@@ -10,7 +10,7 @@ import {
 } from '../../scripts/checkWebShells';
 
 const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-X"></script>
-<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}</script>`;
+<script defer src="/ga.js"></script>`;
 const FONT_BYTES = 'wOF2';
 const FONT_HASH = createHash('sha256')
   .update(FONT_BYTES)
@@ -53,6 +53,7 @@ function webRoot(files: Record<string, string>): string {
   const all: Record<string, string> = {
     'dist/index.html': `<html><head>${GA_SNIPPET}</head></html>`,
     'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}</head></html>`,
+    'dist/ga.js': 'gtag();',
     [`dist${FONT}`]: FONT_BYTES,
     'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${FONT}') format('woff2')}`,
     'dist/.vite/manifest.json': JSON.stringify(MANIFEST),
@@ -92,7 +93,9 @@ describe('checkWebShells', () => {
       expect(problems).toContain(
         `${app}/index.html references Google Analytics`,
       );
-      expect(problems).toContain(`${app}/index.html has an inline <script>`);
+      expect(problems).toContain(
+        `${app}/index.html loads a script that is not bundled: /ga.js`,
+      );
     },
   );
 
@@ -119,6 +122,23 @@ describe('checkWebShells', () => {
     );
     expect(problems).toEqual([
       'dist-notebook/index.html loads a script that is not bundled: https://cdn.example.com/x.js',
+    ]);
+  });
+
+  it('fails on an inline script in the public shell', () => {
+    const problems = checkWebShells(
+      webRoot({
+        'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}<script>gtag('js')</script></head></html>`,
+      }),
+    );
+    expect(problems).toEqual(['dist/_shell.html has an inline <script>']);
+  });
+
+  it('fails when the public shell loads a local script the build did not write', () => {
+    const problems = checkWebShells(webRoot({ 'dist/ga.js': '\0delete' }));
+    expect(problems).toEqual([
+      'dist/index.html loads a script that is not in dist: /ga.js',
+      'dist/_shell.html loads a script that is not in dist: /ga.js',
     ]);
   });
 

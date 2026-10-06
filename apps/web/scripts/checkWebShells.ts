@@ -32,6 +32,29 @@ function appShellProblems(label: string, html: string | null): string[] {
   return problems;
 }
 
+/** The public CSP allows `'self'` and the GA hosts, but no inline script. */
+function publicShellScriptProblems(
+  dist: string,
+  label: string,
+  html: string,
+): string[] {
+  const problems: string[] = [];
+  for (const [, attrs = '', body = ''] of html.matchAll(SCRIPT_TAG)) {
+    const src = /\bsrc=["']([^"']*)["']/i.exec(attrs)?.[1];
+    if (/\btype=["']application\/ld\+json["']/i.test(attrs)) continue;
+    if (!src || body.trim() !== '') {
+      problems.push(`${label} has an inline <script>`);
+    } else if (
+      src.startsWith('/') &&
+      !src.startsWith('//') &&
+      !fs.existsSync(path.join(dist, src.replace(/[?#].*$/, '')))
+    ) {
+      problems.push(`${label} loads a script that is not in dist: ${src}`);
+    }
+  }
+  return problems;
+}
+
 const attr = (tag: string, name: string): string | undefined =>
   new RegExp(`\\b${name}=["']([^"']*)["']`, 'i').exec(tag)?.[1];
 
@@ -178,8 +201,10 @@ export function checkWebShells(webRoot: string): string[] {
   for (const shell of ['index.html', '_shell.html']) {
     const html = read(path.join(dist, shell));
     if (html === null) problems.push(`dist/${shell} is missing`);
-    else if (!GA.test(html))
-      problems.push(`dist/${shell} lost Google Analytics`);
+    else {
+      if (!GA.test(html)) problems.push(`dist/${shell} lost Google Analytics`);
+      problems.push(...publicShellScriptProblems(dist, `dist/${shell}`, html));
+    }
   }
 
   const shell = read(path.join(dist, '_shell.html'));
@@ -235,6 +260,6 @@ if (
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
+    'Web shells OK: GA with no inline script and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
   );
 }

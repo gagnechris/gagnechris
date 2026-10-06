@@ -182,7 +182,8 @@ export class SiteStack extends Stack {
         referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
         override: true,
       },
-      xssProtection: { protection: true, modeBlock: true, override: true },
+      // Sends `X-XSS-Protection: 0`: browsers dropped the filter it switched on.
+      xssProtection: { protection: false, override: true },
       contentSecurityPolicy: {
         contentSecurityPolicy: contentSecurityPolicy.join('; '),
         override: true,
@@ -194,7 +195,7 @@ export class SiteStack extends Stack {
       comment: 'HSTS, CSP (GA4), and browser hardening',
       securityHeadersBehavior: securityHeadersBehavior([
         ...sharedCsp,
-        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
+        "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com",
         "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
         "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com",
       ]),
