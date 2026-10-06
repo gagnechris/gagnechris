@@ -545,7 +545,7 @@ test.describe('the Posts demo on the built site', () => {
 test.describe('the Notebook demo on the built site', () => {
   const DEMO = 'src/demos/notebook/index.tsx';
   const SCHEDULED =
-    'Scheduled for Mon. It stays in this note and shows up under Coming up.';
+    'Scheduled for Mon. It stays in this note, and from that day it shows under Still open on Today.';
 
   const publishNotebookDemo = async (
     seed: Seed,
@@ -660,10 +660,8 @@ test.describe('the Notebook demo on the built site', () => {
     const sam = todayNote.locator('.task-embed', { hasText: 'Call Sam' });
     await expect(sam).toContainText('@Mon');
     await expect(sam.locator('.task-embed__pill--high')).toHaveText('High');
-    await expect(comingUp.locator('li')).toHaveText([
-      'Write weekly notesSat',
-      'Call SamMon',
-    ]);
+    // In today's note, so not under Coming up, as on the app's Today.
+    await expect(comingUp.locator('li')).toHaveText(['Write weekly notesSat']);
     await expect(slot.locator('.notebook-demo__hint')).toHaveText(SCHEDULED);
 
     await page.keyboard.press(tab);
@@ -755,7 +753,7 @@ test.describe('the Notebook demo on the built site', () => {
     await input.fill('Call Sam @mon');
     await input.press('Enter');
     const tabs = slot.getByRole('tab');
-    await expect(tabs).toHaveText(['Still open · 2', 'Coming up · 2']);
+    await expect(tabs).toHaveText(['Still open · 2', 'Coming up · 1']);
     const todayNote = slot.getByRole('region', { name: 'Today’s note' });
     const t = (await tabs.first().boundingBox())!;
     const m = (await todayNote.boundingBox())!;
@@ -764,10 +762,10 @@ test.describe('the Notebook demo on the built site', () => {
       'Reply to recruiter email',
     );
     await tabs.nth(1).click();
-    await expect(slot.getByRole('tabpanel')).toContainText('Call Sam');
     await expect(slot.getByRole('tabpanel')).toContainText(
       'Write weekly notes',
     );
+    await expect(slot.getByRole('tabpanel')).not.toContainText('Call Sam');
 
     expect(
       await page.evaluate(
