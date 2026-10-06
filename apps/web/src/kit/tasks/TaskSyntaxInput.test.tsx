@@ -115,6 +115,18 @@ describe('TaskSyntaxInput @ menu', () => {
     expect(onSubmit).toHaveBeenCalledWith('Match fonts @mon !high');
   });
 
+  test('a token keeps the spaces already after it, as the note editor does', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="Call   Sam" />);
+    const input = combobox() as HTMLInputElement;
+    await user.click(input);
+    input.setSelectionRange(5, 5);
+    fireEvent.select(input);
+    await user.keyboard('@tom{Enter}');
+    expect(input).toHaveValue('Call @tomorrow  Sam');
+    expect(input.selectionStart).toBe(15);
+  });
+
   test('Esc closes the menu, keeps the text, and does not reach the page', async () => {
     const user = userEvent.setup();
     const onKeyDown = vi.fn();

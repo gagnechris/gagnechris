@@ -13,7 +13,14 @@ import {
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import { addLocalDays, parseLocalDate } from '../kit/calendarDates';
-import { areaQueryParam } from './notebookAreaPreference';
+import {
+  areaQueryParam,
+  NOTEBOOK_AREA_HEADINGS,
+} from './notebookAreaPreference';
+import {
+  TASK_PRIORITY_OPTIONS,
+  TASK_STATUS_OPTIONS,
+} from '../kit/tasks/taskOptions';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
 import { taskDue } from '../kit/tasks/taskDue';
@@ -174,11 +181,7 @@ export default function NotebookTasksPage() {
         <div>
           <h1>Tasks</h1>
           <p className="admin-panel__lede">
-            {areaFilter === 'all'
-              ? 'All areas'
-              : areaFilter === 'work'
-                ? 'Work'
-                : 'Personal'}
+            {NOTEBOOK_AREA_HEADINGS[areaFilter]}
             {' · '}
             quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
             <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
@@ -230,10 +233,11 @@ export default function NotebookTasksPage() {
             aria-label="Filter by status"
           >
             <option value="">Any</option>
-            <option value="todo">Todo</option>
-            <option value="in_progress">In progress</option>
-            <option value="done">Done</option>
-            <option value="dropped">Dropped</option>
+            {TASK_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="admin-field">
@@ -245,9 +249,11 @@ export default function NotebookTasksPage() {
             aria-label="Filter by priority"
           >
             <option value="">Any</option>
-            <option value="high">High</option>
-            <option value="med">Med</option>
-            <option value="low">Low</option>
+            {TASK_PRIORITY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="admin-field">

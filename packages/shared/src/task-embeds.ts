@@ -1,3 +1,4 @@
+import { fenceLineKind, scanFences } from './markdown-fences.js';
 import type { TaskStatus } from './schemas.js';
 
 /**
@@ -9,7 +10,6 @@ import type { TaskStatus } from './schemas.js';
 
 const EMBED_LINE =
   /^([ \t]*)\{\{task:([0-7][0-9A-HJKMNP-TV-Z]{25})\}\}[ \t]*$/i;
-const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
 
 export type TaskEmbed = {
   id: string;
@@ -39,29 +39,14 @@ export function parseTaskEmbedLine(
 
 /** Lines inside fenced code blocks are text, not embeds. */
 export function findTaskEmbeds(markdown: string): TaskEmbed[] {
+  const lines = markdown.split('\n').map((line) => line.replace(/\r$/, ''));
+  const fences = scanFences(lines);
   const embeds: TaskEmbed[] = [];
-  let fence: string | null = null;
-  const lines = markdown.split('\n');
-  for (let i = 0; i < lines.length; i += 1) {
-    const text = lines[i]!.replace(/\r$/, '');
-    const opener = FENCE.exec(text);
-    if (fence) {
-      if (
-        opener &&
-        opener[1]![0] === fence[0] &&
-        opener[1]!.length >= fence.length
-      ) {
-        fence = null;
-      }
-      continue;
-    }
-    if (opener) {
-      fence = opener[1]!;
-      continue;
-    }
+  lines.forEach((text, i) => {
+    if (fenceLineKind(fences, i)) return;
     const embed = parseTaskEmbedLine(text);
     if (embed) embeds.push({ ...embed, line: i });
-  }
+  });
   return embeds;
 }
 

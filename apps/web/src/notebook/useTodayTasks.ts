@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ApiError,
   useNotesByIds,
   usePatchTaskMutation,
   useTasksQuery,
@@ -15,6 +14,7 @@ import {
 } from '../kit/tasks/todayTaskBuckets';
 import type { StillOpenRow } from '../kit/tasks/TodayPanels';
 import { taskDue } from '../kit/tasks/taskDue';
+import { taskActionError } from './taskActionError';
 
 /** Every open task showing on `day`, and every one starting after it. */
 export function useTodayTasks({
@@ -120,13 +120,7 @@ export function useTaskPatch() {
           patch: change,
         });
       } catch (err) {
-        const conflict =
-          err instanceof ApiError && (err.status === 409 || err.status === 412);
-        setError(
-          conflict
-            ? `Could not ${action} “${task.title}”: it changed on another device. Reload and try again.`
-            : `Could not ${action} “${task.title}”. Please try again.`,
-        );
+        setError(taskActionError(action, task.title, err));
       }
     },
     [mutateAsync],

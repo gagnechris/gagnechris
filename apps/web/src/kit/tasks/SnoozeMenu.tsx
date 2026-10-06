@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useReducer, useRef, useState, type KeyboardEvent } from 'react';
 import type { TaskSchedule } from '@gagnechris/shared';
 import { TaskDateMenu } from './TaskDateMenu';
 import {
@@ -7,6 +7,14 @@ import {
   tomorrowOf,
   type TaskDateMenuItem,
 } from './taskDateMenuItems';
+import {
+  activeTaskDateIndex,
+  CLOSED_TASK_DATE_MENU,
+  taskDateMenuKey,
+  taskDateMenuReducer,
+} from './taskDateMenuState';
+
+const PICK_RANGE = { from: 0, to: 0, kind: 'start' } as const;
 
 type Props = {
   title: string;
@@ -22,20 +30,25 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
   const ids = taskDateMenuIds(baseId);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [menu, dispatch] = useReducer(
+    taskDateMenuReducer,
+    CLOSED_TASK_DATE_MENU,
+  );
+  const [picked, setPicked] = useState('');
+  const picking = menu.picking !== null;
   const items = taskDateMenuItems(baseDay, '', 'start', { deadline: false });
+  const active = activeTaskDateIndex(menu, items.length);
   const activeItem = items[active];
 
   const close = () => {
     setOpen(false);
-    setPicked(null);
-    setActive(0);
+    dispatch({ type: 'reset' });
   };
 
   const choose = (item: TaskDateMenuItem) => {
     if (!item.schedule) {
       setPicked(tomorrowOf(baseDay));
+      dispatch({ type: 'pick', range: PICK_RANGE });
       return;
     }
     close();
@@ -50,22 +63,17 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
       }
       return;
     }
-    if (picked !== null || !activeItem) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const step = e.key === 'ArrowDown' ? 1 : -1;
-      setActive((active + step + items.length) % items.length);
-    } else if (e.key === 'Home' || e.key === 'End') {
-      e.preventDefault();
-      setActive(e.key === 'Home' ? 0 : items.length - 1);
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      choose(activeItem);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
+    if (picking || !activeItem) return;
+    const action = taskDateMenuKey(e.key, items.length, {
+      chooseWithSpace: true,
+    });
+    if (!action) return;
+    e.preventDefault();
+    if (action === 'choose') choose(activeItem);
+    else if (action === 'dismiss') {
       e.stopPropagation();
       close();
-    }
+    } else dispatch(action);
   };
 
   return (
@@ -87,9 +95,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
         aria-expanded={open}
         aria-controls={ids.listbox}
         aria-activedescendant={
-          open && picked === null && activeItem
-            ? ids.option(activeItem.id)
-            : undefined
+          open && !picking && activeItem ? ids.option(activeItem.id) : undefined
         }
         disabled={disabled}
         onClick={() => (open ? close() : setOpen(true))}
@@ -111,10 +117,10 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
         items={items}
         activeIndex={active}
         onChoose={choose}
-        onActivate={setActive}
+        onActivate={(index) => dispatch({ type: 'activate', index })}
         hint="Hides it until that day. It comes back to Still open then."
         picker={
-          picked !== null
+          picking
             ? {
                 value: picked,
                 onChange: setPicked,
@@ -125,7 +131,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
                   if (startDate) onChoose({ startDate, someday: false });
                 },
                 onCancel: () => {
-                  setPicked(null);
+                  dispatch({ type: 'close-picker' });
                   triggerRef.current?.focus();
                 },
               }

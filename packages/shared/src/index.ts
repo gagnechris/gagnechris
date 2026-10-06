@@ -102,6 +102,11 @@ export {
   type TaskEmbedMarkdownTask,
 } from './task-embeds.js';
 export {
+  fenceLineKind,
+  scanFences,
+  type FenceBlock,
+} from './markdown-fences.js';
+export {
   isSafeLinkHref,
   isSitePath,
   LINK_HREF_MAX_LENGTH,

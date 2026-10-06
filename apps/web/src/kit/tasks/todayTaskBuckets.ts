@@ -6,6 +6,7 @@ import {
   type Task,
 } from '@gagnechris/shared';
 import { addLocalDays, localDayOf } from '../calendarDates';
+import { newestById } from './newestById';
 
 export const COMING_UP_DAYS = 14;
 
@@ -50,12 +51,7 @@ export function bucketTodayTasks<T extends BucketTask>(
     horizonDays?: number;
   },
 ): TodayTaskBuckets<T> {
-  // The same task can arrive from two lists mid-refetch; keep the newest.
-  const byId = new Map<string, T>();
-  for (const task of tasks) {
-    const seen = byId.get(task.id);
-    if (!seen || task.version > seen.version) byId.set(task.id, task);
-  }
+  const byId = newestById(tasks);
 
   const horizon = addLocalDays(day, horizonDays);
   const inNote: T[] = [];
@@ -159,14 +155,19 @@ export function stillOpenSource(
       noteId,
     };
   }
+  const since = note?.type === 'daily' && note.date ? note.date : created;
+  return {
+    label: `${sourceNoteName(note, day)} · ${age(since, day)}`,
+    noteId,
+  };
+}
+
+/** How a Still open chip names the note a task came from: `Thu note`, or its title. */
+export function sourceNoteName(note: SourceNote | undefined, day: string) {
   if (note?.type === 'daily' && note.date) {
-    return {
-      label: `${dayName(note.date, day)} note · ${age(note.date, day)}`,
-      noteId,
-    };
+    return `${dayName(note.date, day)} note`;
   }
-  const title = note ? note.title.trim() || 'Untitled note' : 'Note';
-  return { label: `${title} · ${age(created, day)}`, noteId };
+  return note ? note.title.trim() || 'Untitled note' : 'Note';
 }
 
 /** `Tomorrow · Sat, Oct 3`, else `Mon, Oct 5`. */

@@ -20,6 +20,7 @@ import { TaskEmbedRow, type TaskEmbedView } from '../kit/tasks/TaskEmbedRow';
 import { taskLineDraftKey, type TaskLineDraft } from '../kit/tasks/taskLine';
 import { taskDue } from '../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../kit/tasks/taskScheduleLabel';
+import { taskActionError } from './taskActionError';
 import { useLocalToday } from './useLocalToday';
 import { useTaskToggle } from './useTaskToggle';
 
@@ -163,8 +164,8 @@ export function useNoteTaskEmbeds({
             priority: draft.priority,
           },
         });
-      } catch {
-        setSyncError(`Could not update “${current.title}”. Please try again.`);
+      } catch (err) {
+        setSyncError(taskActionError('update', current.title, err));
         return current;
       }
     },

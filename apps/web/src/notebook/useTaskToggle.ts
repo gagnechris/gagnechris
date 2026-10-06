@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
 import {
-  ApiError,
   useCompleteTaskMutation,
   useReopenTaskMutation,
   type Task,
 } from '@gagnechris/app-core';
+import { taskActionError } from './taskActionError';
 
 /**
  * The mutations already roll back their optimistic patch; this surfaces the
@@ -28,13 +28,8 @@ export function useTaskToggle() {
           await complete({ id: task.id, version: task.version });
         }
       } catch (err) {
-        const action = done ? 'reopen' : 'complete';
-        const conflict =
-          err instanceof ApiError && (err.status === 409 || err.status === 412);
         setError(
-          conflict
-            ? `Could not ${action} “${task.title}”: it changed on another device. Reload and try again.`
-            : `Could not ${action} “${task.title}”. Please try again.`,
+          taskActionError(done ? 'reopen' : 'complete', task.title, err),
         );
       }
     },

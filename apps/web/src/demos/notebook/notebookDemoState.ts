@@ -2,7 +2,7 @@ import { formatTaskDay, parseTaskSyntax, type Task } from '@gagnechris/shared';
 import { addLocalDays, formatLocalDate } from '../../kit/calendarDates';
 import {
   bucketTodayTasks,
-  COMING_UP_DAYS,
+  sourceNoteName,
   stillOpenSource,
   type SourceNote,
   type StillOpenSource,
@@ -183,14 +183,13 @@ export function notebookDemoReducer(
   }
 
   if (state.noteTaskIds.includes(target.id)) return state;
+  const from = state.notes.find((n) => n.id === target.noteId);
   return {
     ...state,
     noteTaskIds: [...state.noteTaskIds, target.id],
     hint: {
       kind: 'pulled',
-      from: state.notes.some((n) => n.id === target.noteId)
-        ? sourceOf(state, target).label.split(' · ')[0]!
-        : null,
+      from: from ? sourceNoteName(from, state.today) : null,
     },
   };
 }
@@ -201,14 +200,9 @@ export function notebookDemoView(state: NotebookDemoState) {
     const t = tasksById.get(id);
     return t ? [t] : [];
   });
-  const { stillOpen } = bucketTodayTasks(state.tasks, {
+  const { stillOpen, comingUp } = bucketTodayTasks(state.tasks, {
     day: state.today,
     embeddedIds: new Set(state.noteTaskIds),
-  });
-  // A dated task written in today's note also shows under Coming up.
-  const { comingUp } = bucketTodayTasks(state.tasks, {
-    day: state.today,
-    embeddedIds: new Set(),
   });
   return {
     noteTasks,
@@ -248,11 +242,7 @@ export function notebookDemoHintText(
         return 'Parked for someday. It stays in this note, off Today and Coming up.';
       }
       if (startDate && startDate > today) {
-        const where =
-          startDate <= addLocalDays(today, COMING_UP_DAYS)
-            ? 'shows up under Coming up'
-            : 'shows up on Today that day';
-        return `Scheduled for ${dayPhrase(startDate, today)}. It stays in this note and ${where}.`;
+        return `Scheduled for ${dayPhrase(startDate, today)}. It stays in this note, and from that day it shows under Still open on Today.`;
       }
       return 'Added to today’s note. If it isn’t done, it carries forward to tomorrow.';
     }

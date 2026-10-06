@@ -202,6 +202,19 @@ describe('taskEmbedEditor', () => {
     );
   });
 
+  test('only embed widgets are atomic; [ ] draft lines are not', () => {
+    const { view } = setup(`[ ] draft\n{{task:${ID_A}}}\n[ ] another`);
+    const atomic: { from: number; to: number }[] = [];
+    for (const source of view.state.facet(EditorView.atomicRanges)) {
+      source(view).between(0, view.state.doc.length, (from, to) => {
+        atomic.push({ from, to });
+      });
+    }
+    const line = view.state.doc.line(2);
+    expect(atomic).toEqual([{ from: line.from, to: line.to }]);
+    expect(view.contentDOM.querySelectorAll('.cm-task-draft')).toHaveLength(2);
+  });
+
   test('a remote replace of the document never creates a task', () => {
     const onCreate = vi.fn();
     view = new EditorView({
