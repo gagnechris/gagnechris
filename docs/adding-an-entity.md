@@ -45,7 +45,7 @@ export const BookmarkSchema = z.object({
   userId: z.string().min(1),
   url: z.string().url(),
   title: NotebookTitleSchema,
-  version: z.number().int().nonnegative(),
+  version: VersionSchema,
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   deleted: z.boolean(),
@@ -66,7 +66,7 @@ export type CreateBookmarkRequest = z.infer<typeof CreateBookmarkRequestSchema>;
 
 // `version` is optional because `If-Match` can carry it instead.
 export const UpdateBookmarkRequestSchema = z.object({
-  version: z.number().int().nonnegative().optional(),
+  version: VersionSchema.optional(),
   url: z.string().url().optional(),
   title: NotebookTitleSchema.optional(),
 });
@@ -74,7 +74,7 @@ export type UpdateBookmarkRequest = z.infer<typeof UpdateBookmarkRequestSchema>;
 
 export const ListBookmarksQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
+  limit: PageLimitSchema.optional(),
 });
 export type ListBookmarksQuery = z.infer<typeof ListBookmarksQuerySchema>;
 
@@ -545,8 +545,8 @@ There is no public API: the read side is static HTML in S3.
 
 | #   | File                                                                                                               | Change                                                                                      |
 | --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| 1   | `packages/shared/src/schemas.ts`                                                                                   | entity (`.merge(PublishableFieldsSchema)`), list, create / update / list query              |
-| 2   | `packages/shared/src/openapi.ts`                                                                                   | components + paths                                                                          |
+| 1   | `packages/shared/src/schemas.ts`                                                                                   | input fields, entity, `Create = fields.extend(…)`, `updateRequestSchema(fields)`, list      |
+| 2   | `packages/shared/src/openapi.ts`                                                                                   | components + `registerPublishablePaths` (`collection` for list / create / delete)           |
 | 3   | `packages/data/src/keys.ts`                                                                                        | `<THING>#<id>`, slug-claim partition, published GSI1 partition                              |
 | 4   | `packages/data/src/items.ts`                                                                                       | META item schema, `metaTo…`, `build…MetaItem`, `build…PublishedItem`, `…ContentEqual`       |
 | 5   | `services/api/src/data/slug-claims.ts`                                                                             | a `SlugClaims` entry for the new type                                                       |
