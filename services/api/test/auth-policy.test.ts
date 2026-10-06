@@ -207,6 +207,68 @@ describe('per-prefix authorization', () => {
   });
 });
 
+describe('user-admin routes', () => {
+  const fullAdmin = idToken(ADMIN_CLIENT, '[site-admin notebook user-admin]');
+  const usersRoutes: RouteDef[] = [
+    defineRoute({
+      method: 'GET',
+      pattern: '/admin/users',
+      auth: 'user-admin',
+      handler: async () => json(200, { reached: true }),
+    }),
+  ];
+  const getUsers = async (claims: Record<string, string>) => {
+    const result = await dispatchRoutes(
+      usersRoutes,
+      makeEvent('GET', '/api/admin/users', {
+        jwtClaims: claims,
+        appToken: false,
+      }),
+      'GET',
+      '/api/admin/users',
+    );
+    return {
+      status: result.statusCode,
+      body: JSON.parse(result.body as string) as Record<string, unknown>,
+    };
+  };
+
+  it('a Full Admin token passes', async () => {
+    expect((await getUsers(fullAdmin)).status).toBe(200);
+  });
+
+  it('a site-admin-only token → 403 (group check)', async () => {
+    expect(await getUsers(siteAdminOnly)).toMatchObject({
+      status: 403,
+      body: { message: 'Requires the user-admin group' },
+    });
+  });
+
+  it('user-admin from the Notebook client → 403 (client check)', async () => {
+    const result = await getUsers(
+      idToken(NOTEBOOK_CLIENT, '[site-admin notebook user-admin]'),
+    );
+    expect(result).toMatchObject({
+      status: 403,
+      body: { message: 'Token is not from the admin app client' },
+    });
+  });
+
+  it('notebook-only and no-sub tokens are refused', async () => {
+    expect((await getUsers(notebookOnly)).status).toBe(403);
+    const { sub: _omit, ...noSub } = fullAdmin;
+    expect((await getUsers(noSub)).status).toBe(401);
+  });
+
+  it('user-admin alone does not open the CMS routes', async () => {
+    const [method, path] = routesOf('site-admin')[0]!;
+    expect(
+      (await probe(method, path, idToken(ADMIN_CLIENT, '[user-admin]'))).status,
+    ).toBe(403);
+    expect((await probe(method, path, fullAdmin)).status).toBe(200);
+  });
+});
+
 describe('only the two app clients are trusted', () => {
   const both = [...routesOf('site-admin'), ...routesOf('notebook')];
 

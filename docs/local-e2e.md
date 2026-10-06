@@ -114,11 +114,12 @@ Import `test` and `expect` from `e2e/fixtures.ts`:
 | `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)                 |
 | `seedAs` | `seedAs(user)` seeds as another user                                                    |
 
-Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin` and `notebook`.
+Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin`, `notebook` and `user-admin` (Full Admin).
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the local API turns that
 into ID-token claims with `sub=<userId>` for the matched route's app
-(`site-admin` on `/api/admin`, `notebook` on `/api/notebook`), so
+(`user-admin` on `/api/admin/users`, `site-admin` on the rest of `/api/admin`,
+`notebook` on `/api/notebook`), so
 owner-scoped notebook data is separate per user. Any other bearer, or none, is the default user.
 
 All tests share one stack and table, so isolate by `prefix` and per-test

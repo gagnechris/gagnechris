@@ -15,7 +15,7 @@ describe('local fake auth', () => {
     expect(await getAuthUser()).toEqual({
       label: 'local@gagnechris.com',
       userId: 'local-dev-user',
-      groups: ['site-admin', 'notebook'],
+      groups: ['site-admin', 'notebook', 'user-admin'],
     });
     expect(await getIdToken()).toBe('local:local-dev-user');
   });
@@ -28,7 +28,7 @@ describe('local fake auth', () => {
     expect(await getAuthUser()).toEqual({
       label: 'second@example.com',
       userId: 'e2e-second',
-      groups: ['site-admin', 'notebook'],
+      groups: ['site-admin', 'notebook', 'user-admin'],
     });
     expect(await getIdToken()).toBe('local:e2e-second');
   });

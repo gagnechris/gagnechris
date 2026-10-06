@@ -46,6 +46,11 @@ describe('local API fake claims', () => {
       aud: 'local-notebook-web',
       'cognito:groups': '[notebook]',
     });
+    expect(localClaims(undefined, 'user-admin', env)).toMatchObject({
+      token_use: 'id',
+      aud: 'local-admin-web',
+      'cognito:groups': '[user-admin]',
+    });
   });
 
   it('the injected claims pass the router once the local env is applied', () => {
@@ -53,7 +58,7 @@ describe('local API fake claims', () => {
     vi.stubEnv('NOTEBOOK_WEB_CLIENT_ID', '');
     applyLocalAuthEnv();
     expect(process.env).toMatchObject(env);
-    for (const auth of ['site-admin', 'notebook'] as const) {
+    for (const auth of ['site-admin', 'user-admin', 'notebook'] as const) {
       expect(authorize(auth, localClaims(undefined, auth))).toEqual({
         ok: true,
       });

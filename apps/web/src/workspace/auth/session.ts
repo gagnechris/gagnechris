@@ -18,7 +18,7 @@ const isLocalAuth = (): boolean => import.meta.env.VITE_AUTH_MODE === 'local';
 /** Local fake auth only: browser tests switch users by writing this key. */
 export const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
 
-const LOCAL_GROUPS = ['site-admin', 'notebook'] as const;
+const LOCAL_GROUPS = ['site-admin', 'notebook', 'user-admin'] as const;
 
 const DEFAULT_LOCAL_USER: AuthUser = {
   label: 'local@gagnechris.com',

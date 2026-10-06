@@ -38,6 +38,7 @@ import {
   NOTEBOOK_HOST,
   SITE_ADMIN_GROUP,
   ssmParameterName,
+  USER_ADMIN_GROUP,
 } from '../config/constants.js';
 
 export const AUTH_DOMAIN = AUTH_DOMAIN_CONST;
@@ -188,6 +189,7 @@ export class AuthStack extends Stack {
     for (const [id, groupName, description] of [
       ['SiteAdmin', SITE_ADMIN_GROUP, 'Public-site CMS on the admin host'],
       ['Notebook', NOTEBOOK_GROUP, 'Notebook on the notebook host'],
+      ['UserAdmin', USER_ADMIN_GROUP, 'Manage users and access in Admin'],
     ] as const) {
       const group = new CfnUserPoolGroup(this, `${id}Group`, {
         userPoolId: this.userPool.userPoolId,

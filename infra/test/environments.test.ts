@@ -519,8 +519,8 @@ describe('AuthStack', () => {
     });
     expect(JSON.stringify(template.toJSON())).not.toContain('localhost:3000');
 
-    template.resourceCountIs('AWS::Cognito::UserPoolGroup', 2);
-    template.resourceCountIs('AWS::Cognito::UserPoolUserToGroupAttachment', 2);
+    template.resourceCountIs('AWS::Cognito::UserPoolGroup', 3);
+    template.resourceCountIs('AWS::Cognito::UserPoolUserToGroupAttachment', 3);
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/gagnechris/prod/cognito-dev-client-id',
     });
