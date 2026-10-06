@@ -114,6 +114,15 @@ export function contactMsgSk(): string {
   return SK_MSG;
 }
 
+/** One partition: removed users are few and always listed together. */
+export function removedUsersPk(): string {
+  return 'REMOVED_USERS';
+}
+
+export function removedUserSk(userId: string): string {
+  return `USER#${userId}`;
+}
+
 export function rateContactIpPk(ip: string): string {
   return `RATE#contact#ip#${ip}`;
 }

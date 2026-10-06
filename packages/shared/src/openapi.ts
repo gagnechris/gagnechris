@@ -65,6 +65,15 @@ import {
   OpenDailyNoteRequestSchema,
   UpsertDailyNoteRequestSchema,
 } from './schemas.js';
+import {
+  InviteUserRequestSchema,
+  InviteUserResponseSchema,
+  ManagedUserIdSchema,
+  SetUserAccessRequestSchema,
+  UserConflictResponseSchema,
+  UserListResponseSchema,
+  UserResponseSchema,
+} from './users.js';
 
 const PostIdParamsSchema = z.object({
   id: UlidSchema.openapi({
@@ -289,6 +298,87 @@ function registerNotebookEntityPaths(
       409: r409,
       ...versionedAuth,
     },
+  });
+}
+
+function registerUserPaths(registry: OpenAPIRegistry) {
+  const base = { tags: ['Users'], security: [{ bearerAuth: [] }] };
+  const params = z.object({ id: ManagedUserIdSchema });
+  const userConflict = {
+    description:
+      'Not allowed: your own account (`self_change`), the last Full Admin (`last_full_admin`), an existing email (`user_exists`), a removed user (`user_removed`), not removed (`not_removed`) or already signed in (`not_invited`)',
+    ...jsonBody(UserConflictResponseSchema),
+  };
+  const mutation = {
+    200: ok(UserResponseSchema, 'The user after the change'),
+    400: r400,
+    404: r404,
+    409: userConflict,
+    ...adminAuth,
+  };
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/admin/users',
+    summary: 'List users with their access level and status',
+    ...base,
+    responses: { 200: ok(UserListResponseSchema, 'Users'), ...adminAuth },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/users',
+    summary:
+      'Invite a user by email; an email that belonged to a removed user restores that user',
+    ...base,
+    request: { body: jsonBody(InviteUserRequestSchema) },
+    responses: {
+      200: ok(InviteUserResponseSchema, 'Invited or restored user'),
+      400: r400,
+      409: userConflict,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/admin/users/{id}/access',
+    summary: 'Set access level; lowering it also signs the user out everywhere',
+    ...base,
+    request: { params, body: jsonBody(SetUserAccessRequestSchema) },
+    responses: mutation,
+  });
+
+  for (const [action, summary] of [
+    ['disable', 'Disable sign-in; access level unchanged'],
+    ['enable', 'Enable sign-in'],
+    [
+      'remove',
+      'Remove access: drop all groups and disable sign-in. The account and its Notebook are kept',
+    ],
+    ['resend-invite', 'Resend the invite email with a new temporary password'],
+  ] as const) {
+    registry.registerPath({
+      method: 'post',
+      path: `/api/admin/users/{id}/${action}`,
+      summary,
+      ...base,
+      request: { params },
+      responses: mutation,
+    });
+  }
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/admin/users/{id}/restore',
+    summary:
+      'Restore a removed user at the given level, or their previous level',
+    ...base,
+    request: {
+      params,
+      body: jsonBody(SetUserAccessRequestSchema.partial()),
+    },
+    responses: mutation,
   });
 }
 
@@ -632,6 +722,7 @@ export function buildOpenApiDocument() {
   });
 
   registerProjectPaths(registry);
+  registerUserPaths(registry);
 
   registry.registerPath({
     method: 'get',
@@ -1077,18 +1168,27 @@ export function buildOpenApiDocument() {
 type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>;
 
 export const PREFIX_FORBIDDEN_DESCRIPTIONS = {
+  '/api/admin/users':
+    'Forbidden: the token is not an `admin-web` client token with the `user-admin` group',
   '/api/admin':
     'Forbidden: the token is not an `admin-web` client token with the `site-admin` group',
   '/api/notebook':
     'Forbidden: the token is not a `notebook-web` client token with the `notebook` group',
 } as const;
 
+type ForbiddenPrefix = keyof typeof PREFIX_FORBIDDEN_DESCRIPTIONS;
+
+/** The longest prefix wins, so `/api/admin/users` overrides `/api/admin`. */
+export function forbiddenPrefixFor(path: string): ForbiddenPrefix | undefined {
+  return (Object.keys(PREFIX_FORBIDDEN_DESCRIPTIONS) as ForbiddenPrefix[])
+    .filter((p) => path === p || path.startsWith(`${p}/`))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
 /** The router applies the same 403 rule to every route under a prefix, so it is documented per prefix, not per route. */
 function addPrefixForbidden(doc: OpenApiDocument): OpenApiDocument {
   for (const [path, pathItem] of Object.entries(doc.paths ?? {})) {
-    const prefix = Object.keys(PREFIX_FORBIDDEN_DESCRIPTIONS).find(
-      (p) => path === p || path.startsWith(`${p}/`),
-    ) as keyof typeof PREFIX_FORBIDDEN_DESCRIPTIONS | undefined;
+    const prefix = forbiddenPrefixFor(path);
     if (!prefix) continue;
     for (const [method, op] of Object.entries(pathItem)) {
       if (!op || typeof op !== 'object' || !('responses' in op)) continue;

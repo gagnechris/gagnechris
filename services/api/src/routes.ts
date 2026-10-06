@@ -18,6 +18,7 @@ import { searchRoutes } from './search/handlers.js';
 import { registerProductionSyncAdapters } from './sync/adapters.js';
 import { syncRoutes } from './sync/handlers.js';
 import { taskRoutes } from './tasks/handlers.js';
+import { createUserRoutes } from './users/handlers.js';
 
 const health = defineRoute({
   method: 'GET',
@@ -65,4 +66,5 @@ export const routes: RouteDef[] = [
   ...taskRoutes,
   ...searchRoutes,
   ...syncRoutes,
+  ...createUserRoutes(),
 ];

@@ -15,6 +15,8 @@ export AWS_ENDPOINT_URL_DYNAMODB="${AWS_ENDPOINT_URL_DYNAMODB:-http://127.0.0.1:
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-gagnechris}"
 
 export DATA_TABLE_NAME="${DATA_TABLE_NAME:-gagnechris-local}"
+# In-memory stand-in for the Cognito pool behind /api/admin/users.
+export USER_DIRECTORY=memory
 if [[ "${DATA_TABLE_NAME}" == "gagnechris-prod" ]]; then
   echo "Refusing local env with DATA_TABLE_NAME=gagnechris-prod" >&2
   return 1 2>/dev/null || exit 1

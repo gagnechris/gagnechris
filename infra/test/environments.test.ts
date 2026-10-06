@@ -17,7 +17,10 @@ import { HttpOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
-import { ApiStack } from '../lib/stacks/api-stack.js';
+import {
+  ApiStack,
+  USER_ADMIN_COGNITO_ACTIONS,
+} from '../lib/stacks/api-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
@@ -928,6 +931,31 @@ describe('ApiStack', () => {
       });
     });
     expect(starDynamo).toBe(false);
+
+    const cognitoStatements = apiPolicies.flatMap((policy) =>
+      (
+        (policy.Properties?.PolicyDocument?.Statement ?? []) as Array<{
+          Action?: string | string[];
+          Resource?: unknown;
+        }>
+      ).filter((s) =>
+        [s.Action].flat().some((a) => a?.startsWith('cognito-idp:')),
+      ),
+    );
+    expect(cognitoStatements).toHaveLength(1);
+    expect([cognitoStatements[0]!.Action].flat().sort()).toEqual(
+      [...USER_ADMIN_COGNITO_ACTIONS].sort(),
+    );
+    expect(JSON.stringify(cognitoStatements[0]!.Resource)).toContain(
+      'UserPool',
+    );
+    expect(cognitoStatements[0]!.Resource).not.toBe('*');
+    expect(apiPolicyJson).not.toMatch(/cognito-idp:(Admin)?Delete/);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({ USER_POOL_ID: Match.anyValue() }),
+      },
+    });
   });
 });
 

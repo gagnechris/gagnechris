@@ -35,6 +35,19 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+
+export const USER_ADMIN_COGNITO_ACTIONS = [
+  'cognito-idp:ListUsers',
+  'cognito-idp:ListUsersInGroup',
+  'cognito-idp:AdminGetUser',
+  'cognito-idp:AdminListGroupsForUser',
+  'cognito-idp:AdminCreateUser',
+  'cognito-idp:AdminAddUserToGroup',
+  'cognito-idp:AdminRemoveUserFromGroup',
+  'cognito-idp:AdminDisableUser',
+  'cognito-idp:AdminEnableUser',
+  'cognito-idp:AdminUserGlobalSignOut',
+] as const;
 import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
@@ -115,6 +128,7 @@ export class ApiStack extends Stack {
         SITE_APEX_DOMAIN: config.domainName,
         ADMIN_WEB_CLIENT_ID: adminWebClientId,
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
+        USER_POOL_ID: userPool.userPoolId,
       },
     });
 
@@ -123,6 +137,8 @@ export class ApiStack extends Stack {
     siteBucket.grantPut(this.apiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
+    // Users & access. No delete: removing someone keeps their account and Notebook.
+    userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     // One authorizer per prefix so a token from the other app's client gets a
     // gateway 401. The iOS client (custom-scheme callback) stays out of both

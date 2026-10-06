@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  AccessLevelSchema,
   CalendarDateSchema,
   NotebookAreaSchema,
   NoteTypeSchema,
@@ -162,6 +163,19 @@ export const ContactMsgItemSchema = z.object({
 });
 
 export type ContactMsgItem = z.infer<typeof ContactMsgItemSchema>;
+
+export const RemovedUserItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('removedUser'),
+  userId: z.string().min(1),
+  email: z.string(),
+  previousLevel: AccessLevelSchema.nullable(),
+  createdAt: z.string().min(1),
+  removedBy: z.string().min(1),
+});
+
+export type RemovedUserItem = z.infer<typeof RemovedUserItemSchema>;
 
 export function parsePostMetaItem(raw: unknown): PostMetaItem {
   return PostMetaItemSchema.parse(raw);
