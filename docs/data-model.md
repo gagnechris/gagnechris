@@ -13,14 +13,14 @@ in application code.
 
 ## Keys
 
-| Attribute           | Role                                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| `pk`                | Partition key                                                                                     |
-| `sk`                | Sort key                                                                                          |
-| `gsi1pk` / `gsi1sk` | GSI1 — list by status (posts by date, projects by order)                                          |
-| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk |
-| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                 |
-| `entityType`        | Discriminator (`post`, `slug`, `project`, `resume`, `home`, `contact`, `note`, `task`, …)         |
+| Attribute           | Role                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| `pk`                | Partition key                                                                                            |
+| `sk`                | Sort key                                                                                                 |
+| `gsi1pk` / `gsi1sk` | GSI1 — list by status (posts by date, projects by order)                                                 |
+| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk        |
+| `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                        |
+| `entityType`        | Discriminator (`post`, `slug`, `project`, `resume`, `home`, `contact`, `removedUser`, `note`, `task`, …) |
 
 Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
 deletion protection on. Removal policy: `RETAIN`.
@@ -291,6 +291,23 @@ them (same as draft `META` rows).
 | Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3          |
 | SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
 | Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
+
+## Removed users
+
+Removing a user's access keeps their Cognito account (disabled, no groups), so
+this row is what marks them removed and remembers the level a restore gives
+back. Restore deletes the row. See `docs/architecture.md`, Users and access.
+
+#### `REMOVED_USERS` / `USER#<sub>`
+
+| Attr            | Notes                                                   |
+| --------------- | ------------------------------------------------------- |
+| `entityType`    | `removedUser`                                           |
+| `userId`        | Cognito `sub`, same as in `sk`                          |
+| `email`         | Email at removal                                        |
+| `previousLevel` | `full` \| `cms` \| `notebook` \| `null` (had no access) |
+| `createdAt`     | ISO-8601, when they were removed                        |
+| `removedBy`     | `sub` of the Full Admin who removed them                |
 
 ## Notebook sync feed
 

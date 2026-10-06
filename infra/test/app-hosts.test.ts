@@ -518,6 +518,21 @@ describe('app hosts: Cognito', () => {
     });
   });
 
+  it('invites by email with a temporary password and both app links', () => {
+    const [pool] = Object.values(
+      resourcesOf(built.auth, 'AWS::Cognito::UserPool'),
+    );
+    const invite = pool!.Properties.AdminCreateUserConfig.InviteMessageTemplate;
+    expect(invite.EmailSubject).toBe("You're invited to gagnechris.com");
+    expect(invite.EmailMessage).toContain('{username}');
+    expect(invite.EmailMessage).toContain('{####}');
+    expect(invite.EmailMessage).toContain('https://admin.gagnechris.com');
+    expect(invite.EmailMessage).toContain('https://notebook.gagnechris.com');
+    expect(
+      pool!.Properties.AdminCreateUserConfig.AllowAdminCreateUserOnly,
+    ).toBe(true);
+  });
+
   it('publishes both client IDs to SSM', () => {
     for (const [key, logicalPrefix] of [
       ['cognito-admin-web-client-id', 'UserPoolAdminWebClient'],

@@ -7,6 +7,7 @@ import {
   NoteMetaItemSchema,
   PostMetaItemSchema,
   ProjectMetaItemSchema,
+  RemovedUserItemSchema,
   ResumeMetaItemSchema,
   SK_META,
   SK_PUBLISHED,
@@ -21,6 +22,8 @@ import {
   notePk,
   postPk,
   projectPk,
+  removedUserSk,
+  removedUsersPk,
   resumePk,
   taskMetaSk,
   taskPk,
@@ -96,6 +99,11 @@ const ENTITY_RULES: Record<string, EntityRule> = {
     keyMatches: (i) =>
       i.pk === homePk() && (i.sk === SK_META || i.sk === SK_PUBLISHED),
   },
+  removedUser: {
+    schema: RemovedUserItemSchema,
+    keyMatches: (i) =>
+      i.pk === removedUsersPk() && i.sk === removedUserSk(str(i.userId)),
+  },
   resume: {
     schema: ResumeMetaItemSchema,
     keyMatches: (i) =>
@@ -137,6 +145,7 @@ export const COUNT_FLOOR_ENTITY_TYPES: readonly string[] = [
   'home',
   'resume',
   'contact',
+  'removedUser',
   'note',
   'task',
 ];

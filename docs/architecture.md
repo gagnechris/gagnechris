@@ -238,6 +238,16 @@ Post, Project, Home, and Resume containers are mostly field layout; shared wirin
 - The apex holds no tokens. The public bundle sweeps any `CognitoIdentityServiceProvider.*` keys and cookies left from the old apex app (see Web apps).
 - Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only the group that route requires. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
+## Users and access
+
+- `/api/admin/users*` (auth `user-admin`, `services/api/src/users/`) manages pool users through the Cognito admin API. The API role has only the actions in `USER_ADMIN_COGNITO_ACTIONS` (`infra/lib/stacks/api-stack.ts`) on the pool ARN; none deletes a user.
+- Access levels are group sets (`ACCESS_LEVEL_GROUPS` in `@gagnechris/shared`): Full Admin is `site-admin` + `notebook` + `user-admin`, Public CMS is `site-admin`, Notebook only is `notebook`. A user's level is derived from their groups.
+- Routes: `GET` lists users with level and status (`active`, `invited` while Cognito says `FORCE_CHANGE_PASSWORD`, `disabled`, `removed`). `POST` invites by email (`AdminCreateUser` sends the invite with a 7-day temporary password, then the level's groups are added). `PUT /:id/access` sets the level and, when any group is dropped, calls `AdminUserGlobalSignOut` so the next token lacks it; the current ID token stays valid until it expires (at most an hour). `POST /:id/disable`, `/enable`, `/remove`, `/restore`, `/resend-invite`.
+- Remove never deletes: it records a `REMOVED_USERS` row (with the level before removal), drops every group, disables the user and signs them out. The Cognito user and its `sub` remain, so Notebook data owned by that `sub` survives. Restore, or inviting the same email again, re-enables the user and adds groups back; the person signs in with their old account and sees their old notes. Remove is safe to retry.
+- Guards run in the API (`UserAdmin` in `service.ts`), not only in the UI, and answer **409** with a code: the caller can't change, disable or remove themselves (`self_change`), and no change may leave zero enabled Full Admins (`last_full_admin`). Inviting an email that has an account is `user_exists`; changing a removed user other than by restore is `user_removed`.
+- First sign-in: the invite email (Auth stack `userInvitation`) gives the username, temporary password and both app links. Managed login asks for a new password; the user can then add a passkey.
+- Locally (`USER_DIRECTORY=memory`, set by `scripts/local/env.sh` and the e2e stack) an in-memory directory stands in for Cognito, seeded with the fake-auth user as a Full Admin. It resets when the local API restarts.
+
 ## Notebook app
 
 - `notebook.gagnechris.com` routes: `today`, `notes`, `notes/:id`, `tasks`, `tasks/:id`; `/` redirects to `today`. Each page is a lazy chunk under `NotebookShell` (signed-in chrome + Notebook chrome).

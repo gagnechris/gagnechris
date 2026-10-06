@@ -87,6 +87,15 @@ export class AuthStack extends Stack {
         tempPasswordValidity: Duration.days(7),
       },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
+      userInvitation: {
+        emailSubject: `You're invited to ${APEX_DOMAIN}`,
+        emailBody: [
+          `You've been given access to ${APEX_DOMAIN}.`,
+          'Username: {username}<br>Temporary password: {####}',
+          `Sign in at https://${ADMIN_HOST} (Admin) or https://${NOTEBOOK_HOST} (Notebook), whichever you were given. You'll choose a new password, then you can add a passkey to sign in with Face ID or Touch ID next time.`,
+          'The temporary password works for 7 days. If it runs out, ask for a new invite.',
+        ].join('<br><br>'),
+      },
       // Cognito forbids MFA=REQUIRED with WebAuthn as a first factor.
       mfa: Mfa.OPTIONAL,
       mfaSecondFactor: { otp: true, sms: false },
