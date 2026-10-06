@@ -19,6 +19,8 @@ export type PublishedProjectsCatalog = {
 };
 
 export type RebuildSiteSources = {
+  /** Moves on every commit that writes or deletes a PUBLISHED row; read consistently. */
+  readGeneration: () => Promise<number>;
   listPublishedPosts: () => Promise<PublishedPostsCatalog>;
   listPublishedProjects: () => Promise<PublishedProjectsCatalog>;
   getPublishedResume: () => Promise<PublishedLookup<Resume>>;

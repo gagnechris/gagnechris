@@ -219,7 +219,7 @@ describe('published catalog order', () => {
       storage: memoryStorage(),
     });
     expect(rebuildPasses()).toBe(1);
-    expect(table.batchGets() - before).toBe(2);
+    expect(table.batchGets() - before).toBe(1);
     expect(addMetric).not.toHaveBeenCalledWith(
       'RebuildUnsettled',
       expect.anything(),
@@ -248,6 +248,6 @@ describe('published catalog order', () => {
       storage: memoryStorage(),
     });
     expect(rebuildPasses()).toBe(1);
-    expect(table.batchGets() - before).toBe(2);
+    expect(table.batchGets() - before).toBe(1);
   });
 });

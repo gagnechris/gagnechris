@@ -13,6 +13,13 @@ export type TransactItem = {
     ConditionExpression?: string;
     ExpressionAttributeValues?: Record<string, unknown>;
   };
+  Update?: {
+    TableName: string;
+    Key: Record<string, string>;
+    UpdateExpression: string;
+    ExpressionAttributeNames?: Record<string, string>;
+    ExpressionAttributeValues?: Record<string, unknown>;
+  };
 };
 
 type Key = { pk: string; sk: string };

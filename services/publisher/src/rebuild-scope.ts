@@ -175,68 +175,6 @@ export function collectRebuildScope(records: DynamoDBRecord[]): RebuildScope {
   };
 }
 
-function streamPublishedPk(record: DynamoDBRecord): string | undefined {
-  for (const image of [
-    record.dynamodb?.Keys,
-    record.dynamodb?.NewImage,
-    record.dynamodb?.OldImage,
-  ]) {
-    if (!image) continue;
-    const item = unmarshall(
-      image as Parameters<typeof unmarshall>[0],
-    ) as StreamMeta;
-    if (item.sk !== SK_PUBLISHED) return undefined;
-    if (typeof item.pk === 'string') return item.pk;
-  }
-  return undefined;
-}
-
-/**
- * Merged into a catalog when GSI1 has not caught up. Only the last record per
- * pk counts: a publish then unpublish in the same batch must not add the item
- * back.
- */
-function collectStreamPublishedItems(
-  records: DynamoDBRecord[],
-  isEntity: (item: StreamMeta) => boolean,
-): unknown[] {
-  const lastByPk = new Map<string, DynamoDBRecord>();
-  for (const record of records) {
-    const pk = streamPublishedPk(record);
-    if (pk) lastByPk.set(pk, record);
-  }
-
-  const items: unknown[] = [];
-  for (const record of lastByPk.values()) {
-    if (record.eventName === 'REMOVE') continue;
-    const image = record.dynamodb?.NewImage;
-    if (!image) continue;
-    const item = unmarshall(
-      image as Parameters<typeof unmarshall>[0],
-    ) as StreamMeta & Record<string, unknown>;
-    if (item.sk !== SK_PUBLISHED) continue;
-    if (item.status !== 'published') continue;
-    if (!isEntity(item)) continue;
-    items.push(item);
-  }
-  return items;
-}
-
-export function collectStreamPublishedPostItems(
-  records: DynamoDBRecord[],
-): unknown[] {
-  return collectStreamPublishedItems(records, isStreamPostEntity);
-}
-
-export function collectStreamPublishedProjectItems(
-  records: DynamoDBRecord[],
-): unknown[] {
-  return collectStreamPublishedItems(
-    records,
-    (item) => item.entityType === PROJECT_ENTITY_TYPE,
-  );
-}
-
 export function streamNeedsRebuild(
   records: DynamoDBRecord[],
   targets: readonly { matches(scope: RebuildScope): boolean }[],

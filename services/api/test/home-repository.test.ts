@@ -223,6 +223,37 @@ describe('HomeRepository', () => {
     ).toHaveLength(2);
   });
 
+  it('publish resends a transaction that lost only to a concurrent publish', async () => {
+    const draft: Home = { ...stored, about: 'Edited about', version: 4 };
+    let transactions = 0;
+    const { doc } = mockDoc(
+      mockPair(
+        buildHomeMetaItem(draft),
+        buildHomePublishedItem(stored),
+        (command) => {
+          if (command.constructor.name !== 'TransactWriteCommand') return;
+          transactions += 1;
+          if (transactions === 1) {
+            throw new TransactionCanceledException({
+              message: 'cancelled',
+              $metadata: {},
+              CancellationReasons: [
+                { Code: 'None' },
+                { Code: 'None' },
+                { Code: 'TransactionConflict' },
+              ],
+            });
+          }
+        },
+      ),
+    );
+    const home = await new HomeRepository(doc, 'gagnechris-test').publish(
+      draft.version,
+    );
+    expect(home.version).toBe(5);
+    expect(transactions).toBe(2);
+  });
+
   it('publish copies draft to PUBLISHED when content changed', async () => {
     const draft: Home = {
       ...stored,
@@ -244,10 +275,16 @@ describe('HomeRepository', () => {
     )![0]!;
     const items = tx.input.TransactItems as Array<{
       Put?: { Item: { sk: string } };
+      Update?: { Key: { pk: string }; UpdateExpression: string };
     }>;
-    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual([
-      'META',
-      'PUBLISHED',
+    expect(items.flatMap((i) => (i.Put ? [i.Put.Item.sk] : [])).sort()).toEqual(
+      ['META', 'PUBLISHED'],
+    );
+    expect(items.flatMap((i) => (i.Update ? [i.Update] : []))).toEqual([
+      expect.objectContaining({
+        Key: { pk: 'SITE#publish', sk: 'META' },
+        UpdateExpression: 'SET #t = :t ADD #g :one',
+      }),
     ]);
   });
 
