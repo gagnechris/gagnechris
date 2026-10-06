@@ -81,7 +81,8 @@ function memoryStorage(): SiteStorage & { objects: Map<string, string> } {
   };
 }
 
-type Table = { posts: Post[]; projects: Project[] };
+/** `generation` moves on every publish, like the site publish row. */
+type Table = { posts: Post[]; projects: Project[]; generation: number };
 
 type Hold = {
   listing: 'posts' | 'projects';
@@ -101,6 +102,7 @@ function tableSources(table: Table, hold?: Hold): RebuildSiteSources {
     return value;
   };
   return {
+    readGeneration: async () => table.generation,
     listPublishedPosts: () =>
       answer('posts', { posts: [...table.posts], corruptSlugs: [] }),
     listPublishedProjects: () =>
@@ -143,7 +145,7 @@ describe('two rebuilds that overlap', () => {
     const storage = memoryStorage();
     const first = post('first', '2026-10-01T00:00:00.000Z');
     const second = post('second', '2026-10-02T00:00:00.000Z');
-    const table: Table = { posts: [first], projects: [] };
+    const table: Table = { posts: [first], projects: [], generation: 1 };
     const read = deferred();
     const gate = deferred();
 
@@ -159,6 +161,7 @@ describe('two rebuilds that overlap', () => {
     });
     await read.promise;
     table.posts.push(second);
+    table.generation += 1;
     await runPublishTargets({
       scope: postPublishScope(second.slug),
       storage,
@@ -188,7 +191,7 @@ describe('two rebuilds that overlap', () => {
     const storage = memoryStorage();
     const first = project('first');
     const second = project('second');
-    const table: Table = { posts: [], projects: [first] };
+    const table: Table = { posts: [], projects: [first], generation: 1 };
     const read = deferred();
     const gate = deferred();
 
@@ -204,6 +207,7 @@ describe('two rebuilds that overlap', () => {
     });
     await read.promise;
     table.projects.push(second);
+    table.generation += 1;
     await runPublishTargets({
       scope: projectPublishScope(second.id),
       storage,
@@ -222,9 +226,9 @@ describe('two rebuilds that overlap', () => {
     expect(storage.objects.get('index.html')).toContain('Project second');
   });
 
-  it('stops after a bounded number of passes when the data never settles', async () => {
+  it('stops after a bounded number of passes when publishes keep landing', async () => {
     const storage = memoryStorage();
-    const table: Table = { posts: [], projects: [] };
+    const table: Table = { posts: [], projects: [], generation: 0 };
     let reads = 0;
     const sources = tableSources(table);
     await runPublishTargets({
@@ -235,29 +239,32 @@ describe('two rebuilds that overlap', () => {
         listPublishedPosts: async () => {
           reads += 1;
           table.posts.push(post(`p${reads}`, '2026-10-01T00:00:00.000Z'));
+          table.generation += 1;
           return sources.listPublishedPosts();
         },
       },
       targets: publishTargets,
     });
-    // Each pass reads once to render and once to check.
-    expect(reads).toBe(2 * MAX_PUBLISH_PASSES);
+    expect(reads).toBe(MAX_PUBLISH_PASSES);
   });
 
-  it('reads the published data once more and stops when nothing changed', async () => {
+  it('reads the catalog once and the generation twice when nothing changed', async () => {
     const storage = memoryStorage();
     const table: Table = {
       posts: [post('only', '2026-10-01T00:00:00.000Z')],
       projects: [],
+      generation: 3,
     };
     const sources = tableSources(table);
     const listPublishedPosts = vi.fn(sources.listPublishedPosts);
+    const readGeneration = vi.fn(sources.readGeneration);
     await runPublishTargets({
       scope: postPublishScope('only'),
       storage,
-      sources: { ...sources, listPublishedPosts },
+      sources: { ...sources, listPublishedPosts, readGeneration },
       targets: publishTargets,
     });
-    expect(listPublishedPosts).toHaveBeenCalledTimes(2);
+    expect(listPublishedPosts).toHaveBeenCalledTimes(1);
+    expect(readGeneration).toHaveBeenCalledTimes(2);
   });
 });

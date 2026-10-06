@@ -17,6 +17,7 @@ import {
   GSI1_NAME,
   PUBLISH_STREAM_SK,
   projectStatusGsi1Pk,
+  sitePublishPk,
   statusGsi1Pk,
 } from '@gagnechris/data';
 import {
@@ -36,6 +37,7 @@ export const PUBLISHER_TABLE_LEADING_KEYS = [
   'HOME#*',
   'RESUME#*',
   'PROJECT#*',
+  sitePublishPk(),
 ];
 
 export const PUBLISHER_GSI1_LEADING_KEYS = [
@@ -261,6 +263,17 @@ export class PublisherStack extends Stack {
         'Publisher skipped a corrupt PUBLISHED row (live page may be stale)',
       serviceName: PUBLISHER_SERVICE_NAME,
       metricName: 'DataIntegrityError',
+      alertsTopic,
+    });
+
+    // A rebuild that never saw the same publish generation twice may have
+    // left an index from stale data until the next publish.
+    emfServiceAlarm(this, 'PublisherRebuildUnsettled', {
+      alarmName: `gagnechris-${config.name}-publisher-rebuild-unsettled`,
+      alarmDescription:
+        'Publisher gave up after max passes while publishes kept landing (run republishAll if the site looks stale)',
+      serviceName: PUBLISHER_SERVICE_NAME,
+      metricName: 'RebuildUnsettled',
       alertsTopic,
     });
 

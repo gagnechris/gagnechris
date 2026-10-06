@@ -73,6 +73,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
     await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'ok', entity: resume }),
@@ -90,6 +91,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
     const result = await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'corrupt' }),
@@ -126,6 +128,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
     const result = await rebuildPublishedSite({
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({
           posts: [],
           corruptSlugs: [post.slug],
@@ -176,6 +179,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
     };
     const post = { ...publishedPost(), slug: 'steady-post' };
     const sources = {
+      readGeneration: async () => 0,
       listPublishedPosts: async () => ({ posts: [post], corruptSlugs: [] }),
       listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
       getPublishedResume: async () => ({

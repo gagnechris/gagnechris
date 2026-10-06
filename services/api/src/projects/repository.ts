@@ -73,6 +73,7 @@ export class ProjectsRepository extends PublishableRepository<
         toPublishedItem: buildProjectPublishedItem,
         contentEqual: projectContentEqual,
         isDeleted: (p) => p.status === 'deleted',
+        publishedIdSet: 'projectIds',
         cursorKeyNames: GSI1_CURSOR_KEYS,
         slugClaims: PROJECT_SLUG_CLAIMS,
         validatePublish: assertPublishable,

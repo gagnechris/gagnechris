@@ -122,24 +122,46 @@ function remove(post: Post, id: string): DynamoDBRecord {
   };
 }
 
-/** GSI1 + BatchGet backed by a fixed list of PUBLISHED rows the GSI can see. */
-function mockCatalog(visible: Post[]): void {
+/**
+ * `published` posts have a PUBLISHED row and are in the site publish row;
+ * GSI1 lists only `gsi` (it may lag behind).
+ */
+function mockTable(table: { published: Post[]; gsi?: Post[] }): void {
+  const byId = new Map(table.published.map((p) => [p.id, p]));
   ddbSend.mockImplementation(
     async (cmd: {
-      input?: { IndexName?: string; RequestItems?: Record<string, unknown> };
+      input?: {
+        IndexName?: string;
+        Key?: { pk: string };
+        RequestItems?: Record<string, { Keys: Array<{ pk: string }> }>;
+      };
     }) => {
       if (cmd.input?.IndexName === 'gsi1') {
         return {
-          Items: visible.map((p) => ({
+          Items: (table.gsi ?? table.published).map((p) => ({
             ...postPublished(p),
             sk: 'META',
             gsi1pk: 'STATUS#published',
           })),
         };
       }
+      if (cmd.input?.Key?.pk === 'SITE#publish') {
+        return {
+          Item: {
+            pk: 'SITE#publish',
+            sk: 'META',
+            generation: 1,
+            postIds: new Set(byId.keys()),
+          },
+        };
+      }
       if (cmd.input?.RequestItems) {
-        const table = Object.keys(cmd.input.RequestItems)[0]!;
-        return { Responses: { [table]: visible.map(postPublished) } };
+        const name = Object.keys(cmd.input.RequestItems)[0]!;
+        const rows = cmd.input.RequestItems[name]!.Keys.flatMap((k) => {
+          const post = byId.get(k.pk.slice('POST#'.length));
+          return post ? [postPublished(post)] : [];
+        });
+        return { Responses: { [name]: rows } };
       }
       return {};
     },
@@ -191,9 +213,10 @@ function postsJsonSlugs(storage: { objects: Map<string, string> }): string[] {
   );
 }
 
-function kvsSlugs(): string[] {
+async function kvsSlugs(): Promise<string[]> {
   expect(syncSlugs).toHaveBeenCalledOnce();
-  return syncSlugs.mock.calls[0]![0] as string[];
+  const desired = syncSlugs.mock.calls[0]![0] as () => Promise<string[]>;
+  return desired();
 }
 
 describe('publisher handler stream batches', () => {
@@ -216,8 +239,7 @@ describe('publisher handler stream batches', () => {
   it('publish then unpublish in one batch leaves the post unpublished', async () => {
     const live = makePost('already-live', '01LIVE0000000000000000000');
     const oops = makePost('published-by-mistake', '01OOPS0000000000000000000');
-    // GSI / BatchGet already reflect the unpublish (no PUBLISHED row for oops).
-    mockCatalog([live]);
+    mockTable({ published: [live] });
     const storage = memoryStorage();
 
     await runHandler(storage, [insert(oops, '1'), remove(oops, '2')]);
@@ -225,13 +247,12 @@ describe('publisher handler stream batches', () => {
     expect(storage.objects.has(`blog/${oops.slug}/index.html`)).toBe(false);
     expect(postsJsonSlugs(storage)).toEqual([live.slug]);
     expect(storage.objects.get('rss.xml')).not.toContain(oops.slug);
-    expect(kvsSlugs()).not.toContain(oops.slug);
+    expect(await kvsSlugs()).not.toContain(oops.slug);
   });
 
   it('unpublish then republish in one batch keeps the post live', async () => {
     const post = makePost('back-again', '01BACK0000000000000000000');
-    // GSI lag: the republished post is not visible yet.
-    mockCatalog([]);
+    mockTable({ published: [post], gsi: [] });
     const storage = memoryStorage();
 
     await runHandler(storage, [remove(post, '1'), insert(post, '2')]);
@@ -239,12 +260,12 @@ describe('publisher handler stream batches', () => {
     expect(storage.objects.get(`blog/${post.slug}/index.html`)).toContain(
       post.title,
     );
-    expect(kvsSlugs()).toContain(post.slug);
+    expect(await kvsSlugs()).toContain(post.slug);
   });
 
-  it('handler merges the stream NewImage when GSI1 lags', async () => {
+  it('renders a just-published post GSI1 cannot see yet', async () => {
     const fresh = makePost('just-published', '01FRESH000000000000000000');
-    mockCatalog([]);
+    mockTable({ published: [fresh], gsi: [] });
     const storage = memoryStorage();
 
     const result = await runHandler(storage, [insert(fresh, '1')]);
@@ -254,7 +275,7 @@ describe('publisher handler stream batches', () => {
       fresh.title,
     );
     expect(postsJsonSlugs(storage)).toEqual([fresh.slug]);
-    expect(kvsSlugs()).toContain(fresh.slug);
+    expect(await kvsSlugs()).toContain(fresh.slug);
   });
 
   it('GSI lag past the publishing batch keeps the post in KVS and feeds', async () => {
@@ -262,31 +283,44 @@ describe('publisher handler stream batches', () => {
     const other = makePost('other-post', '01OTHER000000000000000000');
     const storage = memoryStorage();
 
-    // Batch 1 publishes `lagging` while the GSI cannot see it yet.
-    mockCatalog([]);
+    mockTable({ published: [lagging], gsi: [] });
     await runHandler(storage, [insert(lagging, '1')]);
     expect(storage.objects.has(`blog/${lagging.slug}/index.html`)).toBe(true);
 
-    // Batch 2 publishes another post; the GSI still lags on `lagging`.
+    // The GSI still cannot see `lagging`.
     syncSlugs.mockClear();
-    mockCatalog([other]);
+    mockTable({ published: [lagging, other], gsi: [other] });
     await runHandler(storage, [insert(other, '2')]);
 
     expect(storage.objects.has(`blog/${lagging.slug}/index.html`)).toBe(true);
-    expect(kvsSlugs()).toEqual(
+    expect(await kvsSlugs()).toEqual(
       expect.arrayContaining([lagging.slug, other.slug]),
     );
     expect(postsJsonSlugs(storage)).toEqual(
       expect.arrayContaining([lagging.slug, other.slug]),
     );
 
-    // Batch 3 unpublishes it: the retained entry must not outlive the page.
+    // Unpublished while the GSI still lists it.
     syncSlugs.mockClear();
-    mockCatalog([other]);
+    mockTable({ published: [other], gsi: [lagging, other] });
     await runHandler(storage, [remove(lagging, '3')]);
 
     expect(storage.objects.has(`blog/${lagging.slug}/index.html`)).toBe(false);
-    expect(kvsSlugs()).not.toContain(lagging.slug);
+    expect(await kvsSlugs()).not.toContain(lagging.slug);
     expect(postsJsonSlugs(storage)).toEqual([other.slug]);
+  });
+
+  it('a stale stream image does not bring back a post unpublished since', async () => {
+    const live = makePost('already-live', '01LIVE0000000000000000000');
+    const gone = makePost('unpublished-since', '01GONE0000000000000000000');
+    // The batch carries the publish; the unpublish committed before the read.
+    mockTable({ published: [live] });
+    const storage = memoryStorage();
+
+    await runHandler(storage, [insert(gone, '1')]);
+
+    expect(storage.objects.has(`blog/${gone.slug}/index.html`)).toBe(false);
+    expect(postsJsonSlugs(storage)).toEqual([live.slug]);
+    expect(await kvsSlugs()).not.toContain(gone.slug);
   });
 });

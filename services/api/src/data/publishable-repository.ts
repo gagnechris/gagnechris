@@ -9,11 +9,15 @@ import {
   TransactWriteCommand,
   type DynamoDBDocumentClient,
 } from '@aws-sdk/lib-dynamodb';
-import { batchGetAllWithDocClient } from '@gagnechris/data';
+import {
+  batchGetAllWithDocClient,
+  buildSitePublishUpdate,
+  type SitePublishIdSet,
+} from '@gagnechris/data';
 import { getDocClient, requireTableName } from './client.js';
 import { systemClock, type Clock } from './clock.js';
 import { logCorruptStoredItem } from './corrupt-item.js';
-import { runDynamoWrite } from './dynamo-write.js';
+import { retryTransactionConflicts, runDynamoWrite } from './dynamo-write.js';
 import { ConflictError, DataIntegrityError, NotFoundError } from './errors.js';
 import {
   buildSlugClaimPut,
@@ -100,6 +104,8 @@ export type PublishableConfig<
   slugClaims?: T extends Slugged ? SlugClaims : never;
   /** Throws (usually a BadRequestError) when the draft may not go live. */
   validatePublish?: (draft: T) => void;
+  /** The site publish row's id set this entity is listed in while it has a PUBLISHED row. */
+  publishedIdSet?: SitePublishIdSet;
   /** Rows written in the same transaction as every draft mutation. */
   extraMutationItems?: (
     before: T,
@@ -576,6 +582,15 @@ export class PublishableRepository<
         Delete: { TableName: this.tableName, Key: this.publishedKey(id) },
       });
     }
+    if (options.syncPublished || options.deletePublished) {
+      items.push(
+        buildSitePublishUpdate(this.tableName, {
+          idSet: this.config.publishedIdSet,
+          id,
+          published: options.syncPublished === true,
+        }),
+      );
+    }
     items.push(
       ...(this.config.extraMutationItems?.(before, after, options) ?? []),
     );
@@ -598,8 +613,10 @@ export class PublishableRepository<
       async () => {
         if (items.length === 1) await this.doc.send(new PutCommand(meta));
         else
-          await this.doc.send(
-            new TransactWriteCommand({ TransactItems: items }),
+          // Every publish updates the one site publish row, so concurrent
+          // publishes of different entities can cancel each other.
+          await retryTransactionConflicts(() =>
+            this.doc.send(new TransactWriteCommand({ TransactItems: items })),
           );
       },
       `${action} conflict (${this.config.conflictLabel} version)`,
