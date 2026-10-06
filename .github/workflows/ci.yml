@@ -84,6 +84,11 @@ jobs:
             exit 1
           fi
 
+      - name: Public build with a GA measurement ID
+        env:
+          GA_MEASUREMENT_ID: G-CIPLACEHOLDER
+        run: npm run build:public -w @gagnechris/web && npm run check:web-shells
+
   api-integration:
     name: API integration (DynamoDB Local)
     runs-on: ubuntu-latest

@@ -57,6 +57,22 @@ export type PreconditionFailedErrorResponse = z.infer<
   typeof PreconditionFailedErrorResponseSchema
 >;
 
+export const VersionSchema = z.number().int().nonnegative();
+
+export const PageLimitSchema = z.coerce.number().int().positive().max(100);
+
+export const ExpectedVersionRequestSchema = z.object({
+  version: VersionSchema,
+});
+
+export type ExpectedVersionRequest = z.infer<
+  typeof ExpectedVersionRequestSchema
+>;
+
+/** `version` first, then every input field optional. */
+const updateRequestSchema = <T extends z.ZodRawShape>(fields: z.ZodObject<T>) =>
+  ExpectedVersionRequestSchema.extend(fields.partial().shape);
+
 export const PostStatusSchema = z.enum(['draft', 'published', 'deleted']);
 
 export type PostStatus = z.infer<typeof PostStatusSchema>;
@@ -65,7 +81,7 @@ export const PublishableFieldsSchema = z.object({
   status: PostStatusSchema,
   publishedAt: z.string().datetime({ offset: true }).nullable(),
   updatedAt: z.string().datetime({ offset: true }),
-  version: z.number().int().nonnegative(),
+  version: VersionSchema,
   hasUnpublishedChanges: z.boolean(),
 });
 
@@ -121,30 +137,32 @@ export const PostListResponseSchema = z.object({
 
 export type PostListResponse = z.infer<typeof PostListResponseSchema>;
 
-export const CreatePostRequestSchema = z.object({
-  title: z.string().min(1).default('Untitled'),
+const PostInputFieldsSchema = z.object({
+  title: z.string().min(1),
   slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
-  excerpt: z.string().default(''),
-  bodyMarkdown: z.string().default(''),
-  tags: z.array(z.string()).default([]),
-  projectIds: PostProjectIdsSchema.default([]),
+  excerpt: z.string(),
+  bodyMarkdown: z.string(),
+  tags: z.array(z.string()),
+  projectIds: PostProjectIdsSchema,
   coverImage: z.string().nullable().optional(),
   seo: PostSeoSchema.nullable().optional(),
+});
+
+const postFields = PostInputFieldsSchema.shape;
+
+export const CreatePostRequestSchema = PostInputFieldsSchema.extend({
+  title: postFields.title.default('Untitled'),
+  excerpt: postFields.excerpt.default(''),
+  bodyMarkdown: postFields.bodyMarkdown.default(''),
+  tags: postFields.tags.default([]),
+  projectIds: postFields.projectIds.default([]),
 });
 
 export type CreatePostRequest = z.infer<typeof CreatePostRequestSchema>;
 
-export const UpdatePostRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
-  title: z.string().min(1).optional(),
-  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
-  excerpt: z.string().optional(),
-  bodyMarkdown: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  projectIds: PostProjectIdsSchema.optional(),
-  coverImage: z.string().nullable().optional(),
-  seo: PostSeoSchema.nullable().optional(),
-});
+export const UpdatePostRequestSchema = updateRequestSchema(
+  PostInputFieldsSchema,
+);
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
 
@@ -155,24 +173,12 @@ export const ListPostsQuerySchema = z.object({
     .min(1)
     .optional()
     .describe('Opaque pagination cursor from a previous list response'),
-  limit: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe(`Page size (1-100; default ${POSTS_PAGE_SIZE})`),
+  limit: PageLimitSchema.optional().describe(
+    `Page size (1-100; default ${POSTS_PAGE_SIZE})`,
+  ),
 });
 
 export type ListPostsQuery = z.infer<typeof ListPostsQuerySchema>;
-
-export const ExpectedVersionRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
-});
-
-export type ExpectedVersionRequest = z.infer<
-  typeof ExpectedVersionRequestSchema
->;
 
 export const MEDIA_CONTENT_TYPES = [
   'image/jpeg',
@@ -245,24 +251,20 @@ export const ContactResponseSchema = z.object({
 
 export type ContactResponse = z.infer<typeof ContactResponseSchema>;
 
-export const HomeSchema = z
-  .object({
-    name: z.string().min(1),
-    title: z.string(),
-    about: z.string(),
-    seo: PostSeoSchema.nullable(),
-  })
-  .merge(PublishableFieldsSchema);
+const HomeInputFieldsSchema = z.object({
+  name: z.string().min(1),
+  title: z.string(),
+  about: z.string(),
+  seo: PostSeoSchema.nullable(),
+});
+
+export const HomeSchema = HomeInputFieldsSchema.merge(PublishableFieldsSchema);
 
 export type Home = z.infer<typeof HomeSchema>;
 
-export const UpdateHomeRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
-  name: z.string().min(1).optional(),
-  title: z.string().optional(),
-  about: z.string().optional(),
-  seo: PostSeoSchema.nullable().optional(),
-});
+export const UpdateHomeRequestSchema = updateRequestSchema(
+  HomeInputFieldsSchema,
+);
 
 export type UpdateHomeRequest = z.infer<typeof UpdateHomeRequestSchema>;
 
@@ -333,24 +335,22 @@ export const ResumeContentSchema = z.object({
 
 export type ResumeContent = z.infer<typeof ResumeContentSchema>;
 
-export const ResumeSchema = z
-  .object({
-    name: z.string().min(1),
-    pdfPath: z.string().min(1),
-    content: ResumeContentSchema,
-    seo: PostSeoSchema.nullable(),
-  })
-  .merge(PublishableFieldsSchema);
+const ResumeInputFieldsSchema = z.object({
+  name: z.string().min(1),
+  pdfPath: z.string().min(1),
+  content: ResumeContentSchema,
+  seo: PostSeoSchema.nullable(),
+});
+
+export const ResumeSchema = ResumeInputFieldsSchema.merge(
+  PublishableFieldsSchema,
+);
 
 export type Resume = z.infer<typeof ResumeSchema>;
 
-export const UpdateResumeRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
-  name: z.string().min(1).optional(),
-  pdfPath: z.string().min(1).optional(),
-  content: ResumeContentSchema.optional(),
-  seo: PostSeoSchema.nullable().optional(),
-});
+export const UpdateResumeRequestSchema = updateRequestSchema(
+  ResumeInputFieldsSchema,
+);
 
 export type UpdateResumeRequest = z.infer<typeof UpdateResumeRequestSchema>;
 
@@ -444,38 +444,38 @@ export const ProjectListResponseSchema = z.object({
 
 export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
 
-export const CreateProjectRequestSchema = z.object({
+const ProjectInputFieldsSchema = z.object({
   name: z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH),
   slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
-  pitch: z.string().max(PROJECT_PITCH_MAX_LENGTH).default(''),
-  stage: ProjectStageSchema.default('idea'),
-  stageNote: z.string().max(PROJECT_STAGE_NOTE_MAX_LENGTH).default(''),
+  pitch: z.string().max(PROJECT_PITCH_MAX_LENGTH),
+  stage: ProjectStageSchema,
+  stageNote: z.string().max(PROJECT_STAGE_NOTE_MAX_LENGTH),
   previewImage: ProjectPreviewImageSchema.nullable().optional(),
-  bodyMarkdown: z.string().default(''),
-  stack: ProjectStackSchema.default([]),
-  links: z.array(ProjectLinkSchema).max(PROJECT_LINKS_MAX).default([]),
+  bodyMarkdown: z.string(),
+  stack: ProjectStackSchema,
+  links: z.array(ProjectLinkSchema).max(PROJECT_LINKS_MAX),
   demo: ProjectDemoSchema.nullable().optional(),
-  order: ProjectOrderSchema.default(0),
+  order: ProjectOrderSchema,
   href: ProjectHrefSchema.nullable().optional(),
+});
+
+const projectFields = ProjectInputFieldsSchema.shape;
+
+export const CreateProjectRequestSchema = ProjectInputFieldsSchema.extend({
+  pitch: projectFields.pitch.default(''),
+  stage: projectFields.stage.default('idea'),
+  stageNote: projectFields.stageNote.default(''),
+  bodyMarkdown: projectFields.bodyMarkdown.default(''),
+  stack: projectFields.stack.default([]),
+  links: projectFields.links.default([]),
+  order: projectFields.order.default(0),
 });
 
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
-export const UpdateProjectRequestSchema = z.object({
-  version: z.number().int().nonnegative(),
-  name: z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH).optional(),
-  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
-  pitch: z.string().max(PROJECT_PITCH_MAX_LENGTH).optional(),
-  stage: ProjectStageSchema.optional(),
-  stageNote: z.string().max(PROJECT_STAGE_NOTE_MAX_LENGTH).optional(),
-  previewImage: ProjectPreviewImageSchema.nullable().optional(),
-  bodyMarkdown: z.string().optional(),
-  stack: ProjectStackSchema.optional(),
-  links: z.array(ProjectLinkSchema).max(PROJECT_LINKS_MAX).optional(),
-  demo: ProjectDemoSchema.nullable().optional(),
-  order: ProjectOrderSchema.optional(),
-  href: ProjectHrefSchema.nullable().optional(),
-});
+export const UpdateProjectRequestSchema = updateRequestSchema(
+  ProjectInputFieldsSchema,
+);
 
 export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
 
@@ -598,7 +598,7 @@ export const NoteSchema = z
       .describe(
         'Tasks embedded in bodyMarkdown, derived by the server on every save',
       ),
-    version: z.number().int().nonnegative(),
+    version: VersionSchema,
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
     deleted: z.boolean(),
@@ -661,7 +661,7 @@ export type CreateNoteRequest = z.infer<typeof CreateNoteRequestSchema>;
 
 /** `version` may come from `If-Match` instead; one of the two is required. */
 export const UpdateNoteRequestSchema = z.object({
-  version: z.number().int().nonnegative().optional(),
+  version: VersionSchema.optional(),
   title: NotebookTitleSchema.optional(),
   bodyMarkdown: NotebookTextSchema.optional(),
   tags: NotebookTagsSchema.optional(),
@@ -688,13 +688,9 @@ export const ListNotesQuerySchema = z.object({
     .min(1)
     .optional()
     .describe('Opaque pagination cursor from a previous list response'),
-  limit: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe(`Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`),
+  limit: PageLimitSchema.optional().describe(
+    `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+  ),
 });
 
 export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
@@ -723,7 +719,7 @@ export type DailyNoteGetResponse = z.infer<typeof DailyNoteGetResponseSchema>;
 
 export const UpsertDailyNoteRequestSchema = z.object({
   id: UlidSchema.describe('Client ULID used when creating the daily note'),
-  version: z.number().int().nonnegative().optional(),
+  version: VersionSchema.optional(),
   title: NotebookTitleSchema.optional(),
   bodyMarkdown: NotebookTextSchema.optional(),
   tags: NotebookTagsSchema.optional(),
@@ -761,7 +757,7 @@ export const TaskSchema = z.object({
   completedAt: z.string().datetime({ offset: true }).nullable(),
   noteId: z.string().min(1).nullable(),
   tags: z.array(z.string()),
-  version: z.number().int().nonnegative(),
+  version: VersionSchema,
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   deleted: z.boolean(),
@@ -815,7 +811,7 @@ export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
  */
 export const UpdateTaskRequestSchema = z
   .object({
-    version: z.number().int().nonnegative().optional(),
+    version: VersionSchema.optional(),
     area: NotebookAreaSchema.optional(),
     title: NotebookTitleSchema.min(1).optional(),
     description: NotebookTextSchema.optional(),
@@ -866,13 +862,9 @@ export const ListTasksQuerySchema = z
       "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
     ),
     cursor: z.string().min(1).optional(),
-    limit: z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(100)
-      .optional()
-      .describe(`Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`),
+    limit: PageLimitSchema.optional().describe(
+      `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+    ),
   })
   .superRefine((query, ctx) => {
     const ranges = [
@@ -947,7 +939,7 @@ export function syncChangeSchemaFor<T extends string, E extends z.ZodType>(
   const meta = {
     type: z.literal(type),
     id: z.string().min(1),
-    version: z.number().int().nonnegative(),
+    version: VersionSchema,
     updatedAt: z.string().datetime({ offset: true }),
   };
   return z.discriminatedUnion('deleted', [
@@ -1036,13 +1028,9 @@ export const SyncChangesQuerySchema = z.object({
     .min(1)
     .optional()
     .describe('Opaque pagination cursor from a previous sync page'),
-  limit: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe(`Page size (1-100; default ${SYNC_DEFAULT_PAGE_LIMIT})`),
+  limit: PageLimitSchema.optional().describe(
+    `Page size (1-100; default ${SYNC_DEFAULT_PAGE_LIMIT})`,
+  ),
 });
 
 export type SyncChangesQuery = z.infer<typeof SyncChangesQuerySchema>;

@@ -177,6 +177,7 @@ export async function startStack(): Promise<Stack> {
   delete env.AWS_PROFILE;
   delete env.AWS_DEFAULT_PROFILE;
   delete env.VITE_API_TARGET;
+  delete env.GA_MEASUREMENT_ID;
 
   const children: ChildProcess[] = [];
   let container: string | undefined;
@@ -258,6 +259,15 @@ export async function startStack(): Promise<Stack> {
 
     const dist = join(REPO_ROOT, 'apps', 'web', 'dist');
     if (existsSync(join(dist, '_shell.html'))) {
+      if (
+        /googletagmanager/.test(
+          await readFile(join(dist, '_shell.html'), 'utf8'),
+        )
+      ) {
+        throw new Error(
+          'apps/web/dist was built with GA_MEASUREMENT_ID; rebuild without it (npm run build) so e2e sends nothing to Google Analytics',
+        );
+      }
       await cp(dist, siteRoot, { recursive: true });
     } else {
       // Static files the build would copy, such as /profile.jpg.

@@ -15095,7 +15095,7 @@
     },
     "/api/admin/resume/unpublish": {
       "post": {
-        "summary": "Unpublish resume (live HTML is left in place)",
+        "summary": "Unpublish resume (the page says \"Resume available on request\" and resume.pdf is deleted)",
         "tags": [
           "Resume"
         ],
