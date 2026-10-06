@@ -10,6 +10,7 @@ import {
   type WorkspaceAppName,
 } from './access';
 import { isDevProdApiTarget } from './api/apiTarget';
+import AccessGate from './auth/AccessGate';
 import RequireAuth from './auth/RequireAuth';
 import { signOutUser, type AuthUser } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
@@ -366,14 +367,20 @@ export function WorkspaceFrame({
 
 /** Signed-in chrome shared by the admin and Notebook apps. */
 export default function WorkspaceShell({
+  app,
   children,
 }: {
+  app: WorkspaceAppName;
   children: (user: AuthUser) => ReactNode;
 }) {
   return (
     <RequireAuth>
       {(user) => (
-        <WorkspaceQueryProvider>{children(user)}</WorkspaceQueryProvider>
+        <AccessGate app={app} user={user}>
+          {(current) => (
+            <WorkspaceQueryProvider>{children(current)}</WorkspaceQueryProvider>
+          )}
+        </AccessGate>
       )}
     </RequireAuth>
   );

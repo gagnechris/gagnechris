@@ -68,6 +68,7 @@ export const getAuthUser = async (): Promise<AuthUser | null> => {
       fetchAuthSession(),
     ]);
     const payload = session.tokens?.idToken?.payload;
+    if (!payload) return null;
     const email = payload?.email;
     const label =
       typeof email === 'string' && email.trim() !== ''

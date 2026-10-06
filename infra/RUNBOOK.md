@@ -755,7 +755,7 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 - A browser that cached a bad 301 holds it for at most 24 hours (`max-age=86400`); clearing site data for `gagnechris.com` drops it sooner.
 - `DNS_PROBE_FINISHED_NXDOMAIN` on a host that resolves elsewhere is a stale negative cache in Chrome: clear it at `chrome://net-internals/#dns`.
-- 403 on every API call right after joining a group: sign out of that app and back in (see Groups and clients).
+- No access screen right after joining a group: the app refreshes the token once on load; if it still shows, sign out of that app and back in (see Groups and clients).
 - Signed out unexpectedly on one app: sign in again there. Each app keeps its own refresh token, so the other app is unaffected.
 - There is no fallback to an apex app: the apex has no Cognito client. Fix a broken app host forward, or revert that app's change.
 
