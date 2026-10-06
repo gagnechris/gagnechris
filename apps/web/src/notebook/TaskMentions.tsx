@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useNotesQuery } from '@gagnechris/app-core';
 import { noteDay, noteDayLabel, noteTitle } from './noteListSections';
-import { taskMentions } from './findTaskMentions';
+import { taskMentions } from './taskMentions';
 import { useLocalToday } from './useLocalToday';
 import { useLoadAllPages } from './useTodayTasks';
 
