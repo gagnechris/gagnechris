@@ -309,6 +309,8 @@ function registerUserPaths(registry: OpenAPIRegistry) {
       'Not allowed: your own account (`self_change`), the last Full Admin (`last_full_admin`), an existing email (`user_exists`), a removed user (`user_removed`), not removed (`not_removed`) or already signed in (`not_invited`)',
     ...jsonBody(UserConflictResponseSchema),
   };
+  const recentSignIn =
+    'Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.';
   const mutation = {
     200: ok(UserResponseSchema, 'The user after the change'),
     400: r400,
@@ -344,6 +346,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     method: 'put',
     path: '/api/admin/users/{id}/access',
     summary: 'Set access level; lowering it also signs the user out everywhere',
+    description: recentSignIn,
     ...base,
     request: { params, body: jsonBody(SetUserAccessRequestSchema) },
     responses: mutation,
@@ -366,6 +369,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
       method: 'post',
       path: `/api/admin/users/{id}/${action}`,
       summary,
+      ...(action === 'resend-invite' ? {} : { description: recentSignIn }),
       ...base,
       request: { params },
       responses: mutation,
@@ -377,6 +381,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     path: '/api/admin/users/{id}/restore',
     summary:
       'Restore a removed user at the given level, or their previous level',
+    description: recentSignIn,
     ...base,
     request: {
       params,

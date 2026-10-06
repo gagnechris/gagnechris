@@ -126,7 +126,10 @@ export const takeReturnTo = (): string => {
   return safeReturnTo(stored);
 };
 
-export const redirectToSignIn = async (): Promise<void> => {
+/** `LOGIN` makes managed login ask again even with a live session. */
+export const redirectToSignIn = async (options?: {
+  prompt?: 'LOGIN';
+}): Promise<void> => {
   if (isLocalAuth()) {
     return;
   }
@@ -140,7 +143,20 @@ export const redirectToSignIn = async (): Promise<void> => {
   } catch {
     // Storage disabled: sign-in still works and lands on the app's home.
   }
-  await signInWithRedirect();
+  await (options?.prompt
+    ? signInWithRedirect({ options: { prompt: options.prompt } })
+    : signInWithRedirect());
+};
+
+/** When the user last actually signed in (seconds); a token refresh keeps it. */
+export const getAuthTime = async (): Promise<number | null> => {
+  if (isLocalAuth()) {
+    return Math.floor(Date.now() / 1000);
+  }
+  ensureAmplifyConfigured();
+  const session = await fetchAuthSession();
+  const authTime = session.tokens?.idToken?.payload?.auth_time;
+  return typeof authTime === 'number' ? authTime : null;
 };
 
 /**

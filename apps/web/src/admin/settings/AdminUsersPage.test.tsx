@@ -11,6 +11,16 @@ const get = vi.fn();
 const post = vi.fn();
 const put = vi.fn();
 
+const session = vi.hoisted(() => ({
+  authTime: 0 as number | null,
+  redirectToSignIn: vi.fn(async (_options?: unknown) => undefined),
+}));
+
+vi.mock('../../workspace/auth/session', () => ({
+  getAuthTime: async () => session.authTime,
+  redirectToSignIn: (options?: unknown) => session.redirectToSignIn(options),
+}));
+
 vi.mock('../../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: (...args: unknown[]) => get(...args),
@@ -86,6 +96,8 @@ const row = async (name: string) =>
 describe('AdminUsersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
+    session.authTime = Math.floor(Date.now() / 1000) - 60;
     get.mockResolvedValue(ok({ users: [chris, sam, jordan] }));
   });
 
@@ -276,5 +288,85 @@ describe('AdminUsersPage', () => {
     expect(
       await screen.findByText('Invite sent again to jordan@example.com.'),
     ).toBeInTheDocument();
+  });
+
+  describe('confirming with a passkey', () => {
+    const PENDING = 'gagnechris.pendingUserChange';
+
+    test('a change without a recent sign-in asks for one first and sends nothing', async () => {
+      session.authTime = Math.floor(Date.now() / 1000) - 600;
+      renderPage();
+      await userEvent.click(
+        within(await row('Sam Rivera')).getByRole('button', { name: /Edit/ }),
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Disable' }));
+      expect(session.redirectToSignIn).toHaveBeenCalledWith({
+        prompt: 'LOGIN',
+      });
+      expect(post).not.toHaveBeenCalled();
+      expect(
+        JSON.parse(window.sessionStorage.getItem(PENDING)!).change,
+      ).toEqual({ id: 'sam', name: 'Sam Rivera', kind: 'disable' });
+      expect(screen.getByRole('dialog')).toHaveTextContent(
+        'Confirm it’s you with your passkey',
+      );
+    });
+
+    test('the server asking for a fresh sign-in also prompts', async () => {
+      post.mockResolvedValue({
+        data: undefined,
+        error: { error: 'reauth_required', message: 'x' },
+        response: { status: 403 },
+      });
+      renderPage();
+      await userEvent.click(
+        within(await row('Sam Rivera')).getByRole('button', { name: /Edit/ }),
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+      await waitFor(() =>
+        expect(session.redirectToSignIn).toHaveBeenCalledWith({
+          prompt: 'LOGIN',
+        }),
+      );
+    });
+
+    test('coming back signed in applies the change once', async () => {
+      const at = Date.now() - 30_000;
+      window.sessionStorage.setItem(
+        PENDING,
+        JSON.stringify({
+          change: {
+            id: 'sam',
+            name: 'Sam Rivera',
+            kind: 'access',
+            level: 'notebook',
+          },
+          at,
+        }),
+      );
+      session.authTime = Math.floor(Date.now() / 1000);
+      put.mockResolvedValue(ok({ user: { ...sam, level: 'notebook' } }));
+      renderPage();
+      expect(
+        await screen.findByText('Sam Rivera now has Notebook only access.'),
+      ).toBeInTheDocument();
+      expect(put).toHaveBeenCalledTimes(1);
+      expect(window.sessionStorage.getItem(PENDING)).toBeNull();
+    });
+
+    test('backing out of the prompt changes nothing', async () => {
+      window.sessionStorage.setItem(
+        PENDING,
+        JSON.stringify({
+          change: { id: 'sam', name: 'Sam Rivera', kind: 'remove' },
+          at: Date.now() - 30_000,
+        }),
+      );
+      session.authTime = Math.floor(Date.now() / 1000) - 120;
+      renderPage();
+      await row('Sam Rivera');
+      expect(post).not.toHaveBeenCalled();
+      expect(window.sessionStorage.getItem(PENDING)).toBeNull();
+    });
   });
 });

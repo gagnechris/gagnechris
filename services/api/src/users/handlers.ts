@@ -1,4 +1,6 @@
 import {
+  REAUTH_REQUIRED,
+  USER_ADMIN_REAUTH_SECONDS,
   InviteUserRequestSchema,
   InviteUserResponseSchema,
   ManagedUserIdSchema,
@@ -39,6 +41,19 @@ function defaultDirectory(): UserDirectory {
 
 const IdParamsSchema = z.object({ id: ManagedUserIdSchema });
 
+class ReauthRequiredError extends Error {}
+
+/** Refresh tokens keep the original `auth_time`, so only a new sign-in passes. */
+function assertRecentSignIn(ctx: RouteCtx, now = Date.now()): void {
+  const authTime = Number(ctx.claims?.auth_time);
+  if (
+    !Number.isFinite(authTime) ||
+    now / 1000 - authTime > USER_ADMIN_REAUTH_SECONDS
+  ) {
+    throw new ReauthRequiredError();
+  }
+}
+
 const RestoreRequestSchema = SetUserAccessRequestSchema.partial();
 
 export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
@@ -53,6 +68,12 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
     try {
       return json(200, await work());
     } catch (error) {
+      if (error instanceof ReauthRequiredError) {
+        return json(403, {
+          error: REAUTH_REQUIRED,
+          message: 'Confirm it’s you to change someone’s access.',
+        });
+      }
       if (error instanceof UserConflictError) {
         return json(409, { error: error.code, message: error.message });
       }
@@ -67,6 +88,7 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
     name: string,
     metric: string,
     act: (users: UserAdmin, id: string) => Promise<ManagedUser>,
+    { sensitive = true } = {},
   ) =>
     defineRoute({
       method: 'POST',
@@ -75,7 +97,10 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       metric,
       params: IdParamsSchema,
       handler: (ctx, { params }) =>
-        run(async () => userResponse(await act(admin(ctx), params.id))),
+        run(async () => {
+          if (sensitive) assertRecentSignIn(ctx);
+          return userResponse(await act(admin(ctx), params.id));
+        }),
     });
 
   return [
@@ -108,16 +133,22 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       params: IdParamsSchema,
       body: SetUserAccessRequestSchema,
       handler: (ctx, { params, body }) =>
-        run(async () =>
-          userResponse(await admin(ctx).setAccess(params.id, body.level)),
-        ),
+        run(async () => {
+          assertRecentSignIn(ctx);
+          return userResponse(
+            await admin(ctx).setAccess(params.id, body.level),
+          );
+        }),
     }),
     action('disable', 'UsersDisable', (users, id) => users.disable(id)),
     action('enable', 'UsersEnable', (users, id) => users.enable(id)),
     action('sign-out', 'UsersSignOut', (users, id) => users.signOut(id)),
     action('remove', 'UsersRemove', (users, id) => users.remove(id)),
-    action('resend-invite', 'UsersResendInvite', (users, id) =>
-      users.resendInvite(id),
+    action(
+      'resend-invite',
+      'UsersResendInvite',
+      (users, id) => users.resendInvite(id),
+      { sensitive: false },
     ),
     defineRoute({
       method: 'POST',
@@ -127,9 +158,10 @@ export function createUserRoutes(deps: UserRoutesDeps = {}): RouteDef[] {
       params: IdParamsSchema,
       body: RestoreRequestSchema,
       handler: (ctx, { params, body }) =>
-        run(async () =>
-          userResponse(await admin(ctx).restore(params.id, body.level)),
-        ),
+        run(async () => {
+          assertRecentSignIn(ctx);
+          return userResponse(await admin(ctx).restore(params.id, body.level));
+        }),
     }),
   ];
 }

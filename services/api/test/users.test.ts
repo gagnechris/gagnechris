@@ -73,10 +73,14 @@ async function call(
   path: string,
   body?: unknown,
   actor = 'owner',
+  claims: Record<string, string> = {},
 ) {
   const result = await dispatchRoutes(
     createUserRoutes({ directory, removed }),
-    makeEvent(method, `/api${path}`, { jwtClaims: { sub: actor }, body }),
+    makeEvent(method, `/api${path}`, {
+      jwtClaims: { sub: actor, ...claims },
+      body,
+    }),
     method,
     `/api${path}`,
   );
@@ -356,6 +360,66 @@ describe('resend invite', () => {
     ]);
     const signedIn = await call('POST', '/admin/users/writer/resend-invite');
     expect(signedIn.body.error).toBe('not_invited');
+  });
+});
+
+describe('recent sign-in', () => {
+  const signedInAgo = (seconds: number) => ({
+    auth_time: String(Math.floor(Date.now() / 1000) - seconds),
+  });
+
+  it.each([
+    ['PUT', '/admin/users/writer/access', { level: 'notebook' }],
+    ['POST', '/admin/users/writer/disable', undefined],
+    ['POST', '/admin/users/writer/enable', undefined],
+    ['POST', '/admin/users/writer/sign-out', undefined],
+    ['POST', '/admin/users/writer/remove', undefined],
+    ['POST', '/admin/users/writer/restore', {}],
+  ])(
+    '%s %s needs a sign-in in the last 5 minutes',
+    async (method, path, body) => {
+      const stale = await call(method, path, body, 'owner', signedInAgo(301));
+      expect(stale).toEqual({
+        status: 403,
+        body: { error: 'reauth_required', message: expect.any(String) },
+      });
+      const missing = await call(method, path, body, 'owner', {
+        auth_time: '',
+      });
+      expect(missing.status).toBe(403);
+      expect(await groupsOf('writer')).toEqual(['site-admin']);
+      expect((await directory.getUser('writer'))!.enabled).toBe(true);
+      expect(directory.signedOut).toEqual([]);
+
+      const fresh = await call(method, path, body, 'owner', signedInAgo(60));
+      expect(fresh.status).not.toBe(403);
+    },
+  );
+
+  it('listing, inviting and resending an invite do not', async () => {
+    const old = signedInAgo(3600);
+    expect(
+      (await call('GET', '/admin/users', undefined, 'owner', old)).status,
+    ).toBe(200);
+    const invited = await call(
+      'POST',
+      '/admin/users',
+      { email: 'new@example.com', level: 'notebook' },
+      'owner',
+      old,
+    );
+    expect(invited.status).toBe(200);
+    expect(
+      (
+        await call(
+          'POST',
+          `/admin/users/${invited.body.user!.id}/resend-invite`,
+          undefined,
+          'owner',
+          old,
+        )
+      ).status,
+    ).toBe(200);
   });
 });
 

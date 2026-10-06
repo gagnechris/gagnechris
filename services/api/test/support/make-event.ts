@@ -25,6 +25,7 @@ export function appIdTokenClaims(auth: ProtectedAuth): Record<string, string> {
     token_use: 'id',
     aud: process.env[policy.clientIdEnv] ?? '',
     'cognito:groups': `[${policy.group}]`,
+    auth_time: String(Math.floor(Date.now() / 1000)),
   };
 }
 

@@ -39,6 +39,8 @@ export function localClaims(
     aud: env[policy.clientIdEnv] || LOCAL_CLIENT_IDS[auth],
     // Same shape API Gateway passes array claims in.
     'cognito:groups': `[${policy.group}]`,
+    // Local sign-in is always fresh, so the recent-sign-in check never blocks.
+    auth_time: String(Math.floor(Date.now() / 1000)),
   };
   const sub = authorization?.match(LOCAL_TOKEN)?.[1];
   if (!sub || sub === DEFAULT_USER.sub) return { ...DEFAULT_USER, ...app };

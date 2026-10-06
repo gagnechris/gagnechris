@@ -10512,6 +10512,7 @@
     "/api/admin/users/{id}/access": {
       "put": {
         "summary": "Set access level; lowering it also signs the user out everywhere",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -10819,6 +10820,7 @@
     "/api/admin/users/{id}/disable": {
       "post": {
         "summary": "Disable sign-in; access level unchanged",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -11103,6 +11105,7 @@
     "/api/admin/users/{id}/enable": {
       "post": {
         "summary": "Enable sign-in",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -11387,6 +11390,7 @@
     "/api/admin/users/{id}/sign-out": {
       "post": {
         "summary": "Sign the user out everywhere; their open sessions end within the hour",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -11671,6 +11675,7 @@
     "/api/admin/users/{id}/remove": {
       "post": {
         "summary": "Remove access: drop all groups and disable sign-in. The account and its Notebook are kept",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -12239,6 +12244,7 @@
     "/api/admin/users/{id}/restore": {
       "post": {
         "summary": "Restore a removed user at the given level, or their previous level",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],

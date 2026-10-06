@@ -15,6 +15,7 @@ vi.mock('./config', () => ({ ensureAmplifyConfigured: vi.fn() }));
 
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import {
+  getAuthTime,
   getAuthUser,
   RETURN_TO_KEY,
   redirectToSignIn,
@@ -66,6 +67,20 @@ describe('Cognito session', () => {
     });
     vi.mocked(fetchAuthSession).mockResolvedValue({});
     expect(await getAuthUser()).toBeNull();
+  });
+
+  test('asks managed login to sign in again, and reads when that happened', async () => {
+    await redirectToSignIn({ prompt: 'LOGIN' });
+    expect(signInWithRedirect).toHaveBeenCalledWith({
+      options: { prompt: 'LOGIN' },
+    });
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'access', payload: {} },
+        idToken: { toString: () => 'id', payload: { auth_time: 1700000000 } },
+      },
+    });
+    expect(await getAuthTime()).toBe(1700000000);
   });
 
   test("signs out of this app only, so the other app's session survives", async () => {

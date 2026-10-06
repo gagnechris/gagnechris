@@ -96,6 +96,16 @@ export const UserConflictCodeSchema = z.enum([
 ]);
 export type UserConflictCode = z.infer<typeof UserConflictCodeSchema>;
 
+/** Changing someone's access needs a sign-in this recent (ID token `auth_time`). */
+export const USER_ADMIN_REAUTH_SECONDS = 300;
+
+export const REAUTH_REQUIRED = 'reauth_required';
+
+export const ReauthRequiredResponseSchema = z.object({
+  error: z.literal(REAUTH_REQUIRED),
+  message: z.string(),
+});
+
 export const UserConflictResponseSchema = z.object({
   error: UserConflictCodeSchema,
   message: z.string(),
