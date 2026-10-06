@@ -375,7 +375,7 @@ CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals +
 **`scripts/deploy-web.sh`:** reads bucket names, distribution IDs and the two app client IDs from SSM, builds all three apps, runs `check:web-shells`, then:
 
 1. Syncs `dist-admin/` and `dist-notebook/` to their own buckets (`assets/` first with immutable cache-control, then `sync --delete` excluding `assets/*`), uploads `.well-known/*` as `application/json` and `manifest.json` as `application/manifest+json`, and invalidates `/*` on each app distribution.
-2. Syncs `dist/assets/` and then `dist/fonts/*.woff2` to the site bucket with `public,max-age=31536000,immutable`, then `dist/` with `--delete` and an exclude deny-list. Publisher-owned and reserved prefixes must stay excluded or the next web deploy deletes them: `assets/*`, `fonts/*.woff2`, `blog/*`, `projects/*`, `resume/*`, `resume.pdf`, `home/*`, `media/*`, `notebook/*` (reserved), `sitemap.xml`, `rss.xml`. Any other key the public build doesn't produce is deleted.
+2. Syncs `dist/assets/` and then `dist/fonts/*.woff2` to the site bucket with `public,max-age=31536000,immutable`, then `dist/` with `--delete` and an exclude deny-list. It excludes `assets/*`, `fonts/*.woff2`, `media/*`, `notebook/*` (reserved) and every publisher-owned pattern in `scripts/publisher-owned-paths.generated.txt` (generated from the targets' `s3Outputs`; `scripts/local/seed-shell.sh` reads the same file). Any other key the public build doesn't produce is deleted.
 3. Invalidates the public distribution and runs publisher `republishAll`.
 
 Hashed `assets/*` and fonts are never deleted on any host, so an open tab or installed PWA can still lazy-load chunks and fonts from the build it started with.

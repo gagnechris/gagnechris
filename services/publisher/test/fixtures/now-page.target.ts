@@ -15,6 +15,7 @@ const NOW_HTML = `<!doctype html>
 
 const target: PublishTarget = {
   id: 'now-page',
+  s3Outputs: ['now/*'],
   optionBPaths: ['/now'],
   adminMutationPrefixes: ['/api/admin/now'],
   matches(scope) {

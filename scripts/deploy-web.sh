@@ -138,25 +138,27 @@ echo "Deploying public → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"
 upload_assets "${DIST}" "${BUCKET}"
 upload_fonts "${DIST}" "${BUCKET}"
 
-# Excludes protect publisher-owned paths from --delete. home/* holds
-# last-published.json so an unpublished Home survives deploys. Anything else
-# the public build doesn't produce is deleted. .vite/ is the build manifest
+# Excludes protect keys this sync doesn't own from --delete: the publisher's
+# output (generated from its targets), hashed assets and fonts uploaded above,
+# admin media and the reserved notebook/ prefix. Anything else the public
+# build doesn't produce is deleted. .vite/ is the build manifest
 # check:web-shells reads; it is not part of the site.
+SYNC_EXCLUDES=(
+  --exclude ".vite/*"
+  --exclude "assets/*"
+  --exclude "fonts/*.woff2"
+  --exclude "media/*"
+  --exclude "notebook/*"
+)
+while IFS= read -r pattern; do
+  [[ -z "${pattern}" || "${pattern}" == \#* ]] && continue
+  SYNC_EXCLUDES+=(--exclude "${pattern}")
+done < "${ROOT}/scripts/publisher-owned-paths.generated.txt"
+
 aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete \
-  --exclude ".vite/*" \
-  --exclude "assets/*" \
-  --exclude "fonts/*.woff2" \
-  --exclude "blog/*" \
-  --exclude "projects/*" \
-  --exclude "resume/*" \
-  --exclude "resume.pdf" \
-  --exclude "home/*" \
-  --exclude "media/*" \
-  --exclude "notebook/*" \
-  --exclude "sitemap.xml" \
-  --exclude "rss.xml" \
+  "${SYNC_EXCLUDES[@]}" \
   --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
 

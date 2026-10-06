@@ -80,6 +80,11 @@ export type PublishTarget = {
   adminMutationPrefixes?: readonly string[];
   /** Soft-delete removes the PUBLISHED snapshot, so DELETE is publish-relevant. */
   adminSoftDelete?: boolean;
+  /**
+   * Every S3 key this target writes or deletes, as `aws s3 sync --exclude`
+   * patterns. Web deploys and the local seed keep these keys.
+   */
+  s3Outputs: readonly string[];
   matches(scope: RebuildScope): boolean;
   /** What `run` reads from the context; loaded only when an active target needs it. */
   needs: { posts?: true; shell?: true; projects?: true };

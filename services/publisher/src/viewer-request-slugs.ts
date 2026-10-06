@@ -11,13 +11,14 @@ import {
   type DeleteKeyRequestListItem,
   type PutKeyRequestListItem,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
+import {
+  POST_SLUG_KVS_SYNCED_KEY,
+  PROJECT_SLUG_KVS_PREFIX,
+  PROJECT_SLUG_KVS_SYNCED_KEY,
+} from '@gagnechris/shared';
 import { isLocalCloudFront } from './config.js';
 import { logger } from './observability.js';
 
-/** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
-export const BLOG_SLUG_SYNCED_KEY = '__synced__';
-
-/** Keys must match infra/lib/cloudfront/viewer-request-function.js. */
 export type KvsNamespace = {
   label: string;
   syncedKey: string;
@@ -26,21 +27,19 @@ export type KvsNamespace = {
 
 export const BLOG_SLUG_NAMESPACE: KvsNamespace = {
   label: 'blog',
-  syncedKey: BLOG_SLUG_SYNCED_KEY,
+  syncedKey: POST_SLUG_KVS_SYNCED_KEY,
   // Post slugs never contain `/`, so other namespaces use a path prefix.
   owns: (key) => !key.includes('/'),
 };
 
-const PROJECT_KEY_PREFIX = 'projects/';
-
 export const PROJECT_SLUG_NAMESPACE: KvsNamespace = {
   label: 'project',
-  syncedKey: `${PROJECT_KEY_PREFIX}__synced__`,
-  owns: (key) => key.startsWith(PROJECT_KEY_PREFIX),
+  syncedKey: PROJECT_SLUG_KVS_SYNCED_KEY,
+  owns: (key) => key.startsWith(PROJECT_SLUG_KVS_PREFIX),
 };
 
 export const projectSlugKvsKey = (slug: string): string =>
-  `${PROJECT_KEY_PREFIX}${slug}`;
+  `${PROJECT_SLUG_KVS_PREFIX}${slug}`;
 
 export const KVS_UPDATE_BATCH_SIZE = 50;
 

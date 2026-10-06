@@ -19,12 +19,18 @@ if [[ ! -f "${DIST}/_shell.html" ]]; then
   exit 1
 fi
 
-# Keep publisher output (blog/, projects/, sitemap, rss) that is not in dist.
-rsync -a --delete \
-  --exclude 'blog/' \
-  --exclude 'projects/' \
-  --exclude 'sitemap.xml' \
-  --exclude 'rss.xml' \
-  "${DIST}/" "${SITE}/"
+# Keep the publisher's output, which is not in dist. `dir/*` patterns become
+# anchored rsync directory excludes.
+EXCLUDES=()
+while IFS= read -r pattern; do
+  [[ -z "${pattern}" || "${pattern}" == \#* ]] && continue
+  if [[ "${pattern}" == */\* ]]; then
+    EXCLUDES+=(--exclude "/${pattern%\*}")
+  else
+    EXCLUDES+=(--exclude "/${pattern}")
+  fi
+done < "${ROOT}/scripts/publisher-owned-paths.generated.txt"
+
+rsync -a --delete "${EXCLUDES[@]}" "${DIST}/" "${SITE}/"
 
 echo "Seeded shell into ${SITE}"

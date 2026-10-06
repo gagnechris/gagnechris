@@ -6,6 +6,7 @@ import type { PublishTarget } from '../types.js';
 
 const target: PublishTarget = {
   id: 'post-pages',
+  s3Outputs: ['blog/*'],
   matches(scope) {
     return (
       scope.allPosts || scope.postSlugs.size > 0 || scope.projectIds.size > 0

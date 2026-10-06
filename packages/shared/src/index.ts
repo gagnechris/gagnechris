@@ -83,6 +83,11 @@ export {
 } from './resume-view.js';
 export { EMPTY_SLUG_FALLBACK, MAX_SLUG_LENGTH, slugify } from './slugify.js';
 export {
+  POST_SLUG_KVS_SYNCED_KEY,
+  PROJECT_SLUG_KVS_PREFIX,
+  PROJECT_SLUG_KVS_SYNCED_KEY,
+} from './slug-kvs.js';
+export {
   formatPostDate,
   formatPostShortDate,
   postDateAttribute,
