@@ -227,7 +227,13 @@ echo "${HTML3}" | grep -q 'Local E2E Updated'
 ROOT_HTML="$(curl -sS "${SITE}/")"
 echo "${ROOT_HTML}" | grep -q "href=\"/posts/${SLUG}\">Local E2E Updated</a>"
 
+# The viewer-request function 404s slugs missing from the KVS without reading
+# the bucket, so a 404 alone doesn't show the publisher deleted the file.
 echo "==> Orphan cleanup"
+if [[ -e "${SITE_BUCKET_NAME}/blog/orphan-e2e/index.html" ]]; then
+  echo "Expected the publisher to delete blog/orphan-e2e/index.html" >&2
+  exit 1
+fi
 ORPHAN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/posts/orphan-e2e")"
 if [[ "${ORPHAN_CODE}" != "404" ]]; then
   echo "Expected orphan-e2e to be removed (404), got ${ORPHAN_CODE}" >&2
@@ -239,6 +245,10 @@ VERSION="$(node -e "console.log(JSON.parse(process.argv[1]).version)" "${REPUBLI
 curl -sS -X POST "${API}/api/admin/posts/${POST_ID}/unpublish" \
   -H 'Content-Type: application/json' \
   -d "{\"version\":${VERSION}}" >/dev/null
+if [[ -e "${SITE_BUCKET_NAME}/blog/${SLUG}/index.html" ]]; then
+  echo "Expected unpublish to delete blog/${SLUG}/index.html" >&2
+  exit 1
+fi
 GONE="$(curl -sS -o /dev/null -w '%{http_code}' "${SITE}/posts/${SLUG}")"
 if [[ "${GONE}" != "404" ]]; then
   echo "Expected /posts/${SLUG} 404 after unpublish, got ${GONE}" >&2
