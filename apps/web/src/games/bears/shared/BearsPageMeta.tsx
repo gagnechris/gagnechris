@@ -1,6 +1,7 @@
-import { siteUrl } from '@gagnechris/shared/site-config';
 import PageHead from '../../../components/PageHead';
 import type { BearsPageMetaEntry } from './pageMeta';
+
+const APEX = 'https://gagnechris.com';
 
 type BearsPageMetaProps = {
   meta: BearsPageMetaEntry;
@@ -9,9 +10,9 @@ type BearsPageMetaProps = {
 const BearsPageMeta = ({ meta }: BearsPageMetaProps) => (
   <PageHead
     title={meta.title}
-    url={siteUrl(`/${meta.routePath}`)}
+    url={`${APEX}/${meta.routePath}`}
     description={meta.description}
-    image={siteUrl(meta.ogImagePath)}
+    image={`${APEX}${meta.ogImagePath}`}
   />
 );
 

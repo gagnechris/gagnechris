@@ -1,9 +1,7 @@
-import { siteUrl } from '@gagnechris/shared/site-config';
 import { createSeededRng, hashString } from '../shared/rng';
-import { BEARS_PAGE_META } from '../shared/pageMeta';
 import type { CampRngs } from './campLogic';
 
-export const CAMP_SHARE_URL = siteUrl(`/${BEARS_PAGE_META.camp.routePath}`);
+export const CAMP_SHARE_URL = 'https://gagnechris.com/dont-feed-the-bears/camp';
 
 /** The player's local calendar date, so "today" matches their clock. */
 export function dailyCampKey(date: Date): string {

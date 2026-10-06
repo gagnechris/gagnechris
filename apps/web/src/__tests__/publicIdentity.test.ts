@@ -9,12 +9,16 @@ const webRoot = path.resolve(
   '../..',
 );
 
-/** Public-app source: the signed-in apps and tests are out of scope. */
+/**
+ * Public-app source: the signed-in apps and tests are out of scope. So are the
+ * lazy bears chunks: importing the shared site helpers from them makes
+ * Rolldown split `site-config` out of the public entry into its own chunk.
+ */
 const publicSource = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      return /^(admin|notebook|workspace|__tests__)$/.test(entry.name)
+      return /^(admin|notebook|workspace|__tests__|games)$/.test(entry.name)
         ? []
         : publicSource(full);
     }
