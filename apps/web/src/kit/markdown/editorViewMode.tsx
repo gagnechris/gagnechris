@@ -1,6 +1,7 @@
 import { Prec, type Extension } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -118,7 +119,9 @@ export function useEditorViewMode({
           togglePreview();
         }}
       >
-        {children}
+        <Suspense fallback={<p className="admin-hint">Loading preview…</p>}>
+          {children}
+        </Suspense>
       </div>
     ) : null;
 

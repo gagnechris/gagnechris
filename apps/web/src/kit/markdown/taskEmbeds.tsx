@@ -49,34 +49,72 @@ const flushEffect = StateEffect.define<null>();
 const isProgrammatic = (tr: Transaction) =>
   tr.annotation(Transaction.userEvent) === undefined;
 
-/** Position on the line the user last typed on; mapped through every change. */
+const isEdit = (tr: Transaction) =>
+  tr.docChanged && (tr.isUserEvent('input') || tr.isUserEvent('delete'));
+
+/** One position on each line the transaction typed, pasted or deleted on. */
+function editedLines(tr: Transaction): number[] {
+  const positions: number[] = [];
+  tr.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    for (let pos = fromB; ;) {
+      const line = tr.newDoc.lineAt(pos);
+      positions.push(line.from);
+      if (line.to >= toB) break;
+      pos = line.to + 1;
+    }
+  });
+  return positions;
+}
+
+/** Position on the line the user is typing on; mapped through every change. */
 const candidateField = StateField.define<number | null>({
   create: () => null,
   update(value, tr) {
-    if (tr.effects.some((e) => e.is(createdEffect))) return null;
     if (tr.docChanged && isProgrammatic(tr)) return null;
-    if (
-      tr.docChanged &&
-      (tr.isUserEvent('input') || tr.isUserEvent('delete'))
-    ) {
-      return tr.newSelection.main.head;
-    }
-    return value === null ? null : tr.changes.mapPos(value);
+    if (tr.effects.some((e) => e.is(flushEffect))) return null;
+    const positions = [
+      ...(value === null ? [] : [tr.changes.mapPos(value)]),
+      ...(isEdit(tr) ? editedLines(tr) : []),
+    ];
+    // Every other line was converted or left as text by `convertLeftLine`.
+    const head = tr.newDoc.lineAt(tr.newSelection.main.head);
+    return positions.find((p) => p >= head.from && p <= head.to) ?? null;
   },
 });
 
-/**
- * Converted line text → task id, so undo then leaving the same line again
- * re-embeds the task already created instead of creating a second one.
- */
-const convertedField = StateField.define<ReadonlyMap<string, string>>({
+type Converted = {
+  key: string;
+  /** Where an undo took the token out, so leaving that line again reuses the id. */
+  undoneAt: number | null;
+};
+
+/** Every task this editor created, so an undone conversion keeps its task. */
+const convertedField = StateField.define<ReadonlyMap<string, Converted>>({
   create: () => new Map(),
   update(value, tr) {
     const created = tr.effects.filter((e) => e.is(createdEffect));
-    if (created.length === 0) return value;
-    const next = new Map(value);
+    if (created.length === 0 && !tr.docChanged) return value;
+    const next = new Map<string, Converted>();
+    const undo = tr.isUserEvent('undo');
+    const before = undo ? tr.startState.doc.toString() : '';
+    const after = undo ? tr.newDoc.toString() : '';
+    for (const [id, entry] of value) {
+      let undoneAt =
+        entry.undoneAt === null ? null : tr.changes.mapPos(entry.undoneAt, -1);
+      if (undo) {
+        const token = taskEmbedToken(id);
+        const at = before.indexOf(token);
+        if (at >= 0 && !after.includes(token)) {
+          undoneAt = tr.changes.mapPos(at, -1);
+        }
+      }
+      next.set(id, { ...entry, undoneAt });
+    }
     for (const effect of created) {
-      next.set(taskLineDraftKey(effect.value.draft), effect.value.id);
+      next.set(effect.value.id, {
+        key: taskLineDraftKey(effect.value.draft),
+        undoneAt: null,
+      });
     }
     return next;
   },
@@ -97,36 +135,76 @@ function insideFence(doc: Text, lineNumber: number): boolean {
   return fence !== null;
 }
 
+/**
+ * An id is reused only when its token is gone from the doc: first the task
+ * whose conversion was undone on this line, then one with the same text.
+ */
+function reusableId(
+  converted: ReadonlyMap<string, Converted>,
+  doc: string,
+  line: { from: number; to: number },
+  key: string,
+  taken: ReadonlySet<string>,
+  mapPos: (pos: number) => number,
+): string | undefined {
+  const absent = [...converted].filter(
+    ([id]) => !taken.has(id) && !doc.includes(taskEmbedToken(id)),
+  );
+  const undone = absent.find(([, entry]) => {
+    if (entry.undoneAt === null) return false;
+    const at = mapPos(entry.undoneAt);
+    return at >= line.from && at <= line.to;
+  });
+  return (undone ?? absent.find(([, entry]) => entry.key === key))?.[0];
+}
+
 function convertLeftLine(newId: () => string) {
   return EditorState.transactionFilter.of((tr) => {
-    const candidate = tr.startState.field(candidateField, false);
-    if (candidate == null) return tr;
     const flush = tr.effects.some((e) => e.is(flushEffect));
     if (!flush && !tr.selection && !tr.docChanged) return tr;
     if (tr.docChanged && isProgrammatic(tr)) return tr;
+    const candidate = tr.startState.field(candidateField, false);
+    const positions = [
+      ...(candidate == null ? [] : [tr.changes.mapPos(candidate)]),
+      ...(isEdit(tr) ? editedLines(tr) : []),
+    ];
+    if (positions.length === 0) return tr;
 
     const doc = tr.newDoc;
-    const line = doc.lineAt(tr.changes.mapPos(candidate));
-    const head = doc.lineAt(tr.newSelection.main.head);
-    if (!flush && head.number === line.number) return tr;
+    const head = doc.lineAt(tr.newSelection.main.head).number;
+    const lineNumbers = [...new Set(positions.map((p) => doc.lineAt(p).number))]
+      .filter((n) => flush || n !== head)
+      .sort((a, b) => a - b);
+    if (lineNumbers.length === 0) return tr;
 
-    const parsed = parseTaskLine(line.text);
-    if (!parsed || insideFence(doc, line.number)) return tr;
-    const id =
-      tr.startState.field(convertedField).get(taskLineDraftKey(parsed.draft)) ??
-      newId();
-    return [
-      tr,
-      {
-        changes: {
-          from: line.from + parsed.indent.length,
-          to: line.to,
-          insert: taskEmbedToken(id),
-        },
-        effects: createdEffect.of({ id, draft: parsed.draft }),
-        sequential: true,
-      },
-    ];
+    const converted = tr.startState.field(convertedField);
+    const text = doc.toString();
+    const taken = new Set<string>();
+    const changes: { from: number; to: number; insert: string }[] = [];
+    const effects: StateEffect<TaskEmbedCreate>[] = [];
+    for (const n of lineNumbers) {
+      const line = doc.line(n);
+      const parsed = parseTaskLine(line.text);
+      if (!parsed || insideFence(doc, n)) continue;
+      const id =
+        reusableId(
+          converted,
+          text,
+          line,
+          taskLineDraftKey(parsed.draft),
+          taken,
+          (pos) => tr.changes.mapPos(pos, -1),
+        ) ?? newId();
+      taken.add(id);
+      changes.push({
+        from: line.from + parsed.indent.length,
+        to: line.to,
+        insert: taskEmbedToken(id),
+      });
+      effects.push(createdEffect.of({ id, draft: parsed.draft }));
+    }
+    if (changes.length === 0) return tr;
+    return [tr, { changes, effects, sequential: true }];
   });
 }
 

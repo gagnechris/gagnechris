@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { Link } from 'react-router-dom';
 import {
   formatPostDate,
   postDateAttribute,
@@ -13,6 +12,7 @@ import {
   type ProjectPageView,
 } from '@gagnechris/shared';
 import { PROJECTS_INDEX_TITLE } from '@gagnechris/shared/render';
+import SiteLink from '../components/SiteLink';
 import ProjectDemoSlot from './ProjectDemoSlot';
 import './ProjectStage.css';
 
@@ -23,10 +23,9 @@ const BuildLogEntry = ({ post }: { post: ProjectBuildLogPost }) => {
   const attr = postDateAttribute(post.publishedAt);
   return (
     <li className="project-build-log__entry" data-id={post.id}>
-      <Link
+      <SiteLink
         className="project-build-log__link"
-        to={`/posts/${post.slug}`}
-        discover="none"
+        href={`/posts/${post.slug}`}
       >
         <h3 className="project-build-log__title">{post.title}</h3>
         {date ? (
@@ -37,19 +36,14 @@ const BuildLogEntry = ({ post }: { post: ProjectBuildLogPost }) => {
             {date}
           </time>
         ) : null}
-      </Link>
+      </SiteLink>
     </li>
   );
 };
 
-const ProjectLink = ({ label, url }: ProjectPageView['links'][number]) =>
-  url.startsWith('/') && !url.startsWith('//') ? (
-    <Link to={url} discover="none">
-      {label}
-    </Link>
-  ) : (
-    <a href={url}>{label}</a>
-  );
+const ProjectLink = ({ label, url }: ProjectPageView['links'][number]) => (
+  <SiteLink href={url}>{label}</SiteLink>
+);
 
 const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
   <div
@@ -59,9 +53,7 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
   >
     <header className="project-header">
       <p className="project-back">
-        <Link to={PROJECTS_PATH} discover="none">
-          {PROJECTS_INDEX_TITLE}
-        </Link>
+        <SiteLink href={PROJECTS_PATH}>{PROJECTS_INDEX_TITLE}</SiteLink>
       </p>
       <p className="project-stage" data-stage={project.stage}>
         {projectStageText(project)}

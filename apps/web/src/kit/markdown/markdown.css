@@ -1,5 +1,5 @@
 .markdown-editor {
-  /* Flex so the @uiw/react-codemirror theme wrapper fills the pane;
+  /* Flex so the editor view wrapper fills the pane;
      otherwise .cm-scroller grows to content height and overflow:hidden clips it. */
   display: flex;
   flex-direction: column;

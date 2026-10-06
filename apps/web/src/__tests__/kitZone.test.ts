@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
@@ -29,6 +30,14 @@ describe('kit import zone', () => {
     '../workspace/ui/SaveIndicator',
     '../auth/config',
     '../../workspace/auth/session',
+    '../api/public-client',
+    '../utils/analytics',
+    '../../utils/analytics',
+    '../pages/PostPage',
+    '../components/SiteLink',
+    '../prerender/documentPrerender',
+    '../demos/notebook/NotebookDemo',
+    '../App',
   ])(
     'forbids %s',
     async (specifier) => {
@@ -48,6 +57,20 @@ describe('kit import zone', () => {
     'allows %s',
     async (specifier) => {
       expect(await lintKitImport(specifier)).toEqual([]);
+    },
+    30_000,
+  );
+
+  const appDirs = readdirSync(path.join(repoRoot, 'apps/web/src'), {
+    withFileTypes: true,
+  })
+    .filter((e) => e.isDirectory() && !['kit', 'lib'].includes(e.name))
+    .map((e) => e.name);
+
+  it.each(appDirs)(
+    'forbids every app directory: %s',
+    async (dir) => {
+      expect(await lintKitImport(`../${dir}/anything`)).not.toHaveLength(0);
     },
     30_000,
   );

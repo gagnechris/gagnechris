@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
   RESUME_ACTION_LINKS,
@@ -9,11 +8,8 @@ import {
   type ResumeActionLink,
   pageTitle,
 } from '@gagnechris/shared/render';
-import {
-  trackEvent,
-  trackResumeDownload,
-  trackResumeView,
-} from '../utils/analytics';
+import { siteUrl } from '@gagnechris/shared';
+import { trackResumeDownload, trackResumeView } from '../utils/analytics';
 import {
   documentResumeView,
   fallbackResumeView,
@@ -21,37 +17,25 @@ import {
   type ResumeView,
 } from '../resume/publishedResume';
 import { createPublicApiClient } from '../api/public-client';
+import { usePublishedView } from '../prerender/usePublishedView';
+import SiteLink from '../components/SiteLink';
 import './Resume.css';
 import PageHead from '../components/PageHead';
 
 // The intro must match `renderResumeIntroHtml` element for element
 // (coldLoadParity.test.tsx).
 
-const ActionLink = ({ link }: { link: ResumeActionLink }) => {
-  if (link.kind === 'spa') {
-    return (
-      <Link className="resume-intro__link" to={link.href} discover="none">
-        {link.label}
-      </Link>
-    );
-  }
-  const trackId = link.trackId;
-  return (
-    <a
-      className="resume-intro__link"
-      href={link.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={
-        trackId
-          ? () => trackEvent('click', 'external_link', trackId)
-          : undefined
-      }
-    >
-      {link.label}
-    </a>
-  );
-};
+const ActionLink = ({ link }: { link: ResumeActionLink }) => (
+  <SiteLink
+    className="resume-intro__link"
+    href={link.href}
+    spa={link.kind === 'spa'}
+    newTab={link.kind === 'external'}
+    trackId={link.trackId}
+  >
+    {link.label}
+  </SiteLink>
+);
 
 const DownloadIcon = () => (
   <svg
@@ -71,26 +55,23 @@ const DownloadIcon = () => (
 );
 
 function Resume() {
+  const published = usePublishedView(
+    'resume',
+    documentResumeView,
+    loadPublishedResume,
+  );
   // Null only after client-side navigation, until /resume/ arrives; never the
   // bundled default first.
-  const [resume, setResume] = useState<ResumeView | null>(documentResumeView);
+  const resume: ResumeView | null =
+    published.status === 'ready'
+      ? published.view
+      : published.status === 'loading'
+        ? null
+        : fallbackResumeView();
   const [showBearNote, setShowBearNote] = useState(false);
 
   useEffect(() => {
     trackResumeView();
-  }, []);
-
-  useEffect(() => {
-    if (documentResumeView()) return;
-    let cancelled = false;
-    void loadPublishedResume()
-      .catch(() => null)
-      .then((published) => {
-        if (!cancelled) setResume(published ?? fallbackResumeView());
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const handleDownload = () => {
@@ -116,7 +97,7 @@ function Resume() {
     <div className={`resume-page${marker}`} aria-busy={!resume || undefined}>
       <PageHead
         title={resume?.headTitle ?? pageTitle('Resume')}
-        url="https://gagnechris.com/resume"
+        url={siteUrl('/resume')}
       />
       <header className="resume-intro">
         <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
@@ -150,9 +131,9 @@ function Resume() {
         <aside className="resume-bear-note" role="status">
           <p>
             Download started. While you wait —{' '}
-            <Link to="/dont-feed-the-bears?from=resume">
+            <SiteLink href="/dont-feed-the-bears?from=resume">
               Don't Feed the Bears
-            </Link>
+            </SiteLink>
             ?
           </p>
           <button

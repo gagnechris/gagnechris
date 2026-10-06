@@ -49,11 +49,19 @@ export function createPostRoutes(
       metric: 'ListPosts',
       query: ListPostsQuerySchema,
       handler: async (_ctx, { query }) => {
-        const page = await posts().list(query.status, {
-          cursor: query.cursor,
-          limit: query.limit ?? POSTS_PAGE_SIZE,
-        });
-        return json(200, PostListResponseSchema.parse(page));
+        const repo = posts();
+        const [page, counts] = await Promise.all([
+          repo.list(query.status, {
+            cursor: query.cursor,
+            limit: query.limit ?? POSTS_PAGE_SIZE,
+            q: query.q,
+          }),
+          query.cursor ? undefined : repo.counts(),
+        ]);
+        return json(
+          200,
+          PostListResponseSchema.parse(counts ? { ...page, counts } : page),
+        );
       },
     }),
     defineRoute({

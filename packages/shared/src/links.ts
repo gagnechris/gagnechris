@@ -5,6 +5,10 @@ export const PROJECT_HREF_SCHEMES = ['https'] as const;
 
 export const LINK_HREF_MAX_LENGTH = 2048;
 
+/** A path on this site; `//host` is protocol-relative, so it is off-site. */
+export const isSitePath = (href: string): boolean =>
+  href.startsWith('/') && !href.startsWith('//');
+
 const SCHEME_RE = /^([a-z][a-z0-9+.-]*):/i;
 
 // eslint-disable-next-line no-control-regex
@@ -20,7 +24,7 @@ export const isSafeLinkHref = (
 ): boolean => {
   if (!value || value.length > LINK_HREF_MAX_LENGTH) return false;
   if (UNSAFE_CHARS_RE.test(value)) return false;
-  if (value.startsWith('/')) return !value.startsWith('//');
+  if (value.startsWith('/')) return isSitePath(value);
   const match = SCHEME_RE.exec(value);
   if (!match) return false;
   const scheme = match[1]!.toLowerCase();

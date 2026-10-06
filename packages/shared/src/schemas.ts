@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { isCalendarDay } from './calendar.js';
 import { API_SERVICE_NAME } from './constants.js';
 import {
   isSafeLinkHref,
@@ -130,9 +131,20 @@ export type PostSummary = z.infer<typeof PostSummarySchema>;
 
 export const POSTS_PAGE_SIZE = 50;
 
+export const PostCountsSchema = z.object({
+  all: z.number().int().nonnegative(),
+  draft: z.number().int().nonnegative(),
+  published: z.number().int().nonnegative(),
+});
+
+export type PostCounts = z.infer<typeof PostCountsSchema>;
+
 export const PostListResponseSchema = z.object({
   items: z.array(PostSummarySchema),
   nextCursor: z.string().min(1).optional(),
+  counts: PostCountsSchema.optional().describe(
+    'Draft and published totals across every page, ignoring `q`. First page only (no `cursor`).',
+  ),
 });
 
 export type PostListResponse = z.infer<typeof PostListResponseSchema>;
@@ -166,8 +178,16 @@ export const UpdatePostRequestSchema = updateRequestSchema(
 
 export type UpdatePostRequest = z.infer<typeof UpdatePostRequestSchema>;
 
+export const POST_SEARCH_MAX_LENGTH = 200;
+
 export const ListPostsQuerySchema = z.object({
   status: PostStatusSchema.optional().describe('Filter by post status'),
+  q: z
+    .string()
+    .trim()
+    .max(POST_SEARCH_MAX_LENGTH)
+    .optional()
+    .describe('Case-insensitive match on title, slug or a tag'),
   cursor: z
     .string()
     .min(1)
@@ -503,7 +523,8 @@ export const CALENDAR_DATE_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
 
 export const CalendarDateSchema = z
   .string()
-  .regex(new RegExp(CALENDAR_DATE_PATTERN), 'Must be yyyy-mm-dd');
+  .regex(new RegExp(CALENDAR_DATE_PATTERN), 'Must be yyyy-mm-dd')
+  .refine(isCalendarDay, 'Must be a real calendar date');
 
 export type CalendarDate = z.infer<typeof CalendarDateSchema>;
 
@@ -671,6 +692,9 @@ export const UpdateNoteRequestSchema = z.object({
 
 export type UpdateNoteRequest = z.infer<typeof UpdateNoteRequestSchema>;
 
+/** Default page size for notes and tasks lists, one area or many. */
+export const NOTEBOOK_PAGE_SIZE = 50;
+
 export const ListNotesQuerySchema = z.object({
   area: NotebookAreaSchema.optional().describe('Filter by Work or Personal'),
   from: CalendarDateSchema.optional().describe(
@@ -685,7 +709,9 @@ export const ListNotesQuerySchema = z.object({
     .min(1)
     .optional()
     .describe('Opaque pagination cursor from a previous list response'),
-  limit: PageLimitSchema.optional().describe('Page size (1-100)'),
+  limit: PageLimitSchema.optional().describe(
+    `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+  ),
 });
 
 export type ListNotesQuery = z.infer<typeof ListNotesQuerySchema>;
@@ -857,7 +883,9 @@ export const ListTasksQuerySchema = z
       "Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today",
     ),
     cursor: z.string().min(1).optional(),
-    limit: PageLimitSchema.optional(),
+    limit: PageLimitSchema.optional().describe(
+      `Page size (1-100; default ${NOTEBOOK_PAGE_SIZE})`,
+    ),
   })
   .superRefine((query, ctx) => {
     const ranges = [

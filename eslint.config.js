@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import js from '@eslint/js';
 import globals from 'globals';
 import importX, { createNodeResolver } from 'eslint-plugin-import-x';
@@ -240,6 +241,24 @@ const platformNeutralRestrictedSyntax = {
 };
 
 /** Relative import of a sibling app directory under apps/web/src. */
+// Everything in apps/web/src except the kit and `lib/`, read from disk so a
+// new app directory is out of the kit's reach without editing this list.
+const webSrc = new URL('./apps/web/src/', import.meta.url);
+const kitSubdirs = new Set(
+  readdirSync(new URL('kit/', webSrc), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name),
+);
+const kitForbiddenWebModules = readdirSync(webSrc, { withFileTypes: true })
+  .filter((entry) =>
+    entry.isDirectory()
+      ? !['kit', 'lib', 'admin', 'notebook', 'workspace'].includes(entry.name)
+      : /^[A-Za-z]\w*\.tsx?$/.test(entry.name) &&
+        !/\.(test|d)\.tsx?$/.test(entry.name),
+  )
+  .map((entry) => entry.name.replace(/\.tsx?$/, ''))
+  .filter((name) => !kitSubdirs.has(name));
+
 const webDirImport = (...dirs) => ({
   regex: `^\\.{1,2}/(?:.*/)?(?:${dirs.join('|')})(?:/|$)`,
 });
@@ -324,6 +343,11 @@ const webAppZones = [
               ...webDirImport('admin', 'notebook', 'workspace', 'auth'),
               message:
                 'The kit must not import the admin, Notebook or workspace apps.',
+            },
+            {
+              ...webDirImport(...kitForbiddenWebModules),
+              message:
+                'The kit must not import app code: pages, API clients, analytics and app chrome stay outside it.',
             },
             {
               group: ['aws-amplify/*', '@aws-amplify/*'],

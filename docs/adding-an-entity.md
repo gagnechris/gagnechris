@@ -136,7 +136,7 @@ export function bookmarkGsi1Sk(updatedAt: string, bookmarkId: string): string {
 }
 ```
 
-and under `keys.notebook`:
+Key strings come only from these functions. An item key (`{ pk, sk }`) comes only from `keys`, so add one under `keys.notebook`:
 
 ```ts
 bookmark: {
@@ -482,7 +482,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
 export const bookmarkRoutes: RouteDef[] = createBookmarkRoutes();
 ```
 
-Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`).
+Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`), and a `withoutVersion` handler for writes that may arrive with no version (the daily note PUT creates the day's note through it).
 
 ## 7. Route table — `services/api/src/routes.ts`
 
@@ -573,7 +573,7 @@ There is no public API: the read side is static HTML in S3.
 
 ### Repository and routes
 
-Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual`, `isDeleted` and `slugClaims`, and pass the constructor's `now` clock through. The base owns every write: `insertDraft` (slug claim + META with `attribute_not_exists`), `mutate` (consistent read, version check, `updatedAt` from the clock), `softDelete`, `publish`, `unpublish` and `discard`. Each mutation is one transaction with the version-conditioned META Put at index 0, the slug rename rows, the `PUBLISHED` put or delete and the soft-delete slug release, so a taken slug is `slug_taken` and a stale version wins with `current`. Use `validatePublish` for rules a draft must meet before it goes live and `extraMutationItems` for rows that change with it (posts write tag-index rows there). `create` builds the entity and calls `insertDraft`; `update` passes a field merge to `mutate`. The META row stores `hasUnpublishedChanges` (have `toItem` write it and `toPublishedItem` drop it). Lists page with `queryListPage` (and `walkPartitions` across status partitions), passing `attributes` to read summary fields with a `ProjectionExpression` and a `parse` that leaves the flag undefined when the row has none, so only those rows are compared with `PUBLISHED`; `existingIds` checks many ids with one BatchGet.
+Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual`, `isDeleted` and `slugClaims`, and pass the constructor's `now` clock through. The base owns every write: `insertDraft` (slug claim + META with `attribute_not_exists`), `mutate` (consistent read, version check, `updatedAt` from the clock), `softDelete`, `publish`, `unpublish` and `discard`. Each mutation is one transaction with the version-conditioned META Put at index 0, the slug rename rows, the `PUBLISHED` put or delete and the soft-delete slug release, so a taken slug is `slug_taken` and a stale version wins with `current`. Use `validatePublish` for rules a draft must meet before it goes live and `extraMutationItems` for rows that change with it (posts write tag-index rows there). `create` builds the entity and calls `insertDraft`; `update` passes a field merge to `mutate`. The META row stores `hasUnpublishedChanges` (have `toItem` write it and `toPublishedItem` drop it). Lists page with `queryListPage` (and `walkPartitions` across status partitions), passing `attributes` to read summary fields with a `ProjectionExpression` and a `parse` that leaves the flag undefined when the row has none, so only those rows are compared with `PUBLISHED`. A `where` predicate filters in the API; pair it with `maxItems` and a larger `limit` so a page fills; `existingIds` checks many ids with one BatchGet.
 
 Declare `GET` routes with `defineRoute` and `getByIdOrThrow` (404 from `NotFoundError`), and every versioned write (`PUT`, `DELETE`, `publish`, `unpublish`, `discard`) with `siteAdminVersionedRoute` from `data/versioned-route.ts`: body `version` (default body `ExpectedVersionRequestSchema`) → `mutate` → 200 with the entity parsed through `entity`. Metric names are `<Verb><Thing>` (`PublishProject`); singletons pass `metricName` to `createSingletonRoutes`.
 

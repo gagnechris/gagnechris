@@ -3,7 +3,11 @@ import type {
   QueryClient,
   QueryKey,
 } from '@tanstack/react-query';
-import { isOpenTaskStatus, taskMatchesSchedule } from '@gagnechris/shared';
+import {
+  isOpenTaskStatus,
+  postMatchesQuery,
+  taskMatchesSchedule,
+} from '@gagnechris/shared';
 import type {
   Home,
   Note,
@@ -113,11 +117,12 @@ const postMatches = (
   post: PostSummary,
   filters: Record<string, unknown>,
 ): ListMatch => {
-  if (filters.q) return undefined;
   if (filters.status !== undefined && filters.status !== post.status) {
     return false;
   }
-  return true;
+  return typeof filters.q === 'string'
+    ? postMatchesQuery(post, filters.q)
+    : true;
 };
 
 /** `seedUnfiltered` writes the unfiltered list even before its first fetch, so a create shows up immediately. */
@@ -164,6 +169,9 @@ const toPostSummary = ({
 }: Post): PostSummary => summary;
 
 export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
+  const before = queryClient.getQueryData<Post>(
+    queryKeys.posts.detail(post.id),
+  );
   setDetail(queryClient, queryKeys.posts.detail(post.id), post);
   upsertIntoListCaches(
     queryClient,
@@ -175,6 +183,13 @@ export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
       seedUnfiltered: true,
     },
   );
+  // Counts come from the server on the first page; refetch them next time a list mounts.
+  if (before?.status !== post.status) {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.posts.list(),
+      refetchType: 'none',
+    });
+  }
 };
 
 export const setCachedProject = (

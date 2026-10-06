@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   errorMessage,
@@ -6,20 +6,21 @@ import {
   usePostsQuery,
 } from '@gagnechris/app-core';
 import { newPlaceholderSlug } from './placeholderSlug';
-import { byNewest } from '../kit/byNewest';
 import { Button } from '../kit/Button';
-import { TextInput, Select } from '../kit/Field';
+import { TextInput } from '../kit/Field';
 import { StatusBadge } from '../kit/StatusBadge';
+import { useDebouncedValue } from '../kit/useDebouncedValue';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 
 type StatusFilter = 'all' | 'draft' | 'published';
-type SortKey = 'updated' | 'published' | 'title';
+
+const SEARCH_DEBOUNCE_MS = 250;
 
 const formatDate = (iso: string | null): string => {
   if (!iso) {
     return '—';
   }
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString('en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
@@ -27,6 +28,9 @@ const formatDate = (iso: string | null): string => {
 
 export default function AdminPostsPage() {
   const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const q = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
   const {
     data,
     error: queryError,
@@ -34,48 +38,15 @@ export default function AdminPostsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = usePostsQuery();
+  } = usePostsQuery({ status: status === 'all' ? undefined : status, q });
   const posts = data?.pages.flatMap((p) => p.items);
   const createMutation = useCreatePostMutation();
   const [actionError, setActionError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [sort, setSort] = useState<SortKey>('updated');
 
   const loadError = queryError
     ? errorMessage(queryError, 'Could not load posts.')
     : null;
   const error = actionError ?? loadError;
-
-  const visible = useMemo(() => {
-    if (!posts) {
-      return [];
-    }
-    const q = query.trim().toLowerCase();
-    let list = posts.filter((p) => {
-      if (status !== 'all' && p.status !== status) {
-        return false;
-      }
-      if (!q) {
-        return true;
-      }
-      return (
-        p.title.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    });
-    list = [...list].sort((a, b) => {
-      if (sort === 'title') {
-        return a.title.localeCompare(b.title);
-      }
-      if (sort === 'published') {
-        return byNewest(a.publishedAt, b.publishedAt);
-      }
-      return byNewest(a.updatedAt, b.updatedAt);
-    });
-    return list;
-  }, [posts, query, status, sort]);
 
   const createDraft = async () => {
     setActionError(null);
@@ -96,11 +67,7 @@ export default function AdminPostsPage() {
 
   const creating = createMutation.isPending;
 
-  const counts = {
-    all: posts?.length ?? 0,
-    draft: posts?.filter((p) => p.status === 'draft').length ?? 0,
-    published: posts?.filter((p) => p.status === 'published').length ?? 0,
-  };
+  const counts = data?.pages[0]?.counts;
 
   return (
     <section className="admin-panel">
@@ -123,9 +90,13 @@ export default function AdminPostsPage() {
           label="Filter by status"
           className="admin-status-filter"
           options={[
-            { value: 'all', label: 'All', count: counts.all },
-            { value: 'draft', label: 'Drafts', count: counts.draft },
-            { value: 'published', label: 'Published', count: counts.published },
+            { value: 'all', label: 'All', count: counts?.all },
+            { value: 'draft', label: 'Drafts', count: counts?.draft },
+            {
+              value: 'published',
+              label: 'Published',
+              count: counts?.published,
+            },
           ]}
           value={status}
           onChange={setStatus}
@@ -153,17 +124,6 @@ export default function AdminPostsPage() {
             aria-label="Search posts"
           />
         </div>
-        <label className="admin-sort">
-          Sort
-          <Select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-          >
-            <option value="updated">Last updated</option>
-            <option value="published">Published date</option>
-            <option value="title">Title</option>
-          </Select>
-        </label>
       </div>
 
       {error ? (
@@ -172,10 +132,14 @@ export default function AdminPostsPage() {
         </p>
       ) : null}
       {isPending && !error ? <p>Loading…</p> : null}
-      {posts && visible.length === 0 ? (
-        <p>No posts match. Create a draft to get started.</p>
+      {posts && posts.length === 0 && !hasNextPage ? (
+        <p>
+          {q || status !== 'all'
+            ? 'No posts match.'
+            : 'No posts yet. Create a draft to get started.'}
+        </p>
       ) : null}
-      {visible.length > 0 ? (
+      {posts && posts.length > 0 ? (
         <div className="admin-table-box">
           <table className="admin-table">
             <thead>
@@ -188,12 +152,12 @@ export default function AdminPostsPage() {
                   Slug
                 </th>
                 <th scope="col" className="admin-table__date">
-                  {sort === 'published' ? 'Published' : 'Updated'}
+                  Date
                 </th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((post) => (
+              {posts.map((post) => (
                 <tr key={post.id}>
                   <td>
                     <Link
@@ -218,7 +182,7 @@ export default function AdminPostsPage() {
                   </td>
                   <td className="admin-table__slug">/{post.slug}</td>
                   <td className="admin-table__date">
-                    {sort === 'published'
+                    {post.status === 'published'
                       ? formatDate(post.publishedAt)
                       : formatDate(post.updatedAt)}
                   </td>

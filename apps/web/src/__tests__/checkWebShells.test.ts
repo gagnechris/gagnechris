@@ -8,6 +8,7 @@ import { gaBootstrap } from '../../scripts/analyticsPlugin';
 import {
   checkWebShells,
   demoChunkProblems,
+  PUBLIC_ENTRY_ASSETS,
 } from '../../scripts/checkWebShells';
 
 const GA_ID = 'G-X';
@@ -171,6 +172,39 @@ describe('checkWebShells', () => {
       'dist/index.html loads Google Analytics without GA_MEASUREMENT_ID',
       'dist/_shell.html loads Google Analytics without GA_MEASUREMENT_ID',
       'dist/ga.js exists without GA_MEASUREMENT_ID',
+    ]);
+  });
+
+  it('allows the entry script, its stylesheet and the two shared preloads', () => {
+    const entry = [
+      '<script type="module" crossorigin src="/assets/index-DL4e3NaH.js"></script>',
+      '<link rel="modulepreload" crossorigin href="/assets/jsx-runtime-Dk72oS4N.js">',
+      '<link rel="modulepreload" crossorigin href="/assets/preload-helper-DjzSQ1t3.js">',
+      '<link rel="stylesheet" crossorigin href="/assets/index-D55MrfX_.css">',
+    ].join('');
+    expect(
+      check(
+        webRoot({
+          'dist/assets/index-DL4e3NaH.js': '',
+          'dist/index.html': `<html><head>${GA_SNIPPET}${entry}</head></html>`,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('fails when the public shell gains a preloaded or blocking asset', () => {
+    const extra =
+      '<link rel="modulepreload" crossorigin href="/assets/site-config-AbCd1234.js">' +
+      '<link rel="stylesheet" href="/assets/demo-x_Y-9876.css">';
+    const problems = check(
+      webRoot({
+        'dist/_shell.html': `<html><head>${FONT_PRELOAD}${GA_SNIPPET}${extra}</head></html>`,
+      }),
+    );
+    const allowed = PUBLIC_ENTRY_ASSETS.join(', ');
+    expect(problems).toEqual([
+      `dist/_shell.html loads /assets/site-config-AbCd1234.js on every page (allowed: ${allowed})`,
+      `dist/_shell.html loads /assets/demo-x_Y-9876.css on every page (allowed: ${allowed})`,
     ]);
   });
 

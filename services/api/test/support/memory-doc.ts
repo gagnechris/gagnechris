@@ -252,24 +252,28 @@ export function createMemoryDoc(): {
       const sliced = limit ? rows.slice(0, limit) : rows;
       const last =
         limit && rows.length > sliced.length ? sliced.at(-1) : undefined;
+      // Like DynamoDB: base keys plus only the queried index's keys.
+      const lastKey = last
+        ? {
+            pk: last.pk,
+            sk: last.sk,
+            ...(indexName === 'gsi3'
+              ? { syncPk: last.syncPk, syncSk: last.syncSk }
+              : {}),
+            ...(indexName === 'gsi1'
+              ? { gsi1pk: last.gsi1pk, gsi1sk: last.gsi1sk }
+              : {}),
+            ...(indexName === 'gsi2'
+              ? { gsi2pk: last.gsi2pk, gsi2sk: last.gsi2sk }
+              : {}),
+          }
+        : undefined;
+      if (cmd.input.Select === 'COUNT') {
+        return { Count: sliced.length, LastEvaluatedKey: lastKey };
+      }
       return {
         Items: sliced.map((r) => project(r, cmd.input)),
-        // Like DynamoDB: base keys plus only the queried index's keys.
-        LastEvaluatedKey: last
-          ? {
-              pk: last.pk,
-              sk: last.sk,
-              ...(indexName === 'gsi3'
-                ? { syncPk: last.syncPk, syncSk: last.syncSk }
-                : {}),
-              ...(indexName === 'gsi1'
-                ? { gsi1pk: last.gsi1pk, gsi1sk: last.gsi1sk }
-                : {}),
-              ...(indexName === 'gsi2'
-                ? { gsi2pk: last.gsi2pk, gsi2sk: last.gsi2sk }
-                : {}),
-            }
-          : undefined,
+        LastEvaluatedKey: lastKey,
       };
     }
 

@@ -46,8 +46,27 @@ describe('AdminPostsPage', () => {
     });
   });
 
-  test('lists posts and filters by search', async () => {
+  const queryOf = (call: unknown[]) =>
+    (call[1] as { params: { query: Record<string, unknown> } }).params.query;
+
+  const respond = (data: unknown) => ({
+    data,
+    error: undefined,
+    response: { status: 200 },
+  });
+
+  test('search goes to the server and finds posts beyond the loaded page', async () => {
     const user = userEvent.setup();
+    get.mockImplementation(async (_path: string, init: unknown) => {
+      const query = queryOf([_path, init]);
+      if (query.q === 'deep') {
+        return respond({
+          items: [makePost({ id: '01DEEP', slug: 'deep', title: 'Deep cut' })],
+        });
+      }
+      if (query.q) return respond({ items: [] });
+      return respond({ items: [makePost()], nextCursor: 'page-2' });
+    });
     render(
       <QueryClientTestProvider>
         <MemoryRouter>
@@ -57,30 +76,35 @@ describe('AdminPostsPage', () => {
     );
 
     expect(await screen.findByText('Hello')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Search posts'), 'deep');
+    expect(await screen.findByText('Deep cut')).toBeInTheDocument();
+    expect(screen.queryByText('Hello')).not.toBeInTheDocument();
+    expect(get.mock.calls.map(queryOf)).toContainEqual(
+      expect.objectContaining({ q: 'deep' }),
+    );
+
+    await user.clear(screen.getByLabelText('Search posts'));
     await user.type(screen.getByLabelText('Search posts'), 'nope');
-    await waitFor(() => {
-      expect(screen.queryByText('Hello')).not.toBeInTheDocument();
-    });
+    expect(await screen.findByText('No posts match.')).toBeInTheDocument();
   });
 
-  test('filters by status, with a count on each option', async () => {
+  test('status filter goes to the server, with server counts across every page', async () => {
     const user = userEvent.setup();
-    get.mockResolvedValue({
-      data: {
-        items: [
-          makePost(),
-          makePost({
-            id: '01LIVE',
-            slug: 'live',
-            title: 'Live one',
-            tags: ['aws', 'cdk'],
-            status: 'published',
-            publishedAt: '2026-09-20T00:00:00.000Z',
-          }),
-        ],
-      },
-      error: undefined,
-      response: { status: 200 },
+    const live = makePost({
+      id: '01LIVE',
+      slug: 'live',
+      title: 'Live one',
+      tags: ['aws', 'cdk'],
+      status: 'published',
+      publishedAt: '2026-09-20T00:00:00.000Z',
+    });
+    const counts = { all: 150, draft: 30, published: 120 };
+    get.mockImplementation(async (_path: string, init: unknown) => {
+      const query = queryOf([_path, init]);
+      if (query.status === 'published') {
+        return respond({ items: [live], nextCursor: 'more', counts });
+      }
+      return respond({ items: [makePost(), live], nextCursor: 'more', counts });
     });
     render(
       <QueryClientTestProvider>
@@ -96,13 +120,46 @@ describe('AdminPostsPage', () => {
       within(filter)
         .getAllByRole('radio')
         .map((r) => r.textContent),
-    ).toEqual(['All2', 'Drafts1', 'Published1']);
+    ).toEqual(['All150', 'Drafts30', 'Published120']);
     expect(screen.getByText('aws, cdk')).toBeInTheDocument();
     expect(screen.getByText('/live')).toBeInTheDocument();
 
     await user.click(within(filter).getByRole('radio', { name: /Published/ }));
-    expect(screen.queryByText('Hello')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Hello')).not.toBeInTheDocument();
+    });
     expect(screen.getByText('Live one')).toBeInTheDocument();
+    expect(get.mock.calls.map(queryOf)).toContainEqual(
+      expect.objectContaining({ status: 'published' }),
+    );
+  });
+
+  test('Load more fetches the next page with the same filters', async () => {
+    const user = userEvent.setup();
+    get.mockImplementation(async (_path: string, init: unknown) => {
+      const query = queryOf([_path, init]);
+      if (query.cursor === 'page-2') {
+        return respond({
+          items: [makePost({ id: '01TWO', slug: 'two', title: 'Second page' })],
+        });
+      }
+      return respond({ items: [makePost()], nextCursor: 'page-2' });
+    });
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <AdminPostsPage />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    await screen.findByText('Hello');
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('Second page')).toBeInTheDocument();
+    expect(get.mock.calls.map(queryOf)).toContainEqual({
+      limit: 100,
+      cursor: 'page-2',
+    });
   });
 
   test('creates a draft and navigates to the editor', async () => {
@@ -164,7 +221,7 @@ describe('AdminPostsPage', () => {
     expect(slugs[0]).not.toBe(slugs[1]);
   });
 
-  test('sorts a created row that is missing its timestamps', async () => {
+  test('shows a created row that is missing its timestamps', async () => {
     const user = userEvent.setup();
     const partial: Partial<Post> = {
       id: '01NEW',
@@ -192,9 +249,6 @@ describe('AdminPostsPage', () => {
     const titles = screen
       .getAllByRole('link')
       .map((a) => a.querySelector('.admin-table__title')?.textContent);
-    expect(titles).toEqual(['Hello', 'Untitled']);
-
-    await user.selectOptions(screen.getByLabelText('Sort'), 'published');
-    expect(screen.getByText('Untitled')).toBeInTheDocument();
+    expect(titles).toEqual(['Untitled', 'Hello']);
   });
 });

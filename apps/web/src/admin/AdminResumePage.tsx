@@ -11,6 +11,7 @@ import {
   resumeDraftFromResume,
   resumePayload,
   resumeRoleEndId,
+  type ExperienceDraft,
   type ResumeContentBuilder,
   type ResumeDraftFields,
 } from './resumeDraft';
@@ -35,7 +36,7 @@ const ResumePreview = ({
         ...resume,
         name: deferred.name,
         pdfPath: RESUME_PDF_PATH,
-        content: content.preview(deferred),
+        content: content.preview(deferred, resume),
       }),
     [resume, deferred, content],
   );
@@ -71,24 +72,26 @@ const AdminResumePage = () => {
     initialDraft: emptyResumeDraft(),
     toDraft: resumeDraftFromResume,
     getEntityId: () => 'resume',
-    toPayload: (current) => resumePayload(current, content),
+    toPayload: (current, saved) => resumePayload(current, content, saved),
     subject: 'the resume',
     loadErrorFallback: 'Could not load resume.',
     unpublishConfirm:
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
-    beforePublish: () => {
+    beforePublish: (): boolean => {
       const role = undatedErrors[0];
       setPublishBlockedRoleId(role?.id ?? null);
       if (role) focusRoleEnd(role.id);
       return !role;
     },
   });
-  const { draft, save, actionBarProps } = editor;
+  const { draft, save, actionBarProps, entity } = editor;
   const { setField } = useDraftFields(editor);
 
-  const undatedErrors = content.undatedRangeErrors(draft);
+  const undatedErrors: ExperienceDraft[] = entity
+    ? content.undatedRangeErrors(draft, entity)
+    : [];
   const blockedRole = undatedErrors.find(
     (item) => item.id === publishBlockedRoleId,
   );
@@ -128,7 +131,9 @@ const AdminResumePage = () => {
             <ResumeEditorForm
               draft={draft}
               setField={setField}
-              hasSavedDates={(item) => content.savedDates(item) !== null}
+              hasSavedDates={(item) =>
+                content.savedDates(item, resume) !== null
+              }
               onSave={() => void save()}
               editingRoleId={editingRoleId}
               setEditingRoleId={setEditingRoleId}

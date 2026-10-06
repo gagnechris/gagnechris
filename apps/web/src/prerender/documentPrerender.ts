@@ -29,13 +29,17 @@ export function fromPrerender<T>(
   return parsed.get(parse) as T | null;
 }
 
-/** For views that also load later from fetched HTML. */
+/**
+ * For views that also load later from fetched HTML. Null only for a 404 or a
+ * page that isn't this view; any other failure rejects.
+ */
 export async function fetchPrerender<T>(
   url: string,
   parse: (root: ParentNode) => T | null,
 ): Promise<T | null> {
   const response = await fetch(url, { headers: { Accept: 'text/html' } });
-  if (!response.ok) return null;
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`${url} returned ${response.status}`);
   const html = await response.text();
   return parse(new DOMParser().parseFromString(html, 'text/html'));
 }

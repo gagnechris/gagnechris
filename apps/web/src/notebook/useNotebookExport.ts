@@ -4,6 +4,7 @@ import {
   fetchTasksPage,
   useGetApiClient,
 } from '@gagnechris/app-core';
+import { localDateString } from '@gagnechris/shared';
 import { buildNotebookExportZip, triggerBlobDownload } from './exportNotebook';
 
 async function collectAllNotes(
@@ -47,8 +48,7 @@ export function useNotebookExport() {
         collectAllTasks(client),
       ]);
       const { blob } = buildNotebookExportZip(notes, tasks);
-      const stamp = new Date().toISOString().slice(0, 10);
-      triggerBlobDownload(blob, `notebook-export-${stamp}.zip`);
+      triggerBlobDownload(blob, `notebook-export-${localDateString()}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
     } finally {

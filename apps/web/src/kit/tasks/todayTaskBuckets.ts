@@ -1,11 +1,14 @@
 import {
+  addDays,
+  daysBetween,
   formatTaskDay,
   isOpenTaskStatus,
-  taskShowsOn,
+  localDayOf,
   type Note,
+  relativeDayLabel,
   type Task,
+  taskShowsOn,
 } from '@gagnechris/shared';
-import { addLocalDays, formatLocalDate } from '../calendarDates';
 
 export const COMING_UP_DAYS = 14;
 
@@ -57,7 +60,7 @@ export function bucketTodayTasks<T extends BucketTask>(
     if (!seen || task.version > seen.version) byId.set(task.id, task);
   }
 
-  const horizon = addLocalDays(day, horizonDays);
+  const horizon = addDays(day, horizonDays);
   const inNote: T[] = [];
   const stillOpen: T[] = [];
   const upcoming = new Map<string, T[]>();
@@ -83,7 +86,7 @@ export function bucketTodayTasks<T extends BucketTask>(
     }
   }
 
-  const sinceKey = (t: T) => t.startDate ?? t.createdAt.slice(0, 10);
+  const sinceKey = (t: T) => t.startDate ?? localDayOf(t.createdAt);
   const overdue = (t: T) =>
     t.dueDate !== null && t.dueDate < day ? t.dueDate : null;
   const byOverdue = (a: T, b: T) => {
@@ -109,26 +112,10 @@ export function bucketTodayTasks<T extends BucketTask>(
   return { inNote, stillOpen, comingUp, carryCount };
 }
 
-function daysBetween(from: string, to: string): number {
-  const utc = (d: string) => {
-    const [y, m, dd] = d.split('-').map(Number) as [number, number, number];
-    return Date.UTC(y, m - 1, dd);
-  };
-  return Math.round((utc(to) - utc(from)) / 86_400_000);
-}
-
 const age = (since: string, day: string) => {
   const n = daysBetween(since, day);
   if (n <= 0) return 'today';
   return n === 1 ? '1 day' : `${n} days`;
-};
-
-/** `Thu` within the past week, else `Sep 28`. */
-const dayName = (date: string, day: string) => {
-  const n = daysBetween(date, day);
-  return n >= 0 && n < 7
-    ? formatTaskDay(date).slice(0, 3)
-    : formatTaskDay(date, false);
 };
 
 export type SourceNote = Pick<Note, 'id' | 'type' | 'date' | 'title'>;
@@ -152,16 +139,16 @@ export function stillOpenSource(
       noteId,
     };
   }
-  const created = formatLocalDate(new Date(task.createdAt));
+  const created = localDayOf(task.createdAt);
   if (!noteId) {
     return {
-      label: `Added ${dayName(created, day)} · ${age(created, day)}`,
+      label: `Added ${relativeDayLabel(created, day, 'past')} · ${age(created, day)}`,
       noteId,
     };
   }
   if (note?.type === 'daily' && note.date) {
     return {
-      label: `${dayName(note.date, day)} note · ${age(note.date, day)}`,
+      label: `${relativeDayLabel(note.date, day, 'past')} note · ${age(note.date, day)}`,
       noteId,
     };
   }
@@ -171,17 +158,14 @@ export function stillOpenSource(
 
 /** `Tomorrow · Sat, Oct 3`, else `Mon, Oct 5`. */
 export function comingUpDayLabel(date: string, day: string): string {
-  return date === addLocalDays(day, 1)
+  return date === addDays(day, 1)
     ? `Tomorrow · ${formatTaskDay(date)}`
     : formatTaskDay(date);
 }
 
 /** `Sat` within the coming week, else `Oct 12`. */
 export function comingUpShortLabel(date: string, day: string): string {
-  const n = daysBetween(day, date);
-  return n > 0 && n < 7
-    ? formatTaskDay(date).slice(0, 3)
-    : formatTaskDay(date, false);
+  return relativeDayLabel(date, day, 'future');
 }
 
 /** Snooze counts from the later of the page's day and today. */
