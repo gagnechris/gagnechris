@@ -14,6 +14,8 @@ export {
   upsertCanonical,
   upsertMeta,
 } from './html.js';
+export { applyPageMeta, type PageMetaInput } from './page-meta-html.js';
+export { pageTitle } from './site-config.js';
 export {
   HOME_ALL_POSTS_LABEL,
   HOME_ALL_PROJECTS_LABEL,

@@ -28,6 +28,7 @@ import {
 } from './home/publishedHome';
 import ProjectCard from './projects/ProjectCard';
 import './App.css';
+import PageHead from './components/PageHead';
 
 // Markup must match `renderHomeBodyHtml` element for element (App.test.tsx).
 
@@ -150,6 +151,7 @@ function App() {
             name: published.name,
             title: published.title,
             aboutHtml: published.aboutHtml,
+            headTitle: published.headTitle,
           });
           setProjects(published.projects);
         }
@@ -175,8 +177,7 @@ function App() {
       data-name={home.name}
       data-title={home.title}
     >
-      <title>{`${home.name} - ${home.title}`}</title>
-      <link rel="canonical" href="https://gagnechris.com" />
+      <PageHead title={home.headTitle} url="https://gagnechris.com" />
       <header className="home-hero">
         <h1 className="home-hero__name">{home.name}</h1>
         <p className="home-hero__title">{home.title}</p>

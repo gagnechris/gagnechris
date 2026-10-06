@@ -7,6 +7,7 @@ import {
   RESUME_DOWNLOAD_LABEL,
   RESUME_PAGE_TITLE,
   type ResumeActionLink,
+  pageTitle,
 } from '@gagnechris/shared/render';
 import {
   trackEvent,
@@ -21,6 +22,7 @@ import {
 } from '../resume/publishedResume';
 import { createPublicApiClient } from '../api/public-client';
 import './Resume.css';
+import PageHead from '../components/PageHead';
 
 // The intro must match `renderResumeIntroHtml` element for element
 // (coldLoadParity.test.tsx).
@@ -112,8 +114,10 @@ function Resume() {
 
   return (
     <div className={`resume-page${marker}`} aria-busy={!resume || undefined}>
-      <title>Resume - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/resume" />
+      <PageHead
+        title={resume?.headTitle ?? pageTitle('Resume')}
+        url="https://gagnechris.com/resume"
+      />
       <header className="resume-intro">
         <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
         {resume ? (

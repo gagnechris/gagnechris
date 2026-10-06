@@ -1,10 +1,19 @@
-import { readingMinutes, type PostProjectLink } from '@gagnechris/shared';
-import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import {
+  pageTitle,
+  readingMinutes,
+  type PostProjectLink,
+} from '@gagnechris/shared';
+import {
+  fetchPrerender,
+  fromPrerender,
+  prerenderedTitle,
+} from '../prerender/documentPrerender';
 import { publishedPostPageUrl } from './publishedPosts';
 
 export type PostView = {
   slug: string;
   title: string;
+  headTitle: string;
   /** ISO date or `YYYY-MM-DD`, whichever the prerender carries. */
   date: string;
   excerpt: string;
@@ -19,13 +28,15 @@ export function postViewFromDocument(root: ParentNode): PostView | null {
   const body = article?.querySelector('.blog-post-body');
   if (!article || !body) return null;
 
+  const title = article.querySelector('h1')?.textContent?.trim() || 'Untitled';
   const time = article.querySelector('time');
   const minutes = Number(
     article.querySelector('[data-minutes]')?.getAttribute('data-minutes'),
   );
   return {
     slug: article.getAttribute('data-slug') ?? '',
-    title: article.querySelector('h1')?.textContent?.trim() || 'Untitled',
+    title,
+    headTitle: prerenderedTitle(root) ?? pageTitle(title),
     date: time?.getAttribute('datetime') || time?.textContent?.trim() || '',
     excerpt: article.querySelector('.post-excerpt')?.textContent?.trim() ?? '',
     minutes:

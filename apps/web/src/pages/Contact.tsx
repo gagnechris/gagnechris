@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ContactRequestSchema } from '@gagnechris/shared';
+import { ContactRequestSchema, pageTitle } from '@gagnechris/shared';
 import {
   CONTACT_HEADING,
   CONTACT_INTRO,
@@ -8,6 +8,7 @@ import {
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
+import PageHead from '../components/PageHead';
 
 // The header must stay byte-identical to `renderContactPrerenderBodyHtml`
 // (coldLoadParity.test.tsx); the form is added below it.
@@ -193,8 +194,10 @@ function Contact() {
 
   return (
     <div className="contact-page">
-      <title>Contact - Chris Gagne</title>
-      <link rel="canonical" href="https://gagnechris.com/contact" />
+      <PageHead
+        title={pageTitle('Contact')}
+        url="https://gagnechris.com/contact"
+      />
       <header className="contact-page__header">
         <h1>{CONTACT_HEADING}</h1>
         <p className="contact-page__intro">{CONTACT_INTRO}</p>

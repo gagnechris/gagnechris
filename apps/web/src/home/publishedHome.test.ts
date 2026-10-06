@@ -48,6 +48,7 @@ describe('homeDocumentFromRoot', () => {
       name: 'Christopher Gagne',
       title: 'Engineering Director',
       aboutHtml: '<p>Published copy.</p><p>Second paragraph.</p>',
+      headTitle: 'Christopher Gagne - Engineering Director',
       recentPosts: [],
       projects: [],
     });

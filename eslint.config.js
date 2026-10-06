@@ -163,6 +163,8 @@ const platformNeutralRestrictedImports = {
             './site-chrome-html',
             './public-pages-html.js',
             './public-pages-html',
+            './page-meta-html.js',
+            './page-meta-html',
           ],
           message:
             'Shared domain must not import render/html/markdown helpers. Keep them in the render entry.',
@@ -408,6 +410,7 @@ const sharedDomainIgnores = [
   'packages/shared/src/project-html.ts',
   'packages/shared/src/site-chrome-html.ts',
   'packages/shared/src/public-pages-html.ts',
+  'packages/shared/src/page-meta-html.ts',
   'packages/shared/src/openapi.ts',
   'packages/shared/src/openapi-extend.ts',
   'packages/shared/src/generate-openapi.ts',

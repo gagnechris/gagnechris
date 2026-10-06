@@ -1,6 +1,8 @@
 import {
+  applyPageMeta,
   escapeHtml,
   homeAboutExcerpt,
+  pageTitle,
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
@@ -26,7 +28,6 @@ import {
 } from '@gagnechris/shared';
 import type { HomeRecentPost } from '@gagnechris/shared/render';
 import { APEX } from './config.js';
-import { applyPageMeta } from './page-meta.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
 const absoluteUrl = (pathOrUrl: string): string => {
@@ -100,7 +101,7 @@ export const renderPostPage = (
   post: Post,
   partOf: readonly PostProjectLink[] = [],
 ): string => {
-  const title = escapeHtml(post.seo?.title || `${post.title} - Chris Gagne`);
+  const title = escapeHtml(post.seo?.title || pageTitle(post.title));
   const description = escapeHtml(
     post.seo?.description || post.excerpt || post.title,
   );
@@ -127,7 +128,7 @@ export const renderPostsIndexPage = (
   shellHtml: string,
   posts: Post[],
 ): string => {
-  const title = 'Posts - Chris Gagne';
+  const title = pageTitle('Posts');
   const description = 'Posts by Chris Gagne.';
   const url = `https://${APEX}${POSTS_PATH}`;
   const body = renderSitePageHtml('/posts', renderPostsIndexBodyHtml(posts));
@@ -143,7 +144,7 @@ export const renderPostsIndexPage = (
 };
 
 export const renderResumePage = (shellHtml: string, resume: Resume): string => {
-  const title = escapeHtml(resume.seo?.title || 'Resume - Chris Gagne');
+  const title = escapeHtml(resume.seo?.title || pageTitle('Resume'));
   const description = escapeHtml(
     resume.seo?.description || resumeSummaryExcerpt(resume.content.summary),
   );
@@ -169,7 +170,7 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
 };
 
 export const renderResumeUnavailablePage = (shellHtml: string): string => {
-  const title = 'Resume - Chris Gagne';
+  const title = pageTitle('Resume');
   const description = 'Resume available on request.';
   const url = `https://${APEX}/resume`;
   const body = renderResumeUnavailablePrerenderHtml();
@@ -226,7 +227,7 @@ export const renderProjectsIndexPage = (
   projects: readonly Project[],
 ): string => {
   let html = applyPageMeta(shellHtml, {
-    title: 'Projects - Chris Gagne',
+    title: pageTitle('Projects'),
     description: 'What Chris Gagne is building.',
     url: `https://${APEX}${PROJECTS_PATH}`,
     type: 'website',
@@ -241,7 +242,7 @@ export const renderProjectPage = (
   buildLog: readonly ProjectBuildLogPost[] = [],
 ): string => {
   let html = applyPageMeta(shellHtml, {
-    title: escapeHtml(`${project.name} - Chris Gagne`),
+    title: escapeHtml(pageTitle(project.name)),
     description: escapeHtml(projectDescription(project)),
     url: projectCanonicalUrl(project.slug),
     type: 'website',
