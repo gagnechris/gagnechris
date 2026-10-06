@@ -194,33 +194,64 @@ export const resumeContentFromDraft = (
   };
 };
 
+const roleDates = (
+  role: Pick<ResumeContent['experience'][number], 'start' | 'end'>,
+): RoleDates | null =>
+  role.start ? { start: role.start, end: role.end ?? null } : null;
+
+const sameDates = (a: RoleDates | null, b: RoleDates | null) =>
+  a === b || (!!a && !!b && a.start === b.start && a.end === b.end);
+
+type SavedResume = Pick<Resume, 'content'>;
+
 /**
- * Remembers the dates each role last sent, so a role whose range turns invalid
- * keeps sending them rather than the dates it was loaded with.
+ * Remembers each role's dates as last saved, so a role whose range turns
+ * invalid keeps sending them rather than the dates it was loaded with. A
+ * payload's dates count only once the saved resume holds them.
  */
 export const createResumeContentBuilder = () => {
-  const sent = new Map<string, RoleDates | null>();
-  const savedDates: SavedDatesLookup = (item) =>
-    sent.has(item.id) ? sent.get(item.id)! : item.loadedDates;
+  let saved = new Map<string, RoleDates | null>();
+  let pending: { ids: string[]; dates: (RoleDates | null)[] } | null = null;
+  const sync = (entity: SavedResume) => {
+    const experience = entity.content.experience;
+    if (
+      pending &&
+      experience.length === pending.dates.length &&
+      experience.every((role, i) =>
+        sameDates(roleDates(role), pending!.dates[i]!),
+      )
+    ) {
+      const { ids, dates } = pending;
+      saved = new Map(ids.map((id, i) => [id, dates[i]!]));
+      pending = null;
+    }
+  };
+  const lookup: SavedDatesLookup = (item) =>
+    saved.has(item.id) ? saved.get(item.id)! : item.loadedDates;
+  const savedDates = (item: ExperienceDraft, entity: SavedResume) => {
+    sync(entity);
+    return lookup(item);
+  };
   return {
     savedDates,
-    preview: (draft: ResumeDraftFields) =>
-      resumeContentFromDraft(draft, savedDates),
-    payload: (draft: ResumeDraftFields) => {
-      const content = resumeContentFromDraft(draft, savedDates);
-      draft.experience.forEach((item, index) => {
-        const role = content.experience[index]!;
-        sent.set(
-          item.id,
-          role.start ? { start: role.start, end: role.end ?? null } : null,
-        );
-      });
+    preview: (draft: ResumeDraftFields, entity: SavedResume) => {
+      sync(entity);
+      return resumeContentFromDraft(draft, lookup);
+    },
+    payload: (draft: ResumeDraftFields, entity: SavedResume) => {
+      sync(entity);
+      const content = resumeContentFromDraft(draft, lookup);
+      pending = {
+        ids: draft.experience.map((item) => item.id),
+        dates: content.experience.map(roleDates),
+      };
       return content;
     },
     /** Roles in error with no saved dates to fall back on would publish undated. */
-    undatedRangeErrors: (draft: ResumeDraftFields) =>
+    undatedRangeErrors: (draft: ResumeDraftFields, entity: SavedResume) =>
       draft.experience.filter(
-        (item) => experienceRangeError(item) !== undefined && !savedDates(item),
+        (item) =>
+          experienceRangeError(item) !== undefined && !savedDates(item, entity),
       ),
   };
 };
@@ -242,8 +273,9 @@ export const emptyResumeDraft = (): ResumeDraftFields =>
 export const resumePayload = (
   draft: ResumeDraftFields,
   content: ResumeContentBuilder,
+  saved: SavedResume,
 ) => ({
   name: draft.name.trim() || SITE_AUTHOR_NAME,
   pdfPath: RESUME_PDF_PATH,
-  content: content.payload(draft),
+  content: content.payload(draft, saved),
 });
