@@ -19,6 +19,7 @@ import { setCachedProject } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { useDeleteEntityMutation } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
+import { siteTooLargeMessage } from './tooLarge.js';
 
 export type ProjectResourceParams = { id: string };
 
@@ -34,6 +35,7 @@ export const projectResource = createDraftPublishResource<
   unpublish: (client, { id }, body) => unpublishProject(client, id, body),
   discard: (client, { id }, body) => discardProject(client, id, body),
   setCache: setCachedProject,
+  tooLargeMessage: siteTooLargeMessage('this project'),
 });
 
 export const useProjectsQuery = () => {

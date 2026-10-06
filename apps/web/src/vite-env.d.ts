@@ -32,6 +32,8 @@ interface ImportMetaEnv {
   /** The admin and Notebook apps' Your apps links; set in vite.config.ts. */
   readonly VITE_ADMIN_ORIGIN: string;
   readonly VITE_NOTEBOOK_ORIGIN: string;
+  /** Empty unless the public build ran with `GA_MEASUREMENT_ID`; set in vite.config.ts. */
+  readonly VITE_GA_MEASUREMENT_ID: string;
 }
 
 interface ImportMeta {

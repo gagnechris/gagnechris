@@ -29,6 +29,7 @@ import {
   useDeleteEntityMutation,
 } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
+import { NOTEBOOK_TOO_LARGE_MESSAGE } from './tooLarge.js';
 
 export type TaskResourceParams = { id: string };
 
@@ -43,6 +44,7 @@ export const taskResource = createVersionedResource<Task, TaskResourceParams>({
     updateTask(client, id, body as UpdateTaskRequest),
   delete: (client, { id }, body) => deleteTask(client, id, body),
   setCache: setCachedTask,
+  tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 
 export const useTasksQuery = (

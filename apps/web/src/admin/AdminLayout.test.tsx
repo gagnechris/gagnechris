@@ -128,7 +128,7 @@ describe('AdminLayout', () => {
     expect(
       await screen.findByRole('heading', { name: 'Posts' }),
     ).toBeInTheDocument();
-    expect(await screen.findByText(/No posts match/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No posts yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/PRODUCTION API/i)).not.toBeInTheDocument();
   });
 

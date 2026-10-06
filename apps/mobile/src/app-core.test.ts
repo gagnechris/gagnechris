@@ -31,6 +31,7 @@ describe('app-core hooks under the mobile React', () => {
         }),
         onSaved: () => {},
         conflictMessage: 'conflict',
+        tooLargeMessage: 'Too large.',
       });
       states.push(autosave.saveState);
       return null;
@@ -55,6 +56,7 @@ describe('app-core query hooks under mobile react-query', () => {
         body: String(body.body ?? ''),
         version: Number(body.version) + 1,
       }),
+      tooLargeMessage: 'Too large.',
       setCache: (qc, entity) => {
         qc.setQueryData(['mobile', 'note', entity.id], entity);
       },
