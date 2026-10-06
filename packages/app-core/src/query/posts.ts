@@ -21,6 +21,7 @@ import { setCachedPost } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { useDeleteEntityMutation } from './createVersionedResource.js';
 import { queryKeys } from './keys.js';
+import { siteTooLargeMessage } from './tooLarge.js';
 
 export type PostResourceParams = { id: string };
 
@@ -36,6 +37,7 @@ export const postResource = createDraftPublishResource<
   unpublish: (client, { id }, body) => unpublishPost(client, id, body),
   discard: (client, { id }, body) => discardPost(client, id, body),
   setCache: setCachedPost,
+  tooLargeMessage: siteTooLargeMessage('this post'),
 });
 
 export const usePostsQuery = () => {

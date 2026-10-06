@@ -10,6 +10,7 @@ import {
 import { setCachedResume } from './cache.js';
 import { createDraftPublishResource } from './createDraftPublishResource.js';
 import { queryKeys } from './keys.js';
+import { siteTooLargeMessage } from './tooLarge.js';
 
 export type ResumeResourceParams = Record<string, never>;
 
@@ -25,4 +26,5 @@ export const resumeResource = createDraftPublishResource<
   unpublish: (client, _params, body) => unpublishResume(client, body),
   discard: (client, _params, body) => discardResume(client, body),
   setCache: setCachedResume,
+  tooLargeMessage: siteTooLargeMessage('the resume'),
 });

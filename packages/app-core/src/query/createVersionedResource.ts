@@ -34,6 +34,8 @@ export type VersionedResourceConfig<
     body: ExpectedVersionRequest,
   ) => Promise<TEntity>;
   setCache: (queryClient: QueryClient, entity: TEntity) => void;
+  /** The save error for a 413. */
+  tooLargeMessage: string;
 };
 
 /** Publishable entities layer `createDraftPublishResource` on top. */
@@ -77,6 +79,7 @@ export function createVersionedResource<
     update: config.update,
     delete: config.delete,
     setCache: config.setCache,
+    tooLargeMessage: config.tooLargeMessage,
     useQuery: useEntityQuery,
     useSetCache,
   };

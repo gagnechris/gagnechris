@@ -218,6 +218,7 @@ export function useVersionedDocController<
     onSaved,
     conflictMessage,
     conflictMessages,
+    tooLargeMessage: resource.tooLargeMessage,
     retrySignals,
     queueKey,
   });

@@ -58,6 +58,7 @@ const smokeResource = createVersionedResource<SmokeNote, { id: string }>({
     body: String(body.body ?? ''),
     version: Number(body.version) + 1,
   }),
+  tooLargeMessage: 'Too large.',
   setCache: (qc, entity) => {
     qc.setQueryData(['smoke', 'note', entity.id], entity);
   },

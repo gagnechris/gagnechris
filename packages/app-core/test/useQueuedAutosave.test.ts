@@ -75,6 +75,7 @@ describe('useQueuedAutosave', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       return { ...autosave, setDraft, dirty };
     });
@@ -137,6 +138,7 @@ describe('useQueuedAutosave', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       return { ...autosave, setDraft };
     });
@@ -203,6 +205,7 @@ describe('useQueuedAutosave', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       return { ...autosave, setDraft, dirty };
     });
@@ -252,6 +255,7 @@ describe('useQueuedAutosave', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
         timers: defaultTimers,
       });
       return { ...autosave, setDraft, setDirty, dirty };
@@ -319,6 +323,7 @@ describe('useQueuedAutosave', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
       });
       return { ...autosave, setDraft, setDirty, dirty };
     });
@@ -362,6 +367,7 @@ test('slug_taken 409 shows slug-taken message, not conflictMessage', async () =>
         versionRef.current = entity.version;
       },
       conflictMessage: 'Conflict — Reload and try again.',
+      tooLargeMessage: 'Too large.',
       conflictMessages: {
         slug_taken: 'That slug is already taken. Choose a different slug.',
       },
@@ -403,6 +409,7 @@ describe('useQueuedAutosave recovery', () => {
           versionRef.current = entity.version;
         },
         conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
         retrySignals,
       });
       return { ...autosave, setDraft, setDirty, dirty };
