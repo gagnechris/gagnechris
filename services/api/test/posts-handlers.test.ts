@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { Post } from '@gagnechris/shared';
 import { createPostRoutes } from '../src/posts/handlers.js';
+import type { PostsRepository } from '../src/posts/repository.js';
 import {
   ConflictError,
+  DataIntegrityError,
   NotFoundError,
-  PostsRepository,
-} from '../src/posts/repository.js';
-import { DataIntegrityError } from '../src/data/errors.js';
+} from '../src/data/errors.js';
 import { dispatchRoutes } from '../src/router.js';
 import { makeEvent } from './support/make-event.js';
 
@@ -30,10 +30,11 @@ const samplePost: Post = {
 };
 
 describe('posts HTTP handlers', () => {
-  const projectsRepo = { getById: vi.fn() };
+  const projectsRepo = { existingIds: vi.fn() };
   const repo = {
     list: vi.fn(),
     getById: vi.fn(),
+    getByIdOrThrow: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     publish: vi.fn(),
@@ -77,8 +78,8 @@ describe('posts HTTP handlers', () => {
     const unknown = '01PROJECTUNKNOWN0000000000';
 
     beforeEach(() => {
-      projectsRepo.getById.mockImplementation(async (id: string) =>
-        id === known ? { id } : undefined,
+      projectsRepo.existingIds.mockImplementation(
+        async (ids: string[]) => new Set(ids.filter((id) => id === known)),
       );
     });
 
@@ -144,7 +145,7 @@ describe('posts HTTP handlers', () => {
   });
 
   it('returns 500 data_integrity for corrupt PUBLISHED', async () => {
-    vi.mocked(repo.getById).mockRejectedValue(
+    vi.mocked(repo.getByIdOrThrow).mockRejectedValue(
       new DataIntegrityError('Corrupt stored Post', {
         pk: `POST#${samplePost.id}`,
         sk: 'PUBLISHED',

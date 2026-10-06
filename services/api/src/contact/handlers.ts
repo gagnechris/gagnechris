@@ -105,10 +105,6 @@ export function createContactRoutes(deps: ContactHandlerDeps = {}): RouteDef[] {
               'failed',
               error.message,
             );
-            return json(429, {
-              error: 'rate_limited',
-              message: error.message,
-            });
           }
           throw error;
         }

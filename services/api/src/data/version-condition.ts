@@ -4,7 +4,10 @@
  */
 import { isOptimisticLockConflict } from '@gagnechris/data';
 import { ConflictError, type ConflictCode } from './errors.js';
-import { runDynamoWrite } from './dynamo-write.js';
+import {
+  runDynamoWrite,
+  type UniqueClaimWriteOptions,
+} from './dynamo-write.js';
 
 export const VERSION_MATCH_CONDITION =
   'attribute_exists(pk) AND (version = :v OR (attribute_not_exists(version) AND :v = :zero))' as const;
@@ -41,15 +44,7 @@ export async function runVersionedWrite<TResult>(
   write: () => Promise<TResult>,
   conflictMessage: string,
   onConflict: () => Promise<never>,
-  opts?: {
-    slugClaimIndexes?: readonly number[];
-    slugTakenMessage?: string;
-    uniqueClaimIndexes?: readonly number[];
-    uniqueClaimCode?: 'slug_taken' | 'daily_taken';
-    uniqueClaimMessage?: string;
-    /** TransactWrite index of the versioned META Put (usually 0). */
-    versionItemIndex?: number;
-  },
+  opts?: UniqueClaimWriteOptions,
 ): Promise<TResult> {
   try {
     return await runDynamoWrite(write, conflictMessage, opts);

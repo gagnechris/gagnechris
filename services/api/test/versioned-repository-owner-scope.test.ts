@@ -98,16 +98,17 @@ describe('VersionedRepository with ownerScoped', () => {
     expect(send.mock.calls[0]![0]).toBeInstanceOf(GetCommand);
   });
 
-  it('updateIfVersion 404s when the owner key is missing', async () => {
+  it('mutateIfVersion 404s when the owner key is missing', async () => {
     send.mockResolvedValueOnce({});
     await expect(
-      repo.updateIfVersion({ userId: 'a', id: 'n1' }, 1, {
+      repo.mutateIfVersion({ userId: 'a', id: 'n1' }, 1, (existing) => ({
+        ...existing,
         id: 'n1',
         userId: 'a',
         title: 'x',
         version: 2,
         updatedAt: '2026-10-02T00:00:00.000Z',
-      }),
+      })),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 

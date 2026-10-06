@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseIfMatch,
-  parseIfMatchVersion,
   resolveExpectedVersion,
 } from '../src/data/concurrency.js';
+import { InvalidHeaderError } from '../src/data/errors.js';
 import { requireExpectedVersion } from '../src/data/versioned-route.js';
 import { makeEvent } from './support/make-event.js';
 
@@ -17,18 +17,22 @@ describe('If-Match parsing', () => {
       kind: 'version',
       version: 3,
     });
-    expect(parseIfMatchVersion({ 'If-Match': 'W/"3"' })).toBe(3);
   });
 
   it('parses * as any-existing', () => {
     expect(parseIfMatch({ 'if-match': '*' })).toEqual({ kind: 'any' });
-    expect(parseIfMatchVersion({ 'if-match': '*' })).toBeUndefined();
   });
 
-  it('rejects malformed If-Match with SyntaxError', () => {
-    expect(() => parseIfMatch({ 'If-Match': 'abc' })).toThrow(SyntaxError);
-    expect(() => parseIfMatch({ 'If-Match': '"3", "4"' })).toThrow(SyntaxError);
-    expect(() => parseIfMatch({ 'If-Match': 'W/"x"' })).toThrow(SyntaxError);
+  it('rejects malformed If-Match with a 400 error', () => {
+    expect(() => parseIfMatch({ 'If-Match': 'abc' })).toThrow(
+      InvalidHeaderError,
+    );
+    expect(() => parseIfMatch({ 'If-Match': '"3", "4"' })).toThrow(
+      InvalidHeaderError,
+    );
+    expect(() => parseIfMatch({ 'If-Match': 'W/"x"' })).toThrow(
+      InvalidHeaderError,
+    );
   });
 
   it('prefers If-Match over body version', () => {

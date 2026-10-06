@@ -14,7 +14,7 @@ import {
   resumePk,
   resumePublishedSk,
 } from '@gagnechris/data';
-import { nowIso } from '../data/publishable-repository.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import {
   VERSION_MATCH_CONDITION,
   versionMatchValues,
@@ -99,10 +99,10 @@ export async function migrateResumeDates(opts: {
   doc: DynamoDBDocumentClient;
   tableName: string;
   mode: ResumeDateMigrationMode;
-  now?: () => string;
+  now?: Clock;
 }): Promise<ResumeDateMigrationReport> {
   const { doc, tableName, mode } = opts;
-  const now = opts.now ?? nowIso;
+  const now = opts.now ?? systemClock;
   const planned = [
     await planRow(doc, tableName, resumeMetaSk()),
     await planRow(doc, tableName, resumePublishedSk()),

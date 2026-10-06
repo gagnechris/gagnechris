@@ -114,28 +114,31 @@ export async function batchGetAllWithDocClient(
 
 export type DynamoWriteErrorKind = 'conflict' | 'throttling' | 'other';
 
-function errorName(error: unknown): string | undefined {
+export function dynamoErrorName(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
   const name = (error as { name?: unknown }).name;
-  return typeof name === 'string' ? name : undefined;
+  if (typeof name === 'string') return name;
+  // SDK v3 sometimes sets the name only on the error constructor.
+  const ctor = (error as { constructor?: { name?: unknown } }).constructor
+    ?.name;
+  return typeof ctor === 'string' ? ctor : undefined;
 }
 
-function cancellationCodes(error: unknown): string[] {
+/** Per-item cancellation codes, positional so they line up with `TransactItems`. */
+export function transactionCancellationCodes(
+  error: unknown,
+): Array<string | undefined> {
   if (typeof error !== 'object' || error === null) return [];
   const reasons = (error as { CancellationReasons?: unknown })
     .CancellationReasons;
   if (!Array.isArray(reasons)) return [];
-  const codes: string[] = [];
-  for (const reason of reasons) {
-    if (
-      typeof reason === 'object' &&
-      reason !== null &&
-      typeof (reason as { Code?: unknown }).Code === 'string'
-    ) {
-      codes.push((reason as { Code: string }).Code);
-    }
-  }
-  return codes;
+  return reasons.map((reason: unknown) =>
+    typeof reason === 'object' &&
+    reason !== null &&
+    typeof (reason as { Code?: unknown }).Code === 'string'
+      ? (reason as { Code: string }).Code
+      : undefined,
+  );
 }
 
 /**
@@ -143,7 +146,7 @@ function cancellationCodes(error: unknown): string[] {
  * stack another throttle-retry loop on top.
  */
 export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
-  const name = errorName(error);
+  const name = dynamoErrorName(error);
   if (
     name === 'ThrottlingException' ||
     name === 'ThrottlingError' ||
@@ -158,7 +161,9 @@ export function classifyDynamoWriteError(error: unknown): DynamoWriteErrorKind {
   }
 
   if (name === 'TransactionCanceledException') {
-    const codes = cancellationCodes(error);
+    const codes = transactionCancellationCodes(error).filter(
+      (code) => code !== undefined,
+    );
     if (
       codes.some(
         (code) =>

@@ -5,6 +5,7 @@ import { HomeRepository } from './repository.js';
 
 const homeConfig = {
   basePath: '/admin/home',
+  metricName: 'Home',
   entitySchema: HomeSchema,
   updateSchema: UpdateHomeRequestSchema,
   createRepo: () => new HomeRepository(),

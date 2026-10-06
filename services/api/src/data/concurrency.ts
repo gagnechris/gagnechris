@@ -1,5 +1,9 @@
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { ConflictError, PreconditionFailedError } from './errors.js';
+import {
+  ConflictError,
+  InvalidHeaderError,
+  PreconditionFailedError,
+} from './errors.js';
 
 export type IfMatchExpectation =
   { kind: 'version'; version: number } | { kind: 'any' };
@@ -26,24 +30,17 @@ export function parseIfMatch(
   const trimmed = raw.trim();
   if (trimmed === '*') return { kind: 'any' };
   if (trimmed.includes(',')) {
-    throw new SyntaxError('Invalid If-Match header');
+    throw new InvalidHeaderError('If-Match');
   }
   const stripped = trimmed.replace(/^W\//i, '').replace(/^"|"$/g, '');
   if (!/^\d+$/.test(stripped)) {
-    throw new SyntaxError('Invalid If-Match header');
+    throw new InvalidHeaderError('If-Match');
   }
   const n = Number(stripped);
   if (!Number.isSafeInteger(n) || n < 0) {
-    throw new SyntaxError('Invalid If-Match header');
+    throw new InvalidHeaderError('If-Match');
   }
   return { kind: 'version', version: n };
-}
-
-export function parseIfMatchVersion(
-  headers: Record<string, string | undefined> | undefined,
-): number | undefined {
-  const match = parseIfMatch(headers);
-  return match?.kind === 'version' ? match.version : undefined;
 }
 
 export type ExpectedVersionResolution = {

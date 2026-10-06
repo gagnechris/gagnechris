@@ -37,6 +37,7 @@ import {
   ttlDaysFromNow,
 } from '@gagnechris/data';
 import type { Note, Task } from '@gagnechris/shared';
+import { systemClock, type Clock } from '../data/clock.js';
 import {
   hashJoinedCreateFields,
   isHashedCreateHash,
@@ -66,7 +67,7 @@ export type CopyBackOptions = {
   overwriteNewer?: boolean;
   /** Tests only; the CLI always uses {@link DEFAULT_ALLOWED_TARGETS}. */
   allowedTargets?: readonly string[];
-  now?: () => string;
+  now?: Clock;
 };
 
 export type CopyBackAction =
@@ -437,7 +438,7 @@ export async function applyCopyBack(
   plan: readonly CopyBackEntry[],
 ): Promise<CopyBackResult[]> {
   assertCopyBackTables(opts.sourceTable, opts.targetTable, opts.allowedTargets);
-  const nowIso = opts.now ?? (() => new Date().toISOString());
+  const nowIso = opts.now ?? systemClock;
   const results: CopyBackResult[] = [];
 
   for (const entry of plan) {

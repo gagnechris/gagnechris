@@ -26,7 +26,9 @@ import {
   cursorKeyOf,
   jsonByteLength,
 } from '../data/page-budget.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import {
+  BadRequestError,
   ResyncRequiredError,
   SyncAdapterMissingError,
 } from '../data/errors.js';
@@ -66,7 +68,7 @@ export class SyncLedger {
   constructor(
     protected readonly doc: DynamoDBDocumentClient = getDocClient(),
     protected readonly tableName: string = requireTableName(),
-    protected readonly nowIso: () => string = () => new Date().toISOString(),
+    protected readonly nowIso: Clock = systemClock,
   ) {}
 
   async queryChangesSince(
@@ -76,6 +78,9 @@ export class SyncLedger {
     const watermarkAt = this.nowIso();
     const { since, cursor, limit } = query;
     if (since !== undefined) {
+      if (Number.isNaN(Date.parse(since))) {
+        throw new BadRequestError(`Invalid sync since timestamp: ${since}`);
+      }
       const normalized = normalizeSyncSince(since);
       const horizon = syncResyncHorizonIso(new Date(watermarkAt));
       if (Date.parse(normalized) < Date.parse(horizon)) {

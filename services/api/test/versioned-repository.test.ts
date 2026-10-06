@@ -5,7 +5,11 @@ import {
   unscoped,
   type VersionedEntity,
 } from '../src/data/versioned-repository.js';
-import { ConflictError, NotFoundError } from '../src/data/errors.js';
+import {
+  ConflictError,
+  InvalidCursorError,
+  NotFoundError,
+} from '../src/data/errors.js';
 import { decodeCursor, encodeCursor } from '../src/data/cursor.js';
 
 type Note = VersionedEntity & {
@@ -90,7 +94,7 @@ describe('VersionedRepository (fake note)', () => {
     expect(send.mock.calls[1]![0]).toBeInstanceOf(GetCommand);
   });
 
-  it('updateIfVersion returns conflict with current entity', async () => {
+  it('mutateIfVersion returns conflict with current entity', async () => {
     send
       // getRawItem (preserve createHash)
       .mockResolvedValueOnce({
@@ -116,12 +120,13 @@ describe('VersionedRepository (fake note)', () => {
       });
 
     await expect(
-      repo.updateIfVersion('n1', 2, {
+      repo.mutateIfVersion('n1', 2, (existing) => ({
+        ...existing,
         id: 'n1',
         title: 'Client',
         version: 3,
         updatedAt: '2026-09-28T00:00:01.000Z',
-      }),
+      })),
     ).rejects.toMatchObject({
       name: 'ConflictError',
       currentVersion: 3,
@@ -133,12 +138,13 @@ describe('VersionedRepository (fake note)', () => {
     send.mockResolvedValueOnce({});
 
     await expect(
-      repo.updateIfVersion('n1', 1, {
+      repo.mutateIfVersion('n1', 1, (existing) => ({
+        ...existing,
         id: 'n1',
         title: 'Resurrected',
         version: 2,
         updatedAt: '2026-09-28T00:00:01.000Z',
-      }),
+      })),
     ).rejects.toBeInstanceOf(NotFoundError);
     expect(send).toHaveBeenCalledTimes(1);
   });
@@ -160,12 +166,13 @@ describe('VersionedRepository (fake note)', () => {
       .mockResolvedValueOnce({}); // GetItem: gone
 
     await expect(
-      repo.updateIfVersion('n1', 1, {
+      repo.mutateIfVersion('n1', 1, (existing) => ({
+        ...existing,
         id: 'n1',
         title: 'Resurrected',
         version: 2,
         updatedAt: '2026-09-28T00:00:01.000Z',
-      }),
+      })),
     ).rejects.toMatchObject({
       name: 'ConflictError',
       message: expect.stringContaining('current unknown'),
@@ -234,7 +241,7 @@ describe('cursor helpers', () => {
     const cursor = encodeCursor({ pk: 'POST#1', sk: 'META' });
     expect(() =>
       decodeCursor(cursor, ['pk', 'sk', 'gsi1pk', 'gsi1sk']),
-    ).toThrow(SyntaxError);
+    ).toThrow(InvalidCursorError);
   });
 
   it('rejects cursor with extra keys', () => {
@@ -247,7 +254,7 @@ describe('cursor helpers', () => {
     });
     expect(() =>
       decodeCursor(cursor, ['pk', 'sk', 'gsi1pk', 'gsi1sk']),
-    ).toThrow(SyntaxError);
+    ).toThrow(InvalidCursorError);
   });
 
   it('rejects cursor with non-string values', () => {
@@ -255,7 +262,9 @@ describe('cursor helpers', () => {
       JSON.stringify({ pk: 1, sk: 'META' }),
       'utf8',
     ).toString('base64url');
-    expect(() => decodeCursor(cursor, ['pk', 'sk'])).toThrow(SyntaxError);
+    expect(() => decodeCursor(cursor, ['pk', 'sk'])).toThrow(
+      InvalidCursorError,
+    );
   });
 });
 

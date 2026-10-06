@@ -43,7 +43,7 @@ export const PROJECT_SLUG_CLAIMS: SlugClaims = {
   redirectEntityType: 'projectSlugRedirect',
 };
 
-type Slugged = { id: string; slug: string; status: string };
+export type Slugged = { id: string; slug: string; status: string };
 
 export function buildSlugClaimPut(
   tableName: string,
@@ -64,13 +64,13 @@ export function buildSlugClaimPut(
   };
 }
 
-export function buildSlugChangeItems(
+/** Frees the old slug and leaves a redirect to the new one; the new claim is a separate {@link buildSlugClaimPut}. */
+export function buildSlugRenameItems(
   tableName: string,
+  claims: SlugClaims,
   before: Slugged,
   after: Slugged,
-  claims: SlugClaims = POST_SLUG_CLAIMS,
 ): TransactItem[] {
-  if (before.slug === after.slug) return [];
   return [
     {
       Delete: {
@@ -91,15 +91,14 @@ export function buildSlugChangeItems(
         },
       },
     },
-    buildSlugClaimPut(tableName, claims, after.slug, after.id),
   ];
 }
 
 export function buildSoftDeleteSlugRelease(
   tableName: string,
+  claims: SlugClaims,
   before: Slugged,
   after: Slugged,
-  claims: SlugClaims = POST_SLUG_CLAIMS,
 ): TransactItem[] {
   if (after.status !== 'deleted' || before.status === 'deleted') return [];
   return [
@@ -110,15 +109,4 @@ export function buildSoftDeleteSlugRelease(
       },
     },
   ];
-}
-
-/** TransactWrite indexes of the slug-claim Puts (`attribute_not_exists`). */
-export function slugClaimIndexesOf(items: readonly TransactItem[]): number[] {
-  const indexes: number[] = [];
-  items.forEach((item, i) => {
-    if (item.Put?.ConditionExpression === 'attribute_not_exists(pk)') {
-      indexes.push(i);
-    }
-  });
-  return indexes;
 }

@@ -1,6 +1,5 @@
 import {
   CreatePostRequestSchema,
-  ExpectedVersionRequestSchema,
   ListPostsQuerySchema,
   POSTS_PAGE_SIZE,
   PostListResponseSchema,
@@ -9,6 +8,7 @@ import {
 } from '@gagnechris/shared';
 import * as z from 'zod';
 import { BadRequestError } from '../data/errors.js';
+import { siteAdminVersionedRoute } from '../data/versioned-route.js';
 import { json } from '../http.js';
 import { ProjectsRepository } from '../projects/repository.js';
 import { defineRoute, type RouteDef } from '../router.js';
@@ -16,7 +16,7 @@ import { PostsRepository } from './repository.js';
 
 const IdParams = z.object({ id: z.string().min(1) });
 
-type ProjectLookup = Pick<ProjectsRepository, 'getById'>;
+type ProjectLookup = Pick<ProjectsRepository, 'existingIds'>;
 
 /** Ids already on the post are not rechecked, so deleting a project never blocks saving a post tagged with it. */
 async function assertKnownProjectIds(
@@ -26,9 +26,8 @@ async function assertKnownProjectIds(
 ): Promise<void> {
   const unique = [...new Set(ids)].filter((id) => !existing.includes(id));
   if (!unique.length) return;
-  const repo = projects();
-  const found = await Promise.all(unique.map((id) => repo.getById(id)));
-  const unknown = unique.filter((_, i) => !found[i]);
+  const found = await projects().existingIds(unique);
+  const unknown = unique.filter((id) => !found.has(id));
   if (unknown.length) {
     throw new BadRequestError(`Unknown project id: ${unknown.join(', ')}`, {
       projectIds: 'unknown_project',
@@ -75,25 +74,17 @@ export function createPostRoutes(
       auth: 'site-admin',
       metric: 'GetPost',
       params: IdParams,
-      handler: async (_ctx, { params }) => {
-        const post = await posts().getById(params.id);
-        if (!post) {
-          return json(404, {
-            error: 'not_found',
-            message: `Post ${params.id} not found`,
-          });
-        }
-        return json(200, PostSchema.parse(post));
-      },
+      handler: async (_ctx, { params }) =>
+        json(200, PostSchema.parse(await posts().getByIdOrThrow(params.id))),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'PUT',
       pattern: '/admin/posts/:id',
-      auth: 'site-admin',
       metric: 'UpdatePost',
       params: IdParams,
       body: UpdatePostRequestSchema,
-      handler: async (_ctx, { params, body }) => {
+      entity: PostSchema,
+      mutate: async ({ params, body }) => {
         if (body.projectIds?.length) {
           const current = await posts().getById(params.id);
           await assertKnownProjectIds(
@@ -102,57 +93,40 @@ export function createPostRoutes(
             current?.projectIds,
           );
         }
-        const post = await posts().update(params.id, body);
-        return json(200, PostSchema.parse(post));
+        return posts().update(params.id, body);
       },
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'DELETE',
       pattern: '/admin/posts/:id',
-      auth: 'site-admin',
       metric: 'DeletePost',
       params: IdParams,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { params, body }) => {
-        const post = await posts().softDelete(params.id, body.version);
-        return json(200, PostSchema.parse(post));
-      },
+      entity: PostSchema,
+      mutate: ({ params, body }) => posts().softDelete(params.id, body.version),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/publish',
-      auth: 'site-admin',
       metric: 'PublishPost',
       params: IdParams,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { params, body }) => {
-        const post = await posts().publish(params.id, body.version);
-        return json(200, PostSchema.parse(post));
-      },
+      entity: PostSchema,
+      mutate: ({ params, body }) => posts().publish(params.id, body.version),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/unpublish',
-      auth: 'site-admin',
       metric: 'UnpublishPost',
       params: IdParams,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { params, body }) => {
-        const post = await posts().unpublish(params.id, body.version);
-        return json(200, PostSchema.parse(post));
-      },
+      entity: PostSchema,
+      mutate: ({ params, body }) => posts().unpublish(params.id, body.version),
     }),
-    defineRoute({
+    siteAdminVersionedRoute({
       method: 'POST',
       pattern: '/admin/posts/:id/discard',
-      auth: 'site-admin',
       metric: 'DiscardPost',
       params: IdParams,
-      body: ExpectedVersionRequestSchema,
-      handler: async (_ctx, { params, body }) => {
-        const post = await posts().discard(params.id, body.version);
-        return json(200, PostSchema.parse(post));
-      },
+      entity: PostSchema,
+      mutate: ({ params, body }) => posts().discard(params.id, body.version),
     }),
   ];
 }

@@ -36,6 +36,7 @@ import {
   PRIMARY_CURSOR_KEYS,
 } from '../data/cursor.js';
 import { getDocClient, requireTableName } from '../data/client.js';
+import { systemClock, type Clock } from '../data/clock.js';
 import {
   VersionedRepository,
   ownerScoped,
@@ -214,7 +215,7 @@ export class TasksRepository {
   constructor(
     doc: DynamoDBDocumentClient = getDocClient(),
     tableName: string = requireTableName(),
-    private readonly nowIso: () => string = () => new Date().toISOString(),
+    private readonly nowIso: Clock = systemClock,
   ) {
     this.base = new VersionedRepository<Task, TaskMetaItem, OwnerKey>(
       {

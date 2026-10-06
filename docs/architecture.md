@@ -78,8 +78,8 @@ API repositories share one layering:
 - `VersionedRepository` (`services/api/src/data/versioned-repository.ts`) — optimistic-concurrency base for every entity: consistent read-modify-write (`mutateIfVersion` / `softDeleteIfVersion`), idempotent client-ULID create, sync stamping + create claims, optional unique claims (daily notes), cursor queries. Keying is an owner-scoping strategy:
   - `unscoped({ keyForId, idOf })` — id keys (publishable posts/home/resume).
   - `ownerScoped({ keyForId, idOf, userIdOf })` — `{ userId, id }` keys, rows of another owner read as missing, owner-scoped create claims, list GSI keys stripped from tombstones (Notebook notes/tasks).
-- `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / projects / home / resume). Publish, unpublish, discard, and `hasUnpublishedChanges` live here once.
-- Slug claim and rename-redirect rows come from `data/slug-claims.ts`, parameterized per entity (`POST_SLUG_CLAIMS`, `PROJECT_SLUG_CLAIMS`); posts add tag-index side effects in `posts/mutation-builders.ts`.
+- `PublishableRepository` / `PublishableSingletonRepository` — draft `META` + optional `PUBLISHED` snapshot (posts / projects / home / resume). It composes a `VersionedRepository` for draft rows; create, update, soft delete, publish, unpublish, discard, slug claims, list flags and `hasUnpublishedChanges` live here once. Site-admin write routes use `siteAdminVersionedRoute` (`services/api/src/data/versioned-route.ts`).
+- Slug claim and rename-redirect rows come from `data/slug-claims.ts`, parameterized per entity (`POST_SLUG_CLAIMS`, `PROJECT_SLUG_CLAIMS`); posts add tag-index rows through `extraMutationItems` (`posts/tag-index.ts`).
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
 
@@ -94,7 +94,8 @@ Integrity rules:
 - `resume.pdf` pins its PDF creation/modification dates to the resume's `publishedAt` (else `updatedAt`), so a no-op rebuild re-renders identical bytes and puts / invalidates nothing.
 - `SiteStorage.delete` is idempotent (`false` when already gone) so quiet rebuilds do not force CloudFront invalidation.
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
-- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. Sync/list cursors that escape their partition or `since` bound return **400**.
+- List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. The admin posts list walks the `published` then `draft` partitions with `walkPartitions`, so its cursor is the composite `mp.` form. Sync/list cursors that escape their partition or `since` bound return **400**.
+- Client input errors are `BadRequestError` subclasses (`InvalidCursorError`, `InvalidHeaderError`, `InvalidJsonBodyError` in `services/api/src/data/errors.ts`) → **400**. A built-in `SyntaxError` (a server-side `JSON.parse`) is a **500**.
 - Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current`.
 - Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken`.
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
