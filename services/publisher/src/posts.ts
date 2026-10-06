@@ -31,7 +31,7 @@ export function sortPostsNewestFirst<T extends Post>(posts: T[]): T[] {
   return posts.sort((a, b) => {
     const aTs = a.publishedAt ?? a.updatedAt;
     const bTs = b.publishedAt ?? b.updatedAt;
-    return bTs.localeCompare(aTs);
+    return bTs.localeCompare(aTs) || a.id.localeCompare(b.id);
   });
 }
 
