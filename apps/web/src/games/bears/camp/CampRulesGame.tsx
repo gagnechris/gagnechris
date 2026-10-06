@@ -44,6 +44,7 @@ import './CampRulesGame.css';
 
 const GAME = 'camp';
 const TOAST_MS = 2_200;
+const COPY_STATUS_MS = 2_500;
 const ACTION_LABEL_MS = 1_200;
 /** Longest frame we simulate, so a backgrounded tab doesn't fast-forward. */
 const MAX_FRAME_MS = 250;
@@ -199,6 +200,12 @@ const CampRulesGame = ({
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
   }, [screen, commit]);
+
+  useEffect(() => {
+    if (copyStatus === 'idle') return;
+    const id = window.setTimeout(() => setCopyStatus('idle'), COPY_STATUS_MS);
+    return () => window.clearTimeout(id);
+  }, [copyStatus]);
 
   useEffect(() => {
     if (!toast) return;
@@ -513,6 +520,13 @@ const CampRulesGame = ({
                 </>
               }
             />
+            <p className="bears-sr" role="status">
+              {copyStatus === 'copied'
+                ? 'Copied!'
+                : copyStatus === 'failed'
+                  ? 'Couldn’t copy'
+                  : ''}
+            </p>
           </div>
         ) : null}
       </div>

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import StayWildGame from './StayWildGame';
+import { stepWild } from './wildLogic';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -12,6 +13,11 @@ vi.mock('../../../utils/analytics', () => ({
   trackBearsGameComplete: vi.fn(),
   trackBearsTipLinkClick: vi.fn(),
 }));
+
+vi.mock('./wildLogic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./wildLogic')>();
+  return { ...actual, stepWild: vi.fn(actual.stepWild) };
+});
 
 const renderGame = () =>
   render(
@@ -254,18 +260,81 @@ describe('StayWildGame', () => {
     });
   });
 
+  test('the stage is a labelled group described by the controls', () => {
+    renderGame();
+
+    expect(
+      screen.getByRole('group', { name: 'Stay Wild' }),
+    ).toHaveAccessibleDescription(
+      'Left and right arrows to move, Space to jump, S to sniff, Escape to pause.',
+    );
+  });
+
+  describe('touch controls', () => {
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            matches: query === '(pointer: coarse)',
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          }) as unknown as MediaQueryList,
+      );
+    });
+
+    const jumps = () =>
+      vi.mocked(stepWild).mock.calls.filter(([, input]) => input.jump).length;
+
+    test('Jump works from the keyboard', () => {
+      renderGame();
+      start();
+      vi.mocked(stepWild).mockClear();
+
+      // Enter and Space on a button dispatch a click with no pointer down.
+      fireEvent.click(screen.getByRole('button', { name: 'Jump' }));
+      advance(100);
+
+      expect(jumps()).toBe(1);
+    });
+
+    test('a tap on Jump jumps once, not again on the click that follows', () => {
+      renderGame();
+      start();
+      vi.mocked(stepWild).mockClear();
+      const jump = screen.getByRole('button', { name: 'Jump' });
+
+      fireEvent.pointerDown(jump);
+      advance(50);
+      fireEvent.click(jump);
+      advance(100);
+
+      expect(jumps()).toBe(1);
+    });
+
+    test('Sniff works from the keyboard', () => {
+      renderGame();
+      start();
+
+      fireEvent.click(document.querySelector('.wild-touch__sniff')!);
+      advance(100);
+
+      expect(screen.getByRole('status')).toHaveTextContent(/Sniff!/);
+    });
+  });
+
   test('a run always ends with the end card and is reported', () => {
     renderGame();
     start();
 
     key('ArrowRight');
-    for (let i = 0; i < 400 && !screen.queryByRole('dialog'); i++) {
+    for (let i = 0; i < 400 && !screen.queryByRole('region'); i++) {
       key(' ');
       advance(350);
       key(' ', 'keyUp');
     }
 
-    const card = screen.getByRole('dialog');
+    const card = screen.getByRole('region');
     expect(
       within(card).getByRole('link', { name: 'Now play as the camper' }),
     ).toHaveAttribute('href', '/dont-feed-the-bears/camp?from=contact');
@@ -275,5 +344,6 @@ describe('StayWildGame', () => {
       'contact',
       expect.any(Number),
     );
+    expect(within(card).getByRole('heading', { level: 2 })).toHaveFocus();
   });
 });

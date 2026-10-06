@@ -33,17 +33,26 @@ const renderCard = (props: Partial<Parameters<typeof EndCard>[0]> = {}) => {
 };
 
 describe('EndCard', () => {
-  test('is a labelled dialog with the paw rating and stats', () => {
+  test('is a labelled section with the paw rating and stats', () => {
     renderCard();
 
     expect(
-      screen.getByRole('dialog', { name: 'Perfect evening.' }),
+      screen.getByRole('region', { name: 'Perfect evening.' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
       screen.getByRole('img', { name: '2 of 3 paws' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Saves')).toBeInTheDocument();
     expect(screen.getByText('675')).toBeInTheDocument();
+  });
+
+  test('moves focus to its heading when it appears', () => {
+    renderCard();
+
+    expect(
+      screen.getByRole('heading', { name: 'Perfect evening.' }),
+    ).toHaveFocus();
   });
 
   test('links to the other side, keeping ?from=', () => {
@@ -91,7 +100,7 @@ describe('EndCard', () => {
     expect(summary.parentElement).toContainElement(
       screen.getByRole('img', { name: '2 of 3 paws' }),
     );
-    expect(screen.getByRole('dialog')).toHaveClass('bears-end', 'camp-end');
+    expect(screen.getByRole('region')).toHaveClass('bears-end', 'camp-end');
   });
 
   test('hides the rating when paws is omitted', () => {
