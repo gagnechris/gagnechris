@@ -543,6 +543,12 @@ describe('stack Template assertions', () => {
       AlarmActions: Match.anyValue(),
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-sync-corrupt-row',
+      Namespace: 'gagnechris',
+      MetricName: 'SyncCorruptRow',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       AlarmActions: alarmActions,
     });

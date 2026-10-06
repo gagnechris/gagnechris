@@ -4,10 +4,10 @@ import {
   taskEmbedFallbackLine,
   type Note,
   type NotebookArea,
-  type Task,
 } from '@gagnechris/shared';
 import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
+import { collectPages } from '../data/collect-pages.js';
 import { rankTextFields } from './match.js';
 
 export const SEARCHED_TYPES = ['note', 'task'] as const;
@@ -26,44 +26,6 @@ const SCAN_PAGE = 100;
 /** Per-type scan cap; a personal notebook stays well under it (see docs/data-model.md). */
 const SCAN_CAP = 2000;
 
-async function collectNotes(
-  repo: NotesRepository,
-  userId: string,
-  area: NotebookArea | undefined,
-): Promise<Note[]> {
-  const items: Note[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await repo.list(userId, {
-      area,
-      cursor,
-      limit: SCAN_PAGE,
-    });
-    items.push(...page.items.filter((n) => !n.deleted));
-    cursor = page.nextCursor;
-  } while (cursor && items.length < SCAN_CAP);
-  return items.slice(0, SCAN_CAP);
-}
-
-async function collectTasks(
-  repo: TasksRepository,
-  userId: string,
-  area: NotebookArea | undefined,
-): Promise<Task[]> {
-  const items: Task[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await repo.list(userId, {
-      area,
-      cursor,
-      limit: SCAN_PAGE,
-    });
-    items.push(...page.items.filter((t) => !t.deleted));
-    cursor = page.nextCursor;
-  } while (cursor && items.length < SCAN_CAP);
-  return items.slice(0, SCAN_CAP);
-}
-
 export async function searchNotebook(
   userId: string,
   query: { q: string; area?: NotebookArea; limit?: number },
@@ -74,8 +36,18 @@ export async function searchNotebook(
   const limit = query.limit ?? 20;
 
   const [notes, tasks] = await Promise.all([
-    collectNotes(notesRepo, userId, query.area),
-    collectTasks(tasksRepo, userId, query.area),
+    collectPages(
+      (cursor) =>
+        notesRepo.list(userId, { area: query.area, cursor, limit: SCAN_PAGE }),
+      SCAN_CAP,
+      (n) => !n.deleted,
+    ),
+    collectPages(
+      (cursor) =>
+        tasksRepo.list(userId, { area: query.area, cursor, limit: SCAN_PAGE }),
+      SCAN_CAP,
+      (t) => !t.deleted,
+    ),
   ]);
 
   const tasksById = new Map(tasks.map((t) => [t.id, t]));

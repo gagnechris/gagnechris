@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { Link } from 'react-router-dom';
 import {
   formatPostDate,
   POST_AUTHOR_NOTE,
@@ -10,20 +9,17 @@ import {
   postDateAttribute,
   readingTimeLabel,
 } from '@gagnechris/shared';
+import SiteLink from '../components/SiteLink';
 import type { PostView } from './publishedPost';
 
-const PartOfProject = ({ name, href }: PostView['partOf'][number]) => {
-  if (!href) return <span className="post-part-of__project">{name}</span>;
-  return href.startsWith('/') ? (
-    <Link className="post-part-of__project" to={href} discover="none">
+const PartOfProject = ({ name, href }: PostView['partOf'][number]) =>
+  href ? (
+    <SiteLink className="post-part-of__project" href={href}>
       {name}
-    </Link>
+    </SiteLink>
   ) : (
-    <a className="post-part-of__project" href={href}>
-      {name}
-    </a>
+    <span className="post-part-of__project">{name}</span>
   );
-};
 
 // Markup must stay byte-identical to `renderPostPageBodyHtml`
 // (PostArticle.test.tsx). Single-expression text children avoid the `<!-- -->`
@@ -75,11 +71,12 @@ const PostArticle = ({ post }: { post: PostView }) => {
         <p>
           <strong>{name}</strong>
           {` ${role} `}
-          <Link to={about.href} discover="none">
-            {about.label}
-          </Link>
+          <SiteLink href={about.href}>{about.label}</SiteLink>
           {', or follow along via '}
-          <a href={rss.href}>{rss.label}</a>.
+          <SiteLink href={rss.href} spa={false}>
+            {rss.label}
+          </SiteLink>
+          .
         </p>
       </aside>
     </div>

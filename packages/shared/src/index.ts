@@ -10,6 +10,7 @@ export {
 } from './constants.js';
 export {
   pageTitle,
+  siteUrl,
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
@@ -23,10 +24,27 @@ export {
   type TaskScheduleFilter,
 } from './task-schedule.js';
 export {
+  addDays,
+  calendarDay,
+  daysBetween,
+  formatCalendarDay,
+  isCalendarDay,
+  localDateString,
+  localDayOf,
+  MONTH_LONG,
+  MONTH_SHORT,
+  parseCalendarDay,
+  relativeDayLabel,
+  WEEKDAY_LONG,
+  WEEKDAY_SHORT,
+  weekdayName,
+  weekdayOf,
+  type CalendarDayFormat,
+} from './calendar.js';
+export {
   activeTaskDateQuery,
   activeTaskDueQuery,
   formatTaskDay,
-  localDateString,
   matchesTaskDateQuery,
   nextWeekday,
   noteDisplayTitle,
@@ -70,6 +88,7 @@ export {
   postDateAttribute,
 } from './post-date.js';
 export {
+  comparePostsNewestFirst,
   groupPostsByYear,
   POSTS_INDEX_EMPTY_TEXT,
   POSTS_INDEX_INTRO,
@@ -102,6 +121,7 @@ export {
 } from './task-embeds.js';
 export {
   isSafeLinkHref,
+  isSitePath,
   LINK_HREF_MAX_LENGTH,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,

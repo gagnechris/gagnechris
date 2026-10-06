@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  formatResumeShortMonth,
+  RESUME_MONTH_PATTERN,
+} from '@gagnechris/shared';
 import { Button } from '../kit/Button';
 import {
   experienceRangeError,
@@ -13,14 +17,8 @@ type Props = {
   onAdd: () => void;
 };
 
-const monthLabel = (month: string) => {
-  const match = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!match) return '';
-  return new Date(Date.UTC(+match[1]!, +match[2]! - 1)).toLocaleDateString(
-    'en-US',
-    { month: 'short', year: 'numeric', timeZone: 'UTC' },
-  );
-};
+const monthLabel = (month: string) =>
+  RESUME_MONTH_PATTERN.test(month) ? formatResumeShortMonth(month) : '';
 
 const roleDatesLabel = (role: ExperienceDraft) => {
   const start = monthLabel(role.start);

@@ -1,24 +1,10 @@
+import { MONTH_LONG, MONTH_SHORT } from './calendar.js';
 import type { ResumeContent, ResumeExperience } from './schemas.js';
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
 
 /** `2019-07` → `July 2019`. */
 export const formatResumeMonth = (month: string): string => {
   const [year, mm] = month.split('-');
-  const name = MONTH_NAMES[Number(mm) - 1];
+  const name = MONTH_LONG[Number(mm) - 1];
   return name && year ? `${name} ${year}` : month;
 };
 
@@ -44,7 +30,7 @@ const LEGACY_LINE = /^(.+?)\s*\|\s*([A-Za-z]+)\s+(\d{4})\s*-\s*(.+?)\s*$/;
 const MONTH_YEAR = /^([A-Za-z]+)\s+(\d{4})$/;
 
 const monthNumber = (name: string): number =>
-  MONTH_NAMES.findIndex((m) => m.toLowerCase() === name.toLowerCase()) + 1;
+  MONTH_LONG.findIndex((m) => m.toLowerCase() === name.toLowerCase()) + 1;
 
 const toMonth = (name: string, year: string): string | undefined => {
   const n = monthNumber(name);
@@ -145,8 +131,8 @@ export const planResumeDateMigration = (
 /** `2019-07` → `Jul 2019`. */
 export const formatResumeShortMonth = (month: string): string => {
   const [year, mm] = month.split('-');
-  const name = MONTH_NAMES[Number(mm) - 1];
-  return name && year ? `${name.slice(0, 3)} ${year}` : month;
+  const name = MONTH_SHORT[Number(mm) - 1];
+  return name && year ? `${name} ${year}` : month;
 };
 
 /** Old-shape rows are read through the legacy parser so both shapes render alike. */

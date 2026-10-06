@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router-dom';
 import {
   trackBearsGameComplete,
@@ -52,6 +59,7 @@ const GAME = 'wild';
 const MAX_FRAME_MS = 250;
 const EAT_TOAST_MS = 1_400;
 const HINT_TOAST_MS = 3_200;
+const TAP_CLICK_MS = 1_000;
 // Matches the CSS that covers the stage with the turn-your-phone notice.
 const TOUCH_PORTRAIT_QUERY = '(pointer: coarse) and (orientation: portrait)';
 const JUMP_KEYS: ReadonlySet<string> = new Set([' ', 'ArrowUp', 'w', 'W']);
@@ -120,6 +128,43 @@ function formatClock(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+type TouchButtonProps = {
+  className: string;
+  disabled?: boolean;
+  onPress: () => void;
+  children: ReactNode;
+};
+
+// Taps fire on pointer down for speed; the click a tap produces is skipped,
+// so only keyboard and switch activations fire from onClick.
+const TouchButton = ({
+  className,
+  disabled,
+  onPress,
+  children,
+}: TouchButtonProps) => {
+  const tappedAt = useRef<number | null>(null);
+  return (
+    <button
+      type="button"
+      className={className}
+      disabled={disabled}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        tappedAt.current = e.timeStamp;
+        onPress();
+      }}
+      onClick={(e) => {
+        const at = tappedAt.current;
+        tappedAt.current = null;
+        if (at === null || e.timeStamp - at > TAP_CLICK_MS) onPress();
+      }}
+    >
+      {children}
+    </button>
+  );
+};
+
 const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
   const touchPortrait = useMediaQuery(TOUCH_PORTRAIT_QUERY);
@@ -130,6 +175,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const [highScore, setHighScore] = useState(() => readHighScore(GAME));
   const [eatToast, setEatToast] = useState<EatToast | null>(null);
   const [fatFlash, setFatFlash] = useState(0);
+  const keysId = useId();
   const effectsRef = useRef<Effects>({ popups: [], crumbs: [], munchUntil: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -424,8 +470,14 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
           screen === 'over' ? 'wild-stage wild-stage--done' : 'wild-stage'
         }
         tabIndex={-1}
-        aria-label="Stay Wild. Left and right arrows to move, Space to jump, S to sniff, Escape to pause."
+        role="group"
+        aria-label="Stay Wild"
+        aria-describedby={keysId}
       >
+        <p id={keysId} hidden>
+          Left and right arrows to move, Space to jump, S to sniff, Escape to
+          pause.
+        </p>
         <canvas
           ref={canvasRef}
           className="wild-canvas"
@@ -522,27 +574,23 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
 
         {touch && screen === 'playing' ? (
           <div className="wild-touch">
-            <button
-              type="button"
+            <TouchButton
               className="wild-touch__sniff"
               disabled={!ready}
-              onPointerDown={(e) => {
-                e.preventDefault();
+              onPress={() => {
                 inputRef.current.sniff = true;
               }}
             >
               Sniff
-            </button>
-            <button
-              type="button"
+            </TouchButton>
+            <TouchButton
               className="wild-touch__jump"
-              onPointerDown={(e) => {
-                e.preventDefault();
+              onPress={() => {
                 inputRef.current.jump = true;
               }}
             >
               Jump
-            </button>
+            </TouchButton>
           </div>
         ) : null}
 

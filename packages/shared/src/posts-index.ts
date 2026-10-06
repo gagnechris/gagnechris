@@ -15,31 +15,50 @@ export const postsYearId = (year: string): string =>
 
 export type PostsYearGroup<T> = { year: string; posts: T[] };
 
+type DatedPost = {
+  id: string;
+  publishedAt: string | null;
+  updatedAt?: string;
+};
+
 const time = (iso: string | null | undefined): number => {
   const ms = iso ? new Date(iso).getTime() : Number.NaN;
   return Number.isNaN(ms) ? Number.NEGATIVE_INFINITY : ms;
 };
 
 /**
+ * Newest first by `publishedAt` (else `updatedAt`), then id: the one order of
+ * `posts.json`, RSS, the sitemap, Home and `/posts`.
+ */
+export const comparePostsNewestFirst = (a: DatedPost, b: DatedPost): number => {
+  const ta = time(a.publishedAt ?? a.updatedAt);
+  const tb = time(b.publishedAt ?? b.updatedAt);
+  return tb > ta ? 1 : tb < ta ? -1 : a.id.localeCompare(b.id);
+};
+
+const publishedYear = (iso: string | null): string => {
+  const ms = time(iso);
+  return Number.isFinite(ms)
+    ? String(new Date(ms).getUTCFullYear())
+    : UNDATED_POSTS_LABEL;
+};
+
+/**
  * Newest year first and newest post first within it (UTC, like the dates
  * shown). Posts without a usable date go last, under "Undated".
  */
-export const groupPostsByYear = <T extends { publishedAt: string | null }>(
+export const groupPostsByYear = <T extends DatedPost>(
   posts: readonly T[],
 ): PostsYearGroup<T>[] => {
   const groups = new Map<string, T[]>();
-  const sorted = [...posts].sort((a, b) => {
-    const [ta, tb] = [time(a.publishedAt), time(b.publishedAt)];
-    return ta === tb ? 0 : tb > ta ? 1 : -1;
-  });
-  for (const post of sorted) {
-    const ms = time(post.publishedAt);
-    const year = Number.isFinite(ms)
-      ? String(new Date(ms).getUTCFullYear())
-      : UNDATED_POSTS_LABEL;
+  for (const post of [...posts].sort(comparePostsNewestFirst)) {
+    const year = publishedYear(post.publishedAt);
     const group = groups.get(year);
     if (group) group.push(post);
     else groups.set(year, [post]);
   }
+  const undated = groups.get(UNDATED_POSTS_LABEL);
+  groups.delete(UNDATED_POSTS_LABEL);
+  if (undated) groups.set(UNDATED_POSTS_LABEL, undated);
   return [...groups].map(([year, items]) => ({ year, posts: items }));
 };

@@ -1,4 +1,4 @@
-import { addLocalDays, parseLocalDate } from '../calendarDates';
+import { addDays, isCalendarDay, relativeDayLabel } from '@gagnechris/shared';
 
 /** `@Tue` within the coming week, else `@Oct 12`; undefined when unscheduled. */
 export function taskScheduleLabel(
@@ -7,12 +7,8 @@ export function taskScheduleLabel(
   someday = false,
 ): string | undefined {
   if (someday) return '@someday';
-  const parsed = date ? parseLocalDate(date) : null;
-  if (!date || !parsed) return undefined;
+  if (!date || !isCalendarDay(date)) return undefined;
   if (date === today) return '@today';
-  if (date === addLocalDays(today, 1)) return '@tomorrow';
-  if (date > today && date < addLocalDays(today, 7)) {
-    return `@${parsed.toLocaleDateString('en-US', { weekday: 'short' })}`;
-  }
-  return `@${parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  if (date === addDays(today, 1)) return '@tomorrow';
+  return `@${relativeDayLabel(date, today, 'future')}`;
 }

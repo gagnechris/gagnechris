@@ -1,4 +1,4 @@
-import { SK_META } from './keys.js';
+import { keys } from './keys.js';
 
 /**
  * One row updated in the same transaction as every `PUBLISHED` write or
@@ -8,19 +8,6 @@ import { SK_META } from './keys.js';
  * `ConsistentRead` where GSI1 is only eventually consistent.
  */
 export const SITE_PUBLISH_ENTITY_TYPE = 'sitePublish';
-
-export function sitePublishPk(): string {
-  return 'SITE#publish';
-}
-
-export function sitePublishSk(): string {
-  return SK_META;
-}
-
-export const sitePublishKey = () => ({
-  pk: sitePublishPk(),
-  sk: sitePublishSk(),
-});
 
 export type SitePublishIdSet = 'postIds' | 'projectIds';
 
@@ -43,7 +30,7 @@ export function buildSitePublishUpdate(
 ) {
   const base = {
     TableName: tableName,
-    Key: sitePublishKey(),
+    Key: keys.sitePublish(),
     ExpressionAttributeNames: { '#t': 'entityType', '#g': 'generation' },
     ExpressionAttributeValues: {
       ':t': SITE_PUBLISH_ENTITY_TYPE,

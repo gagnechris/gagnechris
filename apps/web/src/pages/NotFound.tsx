@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import {
   NOT_FOUND_BEARS,
   NOT_FOUND_HEADING,
@@ -7,6 +6,7 @@ import {
   NOT_FOUND_TEXT,
   NOT_FOUND_TITLE,
 } from '@gagnechris/shared/public-pages';
+import SiteLink from '../components/SiteLink';
 import './NotFound.css';
 import PageHead from '../components/PageHead';
 
@@ -23,16 +23,12 @@ function NotFound() {
       <ul className="not-found__links">
         {NOT_FOUND_LINKS.map(({ label, href }) => (
           <li key={href}>
-            <Link to={href} discover="none">
-              {label}
-            </Link>
+            <SiteLink href={href}>{label}</SiteLink>
           </li>
         ))}
       </ul>
       <p className="not-found__bears">
-        <Link to={NOT_FOUND_BEARS.href} discover="none">
-          {NOT_FOUND_BEARS.label}
-        </Link>
+        <SiteLink href={NOT_FOUND_BEARS.href}>{NOT_FOUND_BEARS.label}</SiteLink>
         {NOT_FOUND_BEARS.after}
       </p>
     </main>

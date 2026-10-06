@@ -19,7 +19,6 @@ import {
   parseResumeMetaItem,
   parseSitePublishItem,
   projectStatusGsi1Pk,
-  sitePublishKey,
   statusGsi1Pk,
   type PostMetaItem,
   type SitePublishState,
@@ -98,7 +97,7 @@ export async function getSitePublishState(
   const result = await ddb.send(
     new GetCommand({
       TableName: tableName,
-      Key: sitePublishKey(),
+      Key: keys.sitePublish(),
       ConsistentRead: true,
     }),
   );

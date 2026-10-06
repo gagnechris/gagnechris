@@ -136,7 +136,7 @@ export function bookmarkGsi1Sk(updatedAt: string, bookmarkId: string): string {
 }
 ```
 
-and under `keys.notebook`:
+Key strings come only from these functions. An item key (`{ pk, sk }`) comes only from `keys`, so add one under `keys.notebook`:
 
 ```ts
 bookmark: {
@@ -482,7 +482,7 @@ export function createBookmarkRoutes(repo?: BookmarksRepository): RouteDef[] {
 export const bookmarkRoutes: RouteDef[] = createBookmarkRoutes();
 ```
 
-Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`).
+Route patterns omit the `/api` prefix. Put literal segments (`/:id/archive`) before `/:id`. `versionedMutationRoute` also takes a `precheck` that can return an early response after the version check (tasks use it to validate `noteId`), and a `withoutVersion` handler for writes that may arrive with no version (the daily note PUT creates the day's note through it).
 
 ## 7. Route table — `services/api/src/routes.ts`
 

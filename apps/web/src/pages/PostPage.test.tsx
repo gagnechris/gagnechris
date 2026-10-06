@@ -7,6 +7,7 @@ describe('PostPage', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   test('loads CMS posts from publisher prerender HTML', async () => {
@@ -103,5 +104,29 @@ describe('PostPage', () => {
         screen.getByRole('heading', { name: 'Page not found' }),
       ).toBeInTheDocument();
     });
+  });
+
+  test.each([
+    ['a 503', () => Promise.resolve({ ok: false, status: 503 })],
+    ['a network failure', () => Promise.reject(new TypeError('offline'))],
+  ])('%s is an error, not the 404', async (_label, respond) => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(respond));
+
+    render(
+      <MemoryRouter initialEntries={['/posts/welcome']}>
+        <Routes>
+          <Route path="/posts/:slug" element={<PostPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load this post',
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Page not found' }),
+    ).not.toBeInTheDocument();
   });
 });

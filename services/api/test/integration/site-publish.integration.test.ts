@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import { parseSitePublishItem, sitePublishKey } from '@gagnechris/data';
+import { keys, parseSitePublishItem } from '@gagnechris/data';
 import { HomeRepository } from '../../src/home/repository.js';
 import { ProjectsRepository } from '../../src/projects/repository.js';
 import { makeCtx, makePost } from '../support/builders.js';
@@ -33,7 +33,7 @@ describe('site publish row (DynamoDB Local)', () => {
         await doc.send(
           new GetCommand({
             TableName: tableName,
-            Key: sitePublishKey(),
+            Key: keys.sitePublish(),
             ConsistentRead: true,
           }),
         )

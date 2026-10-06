@@ -68,6 +68,11 @@
   color: var(--neutral-900);
 }
 
+/* Focused by script so the result is read out; it is not a control. */
+.bears-end__title:focus {
+  outline: none;
+}
+
 .bears-end__lede {
   margin: 0 0 var(--space-4);
   color: var(--neutral-700);
@@ -204,4 +209,13 @@
 
 .bears-end__summary {
   display: none;
+}
+
+.bears-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
