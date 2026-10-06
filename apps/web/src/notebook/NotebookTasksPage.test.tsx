@@ -212,20 +212,27 @@ describe('NotebookTasksPage', () => {
     expect(await screen.findByText(/Completed \(1\)/)).toBeInTheDocument();
   });
 
-  test('quick-add sets the show-on date and never dueDate', async () => {
+  test('quick-add sets the show-on date, and a deadline only from due:', async () => {
     const user = userEvent.setup();
     renderTasks();
+    const quickAdd = await screen.findByRole('combobox', {
+      name: 'Quick add task',
+    });
 
-    await user.type(
-      await screen.findByRole('combobox', { name: 'Quick add task' }),
-      'Call bank @tomorrow{Enter}',
-    );
-
+    await user.type(quickAdd, 'Call bank @tomorrow{Enter}');
     expect(await screen.findByText('Call bank')).toBeInTheDocument();
     expect(state.created).toHaveLength(1);
     expect(state.created[0]?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(state.created[0]).not.toHaveProperty('dueDate');
+    expect(state.created[0]?.dueDate).toBeNull();
     expect(screen.getByText(/shows \d{4}-\d{2}-\d{2}/)).toBeInTheDocument();
+
+    await user.type(quickAdd, 'File taxes due:2099-04-15 {Enter}');
+    expect(await screen.findByText('File taxes')).toBeInTheDocument();
+    expect(state.created[1]).toMatchObject({
+      startDate: null,
+      dueDate: '2099-04-15',
+    });
+    expect(screen.getByText('due Apr 15')).toBeInTheDocument();
   });
 
   test('120 done past tasks do not hide 3 open tasks', async () => {

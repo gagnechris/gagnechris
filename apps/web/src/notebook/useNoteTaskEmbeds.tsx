@@ -15,6 +15,7 @@ import {
 } from '../kit/markdown/taskEmbeds';
 import { TaskEmbedRow, type TaskEmbedView } from '../kit/tasks/TaskEmbedRow';
 import type { TaskLineDraft } from '../kit/tasks/taskLine';
+import { taskDue } from '../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../kit/tasks/taskScheduleLabel';
 import { useLocalToday } from './useLocalToday';
 import { useTaskToggle } from './useTaskToggle';
@@ -35,6 +36,7 @@ export function taskRequestFromLine(
     status: 'todo',
     startDate: draft.startDate,
     someday: draft.someday,
+    dueDate: draft.dueDate,
     noteId: note.id,
     tags: [],
   };
@@ -169,6 +171,7 @@ export function useNoteTaskEmbeds({
         kind: 'task',
         task,
         schedule: taskScheduleLabel(task.startDate, today, task.someday),
+        due: taskDue(task, today),
         onToggle: () => void toggle(task),
         to: `/tasks/${task.id}`,
       };

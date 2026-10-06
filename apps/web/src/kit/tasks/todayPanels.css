@@ -91,6 +91,14 @@ a.today-row__title:hover {
   text-decoration: underline;
 }
 
+.today-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .today-row__meta {
   display: flex;
   flex-wrap: wrap;

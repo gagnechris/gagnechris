@@ -27,11 +27,12 @@ test('the @ date menu works from the keyboard and creates a task on that day', a
     /Next week\s*Mon, Oct 5/,
     /Someday\s*No date, parked/,
     'Pick a date…',
+    /Deadline…\s*due:/,
   ]);
   await expect(
     page.getByRole('option', { name: 'Tomorrow, Sat, Oct 3' }),
   ).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('status')).toHaveText(/^5 date options\./);
+  await expect(page.getByRole('status')).toHaveText(/^6 date options\./);
 
   await page.keyboard.press('ArrowDown');
   const monday = page.getByRole('option', { name: 'Monday, Oct 5' });
@@ -94,6 +95,7 @@ test('the @ date menu on a [ ] line in a note picks the day of the task it creat
     /Next week\s*Mon, Oct 5/,
     /Someday\s*No date, parked/,
     'Pick a date…',
+    /Deadline…\s*due:/,
   ]);
   await expect(editor).toHaveAttribute(
     'aria-controls',
@@ -117,6 +119,7 @@ test('the @ date menu on a [ ] line in a note picks the day of the task it creat
   await page.keyboard.type('@');
   await expect(listbox).toBeVisible();
   await page.keyboard.press('End');
+  await page.keyboard.press('ArrowUp');
   await expect(
     page.getByRole('option', { name: 'Pick a date…' }),
   ).toHaveAttribute('aria-selected', 'true');
@@ -153,4 +156,61 @@ test('the @ date menu on a [ ] line in a note picks the day of the task it creat
     .toEqual([
       { title, startDate: '2026-11-01', someday: false, priority: 'high' },
     ]);
+});
+
+test('Deadline… on a [ ] line sets a due: date, shown as a pill and as overdue on Today once passed', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-10-02T10:00:00-04:00'));
+  const note = await seed.note({ title: `${prefix} deadlines` });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const editor = page.getByRole('textbox', { name: 'Note body' });
+  await editor.click();
+  const title = `File taxes ${prefix}`;
+  await page.keyboard.type(`[ ] ${title} @dead`);
+  await expect(
+    page.getByRole('option', { name: 'Deadline…, due:' }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+  await expect(editor).toHaveText(`[ ] ${title} due:`);
+
+  const listbox = page.getByRole('listbox', { name: 'Deadline…' });
+  await expect(listbox.getByRole('option')).toHaveText([
+    /Tomorrow\s*Sat, Oct 3/,
+    /Monday\s*Oct 5/,
+    /Next week\s*Mon, Oct 5/,
+    'Pick a date…',
+  ]);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(editor).toHaveText(`[ ] ${title} due:mon `);
+  await page.keyboard.press('Enter');
+
+  const embed = page
+    .locator('.markdown-editor .task-embed')
+    .filter({ hasText: title });
+  await expect(embed.getByText('due Mon')).toBeVisible();
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET('/api/notebook/tasks', {
+        params: { query: { noteId: note.id } },
+      });
+      return data?.items.map((t) => [t.startDate, t.dueDate]);
+    })
+    .toEqual([[null, '2026-10-05']]);
+
+  await page.clock.setFixedTime(new Date('2026-10-06T10:00:00-04:00'));
+  await page.goto(`${apps.notebook}/today`);
+  await expect(
+    page
+      .getByTestId('still-open')
+      .locator('[data-task-id]')
+      .filter({ hasText: title }),
+  ).toContainText('Overdue · Mon');
 });

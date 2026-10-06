@@ -4,6 +4,8 @@ export type ParsedTaskSyntax = {
   title: string;
   startDate: string | null;
   someday: boolean;
+  /** The deadline from `due:…`, independent of the show-on date. */
+  dueDate: string | null;
   priority: TaskPriority;
 };
 
@@ -164,13 +166,34 @@ const TOKEN_SHAPES = [
   /[a-z]+/iy,
 ];
 const AT_WORD_START = /(^|\s)@/g;
+const DUE_WORD_START = /(^|\s)due:/gi;
 const ENDS_WORD = /\s|$/y;
 const PRIORITY_TOKEN = /(?:^|\s)!(high|med|low)(?=\s|$)/i;
 
+/** The date token starting at `from` (just past its `@` or `due:`). */
+function readDateToken(
+  input: string,
+  from: number,
+  today: string,
+): { end: number; schedule: TaskSchedule } | null {
+  for (const shape of TOKEN_SHAPES) {
+    shape.lastIndex = from;
+    const word = shape.exec(input);
+    if (!word) continue;
+    const end = from + word[0].length;
+    ENDS_WORD.lastIndex = end;
+    if (!ENDS_WORD.test(input)) continue;
+    const schedule = resolveTaskDateToken(word[0], today);
+    if (schedule) return { end, schedule };
+  }
+  return null;
+}
+
 /**
  * `@today`, `@tomorrow`, `@mon`…`@sun`, `@next week`, `@oct 12`,
- * `@yyyy-mm-dd`, `@someday` and `!high`/`!med`/`!low`, anywhere in the text;
- * the last of each kind wins and everything else is the title.
+ * `@yyyy-mm-dd`, `@someday`, the same dates after `due:` (not `someday`),
+ * and `!high`/`!med`/`!low`, anywhere in the text; the last of each kind
+ * wins and everything else is the title.
  */
 export function parseTaskSyntax(
   input: string,
@@ -178,26 +201,25 @@ export function parseTaskSyntax(
 ): ParsedTaskSyntax {
   const spans: [number, number][] = [];
   let schedule: TaskSchedule = { startDate: null, someday: false };
+  let dueDate: string | null = null;
 
   for (const at of input.matchAll(AT_WORD_START)) {
     const start = at.index + at[1]!.length;
-    for (const shape of TOKEN_SHAPES) {
-      shape.lastIndex = start + 1;
-      const word = shape.exec(input);
-      if (!word) continue;
-      const end = start + 1 + word[0].length;
-      ENDS_WORD.lastIndex = end;
-      if (!ENDS_WORD.test(input)) continue;
-      const resolved = resolveTaskDateToken(word[0], today);
-      if (!resolved) continue;
-      schedule = resolved;
-      spans.push([start, end]);
-      break;
-    }
+    const token = readDateToken(input, start + 1, today);
+    if (!token) continue;
+    schedule = token.schedule;
+    spans.push([start, token.end]);
+  }
+  for (const due of input.matchAll(DUE_WORD_START)) {
+    const start = due.index + due[1]!.length;
+    const token = readDateToken(input, start + 'due:'.length, today);
+    if (!token || token.schedule.someday) continue;
+    dueDate = token.schedule.startDate;
+    spans.push([start, token.end]);
   }
 
   let rest = input;
-  for (const [start, end] of spans.reverse()) {
+  for (const [start, end] of spans.sort(([a], [b]) => b - a)) {
     rest = `${rest.slice(0, start)} ${rest.slice(end)}`;
   }
   rest = collapse(rest);
@@ -212,7 +234,7 @@ export function parseTaskSyntax(
     );
   }
 
-  return { title: rest, ...schedule, priority };
+  return { title: rest, ...schedule, dueDate, priority };
 }
 
 const collapse = (value: string) => value.replace(/\s+/g, ' ').trim();
@@ -242,13 +264,17 @@ export function noteDisplayTitle(note: {
 }
 
 /** The shortest token that resolves back to `day` from `today`. */
-export function taskDateToken(day: string, today: string): string {
+export function taskDateToken(
+  day: string,
+  today: string,
+  prefix: '@' | 'due:' = '@',
+): string {
   const date = toUtc(day);
-  if (!date) return `@${day}`;
+  if (!date) return `${prefix}${day}`;
   const short = `${MONTH_SHORT[date.getUTCMonth()]!.toLowerCase()} ${date.getUTCDate()}`;
   return resolveTaskDateToken(short, today)?.startDate === day
-    ? `@${short}`
-    : `@${day}`;
+    ? `${prefix}${short}`
+    : `${prefix}${day}`;
 }
 
 export type TaskDateMenuOption = {
@@ -307,6 +333,18 @@ export const matchesTaskDateQuery = (keywords: string[], query: string) => {
   const q = query.toLowerCase();
   return keywords.some((k) => k.startsWith(q));
 };
+
+/** The `due:word` being typed at `caret`, if any; `from` is the `d`. */
+export function activeTaskDueQuery(
+  text: string,
+  caret: number,
+): { from: number; to: number; query: string } | null {
+  if (caret < text.length && !/\s/.test(text[caret]!)) return null;
+  const before = text.slice(0, caret);
+  const m = /(?:^|\s)due:(\S*)$/i.exec(before);
+  if (!m) return null;
+  return { from: caret - m[1]!.length - 4, to: caret, query: m[1]! };
+}
 
 /** The `@word` being typed at `caret`, if any; `from` is the `@`. */
 export function activeTaskDateQuery(

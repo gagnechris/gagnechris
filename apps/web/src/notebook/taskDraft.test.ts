@@ -2,14 +2,21 @@ import { describe, expect, test } from 'vitest';
 import { emptyTaskDraft, taskPayloadFromDraft } from './taskDraft';
 
 describe('taskPayloadFromDraft', () => {
-  test('sends the show-on date and someday, never dueDate', () => {
-    const payload = taskPayloadFromDraft({
-      ...emptyTaskDraft(),
-      title: 'Book flights',
-      startDate: '2026-10-09',
-    });
-    expect(payload).toMatchObject({ startDate: '2026-10-09', someday: false });
-    expect(payload).not.toHaveProperty('dueDate');
+  test('sends the show-on date and the deadline independently', () => {
+    expect(
+      taskPayloadFromDraft({
+        ...emptyTaskDraft(),
+        title: 'Book flights',
+        startDate: '2026-10-09',
+      }),
+    ).toMatchObject({ startDate: '2026-10-09', someday: false, dueDate: null });
+    expect(
+      taskPayloadFromDraft({
+        ...emptyTaskDraft(),
+        title: 'Book flights',
+        dueDate: '2026-10-30',
+      }),
+    ).toMatchObject({ startDate: null, dueDate: '2026-10-30' });
   });
 
   test('someday clears the show-on date', () => {

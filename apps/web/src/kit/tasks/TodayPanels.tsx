@@ -8,6 +8,8 @@ import {
 } from '@gagnechris/shared';
 import { parseLocalDate } from '../calendarDates';
 import { SnoozeMenu } from './SnoozeMenu';
+import { TaskDuePill } from './TaskDuePill';
+import type { TaskDue } from './taskDue';
 import { TaskCheckbox } from './TaskRow';
 import {
   comingUpDayLabel,
@@ -26,6 +28,7 @@ export type StillOpenRow = {
   sourceTo?: string;
   /** Route for the title. */
   to?: string;
+  due?: TaskDue | null;
 };
 
 type StillOpenProps = {
@@ -87,7 +90,7 @@ export function StillOpenPanel(props: StillOpenProps) {
         <p className="admin-hint">Nothing carried over.</p>
       ) : props.compact ? (
         <ul className="today-panel__list">
-          {rows.map(({ task, source }) => (
+          {rows.map(({ task, source, due }) => (
             <li
               key={task.id}
               className="today-row"
@@ -97,7 +100,14 @@ export function StillOpenPanel(props: StillOpenProps) {
               <div className="today-row__main">
                 <span className="today-row__text">
                   <span className="today-row__title">{task.title}</span>
-                  <span className="today-row__source">{source.label}</span>
+                  <span className="today-row__source">
+                    {due ? (
+                      <>
+                        <TaskDuePill due={due} />{' '}
+                      </>
+                    ) : null}
+                    {source.label}
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -131,7 +141,7 @@ function FullStillOpenList({
   const mondayLabel = formatTaskDay(monday);
   return (
     <ul className="today-panel__list">
-      {rows.map(({ task, source, sourceTo, to }) => (
+      {rows.map(({ task, source, sourceTo, to, due }) => (
         <li
           key={task.id}
           className="today-row"
@@ -153,13 +163,16 @@ function FullStillOpenList({
             )}
           </div>
           <div className="today-row__meta">
-            {sourceTo ? (
-              <Link to={sourceTo} className="today-row__chip">
-                {source.label}
-              </Link>
-            ) : (
-              <span className="today-row__chip">{source.label}</span>
-            )}
+            <span className="today-row__badges">
+              <TaskDuePill due={due} />
+              {sourceTo ? (
+                <Link to={sourceTo} className="today-row__chip">
+                  {source.label}
+                </Link>
+              ) : (
+                <span className="today-row__chip">{source.label}</span>
+              )}
+            </span>
             {readOnly ? null : (
               <span className="today-row__actions">
                 {onAddToNote ? (

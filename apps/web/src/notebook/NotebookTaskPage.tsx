@@ -205,6 +205,16 @@ export default function NotebookTaskPage() {
         Someday (never shows on Today)
       </label>
 
+      <Field label="Deadline" hint="Doesn’t change when the task shows.">
+        <TextInput
+          type="date"
+          value={draft.dueDate}
+          onChange={(e) =>
+            updateDraft((prev) => ({ ...prev, dueDate: e.target.value }))
+          }
+        />
+      </Field>
+
       <LinkedNotePicker
         value={draft.noteId}
         onChange={(noteId) => updateDraft((prev) => ({ ...prev, noteId }))}

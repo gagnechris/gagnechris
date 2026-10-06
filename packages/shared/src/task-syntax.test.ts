@@ -10,6 +10,7 @@ import {
 } from 'vitest';
 import {
   activeTaskDateQuery,
+  activeTaskDueQuery,
   formatTaskDay,
   noteDisplayTitle,
   localDateString,
@@ -25,6 +26,7 @@ const dated = (title: string, startDate: string, priority = 'med') => ({
   title,
   startDate,
   someday: false,
+  dueDate: null,
   priority,
 });
 
@@ -32,6 +34,7 @@ const undated = (title: string, priority = 'med') => ({
   title,
   startDate: null,
   someday: false,
+  dueDate: null,
   priority,
 });
 
@@ -55,6 +58,7 @@ describe('parseTaskSyntax tokens', () => {
       title: 'Try Expo Router',
       startDate: null,
       someday: true,
+      dueDate: null,
       priority: 'med',
     });
   });
@@ -140,6 +144,7 @@ describe('parseTaskSyntax mixing and titles', () => {
       title: 'Call bank tomorrow',
       startDate: null,
       someday: false,
+      dueDate: null,
       priority: 'med',
     });
     expect(parseTaskSyntax('Plan for Today show', FRI).title).toBe(
@@ -162,6 +167,7 @@ describe('parseTaskSyntax mixing and titles', () => {
         title: input,
         startDate: null,
         someday: false,
+        dueDate: null,
         priority: 'med',
       });
     }
@@ -303,6 +309,11 @@ describe('date menu helpers', () => {
     }
   });
 
+  it('due: picks a token with the due: prefix', () => {
+    expect(taskDateToken('2026-10-12', FRI, 'due:')).toBe('due:oct 12');
+    expect(parseTaskSyntax('x due:2027-10-12', FRI).dueDate).toBe('2027-10-12');
+  });
+
   it('formats days in English with or without the weekday', () => {
     expect(formatTaskDay('2026-10-03')).toBe('Sat, Oct 3');
     expect(formatTaskDay('2026-10-03', false)).toBe('Oct 3');
@@ -343,5 +354,70 @@ describe('noteDisplayTitle', () => {
     expect(noteDisplayTitle({ type: 'page', date: null, title: '' })).toBe(
       'Untitled',
     );
+  });
+});
+
+describe('parseTaskSyntax deadlines', () => {
+  it.each([
+    ['Ship it due:fri', '2026-10-09'],
+    ['Ship it due:oct 30', '2026-10-30'],
+    ['Ship it due:tomorrow', '2026-10-03'],
+    ['Ship it due:next week', '2026-10-05'],
+    ['Ship it DUE:Mon', '2026-10-05'],
+    ['Ship it due:2026-12-01', '2026-12-01'],
+  ])('%s', (input, dueDate) => {
+    expect(parseTaskSyntax(input, FRI)).toEqual({
+      title: 'Ship it',
+      startDate: null,
+      someday: false,
+      dueDate,
+      priority: 'med',
+    });
+  });
+
+  it('keeps the deadline and the show-on date independent', () => {
+    expect(parseTaskSyntax('Draft due:oct 30 report @mon !high', FRI)).toEqual({
+      title: 'Draft report',
+      startDate: '2026-10-05',
+      someday: false,
+      dueDate: '2026-10-30',
+      priority: 'high',
+    });
+  });
+
+  it('the last due: wins', () => {
+    expect(parseTaskSyntax('x due:mon due:tue', FRI).dueDate).toBe(
+      '2026-10-06',
+    );
+  });
+
+  it('leaves non-deadlines in the title', () => {
+    for (const input of [
+      'x due:someday',
+      'x due:',
+      'x overdue:mon',
+      'x due:oct',
+      'x due:feb 30',
+    ]) {
+      expect(parseTaskSyntax(input, FRI)).toMatchObject({
+        title: input,
+        dueDate: null,
+      });
+    }
+  });
+
+  it('finds the due:word being typed at the caret', () => {
+    expect(activeTaskDueQuery('Report due:fr', 13)).toEqual({
+      from: 7,
+      to: 13,
+      query: 'fr',
+    });
+    expect(activeTaskDueQuery('due:', 4)).toEqual({
+      from: 0,
+      to: 4,
+      query: '',
+    });
+    expect(activeTaskDueQuery('overdue:x', 9)).toBeNull();
+    expect(activeTaskDueQuery('x due:mon ', 10)).toBeNull();
   });
 });

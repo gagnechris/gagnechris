@@ -18,6 +18,7 @@ export type DemoTask = Pick<
   | 'priority'
   | 'startDate'
   | 'someday'
+  | 'dueDate'
   | 'noteId'
   | 'createdAt'
 >;
@@ -72,6 +73,7 @@ const task = (
   priority: 'med',
   startDate: null,
   someday: false,
+  dueDate: null,
   noteId: TODAY_NOTE_ID,
   createdAt: '',
   ...fields,
@@ -151,6 +153,7 @@ export function notebookDemoReducer(
       priority: parsed.priority,
       startDate: parsed.startDate,
       someday: parsed.someday,
+      dueDate: parsed.dueDate,
       createdAt: at(state.today),
     });
     return {

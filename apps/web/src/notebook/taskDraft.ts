@@ -9,6 +9,7 @@ export type TaskDraft = {
   status: TaskStatus;
   startDate: string;
   someday: boolean;
+  dueDate: string;
   noteId: string;
   tagsText: string;
 };
@@ -20,6 +21,7 @@ export const emptyTaskDraft = (): TaskDraft => ({
   status: 'todo',
   startDate: '',
   someday: false,
+  dueDate: '',
   noteId: '',
   tagsText: '',
 });
@@ -31,6 +33,7 @@ export const taskDraftFromTask = (task: Task): TaskDraft => ({
   status: task.status,
   startDate: task.startDate ?? '',
   someday: task.someday,
+  dueDate: task.dueDate ?? '',
   noteId: task.noteId ?? '',
   tagsText: task.tags.join(', '),
 });
@@ -43,6 +46,7 @@ export const taskPayloadFromDraft = (draft: TaskDraft) => ({
   startDate:
     !draft.someday && draft.startDate.trim() ? draft.startDate.trim() : null,
   someday: draft.someday,
+  dueDate: draft.dueDate.trim() ? draft.dueDate.trim() : null,
   noteId: draft.noteId.trim() ? draft.noteId.trim() : null,
   tags: parseTagsText(draft.tagsText),
 });

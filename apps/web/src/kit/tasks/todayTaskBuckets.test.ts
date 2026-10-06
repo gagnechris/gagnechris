@@ -29,6 +29,26 @@ const base = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
 const FRI = '2026-10-02';
 
 describe('bucketTodayTasks', () => {
+  test('overdue tasks sort first in Still open, earliest deadline first', () => {
+    const { stillOpen } = bucketTodayTasks(
+      [
+        base({ id: 'old', title: 'a', startDate: '2026-09-20' }),
+        base({ id: 'due-today', title: 'b', dueDate: FRI }),
+        base({ id: 'late', title: 'c', dueDate: '2026-10-01' }),
+        base({ id: 'later', title: 'd', dueDate: '2026-10-09' }),
+        base({ id: 'very-late', title: 'e', dueDate: '2026-09-25' }),
+      ],
+      { day: FRI, embeddedIds: new Set() },
+    );
+    expect(stillOpen.map((t) => t.id)).toEqual([
+      'very-late',
+      'late',
+      'old',
+      'due-today',
+      'later',
+    ]);
+  });
+
   test('each task lands in exactly one place: the note, Still open, or Coming up', () => {
     const tasks = [
       // Embedded in today's note and due today.

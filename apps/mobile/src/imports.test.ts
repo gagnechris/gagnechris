@@ -17,6 +17,7 @@ describe('mobile imports', () => {
       title: 'Ship it',
       startDate: '2026-10-05',
       someday: false,
+      dueDate: null,
       priority: 'high',
     });
   });

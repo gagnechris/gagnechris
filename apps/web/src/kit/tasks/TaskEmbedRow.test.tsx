@@ -92,6 +92,7 @@ describe('task line helpers', () => {
         title: 'Call Sam',
         startDate: null,
         someday: false,
+        dueDate: null,
         priority: 'med',
       },
     });

@@ -137,7 +137,7 @@ vi.mock('../workspace/api/client', () => ({
           description: '',
           priority: 'med',
           status: 'todo',
-          dueDate: null,
+          dueDate: (body.dueDate as string | null | undefined) ?? null,
           startDate: null,
           someday: false,
           completedAt: null,
@@ -415,6 +415,24 @@ describe('task syntax on a [ ] line in a note', () => {
     expect(view.state.doc.line(1).text).toBe(tokenLine([...ids][0] as string));
   });
 
+  test('[ ] File taxes due:fri @mon sets the deadline apart from the show-on date', async () => {
+    const { container } = renderToday();
+    const view = await editorView(container);
+    act(() => view.focus());
+
+    typeInto(view, '[ ] File taxes due:fri @mon');
+    pressEnter(view);
+
+    await waitFor(() => expect(api.tasks.size).toBe(1), { timeout: 5000 });
+    expect(last(api.taskPosts)).toMatchObject({
+      title: 'File taxes',
+      startDate: '2026-10-05',
+      dueDate: '2026-10-09',
+    });
+    // A week out on the same weekday reads as the date, not "Fri".
+    expect(await screen.findAllByText('due Oct 9')).not.toHaveLength(0);
+  });
+
   test('@ opens the date menu on the line; arrows, Enter and Esc drive it', async () => {
     const { container } = renderToday();
     const view = await editorView(container);
@@ -434,6 +452,7 @@ describe('task syntax on a [ ] line in a note', () => {
       'Next week, Mon, Oct 5',
       'Someday, No date, parked',
       'Pick a date…',
+      'Deadline…, due:',
     ]);
     const content = view.contentDOM;
     expect(content).toHaveAttribute('aria-controls', listbox.id);
@@ -445,7 +464,7 @@ describe('task syntax on a [ ] line in a note', () => {
     expect(
       screen
         .getAllByRole('status')
-        .some((el) => el.textContent?.startsWith('5 date options.')),
+        .some((el) => el.textContent?.startsWith('6 date options.')),
     ).toBe(true);
     expect(
       screen.getByText('Stays in this note. Shows up on Today from that date.'),

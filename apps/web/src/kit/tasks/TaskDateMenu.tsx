@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react';
-import { taskDateMenuIds, type TaskDateMenuItem } from './taskDateMenuItems';
+import {
+  taskDateMenuIds,
+  type TaskDateKind,
+  type TaskDateMenuItem,
+} from './taskDateMenuItems';
 import './taskSyntax.css';
 
 type Picker = {
@@ -12,22 +16,27 @@ type Picker = {
 type Props = {
   baseId: string;
   open: boolean;
+  kind: TaskDateKind;
   items: TaskDateMenuItem[];
   activeIndex: number;
   onChoose: (item: TaskDateMenuItem) => void;
   onActivate: (index: number) => void;
   /** Set while Pick a date… asks for the day. */
   picker: Picker | null;
+  /** Shown under show-on dates; deadlines have their own. */
   hint: string;
   style?: CSSProperties;
   /** A row of chips above the phone keyboard's accessory bar. */
   docked?: boolean;
 };
 
-/** The `@` date menu; the field that owns the caret handles the keys. */
+const DUE_HINT = 'A deadline; it does not change when the task shows.';
+
+/** The `@` and `due:` date menu; the field that owns the caret handles the keys. */
 export function TaskDateMenu({
   baseId,
   open,
+  kind,
   items,
   activeIndex,
   onChoose,
@@ -53,7 +62,7 @@ export function TaskDateMenu({
         style={docked ? undefined : style}
       >
         <p className="task-syntax__heading" id={ids.heading}>
-          Show this task on…
+          {kind === 'due' ? 'Deadline…' : 'Show this task on…'}
         </p>
         <ul
           className="task-syntax__options"
@@ -71,7 +80,7 @@ export function TaskDateMenu({
                     item.detail ? `${item.label}, ${item.detail}` : item.label
                   }
                   aria-selected={i === activeIndex}
-                  className="task-syntax__option"
+                  className={`task-syntax__option${item.id === 'deadline' ? ' task-syntax__option--section' : ''}`}
                   onMouseDown={(e) => e.preventDefault()}
                   onMouseEnter={() => onActivate(i)}
                   onClick={() => onChoose(item)}
@@ -117,7 +126,7 @@ export function TaskDateMenu({
           </div>
         ) : null}
         <p className="task-syntax__hint" id={ids.hint}>
-          {hint}
+          {kind === 'due' ? DUE_HINT : hint}
         </p>
       </div>
       <p className="task-syntax__status" role="status" aria-live="polite">
