@@ -13,13 +13,10 @@ test('tag a post with a project from the editor; the post shows Part of and the 
 }) => {
   const name = `${prefix} Notebook`;
   const slug = `${prefix}-notebook`;
-  const { data: created } = await seed.api.POST('/api/admin/projects', {
-    body: { name, slug, stage: 'building', bodyMarkdown: 'Body.' },
-  });
-  if (!created) throw new Error('seed project failed');
-  await seed.api.POST('/api/admin/projects/{id}/publish', {
-    params: { path: { id: created.id } },
-    body: { version: created.version },
+  await seed.publishedProject({
+    name,
+    slug,
+    bodyMarkdown: 'Body.',
   });
   const post = await seed.post({ title: `${prefix} Build log entry` });
 

@@ -9,6 +9,8 @@ export { mergeEditorSeo } from './mergeEditorSeo.js';
 export { useLatest } from './useLatest.js';
 export { clearPendingFlushes, hasPendingFlushes } from './pendingFlushes.js';
 export {
+  AUTOSAVE_DEBOUNCE_MS,
+  AUTOSAVE_RETRY_DELAYS_MS,
   useQueuedAutosave,
   type AutosaveResult,
   type FlushResult,

@@ -1,11 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
-import { AppApiProvider } from '@gagnechris/app-core';
+import { AppApiProvider, AUTOSAVE_DEBOUNCE_MS } from '@gagnechris/app-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import type { ReactElement, ReactNode } from 'react';
 import { createApiClient } from './workspace/api/client';
 import type { AuthUser } from './workspace/auth/session';
+
+/** Fake-timer advance that is just past the autosave debounce. */
+export const PAST_AUTOSAVE_MS = AUTOSAVE_DEBOUNCE_MS + 50;
 
 export const testAuthUser: AuthUser = {
   label: 'chris@example.com',

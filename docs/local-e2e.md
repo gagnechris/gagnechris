@@ -8,24 +8,21 @@ Run the Blog CMS API + publisher against **DynamoDB Local** and a filesystem sit
 - Node.js 22.12+ (see `.nvmrc`)
 - Repo dependencies: `npm ci`
 
-## One-shot smoke
+## Publish lifecycle smoke
 
 ```bash
 npm run e2e:local
 ```
 
-This script:
+This builds `apps/web` with Cognito placeholders if `apps/web/dist` is missing, then runs the `api` Playwright project (`e2e/tests/publish-lifecycle.spec.ts`) on the private stack described below. Nothing touches `npm run local:dev`'s table or `.local-site/`. The spec uses Playwright's `request` and the `Seed` fixture, with no browser:
 
-1. Starts DynamoDB Local (`docker-compose.local.yml`)
-2. Creates table `gagnechris-local` (idempotent)
-3. Builds the web app if `apps/web/dist` is missing (Cognito placeholders)
-4. Seeds `.local-site/` from that build (publisher shell) and fails if the built app fetches `/__site`, which only the Vite dev server proxies
-5. Starts the local API wrapper (`:8787`) and static server (`:4177`)
-6. Creates → publishes → edits (live unchanged) → publish changes (live updated) → unpublishes a post
-7. Asserts `/posts/<slug>` returns prerendered HTML + OG tags, that `/blog/<slug>` 301s to it, and that orphans / unpublished pages 404
-8. Creates and publishes a project and a bodyless `idea`; asserts `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists the project but not the idea, and `sitemap.xml` lists only the project with a page; checks that tagging a post with an unknown project id is a 400, publishes a post tagged with the project and asserts it is in the project's Build log and shows "Part of", renames the project slug and asserts both still link; unpublishes the project and asserts its page, `/projects` and Home entries and sitemap entry are gone and the post no longer shows "Part of", then asserts that unknown page URLs (`/projects/x`, `/resume/x`, `/contact/x`, `/dont-feed-the-bears/x`, `/x.html`, an unpublished post or project, …) are the HTML 404 with status 404 and every real page is 200. Last, it starts a second static server whose viewer-response function marks responses and asserts a missing object comes back unmarked, since CloudFront never runs viewer-response on an origin 4xx
+1. A post: publish → `/posts/<slug>` is the prerender with OG tags, `/` lists it, `/blog/<slug>` 301s to it; Home publishes from its seeded draft and its prerender stays off other pages; an edit stays off the live page until Publish changes; the rebuild deletes an orphan page planted in the site root; unpublish deletes the page and drops it from `/`
+2. A project and a bodyless `idea`: `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists only the project, `sitemap.xml` lists only the project; an unknown project id on a post is a 400; a tagged post is in the Build log and shows "Part of", also after a slug rename; unpublish removes the page, its `/projects`, Home and sitemap entries and the post's "Part of"
+3. Unknown page URLs (`/projects/x`, `/resume/x`, `/x.html`, …) are the HTML 404 with status 404; every real page is 200
+4. The built app never fetches `/__site`, which only the Vite dev server proxies
+5. A second static server whose viewer-response function marks responses leaves a missing object unmarked, since CloudFront never runs viewer-response on an origin 4xx
 
-To run it beside another stack, give it its own Compose project and ports, e.g. `COMPOSE_PROJECT_NAME=mine DYNAMODB_LOCAL_HOST_PORT=28427 LOCAL_API_PORT=28787 LOCAL_SITE_PORT=28177 npm run e2e:local`, then `COMPOSE_PROJECT_NAME=mine docker compose -f docker-compose.local.yml down`.
+Without an `apps/web` build (the stack then serves `scripts/local/minimal-shell.html`) the spec skips. `npm run e2e:local -- --ui` and other Playwright flags pass through.
 
 ## Browser tests (Playwright)
 
@@ -36,13 +33,15 @@ npm run e2e:browser -- --ui              # interactive UI mode
 npm run e2e:browser -- --project=webkit --headed tests/admin-posts.spec.ts
 ```
 
+Projects: `api` runs `publish-lifecycle.spec.ts` alone first, since it publishes Home and checks its recent posts, which other specs' publishes would race; `chromium` and `webkit` run every other spec once it passes.
+
 `e2e/global-setup.ts` boots a private stack for each run and tears it down
 afterwards:
 
 1. DynamoDB Local in its own container (`gagnechris-e2e-<run>`, label
    `gagnechris.e2e=1`, bound to `127.0.0.1` only), table
    `gagnechris-e2e-<run>`
-2. Site root `e2e/.stack/<run>/site`, seeded from `apps/web/dist` when a
+2. Site root `e2e/.stack/<run>/site` (`E2E_SITE_ROOT`), seeded from `apps/web/dist` when a
    build exists, else `scripts/local/minimal-shell.html`
 3. Local API + publisher (`services/api/local/server.ts`) and static site
    (`static-server.ts`, `E2E_SITE_URL`), which runs the real apex
@@ -104,15 +103,15 @@ other run is active).
 
 Import `test` and `expect` from `e2e/fixtures.ts`:
 
-| Fixture  | What it gives you                                                                       |
-| -------- | --------------------------------------------------------------------------------------- |
-| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')` |
-| `prefix` | Unique per test; slugs and titles from `seed` start with it                             |
-| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)              |
-| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                     |
-| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                     |
-| `seed`   | API seeding as `users.owner` (`seed.post()`, `seed.note()`, `seed.api`)                 |
-| `seedAs` | `seedAs(user)` seeds as another user                                                    |
+| Fixture  | What it gives you                                                                                                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')`                                                                                                      |
+| `prefix` | Unique per test; slugs and titles from `seed` start with it                                                                                                                                  |
+| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)                                                                                                                   |
+| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                                                                                                                          |
+| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                                                                                                                          |
+| `seed`   | API seeding as `users.owner`: `post`, `publishedPost`, `project`, `publishedProject`, `note`, `daily`, `task` (inputs typed from `@gagnechris/api-client`), and `seed.api` for anything else |
+| `seedAs` | `seedAs(user)` seeds as another user                                                                                                                                                         |
 
 Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin`, `notebook` and `user-admin` (Full Admin).
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
@@ -128,13 +127,16 @@ users rather than assuming an empty table. Seeding goes through the API
 (`@gagnechris/api-client`), so it hits the same validation as the UI.
 Indexes such as `/posts` and `/projects` list every test's items, so a
 keyboard check calls `focusJustBefore(locator)` (from `e2e/fixtures.ts`) and
-presses Tab once, rather than tabbing from the top of the page.
+presses Tab once, rather than tabbing from the top of the page. Never wait a
+fixed time before a negative assertion: wait for a positive signal that the
+action was handled (a later request, a rendered state), or for
+`afterFrames(page)` when the effect lands within a frame or two.
 
 ### CI
 
-The **Local E2E smoke (CHR-82)** job runs `npm run e2e:local`, then installs
+The **Local E2E smoke (CHR-82)** job builds the web app, then installs
 cached Chromium + WebKit (`~/.cache/ms-playwright`, keyed by Playwright
-version) and runs `npm run e2e:browser`. On failure it uploads the
+version) and runs `npm run e2e:browser`, which runs the `api` project first. On failure it uploads the
 `playwright-report-<attempt>` artifact: HTML report, `test-results/`
 (traces, screenshots, video) and stack logs. Open a trace with
 `npx playwright show-trace <trace.zip>` or the HTML report's trace viewer.
@@ -178,7 +180,7 @@ shared `HOME_LINKS_SENTENCE`, and the site header and footer from
 `@gagnechris/shared/site-chrome` (React JSX + publisher HTML).
 
 The publisher reads a pristine `_shell.html` template (never the home
-prerender in `index.html`) when building other pages. `npm run e2e:local`
+prerender in `index.html`) when building other pages. `publish-lifecycle.spec.ts`
 asserts both halves: `/` has the home prerender and `/posts/<slug>` does not.
 
 Lower-level scripts (`local:up`, `local:api`, `local:site`, …) run the pieces separately.
@@ -198,19 +200,19 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 
 ## Layout
 
-| Path                                  | Role                                                    |
-| ------------------------------------- | ------------------------------------------------------- |
-| `docker-compose.local.yml`            | Official DynamoDB Local image                           |
-| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                 |
-| `scripts/local/env.sh`                | Safe env (source before local tools)                    |
-| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                        |
-| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                    |
-| `scripts/local/e2e.sh`                | Automated smoke (`npm run e2e:local`)                   |
-| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing         |
-| `e2e/`                                | Playwright config, stack global setup, fixtures, specs  |
-| `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild               |
-| `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request        |
-| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored) |
-| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)        |
+| Path                                  | Role                                                          |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `docker-compose.local.yml`            | Official DynamoDB Local image                                 |
+| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                       |
+| `scripts/local/env.sh`                | Safe env (source before local tools)                          |
+| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                              |
+| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                          |
+| `scripts/local/e2e.sh`                | `npm run e2e:local`: builds if needed, runs the `api` project |
+| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing               |
+| `e2e/`                                | Playwright config, stack global setup, fixtures, specs        |
+| `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild                     |
+| `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request              |
+| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)       |
+| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)              |
 
 Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation. Locally the publisher writes the slug KeyValueStore keys to `LOCAL_KVS_FILE` (set by `env.sh`), and the static server answers the viewer-request function's KVS reads from it. Like CloudFront, the static server runs viewer-response only on responses below 400.

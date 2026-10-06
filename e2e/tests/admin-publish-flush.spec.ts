@@ -65,18 +65,12 @@ const lastPutBeforePublish = async (page: Page, id: string) => {
 const publishButton = (page: Page) =>
   page.getByRole('button', { name: 'Publish', exact: true });
 
-async function seedProject(seed: Seed, prefix: string) {
-  const { data } = await seed.api.POST('/api/admin/projects', {
-    body: {
-      name: `${prefix} Tag target`,
-      slug: `${prefix}-tag-target`,
-      stage: 'building',
-      bodyMarkdown: 'Body.',
-    },
+const seedProject = (seed: Seed, prefix: string) =>
+  seed.project({
+    name: `${prefix} Tag target`,
+    slug: `${prefix}-tag-target`,
+    bodyMarkdown: 'Body.',
   });
-  if (!data) throw new Error('seed project failed');
-  return data;
-}
 
 for (const via of ['button', 'shortcut'] as const) {
   test(`posts: tick a project, then Publish (${via}) at once; the published post has the tag`, async ({

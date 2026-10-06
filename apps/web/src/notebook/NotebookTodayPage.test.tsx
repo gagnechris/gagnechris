@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
+import { AUTOSAVE_RETRY_DELAYS_MS } from '@gagnechris/app-core';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
@@ -278,6 +279,21 @@ const seedNote = (bodyMarkdown: string, version = 1) => {
   };
 };
 
+/** All timers fake, but still ticking, so Testing Library's polling works. */
+const startAdvancingFakeTimers = () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date(2026, 9, 20, 12, 0, 0));
+};
+
+const BEFORE_FIRST_RETRY_MS = AUTOSAVE_RETRY_DELAYS_MS[0]! - 500;
+
+/** In steps, so effects that schedule timers commit between them. */
+const advance = async (ms: number) => {
+  for (let left = ms; left > 0; left -= 100) {
+    await act(() => vi.advanceTimersByTimeAsync(Math.min(100, left)));
+  }
+};
+
 describe('NotebookTodayPage', () => {
   beforeEach(() => {
     state.note = null;
@@ -388,7 +404,8 @@ describe('NotebookTodayPage', () => {
   });
 
   test('retries a failed save when the browser comes back online', async () => {
-    const user = userEvent.setup();
+    startAdvancingFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     state.offline = true;
     renderToday();
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
@@ -400,18 +417,15 @@ describe('NotebookTodayPage', () => {
     state.offline = false;
     window.dispatchEvent(new Event('online'));
 
-    // Well before the first 2 s backoff retry, with no further edit.
-    await waitFor(
-      () => {
-        expect(state.note?.bodyMarkdown).toBe('offline words');
-      },
-      { timeout: 1500 },
-    );
+    // Short of the first backoff retry, with no further edit.
+    await advance(BEFORE_FIRST_RETRY_MS);
+    expect(state.note?.bodyMarkdown).toBe('offline words');
     expect(screen.queryByText('Save failed (0).')).not.toBeInTheDocument();
   });
 
   test('retries promptly when the browser comes back online while the failing save is in flight', async () => {
-    const user = userEvent.setup();
+    startAdvancingFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     state.offline = true;
     let releasePut!: () => void;
     state.putGate = new Promise((resolve) => {
@@ -429,13 +443,9 @@ describe('NotebookTodayPage', () => {
     window.dispatchEvent(new Event('online'));
     releasePut();
 
-    // Well before the first 2 s backoff retry, with no further edit.
-    await waitFor(
-      () => {
-        expect(state.note?.bodyMarkdown).toBe('offline words');
-      },
-      { timeout: 1500 },
-    );
+    // Short of the first backoff retry, with no further edit.
+    await advance(BEFORE_FIRST_RETRY_MS);
+    expect(state.note?.bodyMarkdown).toBe('offline words');
     expect(state.puts).toBe(2);
   });
 
@@ -472,7 +482,8 @@ describe('NotebookTodayPage', () => {
     expect(state.note?.bodyMarkdown).toBe('from tab A');
   });
   test('offline edits survive a date change and save once back online', async () => {
-    const user = userEvent.setup();
+    startAdvancingFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const confirm = vi.spyOn(window, 'confirm');
     state.offline = true;
     renderToday();
@@ -489,13 +500,9 @@ describe('NotebookTodayPage', () => {
     state.offline = false;
     window.dispatchEvent(new Event('online'));
 
-    // Well before the first 2 s backoff retry.
-    await waitFor(
-      () => {
-        expect(state.note?.bodyMarkdown).toBe('offline words');
-      },
-      { timeout: 1500 },
-    );
+    // Short of the first backoff retry.
+    await advance(BEFORE_FIRST_RETRY_MS);
+    expect(state.note?.bodyMarkdown).toBe('offline words');
     expect(confirm).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Previous' }));

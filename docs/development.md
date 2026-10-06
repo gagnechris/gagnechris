@@ -4,7 +4,7 @@
 
 - **Node.js** 22.12+ (see `.nvmrc`; `.npmrc` sets `engine-strict=true`)
 - **npm** (workspaces)
-- **Docker** for DynamoDB Local (`npm run local:dev` / `e2e:local`)
+- **Docker** for DynamoDB Local (`npm run local:dev`, `e2e:local`, `e2e:browser`)
 
 ```bash
 nvm install   # reads .nvmrc
@@ -82,7 +82,7 @@ npm run publish-surface:check # CloudFront Option B + local publish routes from 
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
 npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there; demos only in lazy chunks; app shells load bundled scripts only (CI)
-npm run e2e:local     # one-shot CMS smoke against DynamoDB Local
+npm run e2e:local     # publish lifecycle smoke (Playwright api project, own stack)
 npm run e2e:browser   # Playwright (Chromium + WebKit) against its own local stack
 ```
 
@@ -122,7 +122,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
 
-`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` or `npm run e2e:local` against a running container works.
+`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
 
 ### Integration tests
 
