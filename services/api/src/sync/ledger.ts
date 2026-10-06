@@ -149,6 +149,11 @@ export class SyncLedger {
         // Fail the page (500 + SyncAdapterMissing alarm) instead of skipping:
         // the client would advance past `nextSince` and never see the row.
         if (!adapter) throw new SyncAdapterMissingError(changeType);
+        // A corrupt row is skipped, not failed: a missing adapter breaks every
+        // row of a type until a deploy, but one bad row must not stop the
+        // user's sync for good. The adapter logs its keys and counts
+        // SyncCorruptRow (alarmed). Clients never see the row until a repair
+        // rewrites it with a newer updatedAt/syncSk, which puts it back in the feed.
         const change = adapter.toChange(item);
         if (!change) continue;
         const size = jsonByteLength(change);
