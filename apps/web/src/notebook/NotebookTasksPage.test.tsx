@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { addLocalDays, localToday } from '../kit/calendarDates';
+import { addDays, localDateString } from '@gagnechris/shared';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTasksPage from './NotebookTasksPage';
@@ -318,7 +318,7 @@ describe('NotebookTasksPage', () => {
   });
 
   test('?show=later lists open tasks after today, and Dropped finds dropped ones', async () => {
-    const today = localToday();
+    const today = localDateString();
     const mk = (
       i: number,
       title: string,
@@ -345,8 +345,8 @@ describe('NotebookTasksPage', () => {
     });
     state.tasks = [
       mk(1, 'Today task', today),
-      mk(2, 'Next week task', addLocalDays(today, 7)),
-      mk(3, 'Dropped later', addLocalDays(today, 3), 'dropped'),
+      mk(2, 'Next week task', addDays(today, 7)),
+      mk(3, 'Dropped later', addDays(today, 3), 'dropped'),
     ];
     const user = userEvent.setup();
     renderTasks('/tasks?show=later');

@@ -1,4 +1,4 @@
-import type { TaskStatus } from './schemas.js';
+import { ULID_PATTERN, type TaskStatus } from './schemas.js';
 
 /**
  * A note embeds a task as a line holding only `{{task:<ULID>}}` (optionally
@@ -7,8 +7,10 @@ import type { TaskStatus } from './schemas.js';
  * web and native app share one parser.
  */
 
-const EMBED_LINE =
-  /^([ \t]*)\{\{task:([0-7][0-9A-HJKMNP-TV-Z]{25})\}\}[ \t]*$/i;
+const EMBED_LINE = new RegExp(
+  String.raw`^([ \t]*)\{\{task:(${ULID_PATTERN.slice(1, -1)})\}\}[ \t]*$`,
+  'i',
+);
 const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
 
 export type TaskEmbed = {

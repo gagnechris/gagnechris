@@ -5,8 +5,12 @@ import {
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
-import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
-import { addLocalDays, parseLocalDate } from '../kit/calendarDates';
+import {
+  addDays,
+  type TaskPriority,
+  type TaskStatus,
+  weekdayOf,
+} from '@gagnechris/shared';
 import { areaQueryParam } from './notebookAreaPreference';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
@@ -33,12 +37,10 @@ const showOnParam = (value: string | null): ShowOnFilter =>
   SHOW_ON_FILTERS.find((f) => f === value) ?? '';
 
 function endOfLocalWeek(today: string): string {
-  const d = parseLocalDate(today);
-  if (!d) return today;
+  const day = weekdayOf(today);
+  if (day === null) return today;
   // Sunday = 0 … Saturday = 6; inclusive end of this calendar week (Sat).
-  const day = d.getDay();
-  const toSat = day === 0 ? 6 : 6 - day;
-  return addLocalDays(today, toSat);
+  return addDays(today, day === 0 ? 6 : 6 - day);
 }
 
 function matchesShowOnFilter(

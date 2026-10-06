@@ -8,8 +8,11 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
+  noteGsi1SkRanges,
+  notebookAreaGsi1Pk,
   buildDailyNoteClaimItem,
   buildNoteMetaItem,
+  deepEqual,
   dynamoErrorName,
   keys,
   metaToNote,
@@ -18,18 +21,21 @@ import {
   type NoteMetaItem,
 } from '@gagnechris/data';
 import {
+  NOTEBOOK_PAGE_SIZE,
   NoteSyncChangeSchema,
   taskEmbedIds,
   type CreateNoteRequest,
   type ListNotesQuery,
   type Note,
   type NotebookArea,
-  type NoteSyncChange,
-  type SyncChange,
   type UpdateNoteRequest,
 } from '@gagnechris/shared';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
-import { BadRequestError } from '../data/errors.js';
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from '../data/errors.js';
 import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { getDocClient, requireTableName } from '../data/client.js';
@@ -41,6 +47,7 @@ import {
   type UniqueClaimHook,
 } from '../data/versioned-repository.js';
 import { hashCreateFields } from '../data/create-hash.js';
+import { toSyncChange } from '../sync/to-sync-change.js';
 
 export const NOTE_CHANGE_TYPE = 'note';
 
@@ -98,26 +105,11 @@ export function noteCreatePayloadHash(
   ]);
 }
 
-export function noteToChange(
-  item: Record<string, unknown>,
-): SyncChange | undefined {
-  if (item.entityType !== NOTE_CHANGE_TYPE) return undefined;
-  let entity: Note;
-  try {
-    entity = metaToNote(parseNoteMetaItem(item));
-  } catch {
-    return undefined;
-  }
-  const change: NoteSyncChange = NoteSyncChangeSchema.parse({
-    type: NOTE_CHANGE_TYPE,
-    id: entity.id,
-    version: entity.version,
-    deleted: entity.deleted,
-    updatedAt: entity.updatedAt,
-    ...(entity.deleted ? {} : { entity }),
-  });
-  return change;
-}
+export const noteToChange = toSyncChange(
+  NOTE_CHANGE_TYPE,
+  (item) => metaToNote(parseNoteMetaItem(item)),
+  NoteSyncChangeSchema,
+);
 
 async function readDailyHolder(
   doc: DynamoDBDocumentClient,
@@ -247,6 +239,51 @@ function dailyNoteClaimHook(
   };
 }
 
+type NoteUpdateFields = Omit<UpdateNoteRequest, 'version'>;
+
+function applyNoteUpdate(
+  existing: Note,
+  body: NoteUpdateFields,
+  now: string,
+): Note {
+  // The (area, date) claim is what makes a daily note unique; moving it
+  // to another area would leave two dailies for one day.
+  if (
+    existing.type === 'daily' &&
+    body.area !== undefined &&
+    body.area !== existing.area
+  ) {
+    throw new BadRequestError("A daily note's area cannot change", {
+      area: 'immutable',
+    });
+  }
+  const bodyMarkdown = body.bodyMarkdown ?? existing.bodyMarkdown;
+  return {
+    ...existing,
+    title: body.title ?? existing.title,
+    bodyMarkdown,
+    taskIds: taskEmbedIds(bodyMarkdown),
+    tags: body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+    pinned: body.pinned ?? existing.pinned,
+    area: body.area ?? existing.area,
+    updatedAt: now,
+  };
+}
+
+/** A retried create of the same daily note (same id and content) is a no-op. */
+function noteMatchesDailyCreate(note: Note, body: DailyNoteFields): boolean {
+  return (
+    note.id === body.id &&
+    note.version === 1 &&
+    (body.title ?? '') === note.title &&
+    (body.bodyMarkdown ?? '') === note.bodyMarkdown &&
+    (body.pinned ?? false) === note.pinned &&
+    deepEqual(normalizeTags(body.tags ?? []), note.tags)
+  );
+}
+
+class NotThisDaysNote extends Error {}
+
 function isConditionalCheckFailed(error: unknown): boolean {
   return dynamoErrorName(error) === 'ConditionalCheckFailedException';
 }
@@ -343,36 +380,12 @@ export class NotesRepository {
     userId: string,
     id: string,
     expected: number | 'any',
-    body: Omit<UpdateNoteRequest, 'version'>,
+    body: NoteUpdateFields,
   ): Promise<Note> {
     return this.base.mutateIfVersion(
       { userId, id },
       expected,
-      (existing, now) => {
-        // The (area, date) claim is what makes a daily note unique; moving it
-        // to another area would leave two dailies for one day.
-        if (
-          existing.type === 'daily' &&
-          body.area !== undefined &&
-          body.area !== existing.area
-        ) {
-          throw new BadRequestError("A daily note's area cannot change", {
-            area: 'immutable',
-          });
-        }
-        const bodyMarkdown = body.bodyMarkdown ?? existing.bodyMarkdown;
-        return {
-          ...existing,
-          title: body.title ?? existing.title,
-          bodyMarkdown,
-          taskIds: taskEmbedIds(bodyMarkdown),
-          tags:
-            body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
-          pinned: body.pinned ?? existing.pinned,
-          area: body.area ?? existing.area,
-          updatedAt: now,
-        };
-      },
+      (existing, now) => applyNoteUpdate(existing, body, now),
     );
   }
 
@@ -391,7 +404,7 @@ export class NotesRepository {
     return walkPartitions(
       areas,
       query.cursor,
-      query.limit ?? 50,
+      query.limit ?? NOTEBOOK_PAGE_SIZE,
       (area, cursor, remaining, remainingBytes) =>
         this.listArea(
           userId,
@@ -408,51 +421,41 @@ export class NotesRepository {
     query: ListNotesQuery,
     byteBudget = PAGE_BYTE_BUDGET,
   ): Promise<{ items: Note[]; nextCursor?: string }> {
-    const pk = keys.notebook.areaGsi1(userId, area);
-    const values: Record<string, string> = { ':pk': pk };
-    let keyCondition = 'gsi1pk = :pk';
-    let sortLower: string | undefined;
-
-    if (query.from || query.to) {
-      const from = query.from ?? '0000-01-01';
-      const to = query.to ?? '9999-12-31';
-      values[':from'] = `DATE#${from}`;
-      values[':to'] = `DATE#${to}#NOTE~\uffff`;
-      keyCondition += ' AND gsi1sk BETWEEN :from AND :to';
-      sortLower = values[':from'];
-    } else if (query.type === 'daily') {
-      values[':prefix'] = 'DATE#';
-      keyCondition += ' AND begins_with(gsi1sk, :prefix)';
-      sortLower = 'DATE#';
-    } else if (query.type === 'page') {
-      values[':prefix'] = 'PAGE#';
-      keyCondition += ' AND begins_with(gsi1sk, :prefix)';
-      sortLower = 'PAGE#';
-    }
+    const pk = notebookAreaGsi1Pk(userId, area);
+    const range =
+      query.from || query.to
+        ? noteGsi1SkRanges.dates(query.from, query.to)
+        : query.type === 'daily'
+          ? noteGsi1SkRanges.daily()
+          : query.type === 'page'
+            ? noteGsi1SkRanges.pages()
+            : undefined;
 
     const page = await this.base.queryPage({
       IndexName: GSI1_NAME,
-      KeyConditionExpression: keyCondition,
-      ExpressionAttributeValues: values,
+      KeyConditionExpression: range
+        ? 'gsi1pk = :pk AND gsi1sk BETWEEN :from AND :to'
+        : 'gsi1pk = :pk',
+      ExpressionAttributeValues: range
+        ? { ':pk': pk, ':from': range.from, ':to': range.to }
+        : { ':pk': pk },
       ScanIndexForward: true,
       cursor: query.cursor,
-      limit: query.limit,
+      limit: query.limit ?? NOTEBOOK_PAGE_SIZE,
       cursorPartition: { attr: 'gsi1pk', value: pk },
       byteBudget,
-      ...(sortLower
+      ...(range
         ? {
-            cursorSortBound: { attr: 'gsi1sk', lowerBoundInclusive: sortLower },
+            cursorSortBound: {
+              attr: 'gsi1sk',
+              lowerBoundInclusive: range.from,
+            },
           }
         : {}),
     });
 
-    let items = page.items;
-    if (query.type && !(query.from || query.to)) {
-      // Already constrained by begins_with when type set without date range.
-    } else if (query.type) {
-      items = items.filter((n) => n.type === query.type);
-    }
-    return { items, nextCursor: page.nextCursor };
+    // Only daily notes have DATE# keys, so a date range needs no type filter.
+    return { items: page.items, nextCursor: page.nextCursor };
   }
 
   async getDaily(
@@ -494,24 +497,84 @@ export class NotesRepository {
     return held;
   }
 
-  /** Updates only with a caller-supplied version; otherwise the claim decides. */
-  async upsertDaily(
+  /**
+   * One consistent read (the note named by `body.id`) before the write. Only
+   * when that id is not this day's note does the claim decide which note to
+   * update, or whether to create one.
+   */
+  async updateDaily(
     userId: string,
     area: NotebookArea,
     date: string,
     body: DailyNoteFields,
-    expectedVersion: number | 'any',
+    expected: number | 'any',
   ): Promise<Note> {
-    const existing = await this.getDaily(userId, area, date);
-    if (!isEmptyDaily(existing)) {
-      return this.updateFromRequest(userId, existing.id, expectedVersion, {
-        title: body.title,
-        bodyMarkdown: body.bodyMarkdown,
-        tags: body.tags,
-        pinned: body.pinned,
-      });
+    const fields = {
+      title: body.title,
+      bodyMarkdown: body.bodyMarkdown,
+      tags: body.tags,
+      pinned: body.pinned,
+    };
+    try {
+      return await this.base.mutateIfVersion(
+        { userId, id: body.id },
+        expected,
+        (existing, now) => {
+          if (
+            existing.type !== 'daily' ||
+            existing.area !== area ||
+            existing.date !== date
+          ) {
+            throw new NotThisDaysNote();
+          }
+          return applyNoteUpdate(existing, fields, now);
+        },
+      );
+    } catch (error) {
+      if (!(error instanceof NotFoundError || error instanceof NotThisDaysNote))
+        throw error;
     }
-    return this.createDaily(userId, area, date, body);
+    const current = await this.getDaily(userId, area, date);
+    if (isEmptyDaily(current))
+      return this.createDaily(userId, area, date, body);
+    return this.updateFromRequest(userId, current.id, expected, fields);
+  }
+
+  /**
+   * A write with no version can only create the day's note. A retry of the
+   * same create is a no-op; anything else is 409 with the current note, so a
+   * writer still holding the empty placeholder merges instead of overwriting.
+   */
+  async createDailyOrReplay(
+    userId: string,
+    area: NotebookArea,
+    date: string,
+    body: DailyNoteFields,
+  ): Promise<Note> {
+    let note: Note;
+    try {
+      note = await this.createDaily(userId, area, date, body);
+    } catch (error) {
+      if (
+        error instanceof ConflictError &&
+        error.code === 'payload_mismatch' &&
+        error.current
+      ) {
+        throw this.changedSinceCreate(error.current as Note);
+      }
+      throw error;
+    }
+    if (!noteMatchesDailyCreate(note, body))
+      throw this.changedSinceCreate(note);
+    return note;
+  }
+
+  private changedSinceCreate(current: Note): ConflictError {
+    return new ConflictError('Daily note changed since it was created', {
+      code: 'version_conflict',
+      currentVersion: current.version,
+      current,
+    });
   }
 
   /** A loser of the day's claim gets 409 `daily_taken` with the winner. */

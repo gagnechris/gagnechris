@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { addDays, formatCalendarDay, WEEKDAY_LONG } from '@gagnechris/shared';
 import {
-  addLocalDays,
   monthBounds,
   monthGrid,
   monthLabel,
-  parseLocalDate,
   startOfMonth,
 } from '../kit/calendarDates';
 import { useLocalToday } from './useLocalToday';
@@ -16,24 +15,14 @@ type Props = {
   markedDates?: ReadonlySet<string>;
 };
 
-const WEEKDAYS = [
-  ['Su', 'Sunday'],
-  ['Mo', 'Monday'],
-  ['Tu', 'Tuesday'],
-  ['We', 'Wednesday'],
-  ['Th', 'Thursday'],
-  ['Fr', 'Friday'],
-  ['Sa', 'Saturday'],
-] as const;
+const WEEKDAYS = WEEKDAY_LONG.map((long) => [long.slice(0, 2), long] as const);
 
 function dayLabel(date: string, marked: boolean): string {
-  const label =
-    parseLocalDate(date)?.toLocaleDateString(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }) ?? date;
+  const label = formatCalendarDay(date, {
+    weekday: 'long',
+    month: 'long',
+    year: true,
+  });
   return marked ? `${label}, has a note` : label;
 }
 
@@ -45,8 +34,8 @@ export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
   );
   const today = useLocalToday();
   const { to: lastDay } = monthBounds(month);
-  const previousMonth = () => onSelect(addLocalDays(month, -1));
-  const nextMonth = () => onSelect(addLocalDays(lastDay, 1));
+  const previousMonth = () => onSelect(addDays(month, -1));
+  const nextMonth = () => onSelect(addDays(lastDay, 1));
 
   const [focused, setFocused] = useState<string | null>(null);
   // Arrow keys stay inside the month shown; the selected day is the one tab stop
@@ -65,17 +54,17 @@ export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
     const column = cells.indexOf(date) % 7;
     const target =
       e.key === 'ArrowLeft'
-        ? addLocalDays(date, -1)
+        ? addDays(date, -1)
         : e.key === 'ArrowRight'
-          ? addLocalDays(date, 1)
+          ? addDays(date, 1)
           : e.key === 'ArrowUp'
-            ? addLocalDays(date, -7)
+            ? addDays(date, -7)
             : e.key === 'ArrowDown'
-              ? addLocalDays(date, 7)
+              ? addDays(date, 7)
               : e.key === 'Home'
-                ? addLocalDays(date, -column)
+                ? addDays(date, -column)
                 : e.key === 'End'
-                  ? addLocalDays(date, 6 - column)
+                  ? addDays(date, 6 - column)
                   : null;
     if (target !== null) {
       e.preventDefault();

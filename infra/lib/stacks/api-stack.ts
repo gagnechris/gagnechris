@@ -332,6 +332,14 @@ export class ApiStack extends Stack {
       metricName: 'SyncAdapterMissing',
       alertsTopic,
     });
+    emfServiceAlarm(this, 'ApiSyncCorruptRow', {
+      alarmName: `gagnechris-${config.name}-api-sync-corrupt-row`,
+      alarmDescription:
+        'Sync feed skipped a row that failed to parse; clients will not see it until it is repaired',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'SyncCorruptRow',
+      alertsTopic,
+    });
     // Notebook ops: a burst of 409/412s means autosave or sync is fighting
     // itself (two devices, or a client bug), not a single stale tab.
     metricAlarm(this, 'ApiWriteConflictSpike', {

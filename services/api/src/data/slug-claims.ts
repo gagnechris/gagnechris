@@ -1,4 +1,4 @@
-import { keys, slugPk, slugPostSk, slugRedirectSk } from '@gagnechris/data';
+import { keys } from '@gagnechris/data';
 
 export type TransactItem = {
   Put?: {
@@ -28,8 +28,8 @@ export type SlugClaims = {
 };
 
 export const POST_SLUG_CLAIMS: SlugClaims = {
-  claimKey: (slug) => ({ pk: slugPk(slug), sk: slugPostSk() }),
-  redirectKey: (slug) => ({ pk: slugPk(slug), sk: slugRedirectSk() }),
+  claimKey: keys.post.slugClaim,
+  redirectKey: keys.post.slugRedirect,
   ownerAttr: 'postId',
   claimEntityType: 'slug',
   redirectEntityType: 'slugRedirect',

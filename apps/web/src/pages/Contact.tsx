@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ContactRequestSchema, pageTitle } from '@gagnechris/shared';
+import { ContactRequestSchema, pageTitle, siteUrl } from '@gagnechris/shared';
 import {
   CONTACT_HEADING,
   CONTACT_INTRO,
@@ -9,6 +8,7 @@ import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 import PageHead from '../components/PageHead';
+import SiteLink from '../components/SiteLink';
 
 // The header must stay byte-identical to `renderContactPrerenderBodyHtml`
 // (coldLoadParity.test.tsx); the form is added below it.
@@ -194,10 +194,7 @@ function Contact() {
 
   return (
     <div className="contact-page">
-      <PageHead
-        title={pageTitle('Contact')}
-        url="https://gagnechris.com/contact"
-      />
+      <PageHead title={pageTitle('Contact')} url={siteUrl('/contact')} />
       <header className="contact-page__header">
         <h1>{CONTACT_HEADING}</h1>
         <p className="contact-page__intro">{CONTACT_INTRO}</p>
@@ -211,14 +208,12 @@ function Contact() {
             <p>I’ll reply to the email address you gave.</p>
             <ul className="contact-success__links">
               <li>
-                <Link to="/" discover="none">
-                  Back to Home
-                </Link>
+                <SiteLink href="/">Back to Home</SiteLink>
               </li>
               <li>
-                <Link to="/dont-feed-the-bears?from=contact" discover="none">
+                <SiteLink href="/dont-feed-the-bears?from=contact">
                   Don’t feed the bears while you wait
-                </Link>
+                </SiteLink>
               </li>
             </ul>
           </section>

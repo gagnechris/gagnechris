@@ -109,7 +109,7 @@ describe('CampRulesGame', () => {
 
     advance(60_000);
 
-    const card = screen.getByRole('dialog');
+    const card = screen.getByRole('region');
     expect(
       within(card).getByText('The bears got too comfortable'),
     ).toBeInTheDocument();
@@ -142,6 +142,52 @@ describe('CampRulesGame', () => {
       expect.stringMatching(/^Camp Rules 2026-10-03: /),
     );
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
+  });
+
+  test('the copy status is announced, then resets', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+    });
+    playToEnd();
+    const status = within(screen.getByRole('region').parentElement!).getByRole(
+      'status',
+    );
+    expect(status).toBeEmptyDOMElement();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy result' }));
+    });
+    expect(status).toHaveTextContent('Copied!');
+
+    advance(3_000);
+    expect(status).toBeEmptyDOMElement();
+    expect(
+      screen.getByRole('button', { name: 'Copy result' }),
+    ).toBeInTheDocument();
+  });
+
+  test('a failed copy is announced too', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
+    playToEnd();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy result' }));
+    });
+    expect(
+      within(screen.getByRole('region').parentElement!).getByRole('status'),
+    ).toHaveTextContent('Couldn’t copy');
+  });
+
+  test('focus moves to the end card heading when the evening ends', () => {
+    playToEnd();
+
+    expect(
+      within(screen.getByRole('region')).getByRole('heading', { level: 2 }),
+    ).toHaveFocus();
   });
 
   describe('share result', () => {
@@ -295,7 +341,7 @@ describe('CampRulesGame', () => {
       const { unmount } = renderGame();
       start();
       advance(60_000);
-      const text = screen.getByRole('dialog').textContent;
+      const text = screen.getByRole('region').textContent;
       unmount();
       return text;
     };

@@ -12,6 +12,11 @@ import {
 } from '@gagnechris/shared/public-pages';
 import { renderSitePageHtml } from '@gagnechris/shared/site-chrome';
 import {
+  pageTitle,
+  SITE_AUTHOR_NAME,
+  siteUrl,
+} from '@gagnechris/shared/site-config';
+import {
   BEARS_PAGE_META,
   type BearsPageMetaEntry,
 } from '../src/games/bears/shared/pageMeta.ts';
@@ -27,19 +32,19 @@ export type StaticPageMeta = {
 export const STATIC_PAGE_META: StaticPageMeta[] = [
   {
     routePath: '',
-    title: 'Chris Gagne - Engineering Leader',
+    title: `${SITE_AUTHOR_NAME} - Engineering Leader`,
     description:
       'Chris Gagne is an Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems.',
   },
   {
     routePath: 'resume',
-    title: 'Resume - Chris Gagne',
+    title: pageTitle('Resume'),
     description:
       'Resume for Chris Gagne — engineering leadership, software delivery, and AI-enabled teams.',
   },
   {
     routePath: 'contact',
-    title: 'Contact - Chris Gagne',
+    title: pageTitle('Contact'),
     description:
       'Contact Chris Gagne — engineering leadership, software collaboration, and speaking.',
   },
@@ -48,8 +53,7 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
   BEARS_PAGE_META.wild,
 ];
 
-const APEX = 'https://gagnechris.com';
-const DEFAULT_OG_IMAGE = `${APEX}/og-image.jpg`;
+const DEFAULT_OG_IMAGE = siteUrl('/og-image.jpg');
 
 function removeCanonical(html: string): string {
   return html.replace(/<link\s[^>]*?rel=["']canonical["'][^>]*>\s*/i, () => '');
@@ -79,13 +83,15 @@ function injectRoot(html: string, inner: string): string {
 export function canonicalUrlFor(
   routePath: StaticPageMeta['routePath'],
 ): string {
-  return routePath ? `${APEX}/${routePath}` : APEX;
+  return siteUrl(`/${routePath}`);
 }
 
 function absoluteOgImage(meta: StaticPageMeta): string {
   if (!meta.ogImagePath) return DEFAULT_OG_IMAGE;
   if (meta.ogImagePath.startsWith('http')) return meta.ogImagePath;
-  return `${APEX}${meta.ogImagePath.startsWith('/') ? '' : '/'}${meta.ogImagePath}`;
+  return siteUrl(
+    `${meta.ogImagePath.startsWith('/') ? '' : '/'}${meta.ogImagePath}`,
+  );
 }
 
 export function applyStaticPageMeta(
