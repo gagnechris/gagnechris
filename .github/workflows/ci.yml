@@ -220,6 +220,24 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
+      # The Azure apt mirror is sometimes slow enough to eat the job timeout,
+      # so the browsers' system packages are cached and handed to apt.
+      - name: Cache Playwright system packages
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-debs
+          key: playwright-debs-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}
+
+      - name: Seed apt with cached packages
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        run: |
+          echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages
+          sudo rm -f /etc/apt/apt.conf.d/docker-clean
+          if compgen -G "$HOME/apt-debs/*.deb" > /dev/null; then
+            sudo cp "$HOME"/apt-debs/*.deb /var/cache/apt/archives/
+          fi
+
       - name: Install Playwright browsers
         if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium webkit
@@ -227,6 +245,14 @@ jobs:
       - name: Install Playwright system deps
         if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium webkit
+
+      - name: Keep apt packages for the cache
+        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        run: |
+          mkdir -p "$HOME/apt-debs"
+          if compgen -G "/var/cache/apt/archives/*.deb" > /dev/null; then
+            cp /var/cache/apt/archives/*.deb "$HOME/apt-debs/"
+          fi
 
       - name: Run e2e:browser
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
