@@ -158,7 +158,7 @@ test('the @ date menu on a [ ] line in a note picks the day of the task it creat
     ]);
 });
 
-test('Deadline… on a [ ] line sets a due: date, shown as a pill and as overdue on Today once passed', async ({
+test('Deadline… on a [ ] line sets a due: date, shown as a pill and as overdue in a later day’s note', async ({
   page,
   apps,
   signIn,
@@ -208,9 +208,6 @@ test('Deadline… on a [ ] line sets a due: date, shown as a pill and as overdue
   await page.clock.setFixedTime(new Date('2026-10-06T10:00:00-04:00'));
   await page.goto(`${apps.notebook}/today`);
   await expect(
-    page
-      .getByTestId('still-open')
-      .locator('[data-task-id]')
-      .filter({ hasText: title }),
+    page.locator('.markdown-editor .task-embed').filter({ hasText: title }),
   ).toContainText('Overdue · Mon');
 });

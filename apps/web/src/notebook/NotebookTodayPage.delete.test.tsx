@@ -6,6 +6,7 @@ import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookNotePage from './NotebookNotePage';
 import NotebookTodayPage from './NotebookTodayPage';
+import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 
 type DailyNote = {
   id: string;
@@ -61,94 +62,95 @@ const ok = (data: unknown) => ({
 });
 
 vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: async (
-      path: string,
-      init?: { params?: { path?: { id?: string; date?: string } } },
-    ) => {
-      if (path === '/api/notebook/notes/daily/{area}/{date}') {
-        if (state.note && !state.note.deleted) return ok(state.note);
-        return ok({
-          exists: false,
-          userId: 'u1',
-          area: 'work',
-          type: 'daily',
-          date: init?.params?.path?.date ?? '2026-10-02',
-          title: '',
-          bodyMarkdown: '',
-          tags: [],
-          pinned: false,
-          version: 0,
-        });
-      }
-      if (path === '/api/notebook/notes/{id}') {
-        if (state.note && state.note.id === init?.params?.path?.id) {
-          return ok(state.note);
+  createApiClient: () =>
+    openDailyViaGet({
+      GET: async (
+        path: string,
+        init?: { params?: { path?: { id?: string; date?: string } } },
+      ) => {
+        if (path === '/api/notebook/notes/daily/{area}/{date}') {
+          if (state.note && !state.note.deleted) return ok(state.note);
+          return ok({
+            exists: false,
+            userId: 'u1',
+            area: 'work',
+            type: 'daily',
+            date: init?.params?.path?.date ?? '2026-10-02',
+            title: '',
+            bodyMarkdown: '',
+            tags: [],
+            pinned: false,
+            version: 0,
+          });
+        }
+        if (path === '/api/notebook/notes/{id}') {
+          if (state.note && state.note.id === init?.params?.path?.id) {
+            return ok(state.note);
+          }
+          return {
+            data: undefined,
+            error: { error: 'not_found', message: 'Not found' },
+            response: { status: 404 },
+          };
+        }
+        if (path === '/api/notebook/notes' || path === '/api/notebook/tasks') {
+          return ok({ items: [] });
         }
         return {
           data: undefined,
-          error: { error: 'not_found', message: 'Not found' },
+          error: { error: 'not_found' },
           response: { status: 404 },
         };
-      }
-      if (path === '/api/notebook/notes' || path === '/api/notebook/tasks') {
-        return ok({ items: [] });
-      }
-      return {
-        data: undefined,
-        error: { error: 'not_found' },
-        response: { status: 404 },
-      };
-    },
-    DELETE: async (_path: string, init?: { body?: { version?: number } }) => {
-      const prev = state.note!;
-      if (init?.body?.version !== prev.version) {
-        return {
-          data: undefined,
-          error: { error: 'version_conflict', message: 'Conflict' },
-          response: { status: 409 },
+      },
+      DELETE: async (_path: string, init?: { body?: { version?: number } }) => {
+        const prev = state.note!;
+        if (init?.body?.version !== prev.version) {
+          return {
+            data: undefined,
+            error: { error: 'version_conflict', message: 'Conflict' },
+            response: { status: 409 },
+          };
+        }
+        state.note = { ...prev, deleted: true, version: prev.version + 1 };
+        return ok(state.note);
+      },
+      PUT: async (_path: string, init?: { body?: Record<string, unknown> }) => {
+        const body = init?.body ?? {};
+        state.puts.push(body);
+        const prev = state.note && !state.note.deleted ? state.note : null;
+        if (prev && body.version !== prev.version) {
+          return {
+            data: undefined,
+            error: { error: 'version_conflict', message: 'Conflict' },
+            response: { status: 409 },
+          };
+        }
+        if (!prev && body.version !== undefined) {
+          return {
+            data: undefined,
+            error: { error: 'version_conflict', message: 'Conflict' },
+            response: { status: 409 },
+          };
+        }
+        const now = new Date().toISOString();
+        state.note = {
+          id: String(body.id),
+          userId: 'u1',
+          area: 'work',
+          type: 'daily',
+          date: '2026-10-02',
+          title: String(body.title ?? ''),
+          bodyMarkdown: String(body.bodyMarkdown ?? ''),
+          tags: [],
+          pinned: false,
+          version: (prev?.version ?? 0) + 1,
+          createdAt: prev?.createdAt ?? now,
+          updatedAt: now,
+          deleted: false,
         };
-      }
-      state.note = { ...prev, deleted: true, version: prev.version + 1 };
-      return ok(state.note);
-    },
-    PUT: async (_path: string, init?: { body?: Record<string, unknown> }) => {
-      const body = init?.body ?? {};
-      state.puts.push(body);
-      const prev = state.note && !state.note.deleted ? state.note : null;
-      if (prev && body.version !== prev.version) {
-        return {
-          data: undefined,
-          error: { error: 'version_conflict', message: 'Conflict' },
-          response: { status: 409 },
-        };
-      }
-      if (!prev && body.version !== undefined) {
-        return {
-          data: undefined,
-          error: { error: 'version_conflict', message: 'Conflict' },
-          response: { status: 409 },
-        };
-      }
-      const now = new Date().toISOString();
-      state.note = {
-        id: String(body.id),
-        userId: 'u1',
-        area: 'work',
-        type: 'daily',
-        date: '2026-10-02',
-        title: String(body.title ?? ''),
-        bodyMarkdown: String(body.bodyMarkdown ?? ''),
-        tags: [],
-        pinned: false,
-        version: (prev?.version ?? 0) + 1,
-        createdAt: prev?.createdAt ?? now,
-        updatedAt: now,
-        deleted: false,
-      };
-      return ok(state.note);
-    },
-  }),
+        return ok(state.note);
+      },
+    }),
 }));
 
 const renderNotebook = () => {

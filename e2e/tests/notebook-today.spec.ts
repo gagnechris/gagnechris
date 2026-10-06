@@ -75,7 +75,7 @@ async function panelsLoaded(page: Page) {
   await expect(comingUp(page).getByText('Loading tasks…')).toHaveCount(0);
 }
 
-test('an unchecked task from yesterday’s note shows in Still open after local midnight, with no write', async ({
+test('after local midnight, yesterday’s unchecked task is carried into the new day’s note once', async ({
   page,
   apps,
   signIn,
@@ -87,7 +87,7 @@ test('an unchecked task from yesterday’s note shows in Still open after local 
   const writes: string[] = [];
   page.on('request', (req) => {
     if (req.url().includes('/api/') && req.method() !== 'GET') {
-      writes.push(`${req.method()} ${req.url()}`);
+      writes.push(`${req.method()} ${new URL(req.url()).pathname}`);
     }
   });
 
@@ -106,13 +106,14 @@ test('an unchecked task from yesterday’s note shows in Still open after local 
   await expect(
     page.getByRole('heading', { level: 1, name: /October 2/ }),
   ).toBeVisible();
-  const row = stillOpen(page).getByRole('listitem').filter({ hasText: title });
-  await expect(row).toBeVisible();
-  await expect(
-    row.getByRole('link', { name: 'Thu note · 1 day' }),
-  ).toBeVisible();
-  await expect.poll(() => placesOf(page, title)).toEqual(['still-open']);
-  expect(writes).toEqual([]);
+  await panelsLoaded(page);
+  await expect(page.locator('.markdown-editor')).toContainText('Carried in');
+  await expect.poll(() => placesOf(page, title)).toEqual(['note']);
+
+  await page.reload();
+  await panelsLoaded(page);
+  await expect.poll(() => placesOf(page, title)).toEqual(['note']);
+  expect(writes.filter((w) => !w.endsWith('/open'))).toEqual([]);
 });
 
 test('an @mon task is absent from Still open until Monday, then shows Scheduled Oct 5', async ({
@@ -151,15 +152,15 @@ test('Snooze and Drop remove the row at once and survive reload', async ({
   const pickTitle = `${prefix} plan posts`;
   const dropped = await seedTask(seed, {
     title: dropTitle,
-    startDate: '2026-09-30',
+    startDate: '2026-10-02',
   });
   const snoozed = await seedTask(seed, {
     title: snoozeTitle,
-    startDate: '2026-09-28',
+    startDate: '2026-10-02',
   });
   const picked = await seedTask(seed, {
     title: pickTitle,
-    startDate: '2026-10-01',
+    startDate: '2026-10-02',
   });
 
   // Hold every task write so the optimistic state is what the page shows.
@@ -264,7 +265,7 @@ test('Add to today’s note embeds the task in the note and takes it off Still o
   prefix,
 }) => {
   const title = `${prefix} reply to recruiter`;
-  await seedTask(seed, { title, startDate: '2026-09-30' });
+  await seedTask(seed, { title, startDate: '2026-10-02' });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
   await page.goto(`${apps.notebook}/today`);
@@ -306,8 +307,8 @@ test('at 390px the note fills the page and the strip opens Still open and Coming
   const carried = `${prefix} a fairly long task title that has to wrap on a phone`;
   const dropped = `${prefix} recruiter email`;
   const coming = `${prefix} brand fonts`;
-  await seedTask(seed, { title: carried, startDate: '2026-09-29' });
-  await seedTask(seed, { title: dropped, startDate: '2026-09-30' });
+  await seedTask(seed, { title: carried, startDate: '2026-10-02' });
+  await seedTask(seed, { title: dropped, startDate: '2026-10-02' });
   await seedTask(seed, { title: coming, startDate: '2026-10-05' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(FRIDAY_MORNING);

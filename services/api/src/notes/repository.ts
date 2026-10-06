@@ -65,7 +65,9 @@ type DailyNoteFields = {
   pinned?: boolean;
 };
 
-function isEmptyDaily(result: DailyNoteResult): result is EmptyDailyNote {
+export function isEmptyDaily(
+  result: DailyNoteResult,
+): result is EmptyDailyNote {
   return 'exists' in result && result.exists === false;
 }
 

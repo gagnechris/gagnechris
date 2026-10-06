@@ -11,6 +11,7 @@ import {
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
+import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 
 // Local midnight here is 04:00 UTC, so a UTC "today" would be a day ahead
 // for the last hours of every local day.
@@ -77,74 +78,75 @@ const listTasks = (q: Record<string, string | undefined>) =>
   );
 
 vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: async (path: string, init?: Init) => {
-      const p = init?.params?.path ?? {};
-      if (path === '/api/notebook/notes/daily/{area}/{date}') {
-        const note = [...server.notes.values()].find(
-          (n) => n.type === 'daily' && n.area === p.area && n.date === p.date,
-        );
-        return ok(
-          note ?? {
-            exists: false,
-            userId: 'u1',
-            area: p.area,
-            type: 'daily',
-            date: p.date,
-            title: '',
-            bodyMarkdown: '',
-            tags: [],
-            pinned: false,
-            version: 0,
-          },
-        );
-      }
-      if (path === '/api/notebook/notes/{id}') {
-        const note = server.notes.get(p.id!);
-        return note ? ok(note) : notFound();
-      }
-      if (path === '/api/notebook/notes') return ok({ items: [] });
-      if (path === '/api/notebook/tasks') {
-        return ok({ items: listTasks(init?.params?.query ?? {}) });
-      }
-      if (path === '/api/notebook/tasks/{id}') {
-        const task = server.tasks.get(p.id!);
-        return task ? ok(task) : notFound();
-      }
-      return notFound();
-    },
-    PUT: async (path: string, init?: Init) => {
-      server.writes.push({ method: 'PUT', path, body: init?.body });
-      if (path === '/api/notebook/tasks/{id}') {
-        if (server.putGate) await server.putGate;
-        const prev = server.tasks.get(init!.params!.path!.id!)!;
-        const body = init!.body!;
-        if (body.version !== prev.version) {
-          return {
-            data: undefined,
-            error: { error: 'version_conflict', message: 'Conflict' },
-            response: { status: 409 },
-          };
+  createApiClient: () =>
+    openDailyViaGet({
+      GET: async (path: string, init?: Init) => {
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/notes/daily/{area}/{date}') {
+          const note = [...server.notes.values()].find(
+            (n) => n.type === 'daily' && n.area === p.area && n.date === p.date,
+          );
+          return ok(
+            note ?? {
+              exists: false,
+              userId: 'u1',
+              area: p.area,
+              type: 'daily',
+              date: p.date,
+              title: '',
+              bodyMarkdown: '',
+              tags: [],
+              pinned: false,
+              version: 0,
+            },
+          );
         }
-        const next: Task = {
-          ...prev,
-          ...(body.status ? { status: body.status as Task['status'] } : {}),
-          ...('startDate' in body
-            ? { startDate: body.startDate as string, someday: false }
-            : {}),
-          ...(body.someday ? { someday: true, startDate: null } : {}),
-          version: prev.version + 1,
-        };
-        server.tasks.set(next.id, next);
-        return ok(next);
-      }
-      return notFound();
-    },
-    POST: async (path: string, init?: Init) => {
-      server.writes.push({ method: 'POST', path, body: init?.body });
-      return notFound();
-    },
-  }),
+        if (path === '/api/notebook/notes/{id}') {
+          const note = server.notes.get(p.id!);
+          return note ? ok(note) : notFound();
+        }
+        if (path === '/api/notebook/notes') return ok({ items: [] });
+        if (path === '/api/notebook/tasks') {
+          return ok({ items: listTasks(init?.params?.query ?? {}) });
+        }
+        if (path === '/api/notebook/tasks/{id}') {
+          const task = server.tasks.get(p.id!);
+          return task ? ok(task) : notFound();
+        }
+        return notFound();
+      },
+      PUT: async (path: string, init?: Init) => {
+        server.writes.push({ method: 'PUT', path, body: init?.body });
+        if (path === '/api/notebook/tasks/{id}') {
+          if (server.putGate) await server.putGate;
+          const prev = server.tasks.get(init!.params!.path!.id!)!;
+          const body = init!.body!;
+          if (body.version !== prev.version) {
+            return {
+              data: undefined,
+              error: { error: 'version_conflict', message: 'Conflict' },
+              response: { status: 409 },
+            };
+          }
+          const next: Task = {
+            ...prev,
+            ...(body.status ? { status: body.status as Task['status'] } : {}),
+            ...('startDate' in body
+              ? { startDate: body.startDate as string, someday: false }
+              : {}),
+            ...(body.someday ? { someday: true, startDate: null } : {}),
+            version: prev.version + 1,
+          };
+          server.tasks.set(next.id, next);
+          return ok(next);
+        }
+        return notFound();
+      },
+      POST: async (path: string, init?: Init) => {
+        server.writes.push({ method: 'POST', path, body: init?.body });
+        return notFound();
+      },
+    }),
 }));
 
 const ULID = (n: number) =>

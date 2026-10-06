@@ -80,6 +80,7 @@ export {
   updateProject,
   updateResume,
   updateTask,
+  openDailyNote,
   upsertDailyNote,
   type CreateNoteRequest,
   type CreatePostRequest,

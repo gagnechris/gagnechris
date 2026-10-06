@@ -15295,6 +15295,379 @@
         }
       }
     },
+    "/api/notebook/notes/daily/{area}/{date}/open": {
+      "post": {
+        "summary": "Open the daily note; on first open, creates it with open tasks from earlier days under Carried in",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work",
+                "personal"
+              ]
+            },
+            "required": true,
+            "name": "area",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "required": true,
+            "name": "date",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+                    "description": "Client ULID used if opening creates the daily note with carried-in tasks"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Daily note (with ETag), or the empty draft (no ETag) when nothing carries in",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "userId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "area": {
+                          "type": "string",
+                          "enum": [
+                            "work",
+                            "personal"
+                          ]
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "daily",
+                            "page"
+                          ]
+                        },
+                        "date": {
+                          "type": "string",
+                          "nullable": true,
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "bodyMarkdown": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "pinned": {
+                          "type": "boolean"
+                        },
+                        "taskIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                          },
+                          "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "deleted": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "area",
+                        "type",
+                        "date",
+                        "title",
+                        "bodyMarkdown",
+                        "tags",
+                        "pinned",
+                        "taskIds",
+                        "version",
+                        "createdAt",
+                        "updatedAt",
+                        "deleted"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "exists": {
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "userId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "area": {
+                          "type": "string",
+                          "enum": [
+                            "work",
+                            "personal"
+                          ]
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "daily"
+                          ]
+                        },
+                        "date": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "title": {
+                          "type": "string",
+                          "enum": [
+                            ""
+                          ]
+                        },
+                        "bodyMarkdown": {
+                          "type": "string",
+                          "enum": [
+                            ""
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "pinned": {
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "version": {
+                          "type": "number",
+                          "enum": [
+                            0
+                          ]
+                        }
+                      },
+                      "required": [
+                        "exists",
+                        "userId",
+                        "area",
+                        "type",
+                        "date",
+                        "title",
+                        "bodyMarkdown",
+                        "tags",
+                        "pinned",
+                        "version"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notebook/notes/{id}": {
       "get": {
         "summary": "Get a note by id",

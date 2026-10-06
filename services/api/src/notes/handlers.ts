@@ -9,9 +9,11 @@ import {
   NoteListResponseSchema,
   NoteSchema,
   NotebookAreaSchema,
+  OpenDailyNoteRequestSchema,
   UlidSchema,
   UpdateNoteRequestSchema,
   UpsertDailyNoteRequestSchema,
+  carriedInMarkdown,
   type Note,
 } from '@gagnechris/shared';
 import {
@@ -24,7 +26,13 @@ import { parseIfMatch } from '../data/concurrency.js';
 import { ConflictError } from '../data/errors.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
-import { notesRepository, type NotesRepository } from './repository.js';
+import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
+import {
+  isEmptyDaily,
+  notesRepository,
+  type DailyNoteResult,
+  type NotesRepository,
+} from './repository.js';
 
 const IdParams = z.object({ id: UlidSchema });
 const DailyParams = z.object({
@@ -64,8 +72,12 @@ function noteMatchesUpsert(
   );
 }
 
-export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
+export function createNoteRoutes(
+  repo?: NotesRepository,
+  taskRepo?: TasksRepository,
+): RouteDef[] {
   const notes = () => repo ?? notesRepository();
+  const tasks = () => taskRepo ?? tasksRepository();
   return [
     defineRoute({
       method: 'GET',
@@ -113,6 +125,39 @@ export function createNoteRoutes(repo?: NotesRepository): RouteDef[] {
           return json(200, body);
         }
         return jsonEntity(200, body as Note, parseNote);
+      },
+    }),
+    defineRoute({
+      method: 'POST',
+      pattern: '/notebook/notes/daily/:area/:date/open',
+      auth: 'notebook',
+      metric: 'OpenDailyNote',
+      params: DailyParams,
+      body: OpenDailyNoteRequestSchema,
+      handler: async (ctx, { params, body }) => {
+        const { area, date } = params;
+        const respond = (result: DailyNoteResult) =>
+          isEmptyDaily(result)
+            ? json(200, DailyNoteGetResponseSchema.parse(result))
+            : jsonEntity(200, result, parseNote);
+
+        const existing = await notes().getDaily(ctx.userId!, area, date);
+        if (!isEmptyDaily(existing)) return respond(existing);
+        const carried = await tasks().carriedInto(ctx.userId!, area, date);
+        if (carried.length === 0) return respond(existing);
+        try {
+          const note = await notes().createDaily(ctx.userId!, area, date, {
+            id: body.id,
+            bodyMarkdown: carriedInMarkdown(carried),
+          });
+          return jsonEntity(200, note, parseNote);
+        } catch (error) {
+          // Another device opened the day first: its note is the one record.
+          if (!(error instanceof ConflictError)) throw error;
+          const current = await notes().getDaily(ctx.userId!, area, date);
+          if (isEmptyDaily(current)) throw error;
+          return respond(current);
+        }
       },
     }),
     defineRoute({

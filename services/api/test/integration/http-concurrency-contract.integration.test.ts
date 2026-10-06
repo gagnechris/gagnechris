@@ -355,6 +355,14 @@ const PROBES: Record<string, () => Promise<Target>> = {
       version: n.version,
     };
   },
+  'POST /api/notebook/notes/daily/{area}/{date}/open': async () => {
+    const n = await dailyNote();
+    return {
+      path: `/api/notebook/notes/daily/work/${n.date}/open`,
+      version: n.version,
+      body: { id: ulid() },
+    };
+  },
   'PUT /api/notebook/notes/daily/{area}/{date}': async () => {
     const n = await dailyNote();
     return {

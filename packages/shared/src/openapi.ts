@@ -62,6 +62,7 @@ import {
   CLIENT_VERSION_HEADER,
   UpdateNoteRequestSchema,
   UpdateTaskRequestSchema,
+  OpenDailyNoteRequestSchema,
   UpsertDailyNoteRequestSchema,
 } from './schemas.js';
 
@@ -848,6 +849,31 @@ export function buildOpenApiDocument() {
           200: okWithEtag(
             DailyNoteGetResponseSchema,
             'Daily note (with ETag) or empty draft (no ETag)',
+          ),
+          400: r400,
+          ...adminAuth,
+        },
+      });
+
+      registry.registerPath({
+        method: 'post',
+        path: '/api/notebook/notes/daily/{area}/{date}/open',
+        summary:
+          'Open the daily note; on first open, creates it with open tasks from earlier days under Carried in',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          params: DailyNoteParamsSchema,
+          body: {
+            content: {
+              'application/json': { schema: OpenDailyNoteRequestSchema },
+            },
+          },
+        },
+        responses: {
+          200: okWithEtag(
+            DailyNoteGetResponseSchema,
+            'Daily note (with ETag), or the empty draft (no ETag) when nothing carries in',
           ),
           400: r400,
           ...adminAuth,

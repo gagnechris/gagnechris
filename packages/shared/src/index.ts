@@ -80,6 +80,8 @@ export {
 } from './post-reading.js';
 export { createUlid, type RandomBytes } from './ulid.js';
 export {
+  CARRIED_IN_HEADING,
+  carriedInMarkdown,
   findTaskEmbeds,
   parseTaskEmbedLine,
   replaceTaskEmbeds,

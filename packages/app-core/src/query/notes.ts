@@ -15,6 +15,7 @@ import {
   fetchNote,
   fetchNotesPage,
   isEmptyDailyNote,
+  openDailyNote,
   updateNote,
   upsertDailyNote,
   type CreateNoteRequest,
@@ -32,6 +33,8 @@ export type NoteResourceParams = { id: string };
 export type DailyNoteResourceParams = {
   area: NotebookArea;
   date: string;
+  /** Opening today's note creates it with earlier open tasks carried in. */
+  carryIn?: boolean;
 };
 
 /** Kept until the first successful upsert so re-renders reuse one client id. */
@@ -39,17 +42,22 @@ const pendingDailyIds = new Map<string, string>();
 
 const pendingDailyKey = (area: NotebookArea, date: string) => `${area}:${date}`;
 
-export const emptyDailyPlaceholder = (
-  area: NotebookArea,
-  date: string,
-  userId: string,
-): Note => {
+const pendingDailyId = (area: NotebookArea, date: string): string => {
   const key = pendingDailyKey(area, date);
   let id = pendingDailyIds.get(key);
   if (!id) {
     id = createUlid();
     pendingDailyIds.set(key, id);
   }
+  return id;
+};
+
+export const emptyDailyPlaceholder = (
+  area: NotebookArea,
+  date: string,
+  userId: string,
+): Note => {
+  const id = pendingDailyId(area, date);
   const now = new Date().toISOString();
   return {
     id,
@@ -73,8 +81,11 @@ export const fetchDailyNoteEntity = async (
   client: Parameters<typeof fetchDailyNote>[0],
   area: NotebookArea,
   date: string,
+  carryIn = false,
 ): Promise<Note> => {
-  const data = await fetchDailyNote(client, area, date);
+  const data = carryIn
+    ? await openDailyNote(client, area, date, pendingDailyId(area, date))
+    : await fetchDailyNote(client, area, date);
   if (isEmptyDailyNote(data)) {
     return emptyDailyPlaceholder(area, date, data.userId);
   }
@@ -96,7 +107,8 @@ export const dailyNoteResource = createVersionedResource<
   DailyNoteResourceParams
 >({
   queryKey: ({ area, date }) => queryKeys.notes.daily(area, date),
-  fetch: (client, { area, date }) => fetchDailyNoteEntity(client, area, date),
+  fetch: (client, { area, date, carryIn }) =>
+    fetchDailyNoteEntity(client, area, date, carryIn),
   update: async (client, { area, date }, body) => {
     const version = typeof body.version === 'number' ? body.version : undefined;
     const id = String(body.id ?? '');

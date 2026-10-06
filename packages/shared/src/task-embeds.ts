@@ -22,6 +22,13 @@ export function taskEmbedToken(id: string): string {
   return `{{task:${id.toUpperCase()}}}`;
 }
 
+export const CARRIED_IN_HEADING = '## Carried in';
+
+/** The block a new daily note opens with: open tasks from earlier days. */
+export function carriedInMarkdown(taskIds: readonly string[]): string {
+  return `${CARRIED_IN_HEADING}\n\n${taskIds.map(taskEmbedToken).join('\n')}\n\n`;
+}
+
 export function parseTaskEmbedLine(
   line: string,
 ): { id: string; indent: string } | null {

@@ -5353,6 +5353,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/notes/daily/{area}/{date}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open the daily note; on first open, creates it with open tasks from earlier days under Carried in */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    area: "work" | "personal";
+                    date: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Client ULID used if opening creates the daily note with carried-in tasks */
+                        id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Daily note (with ETag), or the empty draft (no ETag) when nothing carries in */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            userId: string;
+                            /** @enum {string} */
+                            area: "work" | "personal";
+                            /** @enum {string} */
+                            type: "daily" | "page";
+                            date: string | null;
+                            title: string;
+                            bodyMarkdown: string;
+                            tags: string[];
+                            pinned: boolean;
+                            /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                            taskIds: string[];
+                            version: number;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            deleted: boolean;
+                        } | {
+                            /** @enum {boolean} */
+                            exists: false;
+                            userId: string;
+                            /** @enum {string} */
+                            area: "work" | "personal";
+                            /** @enum {string} */
+                            type: "daily";
+                            date: string;
+                            /** @enum {string} */
+                            title: "";
+                            /** @enum {string} */
+                            bodyMarkdown: "";
+                            tags: string[];
+                            /** @enum {boolean} */
+                            pinned: false;
+                            /** @enum {number} */
+                            version: 0;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/notes/{id}": {
         parameters: {
             query?: never;
