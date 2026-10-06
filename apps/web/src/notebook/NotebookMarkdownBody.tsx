@@ -15,7 +15,7 @@ import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
 import { livePreview } from '../kit/markdown/livePreview';
 import { useEditorViewMode } from '../kit/markdown/editorViewMode';
-import MarkdownPreview from '../kit/markdown/MarkdownPreview';
+import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
@@ -154,7 +154,7 @@ export function NotebookMarkdownBody({
             />
           </Suspense>
           {mode.previewPane(
-            <MarkdownPreview
+            <LazyMarkdownPreview
               markdown={value}
               renderTaskEmbed={embeds.renderEmbed}
             />,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderMarkdownToHtml } from './markdown.js';
+import { UlidSchema } from './schemas.js';
 import {
   findTaskEmbeds,
   parseTaskEmbedLine,
@@ -71,5 +72,18 @@ describe('task embeds', () => {
   it('passes through the shared markdown sanitizer intact', () => {
     const html = renderMarkdownToHtml(`before\n\n${taskEmbedToken(A)}\n`);
     expect(html).toContain(`<p>${taskEmbedToken(A)}</p>`);
+  });
+});
+
+describe('embed ids follow the ULID pattern', () => {
+  it.each([
+    ['01ARZ3NDEKTSV4RRFFQ48JMTA1', true],
+    ['01arz3ndektsv4rrffq48jmta1', true],
+    ['81ARZ3NDEKTSV4RRFFQ48JMTA1', false],
+    ['01ARZ3NDEKTSV4RRFFQ48JMTAI', false],
+    ['01ARZ3NDEKTSV4RRFFQ48JMTA', false],
+  ])('%s → %s, same as UlidSchema', (id, ok) => {
+    expect(parseTaskEmbedLine(`{{task:${id}}}`) !== null).toBe(ok);
+    expect(UlidSchema.safeParse(id).success).toBe(ok);
   });
 });

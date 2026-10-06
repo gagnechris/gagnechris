@@ -6,6 +6,10 @@ import react from '@vitejs/plugin-react';
 import { analyticsPlugin, gaMeasurementId } from './scripts/analyticsPlugin.ts';
 import { appShellPlugin } from './scripts/appShellPlugin.ts';
 import { bundleBoundaryPlugin } from './scripts/bundleBoundaryPlugin.ts';
+import {
+  ADMIN_EDITOR_BUDGET,
+  editorBundlePlugin,
+} from './scripts/editorBundlePlugin.ts';
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
 import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
 import { appOrigin, WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
@@ -125,8 +129,13 @@ export default defineConfig(({ mode, command }) => {
           sitemapPlugin(),
           staticPagesPlugin(),
           bundleBoundaryPlugin(),
+          editorBundlePlugin(null),
         ]
-      : [react(), appShellPlugin(app.html)];
+      : [
+          react(),
+          appShellPlugin(app.html),
+          editorBundlePlugin(appName === 'admin' ? ADMIN_EDITOR_BUDGET : null),
+        ];
 
   return {
     base: '/',

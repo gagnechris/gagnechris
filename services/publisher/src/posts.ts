@@ -1,4 +1,4 @@
-import type { Post } from '@gagnechris/shared';
+import { comparePostsNewestFirst, type Post } from '@gagnechris/shared';
 import type { SiteStorage } from './storage.js';
 
 export const POSTS_JSON_KEY = 'blog/posts.json';
@@ -28,11 +28,7 @@ export function toListItem(post: Post): PublishedListItem {
 }
 
 export function sortPostsNewestFirst<T extends Post>(posts: T[]): T[] {
-  return posts.sort((a, b) => {
-    const aTs = a.publishedAt ?? a.updatedAt;
-    const bTs = b.publishedAt ?? b.updatedAt;
-    return bTs.localeCompare(aTs) || a.id.localeCompare(b.id);
-  });
+  return posts.sort(comparePostsNewestFirst);
 }
 
 export async function readPublishedListItems(

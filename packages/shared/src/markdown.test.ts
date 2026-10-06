@@ -92,9 +92,9 @@ describe('renderMarkdownToHtml sanitizing', () => {
       '- [ ] Open\n- [x] Done\n\n<input type="checkbox" aria-label="Spoof">',
     );
     expect(html.match(/<input[^>]*>/g)).toEqual([
-      '<input disabled type="checkbox" aria-label="Task" />',
-      '<input checked disabled type="checkbox" aria-label="Task" />',
-      '<input type="checkbox" aria-label="Task" disabled />',
+      '<input aria-label="Task" disabled type="checkbox" />',
+      '<input aria-label="Task" checked disabled type="checkbox" />',
+      '<input aria-label="Task" type="checkbox" disabled />',
     ]);
   });
 

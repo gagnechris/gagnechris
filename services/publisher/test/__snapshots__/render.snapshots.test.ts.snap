@@ -18,8 +18,8 @@ exports[`render HTML snapshots > matches frozen output for a post with every mar
 <li>A nested item</li>
 </ul>
 </li>
-<li><input checked disabled type="checkbox" aria-label="Task" /> A finished task</li>
-<li><input disabled type="checkbox" aria-label="Task" /> An open task</li>
+<li><input aria-label="Task" checked disabled type="checkbox" /> A finished task</li>
+<li><input aria-label="Task" disabled type="checkbox" /> An open task</li>
 </ul>
 <ol>
 <li>The first ordered item</li>

@@ -4,8 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
-    "types": ["node"],
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["src/**/*.test.ts"]
+  "include": ["src/sanitizer-browser.ts"]
 }

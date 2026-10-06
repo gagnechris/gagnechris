@@ -70,7 +70,7 @@ describe('renderPostPageBodyHtml', () => {
       '<figure><img src="https://gagnechris.com/og-image.jpg" alt="A view of the site" /><figcaption>A caption under the image</figcaption></figure>',
       '<div class="post-table" role="region" tabindex="0" aria-label="Table 1"><table>',
       '<hr />',
-      '<input checked disabled type="checkbox" aria-label="Task" /> A finished task',
+      '<input aria-label="Task" checked disabled type="checkbox" /> A finished task',
     ]) {
       expect(html).toContain(tag);
     }
