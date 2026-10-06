@@ -1,15 +1,12 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ACCESS_LEVEL_LABELS, type ManagedUser } from '@gagnechris/shared';
-import {
-  useSetUserAccessMutation,
-  useUserActionMutation,
-  type UserAction,
-} from '@gagnechris/app-core';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { UserAvatar } from './UserAvatar';
 import { useModal } from './useModal';
+import { useUserChange } from './useUserChange';
+import { changeToast, type UserChange } from './userChange';
 import {
   accessChange,
   displayName,
@@ -24,14 +21,7 @@ type Props = {
   onToast: (message: string) => void;
 };
 
-const ACTION_TOASTS: Record<UserAction, (name: string) => string> = {
-  'sign-out': (name) => `${name} is signed out everywhere.`,
-  disable: (name) => `${name} can no longer sign in.`,
-  enable: (name) => `${name} can sign in again.`,
-  remove: (name) => `${name} no longer has access. Their notes are kept.`,
-  restore: (name) => `${name} has access again.`,
-  'resend-invite': (name) => `Invite sent again to ${name}.`,
-};
+type AccountAction = Exclude<UserChange['kind'], 'access'>;
 
 export default function EditUserDrawer({
   user,
@@ -41,40 +31,27 @@ export default function EditUserDrawer({
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   useModal(panelRef, onClose);
-  const setAccess = useSetUserAccessMutation();
-  const action = useUserActionMutation();
+  const { perform, isPending: busy } = useUserChange();
+  const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState(user.level);
   const [error, setError] = useState<string | null>(null);
   const name = displayName(user);
   const removed = user.status === 'removed';
-  const busy = setAccess.isPending || action.isPending;
   const changed = draft !== null && draft !== user.level;
   const change =
     changed && !removed ? accessChange(user, user.level, draft) : null;
 
-  const save = async () => {
-    if (!draft) return;
+  const submit = async (change: UserChange, fallback: string) => {
     setError(null);
     try {
-      await setAccess.mutateAsync({ id: user.id, level: draft });
-      onToast(`${name} now has ${ACCESS_LEVEL_LABELS[draft]} access.`);
-      onClose();
+      if ((await perform(change)) === 'confirming') {
+        setConfirming(true);
+        return;
+      }
+      onToast(changeToast(change));
+      if (change.kind === 'access') onClose();
     } catch (err) {
-      setError(userErrorMessage(err, 'Could not change access.'));
-    }
-  };
-
-  const run = async (kind: UserAction) => {
-    setError(null);
-    try {
-      await action.mutateAsync({
-        id: user.id,
-        action: kind,
-        level: kind === 'restore' && draft ? draft : undefined,
-      });
-      onToast(ACTION_TOASTS[kind](name));
-    } catch (err) {
-      setError(userErrorMessage(err, 'Could not update this user.'));
+      setError(userErrorMessage(err, fallback));
     }
     const panel = panelRef.current;
     if (panel && !panel.contains(document.activeElement)) {
@@ -82,11 +59,30 @@ export default function EditUserDrawer({
     }
   };
 
+  const save = () =>
+    draft
+      ? submit(
+          { id: user.id, name, kind: 'access', level: draft },
+          'Could not change access.',
+        )
+      : Promise.resolve();
+
+  const run = (kind: AccountAction) =>
+    submit(
+      {
+        id: user.id,
+        name,
+        kind,
+        level: kind === 'restore' && draft ? draft : undefined,
+      },
+      'Could not update this user.',
+    );
+
   const accountRow = (
     label: string,
     hint: string,
     button: string,
-    kind: UserAction,
+    kind: AccountAction,
     danger = false,
   ) => (
     <div className="users-account-row">
@@ -109,7 +105,7 @@ export default function EditUserDrawer({
             ? 'users-btn users-btn--small users-btn--danger'
             : 'users-btn users-btn--small'
         }
-        disabled={busy || (kind === 'restore' && !draft)}
+        disabled={busy || confirming || (kind === 'restore' && !draft)}
         onClick={() => void run(kind)}
       >
         {button}
@@ -179,6 +175,11 @@ export default function EditUserDrawer({
           </div>
         ) : null}
 
+        {confirming ? (
+          <p className="users-callout" role="status">
+            Confirm it’s you with your passkey to finish this change…
+          </p>
+        ) : null}
         {error ? (
           <p className="admin-panel__error" role="alert">
             {error}
@@ -228,6 +229,13 @@ export default function EditUserDrawer({
           </section>
         )}
 
+        {isSelf ? null : (
+          <p className="users-muted">
+            Changing access, signing out, disabling or removing asks for your
+            passkey if you haven’t signed in in the last few minutes.
+          </p>
+        )}
+
         <div className="users-drawer__foot">
           <button type="button" className="users-btn" onClick={onClose}>
             Cancel
@@ -236,10 +244,10 @@ export default function EditUserDrawer({
             <button
               type="button"
               className="users-btn users-btn--primary"
-              disabled={!changed || busy}
+              disabled={!changed || busy || confirming}
               onClick={() => void save()}
             >
-              {setAccess.isPending ? 'Saving…' : 'Save access'}
+              {busy ? 'Saving…' : 'Save access'}
             </button>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   ACCESS_LEVEL_LABELS,
@@ -7,11 +7,14 @@ import {
 } from '@gagnechris/shared';
 import { useUserActionMutation, useUsersQuery } from '@gagnechris/app-core';
 import { USER_ADMIN_GROUP } from '../../workspace/access';
+import { getAuthTime } from '../../workspace/auth/session';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import type { AdminOutletContext } from '../AdminLayout';
 import EditUserDrawer from './EditUserDrawer';
 import InviteUserDialog from './InviteUserDialog';
 import { UserAvatar } from './UserAvatar';
+import { useUserChange } from './useUserChange';
+import { changeToast, takePendingChange } from './userChange';
 import {
   displayName,
   formatAdded,
@@ -75,6 +78,23 @@ export default function AdminUsersPage() {
     const timer = window.setTimeout(() => setToast(null), TOAST_MS);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  const { perform } = useUserChange();
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!allowed || resumed.current) return;
+    resumed.current = true;
+    void (async () => {
+      const change = takePendingChange(await getAuthTime().catch(() => null));
+      if (!change) return;
+      try {
+        await perform(change, { confirmed: true });
+        setToast(changeToast(change));
+      } catch (err) {
+        setRowError(userErrorMessage(err, 'Could not finish that change.'));
+      }
+    })();
+  }, [allowed, perform]);
 
   if (!allowed) return <NoAccess />;
 

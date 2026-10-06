@@ -3091,7 +3091,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set access level; lowering it also signs the user out everywhere */
+        /**
+         * Set access level; lowering it also signs the user out everywhere
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         put: {
             parameters: {
                 query?: never;
@@ -3251,7 +3254,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Disable sign-in; access level unchanged */
+        /**
+         * Disable sign-in; access level unchanged
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3403,7 +3409,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enable sign-in */
+        /**
+         * Enable sign-in
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3555,7 +3564,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign the user out everywhere; their open sessions end within the hour */
+        /**
+         * Sign the user out everywhere; their open sessions end within the hour
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3707,7 +3719,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Remove access: drop all groups and disable sign-in. The account and its Notebook are kept */
+        /**
+         * Remove access: drop all groups and disable sign-in. The account and its Notebook are kept
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -4011,7 +4026,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Restore a removed user at the given level, or their previous level */
+        /**
+         * Restore a removed user at the given level, or their previous level
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;

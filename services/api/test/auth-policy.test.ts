@@ -321,6 +321,7 @@ describe('real handlers', () => {
       token_use: 'id',
       aud: NOTEBOOK_CLIENT,
       'cognito:groups': '[notebook]',
+      auth_time: expect.stringMatching(/^\d+$/),
     });
   });
 });
