@@ -8,6 +8,7 @@ const ROWS: [string, string][] = [
   ['@next week', 'Hide until next Monday'],
   ['@oct 12', 'Hide until that date'],
   ['@someday', 'Park it, no date'],
+  ['due:fri', 'Deadline (or due:oct 30); doesn’t hide it'],
   ['!high', 'Priority (or !med, !low)'],
 ];
 

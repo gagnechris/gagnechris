@@ -17,6 +17,7 @@ import {
   type TaskSchedule,
 } from '@gagnechris/shared';
 import type { StillOpenRow } from './TodayPanels';
+import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
 import { comingUpDayLabel, type ComingUpDay } from './todayTaskBuckets';
 import './todayPanels.css';
@@ -310,7 +311,7 @@ export function TodaySheet<T extends SheetTask>({
 }
 
 function StillOpenSheetRow({
-  row: { task, source, to },
+  row: { task, source, to, due },
   revealed,
   onReveal,
   readOnly,
@@ -415,7 +416,14 @@ function StillOpenSheetRow({
           ) : (
             <span className="today-sheet__title">{task.title}</span>
           )}
-          <span className="today-sheet__meta">{source.label}</span>
+          <span className="today-sheet__meta">
+            {due ? (
+              <>
+                <TaskDuePill due={due} />{' '}
+              </>
+            ) : null}
+            {source.label}
+          </span>
         </span>
         {addPill}
         {readOnly ? null : (

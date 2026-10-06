@@ -16,19 +16,22 @@ import {
   openTaskDateQuery,
   taskDateMenuIds,
   taskDateMenuItems,
+  tokenNeedsDate,
   tomorrowOf,
+  type TaskDateKind,
   type TaskDateMenuItem,
   type TaskDateQuery,
 } from '../tasks/taskDateMenuItems';
 
 type Range = { from: number; to: number };
+type PickRange = Range & { kind: TaskDateKind };
 
 export type TaskDateMenuState = {
-  /** Document positions of the `@word` at the caret on a `[ ]` line. */
+  /** Document positions of the `@word` or `due:word` at the caret on a `[ ]` line. */
   query: TaskDateQuery | null;
   active: number;
   dismissedAt: number | null;
-  picking: Range | null;
+  picking: PickRange | null;
 };
 
 const CLOSED: TaskDateMenuState = {
@@ -40,7 +43,7 @@ const CLOSED: TaskDateMenuState = {
 
 const activeEffect = StateEffect.define<number>();
 const dismissEffect = StateEffect.define<null>();
-const pickEffect = StateEffect.define<Range | null>();
+const pickEffect = StateEffect.define<PickRange | null>();
 
 const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
 
@@ -52,7 +55,7 @@ function queryAt(state: EditorState, today: string): TaskDateQuery | null {
   if (!prefix) return null;
   const q = openTaskDateQuery(line.text, main.head - line.from, today);
   if (!q || q.from < prefix[0].length) return null;
-  return { from: line.from + q.from, to: line.from + q.to, query: q.query };
+  return { ...q, from: line.from + q.from, to: line.from + q.to };
 }
 
 export const taskDateMenuOpen = (value: TaskDateMenuState) =>
@@ -74,6 +77,7 @@ function menuField(today: string) {
               ? null
               : tr.changes.mapPos(next.dismissedAt),
           picking: next.picking && {
+            ...next.picking,
             from: tr.changes.mapPos(next.picking.from),
             to: tr.changes.mapPos(next.picking.to),
           },
@@ -90,7 +94,8 @@ function menuField(today: string) {
         const query = queryAt(tr.state, today);
         const same =
           query?.from === next.query?.from &&
-          query?.query === next.query?.query;
+          query?.query === next.query?.query &&
+          query?.kind === next.query?.kind;
         next = { ...next, query, active: same ? next.active : 0 };
       }
       return next;
@@ -100,8 +105,10 @@ function menuField(today: string) {
 
 function insertToken(view: EditorView, range: Range, token: string) {
   const following = view.state.doc.sliceString(range.to, range.to + 1);
-  const insert = /^\s/.test(following) ? token : `${token} `;
-  const caret = range.from + insert.length + (insert === token ? 1 : 0);
+  const spaced = /^\s/.test(following);
+  const open = tokenNeedsDate(token);
+  const insert = spaced || (open && following === '') ? token : `${token} `;
+  const caret = range.from + token.length + (open ? 0 : 1);
   view.dispatch({
     changes: { from: range.from, to: range.to, insert },
     selection: EditorSelection.cursor(caret),
@@ -116,7 +123,7 @@ export type TaskDateMenuEditorOptions = {
   onChange: (view: EditorView, value: TaskDateMenuState) => void;
 };
 
-/** The `@` date menu on `[ ] …` lines; React renders it from `onChange`. */
+/** The `@` and `due:` date menu on `[ ] …` lines; React renders it from `onChange`. */
 export function taskDateMenuEditor({
   today,
   baseId,
@@ -125,7 +132,9 @@ export function taskDateMenuEditor({
   const field = menuField(today);
   const ids = taskDateMenuIds(baseId);
   const itemsOf = (value: TaskDateMenuState) =>
-    value.query ? taskDateMenuItems(today, value.query.query) : [];
+    value.query
+      ? taskDateMenuItems(today, value.query.query, value.query.kind)
+      : [];
 
   const whenOpen =
     (run: (view: EditorView, value: TaskDateMenuState) => void) =>
@@ -210,7 +219,11 @@ function chooseTaskDate(
     insertToken(view, value.query, item.token);
   } else {
     view.dispatch({
-      effects: pickEffect.of({ from: value.query.from, to: value.query.to }),
+      effects: pickEffect.of({
+        from: value.query.from,
+        to: value.query.to,
+        kind: value.query.kind,
+      }),
     });
   }
 }
@@ -261,7 +274,9 @@ export function useTaskDateMenuEditor({
   // Pick a date… holds focus in the menu while the line waits for its day.
   const open =
     taskDateMenuOpen(value) && (value.picking !== null || !!snap?.focused);
-  const items = value.query ? taskDateMenuItems(today, value.query.query) : [];
+  const items = value.query
+    ? taskDateMenuItems(today, value.query.query, value.query.kind)
+    : [];
   const view = snap?.view;
   const picking = value.picking;
   const pickedDay = picked || tomorrowOf(today);
@@ -270,6 +285,7 @@ export function useTaskDateMenuEditor({
     <TaskDateMenu
       baseId={baseId}
       open={open}
+      kind={picking?.kind ?? value.query?.kind ?? 'start'}
       items={items}
       activeIndex={Math.min(value.active, items.length - 1)}
       onActivate={(i) => view?.dispatch({ effects: activeEffect.of(i) })}
@@ -295,7 +311,15 @@ export function useTaskDateMenuEditor({
               onSet: () => {
                 if (!pickedDay) return;
                 setPicked('');
-                insertToken(view, picking, taskDateToken(pickedDay, today));
+                insertToken(
+                  view,
+                  picking,
+                  taskDateToken(
+                    pickedDay,
+                    today,
+                    picking.kind === 'due' ? 'due:' : '@',
+                  ),
+                );
                 view.focus();
               },
               onCancel: () => {

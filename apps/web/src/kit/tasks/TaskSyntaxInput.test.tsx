@@ -70,13 +70,14 @@ describe('TaskSyntaxInput @ menu', () => {
       'Next weekMon, Oct 5',
       'SomedayNo date, parked',
       'Pick a date…',
+      'Deadline…due:',
     ]);
     expect(
       screen.getByRole('option', { name: 'Tomorrow, Sat, Oct 3' }),
     ).toHaveAttribute('aria-selected', 'true');
     expect(activeOption()).toHaveTextContent('Tomorrow');
     expect(screen.getByRole('status')).toHaveTextContent(
-      '5 date options. Up and down to move, Enter to choose, Escape to close.',
+      '6 date options. Up and down to move, Enter to choose, Escape to close.',
     );
     expect(combobox()).toHaveAccessibleDescription(
       'Shows up on Today from that date.',
@@ -98,7 +99,7 @@ describe('TaskSyntaxInput @ menu', () => {
       screen.getByRole('option', { name: 'Tomorrow, Sat, Oct 3' }),
     ).toHaveAttribute('aria-selected', 'false');
     await user.keyboard('{ArrowUp}{ArrowUp}');
-    expect(activeOption()).toHaveTextContent('Pick a date…');
+    expect(activeOption()).toHaveTextContent('Deadline…');
     await user.keyboard('{ArrowDown}{ArrowDown}');
     expect(activeOption()).toHaveTextContent('Monday');
 
@@ -152,6 +153,48 @@ describe('TaskSyntaxInput @ menu', () => {
     expect(onSubmit).toHaveBeenCalledWith('Call bank @mon');
   });
 
+  test('Deadline… switches the menu to due: dates without Someday', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    await user.type(combobox(), 'File taxes @dead');
+    expect(optionNames()).toEqual(['Deadline…due:']);
+    await user.keyboard('{Enter}');
+    expect(combobox()).toHaveValue('File taxes due:');
+
+    const listbox = screen.getByRole('listbox', { name: 'Deadline…' });
+    expect(
+      within(listbox)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'TomorrowSat, Oct 3',
+      'MondayOct 5',
+      'Next weekMon, Oct 5',
+      'Pick a date…',
+    ]);
+    expect(combobox()).toHaveAccessibleDescription(
+      'A deadline; it does not change when the task shows.',
+    );
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(combobox()).toHaveValue('File taxes due:mon ');
+
+    await user.keyboard('{Enter}');
+    expect(onSubmit).toHaveBeenCalledWith('File taxes due:mon ');
+  });
+
+  test('Pick a date under due: inserts a due: token', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.type(combobox(), 'Renew passport due:');
+    await user.keyboard('{End}{Enter}');
+    const picker = screen.getByLabelText('Pick a date');
+    await user.clear(picker);
+    await user.type(picker, '2026-10-12{Enter}');
+    expect(combobox()).toHaveValue('Renew passport due:oct 12 ');
+  });
+
   test('clicking an option inserts it', async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -166,7 +209,7 @@ describe('TaskSyntaxInput @ menu', () => {
     render(<Harness />);
 
     await user.type(combobox(), 'Renew passport @');
-    await user.keyboard('{End}');
+    await user.keyboard('{End}{ArrowUp}');
     expect(activeOption()).toHaveTextContent('Pick a date…');
     await user.keyboard('{Enter}');
 

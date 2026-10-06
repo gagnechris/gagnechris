@@ -108,6 +108,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
       <TaskDateMenu
         baseId={baseId}
         open={open}
+        kind="start"
         items={items}
         activeIndex={active}
         onChoose={choose}

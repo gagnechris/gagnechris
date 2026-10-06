@@ -23,6 +23,7 @@ export {
 } from './task-schedule.js';
 export {
   activeTaskDateQuery,
+  activeTaskDueQuery,
   formatTaskDay,
   localDateString,
   matchesTaskDateQuery,

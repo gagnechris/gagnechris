@@ -12,6 +12,7 @@ import { parseLocalDate } from '../../kit/calendarDates';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
 import { TaskEmbedRow } from '../../kit/tasks/TaskEmbedRow';
+import { taskDue } from '../../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
@@ -165,6 +166,7 @@ function NotebookDemoBody({
                             today,
                             task.someday,
                           ),
+                    due: taskDue(task, today),
                     onToggle: () => dispatch({ type: 'toggle', id: task.id }),
                   }}
                 />

@@ -9,6 +9,7 @@ export type TaskLineDraft = {
   title: string;
   startDate: string | null;
   someday: boolean;
+  dueDate: string | null;
   priority: TaskPriority;
 };
 
@@ -36,4 +37,10 @@ export function parseTaskLine(
 
 /** Same line, same task: undoing a conversion and leaving again reuses the id. */
 export const taskLineDraftKey = (draft: TaskLineDraft) =>
-  [draft.title, draft.startDate, draft.someday, draft.priority].join('\u0000');
+  [
+    draft.title,
+    draft.startDate,
+    draft.someday,
+    draft.dueDate,
+    draft.priority,
+  ].join('\u0000');

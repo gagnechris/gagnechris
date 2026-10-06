@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Task } from '@gagnechris/shared';
+import { TaskDuePill } from './TaskDuePill';
+import type { TaskDue } from './taskDue';
 
 export type TaskEmbedView =
   | { kind: 'loading' }
@@ -10,6 +12,7 @@ export type TaskEmbedView =
       task: Pick<Task, 'title' | 'status' | 'priority'>;
       /** Short label such as `@Tue`; omitted when unscheduled. */
       schedule?: string;
+      due?: TaskDue | null;
       /** Not saved yet, so it cannot be toggled. */
       pending?: boolean;
       onToggle: () => void;
@@ -58,7 +61,7 @@ export function TaskEmbedRow({ view }: { view: TaskEmbedView }) {
     );
   }
 
-  const { task, schedule, pending, onToggle, to } = view;
+  const { task, schedule, due, pending, onToggle, to } = view;
   const done = task.status === 'done';
   const dropped = task.status === 'dropped';
   const priority = PRIORITY_LABEL[task.priority];
@@ -82,6 +85,7 @@ export function TaskEmbedRow({ view }: { view: TaskEmbedView }) {
           {schedule}
         </span>
       ) : null}
+      <TaskDuePill due={due} />
       {priority ? (
         <span className={`task-embed__pill task-embed__pill--${task.priority}`}>
           {priority}

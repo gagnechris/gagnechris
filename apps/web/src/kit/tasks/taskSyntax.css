@@ -48,6 +48,11 @@
   cursor: pointer;
 }
 
+.task-syntax__option--section {
+  border-top: 1px solid var(--neutral-200);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
 .task-syntax__option[aria-selected='true'] {
   background: var(--primary-50);
 }

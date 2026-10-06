@@ -14,7 +14,9 @@ import {
 import { createUlid } from '../lib/ulid';
 import { addLocalDays, localToday, parseLocalDate } from '../kit/calendarDates';
 import { areaQueryParam } from './notebookAreaPreference';
+import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
+import { taskDue } from '../kit/tasks/taskDue';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -155,6 +157,7 @@ export default function NotebookTasksPage() {
       status: 'todo',
       startDate: parsed.startDate,
       someday: parsed.someday,
+      dueDate: parsed.dueDate,
       tags: [],
     });
     setQuickAdd('');
@@ -177,7 +180,8 @@ export default function NotebookTasksPage() {
                 : 'Personal'}
             {' · '}
             quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
-            <code>@oct 12</code>, <code>@someday</code> and <code>!high</code>
+            <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
+            and <code>!high</code>
           </p>
         </div>
       </div>
@@ -288,6 +292,7 @@ export default function NotebookTasksPage() {
             <TaskListRow
               key={task.id}
               task={task}
+              today={today}
               onToggle={() => toggleComplete(task)}
             />
           ))}
@@ -313,6 +318,7 @@ export default function NotebookTasksPage() {
               <TaskListRow
                 key={task.id}
                 task={task}
+                today={today}
                 onToggle={() => toggleComplete(task)}
               />
             ))}
@@ -344,7 +350,15 @@ export default function NotebookTasksPage() {
   );
 }
 
-function TaskListRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
+function TaskListRow({
+  task,
+  today,
+  onToggle,
+}: {
+  task: Task;
+  today: string;
+  onToggle: () => void;
+}) {
   return (
     <TaskRow
       task={task}
@@ -358,7 +372,8 @@ function TaskListRow({ task, onToggle }: { task: Task; onToggle: () => void }) {
             ? ' · someday'
             : task.startDate
               ? ` · shows ${task.startDate}`
-              : ' · no date'}
+              : ' · no date'}{' '}
+          <TaskDuePill due={taskDue(task, today)} />
         </>
       }
     />

@@ -14,6 +14,7 @@ import {
   type SourceNote,
 } from '../kit/tasks/todayTaskBuckets';
 import type { StillOpenRow } from '../kit/tasks/TodayPanels';
+import { taskDue } from '../kit/tasks/taskDue';
 
 /** Every open task showing on `day`, and every one starting after it. */
 export function useTodayTasks({
@@ -83,6 +84,7 @@ export function useTodayTasks({
       source,
       sourceTo: source.noteId ? `/notes/${source.noteId}` : `/tasks/${task.id}`,
       to: `/tasks/${task.id}`,
+      due: taskDue(task, day),
     };
   });
 

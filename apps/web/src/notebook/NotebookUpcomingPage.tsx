@@ -8,7 +8,9 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import { formatTaskDay, parseTaskSyntax } from '@gagnechris/shared';
+import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
+import { taskDue } from '../kit/tasks/taskDue';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import type { SourceNote } from '../kit/tasks/todayTaskBuckets';
 import { groupUpcomingTasks, noteChipLabel } from '../kit/tasks/upcomingGroups';
@@ -91,6 +93,7 @@ export default function NotebookUpcomingPage() {
         status: 'todo',
         startDate: parsed.startDate,
         someday: parsed.someday,
+        dueDate: parsed.dueDate,
         tags: [],
       });
       setQuickAdd('');
@@ -216,6 +219,7 @@ export default function NotebookUpcomingPage() {
                           {formatTaskDay(task.startDate)}
                         </span>
                       ) : null}
+                      <TaskDuePill due={taskDue(task, today)} />
                       {note ? (
                         <Link
                           to={`/notes/${note.id}`}

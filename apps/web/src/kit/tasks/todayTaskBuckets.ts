@@ -17,6 +17,7 @@ export type BucketTask = Pick<
   | 'status'
   | 'startDate'
   | 'someday'
+  | 'dueDate'
   | 'createdAt'
 >;
 
@@ -25,7 +26,7 @@ export type ComingUpDay<T> = { date: string; tasks: T[] };
 export type TodayTaskBuckets<T> = {
   /** Open tasks the day's note embeds; the note renders them. */
   inNote: T[];
-  /** Open, showing on the day (start on or before it, or none), not in the note. */
+  /** Open, showing on the day (start on or before it, or none), not in the note; overdue first. */
   stillOpen: T[];
   /** Open, starting within the horizon after the day, not in the note; by day. */
   comingUp: ComingUpDay<T>[];
@@ -83,9 +84,20 @@ export function bucketTodayTasks<T extends BucketTask>(
   }
 
   const sinceKey = (t: T) => t.startDate ?? t.createdAt.slice(0, 10);
+  const overdue = (t: T) =>
+    t.dueDate !== null && t.dueDate < day ? t.dueDate : null;
+  const byOverdue = (a: T, b: T) => {
+    const [x, y] = [overdue(a), overdue(b)];
+    if (x === y) return 0;
+    if (x === null) return 1;
+    if (y === null) return -1;
+    return x < y ? -1 : 1;
+  };
   stillOpen.sort(
     (a, b) =>
-      sinceKey(a).localeCompare(sinceKey(b)) || a.id.localeCompare(b.id),
+      byOverdue(a, b) ||
+      sinceKey(a).localeCompare(sinceKey(b)) ||
+      a.id.localeCompare(b.id),
   );
   const comingUp = [...upcoming.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

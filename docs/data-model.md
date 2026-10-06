@@ -388,7 +388,7 @@ Context written under the task.
 | `description`                      | Markdown (may be empty)                                                                                                                    |
 | `priority`                         | `low` \| `med` \| `high`                                                                                                                   |
 | `status`                           | `todo` \| `in_progress` \| `done` \| `dropped`. `todo` and `in_progress` are open; `dropped` closes a task without doing it (not a delete) |
-| `dueDate`                          | Optional `yyyy-mm-dd`; `null` when undated. Stored and returned; the web UI never sets it and it does not drive Today or Upcoming          |
+| `dueDate`                          | Optional `yyyy-mm-dd` deadline; `null` when none. Independent of `startDate`; it never decides whether a task shows on Today or Upcoming   |
 | `startDate`                        | Show-on day (`yyyy-mm-dd`): the task shows on Today from this day. `null` means now. Omitted on create → `null`                            |
 | `someday`                          | Boolean. Someday tasks never show on Today and always have `startDate: null`                                                               |
 | `completedAt`                      | ISO-8601 when done; otherwise `null`                                                                                                       |

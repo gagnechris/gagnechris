@@ -12,7 +12,9 @@ import {
   openTaskDateQuery,
   taskDateMenuIds,
   taskDateMenuItems,
+  tokenNeedsDate,
   tomorrowOf,
+  type TaskDateKind,
   type TaskDateMenuItem,
 } from './taskDateMenuItems';
 import './taskSyntax.css';
@@ -28,7 +30,7 @@ type Props = Omit<
   hint?: string;
 };
 
-/** A text input that offers task date tokens when an `@` is typed. */
+/** A text input that offers task date tokens when `@` or `due:` is typed. */
 export function TaskSyntaxInput({
   value,
   onChange,
@@ -47,15 +49,17 @@ export function TaskSyntaxInput({
   const [active, setActive] = useState(0);
   // The `@` position whose menu was closed with Esc stays closed.
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
-  const [picking, setPicking] = useState<{ from: number; to: number } | null>(
-    null,
-  );
+  const [picking, setPicking] = useState<{
+    from: number;
+    to: number;
+    kind: TaskDateKind;
+  } | null>(null);
   const [picked, setPicked] = useState('');
   // A fresh object per insert, so the same caret position re-runs the effect.
   const [placeCaret, setPlaceCaret] = useState<{ at: number } | null>(null);
 
   const query = caret === null ? null : openTaskDateQuery(value, caret, today);
-  const items = query ? taskDateMenuItems(today, query.query) : [];
+  const items = query ? taskDateMenuItems(today, query.query, query.kind) : [];
   const open =
     picking !== null || (query !== null && query.from !== dismissedAt);
   const activeIndex = Math.min(active, items.length - 1);
@@ -75,8 +79,9 @@ export function TaskSyntaxInput({
 
   const insert = (range: { from: number; to: number }, token: string) => {
     const after = value.slice(range.to).replace(/^\s+/, '');
-    const next = `${value.slice(0, range.from)}${token} ${after}`;
-    const at = range.from + token.length + 1;
+    const open = tokenNeedsDate(token);
+    const next = `${value.slice(0, range.from)}${token}${open && !after ? '' : ' '}${after}`;
+    const at = range.from + token.length + (open ? 0 : 1);
     setCaret(at);
     setPlaceCaret({ at });
     setPicking(null);
@@ -90,12 +95,17 @@ export function TaskSyntaxInput({
       insert(query, item.token);
       return;
     }
-    setPicking({ from: query.from, to: query.to });
+    setPicking({ from: query.from, to: query.to, kind: query.kind });
     setPicked(tomorrowOf(today));
   };
 
   const setPickedDate = () => {
-    if (picking && picked) insert(picking, taskDateToken(picked, today));
+    if (picking && picked) {
+      insert(
+        picking,
+        taskDateToken(picked, today, picking.kind === 'due' ? 'due:' : '@'),
+      );
+    }
   };
 
   const cancelPicking = () => {
@@ -172,6 +182,7 @@ export function TaskSyntaxInput({
       <TaskDateMenu
         baseId={baseId}
         open={open}
+        kind={picking?.kind ?? query?.kind ?? 'start'}
         items={items}
         activeIndex={activeIndex}
         onChoose={choose}
