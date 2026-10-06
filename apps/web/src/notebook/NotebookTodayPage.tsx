@@ -123,7 +123,6 @@ function TodayEditor({
     loadError,
     isLoading,
     dirty,
-    busy,
     saveState,
   } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
@@ -192,18 +191,11 @@ function TodayEditor({
       <div className="admin-action-bar notebook-today__header">
         <DayTitle area={area} date={date} today={today} />
         <div className="admin-action-bar__status">
-          <SaveIndicator saveState={saveState} dirty={dirty} />
-          {entity.version === 0 ? (
-            <span className="admin-hint">Not saved yet</span>
-          ) : null}
-          <button
-            type="button"
-            className="admin-btn admin-btn--primary"
-            disabled={busy || !dirty}
-            onClick={() => void save()}
-          >
-            Save
-          </button>
+          <SaveIndicator
+            saveState={saveState}
+            dirty={dirty}
+            isNew={entity.version === 0}
+          />
         </div>
       </div>
       {saveError ? (

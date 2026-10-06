@@ -346,7 +346,7 @@ describe('NotebookTodayPage', () => {
 
     state.note = { ...state.note, version: 9, bodyMarkdown: 'remote' };
 
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.keyboard('{Control>}s{/Control}');
 
     expect(
       await screen.findByText(
@@ -462,7 +462,7 @@ describe('NotebookTodayPage', () => {
     };
 
     await user.type(editor, 'from tab B');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.keyboard('{Control>}s{/Control}');
 
     expect(
       await screen.findByText(/Another tab or device already started/i),

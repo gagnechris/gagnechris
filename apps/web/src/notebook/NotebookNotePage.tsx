@@ -20,7 +20,6 @@ export default function NotebookNotePage() {
     draft,
     updateDraft,
     entity,
-    save,
     saveError,
     loadError,
     isLoading,
@@ -81,14 +80,6 @@ export default function NotebookNotePage() {
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
         <div className="admin-toolbar">
-          <button
-            type="button"
-            className="admin-btn admin-btn--primary"
-            disabled={busy || !dirty}
-            onClick={() => void save()}
-          >
-            Save
-          </button>
           <button
             type="button"
             className="admin-btn"
