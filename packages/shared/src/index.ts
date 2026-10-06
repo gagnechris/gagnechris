@@ -148,3 +148,4 @@ export {
   type ProjectPublishFieldErrors,
 } from './projects.js';
 export * from './users.js';
+export { postMatchesQuery } from './post-search.js';

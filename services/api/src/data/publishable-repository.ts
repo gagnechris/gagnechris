@@ -128,6 +128,8 @@ export type ListRowSpec<R extends ListRow> = {
   attributes?: readonly string[];
   parse: (raw: unknown) => R;
   idOf: (row: R) => string;
+  /** Rows failing it are skipped; pair with `maxItems` so a page still fills. */
+  where?: (row: R) => boolean;
 };
 
 function withProjection(
@@ -293,7 +295,8 @@ export class PublishableRepository<
     const page = await this.drafts.queryPageAs(
       spec.attributes ? withProjection(input, spec.attributes) : input,
       (raw) => this.drafts.mapWith(raw, spec.parse),
-      (row) => row.status === 'deleted',
+      (row) =>
+        row.status === 'deleted' || (spec.where ? !spec.where(row) : false),
     );
     return { ...page, items: await this.resolveFlags(page.items, spec.idOf) };
   }

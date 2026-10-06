@@ -4,7 +4,7 @@ import type { ListNotesQuery, ListTasksQuery } from './api.js';
 export const queryKeys = {
   posts: {
     all: ['admin', 'posts'] as const,
-    list: (filters?: { status?: string; q?: string }) =>
+    list: (filters?: { status?: string; q?: string; limit?: number }) =>
       filters
         ? ([...queryKeys.posts.all, 'list', filters] as const)
         : ([...queryKeys.posts.all, 'list'] as const),

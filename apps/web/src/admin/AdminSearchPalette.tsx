@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
 import { usePostsQuery, useProjectsQuery } from '@gagnechris/app-core';
+import { useDebouncedValue } from '../kit/useDebouncedValue';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 
 const GROUPS = ['Pages', 'Posts', 'Projects'] as const;
+
+const HITS_PER_GROUP = 8;
+const SEARCH_DEBOUNCE_MS = 200;
 
 const PAGES = [
   { to: '/', title: 'Posts' },
@@ -14,16 +18,20 @@ const PAGES = [
 const matches = (needle: string, ...fields: (string | undefined)[]) =>
   fields.some((f) => f?.toLowerCase().includes(needle));
 
-/** Searches the posts and projects lists already loaded for their pages. */
+/** Posts are searched on the server; projects are one short list, matched here. */
 export default function AdminSearchPalette({
   onClose,
 }: {
   onClose: () => void;
 }) {
   const [q, setQ] = useState('');
-  const posts = usePostsQuery();
-  const projects = useProjectsQuery();
   const needle = q.trim().toLowerCase();
+  const postQuery = useDebouncedValue(needle, SEARCH_DEBOUNCE_MS);
+  const posts = usePostsQuery(
+    { q: postQuery, limit: HITS_PER_GROUP },
+    { enabled: postQuery.length > 0 },
+  );
+  const projects = useProjectsQuery();
 
   const hits = useMemo((): SearchHit[] => {
     if (!needle) return [];
@@ -35,9 +43,8 @@ export default function AdminSearchPalette({
         title: p.title,
       }),
     );
-    const postHits = (posts.data?.pages.flatMap((p) => p.items) ?? [])
-      .filter((p) => matches(needle, p.title, p.slug, ...(p.tags ?? [])))
-      .slice(0, 8)
+    const postHits = (posts.data?.pages[0]?.items ?? [])
+      .slice(0, HITS_PER_GROUP)
       .map((p): SearchHit => ({
         key: `post-${p.id}`,
         group: 'Posts',
@@ -52,7 +59,7 @@ export default function AdminSearchPalette({
       }));
     const projectHits = (projects.data ?? [])
       .filter((p) => matches(needle, p.name, p.slug))
-      .slice(0, 8)
+      .slice(0, HITS_PER_GROUP)
       .map((p): SearchHit => ({
         key: `project-${p.id}`,
         group: 'Projects',
@@ -63,7 +70,8 @@ export default function AdminSearchPalette({
     return [...pages, ...postHits, ...projectHits];
   }, [needle, posts.data, projects.data]);
 
-  const loading = posts.isPending || projects.isPending;
+  const loading =
+    needle !== postQuery || posts.isFetching || projects.isPending;
 
   return (
     <SearchPalette
