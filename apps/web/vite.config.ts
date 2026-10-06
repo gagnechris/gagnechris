@@ -3,8 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { loadEnv, type PluginOption } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { analyticsPlugin, gaMeasurementId } from './scripts/analyticsPlugin.ts';
 import { appShellPlugin } from './scripts/appShellPlugin.ts';
 import { bundleBoundaryPlugin } from './scripts/bundleBoundaryPlugin.ts';
+import {
+  ADMIN_EDITOR_BUDGET,
+  editorBundlePlugin,
+} from './scripts/editorBundlePlugin.ts';
 import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
 import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
 import { appOrigin, WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
@@ -44,6 +49,12 @@ export default defineConfig(({ mode, command }) => {
     env.VITE_NOTEBOOK_ORIGIN,
     command,
   );
+
+  // process.env only: a .env file must not be able to switch GA on.
+  const gaId =
+    command === 'build' && appName === 'public'
+      ? gaMeasurementId(process.env.GA_MEASUREMENT_ID)
+      : undefined;
 
   const useProdApi = env.VITE_API_TARGET === 'prod';
   const proxyTarget = useProdApi
@@ -114,11 +125,17 @@ export default defineConfig(({ mode, command }) => {
       ? [
           react(),
           appShellPlugin(app.html),
+          analyticsPlugin(gaId),
           sitemapPlugin(),
           staticPagesPlugin(),
           bundleBoundaryPlugin(),
+          editorBundlePlugin(null),
         ]
-      : [react(), appShellPlugin(app.html)];
+      : [
+          react(),
+          appShellPlugin(app.html),
+          editorBundlePlugin(appName === 'admin' ? ADMIN_EDITOR_BUDGET : null),
+        ];
 
   return {
     base: '/',
@@ -126,6 +143,14 @@ export default defineConfig(({ mode, command }) => {
       'import.meta.env.VITE_PUBLIC_SITE_ORIGIN': JSON.stringify(publicOrigin),
       'import.meta.env.VITE_ADMIN_ORIGIN': JSON.stringify(adminOrigin),
       'import.meta.env.VITE_NOTEBOOK_ORIGIN': JSON.stringify(notebookOrigin),
+      // Vitest stubs it per test instead.
+      ...(process.env.VITEST
+        ? {}
+        : {
+            'import.meta.env.VITE_GA_MEASUREMENT_ID': JSON.stringify(
+              gaId ?? '',
+            ),
+          }),
     },
     plugins,
     publicDir: path.join(appRoot, app.publicDir),

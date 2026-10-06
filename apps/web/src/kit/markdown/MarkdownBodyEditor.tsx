@@ -1,15 +1,15 @@
-import { lazy, Suspense, useId, useMemo, useRef, type ReactNode } from 'react';
+import { useId, useMemo, useRef, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
 import type { EditorView } from '@codemirror/view';
-import MarkdownPreview from './MarkdownPreview';
-import type { MarkdownEditorHandle } from './MarkdownEditor';
+import { LazyMarkdownPreview } from './LazyMarkdownPreview';
+// Static, not lazy: only lazy editor routes use this, and React throttles
+// Suspense reveals to 300 ms, so a fallback here would hold the editor back.
+import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
 import { insertCodeBlock, insertImages, insertLink } from './editorAccessory';
 import { useEditorViewMode } from './editorViewMode';
 import { markdownImages } from './imageWidgets';
 import { livePreview } from './livePreview';
 import './markdown.css';
-
-const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 
 type Props = {
   value: string;
@@ -151,17 +151,17 @@ export function MarkdownBodyEditor({
           className="markdown-single markdown-single--reading"
           data-previewing={mode.previewing}
         >
-          <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
-            <MarkdownEditor
-              ref={editorRef}
-              value={value}
-              onChange={onChange}
-              onUploadImages={onUploadImages}
-              extensions={extensions}
-              lineNumbers={false}
-            />
-          </Suspense>
-          {mode.previewPane(preview ?? <MarkdownPreview markdown={value} />)}
+          <MarkdownEditor
+            ref={editorRef}
+            value={value}
+            onChange={onChange}
+            onUploadImages={onUploadImages}
+            extensions={extensions}
+            lineNumbers={false}
+          />
+          {mode.previewPane(
+            preview ?? <LazyMarkdownPreview markdown={value} />,
+          )}
         </div>
       </div>
       <p className="admin-hint">

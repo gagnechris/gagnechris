@@ -629,6 +629,7 @@ describe('ProjectEditorPage preview', () => {
     renderEditor(project);
     await screen.findByDisplayValue('Notebook');
     await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
     published.innerHTML = renderProjectPageBodyHtml(projectPageView(project));
