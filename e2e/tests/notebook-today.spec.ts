@@ -286,7 +286,7 @@ test('Add to today’s note embeds the task in the note and takes it off Still o
     (r) =>
       r.request().method() === 'PUT' && r.url().includes('/notes/daily/work/'),
   );
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.keyboard.press('ControlOrMeta+s');
   expect((await saved).ok()).toBe(true);
 
   await page.reload();

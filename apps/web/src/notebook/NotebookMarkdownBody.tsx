@@ -7,12 +7,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { EditorView } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
 import { findTaskEmbeds } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
+import { livePreview } from '../kit/markdown/livePreview';
 import MarkdownPreview from '../kit/markdown/MarkdownPreview';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
@@ -27,7 +29,6 @@ type Props = {
   /** Turns on task embeds; omit for task descriptions. */
   note?: EmbedNote;
   ensureNoteSaved?: () => Promise<unknown>;
-  hint?: string;
   /** Scrolls this task's embed into view and flashes it, once it is in `value`. */
   highlightTaskId?: string | null;
   onHighlighted?: () => void;
@@ -37,6 +38,23 @@ type Props = {
 const PHONE_SCROLL_MARGIN = 160;
 const FLASH_MS = 2000;
 const HIGHLIGHT_WAIT_MS = 2000;
+const RAW_KEY = 'notebook.rawMarkdown';
+
+function readRaw(): boolean {
+  try {
+    return window.localStorage.getItem(RAW_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeRaw(raw: boolean) {
+  try {
+    window.localStorage.setItem(RAW_KEY, raw ? '1' : '0');
+  } catch {
+    // Only a remembered preference.
+  }
+}
 
 /** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({
@@ -44,11 +62,12 @@ export function NotebookMarkdownBody({
   onChange,
   note,
   ensureNoteSaved,
-  hint,
   highlightTaskId,
   onHighlighted,
 }: Props) {
-  const [mobilePane, setMobilePane] = useState<'edit' | 'preview'>('edit');
+  const [previewing, setPreviewing] = useState(false);
+  const [raw, setRaw] = useState(readRaw);
+  const previewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const getView = useCallback(() => editorRef.current?.view(), []);
   const phone = useMediaQuery(PHONE_QUERY);
@@ -63,8 +82,21 @@ export function NotebookMarkdownBody({
     hint: 'Stays in this note. Shows up on Today from that date.',
   });
   const withTasks = note !== undefined;
+  const togglePreview = useCallback(() => setPreviewing((p) => !p), []);
+  const toggleRaw = useCallback(
+    () =>
+      setRaw((r) => {
+        writeRaw(!r);
+        return !r;
+      }),
+    [],
+  );
   const extensions = useMemo(
     () => [
+      Prec.high(
+        keymap.of([{ key: 'Mod-/', run: () => (togglePreview(), true) }]),
+      ),
+      ...(raw ? [] : [livePreview()]),
       taskListToggle(),
       ...(withTasks ? dateMenu.extensions : []),
       ...embeds.extensions,
@@ -75,8 +107,25 @@ export function NotebookMarkdownBody({
         ? [EditorView.scrollMargins.of(() => ({ bottom: PHONE_SCROLL_MARGIN }))]
         : []),
     ],
-    [embeds.extensions, dateMenu.extensions, withTasks, phone],
+    [
+      embeds.extensions,
+      dateMenu.extensions,
+      withTasks,
+      phone,
+      raw,
+      togglePreview,
+    ],
   );
+
+  const toggledOnce = useRef(false);
+  useEffect(() => {
+    if (!toggledOnce.current) {
+      toggledOnce.current = true;
+      return;
+    }
+    if (previewing) previewRef.current?.focus();
+    else editorRef.current?.focus();
+  }, [previewing]);
 
   const handledHighlight = useRef<string | null>(null);
   useEffect(() => {
@@ -128,42 +177,62 @@ export function NotebookMarkdownBody({
 
   return (
     <>
-      <div className="markdown-workspace">
-        <div className="markdown-tabs" role="tablist" aria-label="Editor panes">
-          <button
-            type="button"
-            role="tab"
-            className="markdown-tabs__btn"
-            aria-selected={mobilePane === 'edit'}
-            onClick={() => setMobilePane('edit')}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className="markdown-tabs__btn"
-            aria-selected={mobilePane === 'preview'}
-            onClick={() => setMobilePane('preview')}
-          >
-            Preview
-          </button>
+      <div className="markdown-workspace markdown-workspace--single">
+        <div className="markdown-bar markdown-bar--end">
+          <div className="markdown-toolbar" role="toolbar" aria-label="View">
+            <button
+              type="button"
+              className="markdown-toggle"
+              aria-pressed={raw}
+              disabled={previewing}
+              onClick={toggleRaw}
+            >
+              Markdown
+            </button>
+            <button
+              type="button"
+              className="markdown-toggle"
+              aria-pressed={previewing}
+              aria-keyshortcuts="Meta+/ Control+/"
+              title="Preview (⌘/)"
+              onClick={togglePreview}
+            >
+              Preview
+            </button>
+          </div>
         </div>
-        <div className="markdown-split" data-pane={mobilePane}>
+        <div className="markdown-single" data-previewing={previewing}>
           <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
             <MarkdownEditor
               ref={editorRef}
               value={value}
               onChange={onChange}
               extensions={extensions}
+              lineNumbers={false}
               label="Note body"
               placeholder="Write in markdown…"
             />
           </Suspense>
-          <MarkdownPreview
-            markdown={value}
-            renderTaskEmbed={embeds.renderEmbed}
-          />
+          {previewing ? (
+            <div
+              ref={previewRef}
+              className="markdown-single__preview"
+              tabIndex={-1}
+              role="region"
+              aria-label="Preview"
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+                  e.preventDefault();
+                  togglePreview();
+                }
+              }}
+            >
+              <MarkdownPreview
+                markdown={value}
+                renderTaskEmbed={embeds.renderEmbed}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
       {embeds.portals}
@@ -176,12 +245,11 @@ export function NotebookMarkdownBody({
           {embeds.toggleError}
         </p>
       ) : null}
-      <p className="admin-hint">
-        {hint ??
-          (note
-            ? '⌘S / Ctrl+S saves · `[ ] text` then Enter adds a task, `@` picks its day · checklists (`- [ ]`) toggle on click · autosave is on'
-            : '⌘S / Ctrl+S saves · checklists (`- [ ]`) toggle on click · autosave is on')}
-      </p>
+      {phone && withTasks ? (
+        <p className="admin-hint">
+          `[ ] text` then Enter adds a task, `@` picks its day
+        </p>
+      ) : null}
     </>
   );
 }

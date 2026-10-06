@@ -484,3 +484,129 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 .markdown-editor .cm-placeholder {
   color: var(--neutral-500);
 }
+
+.markdown-workspace--single {
+  min-height: 0;
+  gap: var(--space-2);
+}
+
+.markdown-bar--end {
+  justify-content: flex-end;
+}
+
+.markdown-toggle {
+  min-height: 1.875rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.markdown-toggle[aria-pressed='true'] {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+  color: var(--primary-900);
+  font-weight: 600;
+}
+
+.markdown-toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.markdown-single > .markdown-editor,
+.markdown-single__preview > .markdown-preview {
+  height: auto;
+  min-height: min(60vh, 32rem);
+  min-height: min(60dvh, 32rem);
+}
+
+.markdown-single[data-previewing='true'] > .markdown-editor {
+  display: none;
+}
+
+.markdown-single__preview:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Live preview: prose font, syntax hidden off the caret's lines. */
+.markdown-editor .cm-live .cm-scroller {
+  font-family: inherit;
+  line-height: var(--line-relaxed);
+}
+
+.markdown-editor .cm-live .cm-content {
+  padding: var(--space-3) var(--space-2);
+}
+
+.markdown-editor .cm-live .cm-md-h1 {
+  font-size: 1.6em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.markdown-editor .cm-live .cm-md-h2 {
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+.markdown-editor .cm-live .cm-md-h3 {
+  font-size: 1.12em;
+  font-weight: 650;
+}
+
+.markdown-editor .cm-live .cm-md-h4,
+.markdown-editor .cm-live .cm-md-h5,
+.markdown-editor .cm-live .cm-md-h6 {
+  font-weight: 650;
+}
+
+.markdown-editor .cm-live .cm-md-strong {
+  font-weight: 700;
+}
+
+.markdown-editor .cm-live .cm-md-em {
+  font-style: italic;
+}
+
+.markdown-editor .cm-live .cm-md-code,
+.markdown-editor .cm-live .cm-md-fence,
+.markdown-editor .cm-live .cm-md-code-block {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.markdown-editor .cm-live .cm-md-code {
+  background: var(--neutral-100);
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-sm);
+}
+
+.markdown-editor .cm-live .cm-md-fence,
+.markdown-editor .cm-live .cm-md-code-block {
+  background: var(--neutral-50);
+}
+
+.markdown-editor .cm-live .cm-md-link {
+  color: var(--primary-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-editor .cm-live .cm-md-quote {
+  border-left: 3px solid var(--neutral-300);
+  padding-left: var(--space-3);
+  color: var(--neutral-700);
+}
+
+.markdown-editor .cm-live .cm-md-bullet {
+  display: inline-block;
+  width: 0.6em;
+  color: var(--neutral-600);
+}

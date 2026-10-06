@@ -217,17 +217,19 @@ function renderToday() {
 
 const stillOpen = () => screen.getByTestId('still-open');
 const comingUp = () => screen.getByTestId('coming-up');
-const notePane = () =>
-  screen
-    .getByRole('textbox', { name: 'Note body' })
-    .closest('.markdown-split')!;
+const noteBody = () =>
+  screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Note body' }).value;
+
+/** The editor is a plain textarea here, so a task is in the note when its token is. */
+const inNote = (title: string) =>
+  [...server.tasks.values()].some(
+    (t) => t.title === title && noteBody().includes(`{{task:${t.id}}}`),
+  );
 
 /** Where a title shows on the page: the note, Still open or Coming up. */
 const placesOf = (title: string) =>
   [
-    within(notePane() as HTMLElement).queryAllByText(title).length
-      ? 'note'
-      : null,
+    inNote(title) ? 'note' : null,
     ...within(stillOpen())
       .queryAllByText(title)
       .map(() => 'still-open'),

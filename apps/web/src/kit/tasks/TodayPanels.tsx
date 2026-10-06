@@ -389,8 +389,9 @@ export function CarryFooter({
   return (
     <p className="today-carry" data-testid="carry-footer">
       <span aria-hidden="true">→ </span>
-      {count === 1 ? '1 open task' : `${count} open tasks`} will carry to{' '}
-      {weekday} if not done
+      {count === 0
+        ? `Nothing carries over to ${weekday}`
+        : `${count === 1 ? '1 open task' : `${count} open tasks`} will carry to ${weekday} if not done`}
     </p>
   );
 }

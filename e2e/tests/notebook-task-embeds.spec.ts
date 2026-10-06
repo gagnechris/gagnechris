@@ -25,11 +25,6 @@ test('typing [ ] text in a note creates one task and embeds it', async ({
     .locator('.markdown-editor')
     .getByRole('checkbox', { name: `Complete ${title}` });
   await expect(editorRow).toBeEnabled();
-  await expect(
-    page
-      .locator('.markdown-preview')
-      .getByRole('checkbox', { name: `Complete ${title}` }),
-  ).toBeVisible();
 
   await expect
     .poll(async () => {
@@ -91,11 +86,11 @@ test('completing an embedded task in one note checks it in the other', async ({
     .toBe('done');
 
   await page.goto(`${apps.notebook}/notes/${other.id}`);
-  for (const pane of ['.markdown-editor', '.markdown-preview']) {
-    await expect(
-      page.locator(pane).getByRole('checkbox', { name: `Reopen ${title}` }),
-    ).toBeChecked();
-  }
+  await expect(
+    page
+      .locator('.markdown-editor')
+      .getByRole('checkbox', { name: `Reopen ${title}` }),
+  ).toBeChecked();
 });
 
 test('renaming a task changes every embed, and export writes titles instead of tokens', async ({
@@ -150,9 +145,13 @@ test('renaming a task changes every embed, and export writes titles instead of t
     await expect(
       page.locator('.markdown-editor').getByText(renamed, { exact: true }),
     ).toBeVisible();
+    await page.getByRole('button', { name: 'Preview' }).click();
     await expect(
-      page.locator('.markdown-preview').getByText(renamed, { exact: true }),
+      page
+        .getByRole('region', { name: 'Preview' })
+        .getByText(renamed, { exact: true }),
     ).toBeVisible();
+    await expect(page.locator('.markdown-editor')).toBeHidden();
   }
 
   await page.goto(`${apps.notebook}/notes`);

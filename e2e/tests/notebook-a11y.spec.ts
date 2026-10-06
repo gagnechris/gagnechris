@@ -113,7 +113,7 @@ test('a task links to a note picked by title', async ({
   await page
     .getByRole('combobox', { name: 'Linked note' })
     .selectOption({ label: note.data!.title });
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.keyboard.press('ControlOrMeta+s');
 
   await expect
     .poll(async () => {

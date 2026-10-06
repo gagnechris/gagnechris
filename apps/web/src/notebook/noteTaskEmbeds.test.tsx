@@ -321,7 +321,7 @@ describe('writing [ ] text in a daily note', () => {
         const boxes = within(container).getAllByRole('checkbox', {
           name: 'Complete Call Sam',
         });
-        expect(boxes).toHaveLength(2);
+        expect(boxes).toHaveLength(1);
         for (const box of boxes) expect(box).toBeEnabled();
       },
       { timeout: 5000 },
@@ -549,9 +549,9 @@ describe('one task embedded in two notes', () => {
     await waitFor(() =>
       expect(
         within(noteB()).getAllByRole('checkbox', { name: 'Complete Call Sam' }),
-      ).toHaveLength(2),
+      ).toHaveLength(1),
     );
-    expect(within(noteA()).getAllByText('High')).toHaveLength(2);
+    expect(within(noteA()).getAllByText('High')).toHaveLength(1);
 
     const [inEditor] = within(noteA()).getAllByRole('checkbox', {
       name: 'Complete Call Sam',
@@ -563,7 +563,7 @@ describe('one task embedded in two notes', () => {
         const boxes = within(note).getAllByRole('checkbox', {
           name: 'Reopen Call Sam',
         });
-        expect(boxes).toHaveLength(2);
+        expect(boxes).toHaveLength(1);
         for (const box of boxes) expect(box).toBeChecked();
       });
     }
@@ -575,7 +575,7 @@ describe('one task embedded in two notes', () => {
     const { router } = renderTwoNotes();
     const user = userEvent.setup();
     await waitFor(() =>
-      expect(within(noteB()).getAllByText('Call Sam')).toHaveLength(2),
+      expect(within(noteB()).getAllByText('Call Sam')).toHaveLength(1),
     );
 
     await user.click(
@@ -589,7 +589,7 @@ describe('one task embedded in two notes', () => {
     for (const note of [noteA(), noteB()]) {
       await waitFor(
         () =>
-          expect(within(note).getAllByText('Call Sam back')).toHaveLength(2),
+          expect(within(note).getAllByText('Call Sam back')).toHaveLength(1),
         { timeout: 4000 },
       );
     }
@@ -599,7 +599,7 @@ describe('one task embedded in two notes', () => {
   test('a deleted task renders as a muted row, not the token', async () => {
     renderTwoNotes();
     await waitFor(() =>
-      expect(within(noteA()).getAllByText('Deleted task')).toHaveLength(2),
+      expect(within(noteA()).getAllByText('Deleted task')).toHaveLength(1),
     );
     expect(document.body.textContent).not.toContain('{{task:');
   });
