@@ -955,4 +955,26 @@ describe('PostEditorPage Details panel', () => {
       '/media/cover.png',
     );
   });
+  test('a rejected cover upload shows the error under the field', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({
+      data: undefined,
+      error: { error: 'bad_request' },
+      response: { status: 400 },
+    });
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+
+    await user.upload(
+      screen.getByLabelText('Upload cover image'),
+      new File(['png'], 'cover.png', { type: 'image/png' }),
+    );
+    const panel = screen.getByRole('complementary', { name: 'Post details' });
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      /Image upload rejected \(400\)/,
+    );
+    expect(
+      screen.queryByRole('img', { name: 'Cover image' }),
+    ).not.toBeInTheDocument();
+  });
 });

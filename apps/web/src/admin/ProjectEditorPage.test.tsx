@@ -207,6 +207,16 @@ describe('ProjectEditorPage fields', () => {
     expect(lastPutBody()).toMatchObject({ stack: ['DynamoDB', 'Vite'] });
   });
 
+  test('a stack item already in the list leaves the draft clean', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await screen.findByDisplayValue('Notebook');
+
+    await user.type(screen.getByLabelText('Stack'), 'react{Enter}');
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+  });
+
   test('links use the schema’s URL rules: an invalid URL shows an error and the saved links are kept', async () => {
     const user = userEvent.setup();
     renderEditor();

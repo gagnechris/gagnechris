@@ -1,5 +1,7 @@
 import {
+  DEFAULT_RESUME,
   RESUME_MONTH_PATTERN,
+  SITE_AUTHOR_NAME,
   type Resume,
   type ResumeContent,
 } from '@gagnechris/shared';
@@ -40,6 +42,8 @@ export type ResumeDraftFields = {
   skillsText: string;
   education: EducationDraft[];
 };
+
+export const RESUME_PDF_PATH = DEFAULT_RESUME.pdfPath;
 
 export const emptyExperience = (): ExperienceDraft => ({
   id: newRepeaterId(),
@@ -220,3 +224,26 @@ export const createResumeContentBuilder = () => {
       ),
   };
 };
+
+export type ResumeContentBuilder = ReturnType<
+  typeof createResumeContentBuilder
+>;
+
+export const emptyResumeDraft = (): ResumeDraftFields =>
+  resumeDraftFromResume({
+    ...DEFAULT_RESUME,
+    status: 'draft',
+    publishedAt: null,
+    updatedAt: '',
+    version: 0,
+    hasUnpublishedChanges: false,
+  });
+
+export const resumePayload = (
+  draft: ResumeDraftFields,
+  content: ResumeContentBuilder,
+) => ({
+  name: draft.name.trim() || SITE_AUTHOR_NAME,
+  pdfPath: RESUME_PDF_PATH,
+  content: content.payload(draft),
+});

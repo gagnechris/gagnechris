@@ -1,29 +1,51 @@
-import { useEffect, useState } from 'react';
-import { DEFAULT_RESUME } from '@gagnechris/shared';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
-import { resumeResource } from '@gagnechris/app-core';
-import { EditorActionBar } from '../workspace/ui/EditorActionBar';
+import { resumeResource, type Resume } from '@gagnechris/app-core';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import { publicUrl, withPublicUrls } from './publicUrl';
 import {
   createResumeContentBuilder,
+  emptyResumeDraft,
   hasExperienceRangeError,
+  RESUME_PDF_PATH,
   resumeDraftFromResume,
+  resumePayload,
   resumeRoleEndId,
+  type ResumeContentBuilder,
   type ResumeDraftFields,
 } from './resumeDraft';
-import { useVersionedEntityEditor } from '../workspace/useVersionedEntityEditor';
+import { EditorFrame } from './editor/EditorFrame';
+import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
+import { useDraftFields } from './editor/useDraftFields';
 import '../pages/Resume.css';
 
-const emptyResumeDraft = (): ResumeDraftFields =>
-  resumeDraftFromResume({
-    ...DEFAULT_RESUME,
-    status: 'draft',
-    publishedAt: null,
-    updatedAt: '',
-    version: 0,
-    hasUnpublishedChanges: false,
-  });
+const ResumePreview = ({
+  resume,
+  draft,
+  content,
+}: {
+  resume: Resume;
+  draft: ResumeDraftFields;
+  content: ResumeContentBuilder;
+}) => {
+  const deferred = useDeferredValue(draft);
+  const html = useMemo(
+    () =>
+      renderResumePrerenderHtml({
+        ...resume,
+        name: deferred.name,
+        pdfPath: RESUME_PDF_PATH,
+        content: content.preview(deferred),
+      }),
+    [resume, deferred, content],
+  );
+  return (
+    <div
+      className="resume-page admin-resume-preview"
+      dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
+    />
+  );
+};
 
 const AdminResumePage = () => {
   const [content] = useState(createResumeContentBuilder);
@@ -43,28 +65,14 @@ const AdminResumePage = () => {
       document.getElementById(resumeRoleEndId(endFocus.roleId))?.focus();
     }
   }, [endFocus]);
-  const {
-    draft,
-    updateDraft,
-    entity: resume,
-    save,
-    saveError,
-    loadError,
-    isLoading,
-    actionBarProps,
-  } = useVersionedEntityEditor({
+  const editor = useAdminEntityEditor({
     resource: resumeResource,
     params: {},
     initialDraft: emptyResumeDraft(),
     toDraft: resumeDraftFromResume,
     getEntityId: () => 'resume',
-    toPayload: (current) => ({
-      name: current.name.trim() || 'Chris Gagne',
-      pdfPath: '/resume.pdf',
-      content: content.payload(current),
-    }),
-    conflictMessage:
-      'Conflict — another save updated the resume. Reload and try again.',
+    toPayload: (current) => resumePayload(current, content),
+    subject: 'the resume',
     loadErrorFallback: 'Could not load resume.',
     unpublishConfirm:
       'Unpublish the resume? The live page keeps the last published HTML.',
@@ -77,109 +85,66 @@ const AdminResumePage = () => {
       return !role;
     },
   });
+  const { draft, save, actionBarProps } = editor;
+  const { setField } = useDraftFields(editor);
 
   const undatedErrors = content.undatedRangeErrors(draft);
   const blockedRole = undatedErrors.find(
     (item) => item.id === publishBlockedRoleId,
   );
 
-  const setField = <K extends keyof ResumeDraftFields>(
-    key: K,
-    value:
-      | ResumeDraftFields[K]
-      | ((prev: ResumeDraftFields[K]) => ResumeDraftFields[K]),
-  ) => {
-    updateDraft((prev) => ({
-      ...prev,
-      [key]:
-        typeof value === 'function'
-          ? (value as (field: ResumeDraftFields[K]) => ResumeDraftFields[K])(
-              prev[key],
-            )
-          : value,
-    }));
-  };
-
-  if (loadError) {
-    return (
-      <section className="admin-panel">
-        <p className="admin-panel__error" role="alert">
-          {loadError}
-        </p>
-      </section>
-    );
-  }
-
-  if (isLoading || !resume) {
-    return (
-      <section className="admin-panel">
-        <p>Loading resume…</p>
-      </section>
-    );
-  }
-
-  const previewHtml = renderResumePrerenderHtml({
-    ...resume,
-    name: draft.name,
-    pdfPath: '/resume.pdf',
-    content: content.preview(draft),
-  });
-
   return (
-    <section className="admin-panel admin-panel--editor">
-      <EditorActionBar
-        leading={<h1>Resume</h1>}
-        {...actionBarProps}
+    <EditorFrame
+      editor={editor}
+      loadingLabel="Loading resume…"
+      leading={<h1>Resume</h1>}
+      viewLiveHref={() => publicUrl('/resume')}
+      actionBar={{
         // An invalid range is saved as the role's last saved dates, so a clean
         // save does not mean everything typed is on the server.
-        dirty={actionBarProps.dirty || hasExperienceRangeError(draft)}
-        viewLiveHref={publicUrl('/resume')}
-      />
+        dirty: actionBarProps.dirty || hasExperienceRangeError(draft),
+      }}
+      notices={
+        blockedRole ? (
+          <p className="admin-panel__error" role="alert">
+            Not published: {blockedRole.title.trim() || 'a new role'} has an End
+            month before its Start month and no saved dates yet.{' '}
+            <a
+              href={`#${resumeRoleEndId(blockedRole.id)}`}
+              onClick={(event) => {
+                event.preventDefault();
+                focusRoleEnd(blockedRole.id);
+              }}
+            >
+              Fix End month
+            </a>
+          </p>
+        ) : null
+      }
+    >
+      {(resume) => (
+        <>
+          <div className="admin-editor-split">
+            <ResumeEditorForm
+              draft={draft}
+              setField={setField}
+              hasSavedDates={(item) => content.savedDates(item) !== null}
+              onSave={() => void save()}
+              editingRoleId={editingRoleId}
+              setEditingRoleId={setEditingRoleId}
+            />
 
-      {blockedRole ? (
-        <p className="admin-panel__error" role="alert">
-          Not published: {blockedRole.title.trim() || 'a new role'} has an End
-          month before its Start month and no saved dates yet.{' '}
-          <a
-            href={`#${resumeRoleEndId(blockedRole.id)}`}
-            onClick={(event) => {
-              event.preventDefault();
-              focusRoleEnd(blockedRole.id);
-            }}
-          >
-            Fix End month
-          </a>
-        </p>
-      ) : null}
-
-      {saveError ? (
-        <p className="admin-panel__error" role="alert">
-          {saveError}
-        </p>
-      ) : null}
-
-      <div className="admin-editor-split">
-        <ResumeEditorForm
-          draft={draft}
-          setField={setField}
-          hasSavedDates={(item) => content.savedDates(item) !== null}
-          onSave={() => void save()}
-          editingRoleId={editingRoleId}
-          setEditingRoleId={setEditingRoleId}
-        />
-
-        <div className="admin-editor-split__preview">
-          <h2 className="admin-preview-title">Preview</h2>
-          <div
-            className="resume-page admin-resume-preview"
-            dangerouslySetInnerHTML={{ __html: withPublicUrls(previewHtml) }}
-          />
-        </div>
-      </div>
-      <p className="admin-hint">
-        ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
-      </p>
-    </section>
+            <div className="admin-editor-split__preview">
+              <h2 className="admin-preview-title">Preview</h2>
+              <ResumePreview resume={resume} draft={draft} content={content} />
+            </div>
+          </div>
+          <p className="admin-hint">
+            ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
+          </p>
+        </>
+      )}
+    </EditorFrame>
   );
 };
 

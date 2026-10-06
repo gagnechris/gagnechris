@@ -1,7 +1,6 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import {
   MAX_SLUG_LENGTH,
-  MEDIA_CONTENT_TYPES,
   PROJECT_DEMO_IDS,
   PROJECT_LINK_LABEL_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
@@ -17,11 +16,13 @@ import {
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
-import { Button } from '../kit/Button';
 import { Field, Select, TextArea, TextInput } from '../kit/Field';
 import { Repeater } from '../workspace/ui/Repeater';
+import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { ChipsInput } from './editor/ChipsInput';
+import { ImageUploadField } from './editor/ImageUploadField';
+import type { SetDraftField } from './editor/useDraftFields';
 import {
-  addStackItems,
   emptyProjectLink,
   projectHrefError,
   projectLinkErrors,
@@ -30,22 +31,17 @@ import {
   type ProjectDraftFields,
 } from './projectDraft';
 
-type SetField = <K extends keyof ProjectDraftFields>(
-  key: K,
-  value:
-    | ProjectDraftFields[K]
-    | ((prev: ProjectDraftFields[K]) => ProjectDraftFields[K]),
-) => void;
-
 type Props = {
   draft: ProjectDraftFields;
-  setField: SetField;
+  setField: SetDraftField<ProjectDraftFields>;
   setSlugManual: (manual: boolean) => void;
   onSave: () => void;
   onUploadPreview: (file: File) => Promise<string>;
 };
 
-const STAGES = Object.keys(PROJECT_STAGE_LABELS) as ProjectStage[];
+const STAGE_OPTIONS = (Object.keys(PROJECT_STAGE_LABELS) as ProjectStage[]).map(
+  (stage) => ({ value: stage, label: PROJECT_STAGE_LABELS[stage] }),
+);
 
 const DEMO_LABELS: Record<ProjectDemo, string> = {
   posts: 'Posts',
@@ -99,10 +95,18 @@ export function ProjectEditorFields({
       </div>
 
       <div className="admin-project-card">
-        <StageControl
-          value={draft.stage}
-          onChange={(stage) => setField('stage', stage)}
-        />
+        <div className="admin-stage">
+          <span className="admin-stage__label" aria-hidden="true">
+            Stage
+          </span>
+          <SegmentedRadio
+            label="Stage"
+            className="admin-stage__options"
+            options={STAGE_OPTIONS}
+            value={draft.stage}
+            onChange={(stage) => setField('stage', stage)}
+          />
+        </div>
         <Field
           label="Stage note"
           hint="Optional, e.g. “for fun” or “since 2026”"
@@ -116,13 +120,24 @@ export function ProjectEditorFields({
       </div>
 
       <div className="admin-project-card">
-        <PreviewImageField
+        <ImageUploadField
+          layout="thumbnail"
+          label="Preview image"
           value={draft.previewImage}
           requiredError={projectPreviewImageError(draft)}
+          hint="Shown on the project card. JPEG, PNG, WebP or GIF."
           onChange={(path) => setField('previewImage', path)}
           onUpload={onUploadPreview}
         />
-        <StackChips
+        <ChipsInput
+          label="Stack"
+          listLabel="Stack items"
+          removeLabel={(item) => `Remove ${item}`}
+          placeholder="Add, then Enter"
+          fullPlaceholder="Stack is full"
+          inputMaxLength={PROJECT_STACK_ITEM_MAX_LENGTH * 4}
+          maxItems={PROJECT_STACK_MAX}
+          maxItemLength={PROJECT_STACK_ITEM_MAX_LENGTH}
           value={draft.stack}
           onChange={(stack) => setField('stack', stack)}
         />
@@ -240,191 +255,5 @@ function SlugPreview({ draft }: { draft: ProjectDraftFields }) {
     <>
       Page: <code>{projectPagePath(slug)}</code>
     </>
-  );
-}
-
-function StageControl({
-  value,
-  onChange,
-}: {
-  value: ProjectStage;
-  onChange: (stage: ProjectStage) => void;
-}) {
-  const name = useId();
-  return (
-    <fieldset className="admin-segmented">
-      <legend>Stage</legend>
-      <div className="admin-segmented__options">
-        {STAGES.map((stage) => (
-          <label key={stage} className="admin-segmented__option">
-            <input
-              type="radio"
-              name={name}
-              value={stage}
-              checked={value === stage}
-              onChange={() => onChange(stage)}
-            />
-            <span>{PROJECT_STAGE_LABELS[stage]}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-function PreviewImageField({
-  value,
-  requiredError,
-  onChange,
-  onUpload,
-}: {
-  value: string;
-  requiredError: string | undefined;
-  onChange: (path: string) => void;
-  onUpload: (file: File) => Promise<string>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const inputId = useId();
-  const requiredErrorId = useId();
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const upload = async (file: File) => {
-    setUploading(true);
-    setError(null);
-    try {
-      onChange(await onUpload(file));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Image upload failed');
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
-    }
-  };
-
-  return (
-    <div className="admin-field admin-project-preview">
-      <span>Preview image</span>
-      <div className="admin-project-preview__row">
-        {value ? (
-          <img
-            className="admin-project-preview__img"
-            src={value}
-            alt="Preview image"
-          />
-        ) : (
-          <span className="admin-project-preview__empty" aria-hidden="true" />
-        )}
-        <div className="admin-actions">
-          <label htmlFor={inputId} className="admin-btn">
-            {uploading
-              ? 'Uploading…'
-              : value
-                ? 'Replace image'
-                : 'Upload image'}
-          </label>
-          <input
-            ref={inputRef}
-            id={inputId}
-            className="admin-visually-hidden"
-            type="file"
-            accept={MEDIA_CONTENT_TYPES.join(',')}
-            aria-label="Upload preview image"
-            aria-invalid={requiredError ? true : undefined}
-            aria-describedby={requiredError ? requiredErrorId : undefined}
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void upload(file);
-            }}
-          />
-          {value ? (
-            <Button variant="danger" onClick={() => onChange('')}>
-              Remove image
-            </Button>
-          ) : null}
-        </div>
-      </div>
-      {error ? (
-        <span className="admin-field-error" role="alert">
-          {error}
-        </span>
-      ) : null}
-      {requiredError ? (
-        <span id={requiredErrorId} className="admin-field-error">
-          {requiredError}
-        </span>
-      ) : null}
-      <span className="admin-hint">
-        Shown on the project card. JPEG, PNG, WebP or GIF.
-      </span>
-    </div>
-  );
-}
-
-function StackChips({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (stack: string[]) => void;
-}) {
-  const [text, setText] = useState('');
-  const inputId = useId();
-  const full = value.length >= PROJECT_STACK_MAX;
-
-  const commit = () => {
-    if (!text.trim()) return;
-    onChange(addStackItems(value, text));
-    setText('');
-  };
-
-  return (
-    <div className="admin-field">
-      <label htmlFor={inputId}>Stack</label>
-      <div className="admin-chips">
-        <ul className="admin-chips__list" aria-label="Stack items">
-          {value.map((item) => (
-            <li key={item} className="admin-chip">
-              {item}
-              <button
-                type="button"
-                className="admin-chip__remove"
-                aria-label={`Remove ${item}`}
-                onClick={() => onChange(value.filter((s) => s !== item))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-        <input
-          id={inputId}
-          className="admin-chips__input"
-          value={text}
-          maxLength={PROJECT_STACK_ITEM_MAX_LENGTH * 4}
-          disabled={full}
-          placeholder={full ? 'Stack is full' : 'Add, then Enter'}
-          onChange={(e) => {
-            const next = e.target.value;
-            if (next.includes(',')) {
-              onChange(addStackItems(value, next));
-              setText('');
-            } else {
-              setText(next);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-            } else if (e.key === 'Backspace' && !text && value.length) {
-              onChange(value.slice(0, -1));
-            }
-          }}
-          onBlur={commit}
-        />
-      </div>
-    </div>
   );
 }
