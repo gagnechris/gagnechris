@@ -574,7 +574,7 @@ There is no public API: the read side is static HTML in S3.
 
 Extend `PublishableRepository` with `keysFor`, `toEntity`, `toItem`, `toPublishedItem`, `contentEqual` and `isDeleted`. Override `persistMutation` to put META (version-conditioned, index 0), the slug change items, the `PUBLISHED` put or delete, and the soft-delete slug release in one `TransactWriteItems`; pass `slugClaimIndexes` and `versionItemIndex: 0` to `runVersionedWrite` so a taken slug is `slug_taken` and a stale version wins with `current`. `publish`, `unpublish` and `discard` come from the base. Write `create` (claim + META with `attribute_not_exists`), `update` and `softDelete` the way `ProjectsRepository` does.
 
-Routes live under `/admin/<things>` with `auth: 'site-admin'`; ids are `UlidSchema`. `test/router.test.ts` checks that every `/admin` route is `site-admin` and that routes and OpenAPI operations match one to one; add an explicit list for the new prefix like the projects one. Validate any user-supplied link with `isSafeLinkHref` (`packages/shared/src/links.ts`): `POST_LINK_SCHEMES` is what the markdown sanitizer keeps in post bodies.
+Routes live under `/admin/<things>` with `auth: 'site-admin'`; ids are `UlidSchema`. `test/router.test.ts` checks that every `/admin` route outside `/admin/users` is `site-admin` and that routes and OpenAPI operations match one to one; add an explicit list for the new prefix like the projects one. Validate any user-supplied link with `isSafeLinkHref` (`packages/shared/src/links.ts`): `POST_LINK_SCHEMES` is what the markdown sanitizer keeps in post bodies.
 
 ### Publisher
 

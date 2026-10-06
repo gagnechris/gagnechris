@@ -224,18 +224,19 @@ Post, Project, Home, and Resume containers are mostly field layout; shared wirin
 - API Gateway validates Cognito JWTs with one authorizer per prefix: `/api/admin/*` accepts only the `admin-web` client and `/api/notebook/*` only the `notebook-web` client. The iOS client is in neither audience until the app ships with universal-link callbacks. A token from another client gets a gateway **401**. The web sends the ID token.
 - The router re-checks every protected route by its `auth` kind (`authorize` in `services/api/src/router.ts`):
 
-  | `auth`       | Prefix          | Client ID env var                         | Group        |
-  | ------------ | --------------- | ----------------------------------------- | ------------ |
-  | `site-admin` | `/api/admin`    | `ADMIN_WEB_CLIENT_ID` (`admin-web`)       | `site-admin` |
-  | `notebook`   | `/api/notebook` | `NOTEBOOK_WEB_CLIENT_ID` (`notebook-web`) | `notebook`   |
-  - No `sub` → **401**. The token's client must equal the prefix's client env var, else **403**: `aud` when `token_use` is `id`, `client_id` when it is `access`, nothing otherwise. Then the prefix's group must be in `cognito:groups`, else **403**. An unset client env var matches nothing (fail closed).
+  | `auth`       | Paths                    | Client ID env var                         | Group        |
+  | ------------ | ------------------------ | ----------------------------------------- | ------------ |
+  | `user-admin` | `/api/admin/users*`      | `ADMIN_WEB_CLIENT_ID` (`admin-web`)       | `user-admin` |
+  | `site-admin` | the rest of `/api/admin` | `ADMIN_WEB_CLIENT_ID` (`admin-web`)       | `site-admin` |
+  | `notebook`   | `/api/notebook`          | `NOTEBOOK_WEB_CLIENT_ID` (`notebook-web`) | `notebook`   |
+  - No `sub` → **401**. The token's client must equal the route's client env var, else **403**: `aud` when `token_use` is `id`, `client_id` when it is `access`, nothing otherwise. Then the route's group must be in `cognito:groups`, else **403**. An unset client env var matches nothing (fail closed).
   - `cognito:groups` parses strictly: a JSON array of strings, or the gateway's `[a b]` form split on whitespace only (commas are part of a name). Anything else is no groups.
-  - The pool's only groups are `site-admin` and `notebook`, and the router trusts no client other than the two app clients.
-  - So a `notebook`-only user gets 403 on every `/api/admin` route and a `site-admin`-only user gets 403 on every `/api/notebook` route. Notebook data is also owner-scoped by `sub`.
+  - The pool's only groups are `site-admin`, `notebook` and `user-admin`, and the router trusts no client other than the two app clients. Access levels: Full Admin is all three groups, Public CMS is `site-admin`, Notebook only is `notebook`.
+  - So a `notebook`-only user gets 403 on every `/api/admin` route, a `site-admin`-only user gets 403 on every `/api/notebook` and `/api/admin/users` route, and `user-admin` alone opens no CMS route. Notebook data is also owner-scoped by `sub`.
 
 - Tokens live in Amplify's default `localStorage` store, so each app's tokens (refresh token included) are readable only by script on its own origin; public pages on `gagnechris.com` can't read them, and none ride on requests as cookies. HttpOnly storage would need a server-side token exchange that Amplify doesn't provide, so the mitigations are on the script side: sanitized markdown and the app hosts' strict CSP (see Security headers). Shortening `refreshTokenValidity` (Auth stack, 30 days) reduces exposure at the cost of more frequent sign-ins.
 - The apex holds no tokens. The public bundle sweeps any `CognitoIdentityServiceProvider.*` keys and cookies left from the old apex app (see Web apps).
-- Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only that app's group. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
+- Local API (`services/api/local/server.ts`) injects fake ID-token claims when the matched route is protected (via `routeAuthForPath`): `aud` is that route's app client (`local-admin-web` / `local-notebook-web` unless the env vars are set) and `cognito:groups` holds only the group that route requires. Malformed `%` escapes do not throw in that check so the handler can still return **400**.
 
 ## Notebook app
 
@@ -293,12 +294,12 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 1. Add a `defineRoute({ … })` in the owning module (e.g. `createPostRoutes` in `services/api/src/posts/handlers.ts`) or append to `services/api/src/routes.ts`. Prefer `defineRoute` so `params` / `query` / `body` schemas type the handler input (no casts).
 2. Pattern is **without** the `/api` prefix (`/admin/posts/:id`, `/contact`). Incoming `/api/...` is stripped by the router.
-3. Set `auth: 'site-admin' | 'notebook' | 'public'`, optional zod `params` / `query` / `body`, and a handler `(ctx, input) => result`.
+3. Set `auth: 'site-admin' | 'user-admin' | 'notebook' | 'public'`, optional zod `params` / `query` / `body`, and a handler `(ctx, input) => result`.
 4. Handlers receive `ctx.userId`, `ctx.claims`, `ctx.logger`, `ctx.metrics`, and `ctx.requestId`. Do **not** add per-module try/catch — validation and `mapRouteError` run in `dispatchRoutes`.
 5. Wrong method on a known path → **405** with an `Allow` header; unknown path → **404**. Malformed `%` escapes in path params → **400**. When multiple patterns match, **literal segments win** over `:param` (e.g. `/tasks/today` over `/tasks/:id`).
 6. Per-route CloudWatch metrics use the route `metric` name (no redundant `route` dimension).
 7. Keep these three places in sync (CI/tests assert agreement):
-   - **Route table**: every `/admin*` pattern is `auth: 'site-admin'` and every `/notebook*` pattern is `auth: 'notebook'` (`AUTH_POLICIES` / `API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
+   - **Route table**: every `/admin/users*` pattern is `auth: 'user-admin'`, every other `/admin*` pattern is `auth: 'site-admin'` and every `/notebook*` pattern is `auth: 'notebook'` (`requiredAuthForPattern`, `AUTH_POLICIES` / `API_GATEWAY_JWT_PREFIXES` in `services/api/src/router.ts`). Public routes must **not** sit under those prefixes (gateway would 401).
    - **API Gateway** JWT routes in `infra/lib/stacks/api-stack.ts` (`/api/admin`, `/api/notebook` + `{proxy+}`) — asserted on the **synthesized** template (not source text): exactly those JWT `RouteKey`s, and no unauthenticated route under `/api/admin` or `/api/notebook`. Each `auth: 'public'` route needs its own `addRoutes` entry (method + `/api…` path); there is no `$default` catch-all.
    - **OpenAPI** operation in `packages/shared/src/openapi.ts` (same method + `/api…` path as `routePatternToOpenApiPath`). Request schemas belong in `@gagnechris/shared` and are reused by both the API and the spec. Notebook versioned mutations document `If-Match` / `ETag` / **412** with `current`; site-admin mutations document body `version` only. `services/api/test/integration/http-concurrency-contract.integration.test.ts` fails when the spec advertises `ETag` or `If-Match` that the handler does not implement (or the reverse).
 8. Local API (`services/api/local/server.ts`) injects fake JWT claims for the matched route's `auth` kind — it does not hard-code path prefixes.

@@ -486,7 +486,7 @@ describe('app hosts: Cognito', () => {
     expect(brandings).toMatch(/UserPoolNotebookWebClient/);
   });
 
-  it('creates only the site-admin and notebook groups, with the owner in both', () => {
+  it('creates only the site-admin, notebook and user-admin groups, with the owner in all three', () => {
     const groupNames = Object.fromEntries(
       Object.entries(
         resourcesOf(built.auth, 'AWS::Cognito::UserPoolGroup'),
@@ -495,6 +495,7 @@ describe('app hosts: Cognito', () => {
     expect(groupNames).toEqual({
       SiteAdminGroup: 'site-admin',
       NotebookGroup: 'notebook',
+      UserAdminGroup: 'user-admin',
     });
     const memberships = Object.fromEntries(
       Object.entries(
@@ -508,6 +509,10 @@ describe('app hosts: Cognito', () => {
       }),
       NotebookGroupMembership: expect.objectContaining({
         GroupName: { Ref: 'NotebookGroup' },
+        Username: 'owner@example.com',
+      }),
+      UserAdminGroupMembership: expect.objectContaining({
+        GroupName: { Ref: 'UserAdminGroup' },
         Username: 'owner@example.com',
       }),
     });

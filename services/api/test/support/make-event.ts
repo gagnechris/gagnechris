@@ -2,6 +2,7 @@ import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import {
   AUTH_POLICIES,
   canonicalPath,
+  requiredAuthForPattern,
   type ProtectedAuth,
 } from '../../src/router.js';
 
@@ -9,8 +10,8 @@ export type MakeEventOptions = {
   body?: unknown;
   query?: Record<string, string>;
   /**
-   * Merged over an ID token from the app that owns the path (by prefix,
-   * `site-admin` otherwise) carrying that app's group.
+   * Merged over an ID token from the app that owns the path, carrying the
+   * group the path requires (`site-admin` for unknown paths).
    */
   jwtClaims?: Record<string, string>;
   /** Set false to send `jwtClaims` alone, with no app client or group. */
@@ -28,10 +29,7 @@ export function appIdTokenClaims(auth: ProtectedAuth): Record<string, string> {
 }
 
 function authForPath(path: string): ProtectedAuth {
-  const canonical = canonicalPath(path);
-  return canonical === '/notebook' || canonical.startsWith('/notebook/')
-    ? 'notebook'
-    : 'site-admin';
+  return requiredAuthForPattern(canonicalPath(path)) ?? 'site-admin';
 }
 
 export function makeEvent(

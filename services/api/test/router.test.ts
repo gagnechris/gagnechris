@@ -11,6 +11,7 @@ import {
   isJwtProtectedPath,
   matchPattern,
   AUTH_POLICIES,
+  requiredAuthForPattern,
   routeAuthForPath,
   patternSpecificity,
   routePatternToOpenApiPath,
@@ -208,28 +209,33 @@ describe('dispatchRoutes', () => {
 });
 
 describe('route table contract', () => {
-  it('every /admin route is site-admin and every /notebook route is notebook', () => {
+  it('every protected route declares the auth its path requires', () => {
     expect(AUTH_POLICIES['site-admin'].prefix).toBe('/admin');
+    expect(AUTH_POLICIES['user-admin'].prefix).toBe('/admin');
     expect(AUTH_POLICIES.notebook.prefix).toBe('/notebook');
     expect(
-      Object.values(AUTH_POLICIES)
-        .map((policy) => policy.prefix)
-        .sort(),
+      [...new Set(Object.values(AUTH_POLICIES).map((p) => p.prefix))].sort(),
     ).toEqual([...API_GATEWAY_JWT_PREFIXES].sort());
     for (const route of routes) {
-      for (const [auth, policy] of Object.entries(AUTH_POLICIES)) {
-        const underPrefix =
-          route.pattern === policy.prefix ||
-          route.pattern.startsWith(`${policy.prefix}/`);
-        expect(
-          underPrefix ? route.auth === auth : route.auth !== auth,
-          `${route.method} ${route.pattern} has auth '${route.auth}'`,
-        ).toBe(true);
-      }
+      expect(
+        route.auth,
+        `${route.method} ${route.pattern} has auth '${route.auth}'`,
+      ).toBe(requiredAuthForPattern(route.pattern) ?? 'public');
       if (route.auth !== 'public') {
         expect(isJwtProtectedPath(route.pattern)).toBe(true);
       }
     }
+  });
+
+  it('users routes need user-admin; the rest of /admin needs site-admin', () => {
+    expect(requiredAuthForPattern('/admin/users')).toBe('user-admin');
+    expect(requiredAuthForPattern('/admin/users/:id/access')).toBe(
+      'user-admin',
+    );
+    expect(requiredAuthForPattern('/admin/usersettings')).toBe('site-admin');
+    expect(requiredAuthForPattern('/admin/posts')).toBe('site-admin');
+    expect(requiredAuthForPattern('/notebook/notes')).toBe('notebook');
+    expect(requiredAuthForPattern('/health')).toBeUndefined();
   });
 
   it('every /admin/projects route is site-admin', () => {

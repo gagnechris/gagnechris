@@ -36,6 +36,7 @@ export function siteOrigins(apexDomain: string = APEX_DOMAIN): string[] {
 
 export const SITE_ADMIN_GROUP = 'site-admin' as const;
 export const NOTEBOOK_GROUP = 'notebook' as const;
+export const USER_ADMIN_GROUP = 'user-admin' as const;
 
 export const GITHUB_OWNER = 'gagnechris' as const;
 export const GITHUB_REPO = 'gagnechris' as const;

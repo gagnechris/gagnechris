@@ -22,7 +22,7 @@ import {
   metrics as defaultMetrics,
 } from './observability.js';
 
-export type ProtectedAuth = 'site-admin' | 'notebook';
+export type ProtectedAuth = 'site-admin' | 'user-admin' | 'notebook';
 export type AuthMode = 'public' | ProtectedAuth;
 
 export type RouteCtx = {
@@ -145,12 +145,31 @@ export const AUTH_POLICIES: Record<ProtectedAuth, AuthPolicy> = {
     group: 'site-admin',
     clientIdEnv: 'ADMIN_WEB_CLIENT_ID',
   },
+  'user-admin': {
+    prefix: '/admin',
+    group: 'user-admin',
+    clientIdEnv: 'ADMIN_WEB_CLIENT_ID',
+  },
   notebook: {
     prefix: '/notebook',
     group: 'notebook',
     clientIdEnv: 'NOTEBOOK_WEB_CLIENT_ID',
   },
 };
+
+export const USER_ADMIN_PATH = '/admin/users';
+
+/** The auth a protected route pattern must declare; undefined for public paths. */
+export function requiredAuthForPattern(
+  pattern: string,
+): ProtectedAuth | undefined {
+  const under = (prefix: string) =>
+    pattern === prefix || pattern.startsWith(`${prefix}/`);
+  if (under(USER_ADMIN_PATH)) return 'user-admin';
+  if (under('/admin')) return 'site-admin';
+  if (under('/notebook')) return 'notebook';
+  return undefined;
+}
 
 /** Malformed `%` escapes are non-matches so the handler can return 400; do not throw here. */
 export function routeAuthForPath(

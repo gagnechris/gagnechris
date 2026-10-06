@@ -2,6 +2,7 @@ import { AUTH_POLICIES, type ProtectedAuth } from '../src/router.js';
 
 const LOCAL_CLIENT_IDS: Record<ProtectedAuth, string> = {
   'site-admin': 'local-admin-web',
+  'user-admin': 'local-admin-web',
   notebook: 'local-notebook-web',
 };
 
