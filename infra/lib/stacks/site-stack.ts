@@ -197,7 +197,8 @@ export class SiteStack extends Stack {
     const viewerRequestFunctionName = `gagnechris-${config.name}-viewer-request`;
     const blogSlugsKvs = new KeyValueStore(this, 'BlogSlugsKvs', {
       keyValueStoreName: `gagnechris-${config.name}-blog-slugs`,
-      comment: 'Published /blog/<slug> allowlist for viewer-request (CHR-115)',
+      comment:
+        'Published post and project slugs the viewer-request function serves',
     });
     this.blogSlugsKeyValueStoreArn = blogSlugsKvs.keyValueStoreArn;
 

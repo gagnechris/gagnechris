@@ -120,7 +120,7 @@ export class DnsStack extends Stack {
       recordName: `_dmarc.${APEX_DOMAIN}`,
       ttl: Duration.minutes(5),
       values: ['v=DMARC1; p=none;'],
-      comment: 'DMARC monitor mode (CHR-38 / CHR-63)',
+      comment: 'DMARC monitor mode',
     });
 
     new CfnOutput(this, 'HostedZoneId', {

@@ -29,7 +29,7 @@
             "context": "Lint, test, and build"
           },
           {
-            "context": "Local E2E smoke (CHR-82)"
+            "context": "Local E2E smoke"
           },
           {
             "context": "API integration (DynamoDB Local)"

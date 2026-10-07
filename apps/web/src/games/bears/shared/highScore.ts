@@ -1,6 +1,6 @@
 import type { BearsGame } from './games';
 
-// Camp keeps the original key so existing best scores carry over.
+// Camp's key has no game suffix: renaming it would drop players' saved best scores.
 const HIGH_SCORE_KEYS: Readonly<Record<BearsGame, string>> = {
   camp: 'dont-feed-the-bears-high-score',
   wild: 'dont-feed-the-bears-high-score-wild',

@@ -567,7 +567,7 @@ There is no public API: the read side is static HTML in S3.
 ### Data
 
 - **Publish status vs domain status.** Every publishable entity has `status: draft | published | deleted`. Name any domain lifecycle field something else (projects use `stage`).
-- **Own GSI1 partition.** META carries `gsi1pk = <THING>_STATUS#<status>`, never posts' `STATUS#…`, so `listPublishedPosts` needs no `entityType` filter. Choose `gsi1sk` for the admin list order (projects: `ORDER#<6 digits>#PROJECT#<id>`). `build…PublishedItem` drops the GSI1 keys so only META rows are on the index.
+- **Own GSI1 partition.** META carries `gsi1pk = <THING>_STATUS#<status>`, never posts' `STATUS#…`, so the posts query never reads it; `listPublishedPosts` and `listPublishedProjects` still skip any row whose `entityType` isn't theirs. Choose `gsi1sk` for the admin list order (projects: `ORDER#<6 digits>#PROJECT#<id>`). `build…PublishedItem` drops the GSI1 keys so only META rows are on the index.
 - **Own slug partition.** Claims are `<THING>_SLUG#<slug>` / `<THING>` and redirects `<THING>_SLUG#<old>` / `REDIRECT`. A shared `SLUG#` partition would collide on `REDIRECT`. Add a `SlugClaims` entry in `data/slug-claims.ts` and pass it as the repository's `slugClaims`.
 
 ### Repository and routes
