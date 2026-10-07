@@ -7,8 +7,10 @@ import {
   type Task,
   type TaskPatch,
 } from '@gagnechris/app-core';
+import { addDays } from '@gagnechris/shared';
 import {
   bucketTodayTasks,
+  COMING_UP_DAYS,
   stillOpenSource,
   type SourceNote,
 } from '../kit/tasks/todayTaskBuckets';
@@ -16,7 +18,7 @@ import type { StillOpenRow } from '../kit/tasks/TodayPanels';
 import { taskDue } from '../kit/tasks/taskDue';
 import { taskActionError } from './taskActionError';
 
-/** Every open task showing on `day`, and every one starting after it. */
+/** Every open task showing on `day`, and every one starting in Coming up's window after it. */
 export function useTodayTasks({
   area,
   day,
@@ -34,10 +36,12 @@ export function useTodayTasks({
     today: day,
     limit: 100,
   });
+  // Coming up shows (day, day + COMING_UP_DAYS]; later tasks are Upcoming's.
   const later = useTasksQuery({
     area,
     open: true,
     startAfter: day,
+    startBefore: addDays(day, COMING_UP_DAYS + 1),
     today: day,
     limit: 100,
   });

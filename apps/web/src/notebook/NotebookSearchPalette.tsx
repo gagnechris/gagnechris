@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNotebookSearchQuery, useTasksByIds } from '@gagnechris/app-core';
+import { useCachedTasks, useNotebookSearchQuery } from '@gagnechris/app-core';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { areaQueryParam } from './notebookAreaPreference';
@@ -72,7 +72,8 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
     () => (search.data?.tasks ?? []).map((t) => t.id),
     [search.data],
   );
-  const taskResults = useTasksByIds(taskIds);
+  // Hits carry status; a check-off made here updates the cached task first.
+  const cachedTasks = useCachedTasks(taskIds);
   const { toggle, error: toggleError } = useTaskToggle();
 
   const hits: SearchHit[] = [];
@@ -94,8 +95,13 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
     });
   }
   for (const [i, h] of (search.data?.tasks ?? []).entries()) {
-    const task = taskResults[i]?.data;
-    const live = task && !task.deleted ? task : undefined;
+    const cached = cachedTasks[i]?.data;
+    const live =
+      cached && !cached.deleted
+        ? cached
+        : h.status !== undefined && h.version !== undefined
+          ? { id: h.id, title: h.title, status: h.status, version: h.version }
+          : undefined;
     hits.push({
       key: `task-${h.id}`,
       group: 'Tasks',

@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import {
   useInfiniteQuery,
   useMutation,
   useQueries,
+  useQuery,
   useQueryClient,
   type InfiniteData,
   type QueryClient,
@@ -14,6 +16,7 @@ import {
   createTask,
   deleteTask,
   fetchTask,
+  fetchTasksBatch,
   fetchTasksPage,
   reopenTask,
   updateTask,
@@ -23,7 +26,7 @@ import {
   type TasksPage,
   type UpdateTaskRequest,
 } from './api.js';
-import { setCachedTask } from './cache.js';
+import { setCachedTask, setDetail } from './cache.js';
 import {
   createVersionedResource,
   useDeleteEntityMutation,
@@ -66,20 +69,69 @@ export const useTasksQuery = (
   });
 };
 
-/** One detail query per id; a 404 (deleted or never created) is not retried. */
-export const useTasksByIds = (
-  ids: readonly string[],
-  options: { skip?: ReadonlySet<string> } = {},
-) => {
+export type TaskByIdResult = { data: Task | undefined; error: unknown };
+
+const TASK_BATCH_MAX_IDS = 100;
+
+/**
+ * Detail-cache reads that never fetch on their own; they rerender on every
+ * cache write. The query function is real because other observers of the
+ * same detail key (the task page) may refetch through it.
+ */
+export const useCachedTasks = (ids: readonly string[]) => {
   const getClient = useGetApiClient();
   return useQueries({
     queries: ids.map((id) => ({
       queryKey: queryKeys.tasks.detail(id),
       queryFn: () => fetchTask(getClient(), id),
-      enabled: !options.skip?.has(id),
-      retry: (failures: number, error: Error) =>
-        !(error instanceof ApiError && error.status === 404) && failures < 2,
+      enabled: false,
     })),
+  });
+};
+
+/**
+ * One `POST /tasks/batch` for every id (refetched as one on focus or after a
+ * write), which seeds the detail caches the results read from. An id the
+ * batch leaves out reports a 404, as its GET would.
+ */
+export const useTasksByIds = (
+  ids: readonly string[],
+  options: { skip?: ReadonlySet<string> } = {},
+): TaskByIdResult[] => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  const { skip } = options;
+  const wanted = useMemo(
+    () => [...new Set(ids.filter((id) => !skip?.has(id)))].sort(),
+    [ids, skip],
+  );
+  const batch = useQuery({
+    queryKey: queryKeys.tasks.batch(wanted),
+    queryFn: async (): Promise<string[]> => {
+      const found: string[] = [];
+      for (let i = 0; i < wanted.length; i += TASK_BATCH_MAX_IDS) {
+        const chunk = wanted.slice(i, i + TASK_BATCH_MAX_IDS);
+        for (const task of await fetchTasksBatch(getClient(), chunk)) {
+          setDetail(queryClient, queryKeys.tasks.detail(task.id), task);
+          found.push(task.id);
+        }
+      }
+      return found;
+    },
+    enabled: wanted.length > 0,
+  });
+  const cached = useCachedTasks(ids);
+  const found = useMemo(() => new Set(batch.data), [batch.data]);
+  return ids.map((id, i) => {
+    const data = cached[i]?.data;
+    if (data) return { data, error: null };
+    if (batch.data && !skip?.has(id) && !found.has(id)) {
+      return {
+        data: undefined,
+        error: new ApiError('Task not found.', 404, 'not_found'),
+      };
+    }
+    return { data: undefined, error: batch.error };
   });
 };
 

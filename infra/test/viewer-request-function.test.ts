@@ -1,64 +1,16 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAX_SLUG_LENGTH } from '@gagnechris/shared';
+import {
+  loadViewerRequest,
+  type CfKvs as FakeKvs,
+  type CfRequest,
+  type CfResponse as CfEdgeResponse,
+  type ViewerRequestApi as HandlerApi,
+} from '../lib/cloudfront/harness.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const fnSource = readFileSync(
-  join(__dirname, '../lib/cloudfront/viewer-request-function.js'),
-  'utf8',
-).replace(/import cf from 'cloudfront';\s*/g, '');
+type CfResponse = CfRequest | CfEdgeResponse;
 
-type CfRequest = {
-  uri: string;
-  querystring?: Record<
-    string,
-    { value?: string; multiValue?: Array<{ value: string }> }
-  >;
-  headers: { host: { value: string } } & Record<string, { value: string }>;
-};
-
-type CfResponse =
-  | CfRequest
-  | {
-      statusCode: number;
-      statusDescription: string;
-      headers: Record<string, { value: string }>;
-      body?: string;
-    };
-
-type HandlerApi = {
-  handler: (event: { request: CfRequest }) => Promise<CfResponse>;
-  setPublishedKeysForTests: (keys: Record<string, number> | null) => void;
-  setOptionBPagesForTests: (pages: string[] | null) => void;
-};
-
-type FakeKvs = {
-  exists: (key: string) => Promise<boolean>;
-  get?: (key: string) => Promise<string>;
-};
-
-function loadApi(fakeKvs?: FakeKvs | (() => FakeKvs)): HandlerApi {
-  // The `cloudfront` import only exists at the edge, so strip it and stub
-  // `cf.kvs()`.
-  const kvsFactory =
-    fakeKvs === undefined
-      ? `function () { throw new Error('kvs unavailable in unit tests'); }`
-      : typeof fakeKvs === 'function'
-        ? `function () { return __fakeKvsFactory(); }`
-        : `function () { return __fakeKvs; }`;
-  return new Function(
-    '__fakeKvs',
-    '__fakeKvsFactory',
-    `var cf = { kvs: ${kvsFactory} };
-     ${fnSource}
-     return { handler, setPublishedKeysForTests, setOptionBPagesForTests };`,
-  )(
-    typeof fakeKvs === 'function' ? undefined : fakeKvs,
-    typeof fakeKvs === 'function' ? fakeKvs : undefined,
-  ) as HandlerApi;
-}
+const loadApi = (kvs?: FakeKvs | (() => FakeKvs)) => loadViewerRequest({ kvs });
 
 const api = loadApi();
 

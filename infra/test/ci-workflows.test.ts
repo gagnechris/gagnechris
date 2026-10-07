@@ -84,6 +84,16 @@ function expectNoNpm(job: Job): void {
 }
 
 describe('GitHub Actions supply chain', () => {
+  it('gives every workflow a read-only token unless a job asks for more', () => {
+    const offenders = workflows
+      .filter(({ doc }) => {
+        const perms = doc.permissions;
+        return typeof perms !== 'object' || perms.contents !== 'read';
+      })
+      .map(({ path }) => path);
+    expect(offenders).toEqual([]);
+  });
+
   it('pins every remote action to a full commit SHA', () => {
     const offenders: string[] = [];
     const pinned = /^[\w.-]+\/[\w./-]+@[0-9a-f]{40}$/;

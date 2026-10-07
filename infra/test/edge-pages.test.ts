@@ -1,58 +1,37 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const source = (name: string) =>
-  readFileSync(join(here, `../lib/cloudfront/${name}`), 'utf8');
-
-type Request = { uri: string; headers: { host: { value: string } } };
-type Response = {
-  statusCode: number;
-  statusDescription?: string;
-  headers: Record<string, { value: string }>;
-  body?: string;
-};
+import {
+  edgePipeline,
+  loadViewerRequest,
+  loadViewerResponse,
+  type CfResponse as Response,
+} from '../lib/cloudfront/harness.js';
 
 const NOT_FOUND_PAGE = '<html><h1>Page not found</h1></html>';
 
 /** Both edge functions around an S3 origin holding `objects` and a KVS holding `keys`. */
 function edge(objects: Set<string>, keys: string[]) {
-  const viewerRequest = new Function(
-    '__keys',
-    `var cf = { kvs: function () {
-       return { exists: async function (k) { return __keys.indexOf(k) !== -1; } };
-     } };
-     ${source('viewer-request-function.js').replace(/import cf from 'cloudfront';\s*/g, '')}
-     return handler;`,
-  )(keys) as (event: { request: Request }) => Promise<Request | Response>;
-  const viewerResponse = new Function(
-    `${source('viewer-response-function.js')}\nreturn handler;`,
-  )() as (event: { request: { uri: string }; response: Response }) => Response;
-
-  return async (uri: string): Promise<Response> => {
-    const rewritten = await viewerRequest({
-      request: { uri, headers: { host: { value: 'gagnechris.com' } } },
-    });
-    if ('statusCode' in rewritten) return rewritten;
-    const key = rewritten.uri.replace(/^\//, '');
-    if (!objects.has(key)) {
-      // CloudFront skips viewer-response when the origin returns 4xx.
+  const run = edgePipeline({
+    viewerRequest: loadViewerRequest({
+      kvs: { exists: async (k) => keys.includes(k) },
+    }).handler,
+    viewerResponse: loadViewerResponse(),
+    origin: async (uri) => {
+      const key = uri.replace(/^\//, '');
+      if (!objects.has(key)) return null;
       return {
-        statusCode: 404,
-        headers: { 'content-type': { value: 'application/xml' } },
-        body: '<Error><Code>NoSuchKey</Code></Error>',
-      };
-    }
-    return viewerResponse({
-      request: { uri: rewritten.uri },
-      response: {
-        statusCode: 200,
-        headers: { 'content-type': { value: 'text/html; charset=utf-8' } },
+        kind: 'text',
+        contentType: 'text/html; charset=utf-8',
         body: key === '404.html' ? NOT_FOUND_PAGE : `<html>${key}</html>`,
-      },
+      };
+    },
+  });
+  return async (uri: string): Promise<Response> => {
+    const result = await run({
+      uri,
+      headers: { host: { value: 'gagnechris.com' } },
     });
+    if (result.kind !== 'response') throw new Error('unexpected binary');
+    return result.response;
   };
 }
 

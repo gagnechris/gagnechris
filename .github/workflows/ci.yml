@@ -12,6 +12,9 @@ concurrency:
   # commit's infra/web changes would be skipped.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+permissions:
+  contents: read
+
 # Placeholders only; nothing is deployed from this workflow.
 env:
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
@@ -130,28 +133,7 @@ jobs:
 
       - name: Wait for DynamoDB Local
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: local
-          AWS_SECRET_ACCESS_KEY: local
-          AWS_REGION: us-east-1
-          AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
-        run: |
-          for i in $(seq 1 60); do
-            if node -e "
-              import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
-              const c = new DynamoDBClient({
-                region: 'us-east-1',
-                endpoint: 'http://127.0.0.1:8001',
-                credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
-              });
-              await c.send(new ListTablesCommand({}));
-            " 2>/dev/null; then
-              exit 0
-            fi
-            sleep 0.5
-          done
-          echo "DynamoDB Local did not become ready on :8001" >&2
-          exit 1
+        run: npx tsx scripts/local/wait-dynamodb.ts http://127.0.0.1:8001
 
       - name: API integration tests
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'

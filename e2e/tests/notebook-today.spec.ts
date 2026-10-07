@@ -88,7 +88,12 @@ test('after local midnight, yesterday’s unchecked task is carried into the new
   await page.reload();
   await panelsLoaded(page);
   await expect.poll(() => placesOf(page, title)).toEqual(['note']);
-  expect(writes.filter((w) => !w.endsWith('/open'))).toEqual([]);
+  // The open POST carries tasks in; the tasks batch POST only reads.
+  expect(
+    writes.filter(
+      (w) => !w.endsWith('/open') && w !== 'POST /api/notebook/tasks/batch',
+    ),
+  ).toEqual([]);
 });
 
 test('an @mon task is absent from Still open until Monday, then shows Scheduled Oct 5', async ({

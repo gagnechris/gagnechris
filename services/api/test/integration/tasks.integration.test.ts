@@ -165,4 +165,76 @@ describe('tasks repository (DynamoDB Local)', () => {
     });
     expect(await repo.getOrThrow(USER_A, TASK_1)).toEqual(back);
   });
+
+  it("getMany reads live tasks in request order, leaving out deleted, unknown and other users' ids", async () => {
+    const repo = new TasksRepository(
+      doc,
+      tableName,
+      () => '2026-10-02T10:00:00.000Z',
+    );
+    const base = {
+      area: 'work' as const,
+      description: '',
+      priority: 'med' as const,
+      status: 'todo' as const,
+      tags: [],
+    };
+    await repo.createFromRequest(USER_A, { ...base, id: TASK_1, title: 'One' });
+    await repo.createFromRequest(USER_A, { ...base, id: TASK_2, title: 'Two' });
+    await repo.createFromRequest(USER_B, { ...base, id: TASK_3, title: 'B' });
+    await repo.deleteIfVersion(USER_A, TASK_1, 1);
+    const unknown = '01ARZ3NDEKTSV4RRFFQ69G5TA9';
+
+    const got = await repo.getMany(USER_A, [
+      TASK_2,
+      unknown,
+      TASK_1,
+      TASK_3,
+      TASK_2,
+    ]);
+    expect(got.map((t) => t.title)).toEqual(['Two']);
+    expect(await repo.getMany(USER_B, [TASK_3])).toMatchObject([
+      { id: TASK_3, title: 'B' },
+    ]);
+  });
+
+  it('startAfter with startBefore reads only that window of show-on days', async () => {
+    const repo = new TasksRepository(
+      doc,
+      tableName,
+      () => '2026-10-02T10:00:00.000Z',
+    );
+    const days = ['2026-10-02', '2026-10-03', '2026-10-16', '2026-10-17'];
+    for (const [i, startDate] of days.entries()) {
+      await repo.createFromRequest(USER_A, {
+        id: `01ARZ3NDEKTSV4RRFFQ69G5TB${i}`,
+        area: 'work',
+        title: startDate,
+        description: '',
+        priority: 'med',
+        status: 'todo',
+        startDate,
+        tags: [],
+      });
+    }
+    await repo.createFromRequest(USER_A, {
+      id: '01ARZ3NDEKTSV4RRFFQ69G5TC1',
+      area: 'work',
+      title: 'undated',
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      tags: [],
+    });
+    const page = await repo.list(USER_A, {
+      area: 'work',
+      open: true,
+      startAfter: '2026-10-02',
+      startBefore: '2026-10-17',
+    });
+    expect(page.items.map((t) => t.title).sort()).toEqual([
+      '2026-10-03',
+      '2026-10-16',
+    ]);
+  });
 });

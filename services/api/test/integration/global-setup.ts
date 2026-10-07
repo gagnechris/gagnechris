@@ -2,7 +2,6 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import {
   CI_COMPOSE_PROJECT_NAME,
   ciComposeFileArgs,
@@ -11,6 +10,7 @@ import {
   integrationDynamoEndpoint,
   teardownDynamodbCi,
 } from '../support/dynamodb-ci-lifecycle.js';
+import { waitForDynamoDb } from '../../../../scripts/local/wait-dynamodb.js';
 
 const repoRoot = path.resolve(
   fileURLToPath(new URL('../../../..', import.meta.url)),
@@ -31,29 +31,11 @@ function applyIntegrationEnv(): void {
   process.env.COMPOSE_PROJECT_NAME = CI_COMPOSE_PROJECT_NAME;
 }
 
-async function waitForDynamo(maxAttempts = 60): Promise<void> {
-  const endpoint = process.env.AWS_ENDPOINT_URL_DYNAMODB!;
-  const client = new DynamoDBClient({
-    region: 'us-east-1',
-    endpoint,
-    credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
-  });
-  for (let i = 0; i < maxAttempts; i += 1) {
-    try {
-      await client.send(new ListTablesCommand({}));
-      return;
-    } catch {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-  }
-  throw new Error(`DynamoDB Local did not become ready at ${endpoint}`);
-}
-
 export default async function globalSetup(): Promise<() => Promise<void>> {
   applyIntegrationEnv();
 
   if (process.env.SKIP_DYNAMODB_INTEGRATION_SETUP === '1') {
-    await waitForDynamo();
+    await waitForDynamoDb(process.env.AWS_ENDPOINT_URL_DYNAMODB!);
     return async () => {
       /* CI owns the compose lifecycle */
     };
@@ -62,7 +44,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const flagPath = dynamodbCiStartedFlagPath();
   let startedByUs = false;
   try {
-    await waitForDynamo(3);
+    await waitForDynamoDb(process.env.AWS_ENDPOINT_URL_DYNAMODB!, {
+      timeoutMs: 1_000,
+    });
   } catch {
     try {
       execSync(
@@ -83,7 +67,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
         { cause: err },
       );
     }
-    await waitForDynamo();
+    await waitForDynamoDb(process.env.AWS_ENDPOINT_URL_DYNAMODB!);
   }
 
   return async () => {

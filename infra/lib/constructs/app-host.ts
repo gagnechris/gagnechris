@@ -1,14 +1,6 @@
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
-  Alarm,
-  ComparisonOperator,
-  TreatMissingData,
-} from 'aws-cdk-lib/aws-cloudwatch';
-import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import {
-  AllowedMethods,
-  CachedMethods,
   type BehaviorOptions,
   type ICachePolicy,
   type IFunction,
@@ -22,17 +14,10 @@ import {
   S3OriginAccessControl,
   SecurityPolicyProtocol,
   Signing,
-  ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import {
-  BlockPublicAccess,
-  Bucket,
-  BucketEncryption,
-  type IBucket,
-  ObjectOwnership,
-} from 'aws-cdk-lib/aws-s3';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import type { IBucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
@@ -44,6 +29,12 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { type SsmParamKey, ssmParameterName } from '../config/constants.js';
+import {
+  bucketBehavior,
+  distribution5xxAlarm,
+  PrivateSiteBucket,
+  suppressDistributionNags,
+} from './site-hosting.js';
 
 export interface AppHostProps {
   readonly config: EnvironmentConfig;
@@ -71,7 +62,7 @@ export interface AppHostProps {
  * strict CSP, same-origin /api, and an SPA fallback.
  */
 export class AppHost extends Construct {
-  readonly bucket: Bucket;
+  readonly bucket: PrivateSiteBucket;
   readonly distribution: Distribution;
   readonly responseHeadersPolicy: ResponseHeadersPolicy;
 
@@ -82,23 +73,10 @@ export class AppHost extends Construct {
     const namePrefix = `gagnechris-${config.name}-${appName}`;
 
     // Build output only, rebuilt from git on every deploy, so no AWS Backup.
-    this.bucket = new Bucket(this, 'Bucket', {
-      encryption: BucketEncryption.S3_MANAGED,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      enforceSSL: true,
-      versioned: true,
-      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
-      serverAccessLogsBucket: props.accessLogs,
-      serverAccessLogsPrefix: `s3-${appName}/`,
-      removalPolicy: config.statefulRemovalPolicy,
-      autoDeleteObjects: config.statefulRemovalPolicy === RemovalPolicy.DESTROY,
-      lifecycleRules: [
-        {
-          id: 'ExpireNoncurrentVersions',
-          enabled: true,
-          noncurrentVersionExpiration: Duration.days(90),
-        },
-      ],
+    this.bucket = new PrivateSiteBucket(this, 'Bucket', {
+      config,
+      accessLogs: props.accessLogs,
+      logPrefix: `s3-${appName}/`,
     });
 
     const origin = S3BucketOrigin.withOriginAccessControl(this.bucket, {
@@ -118,15 +96,8 @@ export class AppHost extends Construct {
       },
     );
 
-    const bucketBehavior = (cachePolicy: ICachePolicy): BehaviorOptions => ({
-      origin,
-      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-      cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-      compress: true,
-      cachePolicy,
-      responseHeadersPolicy: this.responseHeadersPolicy,
-    });
+    const fromBucket = (cachePolicy: ICachePolicy): BehaviorOptions =>
+      bucketBehavior(origin, cachePolicy, this.responseHeadersPolicy);
 
     this.distribution = new Distribution(this, 'Distribution', {
       comment: `gagnechris ${config.name} ${props.domainName}`,
@@ -140,7 +111,7 @@ export class AppHost extends Construct {
       logFilePrefix: `cloudfront-${appName}/`,
       defaultRootObject: 'index.html',
       defaultBehavior: {
-        ...bucketBehavior(props.htmlCachePolicy),
+        ...fromBucket(props.htmlCachePolicy),
         functionAssociations: [
           {
             function: props.viewerRequestFunction,
@@ -149,7 +120,7 @@ export class AppHost extends Construct {
         ],
       },
       additionalBehaviors: {
-        '/assets/*': bucketBehavior(props.assetsCachePolicy),
+        '/assets/*': fromBucket(props.assetsCachePolicy),
         '/api/*': props.apiBehavior,
         ...props.additionalBehaviors?.(this.responseHeadersPolicy),
       },
@@ -157,37 +128,12 @@ export class AppHost extends Construct {
       // into HTML. The viewer-request function does the SPA fallback.
     });
 
-    // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
-    this.bucket.addToResourcePolicy(
-      new PolicyStatement({
-        sid: 'AllowCloudFrontListBucket',
-        actions: ['s3:ListBucket'],
-        resources: [this.bucket.bucketArn],
-        principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
-        conditions: {
-          StringEquals: {
-            'AWS:SourceArn': distributionArn(this.distribution),
-          },
-        },
-      }),
-    );
+    this.bucket.allowCloudFrontListBucket([this.distribution]);
 
-    NagSuppressions.addResourceSuppressions(this.distribution, [
-      {
-        id: 'AwsSolutions-CFR1',
-        reason: 'Geo restriction is unnecessary for a single-owner app host.',
-      },
-      {
-        id: 'AwsSolutions-CFR2',
-        reason:
-          'AWS WAF is deferred (cost); Shield Standard still applies at the edge.',
-      },
-      {
-        id: 'AwsSolutions-CFR4',
-        reason:
-          'TLS 1.2+ is enforced via minimumProtocolVersion TLS_V1_2_2021.',
-      },
-    ]);
+    suppressDistributionNags(
+      this.distribution,
+      'Geo restriction is unnecessary for a single-owner app host.',
+    );
 
     // Create only: later deploys of the real app must not be overwritten.
     const placeholder = new AwsCustomResource(this, 'PlaceholderIndex', {
@@ -241,21 +187,12 @@ export class AppHost extends Construct {
       ],
     );
 
-    const alarm = new Alarm(this, 'CloudFront5xxAlarm', {
+    distribution5xxAlarm(this, {
+      distribution: this.distribution,
       alarmName: `${namePrefix}-cloudfront-5xx`,
       alarmDescription: `${props.domainName} CloudFront 5xx error rate above 5% for 10 minutes`,
-      metric: this.distribution.metric5xxErrorRate({
-        period: Duration.minutes(5),
-        statistic: 'Average',
-      }),
-      threshold: 5,
-      evaluationPeriods: 2,
-      datapointsToAlarm: 2,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alertsTopic: props.alertsTopic,
     });
-    alarm.addAlarmAction(new SnsAction(props.alertsTopic));
-    alarm.addOkAction(new SnsAction(props.alertsTopic));
 
     new StringParameter(this, 'BucketParam', {
       parameterName: ssmParameterName(config.name, props.bucketParamKey),
@@ -270,6 +207,4 @@ export class AppHost extends Construct {
   }
 }
 
-export function distributionArn(distribution: Distribution): string {
-  return `arn:aws:cloudfront::${Stack.of(distribution).account}:distribution/${distribution.distributionId}`;
-}
+export { distributionArn } from './site-hosting.js';
