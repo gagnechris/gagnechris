@@ -54,7 +54,9 @@ type CampRulesGameProps = {
   from: string;
   soundOn: boolean;
   dailyKey?: string;
-  onModeChange?: (mode: CampMode) => void;
+  /** Owned by the page, whose header names the camp. */
+  mode: CampMode;
+  onModeChange: (mode: CampMode) => void;
 };
 
 // Desktop browsers implement Web Share too, but there the result is copied;
@@ -105,6 +107,7 @@ const CampRulesGame = ({
   from,
   soundOn,
   dailyKey: dailyKeyProp,
+  mode,
   onModeChange,
 }: CampRulesGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
@@ -115,7 +118,6 @@ const CampRulesGame = ({
     [dailyKeyProp],
   );
   const [screen, setScreen] = useState<Screen>('ready');
-  const [mode, setMode] = useState<CampMode>('daily');
   const [state, setState] = useState<CampState>(createCampState);
   const [toast, showToast, clearToast] = useTimedValue<string>(TOAST_MS);
   const [justPutAway, setJustPutAway] = useState<{
@@ -182,8 +184,7 @@ const CampRulesGame = ({
     stateRef.current = fresh;
     setState(fresh);
     pendingRef.current = null;
-    setMode(nextMode);
-    onModeChange?.(nextMode);
+    onModeChange(nextMode);
     clearToast();
     setJustPutAway(null);
     clearCopyStatus();

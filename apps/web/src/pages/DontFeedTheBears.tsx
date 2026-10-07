@@ -9,13 +9,10 @@ import {
   withFrom,
 } from '../games/bears/shared/routes';
 import { BEAR_GUIDANCE_URL } from '../games/bears/tips';
-import {
-  trackBearsGamePick,
-  trackBearsTipLinkClick,
-  type BearsGame,
-} from '../utils/analytics';
+import { trackBearsGamePick, trackBearsTipLinkClick } from '../utils/analytics';
 import '../games/bears/shared/bears-shared.css';
 import './DontFeedTheBears.css';
+import type { BearsGame } from '../games/bears/shared/games';
 import { PALETTE } from '../games/bears/shared/palette';
 
 const CampArt = () => (

@@ -44,6 +44,7 @@ const CampRules = () => {
           from={from}
           soundOn={soundOn}
           dailyKey={dailyKey}
+          mode={mode}
           onModeChange={setMode}
         />
       </main>

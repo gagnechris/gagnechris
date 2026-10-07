@@ -1,3 +1,5 @@
+import type { BearsGame } from '../games/bears/shared/games';
+
 declare global {
   interface Window {
     gtag: (command: string, ...args: unknown[]) => void;
@@ -48,8 +50,6 @@ const trackNamedEvent = (
     window.gtag('event', name, params);
   }
 };
-
-export type BearsGame = 'camp' | 'wild';
 
 export const trackBearsGamePick = (game: BearsGame, from: BearsGameFrom) => {
   trackNamedEvent('bears_game_pick', { game, from });
