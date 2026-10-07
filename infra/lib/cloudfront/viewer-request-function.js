@@ -154,15 +154,15 @@ async function handler(event) {
 }
 
 function redirect(location, cacheControl) {
-  var headers = { location: { value: location } };
-  if (cacheControl) {
-    headers['cache-control'] = { value: cacheControl };
-  }
-  return {
+  var response = {
     statusCode: 301,
     statusDescription: 'Moved Permanently',
-    headers: headers,
+    headers: { location: { value: location } },
   };
+  if (cacheControl) {
+    response.headers['cache-control'] = { value: cacheControl };
+  }
+  return response;
 }
 
 /**
