@@ -8,6 +8,7 @@ import type {
 import { marshall } from '@aws-sdk/util-dynamodb';
 import type { Post } from '@gagnechris/shared';
 import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const ddbSend = vi.fn();
 const syncSlugs = vi.fn();
@@ -33,10 +34,9 @@ vi.mock('@aws-sdk/lib-dynamodb', () => {
   };
 });
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  KvsSyncError: class KvsSyncError extends Error {},
-  syncViewerRequestBlogSlugs: (...args: unknown[]) => syncSlugs(...args),
-  syncViewerRequestProjectSlugs: async () => undefined,
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: (...args: unknown[]) => syncSlugs(...args),
 }));
 
 vi.mock('../src/observability.js', () => ({
@@ -168,38 +168,10 @@ function mockTable(table: { published: Post[]; gsi?: Post[] }): void {
   );
 }
 
-function memoryStorage(): SiteStorage & { objects: Map<string, string> } {
-  const shell = '<html><head></head><body><div id="root"></div></body></html>';
-  const objects = new Map<string, string>([['_shell.html', shell]]);
-  return {
-    objects,
-    async readShell() {
-      return shell;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const next =
-        typeof body === 'string' ? body : Buffer.from(body).toString('utf8');
-      if (objects.get(key) === next) return false;
-      objects.set(key, next);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-}
-
 const fakeContext = { awsRequestId: 'test' } as Context;
 
 async function runHandler(storage: SiteStorage, records: DynamoDBRecord[]) {
-  const { setSiteStorage } = await import('../src/s3-site.js');
+  const { setSiteStorage } = await import('../src/rebuild.js');
   const { handler } = await import('../src/handler.js');
   setSiteStorage(storage);
   const event: DynamoDBStreamEvent = { Records: records };
@@ -214,9 +186,11 @@ function postsJsonSlugs(storage: { objects: Map<string, string> }): string[] {
 }
 
 async function kvsSlugs(): Promise<string[]> {
-  expect(syncSlugs).toHaveBeenCalledOnce();
-  const desired = syncSlugs.mock.calls[0]![0] as () => Promise<string[]>;
-  return desired();
+  const blog = syncSlugs.mock.calls.filter(
+    ([namespace]) => (namespace as { label: string }).label === 'blog',
+  );
+  expect(blog).toHaveLength(1);
+  return (blog[0]![1] as () => Promise<string[]>)();
 }
 
 describe('publisher handler stream batches', () => {
@@ -230,7 +204,7 @@ describe('publisher handler stream batches', () => {
   });
 
   afterEach(async () => {
-    const { setSiteStorage } = await import('../src/s3-site.js');
+    const { setSiteStorage } = await import('../src/rebuild.js');
     setSiteStorage(undefined);
     if (prevTable === undefined) delete process.env.DATA_TABLE_NAME;
     else process.env.DATA_TABLE_NAME = prevTable;

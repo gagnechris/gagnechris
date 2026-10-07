@@ -1,7 +1,8 @@
 import { postProjectLinks } from '@gagnechris/shared';
 import { renderPostPage } from '../../render.js';
+import { postPageKey } from '../../storage.js';
+import { htmlArtifact } from '../artifacts.js';
 import type { PublishTarget } from '../types.js';
-import { CACHE_HTML } from '../types.js';
 
 const target: PublishTarget = {
   id: 'post-pages',
@@ -10,15 +11,7 @@ const target: PublishTarget = {
       scope.allPosts || scope.postSlugs.size > 0 || scope.projectIds.size > 0
     );
   },
-  needsCatalog(scope) {
-    return this.matches(scope);
-  },
-  needsShell(scope) {
-    return this.matches(scope);
-  },
-  needsProjects(scope) {
-    return this.matches(scope);
-  },
+  needs: { posts: true, shell: true, projects: true },
   async run(ctx) {
     const { scope, shell, published, projects } = ctx;
     // Tagged posts re-render too, so "Part of" follows a project's rename.
@@ -31,16 +24,16 @@ const target: PublishTarget = {
         );
 
     return {
-      artifacts: postsToRender.map((post) => ({
-        key: `blog/${post.slug}/index.html`,
-        body: renderPostPage(
-          shell,
-          post,
-          postProjectLinks(post.projectIds, projects.projects),
+      artifacts: postsToRender.map((post) =>
+        htmlArtifact(
+          postPageKey(post.slug),
+          renderPostPage(
+            shell,
+            post,
+            postProjectLinks(post.projectIds, projects.projects),
+          ),
         ),
-        contentType: 'text/html; charset=utf-8',
-        cacheControl: CACHE_HTML,
-      })),
+      ),
       invalidationPaths: postsToRender.length > 0 ? ['/blog*'] : [],
     };
   },

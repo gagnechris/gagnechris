@@ -16,27 +16,26 @@ import {
   type RebuildScope,
 } from '../../rebuild-scope.js';
 import { renderHomePage } from '../../render.js';
+import { htmlArtifact, jsonArtifact } from '../artifacts.js';
 import type {
   PublishArtifact,
   PublishTarget,
   PublishTargetContext,
 } from '../types.js';
-import { CACHE_HTML } from '../types.js';
 
 const homePageArtifact = (
   ctx: PublishTargetContext,
   home: Home,
-): PublishArtifact => ({
-  key: 'index.html',
-  body: renderHomePage(
-    ctx.shell,
-    home,
-    selectHomeRecentPosts([...ctx.published, ...ctx.retainedPosts]),
-    selectHomeProjects(ctx.projects.projects),
-  ),
-  contentType: 'text/html; charset=utf-8',
-  cacheControl: CACHE_HTML,
-});
+): PublishArtifact =>
+  htmlArtifact(
+    'index.html',
+    renderHomePage(
+      ctx.shell,
+      home,
+      selectHomeRecentPosts(ctx.feedPosts),
+      selectHomeProjects(ctx.projects.projects),
+    ),
+  );
 
 // Unchanged bytes are skipped by storage.put, and the orchestrator only
 // invalidates for targets that wrote, so post and project edits that don't
@@ -59,9 +58,7 @@ const target: PublishTarget = {
   ],
   matches: rendersHome,
   // Every render needs both lists, or one section drops off `/`.
-  needsCatalog: rendersHome,
-  needsShell: rendersHome,
-  needsProjects: rendersHome,
+  needs: { posts: true, shell: true, projects: true },
   async run(ctx) {
     const lookup = await ctx.sources.getPublishedHome();
     if (lookup.status === 'ok') {
@@ -69,12 +66,7 @@ const target: PublishTarget = {
       return {
         artifacts: [
           homePageArtifact(ctx, home),
-          {
-            key: HOME_LAST_PUBLISHED_KEY,
-            body: JSON.stringify(homeToSnapshot(home)),
-            contentType: 'application/json; charset=utf-8',
-            cacheControl: CACHE_HTML,
-          },
+          jsonArtifact(HOME_LAST_PUBLISHED_KEY, homeToSnapshot(home)),
         ],
         invalidationPaths: INVALIDATION_PATHS,
         homePublished: true,

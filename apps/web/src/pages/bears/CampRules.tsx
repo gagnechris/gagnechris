@@ -22,7 +22,7 @@ const CampRules = () => {
   const dailyKey = useMemo(() => dailyCampKey(new Date()), []);
 
   return (
-    <div className="bears-game-page">
+    <main className="bears-game-page">
       <BearsPageMeta meta={BEARS_PAGE_META.camp} />
       <BearsGameHeader
         title="Camp Rules"
@@ -39,7 +39,7 @@ const CampRules = () => {
           </>
         }
       />
-      <main>
+      <div className="bears-game-page__body">
         <CampRulesGame
           from={from}
           soundOn={soundOn}
@@ -47,8 +47,8 @@ const CampRules = () => {
           mode={mode}
           onModeChange={setMode}
         />
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

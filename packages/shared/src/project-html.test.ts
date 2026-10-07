@@ -199,7 +199,7 @@ describe('project page prerender', () => {
       }),
     );
     expect(withImage).toContain(
-      '<div class="project-page" data-slug="notebook" data-demo="notebook">',
+      '<main class="project-page" data-slug="notebook" data-demo="notebook">',
     );
     expect(withImage).toContain(
       '<section class="project-demo" aria-labelledby="project-demo-label">' +

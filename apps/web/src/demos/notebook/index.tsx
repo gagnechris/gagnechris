@@ -105,6 +105,7 @@ function NotebookDemoBody({
   const stillOpen = (
     <StillOpenPanel
       compact
+      headingLevel={4}
       rows={view.stillOpen}
       onAddToNote={(id) => {
         focusTask.current = id;
@@ -115,6 +116,7 @@ function NotebookDemoBody({
   const comingUp = (
     <ComingUpPanel
       compact
+      headingLevel={4}
       days={view.comingUp}
       day={today}
       onToggle={(id) => dispatch({ type: 'toggle', id })}

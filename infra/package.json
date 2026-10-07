@@ -5,6 +5,13 @@
   "license": "MIT",
   "type": "module",
   "description": "AWS CDK app for gagnechris.com",
+  "exports": {
+    "./cloudfront-harness": {
+      "types": "./lib/cloudfront/harness.ts",
+      "import": "./lib/cloudfront/harness.ts",
+      "default": "./lib/cloudfront/harness.ts"
+    }
+  },
   "scripts": {
     "cdk": "cdk",
     "synth": "cdk synth",

@@ -26,6 +26,14 @@ function md5Etag(body: string | Uint8Array): string {
   return `"${hex}"`;
 }
 
+function isNotFound(err: unknown): boolean {
+  const name = (err as { name?: string }).name;
+  // GetObject often surfaces a 404 as a service exception with $metadata.
+  const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata
+    ?.httpStatusCode;
+  return name === 'NoSuchKey' || name === 'NotFound' || status === 404;
+}
+
 export function createS3SiteStorage(): SiteStorage {
   const bucket = requireEnv('SITE_BUCKET_NAME');
 
@@ -48,23 +56,18 @@ export function createS3SiteStorage(): SiteStorage {
         );
         return await out.Body?.transformToString('utf-8');
       } catch (err) {
-        const name = (err as { name?: string }).name;
-        if (name === 'NoSuchKey' || name === 'NotFound') return undefined;
-        // S3 GetObject often surfaces 404 as a service exception with $metadata.
-        const status = (err as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        if (status === 404) return undefined;
+        if (isNotFound(err)) return undefined;
         throw err;
       }
     },
 
-    async put(
-      key: string,
-      body: string | Uint8Array,
-      contentType: string,
-      cacheControl: string,
-      contentDisposition?: string,
-    ): Promise<boolean> {
+    async put({
+      key,
+      body,
+      contentType,
+      cacheControl,
+      contentDisposition,
+    }): Promise<boolean> {
       const etag = md5Etag(body);
       try {
         const head = await s3.send(
@@ -81,12 +84,7 @@ export function createS3SiteStorage(): SiteStorage {
           return false;
         }
       } catch (err) {
-        const name = (err as { name?: string }).name;
-        const status = (err as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        if (name !== 'NotFound' && name !== 'NoSuchKey' && status !== 404) {
-          throw err;
-        }
+        if (!isNotFound(err)) throw err;
       }
 
       await s3.send(
@@ -108,12 +106,7 @@ export function createS3SiteStorage(): SiteStorage {
       try {
         await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
       } catch (err) {
-        const name = (err as { name?: string }).name;
-        const status = (err as { $metadata?: { httpStatusCode?: number } })
-          .$metadata?.httpStatusCode;
-        if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) {
-          return false;
-        }
+        if (isNotFound(err)) return false;
         throw err;
       }
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));

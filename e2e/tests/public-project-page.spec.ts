@@ -417,7 +417,7 @@ test.describe('the Posts demo on the built site', () => {
     const article = publicSite.locator(
       '.post-page article.blog-post-prerender',
     );
-    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+    await expect(article.getByRole('heading', { level: 3 })).toHaveText(
       'Hello from the demo',
     );
     await expect(article.locator('.post-content h2')).toHaveText(
@@ -436,11 +436,11 @@ test.describe('the Posts demo on the built site', () => {
     await title.fill('Hello again');
     await expect(editor.getByText('Unpublished changes')).toBeVisible();
     await expect(caption).toHaveText(/^Unpublished changes/);
-    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+    await expect(article.getByRole('heading', { level: 3 })).toHaveText(
       'Hello from the demo',
     );
     await editor.getByRole('button', { name: 'Publish changes' }).click();
-    await expect(article.getByRole('heading', { level: 1 })).toHaveText(
+    await expect(article.getByRole('heading', { level: 3 })).toHaveText(
       'Hello again',
     );
     await expect(editor.getByText('Unpublished changes')).toHaveCount(0);
@@ -497,7 +497,7 @@ test.describe('the Posts demo on the built site', () => {
 
     await editor.getByRole('button', { name: 'Publish' }).click();
     await publicSite.getByRole('button', { name: 'Post page' }).click();
-    await expect(publicSite.getByRole('heading', { level: 1 })).toHaveText(
+    await expect(publicSite.getByRole('heading', { level: 3 })).toHaveText(
       'Hello from the demo',
     );
   });

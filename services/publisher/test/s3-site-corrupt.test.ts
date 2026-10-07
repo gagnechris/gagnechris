@@ -9,7 +9,7 @@ import {
   type Post,
   type Resume,
 } from '@gagnechris/shared';
-import { rebuildPublishedSite } from '../src/s3-site.js';
+import { rebuildPublishedSite } from '../src/rebuild.js';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
 import type { SiteStorage } from '../src/storage.js';
 import { RESUME_PDF_KEY } from '../src/resume-pdf.js';
@@ -155,9 +155,9 @@ describe('rebuildPublishedSite corrupt rows', () => {
     // Record only real writes (put/delete return true when bytes changed).
     const storage: SiteStorage = {
       ...fs,
-      async put(...args) {
-        const wrote = await fs.put(...args);
-        if (wrote) puts.push(args[0]);
+      async put(artifact) {
+        const wrote = await fs.put(artifact);
+        if (wrote) puts.push(artifact.key);
         return wrote;
       },
       async delete(key) {

@@ -53,12 +53,12 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(await storage.readShell()).toBe('<html>shell</html>');
-    const wrote = await storage.put(
-      'blog/hello/index.html',
-      '<html>post</html>',
-      'text/html',
-      'no-cache',
-    );
+    const wrote = await storage.put({
+      key: 'blog/hello/index.html',
+      body: '<html>post</html>',
+      contentType: 'text/html',
+      cacheControl: 'no-cache',
+    });
     expect(wrote).toBe(true);
     expect(await storage.list('blog/')).toEqual(['blog/hello/index.html']);
     await storage.invalidate(['/blog/hello']);
@@ -77,7 +77,12 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(await storage.delete('resume.pdf')).toBe(false);
-    await storage.put('resume.pdf', new Uint8Array([1]), 'application/pdf', '');
+    await storage.put({
+      key: 'resume.pdf',
+      body: new Uint8Array([1]),
+      contentType: 'application/pdf',
+      cacheControl: '',
+    });
     expect(await storage.delete('resume.pdf')).toBe(true);
     expect(await storage.delete('resume.pdf')).toBe(false);
   });
@@ -87,20 +92,20 @@ describe('filesystem site storage', () => {
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');
     const storage = createFilesystemSiteStorage(root);
     expect(
-      await storage.put(
-        'blog/a/index.html',
-        '<html>a</html>',
-        'text/html',
-        'x',
-      ),
+      await storage.put({
+        key: 'blog/a/index.html',
+        body: '<html>a</html>',
+        contentType: 'text/html',
+        cacheControl: 'x',
+      }),
     ).toBe(true);
     expect(
-      await storage.put(
-        'blog/a/index.html',
-        '<html>a</html>',
-        'text/html',
-        'x',
-      ),
+      await storage.put({
+        key: 'blog/a/index.html',
+        body: '<html>a</html>',
+        contentType: 'text/html',
+        cacheControl: 'x',
+      }),
     ).toBe(false);
     expect(await readFile(join(root, 'blog', 'a', 'index.html'), 'utf8')).toBe(
       '<html>a</html>',
@@ -112,7 +117,12 @@ describe('filesystem site storage', () => {
     const storage = createFilesystemSiteStorage(root);
     const key = 'posts/index.html';
     const versions = ['a', 'b', 'c', 'd'].map((c) => c.repeat(4 * 1024 * 1024));
-    await storage.put(key, versions[0]!, 'text/html', 'x');
+    await storage.put({
+      key: key,
+      body: versions[0]!,
+      contentType: 'text/html',
+      cacheControl: 'x',
+    });
 
     const seen = new Set<number | undefined>();
     let writing = true;
@@ -123,7 +133,12 @@ describe('filesystem site storage', () => {
       }
     })();
     for (const body of versions.slice(1)) {
-      await storage.put(key, body, 'text/html', 'x');
+      await storage.put({
+        key: key,
+        body: body,
+        contentType: 'text/html',
+        cacheControl: 'x',
+      });
     }
     writing = false;
     await reader;

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AttributeValue, Context, DynamoDBRecord } from 'aws-lambda';
 import { handler, setPublisherHandlerDepsForTests } from '../src/handler.js';
 import { publishTargets } from '../src/publish-targets/registry.js';
-import type { SiteStorage } from '../src/storage.js';
 import nowPageTarget from './fixtures/now-page.target.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 vi.mock('../src/observability.js', () => ({
   logger: {
@@ -29,35 +29,6 @@ function nowPublishedImage(): Record<string, AttributeValue> {
   };
 }
 
-function memoryStorage(): SiteStorage & { puts: string[] } {
-  const objects = new Map<string, string | Uint8Array>();
-  const puts: string[] = [];
-  return {
-    puts,
-    async readShell() {
-      return '<html><head></head><body><div id="root"></div></body></html>';
-    },
-    async read(key) {
-      const v = objects.get(key);
-      return typeof v === 'string' ? v : undefined;
-    },
-    async put(key, body) {
-      objects.set(key, body);
-      puts.push(key);
-      return true;
-    },
-    async delete(key) {
-      if (!objects.has(key)) return false;
-      objects.delete(key);
-      return true;
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-}
-
 const fakeContext = { awsRequestId: 'test' } as Context;
 
 describe('handler + now-page fixture', () => {
@@ -68,7 +39,7 @@ describe('handler + now-page fixture', () => {
   it('rebuilds through the real handler when a registered target claims the entity', async () => {
     const storage = memoryStorage();
     const targets = [...publishTargets, nowPageTarget];
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
 
     setPublisherHandlerDepsForTests({
       getTargets: () => targets,

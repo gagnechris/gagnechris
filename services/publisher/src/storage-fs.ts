@@ -65,13 +65,7 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
       }
     },
 
-    async put(
-      key: string,
-      body: string | Uint8Array,
-      _contentType: string,
-      _cacheControl: string,
-      _contentDisposition?: string,
-    ): Promise<boolean> {
+    async put({ key, body }): Promise<boolean> {
       const path = join(root, key);
       const next = bodyBytes(body);
       try {

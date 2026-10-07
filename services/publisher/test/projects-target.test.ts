@@ -15,15 +15,15 @@ import {
   streamNeedsRebuild,
   type RebuildScope,
 } from '../src/rebuild-scope.js';
-import type { SiteStorage } from '../src/storage.js';
+import {
+  memoryStorage,
+  type MemoryStorage,
+} from './fixtures/memory-storage.js';
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
-
-const SHELL =
-  '<html><head><title>x</title></head><body><div id="root"></div></body></html>';
 
 function project(over: Partial<Project> & Pick<Project, 'slug'>): Project {
   return {
@@ -65,35 +65,6 @@ const post: Post = {
   hasUnpublishedChanges: false,
 };
 
-function memoryStorage() {
-  const objects = new Map<string, string>();
-  const invalidations: string[][] = [];
-  const storage: SiteStorage = {
-    async readShell() {
-      return SHELL;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const text = typeof body === 'string' ? body : '';
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate(paths) {
-      invalidations.push(paths);
-    },
-  };
-  return { storage, objects, invalidations };
-}
-
 function sources(
   catalog: PublishedProjectsCatalog,
   posts: Post[] = [post],
@@ -119,7 +90,7 @@ const projectScope = (): RebuildScope => ({
 });
 
 describe('projects publish targets', () => {
-  let site: ReturnType<typeof memoryStorage>;
+  let site: MemoryStorage;
 
   beforeEach(() => {
     site = memoryStorage();
@@ -132,7 +103,7 @@ describe('projects publish targets', () => {
   ) =>
     runPublishTargets({
       scope,
-      storage: site.storage,
+      storage: site,
       sources: sources(catalog, posts),
       targets: publishTargets,
     });

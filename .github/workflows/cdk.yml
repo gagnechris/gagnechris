@@ -19,6 +19,9 @@ on:
           - drift
         default: deploy
 
+permissions:
+  contents: read
+
 env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.
@@ -77,28 +80,24 @@ jobs:
           npm run cdk -- diff --no-change-set 2>&1 | tee cdk-diff.txt
           code=${PIPESTATUS[0]}
           set -e
-          # aws-cdk 2.x: exit 0 with or without diffs unless --fail is passed.
-          # Any non-zero exit is a real error (role, lookup, synth) - fail the job.
-          if [ "$code" -ne 0 ]; then
+          comment() {
             {
-              echo '## CDK diff failed'
+              echo "## $1"
               echo ''
               echo '```'
+              # Keep the comment under GitHub's size limit.
               head -c 60000 cdk-diff.txt
               echo ''
               echo '```'
             } > cdk-diff-comment.md
+          }
+          # aws-cdk 2.x: exit 0 with or without diffs unless --fail is passed.
+          # Any non-zero exit is a real error (role, lookup, synth) - fail the job.
+          if [ "$code" -ne 0 ]; then
+            comment 'CDK diff failed'
             exit "$code"
           fi
-          {
-            echo '## CDK diff'
-            echo ''
-            echo '```'
-            # Keep the comment under GitHub's size limit.
-            head -c 60000 cdk-diff.txt
-            echo ''
-            echo '```'
-          } > cdk-diff-comment.md
+          comment 'CDK diff'
 
       - name: Post diff comment
         if: ${{ !cancelled() && hashFiles('cdk-diff-comment.md') != '' }}

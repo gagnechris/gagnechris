@@ -9,7 +9,7 @@ import type {
 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
 import { isPublishRelevantAdminMutation } from '@gagnechris/data';
-import { rebuildPublishedSite } from '@gagnechris/publisher/s3-site';
+import { rebuildPublishedSite } from '@gagnechris/publisher/rebuild';
 import { routeAuthForPath } from '../src/router.js';
 import { routes } from '../src/routes.js';
 import { applyLocalAuthEnv, localClaims } from './claims.js';
