@@ -19,7 +19,12 @@ import { useTabs } from '../useTabs';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
-import { comingUpDayLabel, type ComingUpDay } from './todayTaskBuckets';
+import {
+  COMING_UP_DAYS,
+  comingUpDayLabel,
+  comingUpWindow,
+  type ComingUpDay,
+} from './todayTaskBuckets';
 import './todayPanels.css';
 
 type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;
@@ -44,6 +49,8 @@ type Props<T extends SheetTask> = {
   readOnly?: boolean;
   loading?: boolean;
   error?: string | null;
+  /** The days `comingUp` was bucketed over, for the copy. */
+  horizonDays?: number;
 };
 
 /** How far a row or the sheet must travel before a swipe counts. */
@@ -65,6 +72,7 @@ export function TodaySheet<T extends SheetTask>({
   readOnly,
   loading,
   error,
+  horizonDays = COMING_UP_DAYS,
 }: Props<T>) {
   const [tab, setTab] = useState<TodaySheetTab>('open');
   const [revealed, setRevealed] = useState<string | null>(null);
@@ -164,7 +172,7 @@ export function TodaySheet<T extends SheetTask>({
       </ul>
     )
   ) : comingCount === 0 ? (
-    <p className="admin-hint">Nothing in the next two weeks.</p>
+    <p className="admin-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
   ) : (
     <ul className="today-sheet__list">
       {comingUp.flatMap(({ date, tasks }) =>
@@ -231,7 +239,7 @@ export function TodaySheet<T extends SheetTask>({
               : 'From earlier notes and scheduled for today. Swipe left or tap ⋯ to snooze or drop.'
             : onAddToNote
               ? 'Add one to today’s note to write context under it.'
-              : 'Starting in the next two weeks.'}
+              : `Starting in ${comingUpWindow(horizonDays)}.`}
         </p>
         {error ? (
           <p className="admin-panel__error" role="alert">

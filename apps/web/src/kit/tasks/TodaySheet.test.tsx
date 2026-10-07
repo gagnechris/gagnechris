@@ -162,4 +162,25 @@ describe('TodaySheet', () => {
       within(sheet).queryByRole('button', { name: /today’s note/ }),
     ).toBeNull();
   });
+
+  test('Coming up copy follows the horizon', async () => {
+    const user = userEvent.setup();
+    const { sheet } = renderSheet({ horizonDays: 7, onAddToNote: undefined });
+    await user.click(within(sheet).getByRole('tab', { name: /^Coming up/ }));
+    expect(
+      within(sheet).getByText('Starting in the next week.'),
+    ).toBeInTheDocument();
+  });
+
+  test('says two weeks at the default horizon', async () => {
+    const user = userEvent.setup();
+    const { sheet } = renderSheet({ comingUp: [], onAddToNote: undefined });
+    await user.click(within(sheet).getByRole('tab', { name: /^Coming up/ }));
+    expect(
+      within(sheet).getByText('Starting in the next two weeks.'),
+    ).toBeInTheDocument();
+    expect(
+      within(sheet).getByText('Nothing in the next two weeks.'),
+    ).toBeInTheDocument();
+  });
 });

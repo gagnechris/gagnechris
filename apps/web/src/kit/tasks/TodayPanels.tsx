@@ -12,8 +12,10 @@ import { TaskDuePill } from './TaskDuePill';
 import type { TaskDue } from './taskDue';
 import { TaskCheckbox } from './TaskRow';
 import {
+  COMING_UP_DAYS,
   comingUpDayLabel,
   comingUpShortLabel,
+  comingUpWindow,
   type ComingUpDay,
   type StillOpenSource,
 } from './todayTaskBuckets';
@@ -283,6 +285,8 @@ type ComingUpProps<T extends PanelTask> = {
   readOnly?: boolean;
   loading?: boolean;
   headingLevel?: PanelHeadingLevel;
+  /** The days `days` was bucketed over, for the empty-state copy. */
+  horizonDays?: number;
 };
 
 export function ComingUpPanel<T extends PanelTask>({
@@ -296,6 +300,7 @@ export function ComingUpPanel<T extends PanelTask>({
   loading,
   onAddToNote,
   headingLevel = 2,
+  horizonDays = COMING_UP_DAYS,
 }: ComingUpProps<T>) {
   const headingId = useId();
   const row = (task: T, date: string) => (
@@ -354,7 +359,7 @@ export function ComingUpPanel<T extends PanelTask>({
       {loading ? (
         <p className="admin-hint">Loading tasks…</p>
       ) : days.length === 0 ? (
-        <p className="admin-hint">Nothing in the next two weeks.</p>
+        <p className="admin-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
       ) : compact ? (
         <ul className="today-panel__list">
           {days.flatMap(({ date, tasks }) =>
