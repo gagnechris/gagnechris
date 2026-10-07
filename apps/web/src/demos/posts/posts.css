@@ -59,7 +59,7 @@
 
 .posts-demo__actions .admin-btn {
   padding: 6px 12px;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
 }
 
 .posts-demo__editor-body {
@@ -85,14 +85,14 @@
 .posts-demo__editor .admin-field .posts-demo__title {
   min-width: 0;
   padding: 9px 12px;
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   font-weight: 700;
   color: var(--color-ink);
 }
 
 .posts-demo__editor .admin-field .admin-hint {
   margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--neutral-600);
@@ -116,7 +116,7 @@
 
 .posts-demo__path {
   margin-left: auto;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   color: var(--neutral-600);
   overflow-wrap: anywhere;
 }
@@ -224,7 +224,7 @@
 }
 
 .posts-demo__site .post-content h3 {
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
 }
 
 .demo-frame .posts-demo__site :is(.post-content, .post-author) a {
@@ -257,7 +257,7 @@
   border-radius: var(--radius-md);
   background: white;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   color: var(--neutral-700);
   cursor: pointer;
@@ -273,7 +273,7 @@
   box-sizing: border-box;
   max-width: var(--project-measure, 680px);
   margin: 14px auto 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }

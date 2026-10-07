@@ -1,6 +1,7 @@
 /**
- * `text`, `space`, and `radius` are px numbers so React Native can use them
- * directly; the generator converts them to `rem` for CSS.
+ * `text`, `space`, `radius` and `breakpoint` are px numbers so React Native
+ * can use them directly; the generator converts all but breakpoints to `rem`
+ * for CSS.
  */
 const primary = {
   50: '#f0f7f7',
@@ -15,12 +16,32 @@ const primary = {
   900: '#173736',
 } as const;
 
+/**
+ * Viewport widths in px. CSS can't read custom properties in `@media`, so
+ * stylesheets write these numbers and a test holds them to this list.
+ */
+export const breakpoint = {
+  /** Public pages switch to the phone layout at or below this. */
+  phone: 480,
+  narrow: 640,
+  /** The project demos stack their panes. */
+  demoStack: 760,
+  /** The workspace sidebar becomes the tab bar. */
+  tabBar: 767,
+  sidebar: 1000,
+  wide: 1024,
+  wider: 1100,
+} as const;
+
 export const tokens = {
   text: {
     xs: 12,
+    caption: 13,
     sm: 14,
     base: 16,
+    body: 17,
     lg: 18,
+    lead: 19,
     xl: 21.328,
     '2xl': 28.432,
     '3xl': 37.904,
@@ -57,8 +78,30 @@ export const tokens = {
   color: {
     ink: '#16191d',
     inkSoft: '#4a515a',
+    inkMuted: '#2b3138',
+    prose: '#22272d',
+    placeholder: '#757575',
     link: primary[700],
     error: '#b42318',
+    errorBg: '#fef3f2',
+    errorBorder: '#fda29b',
+    /** Destructive actions and the access a removal takes away. */
+    alert: '#a3341f',
+    alertBorder: '#f1b8ad',
+    danger: '#9b1c1c',
+    dangerBg: '#fef2f2',
+    dangerBorder: '#fecaca',
+    onDanger: '#fff7f7',
+    warning: '#7a5a12',
+    warningInk: '#3d2a05',
+    warningBg: '#fdf3dc',
+    warningDot: '#c08a1e',
+    /** The Building stage dot on project cards and pages. */
+    building: '#c28d24',
+    notice: '#92400e',
+    noticeBg: '#fef3c7',
+    info: '#23436b',
+    infoBg: '#e4ecf7',
   },
   font: {
     sans: "'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
@@ -66,6 +109,7 @@ export const tokens = {
       "'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     serif:
       "'Newsreader', 'Newsreader Fallback', Georgia, 'Times New Roman', serif",
+    mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   },
   line: {
     tight: '1.2',
@@ -89,6 +133,7 @@ export const tokens = {
     lg: 16,
     full: 9999,
   },
+  breakpoint,
 } as const;
 
 export type Tokens = typeof tokens;
@@ -98,13 +143,20 @@ const ROOT_FONT_SIZE_PX = 16;
 /** `radius-full` is a pill sentinel, so scaling it with the root font size is meaningless. */
 const pxOnly = new Set(['--radius-full']);
 
+/** Media queries match viewport px, whatever the root font size. */
+const pxGroups = new Set(['breakpoint']);
+
 function round(value: number, decimals: number): string {
   return String(Number(value.toFixed(decimals)));
 }
 
-function toCssValue(name: string, value: number | string): string {
+function toCssValue(
+  group: string,
+  name: string,
+  value: number | string,
+): string {
   if (typeof value === 'string') return value;
-  if (pxOnly.has(name)) return `${value}px`;
+  if (pxOnly.has(name) || pxGroups.has(group)) return `${value}px`;
   return `${round(value / ROOT_FONT_SIZE_PX, 6)}rem`;
 }
 
@@ -122,7 +174,7 @@ function tokenEntries(source: Tokens): TokenEntry[] {
   for (const [group, values] of Object.entries(source)) {
     for (const [key, raw] of Object.entries(values)) {
       const name = `--${group}-${kebab(key)}`;
-      entries.push({ name, css: toCssValue(name, raw), raw });
+      entries.push({ name, css: toCssValue(group, name, raw), raw });
     }
   }
   return entries;
@@ -153,6 +205,8 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
     '--transition-fast': '  /* Transitions */',
     '--shadow-sm': '  /* Shadows */',
     '--radius-sm': '  /* Border Radius */',
+    '--breakpoint-phone':
+      '  /* Breakpoints (reference only: @media cannot use var()) */',
   };
 
   const valueComments: Record<string, string> = {

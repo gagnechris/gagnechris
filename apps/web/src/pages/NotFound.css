@@ -13,7 +13,7 @@
 .not-found__label {
   margin: 0 0 var(--not-found-label-gap);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: 0.12em;
@@ -31,7 +31,7 @@
   font-family: var(--font-serif);
   font-size: var(--not-found-text-size);
   line-height: 1.5;
-  color: #2b3138;
+  color: var(--color-ink-muted);
 }
 
 .not-found__links {
@@ -98,7 +98,7 @@
 @media (max-width: 480px) {
   .not-found {
     --not-found-title-size: 2.75rem;
-    --not-found-text-size: 1.1875rem;
+    --not-found-text-size: var(--text-lead);
     --not-found-label-gap: 4px;
     --not-found-text-gap: 12px;
     --not-found-list-gap: 24px;

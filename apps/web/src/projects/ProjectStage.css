@@ -22,11 +22,11 @@
 }
 
 .project-stage[data-stage='building'] {
-  color: #7a5a12;
+  color: var(--color-warning);
 }
 
 .project-stage[data-stage='building']::before {
-  background: #c28d24;
+  background: var(--color-building);
 }
 
 .project-stage[data-stage='idea'] {

@@ -1,14 +1,19 @@
 /* Specs in docs/design/public-redesign/README.md (Post). */
+
+/* The project page body uses these reading styles too. */
+.post-page,
+.project-page {
+  --post-body-size: 1.3125rem;
+}
+
 .post-page {
   --post-measure: 680px;
-  --post-body-size: 1.3125rem;
-  --post-prose: #22272d;
 
   max-width: calc(var(--post-measure) + 2 * var(--site-gutter));
   margin-inline: auto;
   padding-inline: var(--site-gutter);
   font-family: var(--font-serif);
-  color: var(--post-prose);
+  color: var(--color-prose);
 }
 
 .post-header {
@@ -18,7 +23,7 @@
 .post-meta {
   margin: 0 0 14px;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -47,7 +52,7 @@
 .post-part-of {
   margin: 14px 0 0;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -165,7 +170,7 @@
   padding: 0.1em 0.3em;
   border-radius: var(--radius-sm);
   background-color: var(--neutral-100);
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8em;
   color: var(--color-ink);
 }
@@ -194,7 +199,7 @@
 .post-content figcaption {
   margin-top: 10px;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.5;
   color: var(--neutral-600);
 }
@@ -205,7 +210,7 @@
 
 .post-content table {
   border-collapse: collapse;
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -239,9 +244,9 @@
   margin-top: 64px;
   padding-top: 24px;
   border-top: 1px solid var(--color-ink);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.6;
-  color: #2b3138;
+  color: var(--color-ink-muted);
 }
 
 .post-author p {
@@ -261,8 +266,9 @@
 
 /* Phone · Post (reading). */
 @media (max-width: 480px) {
-  .post-page {
-    --post-body-size: 1.1875rem;
+  .post-page,
+  .project-page {
+    --post-body-size: var(--text-lead);
   }
 
   .post-header {
@@ -309,6 +315,6 @@
   .post-author {
     margin-top: 48px;
     padding-top: 24px;
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
   }
 }

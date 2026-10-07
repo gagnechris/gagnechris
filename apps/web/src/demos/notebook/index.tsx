@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
+import { breakpoint } from '@gagnechris/tokens';
 import { Button } from '../../kit/Button';
 import { formatCalendarDay } from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
@@ -29,7 +30,7 @@ import '../../kit/markdown/markdown.css';
 import './notebook.css';
 
 /** notebook.css switches to the phone layout at the same width. */
-export const NOTEBOOK_DEMO_PHONE_QUERY = '(max-width: 760px)';
+export const NOTEBOOK_DEMO_PHONE_QUERY = `(max-width: ${breakpoint.demoStack}px)`;
 
 const PLACEHOLDER = {
   wide: 'Type a task, then Enter. Try: Call Sam @mon !high',

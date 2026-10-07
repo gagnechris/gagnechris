@@ -192,7 +192,7 @@ h4 {
   padding-top: var(--site-header-gap);
   padding-bottom: var(--space-8);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -240,7 +240,7 @@ h4 {
 
   .site-header__home {
     gap: 10px;
-    font-size: 1.1875rem;
+    font-size: var(--text-lead);
   }
 
   .site-header__photo {

@@ -106,8 +106,8 @@
 }
 
 .admin-stage--building {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-notice-bg);
+  color: var(--color-notice);
 }
 
 .admin-stage--live {

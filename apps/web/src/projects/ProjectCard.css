@@ -47,7 +47,7 @@ a.project-card__link:focus-visible .project-card__name {
 .project-card__pitch {
   margin: 10px 0 0;
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.5;
   color: var(--color-ink-soft);
 }
@@ -55,7 +55,7 @@ a.project-card__link:focus-visible .project-card__name {
 .project-card__stack {
   margin: 8px 0 0;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -123,7 +123,7 @@ a.project-card__link:focus-visible .project-card__name {
   .project-card__pitch,
   .project-list--home .project-card__pitch {
     margin-top: 10px;
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
     line-height: 1.45;
   }
 

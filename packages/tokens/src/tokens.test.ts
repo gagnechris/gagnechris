@@ -48,6 +48,18 @@ describe('tokens', () => {
     expect(css).toContain('--radius-full: 9999px;\n');
   });
 
+  it('adds the off-scale text steps, muted and error colours, the mono stack and px breakpoints', () => {
+    const map = Object.fromEntries(tokenCssEntries());
+    expect(map['--text-caption']).toBe('0.8125rem');
+    expect(map['--text-body']).toBe('1.0625rem');
+    expect(map['--text-lead']).toBe('1.1875rem');
+    expect(map['--color-ink-muted']).toBe('#2b3138');
+    expect(map['--color-error-bg']).toBe('#fef3f2');
+    expect(map['--font-mono']).toMatch(/^ui-monospace, /);
+    expect(map['--breakpoint-phone']).toBe('480px');
+    expect(map['--breakpoint-tab-bar']).toBe('767px');
+  });
+
   it('generates a :root block with all variables', () => {
     const css = tokensToCssRoot();
     expect(css).toContain(':root {');

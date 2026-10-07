@@ -10,9 +10,9 @@
   color: var(--neutral-700);
 }
 
-/* #b42318 on #fef3f2 is 6:1; the "Overdue" text carries the meaning without the color. */
+/* --color-error on --color-error-bg is 6:1; the "Overdue" text carries the meaning without the color. */
 .task-due[data-overdue] {
-  background: #fef3f2;
-  color: #b42318;
-  box-shadow: inset 0 0 0 1px #fda29b;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  box-shadow: inset 0 0 0 1px var(--color-error-border);
 }

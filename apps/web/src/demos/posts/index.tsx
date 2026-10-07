@@ -32,6 +32,7 @@ import {
   type PostsDemoStatus,
 } from './postsDemoState';
 import '../../kit/markdown/markdown.css';
+import '../../home/homeSections.css';
 import './posts.css';
 
 const MarkdownEditor = lazy(() => import('../../kit/markdown/MarkdownEditor'));
