@@ -22,8 +22,12 @@ test('tasks are added, completed and filtered in each area', async ({
   await expect(open.getByText(`${prefix} work later`)).toBeVisible();
 
   const area = page.getByRole('radiogroup', { name: 'Notebook area' });
-  await area.getByRole('radio', { name: 'Personal' }).click();
+  const personal = area.getByRole('radio', { name: 'Personal' });
+  await personal.click();
   await expect(page).toHaveURL(/[?&]area=personal/);
+  // The URL changes before the transition renders the new area; adding before
+  // then files the task under Work.
+  await expect(personal).toHaveAttribute('aria-checked', 'true');
   await add(`${prefix} personal errand`);
   await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
   await expect(page.getByText(`${prefix} work urgent`)).toHaveCount(0);
@@ -32,10 +36,16 @@ test('tasks are added, completed and filtered in each area', async ({
   await expect(open.getByText(`${prefix} work later`)).toBeVisible();
   await expect(page.getByText(`${prefix} personal errand`)).toHaveCount(0);
 
+  // The row leaves the list before the server answers; a reload then would
+  // abort the request.
+  const completed = page.waitForResponse(
+    (r) => r.url().endsWith('/complete') && r.ok(),
+  );
   await page
     .getByRole('checkbox', { name: `Complete ${prefix} work later` })
     .click();
   await expect(open.getByText(`${prefix} work later`)).toHaveCount(0);
+  await completed;
   await page.reload();
   await expect(open.getByText(`${prefix} work urgent`)).toBeVisible();
   await expect(page.getByText(`${prefix} work later`)).toHaveCount(0);

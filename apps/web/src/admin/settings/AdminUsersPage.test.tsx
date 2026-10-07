@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -170,6 +176,22 @@ describe('AdminUsersPage', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  test('focus returns to the opener when a click does not focus it, as in Safari', async () => {
+    renderPage();
+    const edit = within(await row('Sam Rivera')).getByRole('button', {
+      name: /Edit access/,
+    });
+    const invite = screen.getByRole('button', { name: 'Invite user' });
+    for (const trigger of [edit, invite]) {
+      fireEvent.click(trigger);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+      trigger.blur();
+    }
   });
 
   test('your own row keeps you a Full Admin with no account actions', async () => {

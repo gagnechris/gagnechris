@@ -95,6 +95,13 @@ export const useTasksByIds = (
   });
 };
 
+// A list's first fetch absorbs an invalidation instead of restarting, so one
+// that began before the write would keep rows from before it.
+const refetchTasks = async (queryClient: QueryClient) => {
+  await queryClient.cancelQueries({ queryKey: queryKeys.tasks.list() });
+  await queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+};
+
 export const useCreateTaskMutation = () => {
   const getClient = useGetApiClient();
   const queryClient = useQueryClient();
@@ -102,14 +109,14 @@ export const useCreateTaskMutation = () => {
     mutationFn: (body: CreateTaskRequest) => createTask(getClient(), body),
     onSuccess: (task) => {
       setCachedTask(queryClient, task);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      void refetchTasks(queryClient);
     },
   });
 };
 
 export const useDeleteTaskMutation = () =>
   useDeleteEntityMutation(deleteTask, setCachedTask, (queryClient) => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+    void refetchTasks(queryClient);
   });
 
 const patchTaskInListPages = (
@@ -204,7 +211,7 @@ export const useCompleteTaskMutation = () => {
       setCachedTask(queryClient, task);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      void refetchTasks(queryClient);
     },
   });
 };
@@ -229,7 +236,7 @@ export const useReopenTaskMutation = () => {
       setCachedTask(queryClient, task);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      void refetchTasks(queryClient);
     },
   });
 };
@@ -310,7 +317,7 @@ export const usePatchTaskMutation = () => {
       setCachedTask(queryClient, task);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      void refetchTasks(queryClient);
     },
   });
 };
