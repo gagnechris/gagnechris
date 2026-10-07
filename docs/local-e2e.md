@@ -14,13 +14,7 @@ Run the Blog CMS API + publisher against **DynamoDB Local** and a filesystem sit
 npm run e2e:local
 ```
 
-This builds `apps/web` with Cognito placeholders if `apps/web/dist` is missing, then runs the `api` Playwright project (`e2e/tests/publish-lifecycle.spec.ts`) on the private stack described below. Nothing touches `npm run local:dev`'s table or `.local-site/`. The spec uses Playwright's `request` and the `Seed` fixture, with no browser:
-
-1. A post: publish → `/posts/<slug>` is the prerender with OG tags, `/` lists it, `/blog/<slug>` 301s to it; Home publishes from its seeded draft and its prerender stays off other pages; an edit stays off the live page until Publish changes; the rebuild deletes an orphan page planted in the site root; unpublish deletes the page and drops it from `/`
-2. A project and a bodyless `idea`: `/projects/<slug>` is live, `/projects` lists both (the idea unlinked), Home lists only the project, `sitemap.xml` lists only the project; an unknown project id on a post is a 400; a tagged post is in the Build log and shows "Part of", also after a slug rename; unpublish removes the page, its `/projects`, Home and sitemap entries and the post's "Part of"
-3. Unknown page URLs (`/projects/x`, `/resume/x`, `/x.html`, …) are the HTML 404 with status 404; every real page is 200
-4. The built app never fetches `/__site`, which only the Vite dev server proxies
-5. A second static server whose viewer-response function marks responses leaves a missing object unmarked, since CloudFront never runs viewer-response on an origin 4xx
+This builds `apps/web` with Cognito placeholders if `apps/web/dist` is missing, then runs the `api` Playwright project (`e2e/tests/publish-lifecycle.spec.ts`) on the private stack described below. Nothing touches `npm run local:dev`'s table or `.local-site/`. The spec uses Playwright's `request` and the `Seed` fixture, with no browser. It covers publishing, editing and unpublishing a post, Home and a project (prerendered pages, listings, the sitemap, the legacy `/blog` redirect, orphan cleanup), the HTML 404 for unknown page URLs, that the built app never fetches `/__site` (only the Vite dev server proxies it), and that the static server, like CloudFront, skips viewer-response on an origin 4xx.
 
 Without an `apps/web` build (the stack then serves `scripts/local/minimal-shell.html`) the spec skips. `npm run e2e:local -- --ui` and other Playwright flags pass through.
 
@@ -134,7 +128,7 @@ action was handled (a later request, a rendered state), or for
 
 ### CI
 
-The **Local E2E smoke (CHR-82)** job builds the web app, then installs
+The **Local E2E smoke** job builds the web app, then installs
 cached Chromium + WebKit (`~/.cache/ms-playwright`, keyed by Playwright
 version) and runs `npm run e2e:browser`, which runs the `api` project first. On failure it uploads the
 `playwright-report-<attempt>` artifact: HTML report, `test-results/`

@@ -17,7 +17,7 @@ type Props<T extends RepeaterItem> = {
   ) => ReactNode;
   addLabel: string;
   removeLabel?: string;
-  /** When true, show Move up / Move down controls (CHR-158). */
+  /** When true, show Move up / Move down controls. */
   reorderable?: boolean;
 };
 
@@ -61,7 +61,7 @@ export function Repeater<T extends RepeaterItem>({
             {reorderable ? (
               <>
                 <Button
-                  // Keep focus on the field so stable keys preserve caret (CHR-165).
+                  // Keep focus on the field so stable keys preserve caret.
                   onMouseDown={(e) => e.preventDefault()}
                   aria-label={`Move row ${position + 1} up`}
                   onClick={() =>
@@ -99,7 +99,7 @@ export function Repeater<T extends RepeaterItem>({
             ) : null}
             <Button
               variant="danger"
-              // Positional, human-readable names (row ids are ULIDs) — CHR-178.
+              // Positional, human-readable names (row ids are ULIDs).
               aria-label={`${removeLabel} ${position + 1}`}
               onClick={() => removeItem(item.id)}
             >

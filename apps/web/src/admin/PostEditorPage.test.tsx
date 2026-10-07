@@ -68,7 +68,7 @@ function renderEditor(queryClient = createTestQueryClient()) {
   );
 }
 
-describe('PostEditorPage publish (CHR-113)', () => {
+describe('PostEditorPage publish', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     get.mockResolvedValue({
@@ -202,7 +202,7 @@ describe('PostEditorPage publish (CHR-113)', () => {
   });
 });
 
-describe('PostEditorPage version / refetch (CHR-147)', () => {
+describe('PostEditorPage version / refetch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -284,7 +284,7 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     );
 
     // Advance past the 900ms autosave debounce — every PUT must still carry
-    // the pre-conflict bound version, never the phone's version 5 (CHR-165).
+    // the pre-conflict bound version, never the phone's version 5.
     await vi.advanceTimersByTimeAsync(1000);
     for (const call of put.mock.calls) {
       const body = call[1]?.body as { version?: number } | undefined;
@@ -293,7 +293,7 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     }
   });
 
-  test('stale GET after PUT does not downgrade the editor cache (CHR-165)', async () => {
+  test('stale GET after PUT does not downgrade the editor cache', async () => {
     const queryClient = createTestQueryClient();
     get.mockResolvedValue({
       data: { ...basePost, version: 1 },
@@ -315,7 +315,7 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
     await waitFor(() => expect(put).toHaveBeenCalled());
 
     // Late GET via the mounted resource queryFn (preferNewerByVersion).
-    // An inline setQueryData that reimplements the rule would hide regressions (CHR-178).
+    // An inline setQueryData that reimplements the rule would hide regressions.
     get.mockResolvedValueOnce({
       data: { ...basePost, version: 1, bodyMarkdown: 'line one' },
       error: undefined,
@@ -334,7 +334,7 @@ describe('PostEditorPage version / refetch (CHR-147)', () => {
   });
 });
 
-describe('PostEditorPage delete (CHR-158)', () => {
+describe('PostEditorPage delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     get.mockResolvedValue({
@@ -421,7 +421,7 @@ describe('PostEditorPage delete (CHR-158)', () => {
     confirmSpy.mockRestore();
   });
 
-  test('Delete waits for an in-flight PUT before calling DELETE (CHR-165)', async () => {
+  test('Delete waits for an in-flight PUT before calling DELETE', async () => {
     const user = userEvent.setup();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
@@ -511,7 +511,7 @@ describe('PostEditorPage delete (CHR-158)', () => {
     expect(screen.getByLabelText('Slug')).toHaveValue('hello');
   });
 
-  test('slug collision shows slug-taken message, not Reload (CHR-160)', async () => {
+  test('slug collision shows slug-taken message, not Reload', async () => {
     const user = userEvent.setup();
     put.mockResolvedValue({
       data: undefined,
@@ -538,7 +538,7 @@ describe('PostEditorPage delete (CHR-158)', () => {
   });
 });
 
-describe('PostEditorPage navigation (CHR-178)', () => {
+describe('PostEditorPage navigation', () => {
   const otherPost = {
     ...basePost,
     id: '01OTHERPOSTID0000000000000',
