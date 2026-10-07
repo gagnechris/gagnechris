@@ -7,12 +7,6 @@ import {
 } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
-  Alarm,
-  ComparisonOperator,
-  TreatMissingData,
-} from 'aws-cdk-lib/aws-cloudwatch';
-import { SnsAction } from 'aws-cdk-lib/aws-cloudwatch-actions';
-import {
   AllowedMethods,
   CachedMethods,
   CachePolicy,
@@ -35,7 +29,6 @@ import {
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import {
   BlockPublicAccess,
   Bucket,
@@ -56,9 +49,22 @@ import {
   NOTEBOOK_HOST,
   ssmParameterName,
 } from '../config/constants.js';
-import { AppHost, distributionArn } from '../constructs/app-host.js';
+import { AppHost } from '../constructs/app-host.js';
+import {
+  bucketBehavior,
+  csp,
+  distribution5xxAlarm,
+  mediaBehavior,
+  PrivateSiteBucket,
+  securityHeadersBehavior,
+  suppressDistributionNags,
+} from '../constructs/site-hosting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const GA = 'https://www.google-analytics.com';
+const GA_REGION1 = 'https://region1.google-analytics.com';
+const GTM = 'https://www.googletagmanager.com';
 
 export interface SiteStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -69,7 +75,7 @@ export interface SiteStackProps extends StackProps {
 }
 
 export class SiteStack extends Stack {
-  readonly siteBucket: Bucket;
+  readonly siteBucket: PrivateSiteBucket;
   readonly distribution: Distribution;
   readonly adminHost: AppHost;
   readonly notebookHost: AppHost;
@@ -113,23 +119,10 @@ export class SiteStack extends Stack {
       },
     ]);
 
-    this.siteBucket = new Bucket(this, 'SiteBucket', {
-      encryption: BucketEncryption.S3_MANAGED,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      enforceSSL: true,
-      versioned: true,
-      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
-      serverAccessLogsBucket: accessLogs,
-      serverAccessLogsPrefix: 's3-site/',
-      removalPolicy: config.statefulRemovalPolicy,
-      autoDeleteObjects: config.statefulRemovalPolicy === RemovalPolicy.DESTROY,
-      lifecycleRules: [
-        {
-          id: 'ExpireNoncurrentVersions',
-          enabled: true,
-          noncurrentVersionExpiration: Duration.days(90),
-        },
-      ],
+    this.siteBucket = new PrivateSiteBucket(this, 'SiteBucket', {
+      config,
+      accessLogs,
+      logPrefix: 's3-site/',
       // Browser PUTs for admin media uploads.
       cors: [
         {
@@ -155,50 +148,16 @@ export class SiteStack extends Stack {
     const cognitoOrigins = `https://auth.${config.domainName} https://cognito-idp.${region}.amazonaws.com`;
     // Presigned media PUTs go to this bucket's regional host only.
     const uploadOrigin = `https://${this.siteBucket.bucketRegionalDomainName}`;
-    const sharedCsp = [
-      "default-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "font-src 'self'",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "object-src 'none'",
-      'upgrade-insecure-requests',
-    ];
-
-    const securityHeadersBehavior = (contentSecurityPolicy: string[]) => ({
-      strictTransportSecurity: {
-        accessControlMaxAge: Duration.days(365),
-        includeSubdomains: true,
-        preload: true,
-        override: true,
-      },
-      contentTypeOptions: { override: true },
-      frameOptions: {
-        frameOption: HeadersFrameOption.DENY,
-        override: true,
-      },
-      referrerPolicy: {
-        referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-        override: true,
-      },
-      // Sends `X-XSS-Protection: 0`: browsers dropped the filter it switched on.
-      xssProtection: { protection: false, override: true },
-      contentSecurityPolicy: {
-        contentSecurityPolicy: contentSecurityPolicy.join('; '),
-        override: true,
-      },
-    });
-
     const securityHeaders = new ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: `gagnechris-${config.name}-security-headers`,
       comment: 'HSTS, CSP (GA4), and browser hardening',
-      securityHeadersBehavior: securityHeadersBehavior([
-        ...sharedCsp,
-        "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com",
-        "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
-        "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com",
-      ]),
+      securityHeadersBehavior: securityHeadersBehavior(
+        csp({
+          script: [GTM, GA],
+          img: [GA, GTM],
+          connect: [GA, 'https://analytics.google.com', GA_REGION1, GTM],
+        }),
+      ),
     });
 
     // The Lambda sets these itself; the edge covers responses API Gateway
@@ -342,15 +301,11 @@ export class SiteStack extends Stack {
 
     // No viewer functions: these are files, not pages, so a missing one is
     // S3's 404 rather than the HTML 404 page.
-    const hashedFileBehavior: BehaviorOptions = {
+    const hashedFileBehavior = bucketBehavior(
       origin,
-      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-      cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-      compress: true,
-      cachePolicy: assetsCachePolicy,
-      responseHeadersPolicy: securityHeaders,
-    };
+      assetsCachePolicy,
+      securityHeaders,
+    );
 
     this.distribution = new Distribution(this, 'Distribution', {
       comment: `gagnechris ${config.name} static site`,
@@ -367,15 +322,7 @@ export class SiteStack extends Stack {
       additionalBehaviors: {
         '/assets/*': hashedFileBehavior,
         '/api/*': apiBehavior(),
-        '/media/*': {
-          origin,
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-          cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-          compress: true,
-          cachePolicy: mediaCachePolicy,
-          responseHeadersPolicy: securityHeaders,
-        },
+        '/media/*': mediaBehavior(origin, mediaCachePolicy, securityHeaders),
         '/fonts/*': hashedFileBehavior,
       },
       // No distribution-wide errorResponses: they would rewrite /api and
@@ -395,13 +342,8 @@ export class SiteStack extends Stack {
       },
     );
 
-    const appCsp = (connectSrc: string[], imgSrc: string[] = []) =>
-      securityHeadersBehavior([
-        ...sharedCsp,
-        "script-src 'self'",
-        `img-src ${["'self'", 'data:', ...imgSrc].join(' ')}`,
-        `connect-src ${["'self'", ...connectSrc].join(' ')}`,
-      ]);
+    const appCsp = (connect: string[], img: string[] = []) =>
+      securityHeadersBehavior(csp({ connect, img }));
 
     const appHostCommon = {
       config,
@@ -426,17 +368,11 @@ export class SiteStack extends Stack {
       ),
       apiBehavior: apiBehavior(),
       additionalBehaviors: (responseHeadersPolicy) => ({
-        '/media/*': {
-          origin: S3BucketOrigin.withOriginAccessControl(this.siteBucket, {
-            originAccessControl: oac,
-          }),
-          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-          cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-          compress: true,
-          cachePolicy: mediaCachePolicy,
+        '/media/*': mediaBehavior(
+          origin,
+          mediaCachePolicy,
           responseHeadersPolicy,
-        },
+        ),
       }),
       bucketParamKey: 'adminSiteBucketName',
       distributionParamKey: 'adminDistributionId',
@@ -452,58 +388,22 @@ export class SiteStack extends Stack {
       distributionParamKey: 'notebookDistributionId',
     });
 
-    // OAC alone returns 403 for missing keys; ListBucket yields proper 404s.
-    this.siteBucket.addToResourcePolicy(
-      new PolicyStatement({
-        sid: 'AllowCloudFrontListBucket',
-        actions: ['s3:ListBucket'],
-        resources: [this.siteBucket.bucketArn],
-        principals: [new ServicePrincipal('cloudfront.amazonaws.com')],
-        conditions: {
-          StringEquals: {
-            'AWS:SourceArn': [
-              distributionArn(this.distribution),
-              distributionArn(this.adminHost.distribution),
-            ],
-          },
-        },
-      }),
-    );
-
-    NagSuppressions.addResourceSuppressions(this.distribution, [
-      {
-        id: 'AwsSolutions-CFR1',
-        reason: 'Geo restriction is unnecessary for a personal portfolio site.',
-      },
-      {
-        id: 'AwsSolutions-CFR2',
-        reason:
-          'AWS WAF is deferred (cost); Shield Standard still applies at the edge.',
-      },
-      {
-        id: 'AwsSolutions-CFR4',
-        reason:
-          'TLS 1.2+ is enforced via minimumProtocolVersion TLS_V1_2_2021.',
-      },
+    this.siteBucket.allowCloudFrontListBucket([
+      this.distribution,
+      this.adminHost.distribution,
     ]);
 
-    const error5xx = this.distribution.metric5xxErrorRate({
-      period: Duration.minutes(5),
-      statistic: 'Average',
-    });
+    suppressDistributionNags(
+      this.distribution,
+      'Geo restriction is unnecessary for a personal portfolio site.',
+    );
 
-    const alarm = new Alarm(this, 'CloudFront5xxAlarm', {
+    distribution5xxAlarm(this, {
+      distribution: this.distribution,
       alarmName: `gagnechris-${config.name}-cloudfront-5xx`,
       alarmDescription: 'CloudFront 5xx error rate above 5% for 10 minutes',
-      metric: error5xx,
-      threshold: 5,
-      evaluationPeriods: 2,
-      datapointsToAlarm: 2,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alertsTopic,
     });
-    alarm.addAlarmAction(new SnsAction(alertsTopic));
-    alarm.addOkAction(new SnsAction(alertsTopic));
 
     new StringParameter(this, 'SiteBucketParam', {
       parameterName: ssmParameterName(config.name, 'siteBucketName'),

@@ -3,9 +3,9 @@ import {
   trackBearsGameComplete,
   trackBearsGameStart,
   trackBearsTipLinkClick,
-  type BearsGame,
 } from '../../../utils/analytics';
 import { playFailSound, playSuccessSound } from '../sound';
+import type { BearsGame } from './games';
 import { readHighScore, writeHighScore } from './highScore';
 
 /** Start and end of a round: analytics, high score and the end sound. */

@@ -7404,6 +7404,8 @@ export interface paths {
                     startOnOrBefore?: string;
                     /** @description Tasks whose startDate is after this date (Upcoming); never someday */
                     startAfter?: string;
+                    /** @description Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up) */
+                    startBefore?: string;
                     /** @description Only someday tasks (true) or only scheduled tasks (false) */
                     someday?: "true" | "false";
                     /** @description Tasks linked to a note */
@@ -7677,6 +7679,153 @@ export interface paths {
                 };
                 /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
                 413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notebook/tasks/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read up to 100 tasks by id in one request
+         * @description Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description The live tasks, in request order */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description The live tasks among the ids, in request order; deleted or unknown ids are left out */
+                            items: {
+                                id: string;
+                                userId: string;
+                                /** @enum {string} */
+                                area: "work" | "personal";
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                priority: "low" | "med" | "high";
+                                /** @enum {string} */
+                                status: "todo" | "in_progress" | "done" | "dropped";
+                                dueDate: string | null;
+                                startDate: string | null;
+                                someday: boolean;
+                                /** Format: date-time */
+                                completedAt: string | null;
+                                noteId: string | null;
+                                tags: string[];
+                                version: number;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                deleted: boolean;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8727,6 +8876,13 @@ export interface paths {
                                 title: string;
                                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                                 date?: string;
+                                /**
+                                 * @description Task hits: the task status
+                                 * @enum {string}
+                                 */
+                                status?: "todo" | "in_progress" | "done" | "dropped";
+                                /** @description Task hits: the task version, for completing it from the hit */
+                                version?: number;
                                 snippet: string;
                                 matches: {
                                     start: number;
@@ -8742,6 +8898,13 @@ export interface paths {
                                 title: string;
                                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                                 date?: string;
+                                /**
+                                 * @description Task hits: the task status
+                                 * @enum {string}
+                                 */
+                                status?: "todo" | "in_progress" | "done" | "dropped";
+                                /** @description Task hits: the task version, for completing it from the hit */
+                                version?: number;
                                 snippet: string;
                                 matches: {
                                     start: number;
@@ -9955,6 +10118,37 @@ export interface components {
             }[];
             nextCursor?: string;
         };
+        TaskBatchRequest: {
+            ids: string[];
+        };
+        TaskBatchResponse: {
+            /** @description The live tasks among the ids, in request order; deleted or unknown ids are left out */
+            items: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                title: string;
+                description: string;
+                /** @enum {string} */
+                priority: "low" | "med" | "high";
+                /** @enum {string} */
+                status: "todo" | "in_progress" | "done" | "dropped";
+                dueDate: string | null;
+                startDate: string | null;
+                someday: boolean;
+                /** Format: date-time */
+                completedAt: string | null;
+                noteId: string | null;
+                tags: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            }[];
+        };
         CreateTaskRequest: {
             id: string;
             /** @enum {string} */
@@ -10017,6 +10211,8 @@ export interface components {
             startOnOrBefore?: string;
             /** @description Tasks whose startDate is after this date (Upcoming); never someday */
             startAfter?: string;
+            /** @description Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up) */
+            startBefore?: string;
             /**
              * @description Only someday tasks (true) or only scheduled tasks (false)
              * @enum {string}
@@ -10051,6 +10247,13 @@ export interface components {
                 title: string;
                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                 date?: string;
+                /**
+                 * @description Task hits: the task status
+                 * @enum {string}
+                 */
+                status?: "todo" | "in_progress" | "done" | "dropped";
+                /** @description Task hits: the task version, for completing it from the hit */
+                version?: number;
                 snippet: string;
                 matches: {
                     start: number;
@@ -10066,6 +10269,13 @@ export interface components {
                 title: string;
                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                 date?: string;
+                /**
+                 * @description Task hits: the task status
+                 * @enum {string}
+                 */
+                status?: "todo" | "in_progress" | "done" | "dropped";
+                /** @description Task hits: the task version, for completing it from the hit */
+                version?: number;
                 snippet: string;
                 matches: {
                     start: number;

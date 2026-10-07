@@ -6,6 +6,7 @@ import { createServer, type Server } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { waitForDynamoDb } from '../scripts/local/wait-dynamodb.js';
 
 const run = promisify(execFile);
 
@@ -245,13 +246,7 @@ export async function startStack(): Promise<Stack> {
         '-sharedDb',
         '-inMemory',
       ]);
-      // DynamoDB Local answers a bare GET with 400 once it is listening.
-      await waitFor(
-        'DynamoDB Local',
-        dynamoEndpoint,
-        () => true,
-        async () => '',
-      );
+      await waitForDynamoDb(dynamoEndpoint, { timeoutMs: 60_000 });
     }
 
     await run(join(BIN, 'tsx'), ['scripts/local/bootstrap-table.ts'], {

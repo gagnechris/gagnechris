@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { createElement, useId, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   formatTaskDay,
@@ -31,10 +31,26 @@ export type StillOpenRow = {
   due?: TaskDue | null;
 };
 
+/** The panel title's level; Coming up's day groups sit one below it. */
+export type PanelHeadingLevel = 2 | 3 | 4;
+
+const Heading = ({
+  level,
+  id,
+  className,
+  children,
+}: {
+  level: number;
+  id?: string;
+  className: string;
+  children: ReactNode;
+}) => createElement(`h${level}`, { id, className }, children);
+
 type StillOpenProps = {
   rows: StillOpenRow[];
   loading?: boolean;
   error?: string | null;
+  headingLevel?: PanelHeadingLevel;
 } & (
   | {
       compact?: false;
@@ -56,7 +72,7 @@ type StillOpenProps = {
 );
 
 export function StillOpenPanel(props: StillOpenProps) {
-  const { rows, loading, error } = props;
+  const { rows, loading, error, headingLevel = 2 } = props;
   const headingId = useId();
   return (
     <section
@@ -65,7 +81,13 @@ export function StillOpenPanel(props: StillOpenProps) {
       data-testid="still-open"
     >
       <header className="today-panel__header">
-        <h2 id={headingId}>Still open</h2>
+        <Heading
+          level={headingLevel}
+          id={headingId}
+          className="today-panel__title"
+        >
+          Still open
+        </Heading>
         <span className="today-panel__count">
           {props.compact
             ? 'from earlier days'
@@ -260,6 +282,7 @@ type ComingUpProps<T extends PanelTask> = {
   onAddToNote?: (id: string) => void;
   readOnly?: boolean;
   loading?: boolean;
+  headingLevel?: PanelHeadingLevel;
 };
 
 export function ComingUpPanel<T extends PanelTask>({
@@ -272,6 +295,7 @@ export function ComingUpPanel<T extends PanelTask>({
   readOnly,
   loading,
   onAddToNote,
+  headingLevel = 2,
 }: ComingUpProps<T>) {
   const headingId = useId();
   const row = (task: T, date: string) => (
@@ -314,7 +338,13 @@ export function ComingUpPanel<T extends PanelTask>({
       data-testid="coming-up"
     >
       <header className="today-panel__header">
-        <h2 id={headingId}>Coming up</h2>
+        <Heading
+          level={headingLevel}
+          id={headingId}
+          className="today-panel__title"
+        >
+          Coming up
+        </Heading>
         {upcomingTo ? (
           <Link to={upcomingTo} className="today-panel__link">
             Upcoming
@@ -334,7 +364,12 @@ export function ComingUpPanel<T extends PanelTask>({
       ) : (
         days.map(({ date, tasks }) => (
           <div key={date} className="today-panel__day">
-            <h3>{comingUpDayLabel(date, day)}</h3>
+            <Heading
+              level={headingLevel + 1}
+              className="today-panel__day-label"
+            >
+              {comingUpDayLabel(date, day)}
+            </Heading>
             <ul className="today-panel__list">
               {tasks.map((task) => row(task, date))}
             </ul>

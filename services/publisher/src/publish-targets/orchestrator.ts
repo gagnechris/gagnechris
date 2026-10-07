@@ -7,17 +7,14 @@ import {
 } from '../rebuild-scope.js';
 import { mapWithConcurrency, PUT_CONCURRENCY } from '../concurrency.js';
 import { logger, metrics } from '../observability.js';
-import { listItemToFeedPost, readPublishedListItems } from '../posts.js';
+import {
+  listItemToFeedPost,
+  readPublishedListItems,
+  sortPostsNewestFirst,
+} from '../posts.js';
 import type { RebuildResult } from '../rebuild-result.js';
-import {
-  postSlugsFromKeys,
-  projectSlugsFromKeys,
-  type SiteStorage,
-} from '../storage.js';
-import {
-  syncViewerRequestBlogSlugs,
-  syncViewerRequestProjectSlugs,
-} from '../viewer-request-slugs.js';
+import { postSlugsFromKeys, type SiteStorage } from '../storage.js';
+import { syncViewerRequestKeys } from '../viewer-request-slugs.js';
 import { getPublishTargets } from './registry.js';
 import type {
   PublishArtifact,
@@ -53,25 +50,13 @@ export function mergeTargetResultFlags(
   }
 }
 
-function scopeNeedsCatalog(
+/** Whether any target active for `scope` needs `need`. */
+function activeNeed(
   targets: readonly PublishTarget[],
   scope: RebuildScope,
+  need: keyof PublishTarget['needs'],
 ): boolean {
-  return targets.some((t) => t.matches(scope) && t.needsCatalog(scope));
-}
-
-function scopeNeedsProjects(
-  targets: readonly PublishTarget[],
-  scope: RebuildScope,
-): boolean {
-  return targets.some((t) => t.matches(scope) && t.needsProjects?.(scope));
-}
-
-function scopeNeedsShell(
-  targets: readonly PublishTarget[],
-  scope: RebuildScope,
-): boolean {
-  return targets.some((t) => t.matches(scope) && t.needsShell(scope));
+  return targets.some((t) => t.matches(scope) && t.needs[need]);
 }
 
 async function writeArtifacts(
@@ -80,13 +65,7 @@ async function writeArtifacts(
 ): Promise<string[]> {
   const written: string[] = [];
   await mapWithConcurrency(artifacts, PUT_CONCURRENCY, async (artifact) => {
-    const wrote = await storage.put(
-      artifact.key,
-      artifact.body,
-      artifact.contentType,
-      artifact.cacheControl,
-      artifact.contentDisposition,
-    );
+    const wrote = await storage.put(artifact);
     if (wrote) written.push(artifact.key);
   });
   return written;
@@ -216,15 +195,11 @@ export async function runPublishTargets(
   // kept pages of corrupt rows stay reachable.
   await storage.invalidate(invalidated);
 
-  if (scope.feeds) {
-    await syncViewerRequestBlogSlugs(async () =>
-      postSlugsFromKeys(await storage.list('blog/')),
-    );
-  }
-
-  if (scopeNeedsProjects(targets, scope)) {
-    await syncViewerRequestProjectSlugs(async () =>
-      projectSlugsFromKeys(await storage.list('projects/')),
+  for (const target of targets) {
+    const { kvs } = target;
+    if (!kvs || !target.matches(scope)) continue;
+    await syncViewerRequestKeys(kvs.namespace, async () =>
+      kvs.keysFromPageKeys(await storage.list(kvs.pagePrefix)),
     );
   }
 
@@ -256,8 +231,8 @@ async function runPublishPass(options: {
 
   const activeTargets = targets.filter((t) => t.matches(scope));
 
-  const needsCatalog = scopeNeedsCatalog(targets, scope);
-  const needsShell = scopeNeedsShell(targets, scope);
+  const needsCatalog = activeNeed(targets, scope, 'posts');
+  const needsShell = activeNeed(targets, scope, 'shell');
 
   const shell = needsShell ? await storage.readShell() : undefined;
   const catalog = needsCatalog
@@ -267,7 +242,7 @@ async function runPublishPass(options: {
   const retainedPosts = needsCatalog
     ? await retainLivePosts(storage, catalog)
     : [];
-  const needsProjects = scopeNeedsProjects(targets, scope);
+  const needsProjects = activeNeed(targets, scope, 'projects');
   const projects = needsProjects
     ? await sources.listPublishedProjects()
     : { projects: [], corruptSlugs: [] };
@@ -284,6 +259,10 @@ async function runPublishPass(options: {
     published,
     corruptPostSlugs,
     retainedPosts,
+    feedPosts:
+      retainedPosts.length > 0
+        ? sortPostsNewestFirst([...published, ...retainedPosts])
+        : published,
     projects,
   };
 

@@ -39,7 +39,58 @@ const lineText = (v: EditorView, n: number) =>
 const moveTo = (v: EditorView, pos: number) =>
   v.dispatch({ selection: EditorSelection.cursor(pos) });
 
+/** Every decoration the editor's plugins and fields provide, by class. */
+function decorationClasses(v: EditorView): string[] {
+  const classes: string[] = [];
+  for (const source of v.state.facet(EditorView.decorations)) {
+    const set = typeof source === 'function' ? source(v) : source;
+    set.between(0, v.state.doc.length, (_from, _to, deco) => {
+      const spec = deco.spec as { class?: string; attributes?: object };
+      if (spec.class) classes.push(spec.class);
+    });
+  }
+  return classes;
+}
+
 describe('livePreview', () => {
+  test('decorates only the lines in the viewport', () => {
+    const lines = 4000;
+    const v = setup(
+      Array.from({ length: lines }, (_, i) => `- item **${i}**`).join('\n'),
+      0,
+    );
+    const visible = v.visibleRanges.reduce(
+      (n, r) =>
+        n +
+        v.state.doc.lineAt(r.to).number -
+        v.state.doc.lineAt(r.from).number +
+        1,
+      0,
+    );
+    expect(visible).toBeLessThan(lines);
+    const strong = decorationClasses(v).filter((c) => c === 'cm-md-strong');
+    expect(strong.length).toBeGreaterThan(0);
+    expect(strong.length).toBeLessThanOrEqual(visible);
+  });
+
+  test('a fence opened above the viewport still marks the lines in it as code', () => {
+    const v = setup(
+      [
+        '```',
+        ...Array.from({ length: 3000 }, () => '**not bold**'),
+        '```',
+      ].join('\n'),
+      0,
+    );
+    v.dispatch({
+      effects: EditorView.scrollIntoView(v.state.doc.length),
+    });
+    expect(v.visibleRanges[0]!.from).toBeGreaterThan(0);
+    const classes = decorationClasses(v);
+    expect(classes).not.toContain('cm-md-strong');
+    expect(classes).toContain('cm-md-code-block');
+  });
+
   test('a heading, list and link render in place off the caret line, and show their markdown on it', () => {
     const doc = '# Plan\n- ship [docs](https://x.dev) **today**\nend';
     const v = setup(doc);

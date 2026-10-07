@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { breakpoint } from '@gagnechris/tokens';
 import { Button } from '../../kit/Button';
 import { formatCalendarDay } from '@gagnechris/shared';
@@ -17,6 +9,8 @@ import { taskDue } from '../../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
+import { useMediaQuery } from '../../kit/useMediaQuery';
+import { useTabs } from '../../kit/useTabs';
 import {
   NOTEBOOK_DEMO_NOTE,
   notebookDemoHintText,
@@ -53,17 +47,6 @@ const resetLabel = (
     <span className="notebook-demo__narrow">Reset</span>
   </>
 );
-
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const mql = window.matchMedia?.(query);
-      mql?.addEventListener('change', onChange);
-      return () => mql?.removeEventListener('change', onChange);
-    },
-    () => Boolean(window.matchMedia?.(query).matches),
-  );
-}
 
 export default function NotebookDemo() {
   const { state, dispatch, reset } = useDemoReducer(
@@ -117,6 +100,7 @@ function NotebookDemoBody({
   const stillOpen = (
     <StillOpenPanel
       compact
+      headingLevel={4}
       rows={view.stillOpen}
       onAddToNote={(id) => {
         focusTask.current = id;
@@ -127,6 +111,7 @@ function NotebookDemoBody({
   const comingUp = (
     <ComingUpPanel
       compact
+      headingLevel={4}
       days={view.comingUp}
       day={today}
       onToggle={(id) => dispatch({ type: 'toggle', id })}
@@ -216,6 +201,7 @@ function NotebookDemoBody({
 }
 
 type Tab = 'still-open' | 'coming-up';
+const TABS: readonly Tab[] = ['still-open', 'coming-up'];
 
 /** On phones the side panels become tabs under the note. */
 function PanelTabs({
@@ -230,56 +216,34 @@ function PanelTabs({
   comingUp: ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>('still-open');
-  const baseId = useId();
-  const tabs: [Tab, string][] = [
-    ['still-open', `Still open · ${stillOpenCount}`],
-    ['coming-up', `Coming up · ${comingUpCount}`],
-  ];
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const next: Tab = tab === 'still-open' ? 'coming-up' : 'still-open';
-    setTab(next);
-    tabsRef.current
-      ?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)
-      ?.focus();
+  const tabs = useTabs({
+    keys: TABS,
+    selected: tab,
+    onSelect: setTab,
+    label: 'Tasks outside the note',
+  });
+  const labels: Record<Tab, string> = {
+    'still-open': `Still open · ${stillOpenCount}`,
+    'coming-up': `Coming up · ${comingUpCount}`,
   };
 
   return (
     <div className="notebook-demo__panels">
-      <div
-        className="notebook-demo__tabs"
-        role="tablist"
-        aria-label="Tasks outside the note"
-        ref={tabsRef}
-        onKeyDown={onKeyDown}
-      >
-        {tabs.map(([id, label]) => (
+      <div className="notebook-demo__tabs" {...tabs.listProps}>
+        {TABS.map((id) => (
           <button
             key={id}
-            type="button"
-            role="tab"
-            data-tab={id}
-            id={`${baseId}-${id}-tab`}
-            aria-selected={tab === id}
-            aria-controls={`${baseId}-${id}`}
-            tabIndex={tab === id ? 0 : -1}
+            {...tabs.tabProps(id)}
             className="notebook-demo__tab"
-            onClick={() => setTab(id)}
           >
-            {label}
+            {labels[id]}
           </button>
         ))}
       </div>
-      {tabs.map(([id]) => (
+      {TABS.map((id) => (
         <div
           key={id}
-          role="tabpanel"
-          id={`${baseId}-${id}`}
-          aria-labelledby={`${baseId}-${id}-tab`}
-          hidden={tab !== id}
+          {...tabs.panelProps(id)}
           className="notebook-demo__tabpanel"
         >
           {id === 'still-open' ? stillOpen : comingUp}

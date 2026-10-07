@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { Post } from '@gagnechris/shared';
-import type { SiteStorage } from '../src/storage.js';
 import type { RebuildScope } from '../src/rebuild-scope.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
+import { kvsSyncCount } from './fixtures/kvs.js';
 
 const ddbSend = vi.fn();
 
@@ -39,9 +40,9 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
   },
 }));
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/resume-pdf.js', async (importOriginal) => {
@@ -101,62 +102,16 @@ function postMeta(post: Post) {
   };
 }
 
-function memoryStorage(): SiteStorage & {
-  puts: string[];
-  deletes: string[];
-  invalidations: string[][];
-} {
-  const shell = '<html><head></head><body><div id="root"></div></body></html>';
-  const objects = new Map<string, string>();
-  objects.set('_shell.html', shell);
-  objects.set('index.html', shell);
-  const puts: string[] = [];
-  const deletes: string[] = [];
-  const invalidations: string[][] = [];
-  return {
-    puts,
-    deletes,
-    invalidations,
-    async readShell() {
-      return objects.get('_shell.html') ?? shell;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const next =
-        typeof body === 'string' ? body : Buffer.from(body).toString('utf8');
-      const prev = objects.get(key);
-      if (prev === next) return false;
-      objects.set(key, next);
-      puts.push(key);
-      return true;
-    },
-    async delete(key) {
-      if (!objects.has(key)) return false;
-      objects.delete(key);
-      deletes.push(key);
-      return true;
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate(paths) {
-      invalidations.push([...paths]);
-    },
-  };
-}
-
 describe('rebuildPublishedSite selective scope', () => {
   const prevTable = process.env.DATA_TABLE_NAME;
 
   beforeEach(async () => {
     process.env.DATA_TABLE_NAME = 'test-table';
     ddbSend.mockReset();
-    const { syncViewerRequestBlogSlugs } =
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
-    vi.mocked(syncViewerRequestBlogSlugs).mockReset();
-    vi.mocked(syncViewerRequestBlogSlugs).mockResolvedValue(undefined);
+    vi.mocked(syncViewerRequestKeys).mockReset();
+    vi.mocked(syncViewerRequestKeys).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -188,9 +143,9 @@ describe('rebuildPublishedSite selective scope', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const { renderResumePdf } = await import('../src/resume-pdf.js');
-    const { syncViewerRequestBlogSlugs } =
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
 
     const storage = memoryStorage();
@@ -215,7 +170,7 @@ describe('rebuildPublishedSite selective scope', () => {
     expect(result.resumeUnpublished).toBe(false);
     expect(result.invalidated.sort()).toEqual(['/', '/index.html']);
     expect(renderResumePdf).not.toHaveBeenCalled();
-    expect(syncViewerRequestBlogSlugs).not.toHaveBeenCalled();
+    expect(kvsSyncCount(syncViewerRequestKeys, 'blog')).toBe(0);
   });
 
   it('single-post scope puts only that post + feeds among 50 published', async () => {
@@ -250,9 +205,9 @@ describe('rebuildPublishedSite selective scope', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const { renderResumePdf } = await import('../src/resume-pdf.js');
-    const { syncViewerRequestBlogSlugs } =
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
 
     const storage = memoryStorage();
@@ -289,7 +244,7 @@ describe('rebuildPublishedSite selective scope', () => {
       expect.arrayContaining(['/blog*', '/sitemap.xml', '/rss.xml']),
     );
     expect(renderResumePdf).not.toHaveBeenCalled();
-    expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
+    expect(kvsSyncCount(syncViewerRequestKeys, 'blog')).toBe(1);
   });
 
   it('retries BatchGet UnprocessedKeys so draft META is never published', async () => {
@@ -347,7 +302,7 @@ describe('rebuildPublishedSite selective scope', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const storage = memoryStorage();
     await rebuildPublishedSite({
       scope: {
@@ -378,9 +333,9 @@ describe('rebuildPublishedSite selective scope', () => {
     const post = makePost('welcome', 1);
     const order: string[] = [];
 
-    const { syncViewerRequestBlogSlugs } =
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
-    vi.mocked(syncViewerRequestBlogSlugs).mockImplementation(async () => {
+    vi.mocked(syncViewerRequestKeys).mockImplementation(async () => {
       order.push('kvs');
       throw new Error('forced KVS failure');
     });
@@ -403,7 +358,7 @@ describe('rebuildPublishedSite selective scope', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const storage = memoryStorage();
     const origInvalidate = storage.invalidate.bind(storage);
     storage.invalidate = async (paths) => {
@@ -455,7 +410,7 @@ describe('rebuildPublishedSite selective scope', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const storage = memoryStorage();
     await rebuildPublishedSite({
       scope: {

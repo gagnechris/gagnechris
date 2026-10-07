@@ -6,6 +6,7 @@ export type TaskScheduleFilter = {
   startOn?: string;
   startOnOrBefore?: string;
   startAfter?: string;
+  startBefore?: string;
   someday?: boolean;
 };
 
@@ -37,6 +38,14 @@ export function taskMatchesSchedule(
   if (
     filter.startAfter !== undefined &&
     !taskStartsAfter(task, filter.startAfter)
+  ) {
+    return false;
+  }
+  if (
+    filter.startBefore !== undefined &&
+    (task.someday ||
+      task.startDate === null ||
+      task.startDate >= filter.startBefore)
   ) {
     return false;
   }

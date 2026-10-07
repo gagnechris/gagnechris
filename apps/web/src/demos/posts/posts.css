@@ -211,7 +211,7 @@
   font-size: 0.75rem;
 }
 
-.demo-frame .posts-demo__site .post-page h1 {
+.demo-frame .posts-demo__site .post-header > h3 {
   font-size: 1.875rem;
 }
 
@@ -227,14 +227,8 @@
   font-size: var(--text-lead);
 }
 
-.demo-frame .posts-demo__site :is(.post-content, .post-author) a {
+.demo-frame .posts-demo__site .post-content a {
   color: var(--color-link);
-}
-
-.posts-demo__site .post-author {
-  margin-top: 28px;
-  padding-top: 12px;
-  font-size: 0.875rem;
 }
 
 .posts-demo__missing {

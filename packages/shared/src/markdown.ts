@@ -12,9 +12,16 @@ const markdown = /* @__PURE__ */ new Marked({ gfm: true, breaks: false });
 
 export { sanitizeRenderedHtml };
 
+/**
+ * A task-list checkbox needs a name; the item's text follows it. Runs after
+ * sanitizing, which keeps only checkbox inputs and strips any `aria-label`.
+ */
+const labelTaskCheckboxes = (html: string): string =>
+  html.replace(/<input\b/g, '<input aria-label="Task"');
+
 export const renderMarkdownToHtml = (source: string): string => {
   const html = markdown.parse(source ?? '', { async: false }) as string;
-  return sanitizeRenderedHtml(html);
+  return labelTaskCheckboxes(sanitizeRenderedHtml(html));
 };
 
 /** The page title is the h1, so body headings start at h2 and never skip a level. */
@@ -125,7 +132,7 @@ const renderPublicMarkdown = (
   const tokens = markdown.lexer(source ?? '');
   nestHeadings(tokens);
   const html = markdown.parser(transform(tokens));
-  return focusableScrollBoxes(sanitizeRenderedHtml(html));
+  return focusableScrollBoxes(labelTaskCheckboxes(sanitizeRenderedHtml(html)));
 };
 
 /** Post bodies on the public site and in the admin post preview. */

@@ -793,6 +793,25 @@ export const TaskListResponseSchema = z.object({
 
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 
+/** Most ids one batch read takes: one DynamoDB BatchGetItem. */
+export const TASK_BATCH_MAX_IDS = 100;
+
+export const TaskBatchRequestSchema = z.object({
+  ids: z.array(UlidSchema).min(1).max(TASK_BATCH_MAX_IDS),
+});
+
+export type TaskBatchRequest = z.infer<typeof TaskBatchRequestSchema>;
+
+export const TaskBatchResponseSchema = z.object({
+  items: z
+    .array(TaskSchema)
+    .describe(
+      'The live tasks among the ids, in request order; deleted or unknown ids are left out',
+    ),
+});
+
+export type TaskBatchResponse = z.infer<typeof TaskBatchResponseSchema>;
+
 function rejectDatedSomeday(
   body: { startDate?: string | null; someday?: boolean },
   ctx: z.RefinementCtx,
@@ -866,6 +885,9 @@ export const ListTasksQuerySchema = z
     startAfter: CalendarDateSchema.optional().describe(
       'Tasks whose startDate is after this date (Upcoming); never someday',
     ),
+    startBefore: CalendarDateSchema.optional().describe(
+      "Tasks whose startDate is before this date; never someday or undated. With startAfter, a window (Today's Coming up)",
+    ),
     someday: z
       .enum(['true', 'false'])
       .transform((v) => v === 'true')
@@ -891,12 +913,12 @@ export const ListTasksQuerySchema = z
     const ranges = [
       query.startOn,
       query.startOnOrBefore,
-      query.startAfter,
+      query.startAfter ?? query.startBefore,
     ].filter((v) => v !== undefined);
     if (ranges.length > 1) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Use one of startOn, startOnOrBefore, startAfter',
+        message: 'Use one of startOn, startOnOrBefore, startAfter/startBefore',
         path: ['startOn'],
       });
     }
@@ -929,6 +951,13 @@ export const NotebookSearchHitSchema = z.object({
     .string()
     .optional()
     .describe("A daily note's day (yyyy-mm-dd); absent for pages and tasks"),
+  status: TaskStatusSchema.optional().describe('Task hits: the task status'),
+  version: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe('Task hits: the task version, for completing it from the hit'),
   snippet: z.string(),
   matches: z.array(
     z.object({

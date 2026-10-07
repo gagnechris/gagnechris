@@ -17,6 +17,7 @@ import {
   type ResumeExperience,
 } from '@gagnechris/shared';
 import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
+import { logger } from '../src/observability.js';
 import { renderResumePage } from '../src/render.js';
 import {
   buildResumePdfArtifact,
@@ -112,6 +113,46 @@ describe('resume PDF layout', () => {
     for (const item of older) {
       expect(text).toContain(roleLine(item));
       expect(text).not.toContain(item.bullets[0]);
+    }
+  });
+});
+
+describe('resume PDF fit', () => {
+  it('warns when even the collapsed resume runs past two pages', async () => {
+    const current: ResumeExperience[] = Array.from({ length: 12 }, (_, i) => ({
+      title: `Engineer ${i + 1}`,
+      company: `Current Company ${i + 1}`,
+      start: `${2000 + i}-01`,
+      end: null,
+      bullets: Array.from(
+        { length: 4 },
+        () =>
+          'Led the platform team through a long migration and kept every product shipping on schedule throughout.',
+      ),
+    }));
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    try {
+      const bytes = await renderResumePdf({
+        ...liveResume,
+        content: { ...liveContent, experience: current },
+      });
+      expect(await pageCount(bytes)).toBeGreaterThan(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('does not fit'),
+        expect.objectContaining({ maxPages: 2 }),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('stays quiet when the resume fits', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    try {
+      await renderResumePdf(liveResume);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
     }
   });
 });

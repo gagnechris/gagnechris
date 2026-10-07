@@ -66,9 +66,12 @@ export const projectCardsFromList = (list: Element): ProjectCardView[] =>
 export function projectsIndexFromDocument(
   root: ParentNode,
 ): ProjectCardView[] | null {
-  const main = root.querySelector('.projects-index > main');
-  if (!main) return null;
-  const list = main.querySelector(':scope > ul.project-list');
+  // `> main` reads an index published before the page moved inside `<main>`.
+  const body = root.querySelector(
+    'main.projects-index > .projects-index__list, .projects-index > main',
+  );
+  if (!body) return null;
+  const list = body.querySelector(':scope > ul.project-list');
   return list ? projectCardsFromList(list) : [];
 }
 

@@ -32,7 +32,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.post-page h1 {
+/* The posts demo embeds the article with an h3 title. */
+.post-page h1,
+.post-header > h3 {
   margin: 0;
   font-size: 3.75rem;
   font-weight: 500;

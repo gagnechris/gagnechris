@@ -3,8 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Post } from '@gagnechris/shared';
-import type { SiteStorage } from '../src/storage.js';
 import type { RebuildScope } from '../src/rebuild-scope.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
+import { desiredKvsKeys, kvsSyncCount } from './fixtures/kvs.js';
 
 const ddbSend = vi.fn();
 const addMetric = vi.fn();
@@ -38,9 +39,9 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
   },
 }));
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/observability.js', () => ({
@@ -115,61 +116,6 @@ function postMeta(post: Post, overrides: Record<string, unknown> = {}) {
   };
 }
 
-function memoryStorage(): SiteStorage & {
-  puts: string[];
-  deletes: string[];
-  invalidations: string[][];
-  objects: Map<string, string>;
-} {
-  const shell = '<html><head></head><body><div id="root"></div></body></html>';
-  const objects = new Map<string, string>();
-  objects.set('_shell.html', shell);
-  objects.set('index.html', shell);
-  const puts: string[] = [];
-  const deletes: string[] = [];
-  const invalidations: string[][] = [];
-  return {
-    puts,
-    deletes,
-    invalidations,
-    objects,
-    async readShell() {
-      return objects.get('_shell.html') ?? shell;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const next =
-        typeof body === 'string' ? body : Buffer.from(body).toString('utf8');
-      const prev = objects.get(key);
-      if (prev === next) return false;
-      objects.set(key, next);
-      puts.push(key);
-      return true;
-    },
-    async delete(key) {
-      if (!objects.has(key)) return false;
-      objects.delete(key);
-      deletes.push(key);
-      return true;
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate(paths) {
-      invalidations.push([...paths]);
-    },
-  };
-}
-
-/** The blog KVS allowlist the rebuild asked for, resolved now. */
-async function desiredBlogSlugs(sync: unknown): Promise<string[]> {
-  const calls = vi.mocked(sync as (desired: unknown) => void).mock.calls;
-  const desired = calls[0]![0] as string[] | (() => Promise<string[]>);
-  return typeof desired === 'function' ? desired() : desired;
-}
-
 const feedsScope = (): RebuildScope => ({
   allPosts: true,
   postSlugs: new Set(),
@@ -189,10 +135,10 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     ddbSend.mockReset();
     addMetric.mockReset();
     loggerWarn.mockReset();
-    const { syncViewerRequestBlogSlugs } =
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
-    vi.mocked(syncViewerRequestBlogSlugs).mockReset();
-    vi.mocked(syncViewerRequestBlogSlugs).mockResolvedValue(undefined);
+    vi.mocked(syncViewerRequestKeys).mockReset();
+    vi.mocked(syncViewerRequestKeys).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -246,8 +192,8 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
-    const { syncViewerRequestBlogSlugs } =
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
 
     const storage = memoryStorage();
@@ -282,8 +228,8 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     const sitemap = (await storage.read('sitemap.xml')) ?? '';
     expect(sitemap).toContain(`/posts/${corrupt.slug}`);
 
-    expect(syncViewerRequestBlogSlugs).toHaveBeenCalledOnce();
-    expect(await desiredBlogSlugs(syncViewerRequestBlogSlugs)).toEqual(
+    expect(kvsSyncCount(syncViewerRequestKeys, 'blog')).toBe(1);
+    expect(await desiredKvsKeys(syncViewerRequestKeys, 'blog')).toEqual(
       expect.arrayContaining([good.slug, corrupt.slug]),
     );
 
@@ -354,8 +300,8 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
-    const { syncViewerRequestBlogSlugs } =
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
     const storage = memoryStorage();
     storage.objects.set(
@@ -386,7 +332,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     expect(slugsJson.slugs).toEqual(
       expect.arrayContaining([existing.slug, fresh.slug]),
     );
-    expect(await desiredBlogSlugs(syncViewerRequestBlogSlugs)).toEqual(
+    expect(await desiredKvsKeys(syncViewerRequestKeys, 'blog')).toEqual(
       expect.arrayContaining([existing.slug, fresh.slug]),
     );
   });
@@ -451,8 +397,8 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
-    const { syncViewerRequestBlogSlugs } =
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
+    const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
     const storage = memoryStorage();
     storage.objects.set(`blog/${liveSlug}/index.html`, '<html>old live</html>');
@@ -476,7 +422,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
 
     await rebuildPublishedSite({ scope: feedsScope(), storage });
 
-    const slugs = await desiredBlogSlugs(syncViewerRequestBlogSlugs);
+    const slugs = await desiredKvsKeys(syncViewerRequestKeys, 'blog');
     expect(slugs).not.toContain('pending-rename');
 
     // The last published slug (from posts.json) keeps its live page, KVS
@@ -527,7 +473,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       },
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const storage = memoryStorage();
     storage.objects.set(`blog/${corrupt.slug}/index.html`, '<html>live</html>');
     storage.objects.set(
@@ -581,7 +527,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         // Missing name / content → schema failure.
       },
     });
-    const { getPublishedResume } = await import('../src/s3-site.js');
+    const { getPublishedResume } = await import('../src/catalog.js');
 
     await expect(getPublishedResume('test-table')).resolves.toEqual({
       status: 'corrupt',
@@ -607,7 +553,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         // Missing name / title / about → schema failure.
       },
     });
-    const { getPublishedHome } = await import('../src/s3-site.js');
+    const { getPublishedHome } = await import('../src/catalog.js');
 
     await expect(getPublishedHome('test-table')).resolves.toEqual({
       status: 'corrupt',
@@ -624,7 +570,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
   });
 
   it('quiet full rebuild: missing resume.pdf delete is not a change', async () => {
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const storage = memoryStorage();
 
     // First rebuild: writes unavailable resume page; PDF already absent.
@@ -642,9 +588,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     // First run may invalidate because unavailable HTML is new.
     expect(first.invalidated.length).toBeGreaterThan(0);
 
-    storage.puts.length = 0;
-    storage.deletes.length = 0;
-    storage.invalidations.length = 0;
+    storage.resetLog();
 
     const second = await rebuildPublishedSite({
       storage,
@@ -659,7 +603,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
 
     expect(storage.deletes).toEqual([]);
     expect(second.invalidated).toEqual([]);
-    expect(storage.invalidations).toEqual([[]]);
+    expect(storage.invalidations).toEqual([]);
   });
 
   it('filesystem: corrupt post stays allowlisted after full rebuild', async () => {
@@ -674,7 +618,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
       '<html>live</html>',
     );
 
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const { createFilesystemSiteStorage } =
       await import('../src/storage-fs.js');
     const storage = createFilesystemSiteStorage(root);

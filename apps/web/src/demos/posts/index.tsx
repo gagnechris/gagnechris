@@ -8,7 +8,7 @@ import {
 } from 'react';
 import {
   renderHomeRecentPostsHtml,
-  renderPostPageBodyHtml,
+  renderPostArticleHtml,
   selectHomeRecentPosts,
 } from '@gagnechris/shared/render';
 import { Button } from '../../kit/Button';
@@ -16,6 +16,7 @@ import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
 import { Field, TextInput } from '../../kit/Field';
 import { StatusBadge } from '../../kit/StatusBadge';
+import { useMediaQuery } from '../../kit/useMediaQuery';
 import {
   canPublish,
   DEMO_POST_ID,
@@ -186,14 +187,20 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
         ),
       );
     }
+    // Under the slot's "Try it" h2 and inside the project page's <main>: no
+    // second h1 and no author note.
     return published
-      ? renderPostPageBodyHtml({
-          slug: published.slug,
-          title: published.title,
-          excerpt: '',
-          publishedAt: published.publishedAt,
-          bodyMarkdown: published.bodyMarkdown,
-        })
+      ? `<div class="post-page">${renderPostArticleHtml(
+          {
+            slug: published.slug,
+            title: published.title,
+            excerpt: '',
+            publishedAt: published.publishedAt,
+            bodyMarkdown: published.bodyMarkdown,
+          },
+          [],
+          3,
+        )}</div>`
       : null;
   }, [view, published]);
 
@@ -205,7 +212,8 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
     if (published && link.getAttribute('href') === postPath) setView('post');
   };
 
-  const flash = view === 'home' && state.publishes > flashed;
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const flash = !reducedMotion && view === 'home' && state.publishes > flashed;
   return (
     <section
       className="posts-demo__pane posts-demo__site"

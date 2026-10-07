@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useModalDialog } from '../../kit/useModalDialog';
 
 export type SearchHit = {
   key: string;
@@ -45,22 +46,11 @@ export default function SearchPalette({
   const flat = groups.flatMap((group) => hits.filter((h) => h.group === group));
   const [active, setActive] = useState(0);
   const safeActive = flat.length === 0 ? 0 : Math.min(active, flat.length - 1);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => inputRef.current?.focus(), 0);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const { dialogProps } = useModalDialog({
+    label,
+    onClose,
+    initialFocus: inputRef,
+  });
 
   const go = (to: string) => {
     onClose();
@@ -68,12 +58,7 @@ export default function SearchPalette({
   };
 
   return (
-    <div
-      className="workspace-search"
-      role="dialog"
-      aria-modal="true"
-      aria-label={label}
-    >
+    <div className="workspace-search" {...dialogProps}>
       <button
         type="button"
         className="workspace-search__backdrop"

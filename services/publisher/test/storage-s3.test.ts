@@ -127,13 +127,13 @@ describe('S3 site storage put', () => {
     const { createS3SiteStorage } = await import('../src/storage-s3.js');
 
     await expect(
-      createS3SiteStorage().put(
-        'resume.pdf',
-        body,
-        'application/pdf',
-        'public,max-age=300',
-        'inline; filename="resume.pdf"',
-      ),
+      createS3SiteStorage().put({
+        key: 'resume.pdf',
+        body: body,
+        contentType: 'application/pdf',
+        cacheControl: 'public,max-age=300',
+        contentDisposition: 'inline; filename="resume.pdf"',
+      }),
     ).resolves.toBe(false);
     expect(sentCommands()).toEqual(['HeadObjectCommand']);
   });
@@ -151,12 +151,12 @@ describe('S3 site storage put', () => {
     const { createS3SiteStorage } = await import('../src/storage-s3.js');
 
     await expect(
-      createS3SiteStorage().put(
-        'index.html',
-        body,
-        'text/html; charset=utf-8',
-        'public,max-age=0,must-revalidate',
-      ),
+      createS3SiteStorage().put({
+        key: 'index.html',
+        body: body,
+        contentType: 'text/html; charset=utf-8',
+        cacheControl: 'public,max-age=0,must-revalidate',
+      }),
     ).resolves.toBe(true);
     expect(sentCommands()).toEqual(['HeadObjectCommand', 'PutObjectCommand']);
   });

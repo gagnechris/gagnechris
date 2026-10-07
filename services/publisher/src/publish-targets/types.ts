@@ -1,6 +1,9 @@
 import type { Home, Post, Project, Resume } from '@gagnechris/shared';
 import type { RebuildScope } from '../rebuild-scope.js';
-import type { SiteStorage } from '../storage.js';
+import type { PublishArtifact, SiteStorage } from '../storage.js';
+import type { KvsNamespace } from '../viewer-request-slugs.js';
+
+export type { PublishArtifact };
 
 /** Discriminated so corrupt rows are not treated as unpublished. */
 export type PublishedLookup<T> =
@@ -30,14 +33,6 @@ export type RebuildSiteSources = {
 export const CACHE_HTML = 'public,max-age=0,must-revalidate';
 export const CACHE_FEED = 'public,max-age=300';
 
-export type PublishArtifact = {
-  key: string;
-  body: string | Uint8Array;
-  contentType: string;
-  cacheControl: string;
-  contentDisposition?: string;
-};
-
 export type PublishTargetContext = {
   scope: RebuildScope;
   shell: string;
@@ -49,7 +44,9 @@ export type PublishTargetContext = {
   corruptPostSlugs: ReadonlySet<string>;
   /** Feeds and Home Recent posts only; their pages are never re-rendered. */
   retainedPosts: Post[];
-  /** Empty unless an active target's `needsProjects` is true. */
+  /** `published` and `retainedPosts`, newest first: what feeds and indexes list. */
+  feedPosts: Post[];
+  /** Empty unless an active target needs `projects`. */
   projects: PublishedProjectsCatalog;
 };
 
@@ -73,9 +70,6 @@ export const PUBLISH_RESULT_BOOLEAN_FLAGS = [
   'homeRestoredFromSnapshot',
 ] as const satisfies readonly (keyof PublishTargetRunResult)[];
 
-export type PublishResultBooleanFlag =
-  (typeof PUBLISH_RESULT_BOOLEAN_FLAGS)[number];
-
 export type PublishTarget = {
   id: string;
   /**
@@ -87,8 +81,13 @@ export type PublishTarget = {
   /** Soft-delete removes the PUBLISHED snapshot, so DELETE is publish-relevant. */
   adminSoftDelete?: boolean;
   matches(scope: RebuildScope): boolean;
-  needsCatalog(scope: RebuildScope): boolean;
-  needsShell(scope: RebuildScope): boolean;
-  needsProjects?(scope: RebuildScope): boolean;
+  /** What `run` reads from the context; loaded only when an active target needs it. */
+  needs: { posts?: true; shell?: true; projects?: true };
+  /** The viewer-request KVS namespace that allowlists this target's pages. */
+  kvs?: {
+    namespace: KvsNamespace;
+    pagePrefix: string;
+    keysFromPageKeys: (pageKeys: string[]) => string[];
+  };
   run(ctx: PublishTargetContext): Promise<PublishTargetRunResult>;
 };

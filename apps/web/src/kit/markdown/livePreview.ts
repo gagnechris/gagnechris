@@ -1,4 +1,4 @@
-import type { EditorState, Extension, Range } from '@codemirror/state';
+import type { EditorState, Extension, Range, Text } from '@codemirror/state';
 import {
   Decoration,
   EditorView,
@@ -7,9 +7,13 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from '@codemirror/view';
-import { parseTaskEmbedLine } from '@gagnechris/shared';
+import {
+  fenceLineKind,
+  parseTaskEmbedLine,
+  scanFences,
+  type FenceBlock,
+} from '@gagnechris/shared';
 
-const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
 const HEADING = /^(#{1,6})([ \t]+)/;
 const QUOTE = /^([ \t]{0,3}>[ \t]?)/;
 const BULLET = /^([ \t]*)([-*+])([ \t]+)(?!\[[ xX]\])/;
@@ -112,69 +116,94 @@ function inlineDecorations(
   }
 }
 
-export function buildLivePreview(state: EditorState): DecorationSet {
+const fencesOf = (doc: Text) => scanFences(doc.iterLines());
+
+/** Decorations for the lines in `ranges` (the viewport, or the whole doc). */
+export function buildLivePreview(
+  state: EditorState,
+  ranges: readonly { from: number; to: number }[] = [
+    { from: 0, to: state.doc.length },
+  ],
+  fences: readonly FenceBlock[] = fencesOf(state.doc),
+): DecorationSet {
   const doc = state.doc;
   const active = activeLines(state);
   const out: Range<Decoration>[] = [];
-  let fence: string | null = null;
-  for (let n = 1; n <= doc.lines; n += 1) {
-    const line = doc.line(n);
-    const text = line.text;
-    const opener = FENCE.exec(text)?.[1];
-    if (fence) {
-      if (opener && opener[0] === fence[0] && opener.length >= fence.length) {
-        fence = null;
-        out.push(fenceLine.range(line.from));
-      } else {
-        out.push(codeLine.range(line.from));
-      }
-      continue;
+  let last = 0;
+  for (const range of ranges) {
+    const first = Math.max(doc.lineAt(range.from).number, last + 1);
+    const end = doc.lineAt(range.to).number;
+    for (let n = first; n <= end; n += 1) {
+      decorateLine(doc.line(n), n, active, fences, out);
     }
-    if (opener) {
-      fence = opener;
-      out.push(fenceLine.range(line.from));
-      continue;
-    }
-    if (parseTaskEmbedLine(text)) continue;
-
-    const isActive = active.has(n);
-    let bodyStart = 0;
-    const heading = HEADING.exec(text);
-    if (heading) {
-      out.push(headingLines[heading[1]!.length - 1]!.range(line.from));
-      bodyStart = heading[0].length;
-      if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
-    } else {
-      const quote = QUOTE.exec(text);
-      if (quote) {
-        out.push(quoteLine.range(line.from));
-        bodyStart = quote[0].length;
-        if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
-      }
-      const item = BULLET.exec(text.slice(bodyStart));
-      if (item && !isActive) {
-        const at = line.from + bodyStart + item[1]!.length;
-        out.push(bullet.range(at, at + 1));
-      }
-    }
-    if (!isActive) {
-      inlineDecorations(text.slice(bodyStart), line.from + bodyStart, out);
-    }
+    last = Math.max(last, end);
   }
   return Decoration.set(out, true);
 }
 
+function decorateLine(
+  line: { from: number; text: string },
+  n: number,
+  active: Set<number>,
+  fences: readonly FenceBlock[],
+  out: Range<Decoration>[],
+) {
+  const text = line.text;
+  const fenced = fenceLineKind(fences, n - 1);
+  if (fenced) {
+    out.push((fenced === 'fence' ? fenceLine : codeLine).range(line.from));
+    return;
+  }
+  if (parseTaskEmbedLine(text)) return;
+
+  const isActive = active.has(n);
+  let bodyStart = 0;
+  const heading = HEADING.exec(text);
+  if (heading) {
+    out.push(headingLines[heading[1]!.length - 1]!.range(line.from));
+    bodyStart = heading[0].length;
+    if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
+  } else {
+    const quote = QUOTE.exec(text);
+    if (quote) {
+      out.push(quoteLine.range(line.from));
+      bodyStart = quote[0].length;
+      if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
+    }
+    const item = BULLET.exec(text.slice(bodyStart));
+    if (item && !isActive) {
+      const at = line.from + bodyStart + item[1]!.length;
+      out.push(bullet.range(at, at + 1));
+    }
+  }
+  if (!isActive) {
+    inlineDecorations(text.slice(bodyStart), line.from + bodyStart, out);
+  }
+}
+
+// Fences are rescanned only when the doc changes; decorations cover the viewport.
 const plugin = ViewPlugin.fromClass(
   class {
+    fences: readonly FenceBlock[];
     decorations: DecorationSet;
 
     constructor(view: EditorView) {
-      this.decorations = buildLivePreview(view.state);
+      this.fences = fencesOf(view.state.doc);
+      this.decorations = buildLivePreview(
+        view.state,
+        view.visibleRanges,
+        this.fences,
+      );
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet) {
-        this.decorations = buildLivePreview(update.state);
+      if (update.docChanged) this.fences = fencesOf(update.state.doc);
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = buildLivePreview(
+          update.state,
+          update.view.visibleRanges,
+          this.fences,
+        );
       }
     }
   },

@@ -1,8 +1,8 @@
-import type { Context, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
+import type { Context, DynamoDBStreamEvent } from 'aws-lambda';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { handlerSuccessFromRebuild } from './handler-result.js';
 import { logger, metrics } from './observability.js';
-import { rebuildPublishedSite } from './s3-site.js';
+import { rebuildPublishedSite } from './rebuild.js';
 import { getPublishTargets } from './publish-targets/registry.js';
 import type { PublishTarget } from './publish-targets/types.js';
 import {
@@ -45,10 +45,6 @@ function isRepublishAll(event: unknown): event is RepublishAllEvent {
     event !== null &&
     (event as RepublishAllEvent).action === 'republishAll'
   );
-}
-
-export function collectSlugsToRemove(records: DynamoDBRecord[]): Set<string> {
-  return collectRebuildScope(records).slugsToRemove;
 }
 
 export const handler = async (

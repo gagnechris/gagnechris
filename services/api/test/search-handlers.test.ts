@@ -98,6 +98,9 @@ describe('search handlers', () => {
     expect(body.notes.some((n) => n.id === NOTE_ID)).toBe(true);
     expect(body.tasks.some((t) => t.id === TASK_ID)).toBe(true);
     expect(body.tasks[0]?.title).toMatch(/Ship/i);
+    // A hit can be checked off without reading the task.
+    expect(body.tasks[0]).toMatchObject({ status: 'todo', version: 1 });
+    expect(body.notes[0]).not.toHaveProperty('status');
   });
 
   it('a daily note hit carries its day; a page hit has none', async () => {
