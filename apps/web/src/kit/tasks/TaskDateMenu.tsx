@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react';
 import {
-  taskDateMenuIds,
   type TaskDateKind,
+  taskDateMenuIds,
   type TaskDateMenuItem,
-} from './taskDateMenuItems';
+} from '@gagnechris/shared';
 import './taskSyntax.css';
 
 type Picker = {

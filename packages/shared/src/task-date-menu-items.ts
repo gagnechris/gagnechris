@@ -5,7 +5,7 @@ import {
   resolveTaskDateToken,
   taskDateMenuOptions,
   type TaskSchedule,
-} from '@gagnechris/shared';
+} from './task-syntax.js';
 
 export type TaskDateMenuItem = {
   id: string;

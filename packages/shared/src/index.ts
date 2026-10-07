@@ -128,6 +128,63 @@ export {
   type TaskEmbed,
   type TaskEmbedMarkdownTask,
 } from './task-embeds.js';
+export { byNewest } from './by-newest.js';
+export { newestById } from './newest-by-id.js';
+export {
+  bucketTodayTasks,
+  COMING_UP_DAYS,
+  comingUpDayLabel,
+  comingUpShortLabel,
+  comingUpWindow,
+  snoozeBaseDay,
+  sourceNoteName,
+  stillOpenSource,
+  type BucketTask,
+  type ComingUpDay,
+  type SourceNote,
+  type StillOpenSource,
+  type TodayTaskBuckets,
+} from './today-task-buckets.js';
+export {
+  groupUpcomingTasks,
+  noteChipLabel,
+  type UpcomingGroup,
+  type UpcomingTask,
+} from './upcoming-groups.js';
+export { taskScheduleLabel } from './task-schedule-label.js';
+export { taskDue, type TaskDue } from './task-due.js';
+export {
+  openTaskDateQuery,
+  taskDateMenuIds,
+  taskDateMenuItems,
+  tokenNeedsDate,
+  tomorrowOf,
+  type TaskDateKind,
+  type TaskDateMenuItem,
+  type TaskDateQuery,
+} from './task-date-menu-items.js';
+export {
+  activeTaskDateIndex,
+  CLOSED_TASK_DATE_MENU,
+  taskDateMenuIsOpen,
+  taskDateMenuKey,
+  taskDateMenuReducer,
+  tokenInsertion,
+  type TaskDateMenuAction,
+  type TaskDateMenuKey,
+  type TaskDateMenuRange,
+  type TaskDateMenuState,
+} from './task-date-menu-state.js';
+export {
+  noteDay,
+  noteDayLabel,
+  noteFirstLine,
+  noteOpenTaskCount,
+  noteSections,
+  noteTitle,
+  type ListNote,
+  type NoteSection,
+} from './note-list-sections.js';
 export {
   fenceLineKind,
   scanFences,

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useNotesQuery } from '@gagnechris/app-core';
+import { noteDay, noteTitle } from '@gagnechris/shared';
 import { Field, Select } from '../kit/Field';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
-import { noteDay, noteTitle } from './noteListSections';
 import { useLoadAllPages } from './useTodayTasks';
 
 type Props = {

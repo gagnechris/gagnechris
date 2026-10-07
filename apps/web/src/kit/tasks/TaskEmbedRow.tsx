@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import type { Task } from '@gagnechris/shared';
+import { type Task, type TaskDue } from '@gagnechris/shared';
 import { TaskDuePill } from './TaskDuePill';
-import type { TaskDue } from './taskDue';
 
 export type TaskEmbedView =
   | { kind: 'loading' }

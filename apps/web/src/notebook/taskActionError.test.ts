@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { ApiError } from '@gagnechris/app-core';
-import { newestById } from '../kit/tasks/newestById';
+import { newestById } from '@gagnechris/shared';
 import { taskActionError } from './taskActionError';
 
 describe('taskActionError', () => {

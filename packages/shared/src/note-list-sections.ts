@@ -1,12 +1,8 @@
-import {
-  addDays,
-  findTaskEmbeds,
-  localDayOf,
-  type Note,
-  noteDisplayTitle,
-  relativeDayLabel,
-} from '@gagnechris/shared';
-import { byNewest } from '../kit/byNewest';
+import { byNewest } from './by-newest.js';
+import { addDays, localDayOf, relativeDayLabel } from './calendar.js';
+import type { Note } from './schemas.js';
+import { findTaskEmbeds, taskEmbedIds } from './task-embeds.js';
+import { noteDisplayTitle } from './task-syntax.js';
 
 export type ListNote = Pick<
   Note,
@@ -85,4 +81,14 @@ export function noteSections<T extends ListNote>(
     section.notes.push(note);
   }
   return sections.filter((s) => s.notes.length > 0);
+}
+
+/** Tasks the note embeds that are still open; 0 while the open list is partial. */
+export function noteOpenTaskCount(
+  markdown: string,
+  openIds: ReadonlySet<string> | null,
+): number {
+  return openIds
+    ? taskEmbedIds(markdown).filter((id) => openIds.has(id)).length
+    : 0;
 }

@@ -1,15 +1,13 @@
 import {
   addDays,
   daysBetween,
-  formatTaskDay,
-  isOpenTaskStatus,
   localDayOf,
-  type Note,
   relativeDayLabel,
-  type Task,
-  taskShowsOn,
-} from '@gagnechris/shared';
-import { newestById } from './newestById';
+} from './calendar.js';
+import { newestById } from './newest-by-id.js';
+import { isOpenTaskStatus, type Note, type Task } from './schemas.js';
+import { taskShowsOn } from './task-schedule.js';
+import { formatTaskDay } from './task-syntax.js';
 
 export const COMING_UP_DAYS = 14;
 

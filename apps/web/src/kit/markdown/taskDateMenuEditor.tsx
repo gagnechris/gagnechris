@@ -7,29 +7,27 @@ import {
   type Extension,
 } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { taskDateToken } from '@gagnechris/shared';
+import {
+  activeTaskDateIndex,
+  CLOSED_TASK_DATE_MENU,
+  openTaskDateQuery,
+  type TaskDateMenuAction,
+  taskDateMenuIds,
+  taskDateMenuIsOpen,
+  type TaskDateMenuItem,
+  taskDateMenuItems,
+  taskDateMenuKey,
+  taskDateMenuReducer,
+  type TaskDateMenuState as MenuState,
+  type TaskDateQuery,
+  taskDateToken,
+  tokenInsertion,
+  tomorrowOf,
+} from '@gagnechris/shared';
 import { useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PHONE_QUERY, useMediaQuery } from '../useMediaQuery';
 import { TaskDateMenu } from '../tasks/TaskDateMenu';
-import {
-  openTaskDateQuery,
-  taskDateMenuIds,
-  taskDateMenuItems,
-  tomorrowOf,
-  type TaskDateMenuItem,
-  type TaskDateQuery,
-} from '../tasks/taskDateMenuItems';
-import {
-  activeTaskDateIndex,
-  CLOSED_TASK_DATE_MENU,
-  taskDateMenuIsOpen,
-  taskDateMenuKey,
-  taskDateMenuReducer,
-  tokenInsertion,
-  type TaskDateMenuAction,
-  type TaskDateMenuState as MenuState,
-} from '../tasks/taskDateMenuState';
 import { TASK_LINE_PREFIX } from '../tasks/taskLine';
 
 type Range = { from: number; to: number };

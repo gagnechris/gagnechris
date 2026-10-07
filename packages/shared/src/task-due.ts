@@ -1,9 +1,6 @@
-import {
-  formatTaskDay,
-  isOpenTaskStatus,
-  relativeDayLabel,
-  type Task,
-} from '@gagnechris/shared';
+import { relativeDayLabel } from './calendar.js';
+import { isOpenTaskStatus, type Task } from './schemas.js';
+import { formatTaskDay } from './task-syntax.js';
 
 export type TaskDue = {
   text: string;

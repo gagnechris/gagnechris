@@ -1,12 +1,8 @@
-import {
-  addDays,
-  formatTaskDay,
-  isOpenTaskStatus,
-  type Task,
-  weekdayName,
-} from '@gagnechris/shared';
-import type { SourceNote } from './todayTaskBuckets';
-import { newestById } from './newestById';
+import { addDays, weekdayName } from './calendar.js';
+import { newestById } from './newest-by-id.js';
+import { isOpenTaskStatus, type Task } from './schemas.js';
+import { formatTaskDay } from './task-syntax.js';
+import type { SourceNote } from './today-task-buckets.js';
 
 export type UpcomingTask = Pick<
   Task,

@@ -1,18 +1,16 @@
 import { useId, useReducer, useRef, useState, type KeyboardEvent } from 'react';
-import type { TaskSchedule } from '@gagnechris/shared';
-import { TaskDateMenu } from './TaskDateMenu';
-import {
-  taskDateMenuIds,
-  taskDateMenuItems,
-  tomorrowOf,
-  type TaskDateMenuItem,
-} from './taskDateMenuItems';
 import {
   activeTaskDateIndex,
   CLOSED_TASK_DATE_MENU,
+  taskDateMenuIds,
+  type TaskDateMenuItem,
+  taskDateMenuItems,
   taskDateMenuKey,
   taskDateMenuReducer,
-} from './taskDateMenuState';
+  type TaskSchedule,
+  tomorrowOf,
+} from '@gagnechris/shared';
+import { TaskDateMenu } from './TaskDateMenu';
 
 const PICK_RANGE = { from: 0, to: 0, kind: 'start' } as const;
 
