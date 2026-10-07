@@ -16,7 +16,7 @@ const StayWild = () => {
   const [soundOn, setSoundOn] = useState(false);
 
   return (
-    <div className="bears-game-page">
+    <main className="bears-game-page">
       <BearsPageMeta meta={BEARS_PAGE_META.wild} />
       <BearsGameHeader
         title="Stay Wild"
@@ -28,10 +28,10 @@ const StayWild = () => {
           </>
         }
       />
-      <main>
+      <div className="bears-game-page__body">
         <StayWildGame from={from} soundOn={soundOn} />
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

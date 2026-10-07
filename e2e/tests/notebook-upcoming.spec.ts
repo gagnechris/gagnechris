@@ -1,20 +1,8 @@
-import { ulid } from 'ulid';
-import { expect, test, type Seed } from '../fixtures';
+import { expect, test } from '../fixtures';
 
 test.use({ timezoneId: 'America/New_York' });
 
 const FRIDAY_MORNING = new Date('2026-10-02T09:00:00-04:00');
-
-async function seedTask(
-  seed: Seed,
-  body: { title: string; startDate?: string | null; someday?: boolean },
-) {
-  const { data, error } = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', ...body },
-  });
-  if (!data) throw new Error(`seed task failed: ${JSON.stringify(error)}`);
-  return data;
-}
 
 test('Upcoming groups scheduled and parked tasks, and Do today moves one to Today', async ({
   page,
@@ -26,9 +14,9 @@ test('Upcoming groups scheduled and parked tasks, and Do today moves one to Toda
   const monday = `${prefix} brand fonts`;
   const later = `${prefix} renew passport`;
   const parked = `${prefix} learn piano`;
-  await seedTask(seed, { title: monday, startDate: '2026-10-05' });
-  await seedTask(seed, { title: later, startDate: '2026-11-01' });
-  await seedTask(seed, { title: parked, someday: true });
+  await seed.task({ title: monday, startDate: '2026-10-05' });
+  await seed.task({ title: later, startDate: '2026-11-01' });
+  await seed.task({ title: parked, someday: true });
 
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();

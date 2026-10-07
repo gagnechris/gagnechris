@@ -1,20 +1,6 @@
-import { ulid } from 'ulid';
-import { expect, test, type Seed } from '../fixtures';
+import { expect, test } from '../fixtures';
 
 test.use({ timezoneId: 'America/New_York' });
-
-async function seedDaily(seed: Seed, date: string, bodyMarkdown: string) {
-  const { data, error } = await seed.api.PUT(
-    '/api/notebook/notes/daily/{area}/{date}',
-    {
-      params: { path: { area: 'work', date } },
-      body: { id: ulid(), bodyMarkdown },
-    },
-  );
-  if (!data)
-    throw new Error(`seed daily note failed: ${JSON.stringify(error)}`);
-  return data;
-}
 
 test('a task lists every note that embeds it, with the context under the embed', async ({
   page,
@@ -23,23 +9,15 @@ test('a task lists every note that embeds it, with the context under the embed',
   seed,
   prefix,
 }) => {
-  const { data: task } = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', title: `${prefix} migrate the index` },
-  });
-  if (!task) throw new Error('seed task failed');
+  const task = await seed.task({ title: `${prefix} migrate the index` });
 
   const embed = `{{task:${task.id}}}`;
-  const first = await seedDaily(
-    seed,
-    '2026-09-28',
-    `${embed}\nRead the runbook.`,
-  );
-  const second = await seedDaily(
-    seed,
+  const first = await seed.daily('2026-09-28', `${embed}\nRead the runbook.`);
+  const second = await seed.daily(
     '2026-09-29',
     `${embed}\nDry run on staging.`,
   );
-  const third = await seedDaily(seed, '2026-09-30', `${embed}\nCut over.`);
+  const third = await seed.daily('2026-09-30', `${embed}\nCut over.`);
 
   await signIn();
   await page.goto(`${apps.notebook}/tasks/${task.id}`);

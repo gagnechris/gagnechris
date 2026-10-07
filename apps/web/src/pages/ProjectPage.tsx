@@ -23,7 +23,7 @@ function ProjectPage() {
 
   if (published.status !== 'ready') {
     return (
-      <div className="project-page">
+      <main className="project-page">
         {published.status === 'error' ? (
           <p className="project-loading" role="alert">
             Could not load this project. Check your connection and try again.
@@ -31,7 +31,7 @@ function ProjectPage() {
         ) : (
           <p className="project-loading">Loading project…</p>
         )}
-      </div>
+      </main>
     );
   }
 

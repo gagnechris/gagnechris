@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  trackBearsGameComplete,
-  trackBearsGameStart,
-  trackBearsTipLinkClick,
-} from '../../../utils/analytics';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { CAMP_ITEM_ACTIONS } from '../facts';
 import EndCard from '../shared/EndCard';
-import { readHighScore, writeHighScore } from '../shared/highScore';
-import { playFailSound, playSecureSound, playSuccessSound } from '../sound';
+import { useBearsSession } from '../shared/useBearsSession';
+import { useFixedStepLoop } from '../shared/useFixedStepLoop';
+import {
+  useCoarsePointer,
+  usePrefersReducedMotion,
+} from '../shared/useMediaQuery';
+import { useTimedValue } from '../shared/useTimedValue';
+import { playFailSound, playSecureSound } from '../sound';
 import { CampBearGlyph, CampItemGlyph, CampScenery } from './campGlyphs';
 import {
   CAMP_ITEMS,
@@ -31,40 +32,38 @@ import {
   type CampRngs,
   type CampState,
 } from './campLogic';
-import {
-  CAMP_SHARE_URL,
-  campResultLine,
-  campShareText,
-  dailyCampKey,
-  dailyCampRngs,
-  randomCampRngs,
-} from './dailyCamp';
-import { usePrefersReducedMotion } from './usePrefersReducedMotion';
+import { CAMP_SHARE_URL, campResult, formatCampResult } from './campResult';
+import { dailyCampKey, dailyCampRngs, randomCampRngs } from './dailyCamp';
 import './CampRulesGame.css';
 
 const GAME = 'camp';
 const TOAST_MS = 2_200;
 const COPY_STATUS_MS = 2_500;
 const ACTION_LABEL_MS = 1_200;
-/** Longest frame we simulate, so a backgrounded tab doesn't fast-forward. */
-const MAX_FRAME_MS = 250;
 
 type Screen = 'ready' | 'playing' | 'over';
 export type CampMode = 'daily' | 'free';
-type Toast = { id: number; text: string };
+type CopyStatus = 'copied' | 'failed';
+
+const COPY_STATUS_TEXT: Readonly<Record<CopyStatus, string>> = {
+  copied: 'Copied!',
+  failed: 'Couldn’t copy',
+};
 
 type CampRulesGameProps = {
   from: string;
   soundOn: boolean;
   dailyKey?: string;
-  onModeChange?: (mode: CampMode) => void;
+  /** Owned by the page, whose header names the camp. */
+  mode: CampMode;
+  onModeChange: (mode: CampMode) => void;
 };
 
 // Desktop browsers implement Web Share too, but there the result is copied;
 // only touch screens get the share sheet.
-function canShareResult(data: ShareData): boolean {
+function canShareResult(data: ShareData, coarsePointer: boolean): boolean {
   if (typeof navigator.share !== 'function') return false;
-  if (!window.matchMedia?.('(pointer: coarse)').matches) return false;
+  if (!coarsePointer) return false;
   try {
     return navigator.canShare ? navigator.canShare(data) : true;
   } catch {
@@ -108,65 +107,48 @@ const CampRulesGame = ({
   from,
   soundOn,
   dailyKey: dailyKeyProp,
+  mode,
   onModeChange,
 }: CampRulesGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
+  const coarsePointer = useCoarsePointer();
+  const session = useBearsSession(GAME, from, soundOn);
   const dailyKey = useMemo(
     () => dailyKeyProp ?? dailyCampKey(new Date()),
     [dailyKeyProp],
   );
   const [screen, setScreen] = useState<Screen>('ready');
-  const [mode, setMode] = useState<CampMode>('daily');
   const [state, setState] = useState<CampState>(createCampState);
-  const [toast, setToast] = useState<Toast | null>(null);
+  const [toast, showToast, clearToast] = useTimedValue<string>(TOAST_MS);
   const [justPutAway, setJustPutAway] = useState<{
     kind: CampItemKind;
     at: number;
   } | null>(null);
-  const [highScore, setHighScore] = useState(() => readHighScore(GAME));
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>(
-    'idle',
-  );
+  const [copyStatus, showCopyStatus, clearCopyStatus] =
+    useTimedValue<CopyStatus>(COPY_STATUS_MS);
 
   const stateRef = useRef(state);
   const rngsRef = useRef<CampRngs>(dailyCampRngs(dailyKey));
-  const soundOnRef = useRef(soundOn);
-  const toastSeq = useRef(0);
-
-  useEffect(() => {
-    soundOnRef.current = soundOn;
-  }, [soundOn]);
+  const pendingRef = useRef<CampEvent[] | null>(null);
+  const { sound, finish } = session;
 
   const handleEvents = useCallback(
     (events: CampEvent[]) => {
       for (const event of events) {
         const text = toastFor(event);
-        if (text) {
-          toastSeq.current += 1;
-          setToast({ id: toastSeq.current, text });
-        }
+        if (text) showToast(text);
         if (event.type === 'putAway') {
           setJustPutAway({ kind: event.kind, at: stateRef.current.t });
-          if (soundOnRef.current) playSecureSound();
+          sound(playSecureSound);
         }
-        if (event.type === 'snack' && soundOnRef.current) playFailSound();
+        if (event.type === 'snack') sound(playFailSound);
         if (event.type === 'end') {
-          const final = stateRef.current;
-          const score = campScore(final);
           setScreen('over');
-          trackBearsGameComplete(GAME, from, score);
-          if (score > readHighScore(GAME)) {
-            writeHighScore(GAME, score);
-            setHighScore(score);
-          }
-          if (soundOnRef.current) {
-            if (event.phase === 'dark') playSuccessSound();
-            else playFailSound();
-          }
+          finish(campScore(stateRef.current), event.phase === 'dark');
         }
       }
     },
-    [from],
+    [showToast, sound, finish],
   );
 
   const commit = useCallback(
@@ -178,40 +160,22 @@ const CampRulesGame = ({
     [handleEvents],
   );
 
-  useEffect(() => {
-    if (screen !== 'playing') return;
-    let frame = 0;
-    let last = performance.now();
-    let acc = 0;
-    const loop = (now: number) => {
-      acc += Math.min(MAX_FRAME_MS, now - last);
-      last = now;
-      let next = stateRef.current;
-      const events: CampEvent[] = [];
-      while (acc >= STEP_MS && next.phase === 'playing') {
-        const r = stepCamp(next, rngsRef.current);
-        next = r.state;
-        events.push(...r.events);
-        acc -= STEP_MS;
-      }
-      if (next !== stateRef.current) commit({ state: next, events });
-      if (next.phase === 'playing') frame = requestAnimationFrame(loop);
-    };
-    frame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frame);
-  }, [screen, commit]);
-
-  useEffect(() => {
-    if (copyStatus === 'idle') return;
-    const id = window.setTimeout(() => setCopyStatus('idle'), COPY_STATUS_MS);
-    return () => window.clearTimeout(id);
-  }, [copyStatus]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), TOAST_MS);
-    return () => window.clearTimeout(id);
-  }, [toast]);
+  useFixedStepLoop({
+    running: screen === 'playing',
+    stepMs: STEP_MS,
+    step: () => {
+      const r = stepCamp(stateRef.current, rngsRef.current);
+      stateRef.current = r.state;
+      (pendingRef.current ??= []).push(...r.events);
+      return r.state.phase === 'playing';
+    },
+    frame: () => {
+      const events = pendingRef.current;
+      if (!events) return;
+      pendingRef.current = null;
+      commit({ state: stateRef.current, events });
+    },
+  });
 
   const begin = (nextMode: CampMode) => {
     rngsRef.current =
@@ -219,13 +183,13 @@ const CampRulesGame = ({
     const fresh = createCampState();
     stateRef.current = fresh;
     setState(fresh);
-    setMode(nextMode);
-    onModeChange?.(nextMode);
-    setToast(null);
+    pendingRef.current = null;
+    onModeChange(nextMode);
+    clearToast();
     setJustPutAway(null);
-    setCopyStatus('idle');
+    clearCopyStatus();
     setScreen('playing');
-    trackBearsGameStart(GAME, from);
+    session.start();
   };
 
   const onPutAway = (kind: CampItemKind) => {
@@ -240,17 +204,13 @@ const CampRulesGame = ({
 
   const shareData = (final: CampState): ShareData => ({
     title: 'Camp Rules',
-    text: campShareText({
-      key: dailyKey,
-      seconds: Math.floor(final.t / 1000),
-      saves: final.saves,
-    }),
+    text: formatCampResult(campResult(final, dailyKey)).share,
     url: CAMP_SHARE_URL,
   });
 
   const onShareResult = async () => {
     const data = shareData(stateRef.current);
-    if (!canShareResult(data)) return onCopyResult();
+    if (!canShareResult(data, coarsePointer)) return onCopyResult();
     try {
       await navigator.share(data);
     } catch (err) {
@@ -260,23 +220,17 @@ const CampRulesGame = ({
   };
 
   const onCopyResult = async () => {
-    const final = stateRef.current;
-    const line = campResultLine({
-      key: dailyKey,
-      paws: campPaws(final),
-      saves: final.saves,
-      score: campScore(final),
-      habituated: final.phase === 'habituated',
-    });
+    const line = formatCampResult(campResult(stateRef.current, dailyKey)).copy;
     try {
       await navigator.clipboard.writeText(line);
-      setCopyStatus('copied');
+      showCopyStatus('copied');
     } catch {
-      setCopyStatus('failed');
+      showCopyStatus('failed');
     }
   };
 
-  const canShare = screen === 'over' && canShareResult(shareData(state));
+  const canShare =
+    screen === 'over' && canShareResult(shareData(state), coarsePointer);
   const p = roundProgress(state.t);
   const score = campScore(state);
   const habituated = state.phase === 'habituated';
@@ -288,7 +242,15 @@ const CampRulesGame = ({
       : null;
 
   return (
-    <div className={`camp${reducedMotion ? ' camp--reduced' : ''}`}>
+    <div
+      className={[
+        'camp',
+        reducedMotion ? 'camp--reduced' : '',
+        screen === 'over' ? 'camp--over' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="camp-hud">
         <div className="camp-hud__stat">
           <span className="camp-hud__label camp-hud__long">Time left</span>
@@ -335,127 +297,132 @@ const CampRulesGame = ({
         </span>
       </div>
 
-      <div className="camp-field">
-        <CampScenery />
+      <div className="camp-stage">
+        <div className="camp-field">
+          <CampScenery />
 
-        {CAMP_ITEMS.map(({ kind, label, x, y }) => {
-          const isOut = state.out[kind];
-          const targeted = isOut && isTargeted(state, kind);
-          const badge = isOut
-            ? targeted
-              ? 'Bear coming!'
-              : 'Out'
-            : showAction === kind
-              ? CAMP_ITEM_ACTIONS[kind].text
-              : 'Put away';
-          return (
+          {CAMP_ITEMS.map(({ kind, label, x, y }) => {
+            const isOut = state.out[kind];
+            const targeted = isOut && isTargeted(state, kind);
+            const badge = isOut
+              ? targeted
+                ? 'Bear coming!'
+                : 'Out'
+              : showAction === kind
+                ? CAMP_ITEM_ACTIONS[kind].text
+                : 'Put away';
+            return (
+              <button
+                key={kind}
+                type="button"
+                className={[
+                  'camp-item',
+                  `camp-item--${kind}`,
+                  isOut ? 'camp-item--out' : 'camp-item--away',
+                  targeted ? 'camp-item--targeted' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={{ left: `${x}%`, top: `${y}%` }}
+                aria-disabled={!isOut || screen !== 'playing'}
+                aria-label={
+                  isOut
+                    ? `${label}, ${targeted ? 'a bear is coming' : 'out'}. Activate to put it away: ${CAMP_ITEM_ACTIONS[kind].text.toLowerCase()}.`
+                    : `${label}, put away.`
+                }
+                tabIndex={screen === 'playing' ? 0 : -1}
+                onClick={() => onPutAway(kind)}
+              >
+                {isOut ? (
+                  <span className="camp-item__smell" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : null}
+                <CampItemGlyph kind={kind} />
+                <span className="camp-item__label">{label}</span>
+                <span className="camp-item__badge">{badge}</span>
+              </button>
+            );
+          })}
+
+          {state.bears.map((bear) => (
             <button
-              key={kind}
+              key={bear.id}
               type="button"
-              className={[
-                'camp-item',
-                `camp-item--${kind}`,
-                isOut ? 'camp-item--out' : 'camp-item--away',
-                targeted ? 'camp-item--targeted' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              style={{ left: `${x}%`, top: `${y}%` }}
-              aria-disabled={!isOut || screen !== 'playing'}
-              aria-label={
-                isOut
-                  ? `${label}, ${targeted ? 'a bear is coming' : 'out'}. Activate to put it away: ${CAMP_ITEM_ACTIONS[kind].text.toLowerCase()}.`
-                  : `${label}, put away.`
+              className={
+                bear.leaving ? 'camp-bear camp-bear--leaving' : 'camp-bear'
               }
-              tabIndex={screen === 'playing' ? 0 : -1}
-              onClick={() => onPutAway(kind)}
+              style={{ left: `${bear.x}%`, top: `${bear.y}%` }}
+              aria-label={
+                bear.leaving
+                  ? 'Bear leaving'
+                  : `Bear heading for the ${campItem(bear.target).label.toLowerCase()}. Activate to make noise.`
+              }
+              aria-disabled={bear.leaving || !noiseReady(state)}
+              tabIndex={screen === 'playing' && !bear.leaving ? 0 : -1}
+              onClick={() => onNoise(bear.id)}
             >
-              {isOut ? (
-                <span className="camp-item__smell" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              ) : null}
-              <CampItemGlyph kind={kind} />
-              <span className="camp-item__label">{label}</span>
-              <span className="camp-item__badge">{badge}</span>
+              <span className="camp-bear__body">
+                <CampBearGlyph />
+              </span>
             </button>
-          );
-        })}
+          ))}
 
-        {state.bears.map((bear) => (
-          <button
-            key={bear.id}
-            type="button"
-            className={
-              bear.leaving ? 'camp-bear camp-bear--leaving' : 'camp-bear'
-            }
-            style={{ left: `${bear.x}%`, top: `${bear.y}%` }}
-            aria-label={
-              bear.leaving
-                ? 'Bear leaving'
-                : `Bear heading for the ${campItem(bear.target).label.toLowerCase()}. Activate to make noise.`
-            }
-            aria-disabled={bear.leaving || !noiseReady(state)}
-            tabIndex={screen === 'playing' && !bear.leaving ? 0 : -1}
-            onClick={() => onNoise(bear.id)}
-          >
-            <span className="camp-bear__body">
-              <CampBearGlyph />
-            </span>
-          </button>
-        ))}
+          <div
+            className="camp-field__dusk"
+            style={{ opacity: 0.5 * p }}
+            aria-hidden="true"
+          />
 
-        <div
-          className="camp-field__dusk"
-          style={{ opacity: 0.5 * p }}
-          aria-hidden="true"
-        />
+          <div className="camp-toast-region" role="status" aria-live="polite">
+            {toast ? (
+              <span key={toast.id} className="camp-toast">
+                {toast.value}
+              </span>
+            ) : null}
+          </div>
 
-        <div className="camp-toast-region" role="status" aria-live="polite">
-          {toast ? (
-            <span key={toast.id} className="camp-toast">
-              {toast.text}
-            </span>
+          {screen === 'ready' ? (
+            <div className="camp-overlay">
+              <section
+                className="camp-start"
+                aria-labelledby="camp-start-title"
+              >
+                <h2 id="camp-start-title">Keep camp bear-safe until dark</h2>
+                <ul>
+                  <li>
+                    Your guests keep leaving food out. Tap anything with smell
+                    lines to put it away.
+                  </li>
+                  <li>
+                    A bear that gets a snack fills the meter. Three snacks and
+                    the bears are too used to your camp.
+                  </li>
+                  <li>
+                    Tap a bear to make noise from where you are and send it off.
+                    It needs a few seconds to recharge.
+                  </li>
+                </ul>
+                <button
+                  type="button"
+                  className="bears-btn bears-btn--primary camp-start__go"
+                  onClick={() => begin('daily')}
+                >
+                  Start the evening
+                </button>
+                <button
+                  type="button"
+                  className="camp-link-btn"
+                  onClick={() => begin('free')}
+                >
+                  Or play a random camp
+                </button>
+              </section>
+            </div>
           ) : null}
         </div>
-
-        {screen === 'ready' ? (
-          <div className="camp-overlay">
-            <section className="camp-start" aria-labelledby="camp-start-title">
-              <h2 id="camp-start-title">Keep camp bear-safe until dark</h2>
-              <ul>
-                <li>
-                  Your guests keep leaving food out. Tap anything with smell
-                  lines to put it away.
-                </li>
-                <li>
-                  A bear that gets a snack fills the meter. Three snacks and the
-                  bears are too used to your camp.
-                </li>
-                <li>
-                  Tap a bear to make noise from where you are and send it off.
-                  It needs a few seconds to recharge.
-                </li>
-              </ul>
-              <button
-                type="button"
-                className="bears-btn bears-btn--primary camp-start__go"
-                onClick={() => begin('daily')}
-              >
-                Start the evening
-              </button>
-              <button
-                type="button"
-                className="camp-link-btn"
-                onClick={() => begin('free')}
-              >
-                Or play a random camp
-              </button>
-            </section>
-          </div>
-        ) : null}
 
         {screen === 'over' ? (
           <div className="camp-overlay camp-overlay--end">
@@ -476,18 +443,18 @@ const CampRulesGame = ({
                     : 'You held camp together until dark.'
               }
               paws={campPaws(state)}
-              summary={`${Math.floor(state.t / 1000)}s · ${state.saves} ${state.saves === 1 ? 'save' : 'saves'} · score ${score}`}
+              summary={formatCampResult(campResult(state, dailyKey)).summary}
               className="camp-end"
               stats={[
                 { label: 'Time', value: `${Math.floor(state.t / 1000)}s` },
                 { label: 'Saves', value: state.saves },
                 { label: 'Score', value: score },
-                { label: 'Best', value: Math.max(highScore, score) },
+                { label: 'Best', value: Math.max(session.highScore, score) },
               ]}
               tip={campTip(state)}
               tipKicker={worst ? 'What got you' : 'Bear tip'}
               onPlayAgain={() => begin(mode)}
-              onTipLinkClick={() => trackBearsTipLinkClick(from, GAME)}
+              onTipLinkClick={session.onTipLinkClick}
               extraActions={
                 <>
                   {mode === 'daily' ? (
@@ -496,10 +463,8 @@ const CampRulesGame = ({
                       className="camp-link-btn camp-share"
                       onClick={() => void onShareResult()}
                     >
-                      {copyStatus === 'copied' ? (
-                        'Copied!'
-                      ) : copyStatus === 'failed' ? (
-                        'Couldn’t copy'
+                      {copyStatus ? (
+                        COPY_STATUS_TEXT[copyStatus.value]
                       ) : canShare ? (
                         <>
                           <ShareIcon />
@@ -521,11 +486,7 @@ const CampRulesGame = ({
               }
             />
             <p className="bears-sr" role="status">
-              {copyStatus === 'copied'
-                ? 'Copied!'
-                : copyStatus === 'failed'
-                  ? 'Couldn’t copy'
-                  : ''}
+              {copyStatus ? COPY_STATUS_TEXT[copyStatus.value] : ''}
             </p>
           </div>
         ) : null}

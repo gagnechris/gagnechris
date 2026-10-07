@@ -46,7 +46,8 @@ type Options<TDraft, TEntity> = {
   queueKey?: string;
 };
 
-const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
+/** Backoff between retries of a failed save that is safe to retry. */
+export const AUTOSAVE_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 
 const isRetryableStatus = (status: number) =>
   status === 0 || status === 408 || status === 429 || status >= 500;
@@ -59,12 +60,15 @@ const isRetryableStatus = (status: number) =>
  * do not race the version bump. Explicit `save()` still runs; if hold stops it
  * with unsaved edits it returns `'pending'`.
  */
+/** Quiet time after the last edit before autosave sends it. */
+export const AUTOSAVE_DEBOUNCE_MS = 900;
+
 export function useQueuedAutosave<TDraft, TEntity>({
   draft,
   dirty,
   setDirty,
   enabled = true,
-  debounceMs = 900,
+  debounceMs = AUTOSAVE_DEBOUNCE_MS,
   getBaseVersion,
   performSave,
   onSaved,
@@ -73,7 +77,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   tooLargeMessage,
   timers = defaultTimers,
   retrySignals,
-  retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+  retryDelaysMs = AUTOSAVE_RETRY_DELAYS_MS,
   queueKey,
 }: Options<TDraft, TEntity>) {
   const [saveState, setSaveState] = useState<SaveState>('idle');

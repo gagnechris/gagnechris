@@ -6,6 +6,7 @@ import {
   weekdayName,
 } from '@gagnechris/shared';
 import type { SourceNote } from './todayTaskBuckets';
+import { newestById } from './newestById';
 
 export type UpcomingTask = Pick<
   Task,
@@ -32,11 +33,7 @@ export function groupUpcomingTasks<T extends UpcomingTask>(
   tasks: Iterable<T>,
   day: string,
 ): UpcomingGroup<T>[] {
-  const byId = new Map<string, T>();
-  for (const task of tasks) {
-    const seen = byId.get(task.id);
-    if (!seen || task.version > seen.version) byId.set(task.id, task);
-  }
+  const byId = newestById(tasks);
 
   const groups: UpcomingGroup<T>[] = [];
   for (let n = 1; n <= WEEK_DAYS; n++) {

@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import CampRulesGame, {
   type CampMode,
 } from '../../games/bears/camp/CampRulesGame';
-import { campShortDate, dailyCampKey } from '../../games/bears/camp/dailyCamp';
+import { campShortDate } from '../../games/bears/camp/campResult';
+import { dailyCampKey } from '../../games/bears/camp/dailyCamp';
 import BearsPageMeta from '../../games/bears/shared/BearsPageMeta';
 import SkipToTips from '../../games/bears/shared/SkipToTips';
 import SoundToggle from '../../games/bears/shared/SoundToggle';
@@ -21,7 +22,7 @@ const CampRules = () => {
   const dailyKey = useMemo(() => dailyCampKey(new Date()), []);
 
   return (
-    <div className="bears-game-page">
+    <main className="bears-game-page">
       <BearsPageMeta meta={BEARS_PAGE_META.camp} />
       <BearsGameHeader
         title="Camp Rules"
@@ -38,15 +39,16 @@ const CampRules = () => {
           </>
         }
       />
-      <main>
+      <div className="bears-game-page__body">
         <CampRulesGame
           from={from}
           soundOn={soundOn}
           dailyKey={dailyKey}
+          mode={mode}
           onModeChange={setMode}
         />
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

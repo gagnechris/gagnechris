@@ -2,9 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  /* The field's clip-path hides bears walking in from the edges, but they
-     still count toward the page's scroll width. */
-  overflow-x: clip;
 }
 
 .camp-hud {
@@ -14,7 +11,7 @@
   gap: var(--space-2) var(--space-6);
   padding: var(--space-3) var(--space-4);
   border-radius: 12px;
-  background: #16191d;
+  background: var(--bears-ink);
   color: white;
 }
 
@@ -29,7 +26,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #c5ccd6;
+  color: var(--bears-mist);
 }
 
 .camp-hud__value {
@@ -48,7 +45,7 @@
   width: 22px;
   height: 10px;
   border-radius: var(--radius-full);
-  background: #4a515a;
+  background: var(--bears-slate);
 }
 
 .camp-hud__slot--full {
@@ -63,17 +60,33 @@
 .camp-hud__noise {
   margin-left: auto;
   font-size: 13px;
-  color: #e5e8ed;
+  color: var(--bears-haze);
+}
+
+/*
+ * The end card sits on the field and can make it taller than its ratio.
+ * overflow keeps bears walking in from the edges out of the page width;
+ * clip-path rounds the corners, which Chromium anti-aliases more smoothly
+ * than overflow with border-radius.
+ */
+.camp-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  clip-path: inset(0 round var(--radius-lg));
+}
+
+.camp-stage > * {
+  grid-area: 1 / 1;
 }
 
 .camp-field {
   position: relative;
+  align-self: stretch;
   width: 100%;
   aspect-ratio: 16 / 9;
-  /* clip-path, not overflow, so the end card can grow the field past 16:9. */
-  clip-path: inset(0 round var(--radius-lg));
   border-radius: var(--radius-lg);
-  background: #e9dcc0;
+  background: var(--bears-sand);
   box-shadow: 0 1px 0 #d6c7a6 inset;
 }
 
@@ -81,7 +94,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 34%;
-  background: #cfe6ef;
+  background: var(--bears-sky-camp);
 }
 
 .camp-field__mountains {
@@ -131,14 +144,14 @@
   border: 2px solid transparent;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.75);
-  color: #16191d;
+  color: var(--bears-ink);
   font-family: var(--font-sans);
   cursor: pointer;
 }
 
 .camp-item--out {
   background: #fff8e6;
-  border-color: #c08a1e;
+  border-color: var(--bears-gold-dark);
   box-shadow: 0 0 0 6px rgba(244, 185, 66, 0.25);
 }
 
@@ -173,7 +186,7 @@
 
 .camp-item:focus-visible,
 .camp-bear:focus-visible {
-  outline: 3px solid #16191d;
+  outline: 3px solid var(--bears-ink);
   outline-offset: 3px;
 }
 
@@ -200,7 +213,7 @@
 }
 
 .camp-item--targeted .camp-item__badge {
-  background: #a3341f;
+  background: var(--bears-alert);
   color: white;
 }
 
@@ -217,7 +230,7 @@
   width: 4px;
   height: 12px;
   border-radius: 4px;
-  background: #c08a1e;
+  background: var(--bears-gold-dark);
   animation: camp-waft 1.4s ease-in-out infinite;
 }
 
@@ -291,7 +304,7 @@
   border-radius: var(--radius-full);
   background: white;
   box-shadow: 0 6px 16px rgba(16, 24, 40, 0.18);
-  color: #16191d;
+  color: var(--bears-ink);
   font-size: var(--text-sm);
   font-weight: 600;
   white-space: nowrap;
@@ -311,8 +324,13 @@
 
 .camp-overlay--end {
   position: relative;
-  min-height: 100%;
   background: rgba(22, 25, 29, 0.6);
+}
+
+/* The field holds still behind the result. */
+.camp--over .camp-item__smell span,
+.camp--over .camp-bear__body {
+  animation: none;
 }
 
 .camp-start {
@@ -337,7 +355,7 @@
   padding-left: 18px;
   font-size: 15px;
   line-height: 1.55;
-  color: #2b3138;
+  color: var(--bears-charcoal);
 }
 
 .camp-start__go {
@@ -532,22 +550,20 @@
     font-size: 15px;
   }
 
-  /*
-   * The end screen is the page, not a card over the field. It covers the
-   * field's pieces instead of hiding them: hiding them from the end state
-   * shifts Chromium's desktop rendering of the field by a colour level.
-   */
-  .camp-hud:has(+ .camp-field > .camp-overlay--end) {
+  /* The end screen is the page, not a card over the field. */
+  .camp--over .camp-hud,
+  .camp--over .camp-field {
     display: none;
+  }
+
+  .camp--over .camp-stage {
+    overflow: visible;
+    clip-path: none;
   }
 
   .camp-overlay--end {
     padding: 0;
     background: white;
-  }
-
-  .camp-field:has(> .camp-overlay--end) {
-    clip-path: none;
   }
 
   .camp-end.bears-end {

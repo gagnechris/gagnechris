@@ -46,7 +46,7 @@ const ProjectLink = ({ label, url }: ProjectPageView['links'][number]) => (
 );
 
 const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
-  <div
+  <main
     className="project-page"
     data-slug={project.slug}
     data-demo={project.demo ?? undefined}
@@ -62,7 +62,7 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
       {project.pitch ? <p className="project-pitch">{project.pitch}</p> : null}
     </header>
     {project.demo ? <ProjectDemoSlot project={project} /> : null}
-    <main className="project-main">
+    <div className="project-main">
       <div
         className="post-content project-body"
         dangerouslySetInnerHTML={{ __html: project.bodyHtml }}
@@ -107,8 +107,8 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
           </p>
         )}
       </section>
-    </main>
-  </div>
+    </div>
+  </main>
 );
 
 export default ProjectPageBody;

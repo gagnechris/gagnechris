@@ -56,24 +56,12 @@ test.describe('phone layout at 390px', () => {
 
   test.beforeEach(async ({ page, seed, prefix, request }) => {
     slug = `${prefix}-${randomBytes(3).toString('hex')}`;
-    const { data: created } = await seed.api.POST('/api/admin/posts', {
-      body: {
-        title: `Welcome ${slug}`,
-        slug,
-        excerpt:
-          'An introduction to my new blog and what I’ll be writing about.',
-        bodyMarkdown: 'First paragraph.\n\nSecond paragraph.',
-      },
+    const created = await seed.publishedPost({
+      title: `Welcome ${slug}`,
+      slug,
+      excerpt: 'An introduction to my new blog and what I’ll be writing about.',
+      bodyMarkdown: 'First paragraph.\n\nSecond paragraph.',
     });
-    if (!created) throw new Error('seed post failed');
-    const { data: published } = await seed.api.POST(
-      '/api/admin/posts/{id}/publish',
-      {
-        params: { path: { id: created.id } },
-        body: { version: created.version },
-      },
-    );
-    if (published?.status !== 'published') throw new Error('publish failed');
     entry = `.post-preview[data-id="${created.id}"]`;
     // Parallel tests rebuild the local site too; wait until the index lists it.
     await expect
@@ -232,11 +220,7 @@ test.describe('phone layout at 390px', () => {
 });
 
 test('desktop Home keeps the All posts link', async ({ page, seed }) => {
-  const post = await seed.post();
-  await seed.api.POST('/api/admin/posts/{id}/publish', {
-    params: { path: { id: post.id } },
-    body: { version: post.version },
-  });
+  await seed.publishedPost();
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(async () => {
     await page.goto(`${site()}/`);

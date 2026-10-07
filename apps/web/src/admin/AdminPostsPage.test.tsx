@@ -5,9 +5,9 @@ import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Post } from '@gagnechris/app-core';
 import { QueryClientTestProvider } from '../test-utils';
 import AdminPostsPage from './AdminPostsPage';
+import { adminApi } from '../mockAdminApi';
 
-const post = vi.fn();
-const get = vi.fn();
+const { GET: get, POST: post } = adminApi;
 
 const makePost = (overrides: Partial<Post> = {}): Post => ({
   id: '01POST',
@@ -27,12 +27,9 @@ const makePost = (overrides: Partial<Post> = {}): Post => ({
   ...overrides,
 });
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    POST: (...args: unknown[]) => post(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 describe('AdminPostsPage', () => {
   beforeEach(() => {

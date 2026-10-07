@@ -19,7 +19,12 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import type { Note, Task } from '@gagnechris/app-core';
-import { createTestQueryClient, QueryClientTestProvider } from '../test-utils';
+import {
+  createTestQueryClient,
+  PAST_AUTOSAVE_MS,
+  QueryClientTestProvider,
+} from '../test-utils';
+import { EMBED_RETRY_DELAYS_MS } from './useNoteTaskEmbeds';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
@@ -279,6 +284,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('writing [ ] text in a daily note', () => {
@@ -301,39 +307,37 @@ describe('writing [ ] text in a daily note', () => {
   }
 
   test('creates exactly one task while autosave fires mid-typing and the first response is lost', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const { container } = renderToday();
     const view = await editorView(container);
     act(() => view.focus());
 
     typeInto(view, '[ ] Call');
     // Autosave lands mid-line: the half-typed line is just text.
-    await waitFor(() => expect(api.puts).toContain('[ ] Call'), {
-      timeout: 3000,
-    });
+    await act(() => vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS));
+    await waitFor(() => expect(api.puts).toContain('[ ] Call'));
 
     api.dropNextTaskResponse = true;
     typeInto(view, ' Sam');
     pressEnter(view);
     typeInto(view, 'Finance needs the PO');
 
-    await waitFor(
-      () =>
-        expect(last(api.puts)).toMatch(
-          /^\{\{task:[0-9A-Z]{26}\}\}\nFinance needs the PO$/,
-        ),
-      { timeout: 4000 },
+    // The retry after the lost response, then the autosave that follows it.
+    await act(() => vi.advanceTimersByTimeAsync(EMBED_RETRY_DELAYS_MS[0]!));
+    await act(() => vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS));
+    await waitFor(() =>
+      expect(last(api.puts)).toMatch(
+        /^\{\{task:[0-9A-Z]{26}\}\}\nFinance needs the PO$/,
+      ),
     );
     // Pending rows are disabled until the create (and its retry) lands.
-    await waitFor(
-      () => {
-        const boxes = within(container).getAllByRole('checkbox', {
-          name: 'Complete Call Sam',
-        });
-        expect(boxes).toHaveLength(1);
-        for (const box of boxes) expect(box).toBeEnabled();
-      },
-      { timeout: 5000 },
-    );
+    await waitFor(() => {
+      const boxes = within(container).getAllByRole('checkbox', {
+        name: 'Complete Call Sam',
+      });
+      expect(boxes).toHaveLength(1);
+      for (const box of boxes) expect(box).toBeEnabled();
+    });
 
     const id = /\{\{task:([0-9A-Z]{26})\}\}/.exec(last(api.puts)!)![1];
     expect([...api.tasks.keys()]).toEqual([id]);
@@ -353,7 +357,7 @@ describe('writing [ ] text in a daily note', () => {
     expect(view.state.doc.toString()).toBe(
       `${tokenLine(id!)}\nFinance needs the PO`,
     );
-  }, 15_000);
+  });
 
   test('undo, edit, then leaving the line updates the one task instead of orphaning it', async () => {
     const { container } = renderToday();

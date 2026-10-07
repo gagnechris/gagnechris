@@ -58,7 +58,7 @@ describe('notebookDemoReducer', () => {
     expect(hint(state)).toBe(NOTEBOOK_DEMO_TOKENS);
   });
 
-  test('Call Sam @mon !high goes into the note and Coming up, high priority, with the hint saying so', () => {
+  test('Call Sam @mon !high goes into the note, not Coming up, as on the app’s Today; high priority, with the hint saying so', () => {
     const state = typeAndAdd(seedNotebookDemo(FRIDAY), 'Call Sam @mon !high');
     const view = notebookDemoView(state);
     const sam = view.noteTasks.slice(-1)[0]!;
@@ -70,13 +70,12 @@ describe('notebookDemoReducer', () => {
     });
     expect(view.comingUp.map((d) => [d.date, titles(d.tasks)])).toEqual([
       ['2026-10-03', ['Write weekly notes']],
-      ['2026-10-05', ['Call Sam']],
     ]);
-    expect(view.comingUpCount).toBe(2);
+    expect(view.comingUpCount).toBe(1);
     expect(titles(view.stillOpen.map((r) => r.task))).not.toContain('Call Sam');
     expect(state.draft).toBe('');
     expect(hint(state)).toBe(
-      'Scheduled for Mon. It stays in this note and shows up under Coming up.',
+      'Scheduled for Mon. It stays in this note, and from that day it shows under Still open on Today.',
     );
   });
 
@@ -86,7 +85,7 @@ describe('notebookDemoReducer', () => {
       'Added to today’s note. If it isn’t done, it carries forward to tomorrow.',
     );
     expect(hint(typeAndAdd(friday, 'Pack @tomorrow'))).toBe(
-      'Scheduled for tomorrow. It stays in this note and shows up under Coming up.',
+      'Scheduled for tomorrow. It stays in this note, and from that day it shows under Still open on Today.',
     );
     const someday = typeAndAdd(friday, 'Learn Rust @someday');
     expect(hint(someday)).toBe(
@@ -94,7 +93,7 @@ describe('notebookDemoReducer', () => {
     );
     expect(notebookDemoView(someday).comingUpCount).toBe(1);
     expect(hint(typeAndAdd(friday, 'Renew passport @dec 1'))).toBe(
-      'Scheduled for Dec 1. It stays in this note and shows up on Today that day.',
+      'Scheduled for Dec 1. It stays in this note, and from that day it shows under Still open on Today.',
     );
 
     const untitled = typeAndAdd(friday, '@mon !high');
@@ -111,7 +110,7 @@ describe('notebookDemoReducer', () => {
     expect(state.today).toBe('2026-10-05');
     expect(state.tasks.slice(-1)[0]!.startDate).toBe('2026-10-12');
     expect(hint(state)).toBe(
-      'Scheduled for Oct 12. It stays in this note and shows up under Coming up.',
+      'Scheduled for Oct 12. It stays in this note, and from that day it shows under Still open on Today.',
     );
   });
 
@@ -181,6 +180,15 @@ describe('NotebookDemo', () => {
     fetchSpy.mockReset();
   });
 
+  test('headings sit under the slot’s h2: the day is h3 and the panels h4', () => {
+    const { container } = renderDemo();
+    expect(
+      [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map(
+        (h) => `${h.tagName} ${h.textContent}`,
+      ),
+    ).toEqual(['H3 Friday, October 2', 'H4 Still open', 'H4 Coming up']);
+  });
+
   test('keyboard only: type a task and Enter, Tab to + Note and press it, Space toggles; no requests', async () => {
     const user = userEvent.setup();
     renderDemo();
@@ -221,11 +229,11 @@ describe('NotebookDemo', () => {
     expect(within(samRow).getByText('@Mon')).toBeVisible();
     expect(within(samRow).getByText('High')).toBeVisible();
     expect(
-      within(comingUp).getByRole('checkbox', { name: 'Complete Call Sam' }),
-    ).toBeVisible();
+      within(comingUp).queryByRole('checkbox', { name: 'Complete Call Sam' }),
+    ).toBeNull();
     expect(
       screen.getByText(
-        'Scheduled for Mon. It stays in this note and shows up under Coming up.',
+        'Scheduled for Mon. It stays in this note, and from that day it shows under Still open on Today.',
       ),
     ).toBeVisible();
 
@@ -327,7 +335,7 @@ describe('NotebookDemo', () => {
     const tabs = within(screen.getByRole('tablist')).getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual([
       'Still open · 2',
-      'Coming up · 2',
+      'Coming up · 1',
     ]);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveTextContent(
@@ -340,6 +348,6 @@ describe('NotebookDemo', () => {
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true');
     const panel = screen.getByRole('tabpanel');
     expect(panel).toHaveTextContent('Write weekly notes');
-    expect(panel).toHaveTextContent('Call Sam');
+    expect(panel).not.toHaveTextContent('Call Sam');
   });
 });

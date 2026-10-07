@@ -1,4 +1,4 @@
-import type { BearsGame } from '../../../utils/analytics';
+import type { BearsGame } from './games';
 
 // Camp keeps the original key so existing best scores carry over.
 const HIGH_SCORE_KEYS: Readonly<Record<BearsGame, string>> = {

@@ -31,7 +31,7 @@ const PostArticle = ({ post }: { post: PostView }) => {
   const { name, role, about, rss } = POST_AUTHOR_NOTE;
 
   return (
-    <div className="post-page">
+    <main className="post-page">
       <article className="blog-post-prerender" data-slug={post.slug}>
         <header className="post-header">
           <p className="post-meta">
@@ -67,7 +67,7 @@ const PostArticle = ({ post }: { post: PostView }) => {
           dangerouslySetInnerHTML={{ __html: post.contentHtml }}
         />
       </article>
-      <aside className="post-author" aria-label="About the author">
+      <section className="post-author" aria-label="About the author">
         <p>
           <strong>{name}</strong>
           {` ${role} `}
@@ -78,8 +78,8 @@ const PostArticle = ({ post }: { post: PostView }) => {
           </SiteLink>
           .
         </p>
-      </aside>
-    </div>
+      </section>
+    </main>
   );
 };
 

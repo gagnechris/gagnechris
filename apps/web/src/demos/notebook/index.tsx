@@ -3,7 +3,6 @@ import {
   useId,
   useRef,
   useState,
-  useSyncExternalStore,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -16,6 +15,7 @@ import { taskDue } from '../../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
+import { useMediaQuery } from '../../kit/useMediaQuery';
 import {
   NOTEBOOK_DEMO_NOTE,
   notebookDemoHintText,
@@ -52,17 +52,6 @@ const resetLabel = (
     <span className="notebook-demo__narrow">Reset</span>
   </>
 );
-
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const mql = window.matchMedia?.(query);
-      mql?.addEventListener('change', onChange);
-      return () => mql?.removeEventListener('change', onChange);
-    },
-    () => Boolean(window.matchMedia?.(query).matches),
-  );
-}
 
 export default function NotebookDemo() {
   const { state, dispatch, reset } = useDemoReducer(
@@ -116,6 +105,7 @@ function NotebookDemoBody({
   const stillOpen = (
     <StillOpenPanel
       compact
+      headingLevel={4}
       rows={view.stillOpen}
       onAddToNote={(id) => {
         focusTask.current = id;
@@ -126,6 +116,7 @@ function NotebookDemoBody({
   const comingUp = (
     <ComingUpPanel
       compact
+      headingLevel={4}
       days={view.comingUp}
       day={today}
       onToggle={(id) => dispatch({ type: 'toggle', id })}

@@ -10,7 +10,7 @@ import { SITE_LINKEDIN_URL } from './site-config.js';
 import { renderSitePageHtml } from './site-chrome-html.js';
 
 // `apps/web/src/pages/Resume.tsx` renders the intro element for element
-// (coldLoadParity.test.tsx) and reuses the body as `<main>` innerHTML.
+// (coldLoadParity.test.tsx) and reuses the body as `.resume-body` innerHTML.
 
 export const RESUME_PAGE_TITLE = 'Resume';
 export const RESUME_UNAVAILABLE_TEXT = 'Resume available on request.';
@@ -184,18 +184,18 @@ export const resumeIntro = (resume: Resume): ResumeIntro => ({
 
 /** The marker class is what the SPA parses. */
 export const renderResumeBodyHtml = (resume: Resume): string =>
-  `<div class="resume-page resume-page-prerender">` +
+  `<main class="resume-page resume-page-prerender">` +
   renderResumeIntroHtml(resumeIntro(resume)) +
-  `<main class="resume-body">${renderResumeSectionsHtml(resume.content)}</main></div>`;
+  `<div class="resume-body">${renderResumeSectionsHtml(resume.content)}</div></main>`;
 
 export const renderResumeUnavailableBodyHtml = (): string =>
-  `<div class="resume-page resume-page-unavailable">` +
+  `<main class="resume-page resume-page-unavailable">` +
   renderResumeIntroHtml({
     headline: null,
     summary: RESUME_UNAVAILABLE_TEXT,
     pdfPath: null,
   }) +
-  `</div>`;
+  `</main>`;
 
 export const renderResumePrerenderHtml = (
   resume: Resume,

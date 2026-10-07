@@ -210,10 +210,6 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         run: npm run build
 
-      - name: Run e2e:local
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
-        run: npm run e2e:local
-
       - name: Playwright version
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         id: playwright

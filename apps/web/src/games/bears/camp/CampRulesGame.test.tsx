@@ -1,7 +1,15 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import CampRulesGame from './CampRulesGame';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  advance,
+  renderInRouter,
+  setupGameTests,
+  stubClipboard,
+  stubMedia,
+  stubShare,
+} from '../shared/test-utils';
+import { useState } from 'react';
+import CampRulesGame, { type CampMode } from './CampRulesGame';
 import {
   trackBearsGameComplete,
   trackBearsGameStart,
@@ -13,18 +21,19 @@ vi.mock('../../../utils/analytics', () => ({
   trackBearsTipLinkClick: vi.fn(),
 }));
 
-const renderGame = (from = 'resume') =>
-  render(
-    <MemoryRouter>
-      <CampRulesGame from={from} soundOn={false} />
-    </MemoryRouter>,
+const Camp = ({ from }: { from: string }) => {
+  const [mode, setMode] = useState<CampMode>('daily');
+  return (
+    <CampRulesGame
+      from={from}
+      soundOn={false}
+      mode={mode}
+      onModeChange={setMode}
+    />
   );
-
-const advance = (ms: number) => {
-  act(() => {
-    vi.advanceTimersByTime(ms);
-  });
 };
+
+const renderGame = (from = 'resume') => renderInRouter(<Camp from={from} />);
 
 const start = (label = 'Start the evening') =>
   fireEvent.click(screen.getByRole('button', { name: label }));
@@ -36,25 +45,11 @@ const playToEnd = () => {
 };
 
 describe('CampRulesGame', () => {
+  setupGameTests({ now: new Date(2026, 9, 3, 18, 0) });
+
   beforeEach(() => {
-    vi.useFakeTimers({
-      toFake: [
-        'setTimeout',
-        'clearTimeout',
-        'requestAnimationFrame',
-        'cancelAnimationFrame',
-        'performance',
-        'Date',
-      ],
-    });
-    vi.setSystemTime(new Date(2026, 9, 3, 18, 0));
-    localStorage.clear();
     vi.mocked(trackBearsGameStart).mockClear();
     vi.mocked(trackBearsGameComplete).mockClear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   test('explains the rules and starts today’s camp', () => {
@@ -125,11 +120,7 @@ describe('CampRulesGame', () => {
   });
 
   test('copy result puts a one-line summary on the clipboard', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
-      configurable: true,
-    });
+    const writeText = stubClipboard();
     renderGame();
     start();
     advance(60_000);
@@ -145,10 +136,7 @@ describe('CampRulesGame', () => {
   });
 
   test('the copy status is announced, then resets', async () => {
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
-      configurable: true,
-    });
+    stubClipboard();
     playToEnd();
     const status = within(screen.getByRole('region').parentElement!).getByRole(
       'status',
@@ -168,10 +156,7 @@ describe('CampRulesGame', () => {
   });
 
   test('a failed copy is announced too', async () => {
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
-      configurable: true,
-    });
+    stubClipboard(vi.fn().mockRejectedValue(new Error('denied')));
     playToEnd();
 
     await act(async () => {
@@ -180,6 +165,16 @@ describe('CampRulesGame', () => {
     expect(
       within(screen.getByRole('region').parentElement!).getByRole('status'),
     ).toHaveTextContent('Couldn’t copy');
+  });
+
+  test('the end card is beside the field, not inside it', () => {
+    playToEnd();
+
+    const card = screen.getByRole('region');
+    const field = document.querySelector('.camp-field')!;
+    expect(field).not.toContainElement(card);
+    expect(field.parentElement).toContainElement(card);
+    expect(document.querySelector('.camp')).toHaveClass('camp--over');
   });
 
   test('focus moves to the end card heading when the evening ends', () => {
@@ -192,41 +187,7 @@ describe('CampRulesGame', () => {
 
   describe('share result', () => {
     const coarsePointer = (coarse: boolean) =>
-      vi.spyOn(window, 'matchMedia').mockImplementation(
-        (query: string) =>
-          ({
-            matches: coarse && query === '(pointer: coarse)',
-            media: query,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-          }) as unknown as MediaQueryList,
-      );
-
-    const stubShare = (share: ReturnType<typeof vi.fn>) => {
-      Object.defineProperty(navigator, 'share', {
-        value: share,
-        configurable: true,
-      });
-      Object.defineProperty(navigator, 'canShare', {
-        value: () => true,
-        configurable: true,
-      });
-    };
-
-    const stubClipboard = () => {
-      const writeText = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText },
-        configurable: true,
-      });
-      return writeText;
-    };
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-      Reflect.deleteProperty(navigator, 'share');
-      Reflect.deleteProperty(navigator, 'canShare');
-    });
+      stubMedia((query) => coarse && query === '(pointer: coarse)');
 
     test('opens the share sheet with the one-line summary on touch screens', async () => {
       coarsePointer(true);
@@ -284,6 +245,22 @@ describe('CampRulesGame', () => {
       );
       expect(
         screen.getByRole('button', { name: 'Copied!' }),
+      ).toBeInTheDocument();
+    });
+
+    test('follows a change of pointer after the evening ends', () => {
+      let coarse = false;
+      const media = stubMedia((q) => q === '(pointer: coarse)' && coarse);
+      stubShare(vi.fn().mockResolvedValue(undefined));
+      playToEnd();
+      expect(
+        screen.getByRole('button', { name: 'Copy result' }),
+      ).toBeInTheDocument();
+
+      coarse = true;
+      media.change();
+      expect(
+        screen.getByRole('button', { name: 'Share result' }),
       ).toBeInTheDocument();
     });
 

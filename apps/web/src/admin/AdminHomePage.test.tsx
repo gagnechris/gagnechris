@@ -2,20 +2,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { QueryClientTestProvider } from '../test-utils';
+import { PAST_AUTOSAVE_MS, QueryClientTestProvider } from '../test-utils';
 import AdminHomePage from './AdminHomePage';
+import { adminApi } from '../mockAdminApi';
 
-const get = vi.fn();
-const put = vi.fn();
-const post = vi.fn();
+const { GET: get, PUT: put, POST: post } = adminApi;
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    PUT: (...args: unknown[]) => put(...args),
-    POST: (...args: unknown[]) => post(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 const baseHome = {
   name: 'Chris Gagne',
@@ -76,7 +71,7 @@ describe('AdminHomePage autosave', () => {
     await user.type(title, ' ');
     expect(title).toHaveValue('Engineering ');
 
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
 
     await user.type(title, 'Leader');
@@ -119,12 +114,12 @@ describe('AdminHomePage autosave', () => {
     const title = await screen.findByDisplayValue('Engineering');
 
     await user.type(title, 'A');
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(puts).toHaveLength(1));
 
     // Keep typing while the first PUT is still outstanding (3s network).
     await user.type(title, 'B');
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     // Second save must wait — still only one in flight.
     expect(puts).toHaveLength(1);
 
@@ -187,7 +182,7 @@ describe('AdminHomePage autosave', () => {
     const title = await screen.findByDisplayValue('Engineering');
     await user.clear(title);
     await user.type(title, 'New Title');
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
 
     await waitFor(() => expect(put).toHaveBeenCalled());
     const body = put.mock.calls[0]?.[1]?.body as {

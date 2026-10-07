@@ -425,10 +425,10 @@ describe('cold load: first React render matches the prerender', () => {
       before.firstElementChild!.outerHTML,
     );
     expect(
-      loaded.root.querySelector('.contact-page__header')!.nextElementSibling!
-        .tagName,
-    ).toBe('MAIN');
-    expect(loaded.root.querySelector('form')).not.toBeNull();
+      loaded.root.querySelector(
+        'main.contact-page > .contact-page__header + .contact-page__body > form',
+      ),
+    ).not.toBeNull();
   });
 
   test.each(Object.entries(BEARS_PAGES))(

@@ -30,9 +30,7 @@ test('axe finds nothing on Today, Notes, Tasks, a task and the search palette', 
       title: `${prefix} Planning`,
     },
   });
-  const task = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', title: `${prefix} Draft the plan` },
-  });
+  const task = await seed.task({ title: `${prefix} Draft the plan` });
 
   await signIn();
   await page.goto(`${apps.notebook}/today`);
@@ -46,10 +44,10 @@ test('axe finds nothing on Today, Notes, Tasks, a task and the search palette', 
   await expectNoViolations(page, 'Notes');
 
   await page.goto(`${apps.notebook}/tasks`);
-  await expect(page.getByText(task.data!.title)).toBeVisible();
+  await expect(page.getByText(task.title)).toBeVisible();
   await expectNoViolations(page, 'Tasks');
 
-  await page.goto(`${apps.notebook}/tasks/${task.data!.id}`);
+  await page.goto(`${apps.notebook}/tasks/${task.id}`);
   const linked = page.getByRole('combobox', { name: 'Linked note' });
   await expect(
     linked.locator('option', { hasText: note.data!.title }),
@@ -104,12 +102,10 @@ test('a task links to a note picked by title', async ({
       title: `${prefix} Garden`,
     },
   });
-  const task = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', title: `${prefix} Order seeds` },
-  });
+  const task = await seed.task({ title: `${prefix} Order seeds` });
 
   await signIn();
-  await page.goto(`${apps.notebook}/tasks/${task.data!.id}`);
+  await page.goto(`${apps.notebook}/tasks/${task.id}`);
   await page
     .getByRole('combobox', { name: 'Linked note' })
     .selectOption({ label: note.data!.title });
@@ -118,7 +114,7 @@ test('a task links to a note picked by title', async ({
   await expect
     .poll(async () => {
       const { data } = await seed.api.GET('/api/notebook/tasks/{id}', {
-        params: { path: { id: task.data!.id } },
+        params: { path: { id: task.id } },
       });
       return data?.noteId;
     })
