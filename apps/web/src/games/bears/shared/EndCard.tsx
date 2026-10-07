@@ -24,9 +24,9 @@ type EndCardProps = {
   lede?: string;
   /** 0–3; omit to hide the rating. */
   paws?: number;
-  /** One-line stats beside the paws; hidden unless the page CSS shows it. */
+  /** One-line stats beside the paws, for layouts with no room for `stats`. */
   summary?: string;
-  stats: readonly EndStat[];
+  stats?: readonly EndStat[];
   tip: BearTip;
   tipKicker?: string;
   playAgainLabel?: string;
@@ -93,14 +93,16 @@ const EndCard = ({
           <p className="bears-end__summary">{summary}</p>
         </div>
       )}
-      <dl className="bears-end__stats">
-        {stats.map((s) => (
-          <div key={s.label} className="bears-end__stat">
-            <dt>{s.label}</dt>
-            <dd>{s.value}</dd>
-          </div>
-        ))}
-      </dl>
+      {stats ? (
+        <dl className="bears-end__stats">
+          {stats.map((s) => (
+            <div key={s.label} className="bears-end__stat">
+              <dt>{s.label}</dt>
+              <dd>{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       <aside className="bears-end__tip">
         <p className="bears-end__tip-kicker">{tipKicker}</p>
         <h3>{tip.title}</h3>

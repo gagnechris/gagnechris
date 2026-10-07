@@ -4,6 +4,7 @@ import EndCard from '../shared/EndCard';
 import { useBearsSession } from '../shared/useBearsSession';
 import { useFixedStepLoop } from '../shared/useFixedStepLoop';
 import {
+  useBearsPhone,
   useCoarsePointer,
   usePrefersReducedMotion,
 } from '../shared/useMediaQuery';
@@ -112,6 +113,7 @@ const CampRulesGame = ({
 }: CampRulesGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
   const coarsePointer = useCoarsePointer();
+  const phone = useBearsPhone();
   const session = useBearsSession(GAME, from, soundOn);
   const dailyKey = useMemo(
     () => dailyKeyProp ?? dailyCampKey(new Date()),
@@ -253,13 +255,11 @@ const CampRulesGame = ({
     >
       <div className="camp-hud">
         <div className="camp-hud__stat">
-          <span className="camp-hud__label camp-hud__long">Time left</span>
-          <span className="camp-hud__label camp-hud__short">Time</span>
+          <span className="camp-hud__label">Time</span>
           <span className="camp-hud__value">{secondsLeft(state)}s</span>
         </div>
         <div className="camp-hud__stat">
-          <span className="camp-hud__label camp-hud__long">Bear snacks</span>
-          <span className="camp-hud__label camp-hud__short">Snacks</span>
+          <span className="camp-hud__label">Snacks</span>
           <span
             className="camp-hud__meter"
             role="img"
@@ -443,14 +443,26 @@ const CampRulesGame = ({
                     : 'You held camp together until dark.'
               }
               paws={campPaws(state)}
-              summary={formatCampResult(campResult(state, dailyKey)).summary}
               className="camp-end"
-              stats={[
-                { label: 'Time', value: `${Math.floor(state.t / 1000)}s` },
-                { label: 'Saves', value: state.saves },
-                { label: 'Score', value: score },
-                { label: 'Best', value: Math.max(session.highScore, score) },
-              ]}
+              {...(phone
+                ? {
+                    summary: formatCampResult(campResult(state, dailyKey))
+                      .summary,
+                  }
+                : {
+                    stats: [
+                      {
+                        label: 'Time',
+                        value: `${Math.floor(state.t / 1000)}s`,
+                      },
+                      { label: 'Saves', value: state.saves },
+                      { label: 'Score', value: score },
+                      {
+                        label: 'Best',
+                        value: Math.max(session.highScore, score),
+                      },
+                    ],
+                  })}
               tip={campTip(state)}
               tipKicker={worst ? 'What got you' : 'Bear tip'}
               onPlayAgain={() => begin(mode)}
