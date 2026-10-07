@@ -200,19 +200,22 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 
 ## Layout
 
-| Path                                  | Role                                                          |
-| ------------------------------------- | ------------------------------------------------------------- |
-| `docker-compose.local.yml`            | Official DynamoDB Local image                                 |
-| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                       |
-| `scripts/local/env.sh`                | Safe env (source before local tools)                          |
-| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                              |
-| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                          |
-| `scripts/local/e2e.sh`                | `npm run e2e:local`: builds if needed, runs the `api` project |
-| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing               |
-| `e2e/`                                | Playwright config, stack global setup, fixtures, specs        |
-| `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild                     |
-| `services/api/local/static-server.ts` | Serves `.local-site` with real CF viewer-request              |
-| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)       |
-| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)              |
+| Path                                  | Role                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `docker-compose.local.yml`            | Official DynamoDB Local image                                        |
+| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                              |
+| `scripts/local/env.sh`                | Safe env (source before local tools)                                 |
+| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                                     |
+| `scripts/local/lib.sh`                | `wait_dynamodb` and `wait_http` for the local scripts                |
+| `scripts/local/wait-dynamodb.ts`      | Waits for DynamoDB Local (local scripts, e2e stack, CI)              |
+| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                                 |
+| `scripts/local/e2e.sh`                | `npm run e2e:local`: builds if needed, runs the `api` project        |
+| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing                      |
+| `e2e/`                                | Playwright config, stack global setup, fixtures, specs               |
+| `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild                            |
+| `services/api/local/static-server.ts` | Serves `.local-site` through the real CloudFront functions           |
+| `infra/lib/cloudfront/harness.ts`     | Runs the CloudFront functions under Node (static server, edge tests) |
+| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)              |
+| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)                     |
 
 Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation. Locally the publisher writes the slug KeyValueStore keys to `LOCAL_KVS_FILE` (set by `env.sh`), and the static server answers the viewer-request function's KVS reads from it. Like CloudFront, the static server runs viewer-response only on responses below 400.

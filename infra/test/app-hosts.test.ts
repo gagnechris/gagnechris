@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Aspects, App, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
@@ -8,6 +5,7 @@ import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
+import { loadAppViewerRequest } from '../lib/cloudfront/harness.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
@@ -22,8 +20,6 @@ const testEnv = {
   ALERTS_EMAIL: 'alerts@example.com',
   ADMIN_USERNAME: 'owner@example.com',
 };
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Template JSON is untyped; tests index into it freely.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -627,13 +623,7 @@ describe('app hosts: API Gateway', () => {
 });
 
 describe('app-viewer-request function', () => {
-  const source = readFileSync(
-    join(__dirname, '../lib/cloudfront/app-viewer-request.js'),
-    'utf8',
-  );
-  const handler = new Function(`${source}; return handler;`)() as (event: {
-    request: { uri: string };
-  }) => { uri: string };
+  const handler = loadAppViewerRequest();
   const rewrite = (uri: string) => handler({ request: { uri } }).uri;
 
   it('rewrites app routes to /index.html', () => {

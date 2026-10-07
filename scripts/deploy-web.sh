@@ -10,13 +10,21 @@ WEB="${ROOT}/apps/web"
 DIST="${WEB}/dist"
 SSM_JSON="${ROOT}/infra/lib/config/ssm-params.json"
 
+# One node call resolves every SSM parameter name (ssm_name_<key>=<name>).
+eval "$(node -e '
+const j = require(process.argv[1]);
+const prefix = j.prefixTemplate.replaceAll("${ENV_NAME}", process.argv[2]);
+for (const [key, leaf] of Object.entries(j.keys)) {
+  console.log(`ssm_name_${key}=${JSON.stringify(`${prefix}/${leaf}`)}`);
+}' "${SSM_JSON}" "${ENV_NAME}")"
+
 ssm_name() {
-  local key="$1"
-  local leaf
-  leaf="$(node -e "const j=require(process.argv[1]); const k=process.argv[2]; if(!j.keys[k]) { console.error('unknown SSM key: '+k); process.exit(1)}; process.stdout.write(j.keys[k])" "${SSM_JSON}" "${key}")"
-  local prefix
-  prefix="$(node -e "const j=require(process.argv[1]); process.stdout.write(j.prefixTemplate.replaceAll('\${ENV_NAME}', process.argv[2]))" "${SSM_JSON}" "${ENV_NAME}")"
-  echo "${prefix}/${leaf}"
+  local var="ssm_name_$1"
+  if [[ -z "${!var:-}" ]]; then
+    echo "unknown SSM key: $1" >&2
+    return 1
+  fi
+  echo "${!var}"
 }
 
 ssm_value() {

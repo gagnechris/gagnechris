@@ -1,29 +1,14 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  loadViewerResponse,
+  functionSource,
+  type CfResponse,
+} from '../lib/cloudfront/harness.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const fnSource = readFileSync(
-  join(__dirname, '../lib/cloudfront/viewer-response-function.js'),
-  'utf8',
-);
-
-type CfHeaders = Record<string, { value: string }>;
-
-type CfResponse = {
-  statusCode: number;
-  statusDescription?: string;
-  headers: CfHeaders;
-  body?: string;
-};
+const handler = loadViewerResponse();
 
 function runHandler(uri: string, response: CfResponse): CfResponse {
-  const run = new Function(`${fnSource}\nreturn handler;`)() as (event: {
-    request: { uri: string };
-    response: CfResponse;
-  }) => CfResponse;
-  return run({ request: { uri }, response });
+  return handler({ request: { uri }, response });
 }
 
 describe('viewer-response CloudFront Function', () => {
@@ -72,7 +57,9 @@ describe('viewer-response CloudFront Function', () => {
   });
 
   it('has no inline 404 page: CloudFront never runs it on an origin 4xx', () => {
-    expect(fnSource).not.toContain('NOT_FOUND_HTML');
+    expect(functionSource('viewer-response-function.js')).not.toContain(
+      'NOT_FOUND_HTML',
+    );
     const xml: CfResponse = {
       statusCode: 404,
       headers: { 'content-type': { value: 'application/xml' } },
