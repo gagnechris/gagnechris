@@ -151,6 +151,7 @@ export class NodeLambda extends NodejsFunction {
       environment: {
         POWERTOOLS_SERVICE_NAME: powertoolsServiceName,
         POWERTOOLS_METRICS_NAMESPACE,
+        // 5-10 ms of API init (scripts/measure-api-init.ts); worth readable stacks.
         NODE_OPTIONS: '--enable-source-maps',
         ...environment,
       },

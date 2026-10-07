@@ -9,6 +9,11 @@ import { logger, metrics } from './observability.js';
 import { dispatchRoutes, normalizePath } from './router.js';
 import { routes } from './routes.js';
 
+// Process start to bundle evaluated. Lambda's Init Duration minus this is
+// runtime bootstrap, which no bundle change can shrink.
+const bundleReadyMs = Math.round(performance.now());
+let coldStart = true;
+
 export const handler: APIGatewayProxyHandlerV2 = async (
   event,
   context: Context,
@@ -21,7 +26,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     requestId: event.requestContext.requestId,
   });
   try {
-    logger.info('request', { path });
+    logger.info('request', coldStart ? { path, bundleReadyMs } : { path });
+    coldStart = false;
 
     const response = await dispatchRoutes(routes, event, method, path);
     return gzipJsonResponse(

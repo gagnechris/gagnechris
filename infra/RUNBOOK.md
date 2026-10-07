@@ -761,7 +761,7 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 ## HTTP API runtime and contract
 
-`Api-prod`: HTTP API + arm64 Node.js 22 Lambda behind CloudFront `/api/*`. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
+`Api-prod`: HTTP API + arm64 Node.js 24 Lambda (1024 MB, X-Ray active tracing) behind CloudFront `/api/*`. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
 OpenAPI contract: `packages/shared/openapi/openapi.json` and client types
 `packages/api-client/src/schema.d.ts`. Regenerate both with `npm run openapi`; CI runs
@@ -780,6 +780,32 @@ curl -sS https://gagnechris.com/api/health
 
 curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 # Expect: 401 without Authorization header
+```
+
+### Cold starts
+
+The first request on a new instance logs `bundleReadyMs` on its `request` line: milliseconds from Node process start until the bundle finished loading. The REPORT line's Init Duration minus that is Lambda runtime and sandbox time, which no bundle change shrinks.
+
+Per-route report (cold-start ratio, init p50/p95, cold and warm handler p50/p95, all routes and DynamoDB routes, per memory size):
+
+```bash
+AWS_PROFILE=gagnechris-readonly AWS_REGION=us-east-1 npx tsx scripts/api-cold-start-report.ts --days 14
+# or --since 2026-10-07T00:00:00Z to start at a deploy
+```
+
+It runs this Logs Insights query on the function's log group (`aws lambda get-function-configuration --function-name gagnechris-prod-api --query LoggingConfig.LogGroup`) and aggregates the rows:
+
+```
+filter @type = "REPORT" or message = "request"
+| fields coalesce(@requestId, function_request_id) as invocation
+| stats earliest(route) as apiRoute, max(@initDuration) as initMs, max(@duration) as durationMs, max(@memorySize / 1000 / 1000) as memoryMb, max(bundleReadyMs) as loadMs, count(*) as lineCount by invocation
+| filter lineCount = 2
+```
+
+Bundle load time, with and without `--enable-source-maps` (median of fresh Node processes; `--docker` uses the Lambda Node.js 24 image with a CPU cap):
+
+```bash
+npx tsx scripts/measure-api-init.ts --docker --cpus 0.58 --runs 40
 ```
 
 ## Local E2E
