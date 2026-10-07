@@ -35,6 +35,8 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 
 ## Request flow
 
+The CloudFront functions live as readable source in `infra/lib/cloudfront/`. The Site stack deploys them with comments and whitespace stripped (`deployed-code.ts`), the edge tests and local static server run that same code through `harness.ts`, and `infra/test/cloudfront-function-size.test.ts` keeps each one at or under 9,500 bytes (CloudFront rejects code over 10,240).
+
 1. **Browser → CloudFront** (`gagnechris.com`)
 2. **Viewer request** CloudFront Function:
    - Old apex app URLs → **301** with `Cache-Control: max-age=86400`. Segments match case-insensitively and percent-decoded (`/ADMIN/Notebook`, `/%61dmin`):

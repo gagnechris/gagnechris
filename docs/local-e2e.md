@@ -214,7 +214,7 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 | `e2e/`                                | Playwright config, stack global setup, fixtures, specs               |
 | `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild                            |
 | `services/api/local/static-server.ts` | Serves `.local-site` through the real CloudFront functions           |
-| `infra/lib/cloudfront/harness.ts`     | Runs the CloudFront functions under Node (static server, edge tests) |
+| `infra/lib/cloudfront/harness.ts`     | Runs the CloudFront functions as deployed (local server, edge tests) |
 | `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)              |
 | `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)                     |
 
