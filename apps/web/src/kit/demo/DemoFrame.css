@@ -44,6 +44,6 @@
 }
 
 .demo-frame__note--label {
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1;
 }

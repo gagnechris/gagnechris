@@ -318,4 +318,29 @@ describe('notes repository (DynamoDB Local)', () => {
       }
     }
   });
+
+  it("getMany reads live notes in request order, leaving out deleted, unknown and other users' ids", async () => {
+    const repo = new NotesRepository(doc, tableName);
+    const page = (id: string, title: string) => ({
+      id,
+      area: 'work' as const,
+      type: 'page' as const,
+      title,
+      bodyMarkdown: '',
+      tags: [],
+      pinned: false,
+    });
+    await repo.createFromRequest(USER_A, page(PAGE_A, 'Mine'));
+    await repo.createFromRequest(USER_A, page(DAILY_1, 'Gone'));
+    await repo.createFromRequest(USER_B, page(DAILY_2, 'Theirs'));
+    await repo.deleteIfVersion(USER_A, DAILY_1, 1);
+
+    const got = await repo.getMany(USER_A, [
+      DAILY_2,
+      '01ARZ3NDEKTSV4RRFFQ69G5FC9',
+      DAILY_1,
+      PAGE_A,
+    ]);
+    expect(got.map((n) => n.title)).toEqual(['Mine']);
+  });
 });

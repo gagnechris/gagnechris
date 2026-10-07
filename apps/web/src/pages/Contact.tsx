@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ContactRequestSchema, pageTitle, siteUrl } from '@gagnechris/shared';
+import {
+  ContactRequestSchema,
+  contactFieldMessage,
+  pageTitle,
+  siteUrl,
+} from '@gagnechris/shared';
 import {
   CONTACT_HEADING,
   CONTACT_INTRO,
@@ -46,26 +51,8 @@ const FIELDS: readonly {
 
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-const FIELD_CODE_MESSAGES: Record<string, string> = {
-  too_small: 'This field is required',
-  too_big: 'This value is too long',
-  invalid_format: 'Enter a valid value',
-  invalid_string: 'Enter a valid value',
-  invalid_type: 'Enter a valid value',
-};
-
 const SEND_FAILED = 'Your message wasn’t sent. Please try again.';
 const RATE_LIMITED = 'Too many messages. Please wait a bit and try again.';
-
-function friendlyFieldMessage(field: string, code: string): string {
-  if (
-    field === 'email' &&
-    (code === 'invalid_format' || code === 'invalid_string')
-  ) {
-    return 'Enter a valid email address';
-  }
-  return FIELD_CODE_MESSAGES[code] ?? 'Please check this field';
-}
 
 const isField = (key: string): key is FieldName =>
   FIELDS.some((f) => f.name === key);
@@ -126,7 +113,9 @@ function Contact() {
     const errors: FieldErrors = {};
     for (const issue of parsed.error.issues) {
       const key = String(issue.path[0] ?? '');
-      if (isField(key) && !errors[key]) errors[key] = issue.message;
+      if (isField(key) && !errors[key]) {
+        errors[key] = contactFieldMessage(key, issue.code);
+      }
     }
     if (Object.keys(errors).length > 0) {
       showFieldErrors(errors);
@@ -160,7 +149,7 @@ function Contact() {
       const errors: FieldErrors = {};
       for (const [key, code] of Object.entries(error.fields ?? {})) {
         if (isField(key)) {
-          errors[key] = friendlyFieldMessage(
+          errors[key] = contactFieldMessage(
             key,
             typeof code === 'string' ? code : 'invalid',
           );

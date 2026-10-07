@@ -1,13 +1,9 @@
 /**
  * Uses VersionedRepository (owner-scoped) with @gagnechris/data mappers/keys.
  */
-import {
-  BatchGetCommand,
-  type DynamoDBDocumentClient,
-} from '@aws-sdk/lib-dynamodb';
+import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
   GSI1_NAME,
-  batchGetAllWithDocClient,
   GSI2_NAME,
   buildTaskMetaItem,
   keys,
@@ -48,6 +44,7 @@ import {
   type OwnerKey,
 } from '../data/versioned-repository.js';
 import { PAGE_BYTE_BUDGET } from '../data/page-budget.js';
+import { batchGetOwned } from '../data/batch-get-owned.js';
 import { collectPages } from '../data/collect-pages.js';
 import { walkPartitions } from '../data/partition-walk.js';
 import { hashCreateFields } from '../data/create-hash.js';
@@ -247,24 +244,16 @@ export class TasksRepository {
     return this.base.getOrThrow({ userId, id });
   }
 
-  /** Live tasks among `ids` in their order, in one BatchGetItem (ids are capped at its 100 keys). */
-  async getMany(userId: string, ids: readonly string[]): Promise<Task[]> {
-    const unique = [...new Set(ids)];
-    if (unique.length === 0) return [];
-    const responses = await batchGetAllWithDocClient(
-      (RequestItems) => this.doc.send(new BatchGetCommand({ RequestItems })),
-      {
-        [this.tableName]: {
-          Keys: unique.map((id) => keys.notebook.task.meta(userId, id)),
-        },
-      },
+  /** Live tasks among `ids` in their order, in one BatchGetItem. */
+  getMany(userId: string, ids: readonly string[]): Promise<Task[]> {
+    return batchGetOwned(
+      this.doc,
+      this.tableName,
+      userId,
+      ids,
+      keys.notebook.task.meta,
+      (raw) => this.base.mapItem(raw),
     );
-    const byId = new Map<string, Task>();
-    for (const raw of responses[this.tableName] ?? []) {
-      const task = this.base.mapItem(raw);
-      if (task.userId === userId && !task.deleted) byId.set(task.id, task);
-    }
-    return unique.flatMap((id) => byId.get(id) ?? []);
   }
 
   createIdempotent(task: Task): Promise<Task> {

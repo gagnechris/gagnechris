@@ -28,6 +28,9 @@ export const queryKeys = {
         ? ([...queryKeys.notes.all, 'list', filters] as const)
         : ([...queryKeys.notes.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.notes.all, 'detail', id] as const,
+    /** Sorted ids, so the same set is one cache entry. */
+    batch: (ids: readonly string[]) =>
+      [...queryKeys.notes.all, 'batch', ids] as const,
     daily: (area: 'work' | 'personal', date: string) =>
       [...queryKeys.notes.all, 'daily', area, date] as const,
     dailyDates: (

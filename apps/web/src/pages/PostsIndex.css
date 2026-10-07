@@ -42,7 +42,7 @@
 .posts-index__empty {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   color: var(--color-ink-soft);
 }
 
@@ -55,7 +55,7 @@
   padding-bottom: 13px;
   border-bottom: 1px solid var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: 0.12em;
@@ -111,7 +111,7 @@
 
 .post-preview__date {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -122,7 +122,7 @@
   grid-column: 1 / -1;
   margin: 6px 0 0;
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.5;
   color: var(--color-ink-soft);
 }
@@ -140,7 +140,7 @@
 
   .posts-index__intro {
     margin-top: 9px;
-    font-size: 1.1875rem;
+    font-size: var(--text-lead);
     line-height: 1.45;
   }
 
@@ -170,7 +170,7 @@
 
   .post-preview__excerpt {
     margin-top: 5px;
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
     line-height: 1.45;
   }
 }

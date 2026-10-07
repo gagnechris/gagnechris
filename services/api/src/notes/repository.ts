@@ -30,6 +30,7 @@ import {
   type NotebookArea,
   type UpdateNoteRequest,
 } from '@gagnechris/shared';
+import { batchGetOwned } from '../data/batch-get-owned.js';
 import { GSI1_CURSOR_KEYS, PRIMARY_CURSOR_KEYS } from '../data/cursor.js';
 import {
   BadRequestError,
@@ -330,6 +331,18 @@ export class NotesRepository {
 
   getOrThrow(userId: string, id: string): Promise<Note> {
     return this.base.getOrThrow({ userId, id });
+  }
+
+  /** Live notes among `ids` in their order, in one BatchGetItem. */
+  getMany(userId: string, ids: readonly string[]): Promise<Note[]> {
+    return batchGetOwned(
+      this.doc,
+      this.tableName,
+      userId,
+      ids,
+      keys.notebook.note.meta,
+      (raw) => this.base.mapItem(raw),
+    );
   }
 
   createIdempotent(note: Note): Promise<Note> {
