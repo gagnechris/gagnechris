@@ -1,7 +1,8 @@
 # Mobile (Expo)
 
-Expo app that runs the monorepo client packages under Metro. Its screen calls
-`GET /api/health` and `GET /api/admin/home` against the configured API.
+Expo app (expo-router, dev client) that runs the monorepo client packages under
+Metro. Its one screen shows a client-generated ULID and `GET /api/health` from
+the configured API.
 
 This app is not part of the root npm workspaces and has its own lockfile, so its
 dependencies install separately. See `docs/mobile.md`.
@@ -15,10 +16,13 @@ npm ci --prefix apps/mobile
 # Terminal 1 — local CMS API (fake auth)
 npm run local:dev
 
-# Terminal 2 — Expo
-npm run mobile
-# then press i for iOS Simulator
+# Terminal 2 — build and launch the dev client in the iOS Simulator
+npm run ios --prefix apps/mobile   # expo run:ios
 ```
+
+With the dev client already installed, `npm start --prefix apps/mobile` and
+press `i`. An EAS simulator build (`npx eas-cli build --profile development
+--platform ios`) is the alternative; see `docs/mobile.md#run-in-the-simulator`.
 
 Override API target:
 
@@ -30,17 +34,17 @@ EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 
 ## Packages exercised
 
-- `@gagnechris/shared` — `HealthResponseSchema`
+- `@gagnechris/shared` — `HealthResponseSchema`, `createUlid`
 - `@gagnechris/api-client` — `createApiClient` (public + TokenProvider)
-- `@gagnechris/app-core` — `useQueuedAutosave` (single-React check)
+- `@gagnechris/app-core` — `AppApiProvider`, `useGetApiClient`
 - `@gagnechris/tokens` — colors plus numeric space / text / radius scales
 
 ## Bundle checks
 
 ```bash
 npm run export:ios      # expo export --platform ios --source-maps
-npm run check:bundle    # no .d.ts; zod/v4 present; no zod/v3
-npm run smoke:bundle    # Metro bundle + zod v4 smoke in Node
+npm run check:bundle    # no .d.ts; zod/v4, app-core, react-query, expo-crypto, expo-router present; no zod/v3
+npm run smoke:bundle    # Metro bundle run in Node: zod v4, polyfilled ULID, app-core hook render
 ```
 
 `expo export` succeeding is not evidence on its own: a resolver that maps
