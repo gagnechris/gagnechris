@@ -14,7 +14,7 @@ import {
   projectDraftFromProject,
   projectPayload,
 } from './projectDraft';
-import { BodyPreview } from './editor/BodyPreview';
+import { LazyBodyPreview } from './editor/LazyBodyPreview';
 import { EditorFrame, EditorNotice } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
@@ -115,7 +115,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
             onChange={(value) => setField('bodyMarkdown', value)}
             onUploadImages={uploadBodyImages}
             preview={
-              <BodyPreview kind="project" markdown={draft.bodyMarkdown} />
+              <LazyBodyPreview kind="project" markdown={draft.bodyMarkdown} />
             }
             resolveImageSrc={publicImageSrc}
           />

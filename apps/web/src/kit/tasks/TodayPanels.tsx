@@ -5,8 +5,8 @@ import {
   nextWeekday,
   type Task,
   type TaskSchedule,
+  weekdayName,
 } from '@gagnechris/shared';
-import { parseLocalDate } from '../calendarDates';
 import { SnoozeMenu } from './SnoozeMenu';
 import { TaskDuePill } from './TaskDuePill';
 import type { TaskDue } from './taskDue';
@@ -382,10 +382,7 @@ export function CarryFooter({
   count: number;
   nextDay: string;
 }) {
-  const weekday =
-    parseLocalDate(nextDay)?.toLocaleDateString('en-US', {
-      weekday: 'long',
-    }) ?? nextDay;
+  const weekday = weekdayName(nextDay, 'long');
   return (
     <p className="today-carry" data-testid="carry-footer">
       <span aria-hidden="true">→ </span>

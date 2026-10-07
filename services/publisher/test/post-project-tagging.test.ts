@@ -145,6 +145,7 @@ describe('post to project tagging', () => {
       scope: records ? collectRebuildScope(records) : undefined,
       storage: site.storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts, corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects, corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),

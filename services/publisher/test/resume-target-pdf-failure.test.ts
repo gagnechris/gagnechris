@@ -78,6 +78,7 @@ describe('resume target PDF failure', () => {
       },
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({

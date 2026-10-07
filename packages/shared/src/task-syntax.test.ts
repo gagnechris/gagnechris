@@ -13,11 +13,11 @@ import {
   activeTaskDueQuery,
   formatTaskDay,
   noteDisplayTitle,
-  localDateString,
   parseTaskSyntax,
   taskDateMenuOptions,
   taskDateToken,
 } from './task-syntax.js';
+import { localDateString } from './calendar.js';
 
 // 2026-10-02 is a Friday, 2026-10-05 a Monday.
 const FRI = '2026-10-02';

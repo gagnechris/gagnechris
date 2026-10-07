@@ -4,29 +4,17 @@ import {
   fetchTasksPage,
   useGetApiClient,
 } from '@gagnechris/app-core';
-import { localToday } from '../kit/calendarDates';
+import { localDateString } from '@gagnechris/shared';
 import { buildNotebookExportZip, triggerBlobDownload } from './exportNotebook';
 
-async function collectAllNotes(
-  client: ReturnType<ReturnType<typeof useGetApiClient>>,
-) {
-  const items = [];
+/** Every page of a cursor-paged list. */
+async function collectAllPages<T>(
+  fetchPage: (cursor?: string) => Promise<{ items: T[]; nextCursor?: string }>,
+): Promise<T[]> {
+  const items: T[] = [];
   let cursor: string | undefined;
   do {
-    const page = await fetchNotesPage(client, { cursor, limit: 100 });
-    items.push(...page.items);
-    cursor = page.nextCursor;
-  } while (cursor);
-  return items;
-}
-
-async function collectAllTasks(
-  client: ReturnType<ReturnType<typeof useGetApiClient>>,
-) {
-  const items = [];
-  let cursor: string | undefined;
-  do {
-    const page = await fetchTasksPage(client, { cursor, limit: 100 });
+    const page = await fetchPage(cursor);
     items.push(...page.items);
     cursor = page.nextCursor;
   } while (cursor);
@@ -44,11 +32,15 @@ export function useNotebookExport() {
     try {
       const client = getClient();
       const [notes, tasks] = await Promise.all([
-        collectAllNotes(client),
-        collectAllTasks(client),
+        collectAllPages((cursor) =>
+          fetchNotesPage(client, { cursor, limit: 100 }),
+        ),
+        collectAllPages((cursor) =>
+          fetchTasksPage(client, { cursor, limit: 100 }),
+        ),
       ]);
       const { blob } = buildNotebookExportZip(notes, tasks);
-      triggerBlobDownload(blob, `notebook-export-${localToday()}.zip`);
+      triggerBlobDownload(blob, `notebook-export-${localDateString()}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
     } finally {

@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -16,20 +17,13 @@ import {
 } from '@gagnechris/shared/render';
 import { QueryClientTestProvider } from '../test-utils';
 import ProjectEditorPage from './ProjectEditorPage';
+import { adminApi } from '../mockAdminApi';
 
-const get = vi.fn();
-const put = vi.fn();
-const post = vi.fn();
-const del = vi.fn();
+const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    PUT: (...args: unknown[]) => put(...args),
-    POST: (...args: unknown[]) => post(...args),
-    DELETE: (...args: unknown[]) => del(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 vi.mock('../kit/markdown/MarkdownEditor', () => ({
   default: ({
@@ -435,7 +429,7 @@ describe('ProjectEditorPage demo without a preview image', () => {
     await user.click(screen.getByRole('button', { name: 'Publish' }));
     expect(await screen.findByText(BLOCKED)).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(async () => {});
     expect(publishCalls()).toHaveLength(0);
 
     await user.upload(
@@ -629,6 +623,7 @@ describe('ProjectEditorPage preview', () => {
     renderEditor(project);
     await screen.findByDisplayValue('Notebook');
     await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
     published.innerHTML = renderProjectPageBodyHtml(projectPageView(project));

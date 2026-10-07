@@ -5,7 +5,11 @@ import {
   type Locator,
   type Page,
 } from '@playwright/test';
-import { createApiClient, type ApiClient } from '@gagnechris/api-client';
+import {
+  createApiClient,
+  type ApiClient,
+  type paths,
+} from '@gagnechris/api-client';
 import { ulid } from 'ulid';
 
 /** Mirrors `LOCAL_AUTH_USER_KEY` in apps/web/src/workspace/auth/session.ts. */
@@ -51,6 +55,36 @@ export async function focusJustBefore(target: Locator): Promise<void> {
   });
 }
 
+type JsonBody<
+  P extends keyof paths,
+  M extends 'post' | 'put',
+> = paths[P][M] extends {
+  requestBody?: { content: { 'application/json': infer B } };
+}
+  ? B
+  : never;
+
+export type PostInput = Partial<JsonBody<'/api/admin/posts', 'post'>>;
+export type ProjectInput = Partial<JsonBody<'/api/admin/projects', 'post'>>;
+type TaskInput = JsonBody<'/api/notebook/tasks', 'post'>;
+type Area = JsonBody<'/api/notebook/tasks', 'post'>['area'];
+
+const fail = (what: string, error: unknown): never => {
+  throw new Error(`seed ${what} failed: ${JSON.stringify(error)}`);
+};
+
+/** Resolves after `count` animation frames, once the page has painted what it queued. */
+export const afterFrames = (page: Page, count = 2): Promise<void> =>
+  page.evaluate(
+    (n) =>
+      new Promise<void>((resolve) => {
+        const step = (left: number) =>
+          left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1));
+        step(n);
+      }),
+    count,
+  );
+
 /** Seeds through the local API so data passes the same validation as the UI. */
 export class Seed {
   readonly api: ApiClient;
@@ -58,24 +92,62 @@ export class Seed {
   constructor(
     readonly user: E2EUser,
     private readonly prefix: string,
+    baseUrl = requireEnv('E2E_API_URL'),
   ) {
     this.api = createApiClient({
-      baseUrl: requireEnv('E2E_API_URL'),
+      baseUrl,
       getToken: async () => `local:${user.userId}`,
     });
   }
 
-  async post(input: { title?: string; bodyMarkdown?: string } = {}) {
+  /** A draft post; title and slug default to unique values under `prefix`. */
+  async post(input: PostInput = {}) {
     const suffix = randomBytes(3).toString('hex');
     const { data, error } = await this.api.POST('/api/admin/posts', {
       body: {
-        title: input.title ?? `${this.prefix} post ${suffix}`,
+        title: `${this.prefix} post ${suffix}`,
         slug: `${this.prefix}-${suffix}`,
-        bodyMarkdown: input.bodyMarkdown ?? 'Seeded by e2e.',
+        bodyMarkdown: 'Seeded by e2e.',
+        ...input,
       },
     });
-    if (!data) throw new Error(`seed post failed: ${JSON.stringify(error)}`);
-    return data;
+    return data ?? fail('post', error);
+  }
+
+  /** Created and published; resolves once the publisher has written the page. */
+  async publishedPost(input: PostInput = {}) {
+    const post = await this.post(input);
+    const { data, error } = await this.api.POST(
+      '/api/admin/posts/{id}/publish',
+      { params: { path: { id: post.id } }, body: { version: post.version } },
+    );
+    return data?.status === 'published' ? data : fail('post publish', error);
+  }
+
+  /** A draft project in `building`; name and slug default to unique values. */
+  async project(input: ProjectInput = {}) {
+    const suffix = randomBytes(3).toString('hex');
+    const { data, error } = await this.api.POST('/api/admin/projects', {
+      body: {
+        name: `${this.prefix} project ${suffix}`,
+        slug: `${this.prefix}-${suffix}`,
+        stage: 'building',
+        ...input,
+      },
+    });
+    return data ?? fail('project', error);
+  }
+
+  async publishedProject(input: ProjectInput = {}) {
+    const project = await this.project(input);
+    const { data, error } = await this.api.POST(
+      '/api/admin/projects/{id}/publish',
+      {
+        params: { path: { id: project.id } },
+        body: { version: project.version },
+      },
+    );
+    return data?.status === 'published' ? data : fail('project publish', error);
   }
 
   async note(input: { title?: string; bodyMarkdown?: string } = {}) {
@@ -88,21 +160,30 @@ export class Seed {
         bodyMarkdown: input.bodyMarkdown ?? '',
       },
     });
-    if (!data) throw new Error(`seed note failed: ${JSON.stringify(error)}`);
-    return data;
+    return data ?? fail('note', error);
   }
 
-  async task(input: { title: string; noteId?: string }) {
-    const { data, error } = await this.api.POST('/api/notebook/tasks', {
-      body: {
-        id: ulid(),
-        area: 'work',
-        title: input.title,
-        noteId: input.noteId ?? null,
+  /** The daily note for `date` (`yyyy-mm-dd`), created or replaced. */
+  async daily(
+    date: string,
+    bodyMarkdown: string,
+    opts: { area?: Area; id?: string; version?: number } = {},
+  ) {
+    const { data, error } = await this.api.PUT(
+      '/api/notebook/notes/daily/{area}/{date}',
+      {
+        params: { path: { area: opts.area ?? 'work', date } },
+        body: { id: opts.id ?? ulid(), version: opts.version, bodyMarkdown },
       },
+    );
+    return data ?? fail('daily note', error);
+  }
+
+  async task(input: Partial<TaskInput> & { title: string }) {
+    const { data, error } = await this.api.POST('/api/notebook/tasks', {
+      body: { id: ulid(), area: 'work', noteId: null, ...input },
     });
-    if (!data) throw new Error(`seed task failed: ${JSON.stringify(error)}`);
-    return data;
+    return data ?? fail('task', error);
   }
 }
 

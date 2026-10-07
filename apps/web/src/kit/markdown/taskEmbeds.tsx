@@ -5,15 +5,22 @@ import {
   Transaction,
   type Extension,
   type Range,
-  type Text,
 } from '@codemirror/state';
 import {
   Decoration,
   EditorView,
+  ViewPlugin,
   WidgetType,
   type DecorationSet,
+  type ViewUpdate,
 } from '@codemirror/view';
-import { createUlid, findTaskEmbeds, taskEmbedToken } from '@gagnechris/shared';
+import {
+  createUlid,
+  fenceLineKind,
+  findTaskEmbeds,
+  scanFences,
+  taskEmbedToken,
+} from '@gagnechris/shared';
 import {
   Fragment,
   useCallback,
@@ -120,21 +127,6 @@ const convertedField = StateField.define<ReadonlyMap<string, Converted>>({
   },
 });
 
-const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
-
-function insideFence(doc: Text, lineNumber: number): boolean {
-  let fence: string | null = null;
-  for (let n = 1; n < lineNumber; n += 1) {
-    const opener = FENCE.exec(doc.line(n).text)?.[1];
-    if (!opener) continue;
-    if (!fence) fence = opener;
-    else if (opener[0] === fence[0] && opener.length >= fence.length) {
-      fence = null;
-    }
-  }
-  return fence !== null;
-}
-
 /**
  * An id is reused only when its token is gone from the doc: first the task
  * whose conversion was undone on this line, then one with the same text.
@@ -177,6 +169,7 @@ function convertLeftLine(newId: () => string) {
       .sort((a, b) => a - b);
     if (lineNumbers.length === 0) return tr;
 
+    const fences = scanFences(doc.iterLines());
     const converted = tr.startState.field(convertedField);
     const text = doc.toString();
     const taken = new Set<string>();
@@ -185,7 +178,7 @@ function convertLeftLine(newId: () => string) {
     for (const n of lineNumbers) {
       const line = doc.line(n);
       const parsed = parseTaskLine(line.text);
-      if (!parsed || insideFence(doc, n)) continue;
+      if (!parsed || fenceLineKind(fences, n - 1)) continue;
       const id =
         reusableId(
           converted,
@@ -240,7 +233,7 @@ class TaskEmbedWidget extends WidgetType {
 
 const draftLine = Decoration.line({ class: 'cm-task-draft' });
 
-function buildDecorations(state: EditorState, host: TaskEmbedHost) {
+function buildWidgets(state: EditorState, host: TaskEmbedHost) {
   const doc = state.doc;
   const ranges: Range<Decoration>[] = [];
   for (const embed of findTaskEmbeds(doc.toString())) {
@@ -253,22 +246,53 @@ function buildDecorations(state: EditorState, host: TaskEmbedHost) {
       }).range(from, to),
     );
   }
-  for (let n = 1; n <= doc.lines; n += 1) {
-    const line = doc.line(n);
-    if (parseTaskLine(line.text)) ranges.push(draftLine.range(line.from));
-  }
-  return Decoration.set(ranges, true);
+  return Decoration.set(ranges);
 }
+
+function buildDraftLines(view: EditorView) {
+  const { doc } = view.state;
+  const ranges: Range<Decoration>[] = [];
+  let last = 0;
+  for (const { from, to } of view.visibleRanges) {
+    const end = doc.lineAt(to).number;
+    for (
+      let n = Math.max(doc.lineAt(from).number, last + 1);
+      n <= end;
+      n += 1
+    ) {
+      const line = doc.line(n);
+      if (parseTaskLine(line.text)) ranges.push(draftLine.range(line.from));
+    }
+    last = Math.max(last, end);
+  }
+  return Decoration.set(ranges);
+}
+
+const draftLines = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildDraftLines(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildDraftLines(update.view);
+      }
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
 
 export function taskEmbedEditor({
   host,
   onCreate,
   newId = createUlid,
 }: TaskEmbedEditorOptions): Extension {
-  const decorations = StateField.define<DecorationSet>({
-    create: (state) => buildDecorations(state, host),
-    update: (deco, tr) =>
-      tr.docChanged ? buildDecorations(tr.state, host) : deco,
+  const widgets = StateField.define<DecorationSet>({
+    create: (state) => buildWidgets(state, host),
+    update: (deco, tr) => (tr.docChanged ? buildWidgets(tr.state, host) : deco),
     provide: (field) => [
       EditorView.decorations.from(field),
       EditorView.atomicRanges.of((view) => view.state.field(field)),
@@ -279,7 +303,8 @@ export function taskEmbedEditor({
     candidateField,
     convertedField,
     convertLeftLine(newId),
-    decorations,
+    widgets,
+    draftLines,
     EditorView.updateListener.of((update) => {
       for (const tr of update.transactions) {
         for (const effect of tr.effects) {
@@ -303,8 +328,6 @@ export function taskEmbedEditor({
   ];
 }
 
-let mountKey = 0;
-
 /**
  * Embed rows render as React portals into CodeMirror widgets, so they share
  * the page's router and data context.
@@ -318,26 +341,28 @@ export function useTaskEmbedEditor({
   renderEmbed: (id: string) => ReactNode;
   newId?: () => string;
 }) {
-  const [mounts, setMounts] = useState<
-    ReadonlyMap<HTMLElement, { id: string; key: number }>
-  >(() => new Map());
+  // `seq` keys each mount, so a widget rebuilt for the same id remounts its row.
+  const [mounts, setMounts] = useState<{
+    seq: number;
+    byEl: ReadonlyMap<HTMLElement, { id: string; key: number }>;
+  }>(() => ({ seq: 0, byEl: new Map() }));
   const onCreateRef = useRef(onCreate);
   useEffect(() => {
     onCreateRef.current = onCreate;
   }, [onCreate]);
   const host = useMemo<TaskEmbedHost>(
     () => ({
-      attach: (el, id) => {
-        mountKey += 1;
-        const key = mountKey;
-        setMounts((prev) => new Map(prev).set(el, { id, key }));
-      },
+      attach: (el, id) =>
+        setMounts(({ seq, byEl }) => ({
+          seq: seq + 1,
+          byEl: new Map(byEl).set(el, { id, key: seq + 1 }),
+        })),
       detach: (el) =>
         setMounts((prev) => {
-          if (!prev.has(el)) return prev;
-          const next = new Map(prev);
-          next.delete(el);
-          return next;
+          if (!prev.byEl.has(el)) return prev;
+          const byEl = new Map(prev.byEl);
+          byEl.delete(el);
+          return { ...prev, byEl };
         }),
     }),
     [],
@@ -354,7 +379,7 @@ export function useTaskEmbedEditor({
 
   const portals = (
     <>
-      {[...mounts].map(([el, { id, key }]) => (
+      {[...mounts.byEl].map(([el, { id, key }]) => (
         <Fragment key={key}>{createPortal(renderEmbed(id), el)}</Fragment>
       ))}
     </>

@@ -2,25 +2,22 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { QueryClientTestProvider, createTestQueryClient } from '../test-utils';
+import {
+  createTestQueryClient,
+  PAST_AUTOSAVE_MS,
+  QueryClientTestProvider,
+} from '../test-utils';
 import PostEditorPage from './PostEditorPage';
 import { queryKeys } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import { renderPostPageBodyHtml } from '@gagnechris/shared/render';
+import { adminApi } from '../mockAdminApi';
 
-const get = vi.fn();
-const put = vi.fn();
-const post = vi.fn();
-const del = vi.fn();
+const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    PUT: (...args: unknown[]) => put(...args),
-    POST: (...args: unknown[]) => post(...args),
-    DELETE: (...args: unknown[]) => del(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 vi.mock('../kit/markdown/MarkdownEditor', () => ({
   default: ({
@@ -352,8 +349,13 @@ describe('PostEditorPage delete (CHR-158)', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test('no PUT after DELETE starts, no GET of deleted post, no leave prompt', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     let resolveDelete!: (value: unknown) => void;
@@ -394,7 +396,7 @@ describe('PostEditorPage delete (CHR-158)', () => {
     );
 
     // Autosave hold: no PUT while DELETE is in flight.
-    await new Promise((r) => setTimeout(r, 1000));
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     expect(put).not.toHaveBeenCalled();
 
     const getCallsDuringDelete = get.mock.calls.length;
@@ -810,6 +812,7 @@ describe('PostEditorPage preview', () => {
     const { container } = renderEditor();
     await screen.findByDisplayValue('Hello');
     await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
     published.innerHTML = renderPostPageBodyHtml({

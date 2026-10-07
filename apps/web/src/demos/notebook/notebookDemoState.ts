@@ -1,8 +1,13 @@
-import { formatTaskDay, parseTaskSyntax, type Task } from '@gagnechris/shared';
-import { addLocalDays, formatLocalDate } from '../../kit/calendarDates';
+import {
+  addDays,
+  localDateString,
+  parseTaskSyntax,
+  relativeDayLabel,
+  type Task,
+} from '@gagnechris/shared';
 import {
   bucketTodayTasks,
-  COMING_UP_DAYS,
+  sourceNoteName,
   stillOpenSource,
   type SourceNote,
   type StillOpenSource,
@@ -81,9 +86,9 @@ const task = (
 
 /** Dates are relative to `now`, the visitor's clock, so the sample reads like their week. */
 export function seedNotebookDemo(now: Date = new Date()): NotebookDemoState {
-  const today = formatLocalDate(now);
-  const yesterday = addLocalDays(today, -1);
-  const twoDaysAgo = addLocalDays(today, -2);
+  const today = localDateString(now);
+  const yesterday = addDays(today, -1);
+  const twoDaysAgo = addDays(today, -2);
   const notes: SourceNote[] = [
     { id: 'demo-note-1', type: 'daily', date: yesterday, title: '' },
     { id: 'demo-note-2', type: 'daily', date: twoDaysAgo, title: '' },
@@ -118,7 +123,7 @@ export function seedNotebookDemo(now: Date = new Date()): NotebookDemoState {
       task({
         id: 'demo-weekly',
         title: 'Write weekly notes',
-        startDate: addLocalDays(today, 1),
+        startDate: addDays(today, 1),
         noteId: null,
         createdAt: at(twoDaysAgo),
       }),
@@ -183,14 +188,13 @@ export function notebookDemoReducer(
   }
 
   if (state.noteTaskIds.includes(target.id)) return state;
+  const from = state.notes.find((n) => n.id === target.noteId);
   return {
     ...state,
     noteTaskIds: [...state.noteTaskIds, target.id],
     hint: {
       kind: 'pulled',
-      from: state.notes.some((n) => n.id === target.noteId)
-        ? sourceOf(state, target).label.split(' · ')[0]!
-        : null,
+      from: from ? sourceNoteName(from, state.today) : null,
     },
   };
 }
@@ -201,14 +205,9 @@ export function notebookDemoView(state: NotebookDemoState) {
     const t = tasksById.get(id);
     return t ? [t] : [];
   });
-  const { stillOpen } = bucketTodayTasks(state.tasks, {
+  const { stillOpen, comingUp } = bucketTodayTasks(state.tasks, {
     day: state.today,
     embeddedIds: new Set(state.noteTaskIds),
-  });
-  // A dated task written in today's note also shows under Coming up.
-  const { comingUp } = bucketTodayTasks(state.tasks, {
-    day: state.today,
-    embeddedIds: new Set(),
   });
   return {
     noteTasks,
@@ -218,12 +217,10 @@ export function notebookDemoView(state: NotebookDemoState) {
   };
 }
 
-const dayPhrase = (date: string, today: string): string => {
-  if (date === addLocalDays(today, 1)) return 'tomorrow';
-  return date < addLocalDays(today, 7)
-    ? formatTaskDay(date).slice(0, 3)
-    : formatTaskDay(date, false);
-};
+const dayPhrase = (date: string, today: string): string =>
+  date === addDays(today, 1)
+    ? 'tomorrow'
+    : relativeDayLabel(date, today, 'future');
 
 export function notebookDemoHintText(
   hint: NotebookDemoHint,
@@ -248,11 +245,7 @@ export function notebookDemoHintText(
         return 'Parked for someday. It stays in this note, off Today and Coming up.';
       }
       if (startDate && startDate > today) {
-        const where =
-          startDate <= addLocalDays(today, COMING_UP_DAYS)
-            ? 'shows up under Coming up'
-            : 'shows up on Today that day';
-        return `Scheduled for ${dayPhrase(startDate, today)}. It stays in this note and ${where}.`;
+        return `Scheduled for ${dayPhrase(startDate, today)}. It stays in this note, and from that day it shows under Still open on Today.`;
       }
       return 'Added to today’s note. If it isn’t done, it carries forward to tomorrow.';
     }

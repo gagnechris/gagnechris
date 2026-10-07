@@ -3,11 +3,10 @@ import {
   useId,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { Button } from '../../kit/Button';
-import { parseLocalDate } from '../../kit/calendarDates';
+import { formatCalendarDay } from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
 import { TaskEmbedRow } from '../../kit/tasks/TaskEmbedRow';
@@ -15,6 +14,7 @@ import { taskDue } from '../../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
+import { useMediaQuery } from '../../kit/useMediaQuery';
 import { useTabs } from '../../kit/useTabs';
 import {
   NOTEBOOK_DEMO_NOTE,
@@ -52,17 +52,6 @@ const resetLabel = (
     <span className="notebook-demo__narrow">Reset</span>
   </>
 );
-
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const mql = window.matchMedia?.(query);
-      mql?.addEventListener('change', onChange);
-      return () => mql?.removeEventListener('change', onChange);
-    },
-    () => Boolean(window.matchMedia?.(query).matches),
-  );
-}
 
 export default function NotebookDemo() {
   const { state, dispatch, reset } = useDemoReducer(
@@ -138,11 +127,7 @@ function NotebookDemoBody({
         <div>
           <p className="notebook-demo__kicker">Work notebook</p>
           <h3 className="notebook-demo__day">
-            {parseLocalDate(today)?.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            }) ?? today}
+            {formatCalendarDay(today, { weekday: 'long', month: 'long' })}
           </h3>
         </div>
         {resetButton}

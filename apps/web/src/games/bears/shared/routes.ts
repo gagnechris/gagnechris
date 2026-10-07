@@ -1,4 +1,4 @@
-import type { BearsGame } from '../../../utils/analytics';
+import type { BearsGame } from './games';
 
 export const BEARS_LANDING_PATH = '/dont-feed-the-bears';
 

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import { ConflictError, ServiceUnavailableError } from '../src/data/errors.js';
-import { runDynamoWrite } from '../src/data/dynamo-write.js';
+import {
+  retryTransactionConflicts,
+  runDynamoWrite,
+} from '../src/data/dynamo-write.js';
 
 describe('runDynamoWrite', () => {
   it('maps TransactionConflict to ConflictError', async () => {
@@ -51,5 +54,30 @@ describe('runDynamoWrite', () => {
         });
       }, 'would-be-conflict'),
     ).rejects.toBeInstanceOf(ServiceUnavailableError);
+  });
+});
+
+const canceled = (...codes: string[]) =>
+  new TransactionCanceledException({
+    message: 'cancelled',
+    $metadata: {},
+    CancellationReasons: codes.map((Code) => ({ Code })),
+  });
+
+describe('retryTransactionConflicts', () => {
+  it('does not resend when a condition also failed', async () => {
+    const write = vi.fn(async () => {
+      throw canceled('ConditionalCheckFailed', 'TransactionConflict');
+    });
+    await expect(retryTransactionConflicts(write)).rejects.toThrow();
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up after the retries', async () => {
+    const write = vi.fn(async () => {
+      throw canceled('None', 'TransactionConflict');
+    });
+    await expect(retryTransactionConflicts(write, 2)).rejects.toThrow();
+    expect(write).toHaveBeenCalledTimes(3);
   });
 });

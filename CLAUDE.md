@@ -24,7 +24,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 ## Commands
 
 - Build: `npm run build` (`tsc -b`, then the public, admin and Notebook Vite builds → `apps/web/dist`, `dist-admin`, `dist-notebook`; the public build fails if it bundles admin, Notebook or auth code)
-- Web shell guard: `npm run check:web-shells` (after build: GA in the public shell exactly when `GA_MEASUREMENT_ID` is set, never in the app shells, no inline script in any shell, demo code only in lazy chunks, no third-party script in the app shells)
+- Web shell guard: `npm run check:web-shells` (after build: GA in the public shell exactly when `GA_MEASUREMENT_ID` is set, never in the app shells, no inline script in any shell, no public entry asset beyond `PUBLIC_ENTRY_ASSETS`, demo code only in lazy chunks, no third-party script in the app shells)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
 - Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
 - Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)
@@ -35,11 +35,11 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list + local publish-relevance routes from publisher targets; fails on diff)
-- Local E2E: `npm run e2e:local` (curl smoke)
+- Local E2E: `npm run e2e:local` (publish lifecycle smoke: the Playwright `api` project, `e2e/tests/publish-lifecycle.spec.ts`, on its own stack)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync deletes whatever the public build doesn't produce, except publisher-owned paths)
-- CI: lint/typecheck/test/build/synth; the **Local E2E smoke (CHR-82)** job runs `e2e:local` then `e2e:browser` (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
+- CI: lint/typecheck/test/build/synth; the **Local E2E smoke (CHR-82)** job builds the web app and runs `e2e:browser`, whose `api` project (the publish lifecycle smoke) runs before the browser projects (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke (CHR-82)**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 
