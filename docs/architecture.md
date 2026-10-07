@@ -60,7 +60,7 @@ Personal site + headless CMS on AWS. Public pages are **statically prerendered**
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.
 8. **Cognito** (passkeys) protects the admin and Notebook apps; **SES** sends contact and download notifications
 
-`admin.gagnechris.com` and `notebook.gagnechris.com` each have their own private bucket and distribution (`AppHost`): `/api/*` goes to the same HTTP API, `/media/*` (admin only) to the site bucket, and a viewer-request function rewrites every extensionless path outside `/api`, `/assets`, `/media` and `/.well-known` to `/index.html`.
+`admin.gagnechris.com` and `notebook.gagnechris.com` each have their own private bucket and distribution (`AppHost`): `/api/*` goes to the same HTTP API, `/media/*` (admin only) to the site bucket, and a viewer-request function rewrites every extensionless path outside `/api`, `/assets`, `/media` and `/.well-known` to `/index.html`. The site stack and `AppHost` build their buckets, `/media/*` and hashed-file behaviours, CSPs (`csp()`), security headers, 5xx alarms and distribution nag suppressions from `infra/lib/constructs/site-hosting.ts`.
 
 API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild bundling, log retention, Powertools env, standard alarms).
 

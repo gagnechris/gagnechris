@@ -1,8 +1,23 @@
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import { dirname, extname, join, normalize } from 'node:path';
+import {
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+} from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  edgePipeline,
+  loadViewerRequest,
+  loadViewerResponse,
+  type CfKvs,
+  type CfQueryString,
+  type OriginObject,
+} from '@gagnechris/infra/cloudfront-harness';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.LOCAL_SITE_PORT || 4177);
@@ -29,31 +44,7 @@ function findRepoRoot(startDir: string): string {
 }
 
 const repoRoot = process.env.REPO_ROOT?.trim() || findRepoRoot(__dirname);
-const viewerRequestPath = join(
-  repoRoot,
-  'infra/lib/cloudfront/viewer-request-function.js',
-);
-const viewerResponsePath = join(
-  repoRoot,
-  'infra/lib/cloudfront/viewer-response-function.js',
-);
-
-type CfRequest = {
-  uri: string;
-  querystring?: Record<string, { value?: string }>;
-  headers: { host: { value: string } };
-};
-
-type CfResponse = {
-  statusCode: number;
-  statusDescription?: string;
-  headers: Record<string, { value: string }>;
-  body?: string;
-};
-
-type ViewerRequestHandler = (event: {
-  request: CfRequest;
-}) => Promise<CfRequest | CfResponse>;
+const functionsDir = join(repoRoot, 'infra/lib/cloudfront');
 
 const localKvsFile = process.env.LOCAL_KVS_FILE?.trim();
 
@@ -61,7 +52,7 @@ const localKvsFile = process.env.LOCAL_KVS_FILE?.trim();
  * The publisher writes the KVS keys to LOCAL_KVS_FILE locally. No file (or no
  * env) means no sentinel, so every slug fails open as before the first sync.
  */
-const localKvs = {
+const localKvs: CfKvs = {
   async exists(key: string): Promise<boolean> {
     if (!localKvsFile) return false;
     try {
@@ -74,29 +65,6 @@ const localKvs = {
     }
   },
 };
-
-async function loadViewerRequestHandler(): Promise<ViewerRequestHandler> {
-  const source = (await readFile(viewerRequestPath, 'utf8')).replace(
-    /import cf from 'cloudfront';\s*/g,
-    '',
-  );
-  return new Function(
-    '__kvs',
-    `var cf = { kvs: function () { return __kvs; } };
-     ${source}
-     return handler;`,
-  )(localKvs) as ViewerRequestHandler;
-}
-
-async function loadViewerResponseHandler(): Promise<
-  (event: { request: { uri: string }; response: CfResponse }) => CfResponse
-> {
-  const source = await readFile(viewerResponsePath, 'utf8');
-  return new Function(`${source}\nreturn handler;`)() as (event: {
-    request: { uri: string };
-    response: CfResponse;
-  }) => CfResponse;
-}
 
 const contentTypes: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -112,101 +80,75 @@ const contentTypes: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
+/** `uri` under `base`, or null when it would escape it. */
 function safeJoin(base: string, uri: string): string | null {
-  const rel = uri.replace(/^\/+/, '');
-  const full = normalize(join(base, rel));
-  if (!full.startsWith(normalize(base))) return null;
-  return full;
+  const full = resolve(base, `.${uri.startsWith('/') ? '' : '/'}${uri}`);
+  const rel = relative(resolve(base), full);
+  return rel.startsWith('..') || isAbsolute(rel) ? null : full;
 }
 
-const handlersPromise = Promise.all([
-  loadViewerRequestHandler(),
-  loadViewerResponseHandler(),
-]);
+class Forbidden extends Error {}
+
+async function readOrigin(uri: string): Promise<OriginObject | null> {
+  const filePath = safeJoin(root!, uri);
+  if (!filePath) throw new Forbidden(uri);
+  const contentType =
+    contentTypes[extname(filePath).toLowerCase()] || 'application/octet-stream';
+  try {
+    if (!(await stat(filePath)).isFile()) return null;
+  } catch {
+    return null;
+  }
+  const body = await readFile(filePath);
+  const isText =
+    contentType.startsWith('text/') ||
+    contentType.includes('json') ||
+    contentType.includes('xml') ||
+    contentType.includes('svg');
+  return isText
+    ? { kind: 'text', contentType, body: body.toString('utf8') }
+    : { kind: 'binary', contentType, body };
+}
+
+const edge = edgePipeline({
+  viewerRequest: loadViewerRequest({ kvs: localKvs, dir: functionsDir })
+    .handler,
+  viewerResponse: loadViewerResponse(functionsDir),
+  origin: readOrigin,
+});
 
 const server = createServer(async (req, res) => {
   try {
-    const [viewerRequest, viewerResponse] = await handlersPromise;
     const host = req.headers.host || `127.0.0.1:${port}`;
     const url = new URL(req.url || '/', `http://${host}`);
-    const querystring: CfRequest['querystring'] = {};
+    const querystring: CfQueryString = {};
     for (const [k, v] of url.searchParams) {
       querystring[k] = { value: v };
     }
 
-    const rewritten = await viewerRequest({
-      request: {
-        uri: url.pathname,
-        querystring,
-        headers: { host: { value: host } },
-      },
+    const result = await edge({
+      uri: url.pathname,
+      querystring,
+      headers: { host: { value: host } },
     });
-
-    if ('statusCode' in rewritten) {
-      res.statusCode = rewritten.statusCode;
-      for (const [name, header] of Object.entries(rewritten.headers ?? {})) {
-        res.setHeader(name, header.value);
-      }
-      res.end(rewritten.body ?? '');
+    if (result.kind === 'binary') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', result.contentType);
+      res.end(result.body);
       return;
     }
-
-    const filePath = safeJoin(root, rewritten.uri);
-    if (!filePath) {
+    const { response } = result;
+    res.statusCode = response.statusCode;
+    for (const [name, header] of Object.entries(response.headers ?? {})) {
+      res.setHeader(name, header.value);
+    }
+    res.end(response.body ?? '');
+  } catch (err) {
+    if (err instanceof Forbidden) {
       res.statusCode = 403;
       res.end('Forbidden');
       return;
     }
-
-    const ext = extname(filePath).toLowerCase();
-    const contentType = contentTypes[ext] || 'application/octet-stream';
-    const isText =
-      contentType.startsWith('text/') ||
-      contentType.includes('json') ||
-      contentType.includes('xml') ||
-      contentType.includes('svg');
-
-    let originResponse: CfResponse;
-    try {
-      const st = await stat(filePath);
-      if (!st.isFile()) throw new Error('not a file');
-      const body = await readFile(filePath);
-      if (isText) {
-        originResponse = {
-          statusCode: 200,
-          statusDescription: 'OK',
-          headers: { 'content-type': { value: contentType } },
-          body: body.toString('utf8'),
-        };
-      } else {
-        // Binary assets are never rewritten by viewer-response; serve directly.
-        res.statusCode = 200;
-        res.setHeader('Content-Type', contentType);
-        res.end(body);
-        return;
-      }
-    } catch {
-      // S3's NoSuchKey. CloudFront never runs viewer-response on an origin
-      // 4xx, so neither does this.
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'application/xml');
-      res.end(
-        `<Error><Code>NoSuchKey</Code><Key>${rewritten.uri}</Key></Error>`,
-      );
-      return;
-    }
-
-    const finalResponse = viewerResponse({
-      request: { uri: rewritten.uri },
-      response: originResponse,
-    });
-
-    res.statusCode = finalResponse.statusCode;
-    for (const [name, header] of Object.entries(finalResponse.headers)) {
-      res.setHeader(name, header.value);
-    }
-    res.end(finalResponse.body ?? '');
-  } catch (err) {
     console.error(err);
     res.statusCode = 500;
     res.end(String(err));
@@ -216,10 +158,7 @@ const server = createServer(async (req, res) => {
 server.listen(port, '127.0.0.1', () => {
   console.info(`[local-site] http://127.0.0.1:${port} root=${root}`);
   console.info(
-    `[local-site] viewer-request ${pathToFileURL(viewerRequestPath).href}`,
-  );
-  console.info(
-    `[local-site] viewer-response ${pathToFileURL(viewerResponsePath).href}`,
+    `[local-site] CloudFront functions ${pathToFileURL(functionsDir).href}`,
   );
   console.info(`[local-site] KVS ${localKvsFile ?? '(none: fail open)'}`);
 });

@@ -1,32 +1,20 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  loadViewerRequest,
+  type CfRequest,
+} from '@gagnechris/infra/cloudfront-harness';
 import {
   STATIC_PAGE_META,
   outputRelativePath,
 } from '../../scripts/staticPageMeta';
 
-type Request = { uri: string; headers: Record<string, { value: string }> };
-
-const viewerRequest = new Function(
-  `var cf = { kvs: function () { throw new Error('no kvs'); } };
-   ${fs
-     .readFileSync(
-       path.resolve(
-         __dirname,
-         '../../../../infra/lib/cloudfront/viewer-request-function.js',
-       ),
-       'utf8',
-     )
-     .replace(/import cf from 'cloudfront';\s*/g, '')}
-   return handler;`,
-)() as (event: { request: Request }) => Promise<Request>;
+const viewerRequest = loadViewerRequest().handler;
 
 const routed = async (uri: string) =>
   (
-    await viewerRequest({
+    (await viewerRequest({
       request: { uri, headers: { host: { value: 'gagnechris.com' } } },
-    })
+    })) as CfRequest
   ).uri;
 
 // The CloudFront allowlist (STATIC_OPTION_B_PAGES in the publisher) must name
