@@ -54,3 +54,29 @@ describe('Today panel headings', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('Coming up empty state', () => {
+  const empty = (horizonDays?: number) =>
+    render(
+      <MemoryRouter>
+        <ComingUpPanel
+          days={[]}
+          day="2026-10-02"
+          onToggle={vi.fn()}
+          horizonDays={horizonDays}
+        />
+      </MemoryRouter>,
+    );
+
+  test('names the horizon the panel was bucketed over', () => {
+    empty();
+    expect(
+      screen.getByText('Nothing in the next two weeks.'),
+    ).toBeInTheDocument();
+  });
+
+  test('follows a shorter horizon', () => {
+    empty(7);
+    expect(screen.getByText('Nothing in the next week.')).toBeInTheDocument();
+  });
+});

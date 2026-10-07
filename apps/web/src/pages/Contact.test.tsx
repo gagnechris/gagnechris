@@ -171,6 +171,24 @@ describe('Contact form', () => {
     expect(fields.message).toHaveValue('Hello there');
   });
 
+  test('a server error reads the same as the client one for that field', async () => {
+    vi.stubGlobal(
+      'fetch',
+      respond(400, {
+        error: 'validation_error',
+        fields: { name: 'too_small', message: 'too_big' },
+      }),
+    );
+    const fields = renderContact();
+    await fill(fields);
+
+    await fields.user.click(fields.submit);
+
+    await waitFor(() => expect(fields.name).toHaveFocus());
+    expect(describedBy(fields.name)).toBe('Name is required');
+    expect(describedBy(fields.message)).toBe('Message is too long');
+  });
+
   test('success replaces the form and moves focus to the confirmation', async () => {
     const fields = renderContact();
     await fill(fields);

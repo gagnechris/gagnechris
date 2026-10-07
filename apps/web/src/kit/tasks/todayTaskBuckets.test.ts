@@ -3,6 +3,7 @@ import type { Task } from '@gagnechris/shared';
 import {
   bucketTodayTasks,
   comingUpDayLabel,
+  comingUpWindow,
   snoozeBaseDay,
   stillOpenSource,
 } from './todayTaskBuckets';
@@ -204,4 +205,13 @@ test('comingUpDayLabel marks tomorrow', () => {
 test('snoozeBaseDay counts from the later of the page day and today', () => {
   expect(snoozeBaseDay('2026-09-30', FRI)).toBe(FRI);
   expect(snoozeBaseDay('2026-10-09', FRI)).toBe('2026-10-09');
+});
+
+describe('comingUpWindow', () => {
+  test('names the default horizon as before, and others by their length', () => {
+    expect(comingUpWindow()).toBe('the next two weeks');
+    expect(comingUpWindow(7)).toBe('the next week');
+    expect(comingUpWindow(1)).toBe('the next day');
+    expect(comingUpWindow(10)).toBe('the next 10 days');
+  });
 });
