@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { TaskEmbedCreate } from '../kit/markdown/taskEmbeds';
 import { QueryClientTestProvider } from '../test-utils';
-import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
+import { EMBED_RETRY_DELAYS_MS, useNoteTaskEmbeds } from './useNoteTaskEmbeds';
 
 const TASK_ID = '01JTASKAAAAAAAAAAAAAAAAAAA';
 const NOTE = { id: '01JNOTEAAAAAAAAAAAAAAAAAAA', area: 'work' as const };
@@ -148,13 +148,13 @@ describe('embedded task create retries', () => {
     expect(ensureNoteSaved).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(EMBED_RETRY_DELAYS_MS[0]!);
     });
     expect(api.posts).toBe(2);
     expect(ensureNoteSaved).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
+      await vi.advanceTimersByTimeAsync(EMBED_RETRY_DELAYS_MS[1]!);
     });
     expect(api.posts).toBe(3);
     embed();

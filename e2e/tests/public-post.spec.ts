@@ -5,23 +5,12 @@ import { expect, requireEnv, test, type Seed } from '../fixtures';
 
 async function publishFixturePost(seed: Seed, prefix: string): Promise<string> {
   const slug = `${prefix}-${randomBytes(3).toString('hex')}`;
-  const { data: created } = await seed.api.POST('/api/admin/posts', {
-    body: {
-      title: 'Every markdown element',
-      slug,
-      excerpt: 'A fixture post that uses every element the editor can produce.',
-      bodyMarkdown: EVERY_MARKDOWN_ELEMENT,
-    },
+  await seed.publishedPost({
+    title: 'Every markdown element',
+    slug,
+    excerpt: 'A fixture post that uses every element the editor can produce.',
+    bodyMarkdown: EVERY_MARKDOWN_ELEMENT,
   });
-  if (!created) throw new Error('seed post failed');
-  const { data: published } = await seed.api.POST(
-    '/api/admin/posts/{id}/publish',
-    {
-      params: { path: { id: created.id } },
-      body: { version: created.version },
-    },
-  );
-  if (published?.status !== 'published') throw new Error('publish failed');
   return slug;
 }
 

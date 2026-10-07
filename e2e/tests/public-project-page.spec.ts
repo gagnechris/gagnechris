@@ -4,54 +4,6 @@ import { expect, requireEnv, test, type Seed } from '../fixtures';
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
 
-type ProjectBody = {
-  name: string;
-  slug: string;
-  stage: 'building' | 'live';
-  pitch?: string;
-  bodyMarkdown: string;
-  stack?: string[];
-  demo?: 'posts' | 'notebook';
-  previewImage?: string;
-};
-
-async function publishProject(seed: Seed, body: ProjectBody): Promise<string> {
-  const { data: created, error } = await seed.api.POST('/api/admin/projects', {
-    body,
-  });
-  if (!created)
-    throw new Error(`seed project failed: ${JSON.stringify(error)}`);
-  const { data: published } = await seed.api.POST(
-    '/api/admin/projects/{id}/publish',
-    {
-      params: { path: { id: created.id } },
-      body: { version: created.version },
-    },
-  );
-  if (published?.status !== 'published') throw new Error('publish failed');
-  return created.id;
-}
-
-async function publishTaggedPost(
-  seed: Seed,
-  title: string,
-  slug: string,
-  projectId: string,
-): Promise<void> {
-  const { data: created } = await seed.api.POST('/api/admin/posts', {
-    body: { title, slug, bodyMarkdown: 'Tagged.', projectIds: [projectId] },
-  });
-  if (!created) throw new Error('seed post failed');
-  const { data: published } = await seed.api.POST(
-    '/api/admin/posts/{id}/publish',
-    {
-      params: { path: { id: created.id } },
-      body: { version: created.version },
-    },
-  );
-  if (published?.status !== 'published') throw new Error('publish failed');
-}
-
 /** Survives client navigation, not a document load. */
 const markDocument = (page: Page) =>
   page.evaluate(() => {
@@ -84,7 +36,7 @@ test.describe('a project page', () => {
     slug = `${prefix}-project`;
     first = `${prefix}-first`;
     second = `${prefix}-second`;
-    const id = await publishProject(seed, {
+    const { id } = await seed.publishedProject({
       name,
       slug,
       stage: 'live',
@@ -92,8 +44,17 @@ test.describe('a project page', () => {
       bodyMarkdown: BODY,
       stack: ['React', 'DynamoDB'],
     });
-    await publishTaggedPost(seed, `First ${prefix}`, first, id);
-    await publishTaggedPost(seed, `Second ${prefix}`, second, id);
+    for (const [title, postSlug] of [
+      [`First ${prefix}`, first],
+      [`Second ${prefix}`, second],
+    ]) {
+      await seed.publishedPost({
+        title,
+        slug: postSlug,
+        bodyMarkdown: 'Tagged.',
+        projectIds: [id],
+      });
+    }
     // Parallel tests rebuild the local site too; wait for both Build log entries.
     await expect
       .poll(async () =>
@@ -184,7 +145,7 @@ test.describe('the Try it slot', () => {
     prefix,
     request,
   }) => {
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Demo ${prefix}`,
       slug: `${prefix}-demo`,
       stage: 'building',
@@ -192,7 +153,7 @@ test.describe('the Try it slot', () => {
       demo: 'notebook',
       previewImage: `/media/projects/${prefix}.png`,
     });
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Plain ${prefix}`,
       slug: `${prefix}-plain`,
       stage: 'building',
@@ -251,7 +212,7 @@ test.describe('a demo in the Try it slot', () => {
     const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
     const origin = requireEnv('E2E_PUBLIC_URL');
     const slug = `${prefix}-fixture`;
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Fixture ${prefix}`,
       slug,
       stage: 'live',
@@ -369,7 +330,7 @@ test.describe('the Posts demo on the built site', () => {
     request: APIRequestContext,
   ) => {
     const slug = `${prefix}-posts-demo`;
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Posts ${prefix}`,
       slug,
       stage: 'live',
@@ -553,7 +514,7 @@ test.describe('the Notebook demo on the built site', () => {
     request: APIRequestContext,
   ) => {
     const slug = `${prefix}-notebook-demo`;
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Notebook ${prefix}`,
       slug,
       stage: 'building',

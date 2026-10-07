@@ -7,18 +7,19 @@ import {
   type ReactNode,
 } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  trackBearsGameComplete,
-  trackBearsGameStart,
-  trackBearsTipLinkClick,
-} from '../../../utils/analytics';
-import { useMediaQuery } from '../../../kit/useMediaQuery';
-import { usePrefersReducedMotion } from '../camp/usePrefersReducedMotion';
 import { BEAR_FACTS } from '../facts';
 import EndCard from '../shared/EndCard';
-import { readHighScore, writeHighScore } from '../shared/highScore';
 import { BEARS_LANDING_PATH, withFrom } from '../shared/routes';
-import { playFailSound, playSecureSound, playSuccessSound } from '../sound';
+import { useBearsSession } from '../shared/useBearsSession';
+import { useFixedStepLoop } from '../shared/useFixedStepLoop';
+import {
+  TOUCH_PORTRAIT_QUERY,
+  useCoarsePointer,
+  useMediaQuery,
+  usePrefersReducedMotion,
+} from '../shared/useMediaQuery';
+import { useTimedValue } from '../shared/useTimedValue';
+import { playFailSound, playSecureSound } from '../sound';
 import {
   CAMP_FOOD_LABEL,
   FOOD_LABEL,
@@ -54,14 +55,18 @@ import {
 } from './wildRender';
 import WildEndScene from './WildEndScene';
 import './StayWildGame.css';
+import { PALETTE } from '../shared/palette';
 
 const GAME = 'wild';
-const MAX_FRAME_MS = 250;
 const EAT_TOAST_MS = 1_400;
 const HINT_TOAST_MS = 3_200;
 const TAP_CLICK_MS = 1_000;
-// Matches the CSS that covers the stage with the turn-your-phone notice.
-const TOUCH_PORTRAIT_QUERY = '(pointer: coarse) and (orientation: portrait)';
+/** The HUD only needs a few updates a second; events always flush. */
+const HUD_REFRESH_MS = 150;
+/** Reduced motion: how far the camera eases toward Maple each frame. */
+const CAMERA_EASE = 0.08;
+/** World units the +% popup floats above the food or Maple, whichever is higher. */
+const POPUP_RISE = 28;
 const JUMP_KEYS: ReadonlySet<string> = new Set([' ', 'ArrowUp', 'w', 'W']);
 const JUMP_OR_SNIFF_KEYS: ReadonlySet<string> = new Set([
   ...JUMP_KEYS,
@@ -70,16 +75,19 @@ const JUMP_OR_SNIFF_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 const CRUMB_COLOR: Readonly<Record<NaturalFoodKind, string>> = {
-  greens: '#4f8a3a',
-  insects: '#2b2018',
-  roots: '#c9a27a',
-  berries: '#6b2a4a',
-  beechnuts: '#8a5a35',
-  acorns: '#a8552a',
-  apples: '#c2552d',
+  greens: PALETTE.leaf,
+  insects: PALETTE.soil,
+  roots: PALETTE.muzzle,
+  berries: PALETTE.berry,
+  beechnuts: PALETTE.beechnut,
+  acorns: PALETTE.acorn,
+  apples: PALETTE.rust,
 };
 
-type EatToast = { id: number; text: string; tone: 'good' | 'bad' | 'info' };
+type EatToast = { text: string; tone: 'good' | 'bad' | 'info' };
+
+const toastMs = (toast: EatToast) =>
+  toast.tone === 'info' ? HINT_TOAST_MS : EAT_TOAST_MS;
 
 const WARN_TEXT: Readonly<Record<'person' | 'dog', string>> = {
   person: 'Camper ahead: wait until they look away, or take the high log.',
@@ -171,9 +179,10 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const [screen, setScreen] = useState<Screen>('ready');
   const [state, setState] = useState<WildState>(() => createWildState());
   const [message, setMessage] = useState('');
-  const [touch, setTouch] = useState(false);
-  const [highScore, setHighScore] = useState(() => readHighScore(GAME));
-  const [eatToast, setEatToast] = useState<EatToast | null>(null);
+  const touch = useCoarsePointer();
+  const session = useBearsSession(GAME, from, soundOn);
+  const [eatToast, showEatToast, clearEatToast] =
+    useTimedValue<EatToast>(toastMs);
   const [fatFlash, setFatFlash] = useState(0);
   const keysId = useId();
   const effectsRef = useRef<Effects>({ popups: [], crumbs: [], munchUntil: 0 });
@@ -184,17 +193,18 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const inputRef = useRef<WildInput>({ ...NO_INPUT });
   const cameraRef = useRef(0);
   const viewWidthRef = useRef(1280);
-  const soundOnRef = useRef(soundOn);
   const screenRef = useRef(screen);
   const reducedRef = useRef(reducedMotion);
   const touchPortraitRef = useRef(touchPortrait);
+  const pendingRef = useRef<WildEvent[]>([]);
+  const lastHudRef = useRef(0);
+  const { sound, finish } = session;
 
   useEffect(() => {
-    soundOnRef.current = soundOn;
     screenRef.current = screen;
     reducedRef.current = reducedMotion;
     touchPortraitRef.current = touchPortrait;
-  }, [soundOn, screen, reducedMotion, touchPortrait]);
+  }, [screen, reducedMotion, touchPortrait]);
 
   const resetInput = useCallback(() => {
     inputRef.current = { ...NO_INPUT };
@@ -210,15 +220,6 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
     if (touchPortrait && screen === 'playing') pause();
   }, [touchPortrait, screen, pause]);
 
-  useEffect(() => {
-    const mql = window.matchMedia?.('(pointer: coarse)');
-    if (!mql) return;
-    const sync = () => setTouch(mql.matches);
-    sync();
-    mql.addEventListener('change', sync);
-    return () => mql.removeEventListener('change', sync);
-  }, []);
-
   const draw = useCallback((time: number) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -228,7 +229,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
     const target = cameraTarget(s, W);
     // Reduced motion: ease the camera instead of locking it to Maple.
     cameraRef.current = reducedRef.current
-      ? cameraRef.current + (target - cameraRef.current) * 0.08
+      ? cameraRef.current + (target - cameraRef.current) * CAMERA_EASE
       : target;
     const scale = canvas.height / WORLD_HEIGHT;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
@@ -270,109 +271,87 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
       for (const event of events) {
         const text = announce(event, s);
         if (text) setMessage(text);
-        if (event.type === 'warn') {
-          setEatToast({
-            id: performance.now(),
-            tone: 'info',
-            text: WARN_TEXT[event.who],
-          });
-        }
-        if (event.type === 'eat' || event.type === 'campSnack') {
-          const now = performance.now();
-          const fx = effectsRef.current;
-          const good = event.type === 'eat';
-          const gainText = good
-            ? formatGain(event.gain)
-            : String(CAMP_FOOD_GAIN);
-          fx.popups.push({
-            text: `+${gainText}%`,
-            x: event.x,
-            y: Math.min(event.y, s.maple.y) - 28,
-            bornAt: now,
-            tone: good ? 'good' : 'bad',
-          });
-          fx.crumbs.push({
-            x: event.x,
-            y: event.y,
-            bornAt: now,
-            color: good ? CRUMB_COLOR[event.kind] : '#f4b942',
-          });
-          fx.munchUntil = now + MUNCH_MS;
-          setEatToast({
-            id: now,
-            tone: good ? 'good' : 'bad',
-            text: good
-              ? `+${gainText}% ${FOOD_LABEL[event.kind]}`
-              : `+${gainText}% fat… but people noticed Maple (${event.comfy} of ${COMFY_LIMIT})`,
-          });
-          setFatFlash((n) => n + 1);
-        }
-        if (soundOnRef.current) {
-          if (event.type === 'eat') playSecureSound();
-          if (
-            event.type === 'campSnack' ||
-            event.type === 'clap' ||
-            event.type === 'bark' ||
-            event.type === 'car'
-          ) {
-            playFailSound();
+        switch (event.type) {
+          case 'warn':
+            showEatToast({ tone: 'info', text: WARN_TEXT[event.who] });
+            break;
+          case 'eat':
+          case 'campSnack': {
+            const now = performance.now();
+            const fx = effectsRef.current;
+            const good = event.type === 'eat';
+            const gainText = good
+              ? formatGain(event.gain)
+              : String(CAMP_FOOD_GAIN);
+            fx.popups.push({
+              text: `+${gainText}%`,
+              x: event.x,
+              y: Math.min(event.y, s.maple.y) - POPUP_RISE,
+              bornAt: now,
+              tone: good ? 'good' : 'bad',
+            });
+            fx.crumbs.push({
+              x: event.x,
+              y: event.y,
+              bornAt: now,
+              color: good ? CRUMB_COLOR[event.kind] : PALETTE.gold,
+            });
+            fx.munchUntil = now + MUNCH_MS;
+            showEatToast({
+              tone: good ? 'good' : 'bad',
+              text: good
+                ? `+${gainText}% ${FOOD_LABEL[event.kind]}`
+                : `+${gainText}% fat… but people noticed Maple (${event.comfy} of ${COMFY_LIMIT})`,
+            });
+            setFatFlash((n) => n + 1);
+            sound(good ? playSecureSound : playFailSound);
+            break;
           }
-        }
-        if (event.type === 'end') {
-          const score = wildScore(s);
-          setScreen('over');
-          trackBearsGameComplete(GAME, from, score);
-          if (score > readHighScore(GAME)) {
-            writeHighScore(GAME, score);
-            setHighScore(score);
-          }
-          if (soundOnRef.current) {
-            if (event.phase === 'den') playSuccessSound();
-            else playFailSound();
-          }
+          case 'clap':
+          case 'bark':
+          case 'car':
+            sound(playFailSound);
+            break;
+          case 'end':
+            setScreen('over');
+            finish(wildScore(s), event.phase === 'den');
+            break;
         }
       }
     },
-    [from],
+    [showEatToast, sound, finish],
   );
 
   useEffect(() => {
-    if (screen !== 'playing') {
-      draw(performance.now());
-      return;
-    }
-    let frame = 0;
-    let last = performance.now();
-    let acc = 0;
-    let lastHud = 0;
-    const loop = (now: number) => {
-      acc += Math.min(MAX_FRAME_MS, now - last);
-      last = now;
-      let s = stateRef.current;
-      const events: WildEvent[] = [];
-      while (acc >= STEP_MS && s.phase === 'playing') {
-        const input = { ...inputRef.current };
-        if (touch) input.right = true;
-        const r = stepWild(s, input);
-        inputRef.current.jump = false;
-        inputRef.current.sniff = false;
-        s = r.state;
-        events.push(...r.events);
-        acc -= STEP_MS;
-      }
-      stateRef.current = s;
+    if (screen === 'playing') lastHudRef.current = 0;
+    else draw(performance.now());
+  }, [screen, draw]);
+
+  useFixedStepLoop({
+    running: screen === 'playing',
+    stepMs: STEP_MS,
+    step: () => {
+      const input = { ...inputRef.current };
+      if (touch) input.right = true;
+      const r = stepWild(stateRef.current, input);
+      inputRef.current.jump = false;
+      inputRef.current.sniff = false;
+      stateRef.current = r.state;
+      pendingRef.current.push(...r.events);
+      return r.state.phase === 'playing';
+    },
+    frame: (now) => {
+      const s = stateRef.current;
+      const events = pendingRef.current;
+      pendingRef.current = [];
       draw(now);
-      // The HUD only needs a few updates a second; events always flush.
-      if (events.length || now - lastHud > 150) {
-        lastHud = now;
+      if (events.length || now - lastHudRef.current > HUD_REFRESH_MS) {
+        lastHudRef.current = now;
         setState(s);
       }
       if (events.length) handleEvents(events, s);
-      if (s.phase === 'playing') frame = requestAnimationFrame(loop);
-    };
-    frame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frame);
-  }, [screen, touch, draw, handleEvents]);
+    },
+  });
 
   const begin = () => {
     if (touchPortraitRef.current) return;
@@ -381,24 +360,16 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
     cameraRef.current = 0;
     inputRef.current = { ...NO_INPUT };
     effectsRef.current = { popups: [], crumbs: [], munchUntil: 0 };
-    setEatToast(null);
+    pendingRef.current = [];
+    clearEatToast();
     setState(fresh);
     setMessage(
       `${WILD_LEVELS[0]!.title}, level 1 of ${WILD_LEVELS.length}: ${WILD_LEVELS[0]!.goal}.`,
     );
     setScreen('playing');
-    trackBearsGameStart(GAME, from);
+    session.start();
     stageRef.current?.focus();
   };
-
-  useEffect(() => {
-    if (!eatToast) return;
-    const id = window.setTimeout(
-      () => setEatToast(null),
-      eatToast.tone === 'info' ? HINT_TOAST_MS : EAT_TOAST_MS,
-    );
-    return () => window.clearTimeout(id);
-  }, [eatToast]);
 
   const togglePause = useCallback(() => {
     const cur = screenRef.current;
@@ -565,10 +536,10 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
         {eatToast && screen === 'playing' ? (
           <span
             key={eatToast.id}
-            className={`wild-eat-toast wild-eat-toast--${eatToast.tone}`}
+            className={`wild-eat-toast wild-eat-toast--${eatToast.value.tone}`}
             aria-hidden="true"
           >
-            {eatToast.text}
+            {eatToast.value.text}
           </span>
         ) : null}
 
@@ -694,14 +665,17 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
                 { label: 'Winter fat', value: `${fat}%` },
                 { label: 'Natural food', value: state.naturalEaten },
                 { label: 'Camp snacks', value: state.campSnacks },
-                { label: 'Best', value: Math.max(highScore, wildScore(state)) },
+                {
+                  label: 'Best',
+                  value: Math.max(session.highScore, wildScore(state)),
+                },
               ]}
               tip={wildTip(state)}
               playAgainLabel={
                 habituated ? 'Try again, stay wild' : 'Play again'
               }
               onPlayAgain={begin}
-              onTipLinkClick={() => trackBearsTipLinkClick(from, GAME)}
+              onTipLinkClick={session.onTipLinkClick}
             />
           </div>
         </div>

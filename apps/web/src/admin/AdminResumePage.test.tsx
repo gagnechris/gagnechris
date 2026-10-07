@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,20 +9,15 @@ import {
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { QueryClientTestProvider } from '../test-utils';
+import { PAST_AUTOSAVE_MS, QueryClientTestProvider } from '../test-utils';
 import AdminResumePage from './AdminResumePage';
+import { adminApi } from '../mockAdminApi';
 
-const get = vi.fn();
-const put = vi.fn();
-const post = vi.fn();
+const { GET: get, PUT: put, POST: post } = adminApi;
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    PUT: (...args: unknown[]) => put(...args),
-    POST: (...args: unknown[]) => post(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 const baseResume = {
   name: 'Chris Gagne',
@@ -101,7 +97,7 @@ describe('AdminResumePage autosave', () => {
     await user.type(bullets, '{Enter}');
     expect(bullets).toHaveValue('Did things\n');
 
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
 
     await user.type(bullets, 'New bullet');
@@ -304,7 +300,7 @@ describe('AdminResumePage structured dates', () => {
         .map((b) => b.getAttribute('aria-label')),
     ).toEqual(['Reorder Architect', 'Reorder Director']);
 
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalled());
     expect(
       lastPutContent().experience.map((role: { title: string }) => role.title),
@@ -326,7 +322,7 @@ describe('AdminResumePage structured dates', () => {
       /^End is before start/,
     );
 
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     const role = lastPutContent().experience[1]!;
     expect(role).toMatchObject({
@@ -346,7 +342,7 @@ describe('AdminResumePage structured dates', () => {
 
     fireEvent.change(end, { target: { value: '2015-05' } });
     expect(end).not.toHaveAttribute('aria-invalid');
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
     expect(lastPutContent().experience[1]).toMatchObject({
       start: '2014-09',
@@ -363,7 +359,7 @@ describe('AdminResumePage structured dates', () => {
     const end = screen.getByLabelText(/^End month/);
 
     fireEvent.change(end, { target: { value: '2015-08' } });
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('Saved'),
@@ -373,7 +369,7 @@ describe('AdminResumePage structured dates', () => {
     expect(
       document.getElementById(end.getAttribute('aria-describedby')!),
     ).toHaveTextContent('The last saved dates are kept until this is fixed.');
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
     expect(lastPutContent().experience[1]).toMatchObject({
       start: '2014-09',
@@ -411,7 +407,7 @@ describe('AdminResumePage structured dates', () => {
     expect(firstEnd).toBeEnabled();
     fireEvent.change(firstEnd, { target: { value: '2026-09' } });
 
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() => {
       expect(put).toHaveBeenCalled();
       expect(lastPutContent().experience[0]).toMatchObject({
@@ -444,7 +440,7 @@ describe('AdminResumePage structured dates', () => {
     await user.click(
       screen.getByRole('checkbox', { name: 'Present (current role)' }),
     );
-    await vi.advanceTimersByTimeAsync(950);
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
     await waitFor(() =>
       expect(lastPutContent().experience[1]).toMatchObject({ end: null }),
     );
@@ -561,7 +557,7 @@ describe('AdminResumePage publish with an end before start', () => {
     expect(screen.getByLabelText(/^End month/)).toHaveFocus();
 
     fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(async () => {});
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(/^End month/), {

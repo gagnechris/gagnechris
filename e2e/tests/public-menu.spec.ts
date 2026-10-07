@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, requireEnv, test } from '../fixtures';
+import { afterFrames, expect, requireEnv, test } from '../fixtures';
 
 // The local site serves the built app and prerendered pages, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
@@ -92,8 +92,21 @@ test.describe('the phone menu', () => {
     await menuButton(page).click();
     await expect(menuPanel(page)).toBeVisible();
     await page.mouse.move(195, 600);
+    await page.evaluate(() => {
+      window.addEventListener(
+        'wheel',
+        () => {
+          (window as unknown as { wheeled: boolean }).wheeled = true;
+        },
+        { once: true },
+      );
+    });
     await page.mouse.wheel(0, 400);
-    await page.waitForTimeout(300);
+    // The scroll a wheel causes lands within two frames of the event.
+    await page.waitForFunction(
+      () => (window as unknown as { wheeled?: boolean }).wheeled,
+    );
+    await afterFrames(page);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     expect(
       await page.evaluate(

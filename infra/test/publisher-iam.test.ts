@@ -6,6 +6,7 @@ import {
   keys,
   notePk,
   projectStatusGsi1Pk,
+  sitePublishPk,
   statusGsi1Pk,
   notebookAreaGsi1Pk,
 } from '@gagnechris/data';
@@ -98,6 +99,15 @@ describe('publisher DynamoDB access', () => {
         action,
       ).toBe(true);
     }
+  });
+
+  it('can read the site publish row', () => {
+    expect(
+      allows(statements, {
+        action: 'dynamodb:GetItem',
+        leadingKeys: [sitePublishPk()],
+      }),
+    ).toBe(true);
   });
 
   it('can query the published-projects and published-posts GSI partitions', () => {

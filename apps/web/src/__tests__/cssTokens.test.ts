@@ -9,8 +9,6 @@ const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** The bears games keep their own palette and layout widths. */
 const BEARS = /^games[/\\]bears[/\\]/;
-const BEARS_PALETTE_FILES = new Set(['pages/DontFeedTheBears.css']);
-const BEARS_PALETTE = new Set(['#8a4b25', '#cfe6ef', '#f6e3c8']);
 
 const cssFiles = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -38,14 +36,9 @@ describe('web stylesheets use the design tokens', () => {
     );
   });
 
-  it('write no raw hex colours outside the bears palette', () => {
+  it('write no raw hex colours outside the bears games', () => {
     const found = sheets.flatMap(({ rel, css }) =>
-      [...css.matchAll(/#[0-9a-f]{3,8}\b/gi)]
-        .map((m) => m[0].toLowerCase())
-        .filter(
-          (hex) => !(BEARS_PALETTE_FILES.has(rel) && BEARS_PALETTE.has(hex)),
-        )
-        .map((hex) => `${rel} ${hex}`),
+      [...css.matchAll(/#[0-9a-f]{3,8}\b/gi)].map((m) => `${rel} ${m[0]}`),
     );
     expect(found).toEqual([]);
   });

@@ -5,16 +5,13 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Project } from '@gagnechris/app-core';
 import { QueryClientTestProvider } from '../test-utils';
 import AdminProjectsPage from './AdminProjectsPage';
+import { adminApi } from '../mockAdminApi';
 
-const get = vi.fn();
-const post = vi.fn();
+const { GET: get, POST: post } = adminApi;
 
-vi.mock('../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    POST: (...args: unknown[]) => post(...args),
-  }),
-}));
+vi.mock('../workspace/api/client', () =>
+  import('../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 const project = (over: Partial<Project>): Project => ({
   id: '01P',

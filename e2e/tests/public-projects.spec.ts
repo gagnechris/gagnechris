@@ -1,44 +1,8 @@
 import type { Page } from '@playwright/test';
-import {
-  expect,
-  focusJustBefore,
-  requireEnv,
-  test,
-  type Seed,
-} from '../fixtures';
+import { expect, focusJustBefore, requireEnv, test } from '../fixtures';
 
 // The local site serves the publisher's HTML with the built app, as CloudFront does.
 const site = () => requireEnv('E2E_SITE_URL');
-
-type Body = {
-  name: string;
-  slug: string;
-  stage: 'idea' | 'building' | 'live';
-  pitch?: string;
-  bodyMarkdown?: string;
-  stack?: string[];
-  demo?: 'posts' | 'notebook';
-  previewImage?: string;
-  href?: string;
-  order?: number;
-};
-
-async function publishProject(seed: Seed, body: Body): Promise<string> {
-  const { data: created, error } = await seed.api.POST('/api/admin/projects', {
-    body,
-  });
-  if (!created)
-    throw new Error(`seed project failed: ${JSON.stringify(error)}`);
-  const { data: published } = await seed.api.POST(
-    '/api/admin/projects/{id}/publish',
-    {
-      params: { path: { id: created.id } },
-      body: { version: created.version },
-    },
-  );
-  if (published?.status !== 'published') throw new Error('publish failed');
-  return created.id;
-}
 
 /** Captures `#root` before the app's modules run, so it is the prerender. */
 const capturePrerender = (page: Page) =>
@@ -65,7 +29,7 @@ test.describe('/projects', () => {
       idea: `${prefix}-idea`,
     };
     const body = '## Why I built it\n\nBecause.';
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Live ${prefix}`,
       slug: slugs.live,
       stage: 'live',
@@ -76,7 +40,7 @@ test.describe('/projects', () => {
       previewImage: `/media/projects/${prefix}-live.png`,
       order: 1,
     });
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Building ${prefix}`,
       slug: slugs.building,
       stage: 'building',
@@ -86,14 +50,14 @@ test.describe('/projects', () => {
       previewImage: `/media/projects/${prefix}-building.png`,
       order: 2,
     });
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Elsewhere ${prefix}`,
       slug: slugs.elsewhere,
       stage: 'live',
       href: '/dont-feed-the-bears',
       order: 3,
     });
-    await publishProject(seed, {
+    await seed.publishedProject({
       name: `Idea ${prefix}`,
       slug: slugs.idea,
       stage: 'idea',

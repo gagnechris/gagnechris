@@ -89,7 +89,7 @@ treats redirect slugs as reserved.
 | Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                                                                                                                                                |
 | List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only, summary attributes via `ProjectionExpression`), page in that order; the flag comes from META, and a META row without it is compared with `PUBLISHED` |
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
-| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`                                                                                                                                            |
+| List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
 | List by tag (published) | See tag items below                                                                                                                                                                                                |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
 | Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
@@ -259,6 +259,27 @@ prerenders HTML from that list and React renders the same list as JSX
 The site header and footer around every page come from
 `@gagnechris/shared/site-chrome` (see [architecture.md](./architecture.md#public-pages)).
 The prerender footer year is fixed at publish time; the SPA uses the live year.
+
+## Site publish row
+
+#### `SITE#publish` / `META`
+
+One row, updated in the same transaction as every write or delete of a post,
+project, home or resume `PUBLISHED` row (`buildSitePublishUpdate` in
+`@gagnechris/data`). Its sort key is not `PUBLISHED`, so the publisher stream
+filter ignores it.
+
+| Attribute    | Type          | Notes                                                              |
+| ------------ | ------------- | ------------------------------------------------------------------ |
+| `entityType` | `sitePublish` |                                                                    |
+| `generation` | number        | +1 on every publish, unpublish and soft delete; missing reads as 0 |
+| `postIds`    | string set    | Posts with a `PUBLISHED` row (absent when empty)                   |
+| `projectIds` | string set    | Projects with a `PUBLISHED` row (absent when empty)                |
+
+The publisher reads it with `ConsistentRead`: `generation` tells a rebuild
+whether a commit landed while it ran, and the id sets list just-published
+items GSI1 has not indexed yet. Ids are added only by publishes made through
+`PublishableRepository`, so the publisher still unions them with GSI1.
 
 ## Contact messages
 

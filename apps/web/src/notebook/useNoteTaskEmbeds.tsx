@@ -25,7 +25,7 @@ import { useTaskToggle } from './useTaskToggle';
 
 export type EmbedNote = { id: string; area: NotebookArea };
 
-const RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
+export const EMBED_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
 
 /** The note's first save has not landed yet; any other 400 is final. */
 const isNoteNotSavedYet = (error: unknown) =>
@@ -54,7 +54,7 @@ export function useNoteTaskEmbeds({
   markdown,
   note,
   ensureNoteSaved,
-  retryDelaysMs = RETRY_DELAYS_MS,
+  retryDelaysMs = EMBED_RETRY_DELAYS_MS,
 }: {
   markdown: string;
   /** Null turns embeds off (task descriptions). */
