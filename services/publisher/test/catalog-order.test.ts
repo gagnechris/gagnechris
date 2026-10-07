@@ -7,7 +7,7 @@ import {
 } from '@gagnechris/data';
 import type { Post, Project } from '@gagnechris/shared';
 import type { RebuildScope } from '../src/rebuild-scope.js';
-import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const ddbSend = vi.fn();
 const loggerInfo = vi.fn();
@@ -34,9 +34,9 @@ vi.mock('@aws-sdk/lib-dynamodb', () => {
   };
 });
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../src/observability.js', () => ({
@@ -92,34 +92,6 @@ const project = (slug: string, order: number): Project => ({
   version: 1,
   hasUnpublishedChanges: false,
 });
-
-function memoryStorage(): SiteStorage & { objects: Map<string, string> } {
-  const shell = '<html><head></head><body><div id="root"></div></body></html>';
-  const objects = new Map<string, string>();
-  return {
-    objects,
-    async readShell() {
-      return shell;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const text =
-        typeof body === 'string' ? body : Buffer.from(body).toString('utf8');
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-}
 
 type Command = {
   input?: { IndexName?: string; RequestItems?: Record<string, unknown> };
@@ -193,8 +165,8 @@ describe('published catalog order', () => {
       metas: projects.map(buildProjectMetaItem),
       published: projects.map(buildProjectPublishedItem),
     });
-    const { listPublishedProjects, rebuildPublishedSite } =
-      await import('../src/s3-site.js');
+    const { listPublishedProjects } = await import('../src/catalog.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
 
     const first = await listPublishedProjects('test-table');
     const second = await listPublishedProjects('test-table');
@@ -233,8 +205,8 @@ describe('published catalog order', () => {
       metas: posts.map(buildMetaItem),
       published: posts.map((p) => buildPublishedItem(p)),
     });
-    const { listPublishedPosts, rebuildPublishedSite } =
-      await import('../src/s3-site.js');
+    const { listPublishedPosts } = await import('../src/catalog.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
 
     const first = await listPublishedPosts('test-table');
     const second = await listPublishedPosts('test-table');

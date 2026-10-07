@@ -4,12 +4,15 @@ import {
   isFullRebuildScope,
 } from '../../rebuild-scope.js';
 import { renderProjectPage, renderProjectsIndexPage } from '../../render.js';
+import { projectPageKey, projectSlugsFromKeys } from '../../storage.js';
+import {
+  PROJECT_SLUG_NAMESPACE,
+  projectSlugKvsKey,
+} from '../../viewer-request-slugs.js';
+import { htmlArtifact } from '../artifacts.js';
 import type { PublishArtifact, PublishTarget } from '../types.js';
-import { CACHE_HTML } from '../types.js';
 
 export const PROJECTS_INDEX_KEY = 'projects/index.html';
-
-const projectPageKey = (slug: string): string => `projects/${slug}/index.html`;
 
 const PAGE_KEY_RE = /^projects\/([^/]+)\/index\.html$/;
 
@@ -25,29 +28,29 @@ const target: PublishTarget = {
       scope.projectIds.size > 0
     );
   },
-  needsCatalog(scope) {
-    return this.matches(scope);
-  },
-  needsShell(scope) {
-    return this.matches(scope);
-  },
-  needsProjects(scope) {
-    return this.matches(scope);
+  needs: { posts: true, shell: true, projects: true },
+  // The pages in storage after this run's writes and deletes, so href cards
+  // and body-less ideas (no page) stay out and kept pages of corrupt rows
+  // stay in.
+  kvs: {
+    namespace: PROJECT_SLUG_NAMESPACE,
+    pagePrefix: 'projects/',
+    keysFromPageKeys: (keys) =>
+      projectSlugsFromKeys(keys).map(projectSlugKvsKey),
   },
   async run(ctx) {
     const { scope, shell, storage, published } = ctx;
     const { projects, corruptSlugs } = ctx.projects;
     const paged = projects.filter(projectHasPage);
-    const page = (project: (typeof paged)[number]): PublishArtifact => ({
-      key: projectPageKey(project.slug),
-      body: renderProjectPage(
-        shell,
-        project,
-        projectBuildLogPosts(project.id, published),
-      ),
-      contentType: 'text/html; charset=utf-8',
-      cacheControl: CACHE_HTML,
-    });
+    const page = (project: (typeof paged)[number]): PublishArtifact =>
+      htmlArtifact(
+        projectPageKey(project.slug),
+        renderProjectPage(
+          shell,
+          project,
+          projectBuildLogPosts(project.id, published),
+        ),
+      );
 
     // A post change only reaches the Build logs of the projects it was tagged
     // with; the index shows no posts.
@@ -78,12 +81,12 @@ const target: PublishTarget = {
       corruptSlugs.length > 0 &&
       (await storage.read(PROJECTS_INDEX_KEY)) !== undefined;
     if (!keepIndex) {
-      artifacts.push({
-        key: PROJECTS_INDEX_KEY,
-        body: renderProjectsIndexPage(shell, projects),
-        contentType: 'text/html; charset=utf-8',
-        cacheControl: CACHE_HTML,
-      });
+      artifacts.push(
+        htmlArtifact(
+          PROJECTS_INDEX_KEY,
+          renderProjectsIndexPage(shell, projects),
+        ),
+      );
     }
 
     return { artifacts, deleteKeys, invalidationPaths: ['/projects*'] };

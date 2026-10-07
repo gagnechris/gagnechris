@@ -11,11 +11,16 @@ import type {
   RebuildSiteSources,
 } from '../src/publish-targets/types.js';
 import type { RebuildScope } from '../src/rebuild-scope.js';
-import type { SiteStorage } from '../src/storage.js';
+import { desiredKvsKeys, kvsSyncCount } from './fixtures/kvs.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
+import {
+  BLOG_SLUG_NAMESPACE,
+  type syncViewerRequestKeys,
+} from '../src/viewer-request-slugs.js';
+import { postSlugsFromKeys } from '../src/storage.js';
 
 const ddbSend = vi.fn();
-const syncBlog = vi.fn();
-const syncProjects = vi.fn();
+const syncKvs = vi.fn();
 const addMetric = vi.fn();
 
 vi.mock('@aws-sdk/client-dynamodb', () => ({
@@ -39,9 +44,9 @@ vi.mock('@aws-sdk/lib-dynamodb', () => {
   };
 });
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: (...args: unknown[]) => syncBlog(...args),
-  syncViewerRequestProjectSlugs: (...args: unknown[]) => syncProjects(...args),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: (...args: unknown[]) => syncKvs(...args),
 }));
 
 vi.mock('../src/observability.js', () => ({
@@ -113,55 +118,6 @@ class FakeTable {
   };
 }
 
-const SHELL =
-  '<html><head><title>x</title></head><body><div id="root"></div></body></html>';
-
-function memoryStorage(shell = SHELL) {
-  const objects = new Map<string, string>([['_shell.html', shell]]);
-  const invalidations: string[][] = [];
-  let hold: { until: Promise<void>; reached: () => void } | undefined;
-  const storage: SiteStorage = {
-    async readShell() {
-      return objects.get('_shell.html')!;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      if (hold) {
-        const { until, reached } = hold;
-        hold = undefined;
-        reached();
-        await until;
-      }
-      const text = typeof body === 'string' ? body : '';
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate(paths) {
-      if (paths.length > 0) invalidations.push([...paths]);
-    },
-  };
-  return {
-    storage,
-    objects,
-    invalidations,
-    /** The next put waits for `until`; resolves once a rebuild has read its data and starts writing. */
-    holdNextPut(until: Promise<void>): Promise<void> {
-      return new Promise((reached) => {
-        hold = { until, reached };
-      });
-    },
-  };
-}
-
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((r) => (resolve = r));
@@ -188,11 +144,13 @@ const feedSlugs = (objects: Map<string, string>): string[] =>
     .map((i) => i.slug)
     .sort();
 
-async function resolvedBlogAllowlist(): Promise<string[]> {
-  const desired = syncBlog.mock.calls.at(-1)![0] as
-    string[] | (() => Promise<string[]>);
-  return (typeof desired === 'function' ? await desired() : desired).sort();
-}
+const resolvedBlogAllowlist = async (): Promise<string[]> =>
+  (
+    await desiredKvsKeys(
+      syncKvs as unknown as typeof syncViewerRequestKeys,
+      'blog',
+    )
+  ).sort();
 
 describe('rebuilds against a lagging GSI1', () => {
   const prevTable = process.env.DATA_TABLE_NAME;
@@ -200,8 +158,7 @@ describe('rebuilds against a lagging GSI1', () => {
   beforeEach(() => {
     process.env.DATA_TABLE_NAME = 'test-table';
     ddbSend.mockReset();
-    syncBlog.mockReset();
-    syncProjects.mockReset();
+    syncKvs.mockReset();
     addMetric.mockReset();
   });
 
@@ -217,14 +174,14 @@ describe('rebuilds against a lagging GSI1', () => {
     const second = post('second', 2);
     table.publish(first, { gsi: true });
     ddbSend.mockImplementation(table.send);
-    const { rebuildPublishedSite } = await import('../src/s3-site.js');
+    const { rebuildPublishedSite } = await import('../src/rebuild.js');
     const site = memoryStorage();
 
     const release = deferred();
     const writing = site.holdNextPut(release.promise);
     const stale = rebuildPublishedSite({
       scope: publishScope(first.slug),
-      storage: site.storage,
+      storage: site,
     });
     await writing;
 
@@ -232,7 +189,7 @@ describe('rebuilds against a lagging GSI1', () => {
     table.publish(second, { gsi: false });
     await rebuildPublishedSite({
       scope: publishScope(second.slug),
-      storage: site.storage,
+      storage: site,
     });
     release.resolve();
     await stale;
@@ -288,7 +245,7 @@ describe('rebuilds against a lagging GSI1', () => {
         return {};
       },
     );
-    const { listPublishedProjects } = await import('../src/s3-site.js');
+    const { listPublishedProjects } = await import('../src/catalog.js');
 
     const catalog = await listPublishedProjects('test-table');
 
@@ -311,22 +268,25 @@ describe('the settle check', () => {
   ): PublishTarget => ({
     id: 'probe',
     matches: () => true,
-    needsCatalog: () => false,
-    needsShell: () => opts.shell ?? false,
+    needs: opts.shell ? { shell: true } : {},
+    kvs: {
+      namespace: BLOG_SLUG_NAMESPACE,
+      pagePrefix: 'blog/',
+      keysFromPageKeys: postSlugsFromKeys,
+    },
     run,
   });
 
   beforeEach(() => {
-    syncBlog.mockReset();
-    syncProjects.mockReset();
+    syncKvs.mockReset();
   });
 
   it('reruns when a web deploy replaced the shell during the pass', async () => {
-    const site = memoryStorage('<html>old shell</html>');
+    const site = memoryStorage({ shell: '<html>old shell</html>' });
     let runs = 0;
     await runPublishTargets({
       scope: publishScope('x'),
-      storage: site.storage,
+      storage: site,
       sources: quietSources(() => 1),
       targets: [
         target(
@@ -359,7 +319,7 @@ describe('the settle check', () => {
     let runs = 0;
     const result = await runPublishTargets({
       scope: publishScope('x'),
-      storage: site.storage,
+      storage: site,
       sources: quietSources(() => generation),
       targets: [
         target(async () => {
@@ -383,7 +343,7 @@ describe('the settle check', () => {
     let runs = 0;
     const result = await runPublishTargets({
       scope: publishScope('x'),
-      storage: site.storage,
+      storage: site,
       sources: quietSources(() => generation),
       targets: [
         target(async () => {
@@ -406,14 +366,16 @@ describe('the settle check', () => {
     expect(runs).toBe(2);
     expect(site.invalidations).toEqual([['/posts/p1', '/posts/p2']]);
     expect(result.invalidated).toEqual(['/posts/p1', '/posts/p2']);
-    expect(syncBlog).toHaveBeenCalledOnce();
+    expect(
+      kvsSyncCount(syncKvs as unknown as typeof syncViewerRequestKeys, 'blog'),
+    ).toBe(1);
   });
 
   it('the blog KVS allowlist is the pages in storage when the sync resolves it', async () => {
     const site = memoryStorage();
     await runPublishTargets({
       scope: publishScope('mine'),
-      storage: site.storage,
+      storage: site,
       sources: quietSources(() => 1),
       targets: [
         target(async () => ({

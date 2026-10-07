@@ -11,11 +11,8 @@ import {
   type DeleteKeyRequestListItem,
   type PutKeyRequestListItem,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
-import { Logger } from '@aws-lambda-powertools/logger';
-import { PUBLISHER_SERVICE_NAME } from '@gagnechris/shared';
 import { isLocalCloudFront } from './config.js';
-
-const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
+import { logger } from './observability.js';
 
 /** Sentinel key: absent → CF Function fail-opens; present → enforce allowlist. */
 export const BLOG_SLUG_SYNCED_KEY = '__synced__';
@@ -56,7 +53,7 @@ export type SlugKeyDiff = {
   deletes: DeleteKeyRequestListItem[];
 };
 
-export type BlogSlugKvsClient = {
+export type SlugKvsClient = {
   describeETag: (kvsArn: string) => Promise<string>;
   listKeys: (kvsArn: string) => Promise<string[]>;
   updateKeys: (input: {
@@ -77,7 +74,7 @@ export class KvsSyncError extends Error {
 }
 
 /** Only keys `namespace` owns are put or deleted. */
-export function diffBlogSlugKeys(
+export function diffSlugKeys(
   existingKeys: Iterable<string>,
   slugs: string[],
   namespace: KvsNamespace = BLOG_SLUG_NAMESPACE,
@@ -159,7 +156,7 @@ async function listAllKeysWithSdk(kvsArn: string): Promise<string[]> {
   return keys;
 }
 
-function defaultSdkClient(): BlogSlugKvsClient {
+function defaultSdkClient(): SlugKvsClient {
   return {
     async describeETag(kvsArn) {
       const described = await kvs.send(
@@ -196,23 +193,23 @@ function defaultSleep(ms: number): Promise<void> {
  * Resolved after describe/list so a stale republish-all list cannot delete a
  * concurrently published slug.
  */
-export type DesiredSlugs = string[] | (() => Promise<string[]>);
+export type DesiredKeys = string[] | (() => Promise<string[]>);
 
-async function resolveDesiredSlugs(slugs: DesiredSlugs): Promise<string[]> {
+async function resolveDesiredKeys(slugs: DesiredKeys): Promise<string[]> {
   return typeof slugs === 'function' ? await slugs() : slugs;
 }
 
-export async function syncBlogSlugsOnce(
+export async function syncSlugKeysOnce(
   kvsArn: string,
-  slugs: DesiredSlugs,
-  client: BlogSlugKvsClient,
+  slugs: DesiredKeys,
+  client: SlugKvsClient,
   namespace: KvsNamespace = BLOG_SLUG_NAMESPACE,
 ): Promise<'synced' | 'noop'> {
   // Describe first so the ETag covers list → update (avoids concurrent races).
   let etag = await client.describeETag(kvsArn);
   const existing = await client.listKeys(kvsArn);
-  const desired = await resolveDesiredSlugs(slugs);
-  const diff = diffBlogSlugKeys(existing, desired, namespace);
+  const desired = await resolveDesiredKeys(slugs);
+  const diff = diffSlugKeys(existing, desired, namespace);
   if (diff.puts.length === 0 && diff.deletes.length === 0) {
     return 'noop';
   }
@@ -229,17 +226,17 @@ export async function syncBlogSlugsOnce(
   return 'synced';
 }
 
-export type SyncBlogSlugsOptions = {
-  client?: BlogSlugKvsClient;
+export type SyncSlugKeysOptions = {
+  client?: SlugKvsClient;
   namespace?: KvsNamespace;
   maxAttempts?: number;
   sleep?: (ms: number) => Promise<void>;
 };
 
-export async function syncBlogSlugsWithClient(
+export async function syncSlugKeysWithClient(
   kvsArn: string,
-  slugs: DesiredSlugs,
-  options: SyncBlogSlugsOptions = {},
+  slugs: DesiredKeys,
+  options: SyncSlugKeysOptions = {},
 ): Promise<'synced' | 'noop'> {
   const client = options.client ?? defaultSdkClient();
   const namespace = options.namespace ?? BLOG_SLUG_NAMESPACE;
@@ -249,7 +246,7 @@ export async function syncBlogSlugsWithClient(
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const result = await syncBlogSlugsOnce(kvsArn, slugs, client, namespace);
+      const result = await syncSlugKeysOnce(kvsArn, slugs, client, namespace);
       if (result === 'noop') {
         logger.info('Slug KVS already in sync', {
           kvsArn,
@@ -289,7 +286,7 @@ export async function syncBlogSlugsWithClient(
  * Local stacks have no KVS: with `LOCAL_KVS_FILE` set, the keys go to that
  * JSON file (`{ "keys": [...] }`), which the local static server reads.
  */
-function localFileClient(path: string): BlogSlugKvsClient {
+function localFileClient(path: string): SlugKvsClient {
   const read = async (): Promise<string[]> => {
     try {
       const parsed = JSON.parse(await readFile(path, 'utf8')) as {
@@ -313,15 +310,16 @@ function localFileClient(path: string): BlogSlugKvsClient {
   };
 }
 
-async function syncViewerRequestKeys(
-  keys: DesiredSlugs,
+/** Throws {@link KvsSyncError} after retries so the stream can retry. */
+export async function syncViewerRequestKeys(
   namespace: KvsNamespace,
-  options?: SyncBlogSlugsOptions,
+  keys: DesiredKeys,
+  options?: SyncSlugKeysOptions,
 ): Promise<void> {
   if (isLocalCloudFront()) {
     const localFile = process.env.LOCAL_KVS_FILE?.trim();
     if (!localFile) return;
-    await syncBlogSlugsWithClient('local', keys, {
+    await syncSlugKeysWithClient('local', keys, {
       ...options,
       namespace,
       client: options?.client ?? localFileClient(localFile),
@@ -336,25 +334,5 @@ async function syncViewerRequestKeys(
     return;
   }
 
-  await syncBlogSlugsWithClient(kvsArn, keys, { ...options, namespace });
-}
-
-/** Throws {@link KvsSyncError} after retries so the stream can retry. */
-export async function syncViewerRequestBlogSlugs(
-  slugs: DesiredSlugs,
-  options?: SyncBlogSlugsOptions,
-): Promise<void> {
-  await syncViewerRequestKeys(slugs, BLOG_SLUG_NAMESPACE, options);
-}
-
-/** `slugs` resolves to the projects that have a page after this rebuild's writes. */
-export async function syncViewerRequestProjectSlugs(
-  slugs: () => Promise<string[]>,
-  options?: SyncBlogSlugsOptions,
-): Promise<void> {
-  await syncViewerRequestKeys(
-    async () => (await slugs()).map(projectSlugKvsKey),
-    PROJECT_SLUG_NAMESPACE,
-    options,
-  );
+  await syncSlugKeysWithClient(kvsArn, keys, { ...options, namespace });
 }
