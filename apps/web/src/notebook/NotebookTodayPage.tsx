@@ -18,6 +18,7 @@ import {
   formatCalendarDay,
   isCalendarDay,
   taskEmbedIds,
+  taskEmbedToken,
 } from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -40,6 +41,7 @@ import ShellIcon from '../workspace/ui/ShellIcon';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
 import {
   NOTEBOOK_AREA_FILTERS,
+  NOTEBOOK_AREA_HEADINGS,
   NOTEBOOK_AREA_LABELS,
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
@@ -71,12 +73,7 @@ function DayTitle({
   date: string;
   today: string;
 }) {
-  const areaLabel =
-    area === 'work'
-      ? 'Work notebook'
-      : area === 'personal'
-        ? 'Personal notebook'
-        : 'All areas';
+  const areaLabel = NOTEBOOK_AREA_HEADINGS[area ?? 'all'];
   return (
     <div className="notebook-today__title">
       <p className="notebook-today__kicker">
@@ -217,7 +214,7 @@ function TodayEditor({
 /** The embed, then an empty line for the context written under it. */
 function appendTaskEmbed(markdown: string, taskId: string): string {
   const body = markdown.replace(/\s+$/, '');
-  return `${body}${body ? '\n\n' : ''}{{task:${taskId}}}\n\n`;
+  return `${body}${body ? '\n\n' : ''}${taskEmbedToken(taskId)}\n\n`;
 }
 
 export default function NotebookTodayPage() {

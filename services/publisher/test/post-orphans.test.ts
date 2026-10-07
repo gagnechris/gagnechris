@@ -61,6 +61,7 @@ function memoryStorage() {
 }
 
 const sources: RebuildSiteSources = {
+  readGeneration: async () => 0,
   listPublishedPosts: async () => ({ posts: [kept], corruptSlugs: [] }),
   listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
   getPublishedResume: async () => ({ status: 'missing' }),

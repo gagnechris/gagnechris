@@ -116,45 +116,26 @@ export function finalizeInvalidationPaths(
 }
 
 /**
- * Keeps the page, KVS entry, and feed entries of live posts missing from the
- * catalog:
- * - corrupt PUBLISHED rows (any rebuild), which also recovers the live slug
- *   when the row's own slug is the corrupt field;
- * - stream rebuilds only: GSI lag. Full rebuilds trust the catalog otherwise.
+ * Keeps the page, KVS entry, and feed entries of live posts whose PUBLISHED
+ * row is corrupt, read back from `blog/posts.json` by id. This also recovers
+ * the live slug when the row's own slug is the corrupt field.
  */
 export async function retainLivePosts(
   storage: SiteStorage,
-  scope: RebuildScope,
   catalog: PublishedPostsCatalog,
 ): Promise<Post[]> {
   const corruptIds = new Set(catalog.corruptPostIds ?? []);
-  const full = isFullRebuildScope(scope);
-  if (full && corruptIds.size === 0) return [];
+  if (corruptIds.size === 0) return [];
 
   const previous = await readPublishedListItems(storage);
-  if (previous.length === 0) return [];
-
   const catalogIds = new Set(catalog.posts.map((p) => p.id));
   const catalogSlugs = new Set(catalog.posts.map((p) => p.slug));
-  const missing = previous.filter(
-    (item) => !catalogIds.has(item.id) && !catalogSlugs.has(item.slug),
-  );
-  const lagging = full
-    ? []
-    : missing.filter(
-        (item) =>
-          !corruptIds.has(item.id) && !scope.slugsToRemove.has(item.slug),
-      );
-  const livePages =
-    lagging.length > 0
-      ? new Set(postSlugsFromKeys(await storage.list('blog/')))
-      : new Set<string>();
-
-  return missing
+  return previous
     .filter(
       (item) =>
-        corruptIds.has(item.id) ||
-        (lagging.includes(item) && livePages.has(item.slug)),
+        corruptIds.has(item.id) &&
+        !catalogIds.has(item.id) &&
+        !catalogSlugs.has(item.slug),
     )
     .map(listItemToFeedPost);
 }
@@ -168,84 +149,123 @@ type RunOptions = {
 
 export const MAX_PUBLISH_PASSES = 4;
 
-/** Wraps sources so the data a pass rendered from can be read again and compared. */
-function recordedSources(sources: RebuildSiteSources) {
-  const seen = new Map<keyof RebuildSiteSources, string>();
-  const recorded = {} as RebuildSiteSources;
-  for (const name of Object.keys(sources) as (keyof RebuildSiteSources)[]) {
-    recorded[name] = (async () => {
-      const value = await sources[name]();
-      if (!seen.has(name)) seen.set(name, JSON.stringify(value));
-      return value;
-    }) as never;
-  }
-  const changed = async (): Promise<(keyof RebuildSiteSources)[]> => {
-    const names = [...seen.keys()];
-    const now = await Promise.all(
-      names.map(async (name) => JSON.stringify(await sources[name]())),
-    );
-    return names.filter((name, i) => now[i] !== seen.get(name));
-  };
-  return { recorded, changed };
-}
-
 /**
  * Stream shards and `republishAll` run rebuilds in parallel, and each writes
- * every index it touches from the data it read. One that read before another
- * publish and wrote after it would drop that item, so a pass whose data has
- * changed by the time its writes land runs again. The last write to any
- * index then comes from a pass that read every publish committed before it
- * finished.
+ * every index it touches from the data it read. Every commit that writes or
+ * deletes a PUBLISHED row also moves the site publish generation, so a pass
+ * that sees the same generation (and shell) before it reads and after it
+ * writes rendered from data no commit changed in between; otherwise it runs
+ * again. The last write to any index then comes from a pass that read every
+ * publish committed before it finished. Invalidation and the KVS syncs run
+ * once, after the last pass.
  */
 export async function runPublishTargets(
   options: RunOptions,
 ): Promise<RebuildResult> {
+  const scope = options.scope ?? fullRebuildScope();
+  const targets = options.targets ?? getPublishTargets();
+  const { storage, sources } = options;
+
+  const flags = emptyFlagAccumulator();
   const removedSlugs = new Set<string>();
-  const invalidated = new Set<string>();
+  const paths: string[] = [];
+  let hadChanges = false;
+  let publishedCount: number;
+
   for (let pass = 1; ; pass += 1) {
-    const { recorded, changed } = recordedSources(options.sources);
-    const result = await runPublishPass({ ...options, sources: recorded });
+    const generation = await sources.readGeneration();
+    const result = await runPublishPass({ scope, storage, sources, targets });
+    PUBLISH_RESULT_BOOLEAN_FLAGS.forEach((key) => {
+      if (result.flags[key]) flags[key] = true;
+    });
     result.removedSlugs.forEach((slug) => removedSlugs.add(slug));
-    result.invalidated.forEach((path) => invalidated.add(path));
-    const merged = {
-      ...result,
-      removedSlugs: [...removedSlugs],
-      invalidated: [...invalidated],
-    };
-    const stale = await changed();
-    if (stale.length === 0) return merged;
+    paths.push(...result.paths);
+    hadChanges ||= result.hadChanges;
+    publishedCount = result.publishedCount;
+
+    const changed: string[] = [];
+    if ((await sources.readGeneration()) !== generation) {
+      changed.push('generation');
+    }
+    if (
+      result.shell !== undefined &&
+      (await storage.readShell()) !== result.shell
+    ) {
+      changed.push('shell');
+    }
+    if (changed.length === 0) break;
     if (pass === MAX_PUBLISH_PASSES) {
       logger.warn('Published data kept changing during the rebuild', {
         pass,
-        changed: stale,
+        changed,
       });
       metrics.addMetric('RebuildUnsettled', MetricUnit.Count, 1);
-      return merged;
+      break;
     }
     logger.info('Published data changed during the rebuild; rebuilding', {
       pass,
-      changed: stale,
+      changed,
     });
   }
+
+  const invalidated = finalizeInvalidationPaths(scope, paths, hadChanges);
+
+  // Invalidate before KVS sync so a sync failure still clears cache. Both
+  // allowlists are the pages in storage, listed inside the sync after its
+  // ETag read, so a page another rebuild wrote meanwhile is never dropped and
+  // kept pages of corrupt rows stay reachable.
+  await storage.invalidate(invalidated);
+
+  if (scope.feeds) {
+    await syncViewerRequestBlogSlugs(async () =>
+      postSlugsFromKeys(await storage.list('blog/')),
+    );
+  }
+
+  if (scopeNeedsProjects(targets, scope)) {
+    await syncViewerRequestProjectSlugs(async () =>
+      projectSlugsFromKeys(await storage.list('projects/')),
+    );
+  }
+
+  return {
+    publishedCount,
+    removedSlugs: [...removedSlugs],
+    ...flags,
+    invalidated,
+  };
 }
 
-async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
-  const scope = options.scope ?? fullRebuildScope();
-  const { storage, sources } = options;
-  const targets = options.targets ?? getPublishTargets();
+type PassResult = {
+  publishedCount: number;
+  removedSlugs: string[];
+  flags: FlagAccumulator;
+  paths: string[];
+  hadChanges: boolean;
+  /** The shell the pass rendered with, when it read one. */
+  shell: string | undefined;
+};
+
+async function runPublishPass(options: {
+  scope: RebuildScope;
+  storage: SiteStorage;
+  sources: RebuildSiteSources;
+  targets: readonly PublishTarget[];
+}): Promise<PassResult> {
+  const { scope, storage, sources, targets } = options;
 
   const activeTargets = targets.filter((t) => t.matches(scope));
 
   const needsCatalog = scopeNeedsCatalog(targets, scope);
   const needsShell = scopeNeedsShell(targets, scope);
 
-  const shell = needsShell ? await storage.readShell() : '';
+  const shell = needsShell ? await storage.readShell() : undefined;
   const catalog = needsCatalog
     ? await sources.listPublishedPosts()
     : { posts: [], corruptSlugs: [] as string[] };
   const published = catalog.posts;
   const retainedPosts = needsCatalog
-    ? await retainLivePosts(storage, scope, catalog)
+    ? await retainLivePosts(storage, catalog)
     : [];
   const needsProjects = scopeNeedsProjects(targets, scope);
   const projects = needsProjects
@@ -258,7 +278,7 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
 
   const ctx: PublishTargetContext = {
     scope,
-    shell,
+    shell: shell ?? '',
     storage,
     sources,
     published,
@@ -269,7 +289,7 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
 
   const flags = emptyFlagAccumulator();
   const removedSlugs: string[] = [];
-  const collectedPaths: string[] = [];
+  const paths: string[] = [];
   let hadChanges = false;
 
   for (const target of activeTargets) {
@@ -282,50 +302,22 @@ async function runPublishPass(options: RunOptions): Promise<RebuildResult> {
     const deleted = result.deleteKeys?.length
       ? await deleteKeys(storage, result.deleteKeys)
       : [];
-
     removedSlugs.push(...postSlugsFromKeys(deleted));
 
     if (written.length > 0 || deleted.length > 0) {
       hadChanges = true;
       if (result.invalidationPaths?.length) {
-        collectedPaths.push(...result.invalidationPaths);
+        paths.push(...result.invalidationPaths);
       }
     }
-  }
-
-  const invalidated = finalizeInvalidationPaths(
-    scope,
-    collectedPaths,
-    hadChanges,
-  );
-
-  // Invalidate before KVS sync so a sync failure still clears cache. The
-  // allowlist is the in-memory catalog (posts ∪ corrupt) so corrupt slugs
-  // stay reachable and reads cannot diverge.
-  await storage.invalidate(invalidated);
-
-  if (scope.feeds) {
-    const desiredSlugs = [...published.map((p) => p.slug), ...corruptPostSlugs];
-    await syncViewerRequestBlogSlugs(desiredSlugs);
-  }
-
-  if (needsProjects) {
-    // The pages in storage after this run's writes and deletes, so href
-    // cards and body-less ideas (no page) stay out and kept pages of corrupt
-    // rows stay in.
-    await syncViewerRequestProjectSlugs(async () =>
-      projectSlugsFromKeys(await storage.list('projects/')),
-    );
   }
 
   return {
     publishedCount: published.length,
     removedSlugs,
-    resumePublished: flags.resumePublished,
-    resumeUnpublished: flags.resumeUnpublished,
-    resumePdfFailed: flags.resumePdfFailed,
-    homePublished: flags.homePublished,
-    homeRestoredFromSnapshot: flags.homeRestoredFromSnapshot,
-    invalidated,
+    flags,
+    paths,
+    hadChanges,
+    shell,
   };
 }

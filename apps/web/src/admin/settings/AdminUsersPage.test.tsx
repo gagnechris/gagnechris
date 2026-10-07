@@ -6,10 +6,9 @@ import type { ManagedUser } from '@gagnechris/shared';
 import { QueryClientTestProvider } from '../../test-utils';
 import type { AuthUser } from '../../workspace/auth/session';
 import AdminUsersPage from './AdminUsersPage';
+import { adminApi } from '../../mockAdminApi';
 
-const get = vi.fn();
-const post = vi.fn();
-const put = vi.fn();
+const { GET: get, POST: post, PUT: put } = adminApi;
 
 const session = vi.hoisted(() => ({
   authTime: 0 as number | null,
@@ -21,13 +20,9 @@ vi.mock('../../workspace/auth/session', () => ({
   redirectToSignIn: (options?: unknown) => session.redirectToSignIn(options),
 }));
 
-vi.mock('../../workspace/api/client', () => ({
-  createApiClient: () => ({
-    GET: (...args: unknown[]) => get(...args),
-    POST: (...args: unknown[]) => post(...args),
-    PUT: (...args: unknown[]) => put(...args),
-  }),
-}));
+vi.mock('../../workspace/api/client', () =>
+  import('../../mockAdminApi').then((m) => m.mockAdminApi()),
+);
 
 const ok = (data: unknown) => ({
   data,

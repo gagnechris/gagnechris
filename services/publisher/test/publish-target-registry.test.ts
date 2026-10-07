@@ -112,6 +112,7 @@ describe('publish target registry', () => {
       },
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),

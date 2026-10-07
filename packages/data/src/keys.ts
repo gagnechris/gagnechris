@@ -118,6 +118,15 @@ export function contactMsgSk(): string {
   return SK_MSG;
 }
 
+/** The one site publish row (`site-publish.ts`). */
+export function sitePublishPk(): string {
+  return 'SITE#publish';
+}
+
+export function sitePublishSk(): string {
+  return SK_META;
+}
+
 /** One partition: removed users are few and always listed together. */
 export function removedUsersPk(): string {
   return 'REMOVED_USERS';
@@ -438,6 +447,7 @@ export const keys = {
       published: () => ({ pk: resumePk(), sk: resumePublishedSk() }),
     },
   },
+  sitePublish: () => ({ pk: sitePublishPk(), sk: sitePublishSk() }),
   contact: {
     msg: (contactId: string) => ({
       pk: contactPk(contactId),

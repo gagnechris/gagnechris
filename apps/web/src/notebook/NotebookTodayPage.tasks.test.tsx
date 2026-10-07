@@ -573,7 +573,7 @@ describe('Today tasks', () => {
     );
   });
 
-  test('the Snooze menu sets another day; a failed write brings the row back', async () => {
+  test('the Snooze menu sets another day from the keyboard, and the server keeps it', async () => {
     vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
     addTask(task(10, { title: 'Plan Q4 posts', startDate: '2026-10-01' }));
     const user = userEvent.setup();

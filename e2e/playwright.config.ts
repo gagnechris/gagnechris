@@ -26,7 +26,20 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    // HTTP only, run alone first: it publishes Home and checks its recent
+    // posts, which the browser specs' publishes would race.
+    { name: 'api', testMatch: /publish-lifecycle\.spec\.ts$/ },
+    {
+      name: 'chromium',
+      testIgnore: /publish-lifecycle\.spec\.ts$/,
+      dependencies: ['api'],
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'webkit',
+      testIgnore: /publish-lifecycle\.spec\.ts$/,
+      dependencies: ['api'],
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 });

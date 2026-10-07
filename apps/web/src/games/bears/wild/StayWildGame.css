@@ -10,7 +10,7 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  background: #dbecf2;
+  background: var(--bears-sky-summer);
   outline: none;
 }
 
@@ -46,7 +46,7 @@
   padding: var(--space-2) var(--space-3);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.92);
-  color: #16191d;
+  color: var(--bears-ink);
 }
 
 .wild-hud__kicker {
@@ -84,14 +84,14 @@
   height: 10px;
   overflow: hidden;
   border-radius: var(--radius-full);
-  background: #e5e8ed;
+  background: var(--bears-haze);
 }
 
 .wild-hud__fill {
   display: block;
   height: 100%;
   border-radius: var(--radius-full);
-  background: #c08a1e;
+  background: var(--bears-gold-dark);
   transition: width 0.3s ease;
 }
 
@@ -121,17 +121,17 @@
 }
 
 .wild-eat-toast--info {
-  background: #16191d;
+  background: var(--bears-ink);
   color: white;
 }
 
 .wild-eat-toast--bad {
   background: #fdecea;
-  color: #a3341f;
+  color: var(--bears-alert);
 }
 
 .wild-hud__fill--fed {
-  background: #3f7a5f;
+  background: var(--bears-pine-light);
 }
 
 .wild-hud__paws {
@@ -147,7 +147,7 @@
 }
 
 .wild-hud__pip--on {
-  background: #c2552d;
+  background: var(--bears-rust);
 }
 
 .wild-hud__sniff,
@@ -164,13 +164,13 @@
 
 .wild-hud__sniff {
   padding: 0 var(--space-4);
-  background: #16191d;
+  background: var(--bears-ink);
   color: white;
 }
 
 .wild-hud__pause {
   background: white;
-  color: #16191d;
+  color: var(--bears-ink);
 }
 
 /* Undo the site-wide button:hover recolor and lift on the game controls. */
@@ -183,7 +183,7 @@
 
 .wild-hud__sniff:hover,
 .wild-touch__sniff:hover {
-  background-color: #16191d;
+  background-color: var(--bears-ink);
 }
 
 .wild-hud__pause:hover {
@@ -223,7 +223,7 @@
 .wild-touch__sniff {
   width: 76px;
   height: 76px;
-  background: #16191d;
+  background: var(--bears-ink);
 }
 
 .wild-touch__sniff:disabled {
@@ -279,7 +279,7 @@
   padding-left: 18px;
   font-size: 15px;
   line-height: 1.55;
-  color: #2b3138;
+  color: var(--bears-charcoal);
 }
 
 .wild-start__keys {
@@ -314,7 +314,7 @@
 }
 
 .wild-scene--habituated {
-  background: #f6e3c8;
+  background: var(--bears-sky-autumn);
 }
 
 .wild-scene svg {
@@ -449,7 +449,7 @@
     align-items: center;
     justify-content: center;
     padding: var(--space-6);
-    background: #16191d;
+    background: var(--bears-ink);
     color: white;
     font-weight: 600;
     text-align: center;

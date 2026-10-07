@@ -1,4 +1,3 @@
-import { ulid } from 'ulid';
 import type { Page } from '@playwright/test';
 import { expect, test, type Seed } from '../fixtures';
 
@@ -8,47 +7,23 @@ test.use({ timezoneId: 'America/New_York' });
 
 const FRIDAY_MORNING = new Date('2026-10-02T09:00:00-04:00');
 
-async function seedTask(
-  seed: Seed,
-  body: { title: string; startDate?: string | null; noteId?: string },
-) {
-  const { data, error } = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', ...body },
-  });
-  if (!data) throw new Error(`seed task failed: ${JSON.stringify(error)}`);
-  return data;
-}
-
 /** A daily note whose body embeds `tasks`, which get it as their home note. */
 async function seedDaily(
   seed: Seed,
   date: string,
   tasks: { title: string; startDate?: string | null }[],
 ) {
-  const path = { area: 'work' as const, date };
-  const created = await seed.api.PUT(
-    '/api/notebook/notes/daily/{area}/{date}',
-    {
-      params: { path },
-      body: { id: ulid(), bodyMarkdown: 'Standup' },
-    },
-  );
-  const note = created.data!;
+  const note = await seed.daily(date, 'Standup');
   const seeded = [];
   for (const t of tasks)
-    seeded.push(await seedTask(seed, { ...t, noteId: note.id }));
-  const saved = await seed.api.PUT('/api/notebook/notes/daily/{area}/{date}', {
-    params: { path },
-    body: {
-      id: note.id,
-      version: note.version,
-      bodyMarkdown: ['Standup', ...seeded.map((t) => `{{task:${t.id}}}`)].join(
-        '\n',
-      ),
-    },
-  });
-  expect(saved.data?.taskIds).toEqual(seeded.map((t) => t.id));
-  return { note: saved.data!, tasks: seeded };
+    seeded.push(await seed.task({ ...t, noteId: note.id }));
+  const saved = await seed.daily(
+    date,
+    ['Standup', ...seeded.map((t) => `{{task:${t.id}}}`)].join('\n'),
+    { id: note.id, version: note.version },
+  );
+  expect(saved.taskIds).toEqual(seeded.map((t) => t.id));
+  return { note: saved, tasks: seeded };
 }
 
 const stillOpen = (page: Page) => page.getByTestId('still-open');
@@ -129,7 +104,7 @@ test('an @mon task is absent from Still open until Monday, then shows Scheduled 
   prefix,
 }) => {
   const title = `${prefix} brand fonts`;
-  await seedTask(seed, { title, startDate: '2026-10-05' });
+  await seed.task({ title, startDate: '2026-10-05' });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
   await page.goto(`${apps.notebook}/today`);
@@ -155,15 +130,15 @@ test('Snooze and Drop remove the row at once and survive reload', async ({
   const dropTitle = `${prefix} recruiter email`;
   const snoozeTitle = `${prefix} renew card`;
   const pickTitle = `${prefix} plan posts`;
-  const dropped = await seedTask(seed, {
+  const dropped = await seed.task({
     title: dropTitle,
     startDate: '2026-10-02',
   });
-  const snoozed = await seedTask(seed, {
+  const snoozed = await seed.task({
     title: snoozeTitle,
     startDate: '2026-10-02',
   });
-  const picked = await seedTask(seed, {
+  const picked = await seed.task({
     title: pickTitle,
     startDate: '2026-10-02',
   });
@@ -244,8 +219,8 @@ test('each task appears in exactly one place on the page', async ({
     { title: inNoteToday, startDate: '2026-10-02' },
     { title: inNoteLater, startDate: '2026-10-06' },
   ]);
-  await seedTask(seed, { title: scheduledToday, startDate: '2026-10-02' });
-  await seedTask(seed, { title: tomorrow, startDate: '2026-10-03' });
+  await seed.task({ title: scheduledToday, startDate: '2026-10-02' });
+  await seed.task({ title: tomorrow, startDate: '2026-10-03' });
 
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
@@ -270,7 +245,7 @@ test('Add to today’s note embeds the task in the note and takes it off Still o
   prefix,
 }) => {
   const title = `${prefix} reply to recruiter`;
-  await seedTask(seed, { title, startDate: '2026-10-02' });
+  await seed.task({ title, startDate: '2026-10-02' });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
   await page.goto(`${apps.notebook}/today`);
@@ -312,9 +287,9 @@ test('at 390px the note fills the page and the strip opens Still open and Coming
   const carried = `${prefix} a fairly long task title that has to wrap on a phone`;
   const dropped = `${prefix} recruiter email`;
   const coming = `${prefix} brand fonts`;
-  await seedTask(seed, { title: carried, startDate: '2026-10-02' });
-  await seedTask(seed, { title: dropped, startDate: '2026-10-02' });
-  await seedTask(seed, { title: coming, startDate: '2026-10-05' });
+  await seed.task({ title: carried, startDate: '2026-10-02' });
+  await seed.task({ title: dropped, startDate: '2026-10-02' });
+  await seed.task({ title: coming, startDate: '2026-10-05' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();

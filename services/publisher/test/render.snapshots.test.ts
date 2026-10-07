@@ -173,6 +173,7 @@ describe('render HTML snapshots', () => {
       shell,
       storage,
       sources: {
+        readGeneration: async () => 0,
         listPublishedPosts: async () => ({
           posts: [post],
           corruptSlugs: [],

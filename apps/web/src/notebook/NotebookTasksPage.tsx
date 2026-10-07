@@ -1,25 +1,30 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
-  useCreateTaskMutation,
   useTasksQuery,
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
 import {
   addDays,
-  parseTaskSyntax,
   type TaskPriority,
   type TaskStatus,
   weekdayOf,
 } from '@gagnechris/shared';
-import { createUlid } from '../lib/ulid';
-import { areaQueryParam } from './notebookAreaPreference';
+import {
+  areaQueryParam,
+  NOTEBOOK_AREA_HEADINGS,
+} from './notebookAreaPreference';
+import {
+  TASK_PRIORITY_OPTIONS,
+  TASK_STATUS_OPTIONS,
+} from '../kit/tasks/taskOptions';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
 import { taskDue } from '../kit/tasks/taskDue';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useLocalToday } from './useLocalToday';
+import { useQuickAddTask } from './useQuickAddTask';
 import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
@@ -120,9 +125,8 @@ export default function NotebookTasksPage() {
     { ...listQuery, status: 'done' },
     { enabled: showCompleted && !status },
   );
-  const createMutation = useCreateTaskMutation();
+  const quickAddTask = useQuickAddTask(areaFilter);
   const { toggle: toggleTask, error: toggleError } = useTaskToggle();
-  const [quickAddHint, setQuickAddHint] = useState<string | null>(null);
 
   const { openItems, doneItems } = useMemo(() => {
     const main = tasksQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -140,27 +144,7 @@ export default function NotebookTasksPage() {
     status === 'done' || (!status && (doneItems.length > 0 || !showCompleted));
 
   const submitQuickAdd = async () => {
-    const parsed = parseTaskSyntax(quickAdd, today);
-    if (!parsed.title) {
-      setQuickAddHint('Add a title before the date.');
-      return;
-    }
-    setQuickAddHint(null);
-    const createArea: NotebookArea =
-      areaFilter === 'personal' ? 'personal' : 'work';
-    await createMutation.mutateAsync({
-      id: createUlid(),
-      area: createArea,
-      title: parsed.title,
-      description: '',
-      priority: parsed.priority,
-      status: 'todo',
-      startDate: parsed.startDate,
-      someday: parsed.someday,
-      dueDate: parsed.dueDate,
-      tags: [],
-    });
-    setQuickAdd('');
+    if (await quickAddTask.submit(quickAdd, today)) setQuickAdd('');
   };
 
   const toggleComplete = (task: Task) => {
@@ -173,11 +157,7 @@ export default function NotebookTasksPage() {
         <div>
           <h1>Tasks</h1>
           <p className="admin-panel__lede">
-            {areaFilter === 'all'
-              ? 'All areas'
-              : areaFilter === 'work'
-                ? 'Work'
-                : 'Personal'}
+            {NOTEBOOK_AREA_HEADINGS[areaFilter]}
             {' · '}
             quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
             <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
@@ -199,23 +179,25 @@ export default function NotebookTasksPage() {
           value={quickAdd}
           onChange={(next) => {
             setQuickAdd(next);
-            setQuickAddHint(null);
+            quickAddTask.clearMessages();
           }}
           aria-label="Quick add task"
-          disabled={createMutation.isPending}
+          disabled={quickAddTask.pending}
         />
         <button
           type="submit"
           className="admin-btn admin-btn--primary"
-          disabled={createMutation.isPending || !quickAdd.trim()}
+          disabled={quickAddTask.pending || !quickAdd.trim()}
         >
           Add
         </button>
       </form>
-      {quickAddHint ? <p className="admin-hint">{quickAddHint}</p> : null}
-      {toggleError ? (
+      {quickAddTask.hint ? (
+        <p className="admin-hint">{quickAddTask.hint}</p>
+      ) : null}
+      {(quickAddTask.error ?? toggleError) ? (
         <p className="admin-panel__error" role="alert">
-          {toggleError}
+          {quickAddTask.error ?? toggleError}
         </p>
       ) : null}
 
@@ -229,10 +211,11 @@ export default function NotebookTasksPage() {
             aria-label="Filter by status"
           >
             <option value="">Any</option>
-            <option value="todo">Todo</option>
-            <option value="in_progress">In progress</option>
-            <option value="done">Done</option>
-            <option value="dropped">Dropped</option>
+            {TASK_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="admin-field">
@@ -244,9 +227,11 @@ export default function NotebookTasksPage() {
             aria-label="Filter by priority"
           >
             <option value="">Any</option>
-            <option value="high">High</option>
-            <option value="med">Med</option>
-            <option value="low">Low</option>
+            {TASK_PRIORITY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="admin-field">

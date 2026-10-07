@@ -12,23 +12,12 @@ test.describe('the posts index', () => {
 
   test.beforeEach(async ({ seed, prefix, request }) => {
     slug = `${prefix}-${randomBytes(3).toString('hex')}`;
-    const { data: created } = await seed.api.POST('/api/admin/posts', {
-      body: {
-        title: `Index entry ${slug}`,
-        slug,
-        excerpt: `Excerpt for ${slug}.`,
-        bodyMarkdown: 'Body.',
-      },
+    await seed.publishedPost({
+      title: `Index entry ${slug}`,
+      slug,
+      excerpt: `Excerpt for ${slug}.`,
+      bodyMarkdown: 'Body.',
     });
-    if (!created) throw new Error('seed post failed');
-    const { data: published } = await seed.api.POST(
-      '/api/admin/posts/{id}/publish',
-      {
-        params: { path: { id: created.id } },
-        body: { version: created.version },
-      },
-    );
-    if (published?.status !== 'published') throw new Error('publish failed');
     // Parallel tests rebuild the local site too; wait until the index has it.
     await expect
       .poll(async () => (await request.get(`${site()}/posts`)).text())

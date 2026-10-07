@@ -49,6 +49,10 @@ describe('Camp Rules page', () => {
       );
       expect(screen.getByText('Random camp')).toBeInTheDocument();
       expect(screen.queryByText('Daily camp · Oct 4')).not.toBeInTheDocument();
+      // The header and the game read the same mode.
+      expect(
+        screen.getByText(/Random camp: a new evening every time/),
+      ).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

@@ -22,6 +22,8 @@ export type Stack = {
   notebookAuthUrl: string;
   apiUrl: string;
   siteUrl: string;
+  /** The publisher's filesystem bucket that `siteUrl` serves. */
+  siteRoot: string;
   logDir: string;
   /** Throws if a dev server re-bundled dependencies mid-run. */
   checkDevServers: () => Promise<void>;
@@ -382,6 +384,7 @@ export async function startStack(): Promise<Stack> {
     notebookAuthUrl: url(ports.notebookAuth),
     apiUrl,
     siteUrl,
+    siteRoot,
     logDir: runDir,
     checkDevServers,
     stop,

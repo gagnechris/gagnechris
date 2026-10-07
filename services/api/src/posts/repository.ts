@@ -67,6 +67,7 @@ export class PostsRepository extends PublishableRepository<Post, PostMetaItem> {
         toPublishedItem: buildPublishedItem,
         contentEqual: postContentEqual,
         isDeleted: (p) => p.status === 'deleted',
+        publishedIdSet: 'postIds',
         cursorKeyNames: GSI1_CURSOR_KEYS,
         slugClaims: POST_SLUG_CLAIMS,
         extraMutationItems: (_before, after, options) =>

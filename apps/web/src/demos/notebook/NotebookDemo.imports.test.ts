@@ -25,10 +25,7 @@ const parserImport = (file: string): string | undefined => {
 
 describe('the Notebook demo parser', () => {
   test('is imported from the module the Notebook app imports it from', () => {
-    const app = ['notebook/NotebookTasksPage.tsx', 'kit/tasks/taskLine.ts'].map(
-      parserImport,
-    );
-    expect(app).toEqual(['@gagnechris/shared', '@gagnechris/shared']);
+    expect(parserImport('kit/tasks/taskLine.ts')).toBe('@gagnechris/shared');
     expect(parserImport('demos/notebook/notebookDemoState.ts')).toBe(
       '@gagnechris/shared',
     );

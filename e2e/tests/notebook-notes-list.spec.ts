@@ -23,15 +23,11 @@ test('Notes groups pinned and recent notes and counts each note’s open tasks',
   seed,
   prefix,
 }) => {
-  const openTask = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', title: `${prefix} open task` },
-  });
-  const doneTask = await seed.api.POST('/api/notebook/tasks', {
-    body: { id: ulid(), area: 'work', title: `${prefix} done task` },
-  });
+  const openTask = await seed.task({ title: `${prefix} open task` });
+  const doneTask = await seed.task({ title: `${prefix} done task` });
   await seed.api.POST('/api/notebook/tasks/{id}/complete', {
-    params: { path: { id: doneTask.data!.id } },
-    body: { version: doneTask.data!.version },
+    params: { path: { id: doneTask.id } },
+    body: { version: doneTask.version },
   });
   const pinned = await seedPage(seed, {
     title: `${prefix} Reading list`,
@@ -42,8 +38,8 @@ test('Notes groups pinned and recent notes and counts each note’s open tasks',
     title: `${prefix} Q4 planning`,
     bodyMarkdown: [
       '## Scope',
-      `{{task:${openTask.data!.id}}}`,
-      `{{task:${doneTask.data!.id}}}`,
+      `{{task:${openTask.id}}}`,
+      `{{task:${doneTask.id}}}`,
     ].join('\n'),
   });
 

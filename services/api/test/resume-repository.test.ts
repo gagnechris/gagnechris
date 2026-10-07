@@ -186,10 +186,16 @@ describe('ResumeRepository', () => {
     )![0]!;
     const items = tx.input.TransactItems as Array<{
       Put?: { Item: { sk: string } };
+      Update?: { Key: { pk: string }; UpdateExpression: string };
     }>;
-    expect(items.map((i) => i.Put?.Item.sk).sort()).toEqual([
-      'META',
-      'PUBLISHED',
+    expect(items.flatMap((i) => (i.Put ? [i.Put.Item.sk] : [])).sort()).toEqual(
+      ['META', 'PUBLISHED'],
+    );
+    expect(items.flatMap((i) => (i.Update ? [i.Update] : []))).toEqual([
+      expect.objectContaining({
+        Key: { pk: 'SITE#publish', sk: 'META' },
+        UpdateExpression: 'SET #t = :t ADD #g :one',
+      }),
     ]);
   });
 

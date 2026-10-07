@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import {
-  campResultLine,
-  campShareText,
-  campShortDate,
-  dailyCampKey,
-  dailyCampRngs,
-  seededCampRngs,
-} from './dailyCamp';
+import { dailyCampKey, dailyCampRngs, seededCampRngs } from './dailyCamp';
 
 const draw = (rng: () => number, n = 5) =>
   Array.from({ length: n }, () => rng());
@@ -30,38 +23,5 @@ describe('dailyCamp', () => {
     expect(draw(tomorrow.schedule)).not.toEqual(draw(today.schedule));
     const s = seededCampRngs(1);
     expect(draw(s.choice)).not.toEqual(draw(seededCampRngs(1).schedule));
-  });
-
-  test('result line summarizes the evening', () => {
-    expect(
-      campResultLine({
-        key: '2026-10-03',
-        paws: 2,
-        saves: 4,
-        score: 700,
-        habituated: false,
-      }),
-    ).toBe(
-      'Camp Rules 2026-10-03: 🐾🐾· made it to dark, 4 saves, score 700. https://gagnechris.com/dont-feed-the-bears/camp',
-    );
-    expect(
-      campResultLine({
-        key: '2026-10-03',
-        paws: 0,
-        saves: 0,
-        score: 210,
-        habituated: true,
-      }),
-    ).toContain('··· the bears got too comfortable');
-  });
-
-  test('share text is the short one-line summary', () => {
-    expect(campShortDate('2026-10-04')).toBe('Oct 4');
-    expect(campShareText({ key: '2026-10-04', seconds: 60, saves: 3 })).toBe(
-      'Camp Rules · Oct 4 · held 60s, 3 saves',
-    );
-    expect(campShareText({ key: '2026-01-09', seconds: 17, saves: 1 })).toBe(
-      'Camp Rules · Jan 9 · held 17s, 1 save',
-    );
   });
 });

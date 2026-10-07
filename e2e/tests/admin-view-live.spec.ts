@@ -29,30 +29,12 @@ test('View live in every admin editor opens the public site', async ({
   prefix,
   seed,
 }) => {
-  const post = await seed.post({ title: `${prefix} live post` });
-  const { data: publishedPost } = await seed.api.POST(
-    '/api/admin/posts/{id}/publish',
-    { params: { path: { id: post.id } }, body: { version: post.version } },
-  );
-  expect(publishedPost?.status).toBe('published');
-
-  const { data: project } = await seed.api.POST('/api/admin/projects', {
-    body: {
-      name: `${prefix} live project`,
-      slug: `${prefix}-live-project`,
-      stage: 'building',
-      bodyMarkdown: 'Live.',
-    },
+  const post = await seed.publishedPost({ title: `${prefix} live post` });
+  const project = await seed.publishedProject({
+    name: `${prefix} live project`,
+    slug: `${prefix}-live-project`,
+    bodyMarkdown: 'Live.',
   });
-  if (!project) throw new Error('seed project failed');
-  const { data: publishedProject } = await seed.api.POST(
-    '/api/admin/projects/{id}/publish',
-    {
-      params: { path: { id: project.id } },
-      body: { version: project.version },
-    },
-  );
-  expect(publishedProject?.status).toBe('published');
 
   await signIn();
   const viewLive = page.getByRole('link', { name: 'View live' });
