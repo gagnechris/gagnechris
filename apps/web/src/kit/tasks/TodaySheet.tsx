@@ -1,9 +1,7 @@
 import {
   useEffect,
-  useId,
   useRef,
   useState,
-  type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
@@ -16,6 +14,8 @@ import {
   type Task,
   type TaskSchedule,
 } from '@gagnechris/shared';
+import { useModalDialog } from '../useModalDialog';
+import { useTabs } from '../useTabs';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
@@ -24,6 +24,7 @@ import './todayPanels.css';
 
 type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;
 export type TodaySheetTab = 'open' | 'coming';
+const TABS: readonly TodaySheetTab[] = ['open', 'coming'];
 
 type Props<T extends SheetTask> = {
   stillOpen: StillOpenRow[];
@@ -49,9 +50,6 @@ type Props<T extends SheetTask> = {
 const SWIPE_PX = 48;
 const DISMISS_PX = 80;
 
-const FOCUSABLE =
-  'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 /** Still open and Coming up as a phone bottom sheet. */
 export function TodaySheet<T extends SheetTask>({
   stillOpen,
@@ -68,19 +66,25 @@ export function TodaySheet<T extends SheetTask>({
   loading,
   error,
 }: Props<T>) {
-  const baseId = useId();
-  const sheetRef = useRef<HTMLElement>(null);
-  const tabRefs = useRef<Record<TodaySheetTab, HTMLButtonElement | null>>({
-    open: null,
-    coming: null,
-  });
   const [tab, setTab] = useState<TodaySheetTab>('open');
   const [revealed, setRevealed] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
   const dragFrom = useRef<number | null>(null);
+  const tabs = useTabs<TodaySheetTab>({
+    keys: TABS,
+    selected: tab,
+    onSelect: (next) => {
+      setTab(next);
+      setRevealed(null);
+    },
+    label: 'Task lists',
+  });
+  const { dialogProps } = useModalDialog<HTMLElement>({
+    label: 'Today’s tasks',
+    onClose,
+  });
 
   useEffect(() => {
-    tabRefs.current.open?.focus();
     const { overflow } = document.body.style;
     document.body.style.overflow = 'hidden';
     return () => {
@@ -91,35 +95,6 @@ export function TodaySheet<T extends SheetTask>({
   const comingCount = comingUp.reduce((n, d) => n + d.tasks.length, 0);
   const monday = nextWeekday(snoozeFrom, 1);
   const mondayLabel = formatTaskDay(monday);
-
-  const selectTab = (next: TodaySheetTab) => {
-    setTab(next);
-    setRevealed(null);
-    tabRefs.current[next]?.focus();
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-    if (e.key !== 'Tab' || !sheetRef.current) return;
-    const items = [
-      ...sheetRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
-    ];
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (!first || !last) return;
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
 
   const grab = {
     onPointerDown: (e: PointerEvent) => {
@@ -143,25 +118,7 @@ export function TodaySheet<T extends SheetTask>({
   };
 
   const tabButton = (key: TodaySheetTab, label: string, count: number) => (
-    <button
-      ref={(el) => {
-        tabRefs.current[key] = el;
-      }}
-      type="button"
-      role="tab"
-      id={`${baseId}-tab-${key}`}
-      aria-selected={tab === key}
-      aria-controls={`${baseId}-panel`}
-      tabIndex={tab === key ? 0 : -1}
-      className="today-sheet__tab"
-      onClick={() => selectTab(key)}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-          e.preventDefault();
-          selectTab(key === 'open' ? 'coming' : 'open');
-        }
-      }}
-    >
+    <button {...tabs.tabProps(key)} className="today-sheet__tab">
       {label} · {loading ? '…' : count}
     </button>
   );
@@ -178,27 +135,75 @@ export function TodaySheet<T extends SheetTask>({
       </button>
     ) : null;
 
+  const body = loading ? (
+    <p className="admin-hint">Loading tasks…</p>
+  ) : tab === 'open' ? (
+    stillOpen.length === 0 ? (
+      <p className="admin-hint">Nothing carried over.</p>
+    ) : (
+      <ul className="today-sheet__list">
+        {stillOpen.map((row) => (
+          <StillOpenSheetRow
+            key={row.task.id}
+            row={row}
+            revealed={revealed === row.task.id}
+            onReveal={(on) => setRevealed(on ? row.task.id : null)}
+            readOnly={readOnly}
+            mondayLabel={mondayLabel}
+            onToggle={() => onToggle(row.task.id)}
+            onSnooze={() =>
+              onSnooze(row.task.id, {
+                startDate: monday,
+                someday: false,
+              })
+            }
+            onDrop={() => onDrop(row.task.id)}
+            addPill={addPill(row.task)}
+          />
+        ))}
+      </ul>
+    )
+  ) : comingCount === 0 ? (
+    <p className="admin-hint">Nothing in the next two weeks.</p>
+  ) : (
+    <ul className="today-sheet__list">
+      {comingUp.flatMap(({ date, tasks }) =>
+        tasks.map((task) => (
+          <li key={task.id} className="today-sheet__row" data-task-id={task.id}>
+            <div className="today-sheet__row-main">
+              <span className="today-sheet__text">
+                {taskTo ? (
+                  <Link to={taskTo(task)} className="today-sheet__title">
+                    {task.title}
+                  </Link>
+                ) : (
+                  <span className="today-sheet__title">{task.title}</span>
+                )}
+                <span className="today-sheet__meta today-sheet__meta--day">
+                  {comingUpDayLabel(date, day)}
+                </span>
+              </span>
+              {addPill(task)}
+            </div>
+          </li>
+        )),
+      )}
+    </ul>
+  );
+
   return createPortal(
     <div className="today-sheet">
       <div className="today-sheet__scrim" onClick={onClose} />
       <section
-        ref={sheetRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Today’s tasks"
+        {...dialogProps}
         className="today-sheet__panel"
         style={dragY ? { transform: `translateY(${dragY}px)` } : undefined}
-        onKeyDown={onKeyDown}
       >
         <div className="today-sheet__grab" {...grab}>
           <span className="today-sheet__handle" aria-hidden="true" />
         </div>
         <div className="today-sheet__head">
-          <div
-            role="tablist"
-            aria-label="Task lists"
-            className="today-sheet__tabs"
-          >
+          <div {...tabs.listProps} className="today-sheet__tabs">
             {tabButton('open', 'Still open', stillOpen.length)}
             {tabButton('coming', 'Coming up', comingCount)}
           </div>
@@ -233,77 +238,15 @@ export function TodaySheet<T extends SheetTask>({
             {error}
           </p>
         ) : null}
-        <div
-          role="tabpanel"
-          id={`${baseId}-panel`}
-          aria-labelledby={`${baseId}-tab-${tab}`}
-          className="today-sheet__body"
-        >
-          {loading ? (
-            <p className="admin-hint">Loading tasks…</p>
-          ) : tab === 'open' ? (
-            stillOpen.length === 0 ? (
-              <p className="admin-hint">Nothing carried over.</p>
-            ) : (
-              <ul className="today-sheet__list">
-                {stillOpen.map((row) => (
-                  <StillOpenSheetRow
-                    key={row.task.id}
-                    row={row}
-                    revealed={revealed === row.task.id}
-                    onReveal={(on) => setRevealed(on ? row.task.id : null)}
-                    readOnly={readOnly}
-                    mondayLabel={mondayLabel}
-                    onToggle={() => onToggle(row.task.id)}
-                    onSnooze={() =>
-                      onSnooze(row.task.id, {
-                        startDate: monday,
-                        someday: false,
-                      })
-                    }
-                    onDrop={() => onDrop(row.task.id)}
-                    addPill={addPill(row.task)}
-                  />
-                ))}
-              </ul>
-            )
-          ) : comingCount === 0 ? (
-            <p className="admin-hint">Nothing in the next two weeks.</p>
-          ) : (
-            <ul className="today-sheet__list">
-              {comingUp.flatMap(({ date, tasks }) =>
-                tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    className="today-sheet__row"
-                    data-task-id={task.id}
-                  >
-                    <div className="today-sheet__row-main">
-                      <span className="today-sheet__text">
-                        {taskTo ? (
-                          <Link
-                            to={taskTo(task)}
-                            className="today-sheet__title"
-                          >
-                            {task.title}
-                          </Link>
-                        ) : (
-                          <span className="today-sheet__title">
-                            {task.title}
-                          </span>
-                        )}
-                        <span className="today-sheet__meta today-sheet__meta--day">
-                          {comingUpDayLabel(date, day)}
-                        </span>
-                      </span>
-                      {addPill(task)}
-                    </div>
-                  </li>
-                )),
-              )}
-            </ul>
-          )}
-        </div>
+        {TABS.map((key) => (
+          <div
+            key={key}
+            {...tabs.panelProps(key)}
+            className="today-sheet__body"
+          >
+            {key === tab ? body : null}
+          </div>
+        ))}
       </section>
     </div>,
     document.body,

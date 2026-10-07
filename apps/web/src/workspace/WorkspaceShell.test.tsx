@@ -154,6 +154,30 @@ describe('WorkspaceFrame', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('More moves focus into the sheet, keeps Tab inside, and Escape returns focus to More', async () => {
+    const user = userEvent.setup();
+    renderFrame(['site-admin', 'notebook']);
+    const more = screen.getByRole('button', { name: 'More' });
+
+    await user.click(more);
+    const sheet = screen.getByRole('dialog', { name: 'More' });
+    expect(sheet).toHaveAttribute('aria-modal', 'true');
+    const search = within(sheet).getByRole('button', {
+      name: 'Search everything',
+    });
+    expect(search).toHaveFocus();
+    for (let i = 0; i < 15; i++) {
+      await user.tab();
+      expect(sheet).toContainElement(document.activeElement as HTMLElement);
+    }
+    await user.tab({ shift: true });
+    expect(sheet).toContainElement(document.activeElement as HTMLElement);
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'More' })).toBeNull();
+    expect(more).toHaveFocus();
+  });
+
   test('the rail keeps every nav item named', () => {
     const { container } = renderFrame(['site-admin'], { rail: true });
     expect(container.firstChild).toHaveClass('workspace--rail');
