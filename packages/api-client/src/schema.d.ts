@@ -6330,6 +6330,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/notes/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read up to 100 notes by id in one request
+         * @description Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description The live notes, in request order */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description The live notes among the ids, in request order; deleted or unknown ids are left out */
+                            items: {
+                                id: string;
+                                userId: string;
+                                /** @enum {string} */
+                                area: "work" | "personal";
+                                /** @enum {string} */
+                                type: "daily" | "page";
+                                date: string | null;
+                                title: string;
+                                bodyMarkdown: string;
+                                tags: string[];
+                                pinned: boolean;
+                                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                                taskIds: string[];
+                                version: number;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                deleted: boolean;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/notes/daily/{area}/{date}": {
         parameters: {
             query?: never;
@@ -10118,8 +10261,32 @@ export interface components {
             }[];
             nextCursor?: string;
         };
-        TaskBatchRequest: {
+        NotebookBatchRequest: {
             ids: string[];
+        };
+        NoteBatchResponse: {
+            /** @description The live notes among the ids, in request order; deleted or unknown ids are left out */
+            items: {
+                id: string;
+                userId: string;
+                /** @enum {string} */
+                area: "work" | "personal";
+                /** @enum {string} */
+                type: "daily" | "page";
+                date: string | null;
+                title: string;
+                bodyMarkdown: string;
+                tags: string[];
+                pinned: boolean;
+                /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
+                taskIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                deleted: boolean;
+            }[];
         };
         TaskBatchResponse: {
             /** @description The live tasks among the ids, in request order; deleted or unknown ids are left out */

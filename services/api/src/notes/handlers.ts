@@ -5,7 +5,9 @@ import {
   DailyNoteGetResponseSchema,
   ExpectedVersionRequestSchema,
   ListNotesQuerySchema,
+  NoteBatchResponseSchema,
   NoteListResponseSchema,
+  NotebookBatchRequestSchema,
   NoteSchema,
   NotebookAreaSchema,
   OpenDailyNoteRequestSchema,
@@ -44,6 +46,20 @@ export function createNoteRoutes(
   const notes = () => repo ?? notesRepository();
   const tasks = () => taskRepo ?? tasksRepository();
   return [
+    defineRoute({
+      method: 'POST',
+      pattern: '/notebook/notes/batch',
+      auth: 'notebook',
+      metric: 'BatchGetNotes',
+      body: NotebookBatchRequestSchema,
+      handler: async (ctx, { body }) => {
+        const items = await notes().getMany(ctx.userId!, body.ids);
+        return json(
+          200,
+          NoteBatchResponseSchema.parse({ items: items.map(parseNote) }),
+        );
+      },
+    }),
     defineRoute({
       method: 'GET',
       pattern: '/notebook/notes',

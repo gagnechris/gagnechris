@@ -469,6 +469,8 @@ API surface: Notebook repositories use `VersionedRepository` with the `ownerScop
 
 **List paging:** `GET /api/notebook/notes` without `area` walks the Work then Personal partitions with a composite `mp.` cursor instead of merging one page per area. Pages are grouped by partition, not globally sorted; clients that need a global order sort after loading. `limit` is a maximum: notes and tasks list pages also stop at about 1 MB of JSON (`PAGE_BYTE_BUDGET`, well under Lambda's 6 MB response cap) and return `nextCursor`, so clients must keep paging until `nextCursor` is absent. A single-partition cursor is the raw DynamoDB key. A malformed or foreign cursor → **400**.
 
+**Batch read:** `POST /api/notebook/notes/batch` with JSON body `ids` (1 to 100 ULIDs) returns `items`, the caller's live notes among them in request order, from one BatchGetItem. Deleted and unknown ids are left out, as their `GET` would 404. Today's and Upcoming's source-note chips read notes this way.
+
 ### Tasks HTTP API
 
 | Method                   | Path                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |

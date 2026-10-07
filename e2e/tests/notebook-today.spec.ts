@@ -88,11 +88,9 @@ test('after local midnight, yesterday’s unchecked task is carried into the new
   await page.reload();
   await panelsLoaded(page);
   await expect.poll(() => placesOf(page, title)).toEqual(['note']);
-  // The open POST carries tasks in; the tasks batch POST only reads.
+  // The open POST carries tasks in; the batch POSTs only read.
   expect(
-    writes.filter(
-      (w) => !w.endsWith('/open') && w !== 'POST /api/notebook/tasks/batch',
-    ),
+    writes.filter((w) => !w.endsWith('/open') && !w.endsWith('/batch')),
   ).toEqual([]);
 });
 

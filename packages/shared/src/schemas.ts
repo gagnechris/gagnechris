@@ -650,6 +650,26 @@ export const NoteListResponseSchema = z.object({
 
 export type NoteListResponse = z.infer<typeof NoteListResponseSchema>;
 
+/** Most ids one batch read takes: one DynamoDB BatchGetItem. */
+export const NOTEBOOK_BATCH_MAX_IDS = 100;
+
+/** Body of the notes and tasks batch reads. */
+export const NotebookBatchRequestSchema = z.object({
+  ids: z.array(UlidSchema).min(1).max(NOTEBOOK_BATCH_MAX_IDS),
+});
+
+export type NotebookBatchRequest = z.infer<typeof NotebookBatchRequestSchema>;
+
+export const NoteBatchResponseSchema = z.object({
+  items: z
+    .array(NoteSchema)
+    .describe(
+      'The live notes among the ids, in request order; deleted or unknown ids are left out',
+    ),
+});
+
+export type NoteBatchResponse = z.infer<typeof NoteBatchResponseSchema>;
+
 export const CreateNoteRequestSchema = z
   .object({
     id: UlidSchema,
@@ -792,15 +812,6 @@ export const TaskListResponseSchema = z.object({
 });
 
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
-
-/** Most ids one batch read takes: one DynamoDB BatchGetItem. */
-export const TASK_BATCH_MAX_IDS = 100;
-
-export const TaskBatchRequestSchema = z.object({
-  ids: z.array(UlidSchema).min(1).max(TASK_BATCH_MAX_IDS),
-});
-
-export type TaskBatchRequest = z.infer<typeof TaskBatchRequestSchema>;
 
 export const TaskBatchResponseSchema = z.object({
   items: z

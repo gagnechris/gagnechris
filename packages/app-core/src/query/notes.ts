@@ -2,17 +2,16 @@ import { createUlid } from '@gagnechris/shared';
 import {
   useInfiniteQuery,
   useMutation,
-  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
-  ApiError,
   createNote,
   deleteNote,
   fetchDailyNote,
   fetchNote,
+  fetchNotesBatch,
   fetchNotesPage,
   isEmptyDailyNote,
   openDailyNote,
@@ -25,6 +24,7 @@ import {
   type UpdateNoteRequest,
 } from './api.js';
 import { setCachedNote } from './cache.js';
+import { useBatchedByIds, type ByIdResult } from './batchedByIds.js';
 import {
   createVersionedResource,
   useDeleteEntityMutation,
@@ -133,16 +133,15 @@ export const dailyNoteResource = createVersionedResource<
   tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 
-/** One detail query per id; a 404 (deleted note) is not retried. */
-export const useNotesByIds = (ids: readonly string[]) => {
+/** One `POST /notes/batch` for every id; see {@link useBatchedByIds}. */
+export const useNotesByIds = (ids: readonly string[]): ByIdResult<Note>[] => {
   const getClient = useGetApiClient();
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: queryKeys.notes.detail(id),
-      queryFn: () => fetchNote(getClient(), id),
-      retry: (failures: number, error: Error) =>
-        !(error instanceof ApiError && error.status === 404) && failures < 2,
-    })),
+  return useBatchedByIds(ids, {
+    batchKey: queryKeys.notes.batch,
+    detailKey: queryKeys.notes.detail,
+    fetchBatch: (chunk) => fetchNotesBatch(getClient(), chunk),
+    fetchOne: (id) => fetchNote(getClient(), id),
+    notFound: 'Note not found.',
   });
 };
 

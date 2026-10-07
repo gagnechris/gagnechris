@@ -3,7 +3,7 @@ import {
   CreateTaskRequestSchema,
   ExpectedVersionRequestSchema,
   ListTasksQuerySchema,
-  TaskBatchRequestSchema,
+  NotebookBatchRequestSchema,
   TaskBatchResponseSchema,
   TaskListResponseSchema,
   TaskSchema,
@@ -66,7 +66,7 @@ export function createTaskRoutes(
       pattern: '/notebook/tasks/batch',
       auth: 'notebook',
       metric: 'BatchGetTasks',
-      body: TaskBatchRequestSchema,
+      body: NotebookBatchRequestSchema,
       handler: async (ctx, { body }) => {
         const items = await tasks().getMany(ctx.userId!, body.ids);
         return json(
