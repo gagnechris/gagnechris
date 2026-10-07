@@ -44,6 +44,9 @@ export const queryKeys = {
         ? ([...queryKeys.tasks.all, 'list', filters] as const)
         : ([...queryKeys.tasks.all, 'list'] as const),
     detail: (id: string) => [...queryKeys.tasks.all, 'detail', id] as const,
+    /** Sorted ids, so the same set is one cache entry. */
+    batch: (ids: readonly string[]) =>
+      [...queryKeys.tasks.all, 'batch', ids] as const,
   },
   search: (filters: {
     q: string;

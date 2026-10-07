@@ -10,6 +10,7 @@ import {
   POST_SLUG_KVS_SYNCED_KEY,
   PROJECT_SLUG_KVS_SYNCED_KEY,
 } from '@gagnechris/shared';
+import { waitForDynamoDb } from '../scripts/local/wait-dynamodb.js';
 
 const run = promisify(execFile);
 
@@ -249,13 +250,7 @@ export async function startStack(): Promise<Stack> {
         '-sharedDb',
         '-inMemory',
       ]);
-      // DynamoDB Local answers a bare GET with 400 once it is listening.
-      await waitFor(
-        'DynamoDB Local',
-        dynamoEndpoint,
-        () => true,
-        async () => '',
-      );
+      await waitForDynamoDb(dynamoEndpoint, { timeoutMs: 60_000 });
     }
 
     await run(join(BIN, 'tsx'), ['scripts/local/bootstrap-table.ts'], {

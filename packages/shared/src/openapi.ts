@@ -56,6 +56,8 @@ import {
   SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
+  TaskBatchRequestSchema,
+  TaskBatchResponseSchema,
   TaskListResponseSchema,
   TaskSchema,
   TaskSyncChangeSchema,
@@ -580,6 +582,8 @@ export function buildOpenApiDocument() {
   registry.register('UpsertDailyNoteRequest', UpsertDailyNoteRequestSchema);
   registry.register('Task', TaskSchema);
   registry.register('TaskListResponse', TaskListResponseSchema);
+  registry.register('TaskBatchRequest', TaskBatchRequestSchema);
+  registry.register('TaskBatchResponse', TaskBatchResponseSchema);
   registry.register('CreateTaskRequest', CreateTaskRequestSchema);
   registry.register('UpdateTaskRequest', UpdateTaskRequestSchema);
   registry.register('ListTasksQuery', ListTasksQuerySchema);
@@ -819,6 +823,28 @@ export function buildOpenApiDocument() {
     createRequest: CreateTaskRequestSchema,
     updateRequest: UpdateTaskRequestSchema,
     extraPaths: (idParams) => {
+      registry.registerPath({
+        method: 'post',
+        path: '/api/notebook/tasks/batch',
+        summary: 'Read up to 100 tasks by id in one request',
+        description:
+          'Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          body: {
+            content: {
+              'application/json': { schema: TaskBatchRequestSchema },
+            },
+          },
+        },
+        responses: {
+          200: ok(TaskBatchResponseSchema, 'The live tasks, in request order'),
+          400: r400,
+          ...adminAuth,
+        },
+      });
+
       registry.registerPath({
         method: 'post',
         path: '/api/notebook/tasks/{id}/complete',

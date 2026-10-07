@@ -7,6 +7,8 @@ cd "${ROOT}"
 
 # shellcheck source=env.sh
 source "${ROOT}/scripts/local/env.sh"
+# shellcheck source=lib.sh
+source "${ROOT}/scripts/local/lib.sh"
 
 API_PID=""
 SITE_PID=""
@@ -27,39 +29,6 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
-
-wait_dynamodb() {
-  echo "==> Wait for DynamoDB Local"
-  for i in $(seq 1 60); do
-    if node -e "
-      import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
-      const c = new DynamoDBClient({
-        region: 'us-east-1',
-        endpoint: process.env.AWS_ENDPOINT_URL_DYNAMODB,
-        credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
-      });
-      await c.send(new ListTablesCommand({}));
-    " 2>/dev/null; then
-      return 0
-    fi
-    sleep 0.5
-  done
-  echo "DynamoDB Local did not become ready at ${AWS_ENDPOINT_URL_DYNAMODB}" >&2
-  exit 1
-}
-
-wait_http() {
-  local url="$1"
-  local label="$2"
-  for i in $(seq 1 40); do
-    if curl -sf "$url" >/dev/null; then
-      return 0
-    fi
-    sleep 0.25
-  done
-  echo "${label} did not become ready: ${url}" >&2
-  exit 1
-}
 
 ensure_shell() {
   mkdir -p "${SITE_BUCKET_NAME}"
@@ -93,7 +62,7 @@ else
   npx tsx watch --clear-screen=false services/api/local/server.ts &
   API_PID=$!
   STARTED_API=1
-  wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API"
+  wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API" || exit 1
 fi
 
 site_listening() {

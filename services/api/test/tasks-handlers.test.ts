@@ -91,6 +91,52 @@ describe('tasks handlers', () => {
     registerProductionSyncAdapters();
   });
 
+  it("POST /tasks/batch returns the caller's live tasks in order and caps the ids", async () => {
+    const { doc } = createMemoryDoc();
+    const repo = new TasksRepository(
+      doc,
+      TABLE,
+      () => '2026-10-02T12:00:00.000Z',
+    );
+    const routes = createTaskRoutes(repo);
+    const create = (id: string, title: string, sub = USER) =>
+      dispatchRoutes(
+        routes,
+        adminEvent(
+          'POST',
+          '/api/notebook/tasks',
+          { id, area: 'work', title },
+          undefined,
+          undefined,
+          sub,
+        ),
+        'POST',
+        '/api/notebook/tasks',
+      );
+    await create(TASK_A, 'Alpha');
+    await create(TASK_B, 'Beta');
+    await create(TASK_C, 'Other user', OTHER);
+    const batch = (ids: unknown) =>
+      dispatchRoutes(
+        routes,
+        adminEvent('POST', '/api/notebook/tasks/batch', { ids }),
+        'POST',
+        '/api/notebook/tasks/batch',
+      );
+
+    const res = await batch([TASK_B, TASK_C, TASK_A]);
+    expect(res?.statusCode).toBe(200);
+    expect(
+      JSON.parse(res!.body as string).items.map((t: Task) => t.title),
+    ).toEqual(['Beta', 'Alpha']);
+
+    expect((await batch([]))?.statusCode).toBe(400);
+    expect((await batch(['not-a-ulid']))?.statusCode).toBe(400);
+    expect(
+      (await batch(Array.from({ length: 101 }, () => TASK_A)))?.statusCode,
+    ).toBe(400);
+  });
+
   it('round-trips startDate and someday through create, get, and If-Match updates', async () => {
     const { doc } = createMemoryDoc();
     const repo = new TasksRepository(
