@@ -545,7 +545,7 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
     expect(paths(base, web)).toBe('cdk=true\nweb=true');
     // Markdown under infra/ never changes synth, so it doesn't redeploy.
     expect(paths(web, runbook)).toBe('cdk=false\nweb=false');
-    // CHR-149: deployed-sha predates a cancelled infra build, so a later
+    // deployed-sha predates a cancelled infra build, so a later
     // docs-only head still deploys the stranded infra change.
     expect(paths(docs, runbook)).toBe('cdk=true\nweb=true');
   });

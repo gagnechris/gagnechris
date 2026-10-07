@@ -1,10 +1,10 @@
 # ADR 0002: Admin and Notebook subdomains
 
 **Status:** Accepted (2026-10-03, Chris: `localStorage` for tokens; no sign-in fan-out)  
-**Ticket:** CHR-248 (project "Admin & Notebook subdomains": CHR-249 infra, CHR-250 API, CHR-251 web, CHR-252 cutover)  
-**Context:** CHR-240 part 1. Cognito tokens, including the 30-day refresh token, are JS-readable cookies on `gagnechris.com` (`Domain=gagnechris.com`, path `/`, `apps/web/src/auth/config.ts`). Every public page runs `gtag.js` under `script-src 'unsafe-inline'`, so any script on a public page can read them. The strict CSP only covers `/admin*` and `/auth*`, and cookie path isn't a security boundary inside one origin.
+**Rollout:** four phases: infra, API, web, cutover (see §5, Order of deploys).  
+**Context:** Cognito tokens, including the 30-day refresh token, are JS-readable cookies on `gagnechris.com` (`Domain=gagnechris.com`, path `/`, `apps/web/src/auth/config.ts`). Every public page runs `gtag.js` under `script-src 'unsafe-inline'`, so any script on a public page can read them. The strict CSP only covers `/admin*` and `/auth*`, and cookie path isn't a security boundary inside one origin.
 
-**Hard constraints:** CDK only (no console). **No added sign-in friction** (CHR-238: Chris keeps password + passkey sign-in, MFA optional). Chris accepted one exception: an occasional extra sign-in per app (see §3). One ticket, one PR.
+**Hard constraints:** CDK only (no console). **No added sign-in friction** (Chris keeps password + passkey sign-in, MFA optional). Chris accepted one exception: an occasional extra sign-in per app (see §3). One PR per phase.
 
 ## Decision summary
 
@@ -16,7 +16,7 @@
 | Auth        | Same pool and managed login (`auth.gagnechris.com`). New public clients `admin-web` and `notebook-web`, each with only its own host's callback and logout URLs. Tokens go in Amplify's default `localStorage`, which is per origin. No sign-in fan-out: each app signs in on its own (silent within the one-hour managed-login session). |
 | API token   | The web keeps sending the **ID token** (`aud` = client ID). One JWT authorizer per prefix (`/api/admin*` → `admin-web`, `/api/notebook*` → `notebook-web`). The router re-checks client and group per prefix.                                                                                                                            |
 | Groups      | `site-admin` → `/api/admin/*`, `notebook` → `/api/notebook/*`. Chris in both. Legacy `web` client + `admin` group are accepted on both prefixes only while `AUTH_LEGACY_WEB_CLIENT_ID` is set on the Lambda.                                                                                                                             |
-| Cutover     | Parallel run first. CHR-251 ships the new hosts and a clean public build, and leaves the **frozen legacy** `spa.html` serving `/admin*` on the apex. CHR-252 then switches to 301s, deletes the legacy client and group, and removes leftover apex cookies.                                                                              |
+| Cutover     | Parallel run first. Phase 3 (web) ships the new hosts and a clean public build, and leaves the **frozen legacy** `spa.html` serving `/admin*` on the apex. Phase 4 (cutover) then switches to 301s, deletes the legacy client and group, and removes leftover apex cookies.                                                              |
 
 ## 1. CDN layout
 
@@ -25,7 +25,7 @@
 - **Separate distributions** for `admin.gagnechris.com` and `notebook.gagnechris.com`. Both are built by one `AppHost` construct, instantiated twice **inside `SiteStack`**. The admin host needs a `/media/*` behaviour on the site bucket. Putting that distribution in another stack would make the site bucket policy (OAC `AWS:SourceArn`) depend on a stack that depends on Site, which is a cycle.
 - **Buckets:** one private bucket per app host (SSE-S3, `BLOCK_ALL`, `enforceSSL`, versioned, noncurrent expiry, access logs to the existing `AccessLogs` bucket under `s3-admin/`, `s3-notebook/`). Build output only; no AWS Backup (it can be rebuilt from git).
   - The site bucket keeps public content, publisher output and `media/`.
-  - The reserved `notebook/*` prefix (CHR-175 private media plan) should move to the Notebook's own bucket or a dedicated private bucket when it's built. It must never sit under a distribution that serves the apex.
+  - The reserved `notebook/*` prefix (the private media plan) should move to the Notebook's own bucket or a dedicated private bucket when it's built. It must never sit under a distribution that serves the apex.
 - **Behaviours per app distribution:**
 
   | Path pattern            | Origin                     | Cache                                               | Response headers                                              |
@@ -109,7 +109,7 @@
   - It builds the three targets and syncs each app dir to its own bucket: `assets/` first (immutable cache-control), then `sync --delete` with no deny-list, `.well-known/*` as `application/json`, and `manifest.json` as `application/manifest+json`.
   - It invalidates each app distribution, then runs today's public flow unchanged (deny-list sync, invalidation, `republishAll`).
   - The publisher needs **no change**: it renders only from the public `_shell.html`.
-- **Local and e2e:** the local stack and Playwright (CHR-181) run three Vite servers on fixed ports with fake auth. The local API injects claims whose group and `aud` match the route prefix.
+- **Local and e2e:** the local stack and Playwright run three Vite servers on fixed ports with fake auth. The local API injects claims whose group and `aud` match the route prefix.
 
 ### Rejected alternatives
 
@@ -133,7 +133,7 @@
   | `notebook-web` | `https://notebook.gagnechris.com/auth/callback` | `https://notebook.gagnechris.com/` |
   - Each client needs a `CfnManagedLoginBranding`, or managed login isn't available for it ("Managed login isn't available for an app client created with an AWS SDK until you create one with a CreateManagedLoginBranding request": [managed login](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html)).
   - `dev-local` gains callbacks for ports 5174 and 5175.
-  - The legacy `web` client stays until CHR-252's legacy removal.
+  - The legacy `web` client stays until the cutover phase's legacy removal.
 
 - **Token storage: Amplify's default `localStorage`, not `CookieStorage`.** Drop the `setKeyValueStorage(new CookieStorage(...))` call in each app.
   - **Verified:** Amplify v6 `CookieStorage` with no `domain` writes host-only cookies. `@aws-amplify/core@6.19.1` `CookieStorage.getData()` passes `domain: undefined` to `js-cookie@3.0.8`, which skips falsy attributes (`if (!attributes[attributeName]) continue`). A cookie without `Domain` "is returned only to the host that sent it… not made available to subdomains" ([MDN Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie)). So host-only cookies would also meet the goal.
@@ -153,7 +153,7 @@
 - **Sign-out:** per app.
   - `signOut()` revokes that app's refresh token (`enableTokenRevocation` is on) and redirects to `/logout`, which clears the managed-login session.
   - The sibling app stays signed in until its own sign-out or refresh-token expiry.
-  - Today's `signOut({ global: true })` probably doesn't revoke anything. `GlobalSignOut` needs an access token with `aws.cognito.signin.user.admin` ([GlobalSignOut](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GlobalSignOut.html)), the clients request only `openid email profile`, and Amplify swallows the error (`signOut.mjs` `globalSignOut` catch). **Unverified live.** CHR-251 should drop `global: true` rather than add the admin scope, which would let a stolen access token call Cognito self-service APIs.
+  - Today's `signOut({ global: true })` probably doesn't revoke anything. `GlobalSignOut` needs an access token with `aws.cognito.signin.user.admin` ([GlobalSignOut](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_GlobalSignOut.html)), the clients request only `openid email profile`, and Amplify swallows the error (`signOut.mjs` `globalSignOut` catch). **Unverified live.** Phase 3 (web) should drop `global: true` rather than add the admin scope, which would let a stolen access token call Cognito self-service APIs.
 
 ### Rejected alternatives
 
@@ -203,24 +203,24 @@
 
 ### Order of deploys
 
-1. **CHR-249 infra:**
+1. **Phase 1, infra:**
    - certificate, buckets, distributions, DNS and the app viewer function;
    - new clients and groups with membership;
    - two authorizers, each with `[new client, legacy web]`, and the Lambda env (client IDs, legacy flag on).
-   - Additive: the apex is unchanged. The new hosts serve an empty bucket (404) until CHR-251.
-2. **CHR-250 API:** per-prefix router checks with the legacy fallback on. Old apex `/admin` keeps working through the fallback.
-3. **CHR-251 web (parallel run):**
+   - Additive: the apex is unchanged. The new hosts serve an empty bucket (404) until Phase 3 (web).
+2. **Phase 2, API:** per-prefix router checks with the legacy fallback on. Old apex `/admin` keeps working through the fallback.
+3. **Phase 3, web (parallel run):**
    - The three builds go live. `admin.` and `notebook.` work end to end.
    - The public build is clean and the guard is on.
    - `deploy-web.sh` excludes `spa.html`, `manifest.json` and `icons/*` from the apex `--delete` for this one ticket. The **frozen legacy admin** (last combined `spa.html` and its hashed assets, which the assets sync never deletes) keeps serving `gagnechris.com/admin*` as a fallback.
    - Chris uses the new hosts for a soak (suggest 7 days).
-4. **CHR-252 cutover:**
+4. **Phase 4, cutover:**
    - apex viewer-request redirects (below);
    - remove `/admin*`, `/auth*` behaviours, `AdminSecurityHeaders`, `isSpaShellPath`, the frozen objects, and Cognito and upload origins from the public CSP;
    - site bucket CORS becomes `admin.` only;
    - a one-release apex cookie sweep (below);
    - AASA apex `/auth/*` removed.
-5. **Legacy removal** (in CHR-252, or a separate ticket if it should soak; see the PR body):
+5. **Legacy removal** (in the cutover phase, or separately if it should soak):
    - unset `AUTH_LEGACY_WEB_CLIENT_ID`, drop `web` from both audiences, delete the `web` client, its branding and SSM param, and the `admin` group;
    - `VITE_COGNITO_WEB_CLIENT_ID` leaves CI.
 
@@ -233,7 +233,7 @@
 | `/auth`, `/auth/<p>`                     | `https://notebook.gagnechris.com/` (the daily-use app) | **dropped** (never forward `code`/`state`) |
 
 - Use 301 with `Cache-Control: max-age=86400`.
-- A 301 is heuristically cacheable ([RFC 9110 §15.4.2](https://www.rfc-editor.org/rfc/rfc9110#section-15.4.2)), and "these redirections are meant to last forever" ([MDN redirections](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Redirections)). The explicit max-age bounds how long a browser holds it if CHR-252 is rolled back.
+- A 301 is heuristically cacheable ([RFC 9110 §15.4.2](https://www.rfc-editor.org/rfc/rfc9110#section-15.4.2)), and "these redirections are meant to last forever" ([MDN redirections](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Redirections)). The explicit max-age bounds how long a browser holds it if the cutover is rolled back.
 - `/.well-known/*` on the apex is never redirected: Apple fetches AASA with no redirects allowed.
 
 ### Leftover apex cookies
@@ -254,23 +254,23 @@
   4. Sign in once inside the installed app (standalone apps keep their own storage, as today).
 - Until then, the old icon opens the apex URL and follows the 301.
 
-### iOS / AASA (CHR-205)
+### iOS / AASA
 
 - Each domain "must serve its own `apple-app-site-association` file", over HTTPS "with no redirects". Apple's CDN fetches it within 24 hours, and devices re-check about weekly ([Apple: Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains)).
-- `notebook.` serves AASA from `public-notebook/.well-known/`. `applinks` cover Notebook paths (`/today`, `/notes/*`, `/tasks/*`) and use `"exclude": true` for `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app (CHR-205 item 4).
+- `notebook.` serves AASA from `public-notebook/.well-known/`. `applinks` cover Notebook paths (`/today`, `/notes/*`, `/tasks/*`) and use `"exclude": true` for `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app.
 - A future iOS universal-link OAuth callback uses a distinct path, e.g. `/ios/auth/callback`, on the iOS client only.
 - The apex AASA keeps only what still applies, with no `/auth/*`.
 - The RP ID stays `auth.gagnechris.com`. `webcredentials:notebook.gagnechris.com` does nothing for passkeys until the RP ID changes, which ADR 0001 keeps out of scope.
 
 ### Rollback
 
-| Stage          | Rollback                                                                                                                                                               |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CHR-249        | Revert. Purely additive: the apex doesn't depend on any new resource.                                                                                                  |
-| CHR-250        | Revert. The legacy fallback means the apex admin never depended on the new checks.                                                                                     |
-| CHR-251        | Use the frozen apex `/admin` while fixing forward, or revert (the public build gets admin back; the frozen `spa.html` is still in S3).                                 |
-| CHR-252        | Revert. The `/admin*` behaviours and `spa.html` come back on the next deploy, and the legacy client still exists. Cached 301s expire within 24 h (or clear site data). |
-| Legacy removal | Not cleanly reversible: a recreated `web` client gets a new ID and needs a web redeploy. Hence the soak before this step.                                              |
+| Stage             | Rollback                                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 1 (infra)   | Revert. Purely additive: the apex doesn't depend on any new resource.                                                                                                  |
+| Phase 2 (API)     | Revert. The legacy fallback means the apex admin never depended on the new checks.                                                                                     |
+| Phase 3 (web)     | Use the frozen apex `/admin` while fixing forward, or revert (the public build gets admin back; the frozen `spa.html` is still in S3).                                 |
+| Phase 4 (cutover) | Revert. The `/admin*` behaviours and `spa.html` come back on the next deploy, and the legacy client still exists. Cached 301s expire within 24 h (or clear site data). |
+| Legacy removal    | Not cleanly reversible: a recreated `web` client gets a new ID and needs a web redeploy. Hence the soak before this step.                                              |
 
 ## 6. Security notes
 
@@ -287,19 +287,19 @@
 - `admin.`, `notebook.` and the apex are **same-site** (one registrable domain). SameSite doesn't separate them, and an apex script can still set `Domain=gagnechris.com` cookies that app hosts and `auth.gagnechris.com` receive. App tokens aren't in cookies, so this can't plant tokens.
   - Cognito's own cookies (`cognito` session, `XSRF-TOKEN`, `csrf-state`) are "scoped only to your user pool endpoints" ([managed login, Cookies](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html#managed-login-things-to-know)). **Unverified:** whether they're HttpOnly and host-only, and how Cognito handles a tossed duplicate.
   - The worst plausible case is login CSRF into another pool account. Self sign-up is off and there's one user, so the risk is low.
-- The **managed-login session cookie** on `auth.gagnechris.com` lasts one hour. Anyone with that browser during the hour can mint tokens for any client in the pool, but only to that client's registered `https` callbacks. That's why callbacks stay minimal and the iOS client stays out of the API audience (CHR-240).
-- Password sign-in, optional MFA and email-only recovery remain an **accepted risk** (CHR-238). The split doesn't change account takeover.
+- The **managed-login session cookie** on `auth.gagnechris.com` lasts one hour. Anyone with that browser during the hour can mint tokens for any client in the pool, but only to that client's registered `https` callbacks. That's why callbacks stay minimal and the iOS client stays out of the API audience.
+- Password sign-in, optional MFA and email-only recovery remain an **accepted risk**. The split doesn't change account takeover.
 - ID and access tokens stay valid at the API until `exp` (1 hour) after sign-out or revocation. The JWT authorizer validates statelessly; its listed checks don't include revocation ([HTTP API JWT authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html)). Same as today.
 
 ## Unverified, and how to test
 
-| Claim                                                                          | Test (ticket)                                                                                                                             |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Second app is silent within the one-hour session in Safari, Chrome and Firefox | CHR-251: sign in to admin, then open Notebook within the hour and confirm no prompt. After more than an hour, confirm exactly one prompt. |
-| Free tier is per account                                                       | Not decision-relevant; check the first bill after CHR-249.                                                                                |
-| Today's `signOut({ global: true })` silently fails `GlobalSignOut`             | CHR-251: sign out on prod, then check that the old refresh token still refreshes (read-only `initiate-auth` with a throwaway session).    |
-| Deleting the `web` client invalidates its refresh tokens                       | Legacy removal: refresh with a pre-deletion token and expect an error.                                                                    |
-| Cognito session cookies are HttpOnly and host-only                             | CHR-249: inspect `Set-Cookie` from `auth.gagnechris.com` in devtools (attributes only, never values).                                     |
+| Claim                                                                          | Test (ticket)                                                                                                                                   |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Second app is silent within the one-hour session in Safari, Chrome and Firefox | Phase 3 (web): sign in to admin, then open Notebook within the hour and confirm no prompt. After more than an hour, confirm exactly one prompt. |
+| Free tier is per account                                                       | Not decision-relevant; check the first bill after Phase 1 (infra).                                                                              |
+| Today's `signOut({ global: true })` silently fails `GlobalSignOut`             | Phase 3 (web): sign out on prod, then check that the old refresh token still refreshes (read-only `initiate-auth` with a throwaway session).    |
+| Deleting the `web` client invalidates its refresh tokens                       | Legacy removal: refresh with a pre-deletion token and expect an error.                                                                          |
+| Cognito session cookies are HttpOnly and host-only                             | Phase 1 (infra): inspect `Set-Cookie` from `auth.gagnechris.com` in devtools (attributes only, never values).                                   |
 
 ## Consequences
 

@@ -58,7 +58,7 @@ describe('Repeater', () => {
     expect(screen.getAllByLabelText(/^Title /)).toHaveLength(3);
   });
 
-  test('reordering keeps focus on the moved field (CHR-158)', async () => {
+  test('reordering keeps focus on the moved field', async () => {
     const user = userEvent.setup();
     render(<Harness reorderable />);
 

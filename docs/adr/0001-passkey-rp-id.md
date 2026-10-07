@@ -1,7 +1,6 @@
 # ADR 0001: Passkey relying party ID
 
 **Status:** Accepted (2026-10-02)  
-**Ticket:** CHR-177  
 **Context:** Cognito User Pool passkeys + future iOS native auth.
 
 ## Decision
@@ -32,7 +31,7 @@ Replace `APPLE_TEAM_ID` in the AASA file with the real Apple Team ID before enab
 
 - Native in-app passkey UI (`ASAuthorizationController`) stays **out of scope** until either Cognito serves AASA on the auth host, or we deliberately migrate RP ID (with a passkey re-enrollment plan).
 - Refresh tokens remain **30 days** — acceptable for v1; offline users re-auth monthly (documented in `docs/mobile.md`).
-- CHR-51 (Cognito sign-in + SecureStore) should assume managed-login / ASWebAuthenticationSession, not apex RP ID.
+- The iOS Cognito sign-in (tokens in SecureStore) uses managed login in `ASWebAuthenticationSession`, not an apex RP ID.
 
 ## Alternatives considered
 

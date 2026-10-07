@@ -37,7 +37,6 @@ export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   );
 }
 
-/** Also reads the card list published before the year groups, until it is republished. */
 export function postsIndexFromDocument(
   root: ParentNode,
 ): PublishedPostListItem[] | null {
@@ -54,8 +53,8 @@ export function postsIndexFromDocument(
       {
         id: entry.getAttribute('data-id') || slug,
         slug,
-        title: text('.post-preview__title, h2'),
-        excerpt: text('.post-preview__excerpt, .post-excerpt'),
+        title: text('.post-preview__title'),
+        excerpt: text('.post-preview__excerpt'),
         publishedAt:
           entry.querySelector('time')?.getAttribute('datetime') || null,
         updatedAt: '',

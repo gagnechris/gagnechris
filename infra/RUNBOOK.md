@@ -69,7 +69,7 @@ Deploy order (CDK `addDependency` + props):
 
 Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM, not CloudFormation exports.
 
-**Removing a cross-stack reference:** The producer stack (for example Auth) deploys before the consumer (Api). If a single PR drops both the consumer's use and the producer's export, the producer tries to delete an export that is still imported. It then rolls back and blocks every later deploy (CHR-240, CHR-253). Do it in two deploys instead:
+**Removing a cross-stack reference:** The producer stack (for example Auth) deploys before the consumer (Api). If a single PR drops both the consumer's use and the producer's export, the producer tries to delete an export that is still imported. It then rolls back and blocks every later deploy. Do it in two deploys instead:
 
 1. Drop the consumer's use, but keep the export in the producer with `this.exportValue(<value>)`.
 2. Once `aws cloudformation list-imports --export-name <export>` reports no importers, remove the `exportValue` line.
@@ -158,7 +158,7 @@ bash scripts/apply-branch-protection.sh
      - **PR (`CDK diff (PR)`):** `cdk synth` + `check:deployed-gsi` (early warning) + `cdk diff` (diff role); sticky PR comment.
      - **main deploy:** runs only after CI succeeds (`workflow_run`), as two jobs that share concurrency group `cdk-prod` (never cancels in flight):
        - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK and/or web, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy, including `*.md` under `infra/` (markdown never changes synth).
-         - Verified 2026-10-03 (CHR-149/CHR-204) by dry-running `deploy-paths.sh` on two throwaway commits (an infra change whose build never deployed, then a docs-only commit). From the old `deployed-sha` the docs-only head gives `cdk=true`; from the old `HEAD~1` base it gave `cdk=false`. `infra/test/ci-workflows.test.ts` pins both cases.
+         - `infra/test/ci-workflows.test.ts` pins this: a docs-only head after an infra commit whose build never deployed gives `cdk=true` from `deployed-sha` (a `HEAD~1` base would give `cdk=false`).
        - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all`, `scripts/deploy-web.sh`, and finally writes `deployed-sha`. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
      - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write` installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
@@ -619,7 +619,7 @@ Notebook ops alarms:
 
 4xx responses aren't alarmed: unauthenticated 401s from scanners would make them noise.
 
-Alert delivery was last tested on 2026-10-03 16:07 UTC (CHR-159/CHR-204): `aws cloudwatch set-alarm-state --state-value ALARM` on `gagnechris-prod-api-lambda-throttles` (admin profile) sent the email to the alerts address, and the alarm reset itself on its next evaluation. Repeat after any change to the Guardrails topic or subscription.
+To test alert delivery, set an alarm to ALARM with the admin profile, for example `aws cloudwatch set-alarm-state --alarm-name gagnechris-prod-api-lambda-throttles --state-value ALARM --state-reason 'alert test'`. The alerts address gets the email, and the alarm resets on its next evaluation. Repeat after any change to the Guardrails topic or subscription.
 
 Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
@@ -639,16 +639,13 @@ On DLQ alarm:
 1. Invoke republish-all (rebuilds site from the table — preferred recovery).
 2. Purge the failure queue (`gagnechris-prod-publisher-stream-failures`).
 
-A live forced-failure test (throw from the deployed handler, publish, confirm a
-DLQ message and an alert) has **not** been run. That's an accepted risk
-(CHR-204): it means deploying a broken publisher to prod. Coverage instead:
+There is no live forced-failure test (throw from the deployed handler, publish,
+confirm a DLQ message and an alert): it would mean deploying a broken publisher
+to prod. Coverage instead:
 
 - Synth tests pin the on-failure destination, `retryAttempts: 3` and the depth
   alarm's SNS action.
-- The alert path itself was proven by the 2026-10-03 alarm test (see Alarms
-  above).
-
-If you ever run it, record the date here.
+- The alert path is the one the alarm-state test under Alarms exercises.
 
 Manual republish-all (after shell deploy, or recovery):
 
@@ -691,15 +688,6 @@ aws cognito-idp list-user-pools --max-results 20 --profile gagnechris-readonly -
 ```
 
 If another pool shows up, **ask Chris before deleting or importing it.** Confirm it isn't owned by a live stack first: `aws cloudformation describe-stack-resources --physical-resource-id <pool-id>`.
-
-Break-glass cleanup done on 2026-10-03 (CHR-204, approved by Chris, admin profile):
-
-| Pool                                             | Origin                                                                                                                    | Steps                                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `us-east-1_uRqUcIbhK` "gagnechris-prod", 0 users | Retained by the first `Auth-prod` stack (`…/498277a0-…`), created and deleted on 2026-09-26 before the live stack existed | `update-user-pool --deletion-protection INACTIVE`, then `delete-user-pool`     |
-| `us-east-1_sNyW42tZZ` "notes-user-pool", 2 users | A 2019 project, unrelated to this stack                                                                                   | `delete-user-pool-domain --domain notes-app-kehi8xvt`, then `delete-user-pool` |
-
-Afterwards only `us-east-1_eOWvRDfYu` (Auth-prod) remains.
 
 Never run `update-user-pool` against the live pool to flip one setting: it resets every attribute you don't pass. Change the live pool through CDK only.
 

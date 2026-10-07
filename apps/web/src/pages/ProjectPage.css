@@ -27,7 +27,7 @@
 }
 
 .project-header {
-  /* The artboard starts the back link about 10px above the shared header gap. */
+  /* The back link sits 10px into the shared header gap. */
   margin-top: -10px;
   margin-bottom: 48px;
 }
@@ -142,7 +142,7 @@
   object-position: top center;
 }
 
-/* The project artboards set body headings a little closer than a post's 1.75em. */
+/* Project body headings sit a little closer than a post's 1.75em. */
 .project-body h2 {
   margin-top: 1.55em;
 }

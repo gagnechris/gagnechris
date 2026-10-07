@@ -2,24 +2,23 @@
 
 Reference designs for the public site on `gagnechris.com`. The source is the
 "Public Site Redesign" Claude design canvas, row B. Screenshots of each
-artboard are attached to their Linear stories; they are not stored in this
-repo. Row A is the rejected alternative.
+artboard live in Linear, not in this repo. Row A is the rejected alternative.
 
-| Artboard                | Size      | Shows                                                                                                                           | Story                                |
-| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| All B artboards         | —         | Site header (photo, name, Posts / Projects / Resume / Contact) and footer (©, RSS, Don't feed the bears)                        | CHR-219 (Projects link: CHR-228)     |
-| Home                    | 1440×1700 | Name, italic title, About lede, inline links sentence, Recent posts, What I'm building (two project cards)                      | CHR-220 (What I'm building: CHR-228) |
-| Post                    | 1440×1435 | Meta line (date · reading time), title, italic excerpt, serif body with h2 and lists, author note after a dark rule             | CHR-221                              |
-| Posts                   | 1440×1000 | Title, italic description, Subscribe via RSS, posts grouped under year labels with short dates on the right                     | CHR-222                              |
-| Resume                  | 1440×3576 | Title, italic headline, Summary lede, Download PDF / LinkedIn / Get in touch, dated experience, earlier roles collapsed, skills | CHR-223                              |
-| Projects                | 1440×1532 | Title, italic intro, project entries with preview, status label, name, pitch, stack line                                        | CHR-228                              |
-| Project Posts (demo)    | 1440×2200 | Project page template with the Posts demo (editor and public page side by side) and Build log                                   | CHR-229 (template), CHR-231 (demo)   |
-| Project Notebook (demo) | 1440×2300 | Project page template with the Notebook demo (mini Today) and Build log                                                         | CHR-229 (template), CHR-232 (demo)   |
-| Phone · Contact         | 393×852   | Header with the menu button, Contact title, intro, labelled form, full-width button                                             | CHR-226                              |
-| Phone · 404             | 393×852   | "404" label, Page not found, one sentence, Home / Posts / Projects / Resume rows (Projects: CHR-228), bears line                | CHR-226                              |
-| Phone · Bears landing   | 393×852   | Kicker, title, game cards with shorter copy                                                                                     | CHR-226 (heading only)               |
-| Phone · Menu open       | 393×852   | Full-screen menu: sections with chevrons, then LinkedIn, GitHub, RSS and Don't feed the bears                                   | —                                    |
-| Phone · Home/Posts/Post | 393×852   | Phone header with the menu button; Home, Posts and Post (reading) at phone size                                                 | —                                    |
+| Artboard                | Size      | Shows                                                                                                                           |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| All B artboards         | —         | Site header (photo, name, Posts / Projects / Resume / Contact) and footer (©, RSS, Don't feed the bears)                        |
+| Home                    | 1440×1700 | Name, italic title, About lede, inline links sentence, Recent posts, What I'm building (two project cards)                      |
+| Post                    | 1440×1435 | Meta line (date · reading time), title, italic excerpt, serif body with h2 and lists, author note after a dark rule             |
+| Posts                   | 1440×1000 | Title, italic description, Subscribe via RSS, posts grouped under year labels with short dates on the right                     |
+| Resume                  | 1440×3576 | Title, italic headline, Summary lede, Download PDF / LinkedIn / Get in touch, dated experience, earlier roles collapsed, skills |
+| Projects                | 1440×1532 | Title, italic intro, project entries with preview, status label, name, pitch, stack line                                        |
+| Project Posts (demo)    | 1440×2200 | Project page template with the Posts demo (editor and public page side by side) and Build log                                   |
+| Project Notebook (demo) | 1440×2300 | Project page template with the Notebook demo (mini Today) and Build log                                                         |
+| Phone · Contact         | 393×852   | Header with the menu button, Contact title, intro, labelled form, full-width button                                             |
+| Phone · 404             | 393×852   | "404" label, Page not found, one sentence, Home / Posts / Projects / Resume rows, bears line                                    |
+| Phone · Bears landing   | 393×852   | Kicker, title, game cards with shorter copy                                                                                     |
+| Phone · Menu open       | 393×852   | Full-screen menu: sections with chevrons, then LinkedIn, GitHub, RSS and Don't feed the bears                                   |
+| Phone · Home/Posts/Post | 393×852   | Phone header with the menu button; Home, Posts and Post (reading) at phone size                                                 |
 
 The PNG exports are 2×; measured values below are at 1×. The phone layout
 applies at `max-width: 480px`; wider viewports use the desktop values.
@@ -50,27 +49,27 @@ applies at `max-width: 480px`; wider viewports use the desktop values.
 
 ## Type scale
 
-Values from the stories unless marked measured.
+Values from the design unless marked measured.
 
-| Use                                  | Face       | Size / weight / line height                     | Story   |
-| ------------------------------------ | ---------- | ----------------------------------------------- | ------- |
-| Home name                            | Newsreader | 68px / 500                                      | CHR-220 |
-| Home title line                      | Newsreader | italic 26px, `link` colour (measured)           | CHR-220 |
-| Home About lede                      | Newsreader | 23px / 1.6                                      | CHR-220 |
-| Home links sentence                  | Newsreader | 20px / 1.6 (measured)                           | CHR-220 |
-| Home Recent posts title              | Newsreader | 30px / 500 (measured)                           | CHR-220 |
-| Home Recent posts excerpt            | Newsreader | 19px, `inkSoft` (measured)                      | CHR-220 |
-| Home Recent posts date               | Inter      | 13.5px, `neutral-600` (measured)                | CHR-220 |
-| Post, Posts and Project titles       | Newsreader | 60px / 500                                      | CHR-221 |
-| Post excerpt subtitle                | Newsreader | italic 24px                                     | CHR-221 |
-| Post body                            | Newsreader | 21px / 1.7, measure about 680px                 | CHR-221 |
-| Post h2                              | Newsreader | 32px / 500                                      | CHR-221 |
-| Post meta (date · N min read)        | Inter      | 13px                                            | CHR-221 |
-| Resume role ("Title _at Company_")   | Newsreader | 25px / 500 / 1.3 (measured)                     | CHR-223 |
-| Resume bullets                       | Newsreader | 18px / 1.6 (measured)                           | CHR-223 |
-| Resume date column                   | Inter      | 13px, tabular figures, 150px column             | CHR-223 |
-| Section labels (RECENT POSTS, years) | Inter      | about 13px / 600, uppercase, tracked (measured) | CHR-220 |
-| Section label rule                   | —          | 1px ink, full column width (measured)           | CHR-220 |
+| Use                                  | Face       | Size / weight / line height                     |
+| ------------------------------------ | ---------- | ----------------------------------------------- |
+| Home name                            | Newsreader | 68px / 500                                      |
+| Home title line                      | Newsreader | italic 26px, `link` colour (measured)           |
+| Home About lede                      | Newsreader | 23px / 1.6                                      |
+| Home links sentence                  | Newsreader | 20px / 1.6 (measured)                           |
+| Home Recent posts title              | Newsreader | 30px / 500 (measured)                           |
+| Home Recent posts excerpt            | Newsreader | 19px, `inkSoft` (measured)                      |
+| Home Recent posts date               | Inter      | 13.5px, `neutral-600` (measured)                |
+| Post, Posts and Project titles       | Newsreader | 60px / 500                                      |
+| Post excerpt subtitle                | Newsreader | italic 24px                                     |
+| Post body                            | Newsreader | 21px / 1.7, measure about 680px                 |
+| Post h2                              | Newsreader | 32px / 500                                      |
+| Post meta (date · N min read)        | Inter      | 13px                                            |
+| Resume role ("Title _at Company_")   | Newsreader | 25px / 500 / 1.3 (measured)                     |
+| Resume bullets                       | Newsreader | 18px / 1.6 (measured)                           |
+| Resume date column                   | Inter      | 13px, tabular figures, 150px column             |
+| Section labels (RECENT POSTS, years) | Inter      | about 13px / 600, uppercase, tracked (measured) |
+| Section label rule                   | —          | 1px ink, full column width (measured)           |
 
 ## Post (measured)
 

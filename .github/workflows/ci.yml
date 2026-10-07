@@ -171,7 +171,7 @@ jobs:
         run: docker compose -f docker-compose.local.yml -f docker-compose.ci.yml down
 
   local-e2e:
-    name: Local E2E smoke (CHR-82)
+    name: Local E2E smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -132,30 +132,3 @@ describe('PostArticle', () => {
     );
   });
 });
-
-describe('postViewFromDocument on pages published before this layout', () => {
-  const words = 'word '.repeat(700);
-
-  test.each([
-    [
-      'with back links',
-      `<div class="post-page"><header><a class="back-link" href="/posts">← Back to Posts</a></header><article class="blog-post-prerender" data-slug="old"><h1>Old</h1><time class="post-date" datetime="2026-02-01">February 1, 2026</time><div class="post-content blog-post-body"><p>${words}</p></div></article><footer><a class="back-link-footer" href="/posts">← Back to Posts</a></footer></div>`,
-    ],
-    [
-      'with the date in a header',
-      `<article class="blog-post-prerender" data-slug="old"><header><h1>Old</h1><time datetime="2026-02-01">February 1, 2026</time></header><div class="blog-post-body"><p>${words}</p></div></article>`,
-    ],
-  ])('%s', (_name, html) => {
-    expect(parse(html)).toEqual({
-      slug: 'old',
-      title: 'Old',
-      headTitle: 'Old - Chris Gagne',
-      date: '2026-02-01',
-      excerpt: '',
-      minutes: readingMinutes(words),
-      partOf: [],
-      contentHtml: `<p>${words}</p>`,
-    });
-    expect(readingMinutes(words)).toBe(3);
-  });
-});
