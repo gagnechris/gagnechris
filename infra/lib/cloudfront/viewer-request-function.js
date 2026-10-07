@@ -51,46 +51,23 @@ async function handler(event) {
   var host = request.headers.host.value.toLowerCase();
 
   if (host.indexOf('www.') === 0) {
-    var apex = host.substring(4);
-    return {
-      statusCode: 301,
-      statusDescription: 'Moved Permanently',
-      headers: {
-        location: {
-          value:
-            'https://' +
-            apex +
-            request.uri +
-            serializeQueryString(request.querystring),
-        },
-      },
-    };
+    return redirect(
+      'https://' +
+        host.substring(4) +
+        request.uri +
+        serializeQueryString(request.querystring),
+    );
   }
 
   var uri = request.uri;
   var appRedirect = appHostRedirect(uri, request.querystring);
   if (appRedirect !== null) {
-    return {
-      statusCode: 301,
-      statusDescription: 'Moved Permanently',
-      headers: {
-        location: { value: appRedirect },
-        // Bounds how long browsers hold the redirect if it is ever rolled back.
-        'cache-control': { value: 'max-age=86400' },
-      },
-    };
+    // Bounds how long browsers hold the redirect if it is ever rolled back.
+    return redirect(appRedirect, 'max-age=86400');
   }
 
   if (isLegacyResumePdfUri(uri)) {
-    return {
-      statusCode: 301,
-      statusDescription: 'Moved Permanently',
-      headers: {
-        location: {
-          value: '/resume.pdf' + serializeQueryString(request.querystring),
-        },
-      },
-    };
+    return redirect('/resume.pdf' + serializeQueryString(request.querystring));
   }
 
   var legacyPostsUri = swapPathPrefix(
@@ -99,15 +76,7 @@ async function handler(event) {
     PUBLIC_POSTS_PREFIX,
   );
   if (legacyPostsUri !== null) {
-    return {
-      statusCode: 301,
-      statusDescription: 'Moved Permanently',
-      headers: {
-        location: {
-          value: legacyPostsUri + serializeQueryString(request.querystring),
-        },
-      },
-    };
+    return redirect(legacyPostsUri + serializeQueryString(request.querystring));
   }
 
   var storagePostsUri = swapPathPrefix(
@@ -182,6 +151,18 @@ async function handler(event) {
 
   notFound(request);
   return request;
+}
+
+function redirect(location, cacheControl) {
+  var response = {
+    statusCode: 301,
+    statusDescription: 'Moved Permanently',
+    headers: { location: { value: location } },
+  };
+  if (cacheControl) {
+    response.headers['cache-control'] = { value: cacheControl };
+  }
+  return response;
 }
 
 /**
@@ -318,26 +299,14 @@ async function isPublishedKey(key, syncedKey) {
   if (PUBLISHED_KEYS_OVERRIDE !== null) {
     return Object.prototype.hasOwnProperty.call(PUBLISHED_KEYS_OVERRIDE, key);
   }
+  // Any KVS error fails open.
   try {
     var kvsHandle = cf.kvs();
     // exists(key) first: one KVS read for a published page.
-    var keyExists;
-    try {
-      keyExists = await kvsHandle.exists(key);
-    } catch (e) {
+    if (await kvsHandle.exists(key)) {
       return true;
     }
-    if (keyExists) {
-      return true;
-    }
-    try {
-      if (await kvsHandle.exists(syncedKey)) {
-        return false;
-      }
-      return true;
-    } catch (e) {
-      return true;
-    }
+    return !(await kvsHandle.exists(syncedKey));
   } catch (e) {
     return true;
   }

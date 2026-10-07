@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deployedFunctionCode } from './deployed-code.js';
 
 /**
  * Runs the CloudFront Functions in this directory under Node, and the default
@@ -51,9 +51,9 @@ export type ViewerResponse = (event: {
 
 export const FUNCTIONS_DIR = dirname(fileURLToPath(import.meta.url));
 
-/** A function's source as CloudFront receives it. */
+/** A function's code exactly as CloudFront receives it. */
 export const functionSource = (name: string, dir = FUNCTIONS_DIR): string =>
-  readFileSync(join(dir, name), 'utf8');
+  deployedFunctionCode(join(dir, name));
 
 /**
  * `kvs` stands in for `cf.kvs()`, which only exists at the edge; a function
@@ -71,7 +71,7 @@ export function loadViewerRequest(
     },
   };
   const code = functionSource('viewer-request-function.js', dir).replace(
-    /import cf from 'cloudfront';\s*/g,
+    /import\s*cf\s*from\s*["']cloudfront["'];?\s*/g,
     '',
   );
   return new Function(
