@@ -17,12 +17,12 @@ const ProjectsIndexBody = ({
   /** Replaces the list while loading or after an error. */
   message?: string;
 }) => (
-  <div className="projects-index">
+  <main className="projects-index">
     <header className="projects-index__header">
       <h1>{PROJECTS_INDEX_TITLE}</h1>
       <p className="projects-index__intro">{PROJECTS_INDEX_INTRO}</p>
     </header>
-    <main>
+    <div className="projects-index__list">
       {message || !projects.length ? (
         <p className="projects-index__empty">
           {message ?? PROJECTS_INDEX_EMPTY_TEXT}
@@ -34,8 +34,8 @@ const ProjectsIndexBody = ({
           ))}
         </ul>
       )}
-    </main>
-  </div>
+    </div>
+  </main>
 );
 
 export default ProjectsIndexBody;
