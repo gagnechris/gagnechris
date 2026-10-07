@@ -3,6 +3,7 @@ import type { PublishTarget } from '../types.js';
 
 const target: PublishTarget = {
   id: 'post-orphans',
+  s3Outputs: ['blog/*'],
   matches(scope) {
     return (
       scope.allPosts ||

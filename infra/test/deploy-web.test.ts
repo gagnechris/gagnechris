@@ -22,6 +22,16 @@ afterAll(() => {
   for (const dir of tmpRoots) rmSync(dir, { recursive: true, force: true });
 });
 
+/** The generated list `npm run publish-surface:check` keeps in step with the publisher targets. */
+function publisherOwnedPaths(): string[] {
+  return readFileSync(
+    join(ROOT, 'scripts', 'publisher-owned-paths.generated.txt'),
+    'utf8',
+  )
+    .split('\n')
+    .filter((line) => line && !line.startsWith('#'));
+}
+
 function tempDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tmpRoots.push(dir);
@@ -45,10 +55,9 @@ function executable(file: string, body: string): void {
 function runDeploy() {
   const root = tempDir('deploy-web-');
   mkdirSync(join(root, 'scripts'));
-  copyFileSync(
-    join(ROOT, 'scripts', 'deploy-web.sh'),
-    join(root, 'scripts', 'deploy-web.sh'),
-  );
+  for (const file of ['deploy-web.sh', 'publisher-owned-paths.generated.txt']) {
+    copyFileSync(join(ROOT, 'scripts', file), join(root, 'scripts', file));
+  }
   write(
     join(root, 'infra', 'lib', 'config', 'ssm-params.json'),
     readFileSync(
@@ -230,15 +239,9 @@ describe('deploy-web.sh', () => {
         '.vite/*',
         'assets/*',
         'fonts/*.woff2',
-        'blog/*',
-        'projects/*',
-        'resume/*',
-        'resume.pdf',
-        'home/*',
         'media/*',
         'notebook/*',
-        'sitemap.xml',
-        'rss.xml',
+        ...publisherOwnedPaths(),
       ].sort(),
     );
     const excluded = (key: string) => patterns.some((p) => glob(p).test(key));

@@ -6,6 +6,10 @@ import { createServer, type Server } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import {
+  POST_SLUG_KVS_SYNCED_KEY,
+  PROJECT_SLUG_KVS_SYNCED_KEY,
+} from '@gagnechris/shared';
 import { waitForDynamoDb } from '../scripts/local/wait-dynamodb.js';
 
 const run = promisify(execFile);
@@ -279,7 +283,9 @@ export async function startStack(): Promise<Stack> {
     // post and project slugs 404 instead of failing open.
     await writeFile(
       env.LOCAL_KVS_FILE!,
-      JSON.stringify({ keys: ['__synced__', 'projects/__synced__'] }),
+      JSON.stringify({
+        keys: [POST_SLUG_KVS_SYNCED_KEY, PROJECT_SLUG_KVS_SYNCED_KEY],
+      }),
     );
 
     const apiLogs = start('api', join(BIN, 'tsx'), [

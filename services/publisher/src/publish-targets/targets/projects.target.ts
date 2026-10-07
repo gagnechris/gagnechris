@@ -18,6 +18,7 @@ const PAGE_KEY_RE = /^projects\/([^/]+)\/index\.html$/;
 
 const target: PublishTarget = {
   id: 'projects',
+  s3Outputs: ['projects/*'],
   optionBPaths: ['/projects'],
   adminMutationPrefixes: ['/api/admin/projects'],
   adminSoftDelete: true,

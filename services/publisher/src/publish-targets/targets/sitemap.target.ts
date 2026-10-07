@@ -9,6 +9,7 @@ import { CACHE_FEED } from '../types.js';
 /** One owner for `sitemap.xml`, so a post rebuild never drops projects and vice versa. */
 const target: PublishTarget = {
   id: 'sitemap',
+  s3Outputs: ['sitemap.xml'],
   matches: (scope) =>
     scope.feeds ||
     scope.touchedEntityTypes.has(PROJECT_ENTITY_TYPE) ||

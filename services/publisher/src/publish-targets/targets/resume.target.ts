@@ -7,6 +7,7 @@ const RESUME_PAGE_KEY = 'resume/index.html';
 
 const target: PublishTarget = {
   id: 'resume',
+  s3Outputs: ['resume/*', 'resume.pdf'],
   optionBPaths: ['/resume'],
   adminMutationPrefixes: ['/api/admin/resume'],
   matches(scope) {
