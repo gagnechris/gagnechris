@@ -9,15 +9,15 @@ import type { Post, Project } from '@gagnechris/shared';
 import { runPublishTargets } from '../src/publish-targets/orchestrator.js';
 import { publishTargets } from '../src/publish-targets/registry.js';
 import { collectRebuildScope } from '../src/rebuild-scope.js';
-import type { SiteStorage } from '../src/storage.js';
+import {
+  memoryStorage,
+  type MemoryStorage,
+} from './fixtures/memory-storage.js';
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
-
-const SHELL =
-  '<html><head><title>x</title></head><body><div id="root"></div></body></html>';
 
 const NOTEBOOK_ID = '01PROJECTNOTEBOOK000000000';
 const POSTS_ID = '01PROJECTPOSTS000000000000';
@@ -107,43 +107,15 @@ const projectRecord = (before: Project, after: Project) =>
     buildProjectPublishedItem(after),
   );
 
-function memoryStorage() {
-  const objects = new Map<string, string>();
-  const writes: string[] = [];
-  const storage: SiteStorage = {
-    async readShell() {
-      return SHELL;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const text = typeof body === 'string' ? body : '';
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      writes.push(key);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-  return { storage, objects, writes };
-}
-
 describe('post to project tagging', () => {
-  let site: ReturnType<typeof memoryStorage>;
+  let site: MemoryStorage;
   let posts: Post[];
   let projects: Project[];
 
   const rebuild = (records?: DynamoDBRecord[]) =>
     runPublishTargets({
       scope: records ? collectRebuildScope(records) : undefined,
-      storage: site.storage,
+      storage: site,
       sources: {
         readGeneration: async () => 0,
         listPublishedPosts: async () => ({ posts, corruptSlugs: [] }),
@@ -172,7 +144,7 @@ describe('post to project tagging', () => {
     projects = [notebook, postsProject];
     posts = [untagged];
     await rebuild();
-    site.writes.length = 0;
+    site.puts.length = 0;
   });
 
   it('tagging and publishing adds the post to the Build log and shows Part of', async () => {
@@ -188,7 +160,7 @@ describe('post to project tagging', () => {
       '<p class="post-part-of">Part of the <a class="post-part-of__project" href="/projects/notebook">Notebook</a> project</p>',
     );
     expect(buildLog('posts')).not.toContain('/posts/hello');
-    expect(site.writes.sort()).toEqual([
+    expect(site.puts.sort()).toEqual([
       'blog/hello/index.html',
       'projects/notebook/index.html',
     ]);
@@ -271,14 +243,14 @@ describe('post to project tagging', () => {
     });
     projects = [notebook, postsProject, bears];
     await rebuild();
-    site.writes.length = 0;
+    site.puts.length = 0;
 
     const both = { ...untagged, projectIds: [NOTEBOOK_ID, bears.id] };
     posts = [both];
     await rebuild([postRecord(untagged, both)]);
 
-    expect(site.writes).not.toContain('projects/index.html');
-    expect(site.writes).not.toContain('projects/posts/index.html');
+    expect(site.puts).not.toContain('projects/index.html');
+    expect(site.puts).not.toContain('projects/posts/index.html');
     expect(site.objects.has('projects/bears/index.html')).toBe(false);
     expect(page('blog/hello/index.html')).toContain(
       '<a class="post-part-of__project" href="/projects/notebook">Notebook</a> and <a class="post-part-of__project" href="/dont-feed-the-bears">Bears</a> projects',

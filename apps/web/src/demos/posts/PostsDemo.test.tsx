@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   renderHomeRecentPostsHtml,
-  renderPostPageBodyHtml,
+  renderPostArticleHtml,
 } from '@gagnechris/shared/render';
 import PostsDemo from '.';
 import {
@@ -132,7 +132,7 @@ describe('PostsDemo', () => {
     );
   });
 
-  test('the post page is the publisher’s sanitised article markup, byte for byte', async () => {
+  test('the post page is the publisher’s sanitised article markup, byte for byte, without an h1 or author note', async () => {
     const { user, body, page, show, publish } = await setup();
     const markdown =
       'Hi <script>alert(1)</script><img src=x onerror="alert(2)">\n\n[x](javascript:alert(3))\n\n## Next';
@@ -142,14 +142,22 @@ describe('PostsDemo', () => {
     await show('Post page');
 
     const published = document.createElement('div');
-    published.innerHTML = renderPostPageBodyHtml({
-      slug: 'hello-from-the-demo',
-      title: 'Hello from the demo',
-      excerpt: '',
-      publishedAt: AT,
-      bodyMarkdown: markdown,
-    });
+    published.innerHTML = `<div class="post-page">${renderPostArticleHtml(
+      {
+        slug: 'hello-from-the-demo',
+        title: 'Hello from the demo',
+        excerpt: '',
+        publishedAt: AT,
+        bodyMarkdown: markdown,
+      },
+      [],
+      3,
+    )}</div>`;
     expect(page()!.innerHTML).toBe(published.innerHTML);
+    expect(page()!.querySelector('h1, aside, .post-author, main')).toBeNull();
+    expect(page()!.querySelector('.post-header > h3')).toHaveTextContent(
+      'Hello from the demo',
+    );
     const html = page()!.innerHTML;
     expect(html).not.toMatch(/<script|onerror|javascript:/);
     expect(page()!.querySelector('.post-content h2')).toHaveTextContent('Next');
@@ -161,7 +169,7 @@ describe('PostsDemo', () => {
       await setup();
     await publish();
     await show('Post page');
-    expect(within(site).getByRole('heading', { level: 1 })).toHaveTextContent(
+    expect(within(site).getByRole('heading', { level: 3 })).toHaveTextContent(
       'Hello from the demo',
     );
 
@@ -174,7 +182,7 @@ describe('PostsDemo', () => {
       screen.getByText(POSTS_DEMO_CAPTIONS.unpublished),
     ).toBeInTheDocument();
     expect(within(editor).getByText('/posts/a-better-title')).toBeVisible();
-    expect(within(site).getByRole('heading', { level: 1 })).toHaveTextContent(
+    expect(within(site).getByRole('heading', { level: 3 })).toHaveTextContent(
       'Hello from the demo',
     );
     expect(page()).not.toHaveTextContent('New body.');
@@ -192,7 +200,7 @@ describe('PostsDemo', () => {
     ).toBeDisabled();
     expect(within(site).getByRole('link', { name: 'A better title' }));
     await show('Post page');
-    expect(within(site).getByRole('heading', { level: 1 })).toHaveTextContent(
+    expect(within(site).getByRole('heading', { level: 3 })).toHaveTextContent(
       'A better title',
     );
     expect(page()).toHaveTextContent('New body.');
@@ -221,12 +229,30 @@ describe('PostsDemo', () => {
       link.dispatchEvent(click);
     });
     expect(click.defaultPrevented).toBe(true);
-    expect(within(site).getByRole('heading', { level: 1 })).toHaveTextContent(
+    expect(within(site).getByRole('heading', { level: 3 })).toHaveTextContent(
       'Hello from the demo',
     );
     expect(
       within(site).getByRole('button', { name: 'Post page' }),
     ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('with reduced motion, publishing does not flash the new post', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({
+          matches: query === '(prefers-reduced-motion: reduce)',
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
+    const { site, page, publish } = await setup();
+    await publish();
+    expect(
+      site.querySelector('.home-post[data-id="demo-post"]'),
+    ).not.toBeNull();
+    expect(page()).not.toHaveAttribute('data-flash');
   });
 
   test('Reset goes back to the seeded draft and keeps focus on Reset', async () => {

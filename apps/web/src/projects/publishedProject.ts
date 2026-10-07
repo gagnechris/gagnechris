@@ -14,7 +14,7 @@ const text = (root: ParentNode, selector: string): string =>
 export function projectPageViewFromDocument(
   root: ParentNode,
 ): ProjectPageView | null {
-  const page = root.querySelector('div.project-page');
+  const page = root.querySelector('.project-page');
   const body = page?.querySelector('.project-body');
   const stage = stageFromElement(
     page?.querySelector('.project-header > .project-stage') ?? null,

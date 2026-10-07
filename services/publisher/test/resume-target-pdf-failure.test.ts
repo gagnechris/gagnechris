@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RESUME } from '@gagnechris/shared';
-import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const buildResumePdfArtifact = vi.fn();
 
@@ -21,35 +21,6 @@ const publishedResume = {
   version: 1,
   hasUnpublishedChanges: false,
 };
-
-function memoryStorage(): SiteStorage & { puts: string[] } {
-  const objects = new Map<string, string | Uint8Array>();
-  const puts: string[] = [];
-  return {
-    puts,
-    async readShell() {
-      return '<html><head></head><body><div id="root"></div></body></html>';
-    },
-    async read(key) {
-      const v = objects.get(key);
-      return typeof v === 'string' ? v : undefined;
-    },
-    async put(key, body) {
-      objects.set(key, body);
-      puts.push(key);
-      return true;
-    },
-    async delete(key) {
-      if (!objects.has(key)) return false;
-      objects.delete(key);
-      return true;
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-}
 
 describe('resume target PDF failure', () => {
   beforeEach(() => {

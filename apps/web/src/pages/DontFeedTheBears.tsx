@@ -171,7 +171,7 @@ const DontFeedTheBears = () => {
   const onTipLinkClick = () => trackBearsTipLinkClick(from);
 
   return (
-    <div className="bears-landing">
+    <main className="bears-landing">
       <BearsPageMeta meta={BEARS_PAGE_META.landing} />
       <header className="bears-landing__header">
         <p className="bears-landing__kicker">Vermont camp rules</p>
@@ -180,7 +180,7 @@ const DontFeedTheBears = () => {
           Two quick games about the same rule, from both sides of the campsite.
         </p>
       </header>
-      <main>
+      <div className="bears-landing__body">
         <section className="bears-landing__cards" aria-label="Pick a side">
           {GAME_CARDS.map(
             ({ game, kicker, title, body, phoneBody, details, cta, Art }) => (
@@ -238,8 +238,8 @@ const DontFeedTheBears = () => {
           <h2 id="bears-tips-heading">Vermont bear tips</h2>
           <BearTipsList onTipLinkClick={onTipLinkClick} />
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

@@ -43,7 +43,7 @@ const PostsIndexBody = ({
 }) => {
   const groups = groupPostsByYear(posts);
   return (
-    <div className="posts-index blog-index-prerender">
+    <main className="posts-index blog-index-prerender">
       <header className="posts-index__header">
         <h1>Posts</h1>
         <p className="posts-index__intro">{POSTS_INDEX_INTRO}</p>
@@ -51,7 +51,7 @@ const PostsIndexBody = ({
           {POSTS_RSS_LINK.label}
         </a>
       </header>
-      <main>
+      <div className="posts-index__years">
         {message || !groups.length ? (
           <p className="posts-index__empty">
             {message ?? POSTS_INDEX_EMPTY_TEXT}
@@ -74,8 +74,8 @@ const PostsIndexBody = ({
             </section>
           ))
         )}
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

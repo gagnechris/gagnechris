@@ -15,7 +15,7 @@ function PostPage() {
 
   if (published.status !== 'ready') {
     return (
-      <div className="post-page">
+      <main className="post-page">
         {published.status === 'error' ? (
           <p className="post-loading" role="alert">
             Could not load this post. Check your connection and try again.
@@ -23,7 +23,7 @@ function PostPage() {
         ) : (
           <p className="post-loading">Loading post…</p>
         )}
-      </div>
+      </main>
     );
   }
 

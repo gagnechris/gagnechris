@@ -16,6 +16,7 @@ import {
 } from '@gagnechris/shared/render';
 import {
   PROJECTS_PATH,
+  SITE_AUTHOR_NAME,
   projectHasPage,
   siteUrl,
   projectPagePath,
@@ -31,15 +32,19 @@ import type { HomeRecentPost } from '@gagnechris/shared/render';
 import { APEX } from './config.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
+/** `siteUrl('/')` is the bare origin; the sitemap and JSON-LD keep the slash. */
+const ROOT_URL = `${siteUrl('/', APEX)}/`;
+
 const absoluteUrl = (pathOrUrl: string): string => {
   if (/^https?:\/\//i.test(pathOrUrl)) {
     return pathOrUrl;
   }
-  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
-  return `https://${APEX}${path}`;
+  return siteUrl(pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`, APEX);
 };
 
-const defaultOgImage = (): string => absoluteUrl('/og-image.jpg');
+/** An override image as an absolute URL, else the site-wide OG image. */
+const ogImage = (override?: string | null): string =>
+  absoluteUrl(override || '/og-image.jpg');
 
 const PRERENDER_OPEN = '<!--prerender:start-->';
 const PRERENDER_CLOSE = '<!--prerender:end-->';
@@ -55,6 +60,13 @@ const injectPrerender = (shellHtml: string, body: string): string => {
     : shellHtml.replace(ROOT_EMPTY_RE, () => root);
 };
 
+/** The shell with `meta` applied and `body` prerendered into `#root`. */
+export const renderShellPage = (
+  shellHtml: string,
+  meta: Parameters<typeof applyPageMeta>[1],
+  body: string,
+): string => injectPrerender(applyPageMeta(shellHtml, meta), body);
+
 /** S3 keys stay under `blog/`. */
 export const POSTS_PATH = '/posts';
 
@@ -66,12 +78,10 @@ export const postCanonicalUrl = (slug: string): string =>
  * new; CloudFront 301s it to the canonical URL.
  */
 export const legacyPostUrl = (slug: string): string =>
-  `https://${APEX}/blog/${slug}`;
+  siteUrl(`/blog/${slug}`, APEX);
 
-export const resolveOgImage = (post: Post): string => {
-  const override = post.seo?.ogImage || post.coverImage;
-  return override ? absoluteUrl(override) : defaultOgImage();
-};
+export const resolveOgImage = (post: Post): string =>
+  ogImage(post.seo?.ogImage || post.coverImage);
 
 export const buildJsonLd = (post: Post): string => {
   const payload = {
@@ -85,8 +95,8 @@ export const buildJsonLd = (post: Post): string => {
     mainEntityOfPage: postCanonicalUrl(post.slug),
     author: {
       '@type': 'Person',
-      name: 'Chris Gagne',
-      url: `https://${APEX}/`,
+      name: SITE_AUTHOR_NAME,
+      url: ROOT_URL,
     },
   };
   return JSON.stringify(payload).replace(/</g, '\\u003c');
@@ -111,37 +121,35 @@ export const renderPostPage = (
   const article = buildArticleHtml(post, partOf);
   const jsonLd = buildJsonLd(post);
 
-  let html = applyPageMeta(shellHtml, {
-    title,
-    description,
-    url,
-    type: 'article',
-    image,
-    jsonLd,
-    articlePublishedTime: post.publishedAt ?? undefined,
-  });
-  html = injectPrerender(html, article);
-
-  return html;
+  return renderShellPage(
+    shellHtml,
+    {
+      title,
+      description,
+      url,
+      type: 'article',
+      image,
+      jsonLd,
+      articlePublishedTime: post.publishedAt ?? undefined,
+    },
+    article,
+  );
 };
 
 export const renderPostsIndexPage = (
   shellHtml: string,
   posts: Post[],
 ): string => {
-  const title = pageTitle('Posts');
-  const description = 'Posts by Chris Gagne.';
-  const url = siteUrl(POSTS_PATH, APEX);
-  const body = renderSitePageHtml('/posts', renderPostsIndexBodyHtml(posts));
-
-  let html = applyPageMeta(shellHtml, {
-    title,
-    description,
-    url,
-    type: 'website',
-  });
-  html = injectPrerender(html, body);
-  return html;
+  return renderShellPage(
+    shellHtml,
+    {
+      title: pageTitle('Posts'),
+      description: `Posts by ${SITE_AUTHOR_NAME}.`,
+      url: siteUrl(POSTS_PATH, APEX),
+      type: 'website',
+    },
+    renderSitePageHtml('/posts', renderPostsIndexBodyHtml(posts)),
+  );
 };
 
 export const renderResumePage = (shellHtml: string, resume: Resume): string => {
@@ -149,43 +157,32 @@ export const renderResumePage = (shellHtml: string, resume: Resume): string => {
   const description = escapeHtml(
     resume.seo?.description || resumeSummaryExcerpt(resume.content.summary),
   );
-  const url = siteUrl('/resume', APEX);
-  const image = resume.seo?.ogImage
-    ? absoluteUrl(resume.seo.ogImage)
-    : defaultOgImage();
-  // Always point the SPA download at the publisher-generated PDF.
-  const body = renderResumePrerenderHtml({
-    ...resume,
-    pdfPath: RESUME_PDF_PUBLIC_PATH,
-  });
-
-  let html = applyPageMeta(shellHtml, {
-    title,
-    description,
-    url,
-    type: 'website',
-    image,
-  });
-  html = injectPrerender(html, body);
-  return html;
+  return renderShellPage(
+    shellHtml,
+    {
+      title,
+      description,
+      url: siteUrl('/resume', APEX),
+      type: 'website',
+      image: ogImage(resume.seo?.ogImage),
+    },
+    // Always point the SPA download at the publisher-generated PDF.
+    renderResumePrerenderHtml({ ...resume, pdfPath: RESUME_PDF_PUBLIC_PATH }),
+  );
 };
 
-export const renderResumeUnavailablePage = (shellHtml: string): string => {
-  const title = pageTitle('Resume');
-  const description = 'Resume available on request.';
-  const url = siteUrl('/resume', APEX);
-  const body = renderResumeUnavailablePrerenderHtml();
-
-  let html = applyPageMeta(shellHtml, {
-    title,
-    description,
-    url,
-    type: 'website',
-    image: defaultOgImage(),
-  });
-  html = injectPrerender(html, body);
-  return html;
-};
+export const renderResumeUnavailablePage = (shellHtml: string): string =>
+  renderShellPage(
+    shellHtml,
+    {
+      title: pageTitle('Resume'),
+      description: 'Resume available on request.',
+      url: siteUrl('/resume', APEX),
+      type: 'website',
+      image: ogImage(),
+    },
+    renderResumeUnavailablePrerenderHtml(),
+  );
 
 /** `shellHtml` must be the pristine `_shell.html`, never index.html read back. */
 export const renderHomePage = (
@@ -198,65 +195,56 @@ export const renderHomePage = (
   const description = escapeHtml(
     home.seo?.description || homeAboutExcerpt(home.about),
   );
-  const url = siteUrl('/', APEX);
-  const image = home.seo?.ogImage
-    ? absoluteUrl(home.seo.ogImage)
-    : defaultOgImage();
-
-  let html = applyPageMeta(shellHtml, {
-    title,
-    description,
-    url,
-    type: 'website',
-    image,
-  });
-  html = injectPrerender(
-    html,
+  return renderShellPage(
+    shellHtml,
+    {
+      title,
+      description,
+      url: siteUrl('/', APEX),
+      type: 'website',
+      image: ogImage(home.seo?.ogImage),
+    },
     renderHomePrerenderHtml(home, recentPosts, projects),
   );
-  return html;
 };
 
 export const projectCanonicalUrl = (slug: string): string =>
   siteUrl(projectPagePath(slug), APEX);
 
 const projectDescription = (project: Project): string =>
-  project.pitch || `${project.name}, a project by Chris Gagne.`;
+  project.pitch || `${project.name}, a project by ${SITE_AUTHOR_NAME}.`;
 
 export const renderProjectsIndexPage = (
   shellHtml: string,
   projects: readonly Project[],
-): string => {
-  let html = applyPageMeta(shellHtml, {
-    title: pageTitle('Projects'),
-    description: 'What Chris Gagne is building.',
-    url: siteUrl(PROJECTS_PATH, APEX),
-    type: 'website',
-  });
-  html = injectPrerender(html, renderProjectsIndexPrerenderHtml(projects));
-  return html;
-};
+): string =>
+  renderShellPage(
+    shellHtml,
+    {
+      title: pageTitle('Projects'),
+      description: `What ${SITE_AUTHOR_NAME} is building.`,
+      url: siteUrl(PROJECTS_PATH, APEX),
+      type: 'website',
+    },
+    renderProjectsIndexPrerenderHtml(projects),
+  );
 
 export const renderProjectPage = (
   shellHtml: string,
   project: Project,
   buildLog: readonly ProjectBuildLogPost[] = [],
-): string => {
-  let html = applyPageMeta(shellHtml, {
-    title: escapeHtml(pageTitle(project.name)),
-    description: escapeHtml(projectDescription(project)),
-    url: projectCanonicalUrl(project.slug),
-    type: 'website',
-    image: project.previewImage
-      ? absoluteUrl(project.previewImage)
-      : defaultOgImage(),
-  });
-  html = injectPrerender(
-    html,
+): string =>
+  renderShellPage(
+    shellHtml,
+    {
+      title: escapeHtml(pageTitle(project.name)),
+      description: escapeHtml(projectDescription(project)),
+      url: projectCanonicalUrl(project.slug),
+      type: 'website',
+      image: ogImage(project.previewImage),
+    },
     renderProjectPagePrerenderHtml(projectPageView(project, buildLog)),
   );
-  return html;
-};
 
 export type SitemapProjects = {
   projects: readonly Project[];
@@ -287,11 +275,16 @@ export const buildSitemapXml = (
   extraSlugs: readonly string[] = [],
   projects: SitemapProjects = { projects: [] },
 ): string => {
-  const staticPaths = ['/', POSTS_PATH, PROJECTS_PATH, '/resume', '/contact'];
+  const staticUrls = [
+    ROOT_URL,
+    ...[POSTS_PATH, PROJECTS_PATH, '/resume', '/contact'].map((path) =>
+      siteUrl(path, APEX),
+    ),
+  ];
   const seen = new Set(posts.map((p) => p.slug));
   const urls = [
-    ...staticPaths.map((path) => ({
-      loc: `https://${APEX}${path === '/' ? '/' : path}`,
+    ...staticUrls.map((loc) => ({
+      loc,
       lastmod: undefined as string | undefined,
     })),
     ...posts.map((p) => ({
@@ -325,6 +318,5 @@ export const buildRssXml = (posts: Post[]): string => {
       return `<item><title>${escapeHtml(p.title)}</title><link>${link}</link><guid>${legacyPostUrl(p.slug)}</guid><description>${escapeHtml(p.excerpt || p.title)}</description>${pub}</item>`;
     })
     .join('');
-  const self = `https://${APEX}/rss.xml`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Chris Gagne</title><link>https://${APEX}${POSTS_PATH}</link><atom:link href="${self}" rel="self" type="application/rss+xml"/><description>Posts by Chris Gagne</description>${items}</channel></rss>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>${SITE_AUTHOR_NAME}</title><link>${siteUrl(POSTS_PATH, APEX)}</link><atom:link href="${siteUrl('/rss.xml', APEX)}" rel="self" type="application/rss+xml"/><description>Posts by ${SITE_AUTHOR_NAME}</description>${items}</channel></rss>\n`;
 };

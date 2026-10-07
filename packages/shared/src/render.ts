@@ -40,6 +40,7 @@ export {
 } from './home-html.js';
 export {
   POSTS_INDEX_EMPTY_TEXT,
+  renderPostArticleHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
   type PostsIndexItem,

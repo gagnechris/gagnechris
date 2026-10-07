@@ -152,7 +152,10 @@ describe('publisher render', () => {
       }),
     ];
     const html = renderPostsIndexPage(shell, posts);
-    const main = html.slice(html.indexOf('<main>'), html.indexOf('</main>'));
+    const main = html.slice(
+      html.indexOf('<div class="posts-index__years">'),
+      html.indexOf('</main>'),
+    );
 
     expect(
       [...main.matchAll(/<h2 class="posts-year__label"[^>]*>(\d+)</g)].map(
@@ -202,7 +205,7 @@ describe('publisher render', () => {
     );
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
     expect(html).toContain(
-      '<div class="resume-page resume-page-prerender"><header class="resume-intro">',
+      '<main class="resume-page resume-page-prerender"><header class="resume-intro">',
     );
     expect(html).toContain('/assets/index.js');
   });

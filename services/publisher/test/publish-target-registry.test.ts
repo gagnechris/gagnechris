@@ -10,9 +10,9 @@ import {
   getPublishTargets,
   publishTargets,
 } from '../src/publish-targets/registry.js';
-import type { SiteStorage } from '../src/storage.js';
 import { fullRebuildScope } from '../src/rebuild-scope.js';
 import nowPageTarget from './fixtures/now-page.target.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const targetsDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -25,46 +25,6 @@ const registrySource = readFileSync(
   ),
   'utf8',
 );
-
-function memoryStorage(): SiteStorage & {
-  puts: string[];
-  deletes: string[];
-  invalidations: string[][];
-} {
-  const objects = new Map<string, string | Uint8Array>();
-  const puts: string[] = [];
-  const deletes: string[] = [];
-  const invalidations: string[][] = [];
-  return {
-    puts,
-    deletes,
-    invalidations,
-    async readShell() {
-      return '<html><head></head><body><div id="root"></div></body></html>';
-    },
-    async read(key) {
-      const v = objects.get(key);
-      return typeof v === 'string' ? v : undefined;
-    },
-    async put(key, body) {
-      objects.set(key, body);
-      puts.push(key);
-      return true;
-    },
-    async delete(key) {
-      if (!objects.has(key)) return false;
-      objects.delete(key);
-      deletes.push(key);
-      return true;
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate(paths) {
-      invalidations.push(paths);
-    },
-  };
-}
 
 describe('publish target registry', () => {
   it('registers every production *.target.ts module in an explicit array', () => {

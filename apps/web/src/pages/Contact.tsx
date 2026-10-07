@@ -193,13 +193,13 @@ function Contact() {
   };
 
   return (
-    <div className="contact-page">
+    <main className="contact-page">
       <PageHead title={pageTitle('Contact')} url={siteUrl('/contact')} />
       <header className="contact-page__header">
         <h1>{CONTACT_HEADING}</h1>
         <p className="contact-page__intro">{CONTACT_INTRO}</p>
       </header>
-      <main>
+      <div className="contact-page__body">
         {submitted ? (
           <section className="contact-success" aria-labelledby="contact-sent">
             <h2 id="contact-sent" ref={successRef} tabIndex={-1}>
@@ -288,8 +288,8 @@ function Contact() {
             </button>
           </form>
         )}
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
 

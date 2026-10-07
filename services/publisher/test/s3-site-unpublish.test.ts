@@ -8,10 +8,8 @@ import {
   type Home,
   type Resume,
 } from '@gagnechris/shared';
-import {
-  HOME_LAST_PUBLISHED_KEY,
-  rebuildPublishedSite,
-} from '../src/s3-site.js';
+import { HOME_LAST_PUBLISHED_KEY } from '../src/home-publish.js';
+import { rebuildPublishedSite } from '../src/rebuild.js';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
 import { RESUME_PDF_KEY } from '../src/resume-pdf.js';
 

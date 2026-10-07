@@ -44,19 +44,8 @@ const KNOWN_ENTITY_TYPES = new Set([
   PROJECT_ENTITY_TYPE,
 ]);
 
-function isLegacyPostPk(pk: string | undefined): boolean {
-  return typeof pk === 'string' && pk.startsWith('POST#');
-}
-
-/**
- * Rows without `entityType` count as posts only on a `POST#…` pk; missing
- * entityType on other pks is not treated as a post.
- */
 export function isStreamPostEntity(meta: StreamMeta | undefined): boolean {
-  if (!meta) return false;
-  if (meta.entityType === 'post') return true;
-  if (meta.entityType == null && isLegacyPostPk(meta.pk)) return true;
-  return false;
+  return meta?.entityType === 'post';
 }
 
 export function imageToStreamMeta(

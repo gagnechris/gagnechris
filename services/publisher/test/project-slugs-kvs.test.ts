@@ -11,6 +11,7 @@ import type {
 } from '../src/publish-targets/types.js';
 import type { RebuildScope } from '../src/rebuild-scope.js';
 import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
 const SHELL =
   '<html><head><title>x</title></head><body><div id="root"></div></body></html>';
@@ -38,24 +39,6 @@ function project(over: Partial<Project> & Pick<Project, 'slug'>): Project {
   };
 }
 
-function memoryStorage(): SiteStorage {
-  const objects = new Map<string, string>();
-  return {
-    readShell: async () => SHELL,
-    read: async (key) => objects.get(key),
-    async put(key, body) {
-      const text = typeof body === 'string' ? body : '';
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      return true;
-    },
-    delete: async (key) => objects.delete(key),
-    list: async (prefix) =>
-      [...objects.keys()].filter((k) => k.startsWith(prefix)),
-    invalidate: async () => undefined,
-  };
-}
-
 const projectScope = (): RebuildScope => ({
   allPosts: false,
   postSlugs: new Set(),
@@ -73,7 +56,7 @@ describe('project slug allowlist (local KVS file)', () => {
   let storage: SiteStorage;
 
   beforeEach(async () => {
-    storage = memoryStorage();
+    storage = memoryStorage({ shell: SHELL });
     dir = await mkdtemp(join(tmpdir(), 'kvs-'));
     kvsFile = join(dir, 'kvs.json');
     vi.stubEnv('CLOUDFRONT_DISTRIBUTION_ID', 'local');

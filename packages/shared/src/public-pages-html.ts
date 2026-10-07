@@ -55,9 +55,9 @@ export const CONTACT_INTRO = 'Say hello. I read everything and reply to most.';
  * put the message in the URL), so React adds it below this on mount.
  */
 export const renderContactPrerenderBodyHtml = (): string =>
-  `<div class="contact-page">` +
+  `<main class="contact-page">` +
   `<header class="contact-page__header">` +
   `<h1>${escapeHtml(CONTACT_HEADING)}</h1>` +
   `<p class="contact-page__intro">${escapeHtml(CONTACT_INTRO)}</p>` +
   `</header>` +
-  `</div>`;
+  `</main>`;

@@ -7,15 +7,12 @@ import {
 import { publishTargets } from '../src/publish-targets/registry.js';
 import type { RebuildSiteSources } from '../src/publish-targets/types.js';
 import type { RebuildScope } from '../src/rebuild-scope.js';
-import type { SiteStorage } from '../src/storage.js';
+import { memoryStorage } from './fixtures/memory-storage.js';
 
-vi.mock('../src/viewer-request-slugs.js', () => ({
-  syncViewerRequestBlogSlugs: vi.fn().mockResolvedValue(undefined),
-  syncViewerRequestProjectSlugs: vi.fn().mockResolvedValue(undefined),
+vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/viewer-request-slugs.js')>()),
+  syncViewerRequestKeys: vi.fn().mockResolvedValue(undefined),
 }));
-
-const SHELL =
-  '<html><head><title>x</title></head><body><div id="root"></div></body></html>';
 
 const post = (slug: string, publishedAt: string): Post => ({
   id: `01POST${slug.toUpperCase()}`.padEnd(26, '0'),
@@ -54,32 +51,6 @@ const project = (slug: string): Project => ({
   version: 1,
   hasUnpublishedChanges: false,
 });
-
-function memoryStorage(): SiteStorage & { objects: Map<string, string> } {
-  const objects = new Map<string, string>();
-  return {
-    objects,
-    async readShell() {
-      return SHELL;
-    },
-    async read(key) {
-      return objects.get(key);
-    },
-    async put(key, body) {
-      const text = typeof body === 'string' ? body : '';
-      if (objects.get(key) === text) return false;
-      objects.set(key, text);
-      return true;
-    },
-    async delete(key) {
-      return objects.delete(key);
-    },
-    async list(prefix) {
-      return [...objects.keys()].filter((k) => k.startsWith(prefix));
-    },
-    async invalidate() {},
-  };
-}
 
 /** `generation` moves on every publish, like the site publish row. */
 type Table = { posts: Post[]; projects: Project[]; generation: number };
