@@ -58,6 +58,54 @@ test.describe('the posts index', () => {
     await context.close();
   });
 
+  test('a cold load hydrates the published list in place', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
+    // Keeps the element the HTML parser made, before any script runs.
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const main = document.querySelector('#root > main.posts-index');
+        if (!main) return;
+        (window as { parsedMain?: Element }).parsedMain = main;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
+    await page.goto(`${site()}/posts`);
+    await expect(page.locator(`a[href="/posts/${slug}"]`)).toBeVisible();
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const main = document.querySelector('#root > main.posts-index');
+          return Boolean(
+            main && Object.keys(main).some((k) => k.startsWith('__reactFiber')),
+          );
+        }),
+      )
+      .toBe(true);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as { parsedMain?: Element }).parsedMain ===
+          document.querySelector('#root > main.posts-index'),
+      ),
+    ).toBe(true);
+    expect(errors).toEqual([]);
+
+    await page.locator(`a[href="/posts/${slug}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`/posts/${slug}$`));
+    // Same window, so the link navigated in the app.
+    expect(
+      await page.evaluate(
+        () => (window as { parsedMain?: Element }).parsedMain !== undefined,
+      ),
+    ).toBe(true);
+  });
+
   test('each entry is one link with a visible focus ring', async ({
     page,
     browserName,

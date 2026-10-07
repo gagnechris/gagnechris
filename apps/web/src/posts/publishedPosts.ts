@@ -1,3 +1,4 @@
+import { postsIndexView, type PostsIndexYear } from '@gagnechris/shared';
 import { fromPrerender } from '../prerender/documentPrerender';
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
@@ -37,36 +38,37 @@ export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   );
 }
 
-/** Also reads pages published before the index moved inside `<main>`, until they are republished. */
+/** Lossless: the view this returns is the one the page was rendered from. */
 export function postsIndexFromDocument(
   root: ParentNode,
-): PublishedPostListItem[] | null {
-  const index = root.querySelector(
-    'main.blog-index-prerender, .blog-index-prerender > main',
-  );
+): PostsIndexYear[] | null {
+  const index = root.querySelector('main.posts-index');
   if (!index) return null;
 
-  return [...index.querySelectorAll('.post-preview')].flatMap((entry) => {
-    const href = entry.querySelector('a')?.getAttribute('href') ?? '';
-    const slug = href.replace(/^\/posts\//, '');
-    if (!slug || slug === href) return [];
-    const text = (selector: string) =>
-      entry.querySelector(selector)?.textContent ?? '';
-    return [
-      {
-        id: entry.getAttribute('data-id') || slug,
-        slug,
-        title: text('.post-preview__title'),
-        excerpt: text('.post-preview__excerpt'),
-        publishedAt:
-          entry.querySelector('time')?.getAttribute('datetime') || null,
-        updatedAt: '',
-        tags: [],
-        coverImage: null,
-      },
-    ];
-  });
+  return [...index.querySelectorAll('.posts-year')].map((section) => ({
+    year: section.querySelector('.posts-year__label')?.textContent ?? '',
+    posts: [...section.querySelectorAll('.post-preview')].flatMap((entry) => {
+      const href = entry.querySelector('a')?.getAttribute('href') ?? '';
+      const slug = href.replace(/^\/posts\//, '');
+      if (!slug || slug === href) return [];
+      const text = (selector: string) =>
+        entry.querySelector(selector)?.textContent ?? '';
+      return [
+        {
+          id: entry.getAttribute('data-id') || slug,
+          slug,
+          title: text('.post-preview__title'),
+          excerpt: text('.post-preview__excerpt'),
+          date: text('time'),
+          dateTime: entry.querySelector('time')?.getAttribute('datetime') ?? '',
+        },
+      ];
+    }),
+  }));
 }
 
-export const documentPostsIndex = (): PublishedPostListItem[] | null =>
+export const documentPostsIndex = (): PostsIndexYear[] | null =>
   fromPrerender(postsIndexFromDocument);
+
+export const loadPostsIndex = async (): Promise<PostsIndexYear[]> =>
+  postsIndexView(await fetchPublishedPosts());

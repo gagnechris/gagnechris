@@ -98,8 +98,12 @@ export {
   POSTS_INDEX_EMPTY_TEXT,
   POSTS_INDEX_INTRO,
   POSTS_RSS_LINK,
+  postsIndexView,
   postsYearId,
   UNDATED_POSTS_LABEL,
+  type PostsIndexEntry,
+  type PostsIndexItem,
+  type PostsIndexYear,
   type PostsYearGroup,
 } from './posts-index.js';
 export { textExcerpt } from './excerpt.js';

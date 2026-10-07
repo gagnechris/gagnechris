@@ -79,6 +79,11 @@ export interface PublisherStackProps extends StackProps {
   readonly alertsTopic: ITopic;
 }
 
+// Lambda sets no NODE_ENV, so React would pick its development build.
+export const PUBLISHER_BUNDLE_DEFINE = {
+  'process.env.NODE_ENV': JSON.stringify('production'),
+};
+
 export class PublisherStack extends Stack {
   readonly publisherFunction: NodeLambda;
   readonly streamFailureDestination: LambdaFailureDestination;
@@ -140,6 +145,7 @@ export class PublisherStack extends Stack {
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/g' },
       ],
       bundling: {
+        define: PUBLISHER_BUNDLE_DEFINE,
         // Bundle CloudFront KeyValueStore + SigV4a so they share one
         // @smithy/signature-v4 singleton; the runtime provides the rest.
         externalModules: [

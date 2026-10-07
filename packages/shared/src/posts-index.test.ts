@@ -4,6 +4,7 @@ import { selectHomeRecentPosts } from './home-html.js';
 import {
   comparePostsNewestFirst,
   groupPostsByYear,
+  postsIndexView,
   postsYearId,
 } from './posts-index.js';
 
@@ -94,5 +95,62 @@ describe('formatPostShortDate', () => {
     expect(formatPostShortDate('2026-09-28T23:59:00.000-04:00')).toBe('Sep 29');
     expect(formatPostShortDate(null)).toBe('');
     expect(formatPostShortDate('nope')).toBe('');
+  });
+});
+
+describe('postsIndexView', () => {
+  it('orders, groups and formats what the index prints', () => {
+    expect(
+      postsIndexView([
+        { ...post('undated', null), title: 'U', excerpt: '' },
+        {
+          ...post('later', '2026-09-28T10:00:00.000Z'),
+          id: '09',
+          title: 'Later',
+          excerpt: 'L',
+        },
+        {
+          ...post('earlier', '2026-09-28T09:00:00.000Z'),
+          id: '01',
+          title: 'Earlier',
+          excerpt: '',
+        },
+      ]),
+    ).toEqual([
+      {
+        year: '2026',
+        posts: [
+          {
+            id: '09',
+            slug: 'later',
+            title: 'Later',
+            excerpt: 'L',
+            date: 'Sep 28',
+            dateTime: '2026-09-28',
+          },
+          {
+            id: '01',
+            slug: 'earlier',
+            title: 'Earlier',
+            excerpt: '',
+            date: 'Sep 28',
+            dateTime: '2026-09-28',
+          },
+        ],
+      },
+      {
+        year: 'Undated',
+        posts: [
+          {
+            id: 'undated',
+            slug: 'undated',
+            title: 'U',
+            excerpt: '',
+            date: '',
+            dateTime: '',
+          },
+        ],
+      },
+    ]);
   });
 });

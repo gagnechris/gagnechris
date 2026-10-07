@@ -38,13 +38,7 @@ export {
   type HomeLinksSegment,
   type HomeRecentPost,
 } from './home-html.js';
-export {
-  POSTS_INDEX_EMPTY_TEXT,
-  renderPostArticleHtml,
-  renderPostPageBodyHtml,
-  renderPostsIndexBodyHtml,
-  type PostsIndexItem,
-} from './post-html.js';
+export { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
 export {
   RESUME_ACTION_LINKS,
   RESUME_DOWNLOAD_FILENAME,

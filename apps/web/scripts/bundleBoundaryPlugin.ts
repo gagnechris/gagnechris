@@ -1,9 +1,9 @@
 import type { Plugin } from 'vite';
 
 /**
- * Signed-in code, auth and the query stack that must never ship on the public
- * site. Matched against Rollup module IDs (real paths, so symlinked workspace
- * packages resolve under packages/).
+ * Signed-in code, auth, the query stack and the publisher's server renderer,
+ * which must never ship on the public site. Matched against Rollup module IDs
+ * (real paths, so symlinked workspace packages resolve under packages/).
  */
 export const PUBLIC_FORBIDDEN_MODULES: readonly RegExp[] = [
   /\/apps\/web\/src\/(?:admin|notebook|workspace|auth)\//,
@@ -11,6 +11,8 @@ export const PUBLIC_FORBIDDEN_MODULES: readonly RegExp[] = [
   /\/packages\/app-core\//,
   /\/node_modules\/@gagnechris\/app-core\//,
   /\/node_modules\/@tanstack\/react-query\//,
+  /\/packages\/public-ui\/src\/server\./,
+  /\/node_modules\/react-dom\/(?:server|cjs\/react-dom-server)/,
 ];
 
 const normalize = (id: string) => id.replace(/\\/g, '/').replace(/^\0/, '');
@@ -35,7 +37,7 @@ export function bundleBoundaryPlugin(
       }
       if (offenders.size > 0) {
         this.error(
-          `Public bundle contains signed-in or auth modules:\n  ${[...offenders].sort().join('\n  ')}`,
+          `Public bundle contains signed-in, auth or server-only modules:\n  ${[...offenders].sort().join('\n  ')}`,
         );
       }
     },
