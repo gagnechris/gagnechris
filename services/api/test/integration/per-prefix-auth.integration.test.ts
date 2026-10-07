@@ -253,6 +253,31 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     expect(await rowKeys()).toEqual(before);
   });
 
+  it('iOS client: notebook group reads and writes Notebook data, no group opens site content', async () => {
+    const iosNotebook = token(process.env.IOS_CLIENT_ID!, '[notebook]');
+    expect(await writeNotebookData(iosNotebook)).toEqual([201, 201]);
+    const list = await call(iosNotebook, 'GET', '/api/notebook/notes');
+    expect(list.status).toBe(200);
+    expect(list.body.items).toHaveLength(1);
+
+    const before = await rowKeys();
+    const iosAll = token(
+      process.env.IOS_CLIENT_ID!,
+      '[site-admin notebook user-admin]',
+    );
+    for (const claims of [iosNotebook, iosAll]) {
+      const { post, home, homeUpdate } = await writeSiteContent(claims);
+      expect([post.status, home.status, homeUpdate.status]).toEqual([
+        403, 403, 403,
+      ]);
+    }
+    const noGroup = token(process.env.IOS_CLIENT_ID!, '[site-admin]');
+    expect((await call(noGroup, 'GET', '/api/notebook/notes')).status).toBe(
+      403,
+    );
+    expect(await rowKeys()).toEqual(before);
+  });
+
   it('web client + admin group reads and writes nothing, even with AUTH_LEGACY_WEB_CLIENT_ID set', async () => {
     const legacy = token(LEGACY_CLIENT, '[admin]');
     vi.stubEnv('AUTH_LEGACY_WEB_CLIENT_ID', LEGACY_CLIENT);

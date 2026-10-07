@@ -766,7 +766,9 @@ describe('ApiStack', () => {
 
     const authorizers = template.findResources('AWS::ApiGatewayV2::Authorizer');
     expect(Object.keys(authorizers)).toHaveLength(2);
-    expect(JSON.stringify(authorizers)).not.toMatch(/DevClient|IosClient/);
+    expect(JSON.stringify(authorizers)).not.toMatch(
+      /DevClient|cognitodevclientid/,
+    );
     // API Gateway stores DestinationArn without `:*`; anything else drifts.
     const stages = template.findResources('AWS::ApiGatewayV2::Stage');
     const stage = Object.values(stages)[0];
