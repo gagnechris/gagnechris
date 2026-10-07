@@ -7,7 +7,6 @@ import {
   pageTitle,
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
-  renderPostsIndexBodyHtml,
   projectPageView,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
@@ -16,6 +15,7 @@ import {
   renderSitePageHtml,
 } from '@gagnechris/shared/render';
 import { selectHomeProjects } from '@gagnechris/shared';
+import { renderPostsIndexBodyHtml } from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
   applyNotFoundPageMeta,
@@ -184,10 +184,15 @@ const text = (el: Element): string =>
 
 /**
  * Loads the app the way the browser does: prerendered `#root` first, then the
- * modules (which snapshot it on import), then `createRoot` over the top.
+ * modules (which snapshot it on import), then `mountApp` as `main.tsx` calls it.
  * Fetch never settles, so anything on screen came from the first render.
  */
-async function coldLoad(path: string, prerender: string, head = '') {
+async function coldLoad(
+  path: string,
+  prerender: string,
+  head = '',
+  onRecoverableError?: (error: unknown) => void,
+) {
   window.history.replaceState(null, '', path);
   document.head.innerHTML = head;
   document.body.innerHTML = `<div id="root">${prerender}</div>`;
@@ -195,23 +200,27 @@ async function coldLoad(path: string, prerender: string, head = '') {
   const before = {
     text: text(root),
     html: root.innerHTML,
+    main: root.querySelector('main'),
     head: document.head.innerHTML,
     title: document.title,
   };
 
   vi.resetModules();
-  const [{ act }, { createRoot }, router, { routes }] = await Promise.all([
+  const [{ act }, { mountApp }, router, { routes }] = await Promise.all([
     import('react'),
-    import('react-dom/client'),
+    import('../prerender/mountApp'),
     import('react-router-dom'),
     import('../routes'),
   ]);
-  const reactRoot = createRoot(root);
+  let reactRoot!: ReturnType<typeof mountApp>;
   await act(async () => {
-    reactRoot.render(
+    reactRoot = mountApp(
+      root,
       <router.RouterProvider
         router={router.createMemoryRouter(routes, { initialEntries: [path] })}
       />,
+      path,
+      onRecoverableError && { onRecoverableError },
     );
   });
   return { before, root, unmount: () => act(() => reactRoot.unmount()) };
@@ -348,6 +357,70 @@ describe('cold load: first React render matches the prerender', () => {
       }
     },
   );
+
+  test.each([
+    ['with posts', PRERENDERS['/posts']!],
+    [
+      'with two posts on one day',
+      renderSitePageHtml(
+        '/posts',
+        renderPostsIndexBodyHtml([
+          {
+            id: '01J9',
+            slug: 'later',
+            title: 'Later',
+            excerpt: '',
+            publishedAt: '2026-09-28T10:00:00.000Z',
+          },
+          {
+            id: '01J1',
+            slug: 'earlier',
+            title: 'Earlier',
+            excerpt: '',
+            publishedAt: '2026-09-28T09:00:00.000Z',
+          },
+        ]),
+      ),
+    ],
+    [
+      'with nothing published',
+      renderSitePageHtml('/posts', renderPostsIndexBodyHtml([])),
+    ],
+  ])('/posts %s hydrates the published markup in place', async (_, html) => {
+    const onRecoverableError = vi.fn();
+    const loaded = await coldLoad(
+      '/posts',
+      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      HEADS['/posts'],
+      onRecoverableError,
+    );
+    unmount = loaded.unmount;
+
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test('/posts published last year hydrates, then shows the live year', async () => {
+    const html = PRERENDERS['/posts']!;
+    const published = new Date().getFullYear();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(published + 1, 0, 2));
+    try {
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad('/posts', html, '', onRecoverableError);
+      unmount = loaded.unmount;
+
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
+      expect(
+        loaded.root.querySelector('.site-footer__copy')?.textContent,
+      ).toContain(String(published + 1));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   test.each([
     ['with headline and earlier roles', PUBLISHED_RESUME],

@@ -11,6 +11,7 @@ const workspaces = [
   'packages/tokens',
   'packages/data',
   'packages/app-core',
+  'packages/public-ui',
   'services/api',
   'services/publisher',
   'services/restore-test',

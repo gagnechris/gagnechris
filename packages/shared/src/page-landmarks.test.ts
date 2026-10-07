@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
 import { DEFAULT_HOME } from './home-default.js';
 import { renderHomeBodyHtml } from './home-html.js';
-import {
-  renderPostArticleHtml,
-  renderPostPageBodyHtml,
-  renderPostsIndexBodyHtml,
-} from './post-html.js';
+import { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
 import {
   projectPageView,
   renderProjectPageBodyHtml,
@@ -33,7 +29,6 @@ const post = {
 const BODIES: [string, string][] = [
   ['home', renderHomeBodyHtml(DEFAULT_HOME)],
   ['post', renderPostPageBodyHtml(post)],
-  ['posts index', renderPostsIndexBodyHtml([{ id: '1', ...post }])],
   ['projects index', renderProjectsIndexBodyHtml(SAMPLE_PROJECTS)],
   [
     'project',

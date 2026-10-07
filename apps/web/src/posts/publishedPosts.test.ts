@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { renderPostsIndexBodyHtml } from '@gagnechris/shared/render';
+import { renderPostsIndexBodyHtml } from '@gagnechris/public-ui/server';
 import {
   fetchPublishedPosts,
   postsIndexFromDocument,
@@ -66,7 +66,7 @@ describe('publishedPosts', () => {
     expect(posts[0]?.slug).toBe('hello');
   });
 
-  test('reads the list back out of the posts index prerender', () => {
+  test('reads the view back out of the posts index prerender', () => {
     const html = renderPostsIndexBodyHtml([
       {
         id: '01A',
@@ -78,14 +78,17 @@ describe('publishedPosts', () => {
     ]);
     expect(postsIndexFromDocument(parse(html))).toEqual([
       {
-        id: '01A',
-        slug: 'hello',
-        title: 'Hello & welcome',
-        excerpt: 'Short.',
-        publishedAt: '2026-02-01',
-        updatedAt: '',
-        tags: [],
-        coverImage: null,
+        year: '2026',
+        posts: [
+          {
+            id: '01A',
+            slug: 'hello',
+            title: 'Hello & welcome',
+            excerpt: 'Short.',
+            date: 'Feb 1',
+            dateTime: '2026-02-01',
+          },
+        ],
       },
     ]);
     expect(postsIndexFromDocument(parse(renderPostsIndexBodyHtml([])))).toEqual(

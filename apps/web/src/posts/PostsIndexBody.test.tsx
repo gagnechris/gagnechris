@@ -1,12 +1,11 @@
+import type { ReactNode } from 'react';
 import { render, screen, within } from '@testing-library/react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
-import {
-  renderPostsIndexBodyHtml,
-  type PostsIndexItem,
-} from '@gagnechris/shared/render';
-import PostsIndexBody from './PostsIndexBody';
+import { postsIndexView, type PostsIndexItem } from '@gagnechris/shared';
+import { PostsIndexBody, PublicLinkContext } from '@gagnechris/public-ui';
+import { renderPostsIndexBodyHtml } from '@gagnechris/public-ui/server';
+import SiteLink from '../components/SiteLink';
 import { postsIndexFromDocument } from './publishedPosts';
 
 const item = (
@@ -29,6 +28,13 @@ const LISTS: Record<string, PostsIndexItem[]> = {
     item('c', '2026-02-01T00:00:00.000Z'),
   ],
   'an undated post': [item('x', null), item('y', '2026-01-01T00:00:00.000Z')],
+  'two on one day, ids against time order': [
+    { ...item('later', '2026-09-28T10:00:00.000Z'), id: '09' },
+    { ...item('earlier', '2026-09-28T09:00:00.000Z'), id: '01' },
+  ],
+  'quotes and apostrophes': [
+    { ...item('q', '2026-01-01T00:00:00.000Z'), title: `Don't "panic"` },
+  ],
   'no posts': [],
 };
 
@@ -38,31 +44,29 @@ const normalize = (html: string): string => {
   return template.innerHTML;
 };
 
-const parsed = (html: string): PostsIndexItem[] =>
-  postsIndexFromDocument(new DOMParser().parseFromString(html, 'text/html'))!;
+const parsed = (html: string) =>
+  postsIndexFromDocument(new DOMParser().parseFromString(html, 'text/html'));
 
-describe('PostsIndexBody', () => {
+const InApp = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter>
+    <PublicLinkContext.Provider value={SiteLink}>
+      {children}
+    </PublicLinkContext.Provider>
+  </MemoryRouter>
+);
+
+describe('PostsIndexBody in the public app', () => {
   test.each(Object.entries(LISTS))(
-    'renders the prerender markup for %s',
+    'reads back the view the publisher rendered, and prints its markup, for %s',
     (_name, posts) => {
       const prerender = renderPostsIndexBodyHtml(posts);
-      const fromDocument = parsed(prerender);
+      const view = parsed(prerender);
+      expect(view).toEqual(postsIndexView(posts));
 
-      for (const list of [posts, fromDocument]) {
-        expect(
-          normalize(
-            renderToStaticMarkup(
-              <MemoryRouter>
-                <PostsIndexBody posts={list} />
-              </MemoryRouter>,
-            ),
-          ),
-        ).toBe(normalize(prerender));
-      }
       const { container } = render(
-        <MemoryRouter>
-          <PostsIndexBody posts={fromDocument} />
-        </MemoryRouter>,
+        <InApp>
+          <PostsIndexBody years={view!} />
+        </InApp>,
       );
       expect(container.innerHTML).toBe(normalize(prerender));
     },
@@ -70,9 +74,11 @@ describe('PostsIndexBody', () => {
 
   test('years newest first, posts newest first, each entry one link', () => {
     render(
-      <MemoryRouter>
-        <PostsIndexBody posts={LISTS['several years, out of order']} />
-      </MemoryRouter>,
+      <InApp>
+        <PostsIndexBody
+          years={postsIndexView(LISTS['several years, out of order']!)}
+        />
+      </InApp>,
     );
     const years = screen.getAllByRole('heading', { level: 2 });
     expect(years.map((h) => h.textContent)).toEqual(['2026', '2025', '2024']);
@@ -97,9 +103,9 @@ describe('PostsIndexBody', () => {
 
   test('links Subscribe via RSS to /rss.xml', () => {
     render(
-      <MemoryRouter>
-        <PostsIndexBody posts={[]} />
-      </MemoryRouter>,
+      <InApp>
+        <PostsIndexBody years={[]} />
+      </InApp>,
     );
     expect(
       screen.getByRole('link', { name: 'Subscribe via RSS' }),

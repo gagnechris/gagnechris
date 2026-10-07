@@ -1,8 +1,8 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
 import './public.css';
+import { mountApp } from './prerender/mountApp';
 import { routes } from './routes.tsx';
 import { sweepLegacyAuth } from './utils/legacyAuthSweep';
 
@@ -16,8 +16,10 @@ const router = createBrowserRouter(routes, {
   basename: import.meta.env.BASE_URL || '/',
 });
 
-createRoot(document.getElementById('root')!).render(
+mountApp(
+  document.getElementById('root')!,
   <StrictMode>
     <RouterProvider router={router} />
   </StrictMode>,
+  window.location.pathname,
 );

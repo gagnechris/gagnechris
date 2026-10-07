@@ -25,6 +25,7 @@
     "@codemirror/view": "^6.43.13",
     "@gagnechris/api-client": "*",
     "@gagnechris/app-core": "*",
+    "@gagnechris/public-ui": "*",
     "@gagnechris/shared": "*",
     "@gagnechris/tokens": "*",
     "@tanstack/react-query": "^5.104.1",

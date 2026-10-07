@@ -14,6 +14,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/data` — DynamoDB keys, item schemas, DocumentClient, and Dynamo write helpers for API + publisher
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, versioned entity editor, TanStack Query resource factory)
+- `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`

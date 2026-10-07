@@ -28,13 +28,13 @@ describe('public bundle boundary', () => {
 
   it('fails the build when any chunk, even a lazy one, has a workspace module', async () => {
     await expect(bundle('forbidden.ts')).rejects.toThrow(
-      /Public bundle contains signed-in or auth modules:[\s\S]*src\/workspace\/api\/apiTarget\.ts/,
+      /Public bundle contains signed-in, auth or server-only modules:[\s\S]*src\/workspace\/api\/apiTarget\.ts/,
     );
   });
 
   it('fails the build when a kit module imports app-core', async () => {
     await expect(bundle('kit-imports-app-core.ts')).rejects.toThrow(
-      /Public bundle contains signed-in or auth modules:[\s\S]*packages\/app-core\//,
+      /Public bundle contains signed-in, auth or server-only modules:[\s\S]*packages\/app-core\//,
     );
   });
 
@@ -51,6 +51,9 @@ describe('public bundle boundary', () => {
     '/repo/packages/app-core/src/query/projects.ts',
     '/repo/node_modules/@gagnechris/app-core/src/index.ts',
     '/repo/node_modules/@tanstack/react-query/build/modern/index.js',
+    '/repo/packages/public-ui/src/server.tsx',
+    '/repo/node_modules/react-dom/server.browser.js',
+    '/repo/node_modules/react-dom/cjs/react-dom-server.browser.production.js',
   ])('forbids %s', (id) => {
     expect(PUBLIC_FORBIDDEN_MODULES.some((re) => re.test(id))).toBe(true);
   });
@@ -63,6 +66,9 @@ describe('public bundle boundary', () => {
     '/repo/packages/shared/src/render.ts',
     '/repo/packages/shared/src/projects.ts',
     '/repo/node_modules/react-router/dist/index.mjs',
+    '/repo/packages/public-ui/src/posts/PostsIndexBody.tsx',
+    '/repo/node_modules/react-dom/client.js',
+    '/repo/node_modules/react-dom/cjs/react-dom-client.production.js',
   ])('allows %s', (id) => {
     expect(PUBLIC_FORBIDDEN_MODULES.some((re) => re.test(id))).toBe(false);
   });

@@ -45,11 +45,14 @@ const siblingPackageRelativePatterns = [
       '../app-core/**',
       '../tokens',
       '../tokens/**',
+      '../public-ui',
+      '../public-ui/**',
       '../../shared/**',
       '../../data/**',
       '../../api-client/**',
       '../../app-core/**',
       '../../tokens/**',
+      '../../public-ui/**',
     ],
     message:
       'Import workspace packages by name (e.g. @gagnechris/shared), not via relative sibling paths.',
@@ -496,6 +499,33 @@ export default tseslint.config(
       ...platformNeutralRestrictedImports,
       ...platformNeutralRestrictedGlobals,
       ...platformNeutralRestrictedSyntax,
+    },
+  },
+  {
+    files: ['packages/public-ui/**/*.{ts,tsx}'],
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      // The publisher renders these too, so links come from PublicLinkContext.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'react-router', message: 'Use PublicLink.' },
+            { name: 'react-router-dom', message: 'Use PublicLink.' },
+          ],
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            ...siblingPackageRelativePatterns,
+            {
+              group: ['@gagnechris/web', '@gagnechris/web/*'],
+              message: 'public-ui must not import the web app.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

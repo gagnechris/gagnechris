@@ -172,7 +172,7 @@ describe('publisher render', () => {
     ]) {
       expect(main).toMatch(
         new RegExp(
-          `href="/posts/${slug}"><h3 class="post-preview__title">[^<]+</h3><time class="post-preview__date" datetime="${iso}">${date}</time><p class="post-preview__excerpt">${excerpt.replace('.', '\\.')}</p></a>`,
+          `href="/posts/${slug}"><h3 class="post-preview__title">[^<]+</h3><time class="post-preview__date" dateTime="${iso}">${date}</time><p class="post-preview__excerpt">${excerpt.replace('.', '\\.')}</p></a>`,
         ),
       );
     }

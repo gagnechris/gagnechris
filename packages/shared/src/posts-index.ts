@@ -1,3 +1,5 @@
+import { formatPostShortDate, postDateAttribute } from './post-date.js';
+
 export const POSTS_INDEX_INTRO =
   'Ideas, lessons and experiments from software engineering, leadership and AI.';
 
@@ -62,3 +64,43 @@ export const groupPostsByYear = <T extends DatedPost>(
   if (undated) groups.set(UNDATED_POSTS_LABEL, undated);
   return [...groups].map(([year, items]) => ({ year, posts: items }));
 };
+
+export type PostsIndexItem = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  publishedAt: string | null;
+  updatedAt?: string;
+};
+
+export type PostsIndexEntry = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  date: string;
+  dateTime: string;
+};
+
+export type PostsIndexYear = { year: string; posts: PostsIndexEntry[] };
+
+/**
+ * Exactly what `/posts` prints, already ordered and formatted, so the view
+ * read back from a prerender is the one it was rendered from and hydration
+ * matches.
+ */
+export const postsIndexView = (
+  posts: readonly PostsIndexItem[],
+): PostsIndexYear[] =>
+  groupPostsByYear(posts).map(({ year, posts: items }) => ({
+    year,
+    posts: items.map((post) => ({
+      id: post.id,
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      date: formatPostShortDate(post.publishedAt),
+      dateTime: postDateAttribute(post.publishedAt),
+    })),
+  }));
