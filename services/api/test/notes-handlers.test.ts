@@ -39,6 +39,49 @@ describe('notes handlers', () => {
     registerProductionSyncAdapters();
   });
 
+  it("POST /notes/batch returns the caller's live notes in order and caps the ids", async () => {
+    const { doc } = createMemoryDoc();
+    const repo = new NotesRepository(doc, TABLE);
+    const routes = createNoteRoutes(repo);
+    const create = (id: string, title: string, sub = USER) =>
+      dispatchRoutes(
+        routes,
+        adminEvent(
+          'POST',
+          '/api/notebook/notes',
+          { id, area: 'work', type: 'page', title },
+          undefined,
+          undefined,
+          sub,
+        ),
+        'POST',
+        '/api/notebook/notes',
+      );
+    await create(PAGE_ID, 'Ideas');
+    await create(DAILY_ID, 'Plans');
+    await create(DAILY_ID_2, 'Other user', OTHER);
+    await repo.deleteIfVersion(USER, DAILY_ID, 1);
+    const batch = (ids: unknown) =>
+      dispatchRoutes(
+        routes,
+        adminEvent('POST', '/api/notebook/notes/batch', { ids }),
+        'POST',
+        '/api/notebook/notes/batch',
+      );
+
+    const res = await batch([DAILY_ID_2, DAILY_ID, PAGE_ID]);
+    expect(res?.statusCode).toBe(200);
+    expect(
+      JSON.parse(res!.body as string).items.map(
+        (n: { title: string }) => n.title,
+      ),
+    ).toEqual(['Ideas']);
+    expect((await batch([]))?.statusCode).toBe(400);
+    expect(
+      (await batch(Array.from({ length: 101 }, () => PAGE_ID)))?.statusCode,
+    ).toBe(400);
+  });
+
   it('creates, gets, updates with If-Match ETag, and lists by area', async () => {
     const { doc } = createMemoryDoc();
     const repo = new NotesRepository(doc, TABLE);

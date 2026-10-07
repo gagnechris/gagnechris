@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
@@ -15,6 +15,7 @@ import AccessGate from './auth/AccessGate';
 import RequireAuth from './auth/RequireAuth';
 import { signOutUser, type AuthUser } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
+import { useModalDialog } from '../kit/useModalDialog';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import { WorkspaceSearchContext } from './workspaceSearch';
@@ -137,8 +138,6 @@ export function WorkspaceFrame({
         e.preventDefault();
         setMoreOpenAt(null);
         setSearchOpen(true);
-      } else if (e.key === 'Escape') {
-        setMoreOpenAt(null);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -328,40 +327,57 @@ export function WorkspaceFrame({
         </main>
       </div>
       {moreOpen ? (
-        <div className="workspace-more" role="dialog" aria-label="More">
-          <button
-            type="button"
-            className="workspace-more__backdrop"
-            aria-label="Close"
-            onClick={() => setMoreOpenAt(null)}
-          />
-          <div className="workspace-more__sheet">
-            {searchButton}
-            {sidebarTop}
-            {phoneOverflow.size > 0 ? (
-              <nav
-                className="workspace-more__pages"
-                aria-label={`More ${title}`}
-              >
-                {[...phoneOverflow].map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    className={navItemClass}
-                  >
-                    <ShellIcon name={item.icon} />
-                    <span className="workspace-nav__label">{item.label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-            ) : null}
-            {yourApps}
-            {account}
-          </div>
-        </div>
+        <MoreSheet onClose={() => setMoreOpenAt(null)}>
+          {searchButton}
+          {sidebarTop}
+          {phoneOverflow.size > 0 ? (
+            <nav className="workspace-more__pages" aria-label={`More ${title}`}>
+              {[...phoneOverflow].map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={navItemClass}
+                >
+                  <ShellIcon name={item.icon} />
+                  <span className="workspace-nav__label">{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+          ) : null}
+          {yourApps}
+          {account}
+        </MoreSheet>
       ) : null}
       {searchOpen ? renderSearch(() => setSearchOpen(false)) : null}
+    </div>
+  );
+}
+
+function MoreSheet({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const sheet = useRef<HTMLDivElement>(null);
+  const { dialogProps } = useModalDialog({
+    label: 'More',
+    onClose,
+    initialFocus: sheet,
+  });
+  return (
+    <div className="workspace-more" {...dialogProps}>
+      <button
+        type="button"
+        className="workspace-more__backdrop"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="workspace-more__sheet" ref={sheet}>
+        {children}
+      </div>
     </div>
   );
 }

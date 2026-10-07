@@ -2563,7 +2563,7 @@
           "items"
         ]
       },
-      "TaskBatchRequest": {
+      "NotebookBatchRequest": {
         "type": "object",
         "properties": {
           "ids": {
@@ -2578,6 +2578,104 @@
         },
         "required": [
           "ids"
+        ]
+      },
+      "NoteBatchResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "userId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "area": {
+                  "type": "string",
+                  "enum": [
+                    "work",
+                    "personal"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "daily",
+                    "page"
+                  ]
+                },
+                "date": {
+                  "type": "string",
+                  "nullable": true,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "bodyMarkdown": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "pinned": {
+                  "type": "boolean"
+                },
+                "taskIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "deleted": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "area",
+                "type",
+                "date",
+                "title",
+                "bodyMarkdown",
+                "tags",
+                "pinned",
+                "taskIds",
+                "version",
+                "createdAt",
+                "updatedAt",
+                "deleted"
+              ]
+            },
+            "description": "The live notes among the ids, in request order; deleted or unknown ids are left out"
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "TaskBatchResponse": {
@@ -17143,6 +17241,286 @@
           },
           "413": {
             "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notebook/notes/batch": {
+      "post": {
+        "summary": "Read up to 100 notes by id in one request",
+        "description": "Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  }
+                },
+                "required": [
+                  "ids"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The live notes, in request order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "userId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "area": {
+                            "type": "string",
+                            "enum": [
+                              "work",
+                              "personal"
+                            ]
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "daily",
+                              "page"
+                            ]
+                          },
+                          "date": {
+                            "type": "string",
+                            "nullable": true,
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "bodyMarkdown": {
+                            "type": "string"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "pinned": {
+                            "type": "boolean"
+                          },
+                          "taskIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                            },
+                            "description": "Tasks embedded in bodyMarkdown, derived by the server on every save"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "deleted": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "userId",
+                          "area",
+                          "type",
+                          "date",
+                          "title",
+                          "bodyMarkdown",
+                          "tags",
+                          "pinned",
+                          "taskIds",
+                          "version",
+                          "createdAt",
+                          "updatedAt",
+                          "deleted"
+                        ]
+                      },
+                      "description": "The live notes among the ids, in request order; deleted or unknown ids are left out"
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
             "content": {
               "application/json": {
                 "schema": {

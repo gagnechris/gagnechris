@@ -235,22 +235,43 @@ export type MediaUploadUrlResponse = z.infer<
   typeof MediaUploadUrlResponseSchema
 >;
 
+/** What the contact form shows for a field error, whichever side caught it. */
+export const CONTACT_FIELD_MESSAGES = {
+  name: { missing: 'Name is required', tooLong: 'Name is too long' },
+  email: {
+    missing: 'Enter a valid email address',
+    tooLong: 'Email is too long',
+  },
+  message: { missing: 'Message is required', tooLong: 'Message is too long' },
+} as const;
+
+export type ContactField = keyof typeof CONTACT_FIELD_MESSAGES;
+
+/** Maps a zod issue code, from the schema or the API's `fields`, to its message. */
+export const contactFieldMessage = (
+  field: ContactField,
+  code: string,
+): string =>
+  code === 'too_big'
+    ? CONTACT_FIELD_MESSAGES[field].tooLong
+    : CONTACT_FIELD_MESSAGES[field].missing;
+
 export const ContactRequestSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, 'Name is required')
-    .max(200, 'Name is too long'),
+    .min(1, CONTACT_FIELD_MESSAGES.name.missing)
+    .max(200, CONTACT_FIELD_MESSAGES.name.tooLong),
   email: z
     .string()
     .trim()
-    .email('Enter a valid email address')
-    .max(320, 'Email is too long'),
+    .email(CONTACT_FIELD_MESSAGES.email.missing)
+    .max(320, CONTACT_FIELD_MESSAGES.email.tooLong),
   message: z
     .string()
     .trim()
-    .min(1, 'Message is required')
-    .max(10_000, 'Message is too long'),
+    .min(1, CONTACT_FIELD_MESSAGES.message.missing)
+    .max(10_000, CONTACT_FIELD_MESSAGES.message.tooLong),
   /**
    * Honeypot: must be empty. Non-semantic name resists autofill; `website` is
    * still accepted so old bots keep triggering the trap.
@@ -650,6 +671,26 @@ export const NoteListResponseSchema = z.object({
 
 export type NoteListResponse = z.infer<typeof NoteListResponseSchema>;
 
+/** Most ids one batch read takes: one DynamoDB BatchGetItem. */
+export const NOTEBOOK_BATCH_MAX_IDS = 100;
+
+/** Body of the notes and tasks batch reads. */
+export const NotebookBatchRequestSchema = z.object({
+  ids: z.array(UlidSchema).min(1).max(NOTEBOOK_BATCH_MAX_IDS),
+});
+
+export type NotebookBatchRequest = z.infer<typeof NotebookBatchRequestSchema>;
+
+export const NoteBatchResponseSchema = z.object({
+  items: z
+    .array(NoteSchema)
+    .describe(
+      'The live notes among the ids, in request order; deleted or unknown ids are left out',
+    ),
+});
+
+export type NoteBatchResponse = z.infer<typeof NoteBatchResponseSchema>;
+
 export const CreateNoteRequestSchema = z
   .object({
     id: UlidSchema,
@@ -792,15 +833,6 @@ export const TaskListResponseSchema = z.object({
 });
 
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
-
-/** Most ids one batch read takes: one DynamoDB BatchGetItem. */
-export const TASK_BATCH_MAX_IDS = 100;
-
-export const TaskBatchRequestSchema = z.object({
-  ids: z.array(UlidSchema).min(1).max(TASK_BATCH_MAX_IDS),
-});
-
-export type TaskBatchRequest = z.infer<typeof TaskBatchRequestSchema>;
 
 export const TaskBatchResponseSchema = z.object({
   items: z

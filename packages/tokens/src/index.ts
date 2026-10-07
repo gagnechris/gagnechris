@@ -1,4 +1,5 @@
 export {
+  breakpoint,
   tokenCssEntries,
   tokens,
   tokensToCssRoot,

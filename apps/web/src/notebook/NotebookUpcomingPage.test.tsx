@@ -20,6 +20,8 @@ const server = vi.hoisted(() => ({
   notes: new Map<string, Note>(),
   tasks: new Map<string, Task>(),
   created: [] as Record<string, unknown>[],
+  noteGets: [] as string[],
+  noteBatches: [] as string[][],
 }));
 
 vi.mock('../kit/markdown/MarkdownEditor', () => ({
@@ -91,6 +93,7 @@ vi.mock('../workspace/api/client', () => ({
           });
         }
         if (path === '/api/notebook/notes/{id}') {
+          server.noteGets.push(p.id!);
           const note = server.notes.get(p.id!);
           return note ? ok(note) : notFound();
         }
@@ -113,6 +116,16 @@ vi.mock('../workspace/api/client', () => ({
         return ok(next);
       },
       POST: async (path: string, init?: Init) => {
+        if (path === '/api/notebook/notes/batch') {
+          const ids = (init!.body as { ids: string[] }).ids;
+          server.noteBatches.push(ids);
+          return ok({
+            items: ids.flatMap((id) => {
+              const note = server.notes.get(id);
+              return note && !note.deleted ? [note] : [];
+            }),
+          });
+        }
         if (path !== '/api/notebook/tasks') return notFound();
         server.created.push(init!.body!);
         // Mirrors the API's title limit.
@@ -193,6 +206,8 @@ describe('NotebookUpcomingPage', () => {
     server.notes.clear();
     server.tasks.clear();
     server.created.length = 0;
+    server.noteGets = [];
+    server.noteBatches = [];
     localStorage.clear();
   });
 
@@ -254,6 +269,45 @@ describe('NotebookUpcomingPage', () => {
     for (const title of ['Showing now', 'Closed', 'Home errand']) {
       expect(screen.queryByText(title)).not.toBeInTheDocument();
     }
+  });
+
+  test('note chips for tasks from several notes come from one batch read', async () => {
+    const page = (n: number, title: string): Note => ({
+      id: `01ARZ3NDEKTSV4RRFFQ69G5N0${n}`,
+      userId: 'u1',
+      area: 'work',
+      type: 'page',
+      date: null,
+      title,
+      bodyMarkdown: '',
+      tags: [],
+      pinned: false,
+      taskIds: [],
+      version: 1,
+      createdAt: '2026-10-01T13:00:00.000Z',
+      updatedAt: '2026-10-01T13:00:00.000Z',
+      deleted: false,
+    });
+    const notes = [page(1, 'Trip plans'), page(2, 'House'), page(3, 'Garden')];
+    notes.forEach((n, i) => {
+      server.notes.set(n.id, n);
+      addTask(
+        task(10 + i, {
+          title: `Task ${i}`,
+          startDate: addDays(today, 1),
+          noteId: n.id,
+        }),
+      );
+    });
+
+    renderNotebook();
+    await waitFor(() => {
+      for (const n of notes) {
+        expect(within(group('Tomorrow')).getByText(n.title)).toBeVisible();
+      }
+    });
+    expect(server.noteBatches).toEqual([notes.map((n) => n.id).sort()]);
+    expect(server.noteGets).toEqual([]);
   });
 
   test('Do today moves the task to Today’s Still open without a reload', async () => {

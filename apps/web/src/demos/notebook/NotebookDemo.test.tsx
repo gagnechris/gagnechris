@@ -319,6 +319,26 @@ describe('NotebookDemo', () => {
     expect(screen.queryByRole('tablist')).toBeNull();
   });
 
+  test('on a phone Home and End jump between the panel tabs', async () => {
+    setPhone(true);
+    const user = userEvent.setup();
+    renderDemo();
+    const [stillOpen, comingUp] = within(
+      screen.getByRole('tablist', { name: 'Tasks outside the note' }),
+    ).getAllByRole('tab');
+    stillOpen!.focus();
+    await user.keyboard('{End}');
+    expect(comingUp).toHaveFocus();
+    expect(comingUp).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'aria-labelledby',
+      comingUp!.id,
+    );
+    await user.keyboard('{Home}');
+    expect(stillOpen).toHaveFocus();
+    expect(stillOpen).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('on a phone the side panels are tabs under the note with counts; arrow keys switch them', async () => {
     setPhone(true);
     const user = userEvent.setup();
