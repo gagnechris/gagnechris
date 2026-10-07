@@ -13,6 +13,16 @@ import { newestById } from './newestById';
 
 export const COMING_UP_DAYS = 14;
 
+/** "the next two weeks" at the default horizon. */
+export const comingUpWindow = (days: number = COMING_UP_DAYS): string =>
+  days === 14
+    ? 'the next two weeks'
+    : days === 7
+      ? 'the next week'
+      : days === 1
+        ? 'the next day'
+        : `the next ${days} days`;
+
 export type BucketTask = Pick<
   Task,
   | 'id'

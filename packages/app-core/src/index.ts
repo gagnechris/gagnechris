@@ -59,6 +59,7 @@ export {
   fetchDailyNote,
   fetchHome,
   fetchNote,
+  fetchNotesBatch,
   fetchNotesPage,
   fetchPost,
   fetchPosts,

@@ -27,6 +27,7 @@ import { usePublishedView } from './prerender/usePublishedView';
 import ProjectCard from './projects/ProjectCard';
 import SiteLink from './components/SiteLink';
 import './App.css';
+import './home/homeSections.css';
 import PageHead from './components/PageHead';
 
 // Markup must match `renderHomeBodyHtml` element for element (App.test.tsx).

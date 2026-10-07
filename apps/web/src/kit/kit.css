@@ -60,13 +60,13 @@
 
 .admin-badge--draft,
 .admin-badge--unpublished {
-  background: #fdf3dc;
-  color: #7a5a12;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .admin-badge--draft::before,
 .admin-badge--unpublished::before {
-  background: #c08a1e;
+  background: var(--color-warning-dot);
 }
 
 .admin-badge--published {
@@ -85,7 +85,7 @@
 
 .admin-eyebrow {
   margin: 0 0 0.375rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   color: var(--neutral-600);
 }
@@ -192,7 +192,7 @@
 }
 
 .admin-table__sub {
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   color: var(--neutral-600);
 }
 
@@ -208,7 +208,7 @@ th.admin-table__status {
 
 .admin-table__slug {
   width: 13rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--neutral-700);
 }
@@ -280,8 +280,8 @@ th.admin-table__date {
 }
 
 .admin-btn--danger {
-  color: #9b1c1c;
-  border-color: #fecaca;
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
 }
 
 .admin-post-list__link {

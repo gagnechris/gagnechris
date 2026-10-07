@@ -48,6 +48,13 @@ export function collectAdminSoftDeletePrefixes(
   return [...prefixes].sort();
 }
 
+/** Sorted `aws s3 sync --exclude` patterns for every key the publisher writes. */
+export function collectS3OutputPatterns(
+  targets: readonly PublishTarget[],
+): string[] {
+  return [...new Set(targets.flatMap((t) => t.s3Outputs))].sort();
+}
+
 export function allOptionBPages(targets: readonly PublishTarget[]): string[] {
   return [
     ...new Set([...collectOptionBPaths(targets), ...STATIC_OPTION_B_PAGES]),

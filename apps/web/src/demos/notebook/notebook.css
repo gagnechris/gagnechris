@@ -21,7 +21,7 @@
 
 .notebook-demo__bar .admin-btn {
   padding: 7px 12px;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
 }
 
 .notebook-demo__kicker {
@@ -34,7 +34,7 @@
 .demo-frame .notebook-demo__day {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   font-weight: 700;
   line-height: 1.25;
   color: var(--color-ink);
@@ -108,8 +108,8 @@
   padding: 0;
   border: 0;
   background: transparent;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
   color: var(--color-ink);
 }
 
@@ -128,7 +128,7 @@
   min-height: 36px;
   padding: 0 14px;
   border-radius: var(--radius-md);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 700;
 }
 

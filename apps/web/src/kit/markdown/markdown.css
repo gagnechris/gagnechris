@@ -29,7 +29,7 @@
 }
 
 .markdown-editor .cm-scroller {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .markdown-preview {
@@ -67,7 +67,7 @@
 }
 
 .markdown-preview code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
   background: var(--neutral-100);
   padding: 0.1em 0.35em;
@@ -202,7 +202,7 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 }
 
 .task-embed--failed .task-embed__title {
-  color: #b42318;
+  color: var(--color-error);
 }
 
 .task-embed__pill {
@@ -219,8 +219,8 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 }
 
 .task-embed__pill--high {
-  background: #fef3f2;
-  color: #b42318;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .task-embed__pill--low {
@@ -464,7 +464,7 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 .markdown-editor .cm-live .cm-md-code,
 .markdown-editor .cm-live .cm-md-fence,
 .markdown-editor .cm-live .cm-md-code-block {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
 }
 

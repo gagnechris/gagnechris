@@ -3,9 +3,12 @@
 :root {
   /* Modular Type Scale (1.333 - Perfect Fourth) */
   --text-xs: 0.75rem; /* 12px */
+  --text-caption: 0.8125rem; /* 13px */
   --text-sm: 0.875rem; /* 14px */
   --text-base: 1rem; /* 16px */
+  --text-body: 1.0625rem; /* 17px */
   --text-lg: 1.125rem; /* 18px */
+  --text-lead: 1.1875rem; /* 19px */
   --text-xl: 1.333rem; /* 21.33px */
   --text-2xl: 1.777rem; /* 28.43px */
   --text-3xl: 2.369rem; /* 37.9px */
@@ -53,8 +56,28 @@
   /* Text Colors */
   --color-ink: #16191d;
   --color-ink-soft: #4a515a;
+  --color-ink-muted: #2b3138;
+  --color-prose: #22272d;
+  --color-placeholder: #757575;
   --color-link: #235a58;
   --color-error: #b42318;
+  --color-error-bg: #fef3f2;
+  --color-error-border: #fda29b;
+  --color-alert: #a3341f;
+  --color-alert-border: #f1b8ad;
+  --color-danger: #9b1c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-on-danger: #fff7f7;
+  --color-warning: #7a5a12;
+  --color-warning-ink: #3d2a05;
+  --color-warning-bg: #fdf3dc;
+  --color-warning-dot: #c08a1e;
+  --color-building: #c28d24;
+  --color-notice: #92400e;
+  --color-notice-bg: #fef3c7;
+  --color-info: #23436b;
+  --color-info-bg: #e4ecf7;
 
   /* Font Family */
   --font-sans:
@@ -63,6 +86,8 @@
     'Inter', 'Inter Fallback', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif:
     'Newsreader', 'Newsreader Fallback', Georgia, 'Times New Roman', serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Line Heights */
   --line-tight: 1.2;
@@ -85,4 +110,13 @@
   --radius-md: 0.5rem; /* 8px */
   --radius-lg: 1rem; /* 16px */
   --radius-full: 9999px;
+
+  /* Breakpoints (reference only: @media cannot use var()) */
+  --breakpoint-phone: 480px;
+  --breakpoint-narrow: 640px;
+  --breakpoint-demo-stack: 760px;
+  --breakpoint-tab-bar: 767px;
+  --breakpoint-sidebar: 1000px;
+  --breakpoint-wide: 1024px;
+  --breakpoint-wider: 1100px;
 }

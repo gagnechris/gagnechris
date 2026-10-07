@@ -35,7 +35,7 @@
   border: 1px dashed var(--neutral-300);
   background: none;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   color: var(--neutral-500);
 }
 
@@ -98,7 +98,7 @@
 .project-mini__heading {
   margin-bottom: 2px;
   font-family: var(--font-serif);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1;
   color: var(--color-ink);
 }

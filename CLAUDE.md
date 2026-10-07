@@ -34,7 +34,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
-- Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list + local publish-relevance routes from publisher targets; fails on diff)
+- Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list, KVS keys and slug cap, local publish-relevance routes and the publisher-owned S3 key list from publisher targets; fails on diff)
 - Local E2E: `npm run e2e:local` (publish lifecycle smoke: the Playwright `api` project, `e2e/tests/publish-lifecycle.spec.ts`, on its own stack)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)

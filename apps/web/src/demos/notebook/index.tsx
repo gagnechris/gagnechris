@@ -1,11 +1,5 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { breakpoint } from '@gagnechris/tokens';
 import { Button } from '../../kit/Button';
 import { formatCalendarDay } from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
@@ -16,6 +10,7 @@ import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
 import { useMediaQuery } from '../../kit/useMediaQuery';
+import { useTabs } from '../../kit/useTabs';
 import {
   NOTEBOOK_DEMO_NOTE,
   notebookDemoHintText,
@@ -29,7 +24,7 @@ import '../../kit/markdown/markdown.css';
 import './notebook.css';
 
 /** notebook.css switches to the phone layout at the same width. */
-export const NOTEBOOK_DEMO_PHONE_QUERY = '(max-width: 760px)';
+export const NOTEBOOK_DEMO_PHONE_QUERY = `(max-width: ${breakpoint.demoStack}px)`;
 
 const PLACEHOLDER = {
   wide: 'Type a task, then Enter. Try: Call Sam @mon !high',
@@ -206,6 +201,7 @@ function NotebookDemoBody({
 }
 
 type Tab = 'still-open' | 'coming-up';
+const TABS: readonly Tab[] = ['still-open', 'coming-up'];
 
 /** On phones the side panels become tabs under the note. */
 function PanelTabs({
@@ -220,56 +216,34 @@ function PanelTabs({
   comingUp: ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>('still-open');
-  const baseId = useId();
-  const tabs: [Tab, string][] = [
-    ['still-open', `Still open · ${stillOpenCount}`],
-    ['coming-up', `Coming up · ${comingUpCount}`],
-  ];
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const next: Tab = tab === 'still-open' ? 'coming-up' : 'still-open';
-    setTab(next);
-    tabsRef.current
-      ?.querySelector<HTMLButtonElement>(`[data-tab="${next}"]`)
-      ?.focus();
+  const tabs = useTabs({
+    keys: TABS,
+    selected: tab,
+    onSelect: setTab,
+    label: 'Tasks outside the note',
+  });
+  const labels: Record<Tab, string> = {
+    'still-open': `Still open · ${stillOpenCount}`,
+    'coming-up': `Coming up · ${comingUpCount}`,
   };
 
   return (
     <div className="notebook-demo__panels">
-      <div
-        className="notebook-demo__tabs"
-        role="tablist"
-        aria-label="Tasks outside the note"
-        ref={tabsRef}
-        onKeyDown={onKeyDown}
-      >
-        {tabs.map(([id, label]) => (
+      <div className="notebook-demo__tabs" {...tabs.listProps}>
+        {TABS.map((id) => (
           <button
             key={id}
-            type="button"
-            role="tab"
-            data-tab={id}
-            id={`${baseId}-${id}-tab`}
-            aria-selected={tab === id}
-            aria-controls={`${baseId}-${id}`}
-            tabIndex={tab === id ? 0 : -1}
+            {...tabs.tabProps(id)}
             className="notebook-demo__tab"
-            onClick={() => setTab(id)}
           >
-            {label}
+            {labels[id]}
           </button>
         ))}
       </div>
-      {tabs.map(([id]) => (
+      {TABS.map((id) => (
         <div
           key={id}
-          role="tabpanel"
-          id={`${baseId}-${id}`}
-          aria-labelledby={`${baseId}-${id}-tab`}
-          hidden={tab !== id}
+          {...tabs.panelProps(id)}
           className="notebook-demo__tabpanel"
         >
           {id === 'still-open' ? stillOpen : comingUp}

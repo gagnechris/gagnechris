@@ -27,17 +27,19 @@ var OPTION_B_PAGES = [
   '/projects',
   '/resume',
 ];
+
+// KVS keys (packages/shared/src/slug-kvs.ts) and the slug cap (MAX_SLUG_LENGTH).
+var BLOG_SYNCED_KEY = '__synced__';
+var PROJECT_KEY_PREFIX = 'projects/';
+var PROJECTS_SYNCED_KEY = 'projects/__synced__';
+var MAX_SLUG_LENGTH = 120;
 /* PUBLISH_SURFACE_END */
 
 /** S3 keys stay under the storage prefix. */
 var PUBLIC_POSTS_PREFIX = '/posts';
 var STORAGE_POSTS_PREFIX = '/blog';
 
-/** Must match the namespaces in services/publisher/src/viewer-request-slugs.ts. */
-var BLOG_SYNCED_KEY = '__synced__';
 var PROJECTS_PREFIX = '/projects';
-var PROJECT_KEY_PREFIX = 'projects/';
-var PROJECTS_SYNCED_KEY = 'projects/__synced__';
 
 var LEGACY_RESUME_PDF = '/Christopher M Gagne Resume 2026.pdf';
 
@@ -290,12 +292,9 @@ function setOptionBPagesForTests(pages) {
   OPTION_B_PAGES_OVERRIDE = pages;
 }
 
-/**
- * Lowercase letters, digits and hyphens; max length must match
- * MAX_SLUG_LENGTH in @gagnechris/shared. `__x__` is reserved for sentinels.
- */
+/** Lowercase letters, digits and hyphens. `__x__` is reserved for sentinels. */
 function isValidSlug(slug) {
-  if (!slug || slug.length > 120) {
+  if (!slug || slug.length > MAX_SLUG_LENGTH) {
     return false;
   }
   if (

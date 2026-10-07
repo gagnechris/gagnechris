@@ -2,8 +2,6 @@
 .project-page {
   --project-measure: 680px;
   --project-demo-width: 1072px;
-  --post-body-size: 1.3125rem;
-  --post-prose: #22272d;
 }
 
 .project-header,
@@ -23,7 +21,7 @@
 .project-main {
   max-width: calc(var(--project-measure) + 2 * var(--site-gutter));
   font-family: var(--font-serif);
-  color: var(--post-prose);
+  color: var(--color-prose);
 }
 
 .project-header {
@@ -85,7 +83,7 @@
   max-width: var(--project-measure);
   margin: 0 auto 16px;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.12em;
@@ -163,14 +161,14 @@
   padding: 16px 0;
   border-bottom: 1px solid var(--neutral-200);
   counter-increment: project-step;
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.6;
 }
 
 .project-body ol > li::before {
   content: counter(project-step, decimal-leading-zero);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-link);
@@ -197,7 +195,7 @@
 
 .project-body dt {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.4;
   color: var(--neutral-700);
@@ -205,14 +203,14 @@
 
 .project-body dd {
   margin: 0;
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.6;
 }
 
 .project-stack {
   margin: 18px 0 0;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -294,7 +292,7 @@
 
 .project-build-log__date {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
   color: var(--neutral-600);
@@ -331,10 +329,6 @@
 
 /* Phone · Project Notebook demo. */
 @media (max-width: 480px) {
-  .project-page {
-    --post-body-size: 1.1875rem;
-  }
-
   .project-header {
     margin-top: -8px;
     margin-bottom: 18px;
@@ -371,11 +365,11 @@
 
   .project-body ol > li {
     grid-template-columns: 36px minmax(0, 1fr);
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
   }
 
   .project-body dd {
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
   }
 
   .project-build-log h2 {

@@ -7,7 +7,7 @@ import { MAX_SLUG_LENGTH, slugify } from './slugify.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('MAX_SLUG_LENGTH vs CloudFront', () => {
-  it('matches isValidBlogSlug max in the viewer-request function', () => {
+  it('is the slug cap generated into the viewer-request function', () => {
     const fnSource = readFileSync(
       join(
         __dirname,
@@ -15,7 +15,7 @@ describe('MAX_SLUG_LENGTH vs CloudFront', () => {
       ),
       'utf8',
     );
-    const match = fnSource.match(/slug\.length\s*>\s*(\d+)/);
+    const match = fnSource.match(/var MAX_SLUG_LENGTH = (\d+);/);
     expect(match?.[1]).toBe(String(MAX_SLUG_LENGTH));
   });
 

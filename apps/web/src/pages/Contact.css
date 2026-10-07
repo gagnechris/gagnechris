@@ -80,7 +80,7 @@
 }
 
 .contact-field ::placeholder {
-  color: #757575;
+  color: var(--color-placeholder);
   opacity: 1;
 }
 
@@ -124,7 +124,7 @@
   padding: 12px 14px;
   border: 1px solid var(--color-error);
   border-radius: var(--contact-control-radius);
-  background: #fef3f2;
+  background: var(--color-error-bg);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -179,9 +179,9 @@
 .contact-success p {
   margin: 12px 0 0;
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.6;
-  color: #2b3138;
+  color: var(--color-ink-muted);
 }
 
 .contact-success__links {
@@ -209,7 +209,7 @@
 @media (max-width: 480px) {
   .contact-page {
     --contact-title-size: 2.875rem;
-    --contact-intro-size: 1.1875rem;
+    --contact-intro-size: var(--text-lead);
     --contact-intro-gap: 7px;
     --contact-header-gap: 20px;
     --contact-button-width: 100%;

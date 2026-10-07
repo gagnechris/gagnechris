@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { POST_SLUG_KVS_SYNCED_KEY } from '@gagnechris/shared';
 import {
-  BLOG_SLUG_SYNCED_KEY,
   batchSlugKeyDiff,
   diffSlugKeys,
   KVS_UPDATE_BATCH_SIZE,
@@ -22,19 +22,22 @@ describe('diffSlugKeys', () => {
       expect.arrayContaining([
         { Key: 'welcome', Value: '1' },
         { Key: 'hello', Value: '1' },
-        { Key: BLOG_SLUG_SYNCED_KEY, Value: '1' },
+        { Key: POST_SLUG_KVS_SYNCED_KEY, Value: '1' },
       ]),
     );
     expect(diff.puts).toHaveLength(3);
   });
 
   it('deletes stale slugs and is a no-op when already synced', () => {
-    const existing = ['welcome', 'old-post', BLOG_SLUG_SYNCED_KEY];
+    const existing = ['welcome', 'old-post', POST_SLUG_KVS_SYNCED_KEY];
     const withStale = diffSlugKeys(existing, ['welcome']);
     expect(withStale.puts).toEqual([]);
     expect(withStale.deletes).toEqual([{ Key: 'old-post' }]);
 
-    const inSync = diffSlugKeys(['welcome', BLOG_SLUG_SYNCED_KEY], ['welcome']);
+    const inSync = diffSlugKeys(
+      ['welcome', POST_SLUG_KVS_SYNCED_KEY],
+      ['welcome'],
+    );
     expect(inSync.puts).toEqual([]);
     expect(inSync.deletes).toEqual([]);
   });
@@ -45,7 +48,7 @@ describe('diffSlugKeys', () => {
     expect(first.puts).toHaveLength(501); // 500 slugs + sentinel
     expect(first.deletes).toEqual([]);
 
-    const existing = [...slugs, BLOG_SLUG_SYNCED_KEY];
+    const existing = [...slugs, POST_SLUG_KVS_SYNCED_KEY];
     const noop = diffSlugKeys(existing, slugs);
     expect(noop.puts).toEqual([]);
     expect(noop.deletes).toEqual([]);
@@ -59,7 +62,7 @@ describe('diffSlugKeys', () => {
 describe('KVS namespaces', () => {
   const shared = [
     'welcome',
-    BLOG_SLUG_SYNCED_KEY,
+    POST_SLUG_KVS_SYNCED_KEY,
     'projects/notebook',
     'projects/__synced__',
   ];
@@ -72,7 +75,7 @@ describe('KVS namespaces', () => {
 
   it('a project sync never touches post keys and writes its own sentinel', () => {
     const diff = diffSlugKeys(
-      ['welcome', BLOG_SLUG_SYNCED_KEY, 'projects/old'],
+      ['welcome', POST_SLUG_KVS_SYNCED_KEY, 'projects/old'],
       ['projects/notebook'],
       PROJECT_SLUG_NAMESPACE,
     );
@@ -107,7 +110,7 @@ describe('KVS namespaces', () => {
       vi.unstubAllEnvs();
     }
     expect([...keys].sort()).toEqual([
-      BLOG_SLUG_SYNCED_KEY,
+      POST_SLUG_KVS_SYNCED_KEY,
       'hello',
       'projects/__synced__',
       'projects/bears-lab',
@@ -194,13 +197,15 @@ describe('syncSlugKeysOnce / concurrent sync', () => {
     };
     await syncSlugKeysOnce('arn:test', ['welcome'], wrapped);
     expect(order).toEqual(['describe', 'list', 'update']);
-    expect(store.getKeys()).toEqual(new Set(['welcome', BLOG_SLUG_SYNCED_KEY]));
+    expect(store.getKeys()).toEqual(
+      new Set(['welcome', POST_SLUG_KVS_SYNCED_KEY]),
+    );
   });
 
   it('concurrent syncs converge via ConflictException retry', async () => {
     // Simulate the race: sync A describes+lists, then sync B mutates the
     // store (new ETag) before A updates → A conflicts, retries, converges.
-    const store = createInMemoryKvs([BLOG_SLUG_SYNCED_KEY, 'old']);
+    const store = createInMemoryKvs([POST_SLUG_KVS_SYNCED_KEY, 'old']);
     let described = false;
     const client: SlugKvsClient = {
       async describeETag(arn) {
@@ -224,7 +229,7 @@ describe('syncSlugKeysOnce / concurrent sync', () => {
       sleep,
     });
 
-    expect(store.getKeys()).toEqual(new Set(['a', BLOG_SLUG_SYNCED_KEY]));
+    expect(store.getKeys()).toEqual(new Set(['a', POST_SLUG_KVS_SYNCED_KEY]));
     expect(sleep).toHaveBeenCalled();
   });
 
@@ -250,7 +255,7 @@ describe('syncSlugKeysOnce / concurrent sync', () => {
   it('re-resolves desired slugs after list so concurrent publishes are kept', async () => {
     // Republish-all started with [a]; meanwhile stream published b into KVS.
     // Stale desired [a] would delete b — thunk must return [a,b] after list.
-    const store = createInMemoryKvs([BLOG_SLUG_SYNCED_KEY, 'a', 'b']);
+    const store = createInMemoryKvs([POST_SLUG_KVS_SYNCED_KEY, 'a', 'b']);
     let desired = ['a'];
     const order: string[] = [];
     const client: SlugKvsClient = {
@@ -280,6 +285,8 @@ describe('syncSlugKeysOnce / concurrent sync', () => {
     );
 
     expect(order).toEqual(['describe', 'list', 'resolve']);
-    expect(store.getKeys()).toEqual(new Set(['a', 'b', BLOG_SLUG_SYNCED_KEY]));
+    expect(store.getKeys()).toEqual(
+      new Set(['a', 'b', POST_SLUG_KVS_SYNCED_KEY]),
+    );
   });
 });

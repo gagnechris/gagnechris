@@ -1,0 +1,127 @@
+/*
+ * Recent posts and What I'm building on Home, which the posts demo also
+ * prints (renderHomeRecentPostsHtml) at pane scale.
+ */
+.home-section {
+  margin-top: 100px;
+}
+
+.home-section + .home-section {
+  margin-top: 83px;
+}
+
+.home-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-ink);
+}
+
+.home-section__label {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.home-section__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.home-posts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-post {
+  padding: 27px 0 25px;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.home-post__title {
+  margin: 0;
+  font-size: 1.875rem;
+  line-height: 1.25;
+}
+
+.home-post__title a {
+  font-weight: inherit;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.home-post__title a:hover {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.home-post__excerpt {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-lead);
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}
+
+.home-post__date {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.84375rem;
+  line-height: 1.4;
+  color: var(--neutral-600);
+}
+
+/* Phone · Home; values in docs/design/public-redesign/README.md. */
+@media (max-width: 480px) {
+  .home-section,
+  .home-section + .home-section {
+    margin-top: 26px;
+  }
+
+  .home-section__head {
+    padding-bottom: 8px;
+  }
+
+  .home-section__label {
+    line-height: 1.4;
+  }
+
+  .home-section__more {
+    display: none;
+  }
+
+  .home-post {
+    padding: 16px 0 15px;
+  }
+
+  .home-post__title {
+    font-size: 1.5rem;
+  }
+
+  .home-post__excerpt {
+    margin-top: 5px;
+    font-size: var(--text-body);
+    line-height: 1.45;
+  }
+
+  .home-post__date {
+    margin-top: 3px;
+  }
+}

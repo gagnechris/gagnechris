@@ -8,6 +8,7 @@ import { CACHE_FEED } from '../types.js';
 
 const target: PublishTarget = {
   id: 'posts-feeds',
+  s3Outputs: ['blog/*', 'rss.xml'],
   optionBPaths: ['/blog'],
   adminMutationPrefixes: ['/api/admin/posts'],
   adminSoftDelete: true,

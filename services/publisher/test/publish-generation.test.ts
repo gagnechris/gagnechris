@@ -267,6 +267,7 @@ describe('the settle check', () => {
     opts: { shell?: boolean } = {},
   ): PublishTarget => ({
     id: 'probe',
+    s3Outputs: [],
     matches: () => true,
     needs: opts.shell ? { shell: true } : {},
     kvs: {

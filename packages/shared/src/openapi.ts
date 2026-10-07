@@ -50,13 +50,14 @@ import {
   NotebookAreaSchema,
   NotebookSearchRequestSchema,
   NotebookSearchResponseSchema,
+  NoteBatchResponseSchema,
   NoteListResponseSchema,
+  NotebookBatchRequestSchema,
   NoteSchema,
   NoteSyncChangeSchema,
   SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
-  TaskBatchRequestSchema,
   TaskBatchResponseSchema,
   TaskListResponseSchema,
   TaskSchema,
@@ -582,7 +583,8 @@ export function buildOpenApiDocument() {
   registry.register('UpsertDailyNoteRequest', UpsertDailyNoteRequestSchema);
   registry.register('Task', TaskSchema);
   registry.register('TaskListResponse', TaskListResponseSchema);
-  registry.register('TaskBatchRequest', TaskBatchRequestSchema);
+  registry.register('NotebookBatchRequest', NotebookBatchRequestSchema);
+  registry.register('NoteBatchResponse', NoteBatchResponseSchema);
   registry.register('TaskBatchResponse', TaskBatchResponseSchema);
   registry.register('CreateTaskRequest', CreateTaskRequestSchema);
   registry.register('UpdateTaskRequest', UpdateTaskRequestSchema);
@@ -744,6 +746,28 @@ export function buildOpenApiDocument() {
     updateRequest: UpdateNoteRequestSchema,
     extraPaths: () => {
       registry.registerPath({
+        method: 'post',
+        path: '/api/notebook/notes/batch',
+        summary: 'Read up to 100 notes by id in one request',
+        description:
+          'Ids travel in the JSON body. Deleted and unknown ids are left out of `items`, as a GET of each would 404.',
+        tags: ['Notebook'],
+        security: [{ bearerAuth: [] }],
+        request: {
+          body: {
+            content: {
+              'application/json': { schema: NotebookBatchRequestSchema },
+            },
+          },
+        },
+        responses: {
+          200: ok(NoteBatchResponseSchema, 'The live notes, in request order'),
+          400: r400,
+          ...adminAuth,
+        },
+      });
+
+      registry.registerPath({
         method: 'get',
         path: '/api/notebook/notes/daily/{area}/{date}',
         summary: 'Get daily note or empty draft placeholder',
@@ -834,7 +858,7 @@ export function buildOpenApiDocument() {
         request: {
           body: {
             content: {
-              'application/json': { schema: TaskBatchRequestSchema },
+              'application/json': { schema: NotebookBatchRequestSchema },
             },
           },
         },
