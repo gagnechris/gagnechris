@@ -18,7 +18,7 @@
 .bears-landing__kicker {
   margin: 0 0 14px;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: 0.12em;
@@ -136,7 +136,7 @@
 .bears-landing__note {
   padding-bottom: var(--space-12);
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-lead);
   line-height: 1.6;
   color: var(--bears-charcoal);
 }
@@ -147,7 +147,7 @@
 
 .bears-landing__note .bears-landing__small {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: var(--neutral-600);
 }
@@ -228,7 +228,7 @@
   }
 
   .bears-landing__note {
-    font-size: 1.0625rem;
+    font-size: var(--text-body);
   }
 
   .bears-landing__tips h2 {
