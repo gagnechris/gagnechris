@@ -38,6 +38,15 @@ describe('API Lambda bundle', () => {
     ).toEqual([]);
   });
 
+  // Active tracing on the function records init and invocation without it.
+  it('bundles no X-Ray SDK', () => {
+    expect(
+      inputs.filter((p) =>
+        /aws-xray-sdk|cls-hooked|@aws-lambda-powertools\/tracer/.test(p),
+      ),
+    ).toEqual([]);
+  });
+
   it('loads the AWS SDK with require, never a bare import()', () => {
     expect(code).not.toMatch(/import\(["']@aws-sdk\//);
   });
