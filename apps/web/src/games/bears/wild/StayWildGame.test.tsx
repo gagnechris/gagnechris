@@ -231,7 +231,21 @@ describe('StayWildGame', () => {
     expect(
       screen.getByRole('group', { name: 'Stay Wild' }),
     ).toHaveAccessibleDescription(
-      'Left and right arrows to move, Space to jump, S to sniff, Escape to pause.',
+      'Left and right arrows to move, Space to jump, S to sniff, Esc to pause.',
+    );
+  });
+
+  test('the start screen and the footer give the same keyboard help', () => {
+    stubMedia(() => false);
+    const { container } = renderGame();
+    const help =
+      'Left and right arrows to move, Space to jump, S to sniff, Esc to pause.';
+
+    expect(container.querySelector('.wild-start__keys')).toHaveTextContent(
+      new RegExp(`^${help}$`),
+    );
+    expect(container.querySelector('.wild-note')).toHaveTextContent(
+      new RegExp(`^${help} Score \\d+\\.$`),
     );
   });
 

@@ -89,6 +89,9 @@ type EatToast = { text: string; tone: 'good' | 'bad' | 'info' };
 const toastMs = (toast: EatToast) =>
   toast.tone === 'info' ? HINT_TOAST_MS : EAT_TOAST_MS;
 
+const KEYBOARD_HELP =
+  'Left and right arrows to move, Space to jump, S to sniff, Esc to pause.';
+
 const WARN_TEXT: Readonly<Record<'person' | 'dog', string>> = {
   person: 'Camper ahead: wait until they look away, or take the high log.',
   dog: 'Dog ahead: wait until it naps, or take the high log.',
@@ -446,8 +449,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
         aria-describedby={keysId}
       >
         <p id={keysId} hidden>
-          Left and right arrows to move, Space to jump, S to sniff, Escape to
-          pause.
+          {KEYBOARD_HELP}
         </p>
         <canvas
           ref={canvasRef}
@@ -593,7 +595,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
               <p className="wild-start__keys">
                 {touch
                   ? 'Maple runs on her own. Tap Jump and Sniff.'
-                  : '← → move · Space jump · S sniff · Esc pause'}
+                  : KEYBOARD_HELP}
               </p>
               <button
                 type="button"
@@ -682,8 +684,7 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
       ) : null}
 
       <p className="wild-note">
-        Keyboard: ← → move, Space jump, S sniff, Esc pause. Score{' '}
-        {wildScore(state)}.
+        {KEYBOARD_HELP} Score {wildScore(state)}.
       </p>
     </div>
   );

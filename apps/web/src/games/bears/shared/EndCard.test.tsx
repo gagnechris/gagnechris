@@ -103,6 +103,13 @@ describe('EndCard', () => {
     expect(screen.getByRole('region')).toHaveClass('bears-end', 'camp-end');
   });
 
+  test('leaves the stats out when there are none', () => {
+    renderCard({ summary: '60s · 3 saves · score 675', stats: undefined });
+
+    expect(screen.queryByRole('term')).not.toBeInTheDocument();
+    expect(screen.getByText('60s · 3 saves · score 675')).toBeInTheDocument();
+  });
+
   test('hides the rating when paws is omitted', () => {
     renderCard({ paws: undefined });
 

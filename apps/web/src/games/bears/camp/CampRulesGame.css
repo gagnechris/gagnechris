@@ -52,7 +52,6 @@
   background: var(--accent-gold);
 }
 
-.camp-hud__short,
 .camp-hud__count {
   display: none;
 }
@@ -479,13 +478,8 @@
     padding: var(--space-3);
   }
 
-  .camp-hud__long,
   .camp-hud__slot {
     display: none;
-  }
-
-  .camp-hud__short {
-    display: block;
   }
 
   .camp-hud__label {
@@ -602,14 +596,9 @@
   }
 
   .camp-end .bears-end__summary {
-    display: block;
     margin: 0;
     font-size: 15px;
     color: var(--neutral-600);
-  }
-
-  .camp-end .bears-end__stats {
-    display: none;
   }
 
   .camp-end .bears-end__tip {

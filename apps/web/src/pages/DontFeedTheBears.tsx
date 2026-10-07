@@ -127,7 +127,6 @@ type GameCard = {
   kicker: string;
   title: string;
   body: string;
-  phoneBody: string;
   details: string;
   cta: string;
   Art: () => JSX.Element;
@@ -138,8 +137,7 @@ const GAME_CARDS: readonly GameCard[] = [
     game: 'camp',
     kicker: 'You’re the camper',
     title: 'Camp Rules',
-    body: 'Your guests keep leaving food out. Put it away, scare off curious bears, and keep camp safe until dark.',
-    phoneBody: 'Put food away and keep bears out until dark.',
+    body: 'Put food away and keep bears out until dark.',
     details: '60 seconds · tap or keyboard · new camp every day',
     cta: 'Play as the camper',
     Art: CampArt,
@@ -148,8 +146,7 @@ const GAME_CARDS: readonly GameCard[] = [
     game: 'wild',
     kicker: 'You’re the bear',
     title: 'Stay Wild',
-    body: 'Help Maple fatten up on berries and beechnuts and reach the den before winter. Campsite snacks are tempting. Too tempting.',
-    phoneBody: 'Fatten up on berries and reach the den before snow.',
+    body: 'Fatten up on berries and reach the den before snow.',
     details: '3 short levels · keyboard or touch · run, jump, sniff',
     cta: 'Play as the bear',
     Art: WildArt,
@@ -183,7 +180,7 @@ const DontFeedTheBears = () => {
       <div className="bears-landing__body">
         <section className="bears-landing__cards" aria-label="Pick a side">
           {GAME_CARDS.map(
-            ({ game, kicker, title, body, phoneBody, details, cta, Art }) => (
+            ({ game, kicker, title, body, details, cta, Art }) => (
               <Link
                 key={game}
                 to={withFrom(BEARS_GAME_PATHS[game], from)}
@@ -197,9 +194,6 @@ const DontFeedTheBears = () => {
                   <span className="bears-card__kicker">{kicker}</span>
                   <h2 className="bears-card__title">{title}</h2>
                   <p className="bears-card__text">{body}</p>
-                  <p className="bears-card__text bears-card__text--phone">
-                    {phoneBody}
-                  </p>
                   <p className="bears-card__details">{details}</p>
                   <span className="bears-btn bears-btn--primary bears-card__cta">
                     {cta}

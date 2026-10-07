@@ -66,23 +66,20 @@ test.describe('Bears landing at 393px', () => {
     await expect(
       page.getByText('Fatten up on berries and reach the den before snow.'),
     ).toBeVisible();
-    await expect(
-      page.getByText(/Your guests keep leaving food out/),
-    ).toBeHidden();
-    await expect(page.getByText(/Help Maple fatten up/)).toBeHidden();
+    await expect(page.locator('.bears-card__text')).toHaveCount(2);
 
     const sizes: Record<string, number> = {
       '.bears-landing__kicker': 12,
       '.bears-landing h1': 40,
       '.bears-card__kicker': 12,
       '.bears-card__title': 26,
-      '.bears-card__text--phone': 16,
+      '.bears-card__text': 16,
     };
     for (const [selector, px] of Object.entries(sizes)) {
       within2(await fontSize(page, selector), px, selector);
     }
     const textFont = await page
-      .locator('.bears-card__text--phone')
+      .locator('.bears-card__text')
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily);
     expect(textFont).toMatch(/^"?Newsreader/);
@@ -145,7 +142,7 @@ test.describe('Bears landing at 393px', () => {
 test.describe('Bears landing on desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('keeps the lede, the long card copy and the details', async ({
+  test('keeps the lede and the details beside the same card copy', async ({
     page,
     apps,
   }) => {
@@ -154,12 +151,13 @@ test.describe('Bears landing on desktop', () => {
     await expect(page.locator('.bears-landing__lede')).toBeVisible();
     await expect(page.locator('.bears-card__details')).toHaveCount(2);
     await expect(page.locator('.bears-card__details').first()).toBeVisible();
-    await expect(
-      page.getByText(/Your guests keep leaving food out/),
-    ).toBeVisible();
+    await expect(page.locator('.bears-card__text')).toHaveCount(2);
     await expect(
       page.getByText('Put food away and keep bears out until dark.'),
-    ).toBeHidden();
+    ).toBeVisible();
+    await expect(
+      page.getByText('Fatten up on berries and reach the den before snow.'),
+    ).toBeVisible();
     within2(await fontSize(page, '.bears-card__title'), 28, 'card title');
   });
 });
