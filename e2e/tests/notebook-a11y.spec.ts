@@ -75,9 +75,22 @@ test('the calendar and area switcher work from the keyboard, and the area rides 
 
   const area = page.getByRole('radiogroup', { name: 'Notebook area' });
   await area.getByRole('radio', { name: 'Work' }).focus();
+  const personalNote = page.waitForResponse(
+    (r) => r.url().includes('/notes/daily/personal/') && r.ok(),
+  );
   await page.keyboard.press('ArrowRight');
-  await expect(area.getByRole('radio', { name: 'Personal' })).toBeFocused();
   await expect(page).toHaveURL(/[?&]area=personal/);
+  // The Personal note's editor mounts after the key press; focus has to
+  // survive that.
+  await personalNote;
+  await expect(page.getByRole('textbox', { name: 'Note body' })).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      ),
+  );
+  await expect(area.getByRole('radio', { name: 'Personal' })).toBeFocused();
 
   await page.getByText('Calendar', { exact: true }).click();
   await page.getByRole('gridcell', { name: /October 14, 2026/ }).focus();
