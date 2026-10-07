@@ -436,6 +436,17 @@ export const fetchNote = async (
   return unwrap(result, 'Could not load note');
 };
 
+/** Live notes among `ids` (at most 100), in order; missing ids were deleted or never existed. */
+export const fetchNotesBatch = async (
+  client: ApiClient,
+  ids: readonly string[],
+): Promise<Note[]> => {
+  const result = await client.POST('/api/notebook/notes/batch', {
+    body: { ids: [...ids] },
+  });
+  return unwrap(result, 'Could not load notes').items;
+};
+
 export const createNote = async (
   client: ApiClient,
   body: CreateNoteRequest,
