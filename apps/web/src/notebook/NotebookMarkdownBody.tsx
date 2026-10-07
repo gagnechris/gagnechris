@@ -1,16 +1,12 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorView } from '@codemirror/view';
 import { findTaskEmbeds } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
-import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
+// Static: only lazy routes render this body, so CodeMirror loads with the
+// route chunk instead of after it behind Suspense's reveal delay.
+import MarkdownEditor, {
+  type MarkdownEditorHandle,
+} from '../kit/markdown/MarkdownEditor';
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
 import { livePreview } from '../kit/markdown/livePreview';
@@ -20,8 +16,6 @@ import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds, type EmbedNote } from './useNoteTaskEmbeds';
-
-const MarkdownEditor = lazy(() => import('../kit/markdown/MarkdownEditor'));
 
 type Props = {
   value: string;
@@ -142,17 +136,15 @@ export function NotebookMarkdownBody({
       <div className="markdown-workspace markdown-workspace--single">
         <div className="markdown-bar markdown-bar--end">{mode.toggles}</div>
         <div className="markdown-single" data-previewing={mode.previewing}>
-          <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
-            <MarkdownEditor
-              ref={editorRef}
-              value={value}
-              onChange={onChange}
-              extensions={extensions}
-              lineNumbers={false}
-              label="Note body"
-              placeholder="Write in markdown…"
-            />
-          </Suspense>
+          <MarkdownEditor
+            ref={editorRef}
+            value={value}
+            onChange={onChange}
+            extensions={extensions}
+            lineNumbers={false}
+            label="Note body"
+            placeholder="Write in markdown…"
+          />
           {mode.previewPane(
             <LazyMarkdownPreview
               markdown={value}

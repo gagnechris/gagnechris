@@ -71,12 +71,11 @@ export function useEditorViewMode({
     [togglePreview],
   );
 
-  const toggled = useRef(false);
+  // Compared, not a first-run flag: StrictMode runs mount effects twice.
+  const shown = useRef(previewing);
   useEffect(() => {
-    if (!toggled.current) {
-      toggled.current = true;
-      return;
-    }
+    if (shown.current === previewing) return;
+    shown.current = previewing;
     if (previewing) previewRef.current?.focus();
     else editorRef.current?.focus();
   }, [editorRef, previewing]);
