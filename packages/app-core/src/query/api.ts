@@ -564,6 +564,17 @@ export const fetchTask = async (
   return unwrap(result, 'Could not load task');
 };
 
+/** Live tasks among `ids` (at most 100), in order; missing ids were deleted or never existed. */
+export const fetchTasksBatch = async (
+  client: ApiClient,
+  ids: readonly string[],
+): Promise<Task[]> => {
+  const result = await client.POST('/api/notebook/tasks/batch', {
+    body: { ids: [...ids] },
+  });
+  return unwrap(result, 'Could not load tasks').items;
+};
+
 export const createTask = async (
   client: ApiClient,
   body: CreateTaskRequest,

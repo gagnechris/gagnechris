@@ -4,6 +4,7 @@ import {
   taskEmbedFallbackLine,
   type Note,
   type NotebookArea,
+  type TaskStatus,
 } from '@gagnechris/shared';
 import { notesRepository, type NotesRepository } from '../notes/repository.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
@@ -18,6 +19,9 @@ export type SearchHit = {
   area: NotebookArea;
   title: string;
   date?: string;
+  /** Task hits only, so a result can be checked off without reading the task. */
+  status?: TaskStatus;
+  version?: number;
   snippet: string;
   matches: { start: number; end: number }[];
 };
@@ -95,6 +99,8 @@ export async function searchNotebook(
         id: task.id,
         area: task.area,
         title: ranked.title,
+        status: task.status,
+        version: task.version,
         snippet: ranked.snippet,
         matches: ranked.matches,
         score: ranked.score,

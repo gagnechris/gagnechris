@@ -39,6 +39,8 @@ const api = vi.hoisted(() => ({
   tasks: new Map<string, Task>(),
   puts: [] as string[],
   taskPosts: [] as Record<string, unknown>[],
+  /** Every task read: `GET <id>` or `BATCH <ids>`. */
+  taskReads: [] as string[],
   /** Next task POST is written, then the response is lost. */
   dropNextTaskResponse: false,
 }));
@@ -81,6 +83,7 @@ vi.mock('../workspace/api/client', () => ({
           );
         }
         if (path === '/api/notebook/tasks/{id}') {
+          api.taskReads.push(`GET ${p.id}`);
           const task = api.tasks.get(p.id!);
           return task && !task.deleted ? ok(task) : fail(404, 'not_found');
         }
@@ -128,6 +131,16 @@ vi.mock('../workspace/api/client', () => ({
       POST: async (path: string, init?: Init) => {
         const body = init?.body ?? {};
         const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/tasks/batch') {
+          const ids = body.ids as string[];
+          api.taskReads.push(`BATCH ${ids.join(',')}`);
+          return ok({
+            items: ids.flatMap((id) => {
+              const task = api.tasks.get(id);
+              return task && !task.deleted ? [task] : [];
+            }),
+          });
+        }
         if (path === '/api/notebook/tasks') {
           api.taskPosts.push(body);
           // Mirrors the API: the linked note must already exist.
@@ -278,6 +291,7 @@ beforeEach(() => {
   api.tasks.clear();
   api.puts = [];
   api.taskPosts = [];
+  api.taskReads = [];
   api.dropNextTaskResponse = false;
   localStorage.clear();
 });
@@ -384,6 +398,46 @@ describe('writing [ ] text in a daily note', () => {
     expect(new Set(api.taskPosts.map((b) => b.id))).toEqual(new Set([id]));
     expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n`);
   }, 15_000);
+
+  test('opening a note that embeds three tasks reads them in one request', async () => {
+    const ids = [
+      '01JTASKAAAAAAAAAAAAAAAAAA1',
+      '01JTASKAAAAAAAAAAAAAAAAAA2',
+      '01JTASKAAAAAAAAAAAAAAAAAA3',
+    ];
+    ids.forEach((id, i) => {
+      seedTask({ id, title: `Embedded ${i + 1}`, noteId: null });
+      api.tasks.set(id, api.tasks.get(TASK_ID)!);
+    });
+    api.tasks.delete(TASK_ID);
+    const gone = '01JTASKAAAAAAAAAAAAAAAAAA4';
+    api.daily = {
+      id: NOTE_A,
+      userId: 'u1',
+      area: 'work',
+      type: 'daily',
+      date: TODAY,
+      title: '',
+      bodyMarkdown: [...ids, gone].map(tokenLine).join('\n'),
+      tags: [],
+      pinned: false,
+      taskIds: [...ids, gone],
+      version: 1,
+      createdAt: TS,
+      updatedAt: TS,
+      deleted: false,
+    };
+    const { container } = renderToday();
+    for (const n of [1, 2, 3]) {
+      expect(
+        await within(container).findByRole('checkbox', {
+          name: `Complete Embedded ${n}`,
+        }),
+      ).toBeInTheDocument();
+    }
+    expect(await within(container).findByText('Deleted task')).toBeVisible();
+    expect(api.taskReads).toEqual([`BATCH ${[...ids, gone].sort().join(',')}`]);
+  });
 
   test('waits for the first save of a new day before linking the task', async () => {
     const { container } = renderToday();
