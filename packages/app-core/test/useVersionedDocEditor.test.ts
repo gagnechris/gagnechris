@@ -10,7 +10,7 @@ import { act, renderHook } from './renderHook.js';
 
 /**
  * Non-publishable notebook-style note: version only, no status /
- * hasUnpublishedChanges (CHR-173).
+ * hasUnpublishedChanges.
  */
 type FakeNote = {
   id: string;
@@ -32,7 +32,7 @@ const waitUntil = async (predicate: () => boolean, label: string) => {
   throw new Error(`Timed out waiting for ${label}`);
 };
 
-describe('useVersionedDocEditor fake note (CHR-173)', () => {
+describe('useVersionedDocEditor fake note', () => {
   test('autosave, conflict detection, and delete-with-hold without publish fields', async () => {
     const store = new Map<string, FakeNote>([
       ['n1', { id: 'n1', body: 'hello', version: 1 }],
@@ -156,7 +156,7 @@ describe('useVersionedDocEditor fake note (CHR-173)', () => {
   });
 });
 
-describe('useVersionedDocEditor remote updates (CHR-178)', () => {
+describe('useVersionedDocEditor remote updates', () => {
   const setup = () => {
     const store = new Map<string, FakeNote>([
       ['n1', { id: 'n1', body: 'hello', version: 1 }],

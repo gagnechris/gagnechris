@@ -13,7 +13,7 @@ const LONG_MARKDOWN = Array.from(
 ).join('\n');
 
 /**
- * CHR-111 fix: CodeMirror's theme wrapper must fill the fixed pane so
+ * CodeMirror's wrapper must fill the fixed pane so
  * `.cm-scroller` scrolls instead of growing to content height.
  * Kept in sync with `markdown.css` (asserted below).
  */
@@ -43,7 +43,7 @@ const SCROLL_FIX_CSS = `
 }
 `;
 
-/** Fire a real Space keydown through CodeMirror's keymap (CHR-165). */
+/** Fire a real Space keydown through CodeMirror's keymap. */
 function typeSpace(view: EditorView) {
   view.focus();
   view.contentDOM.dispatchEvent(
@@ -56,7 +56,7 @@ function typeSpace(view: EditorView) {
   );
 }
 
-/** Fire ⌘⏎ / Ctrl+Enter through CodeMirror's keymap (CHR-178). */
+/** Fire ⌘⏎ / Ctrl+Enter through CodeMirror's keymap. */
 function pressModEnter(
   view: EditorView,
   modifiers: { ctrlKey?: boolean; metaKey?: boolean },
@@ -73,7 +73,7 @@ function pressModEnter(
   return event;
 }
 
-describe('MarkdownEditor scroll (CHR-111)', () => {
+describe('MarkdownEditor scroll', () => {
   let styleEl: HTMLStyleElement;
 
   beforeEach(() => {
@@ -136,7 +136,7 @@ describe('MarkdownEditor scroll (CHR-111)', () => {
   });
 });
 
-describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
+describe('MarkdownEditor task list + options', () => {
   let parent: HTMLDivElement;
   let view: EditorView;
 
@@ -145,7 +145,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     parent?.remove();
   });
 
-  test('Space strictly inside [ ] toggles; Space after ] does not (CHR-148)', () => {
+  test('Space strictly inside [ ] toggles; Space after ] does not', () => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
     view = new EditorView({
@@ -182,7 +182,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     expect(view.state.doc.toString()).toBe('- [x](https://example.com)');
   });
 
-  test('mousedown on the checkbox runs the real handler (CHR-148)', () => {
+  test('mousedown on the checkbox runs the real handler', () => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
     view = new EditorView({
@@ -216,7 +216,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     });
 
     // Drive CodeMirror view directly (same as the toggle-on test) so a
-    // caret-at-0 Space cannot falsely pass (CHR-178).
+    // caret-at-0 Space cannot falsely pass.
     const cmView = EditorView.findFromDOM(
       container.querySelector('.cm-content')!,
     );
@@ -229,7 +229,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     );
   });
 
-  test('⌘⏎ / Ctrl+Enter does not insert a blank line (CHR-178)', async () => {
+  test('⌘⏎ / Ctrl+Enter does not insert a blank line', async () => {
     const onChange = vi.fn();
     const { container } = render(
       <MarkdownEditor value="hello" onChange={onChange} />,
@@ -270,7 +270,7 @@ describe('MarkdownEditor task list + options (CHR-133 / CHR-148)', () => {
     expect(cmView.state.doc.toString()).toBe('- [x] milk\n- [ ] ');
   });
 
-  test('textbox has an accessible name via contentAttributes (CHR-178)', async () => {
+  test('textbox has an accessible name via contentAttributes', async () => {
     const { container } = render(
       <MarkdownEditor value="x" onChange={() => {}} label="Post body" />,
     );

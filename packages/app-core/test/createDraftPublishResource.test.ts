@@ -17,10 +17,10 @@ type FakeEntity = {
 type FakeParams = { id: string };
 
 /**
- * CHR-158 / CHR-165: config alone is not enough — exercise update/setCache,
+ * Config alone is not enough: exercise update/setCache,
  * prefer-newer on a stale fetch through the queryFn, and lifecycle mutators.
  */
-describe('createDraftPublishResource fake-entity (CHR-158)', () => {
+describe('createDraftPublishResource fake-entity', () => {
   test('update, setCache, stale fetch, and lifecycle mutators stay coherent', async () => {
     const store = new Map<string, FakeEntity>([
       [
@@ -96,7 +96,7 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
     fakeResource.setCache(queryClient, updated);
 
     // Prefer-newer must run inside queryFn — calling preferNewerByVersion
-    // directly would leave the suite green if queryFn returned fetched (CHR-178).
+    // directly would leave the suite green if queryFn returned fetched.
     store.set('f1', {
       id: 'f1',
       title: 'Stale',
@@ -120,7 +120,7 @@ describe('createDraftPublishResource fake-entity (CHR-158)', () => {
     );
     // Assert on the refetch result and the cache, not `queryResult.current`
     // (react-test-renderer may not have re-rendered yet, which hid a queryFn
-    // that returned `fetched` directly — CHR-178).
+    // that returned `fetched` directly).
     let refetched!: Awaited<ReturnType<typeof queryResult.current.refetch>>;
     await act(async () => {
       refetched = await queryResult.current.refetch();

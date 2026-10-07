@@ -75,7 +75,7 @@ const baseOptions = {
   'confirm'
 >;
 
-describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
+describe('useVersionedEntityEditor shortcuts', () => {
   beforeEach(() => {
     publishMock.mockClear();
     saveMock.mockClear();
@@ -124,7 +124,7 @@ describe('useVersionedEntityEditor shortcuts (CHR-148 / CHR-165)', () => {
     cm.remove();
   });
 
-  test('⌘⏎ in the real MarkdownEditor neither publishes nor inserts a newline (CHR-178)', async () => {
+  test('⌘⏎ in the real MarkdownEditor neither publishes nor inserts a newline', async () => {
     const onChange = vi.fn();
     const { container } = render(
       createElement(MarkdownEditor, { value: 'hello', onChange }),

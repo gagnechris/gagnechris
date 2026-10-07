@@ -37,10 +37,7 @@ export async function fetchPublishedPosts(): Promise<PublishedPostListItem[]> {
   );
 }
 
-/**
- * Also reads pages published before the year groups and before the whole
- * index moved inside `<main>`, until they are republished.
- */
+/** Also reads pages published before the index moved inside `<main>`, until they are republished. */
 export function postsIndexFromDocument(
   root: ParentNode,
 ): PublishedPostListItem[] | null {
@@ -59,8 +56,8 @@ export function postsIndexFromDocument(
       {
         id: entry.getAttribute('data-id') || slug,
         slug,
-        title: text('.post-preview__title, h2'),
-        excerpt: text('.post-preview__excerpt, .post-excerpt'),
+        title: text('.post-preview__title'),
+        excerpt: text('.post-preview__excerpt'),
         publishedAt:
           entry.querySelector('time')?.getAttribute('datetime') || null,
         updatedAt: '',

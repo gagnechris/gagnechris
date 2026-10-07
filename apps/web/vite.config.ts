@@ -95,9 +95,9 @@ export default defineConfig(({ mode, command }) => {
 
   if (localSiteOrigin && !useProdApi) {
     if (appName === 'public') {
-      // Do NOT proxy /posts or /assets — that would serve the seeded production
-      // shell/JS and bypass Vite HMR (old PostPage → NotFound for CMS slugs).
-      // PostPage fetches publisher HTML via this prefix instead.
+      // Not /posts or /assets: those would serve the publisher's built shell
+      // and JS instead of Vite's modules. PostPage fetches publisher HTML
+      // through this prefix.
       proxy['/__site'] = {
         target: localSiteOrigin,
         changeOrigin: true,
@@ -175,13 +175,9 @@ export default defineConfig(({ mode, command }) => {
       rollupOptions: {
         input: path.join(appRoot, app.html),
       },
-      // Keep admin/editor chunks under the AC budget (CHR-178).
       chunkSizeWarningLimit: 500,
-      // No manualChunks: under Vite 8 / Rolldown a manual `markdown-editor`
-      // group also captured React, so the entry statically imported (and
-      // modulepreloaded) the whole CodeMirror chunk. The two
-      // `lazy(() => import('…/MarkdownEditor'))` call sites (Post +
-      // Notebook) already share one natural async chunk (CHR-178).
+      // No manualChunks: a manual CodeMirror group also captures React, so the
+      // entry would statically import (and modulepreload) all of CodeMirror.
     },
     test: {
       environment: 'jsdom',
