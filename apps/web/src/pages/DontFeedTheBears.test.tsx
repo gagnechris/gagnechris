@@ -36,15 +36,17 @@ describe('DontFeedTheBears landing', () => {
     );
   });
 
-  test('each card carries the shorter phone copy', () => {
-    renderAt('/dont-feed-the-bears');
+  test('each card has one description', () => {
+    const { container } = renderAt('/dont-feed-the-bears');
 
-    expect(screen.getByRole('link', { name: /camp rules/i })).toHaveTextContent(
+    expect(
+      [...container.querySelectorAll('.bears-card__text')].map(
+        (p) => p.textContent,
+      ),
+    ).toEqual([
       'Put food away and keep bears out until dark.',
-    );
-    expect(screen.getByRole('link', { name: /stay wild/i })).toHaveTextContent(
       'Fatten up on berries and reach the den before snow.',
-    );
+    ]);
   });
 
   test('leaves direct visits without a from param', () => {

@@ -462,7 +462,7 @@ describe('stack Template assertions', () => {
     }
   });
 
-  it('ApiStack Lambda is arm64 Node 24 with powertools env', () => {
+  it('ApiStack Lambda is arm64 Node 24 with powertools env and active tracing', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ApiAssertDeps', {
@@ -514,6 +514,7 @@ describe('stack Template assertions', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs24.x',
       Architectures: ['arm64'],
+      TracingConfig: { Mode: 'Active' },
       Environment: {
         Variables: Match.objectLike({
           POWERTOOLS_SERVICE_NAME: 'gagnechris-api',

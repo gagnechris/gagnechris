@@ -54,10 +54,6 @@
   gap: var(--space-2);
 }
 
-.bears-game-page__aside {
-  display: none;
-}
-
 @media (max-width: 480px) {
   .bears-game-page__header h1 {
     font-size: 2rem;
@@ -75,7 +71,6 @@
   }
 
   .bears-game-page__aside {
-    display: block;
     margin: 0;
     font-family: var(--font-sans);
     font-size: 14px;

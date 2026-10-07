@@ -40,7 +40,7 @@ test('a task lists every note that embeds it, with the context under the embed',
   await page.goto(`${apps.notebook}/notes/${second.id}`);
   const editor = page.getByRole('textbox', { name: 'Note body' });
   await editor.click();
-  await page.keyboard.press('Control+a');
+  await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('Dry run on staging.');
   await expect
     .poll(async () => {

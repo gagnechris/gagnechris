@@ -136,7 +136,12 @@ export default function AdminUsersPage() {
         <button
           type="button"
           className="users-btn users-btn--primary users-btn--tall"
-          onClick={() => setInviting(true)}
+          onClick={(e) => {
+            // Safari doesn't focus a clicked button, and the dialog returns
+            // focus to whatever had it when it opened.
+            e.currentTarget.focus();
+            setInviting(true);
+          }}
         >
           <ShellIcon name="plus" />
           Invite user
@@ -242,7 +247,10 @@ export default function AdminUsersPage() {
                         type="button"
                         className="users-btn users-btn--small"
                         aria-label={`Edit access for ${name}`}
-                        onClick={() => setEditingId(user.id)}
+                        onClick={(e) => {
+                          e.currentTarget.focus();
+                          setEditingId(user.id);
+                        }}
                       >
                         Edit
                       </button>

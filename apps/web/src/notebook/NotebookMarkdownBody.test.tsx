@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { EditorView } from '@codemirror/view';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { StrictMode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test } from 'vitest';
 import { QueryClientTestProvider } from '../test-utils';
@@ -30,6 +30,29 @@ afterEach(() => {
 });
 
 describe('NotebookMarkdownBody', () => {
+  test('renders the editor in the first commit, with no loading fallback', () => {
+    renderBody();
+    expect(
+      screen.getByRole('textbox', { name: 'Note body' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Loading editor/)).toBeNull();
+  });
+
+  test('leaves focus alone when it mounts, StrictMode included', () => {
+    render(
+      <StrictMode>
+        <QueryClientTestProvider>
+          <MemoryRouter>
+            <Harness initial="# Plan" />
+          </MemoryRouter>
+        </QueryClientTestProvider>
+      </StrictMode>,
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Note body' }),
+    ).not.toHaveFocus();
+  });
+
   test('shows one editor pane and no preview column', async () => {
     const { container } = renderBody();
     await screen.findByRole('textbox', { name: 'Note body' });

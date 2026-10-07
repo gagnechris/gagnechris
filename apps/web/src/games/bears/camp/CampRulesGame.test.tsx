@@ -292,12 +292,36 @@ describe('CampRulesGame', () => {
     });
   });
 
-  test('the end card summarizes the evening in one line', () => {
+  test('the HUD labels each stat once', () => {
+    renderGame();
+
+    for (const label of ['Time', 'Snacks', 'Saves', 'Score']) {
+      expect(screen.getAllByText(label, { exact: true })).toHaveLength(1);
+    }
+    expect(screen.queryByText('Time left')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bear snacks')).not.toBeInTheDocument();
+  });
+
+  test('on a phone the end card sums up the evening in one line', () => {
+    stubMedia((query) => query === '(max-width: 480px)');
     playToEnd();
 
+    const card = screen.getByRole('region');
     expect(
-      screen.getByText(/^\d+s · \d+ saves? · score \d+$/),
+      within(card).getByText(/^\d+s · \d+ saves? · score \d+$/),
     ).toBeInTheDocument();
+    expect(within(card).queryByText('Best')).not.toBeInTheDocument();
+  });
+
+  test('wider than a phone the end card lists the stats instead', () => {
+    stubMedia(() => false);
+    playToEnd();
+
+    const card = screen.getByRole('region');
+    expect(within(card).getByText('Best')).toBeInTheDocument();
+    expect(
+      within(card).queryByText(/^\d+s · \d+ saves? · score \d+$/),
+    ).not.toBeInTheDocument();
   });
 
   test('random camp has no copy result and can switch back', () => {

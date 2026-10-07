@@ -118,10 +118,6 @@
   color: var(--neutral-600);
 }
 
-.bears-card__text--phone {
-  display: none;
-}
-
 .bears-card__details {
   margin: 0;
   font-size: var(--text-sm);
@@ -182,7 +178,6 @@
   }
 
   .bears-landing__lede,
-  .bears-card__text:not(.bears-card__text--phone),
   .bears-card__details {
     display: none;
   }
@@ -214,8 +209,7 @@
     font-size: 1.625rem;
   }
 
-  .bears-card .bears-card__text--phone {
-    display: block;
+  .bears-card__text {
     margin-top: 5px;
     font-family: var(--font-serif);
     font-size: 1rem;

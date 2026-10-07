@@ -41,6 +41,7 @@ import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
+import { deployedFunctionCode } from '../cloudfront/deployed-code.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
@@ -208,24 +209,22 @@ export class SiteStack extends Stack {
         'www→apex, old /admin and /auth → app hosts, Option B, KVS post and project slugs, 404 shell',
       runtime: FunctionRuntime.JS_2_0,
       keyValueStore: blogSlugsKvs,
-      code: FunctionCode.fromFile({
-        filePath: path.join(
-          __dirname,
-          '../cloudfront/viewer-request-function.js',
+      code: FunctionCode.fromInline(
+        deployedFunctionCode(
+          path.join(__dirname, '../cloudfront/viewer-request-function.js'),
         ),
-      }),
+      ),
     });
 
     const viewerResponseFn = new CloudFrontFunction(this, 'ViewerResponseFn', {
       functionName: `gagnechris-${config.name}-viewer-response`,
       comment: 'Force 404 status for /404.html',
       runtime: FunctionRuntime.JS_2_0,
-      code: FunctionCode.fromFile({
-        filePath: path.join(
-          __dirname,
-          '../cloudfront/viewer-response-function.js',
+      code: FunctionCode.fromInline(
+        deployedFunctionCode(
+          path.join(__dirname, '../cloudfront/viewer-response-function.js'),
         ),
-      }),
+      ),
     });
 
     const assetsCachePolicy = new CachePolicy(this, 'AssetsCachePolicy', {
@@ -337,9 +336,11 @@ export class SiteStack extends Stack {
         functionName: `gagnechris-${config.name}-app-viewer-request`,
         comment: 'SPA fallback for the admin and notebook hosts',
         runtime: FunctionRuntime.JS_2_0,
-        code: FunctionCode.fromFile({
-          filePath: path.join(__dirname, '../cloudfront/app-viewer-request.js'),
-        }),
+        code: FunctionCode.fromInline(
+          deployedFunctionCode(
+            path.join(__dirname, '../cloudfront/app-viewer-request.js'),
+          ),
+        ),
       },
     );
 

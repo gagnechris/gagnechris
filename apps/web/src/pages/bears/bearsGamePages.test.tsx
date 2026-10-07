@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { stubMedia } from '../../games/bears/shared/test-utils';
 import CampRules from './CampRules';
 import StayWild from './StayWild';
 import { trackBearsGameStart } from '../../utils/analytics';
@@ -15,6 +16,10 @@ const renderAt = (url: string, page: React.ReactNode) =>
   render(<MemoryRouter initialEntries={[url]}>{page}</MemoryRouter>);
 
 describe('Camp Rules page', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test('starts the camp game with the entry point', () => {
     renderAt('/dont-feed-the-bears/camp?from=404', <CampRules />);
 
@@ -37,7 +42,8 @@ describe('Camp Rules page', () => {
     ).toHaveAttribute('href', '/dont-feed-the-bears?from=404#tips');
   });
 
-  test('labels today’s camp beside the title, or a random one', () => {
+  test('on a phone, labels today’s camp beside the title, or a random one', () => {
+    stubMedia((query) => query === '(max-width: 480px)');
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 9, 4, 18, 0));
     try {
@@ -52,6 +58,22 @@ describe('Camp Rules page', () => {
       // The header and the game read the same mode.
       expect(
         screen.getByText(/Random camp: a new evening every time/),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('wider than a phone, the camp is named only below the field', () => {
+    stubMedia(() => false);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 4, 18, 0));
+    try {
+      renderAt('/dont-feed-the-bears/camp', <CampRules />);
+
+      expect(screen.queryByText('Daily camp · Oct 4')).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/Daily camp for 2026-10-04: everyone gets/),
       ).toBeInTheDocument();
     } finally {
       vi.useRealTimers();

@@ -175,7 +175,7 @@ for (const width of [375, 393]) {
       expect(startedOut).toBeGreaterThan(0);
       await out.first().tap();
       await expect(out).toHaveCount(startedOut - 1);
-      await expectUnclipped(page, ['.camp-hud', '.camp-hud__short']);
+      await expectUnclipped(page, ['.camp-hud', '.camp-hud__label']);
 
       await page.clock.runFor(3_000);
       const bear = page.getByRole('button', { name: /^Bear heading for/ });
@@ -197,6 +197,7 @@ for (const width of [375, 393]) {
       await expect(
         card.getByText(/^\d+s · \d+ saves? · score \d+$/),
       ).toBeVisible();
+      await expect(card.locator('.bears-end__stats')).toHaveCount(0);
       await expect(
         card.getByRole('link', { name: 'Vermont Fish & Wildlife source' }),
       ).toBeVisible();
@@ -265,9 +266,18 @@ test.describe('Camp Rules on desktop', () => {
   }) => {
     await stubShareAndClipboard(page, { share: true });
     await openCamp(page, apps.public + CAMP);
-    await expect(page.getByText('Daily camp · Oct 4')).toBeHidden();
+    await expect(page.getByText('Daily camp · Oct 4')).toHaveCount(0);
+    for (const label of ['Time', 'Snacks', 'Saves', 'Score']) {
+      await expect(
+        page.locator('.camp-hud').getByText(label, { exact: true }),
+      ).toBeVisible();
+    }
     await page.getByRole('button', { name: 'Start the evening' }).click();
     await page.clock.runFor(61_000);
+
+    const card = page.getByRole('region');
+    await expect(card.getByText('Best', { exact: true })).toBeVisible();
+    await expect(card.locator('.bears-end__summary')).toHaveCount(0);
 
     await expect(
       page.getByRole('button', { name: 'Share result' }),
