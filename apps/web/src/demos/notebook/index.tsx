@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../../kit/Button';
 import { formatCalendarDay } from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
