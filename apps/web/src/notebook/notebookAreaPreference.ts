@@ -15,6 +15,13 @@ export const NOTEBOOK_AREA_LABELS: Record<NotebookAreaFilter, string> = {
   all: 'All',
 };
 
+/** Page kickers: which notebook the page shows. */
+export const NOTEBOOK_AREA_HEADINGS: Record<NotebookAreaFilter, string> = {
+  work: 'Work notebook',
+  personal: 'Personal notebook',
+  all: 'All areas',
+};
+
 export const NOTEBOOK_AREA_STORAGE_KEY = 'gagnechris.notebook.areaFilter';
 
 export const DEFAULT_NOTEBOOK_AREA_FILTER: NotebookAreaFilter = 'work';

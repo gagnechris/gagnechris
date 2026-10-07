@@ -16,36 +16,32 @@ import {
   openTaskDateQuery,
   taskDateMenuIds,
   taskDateMenuItems,
-  tokenNeedsDate,
   tomorrowOf,
-  type TaskDateKind,
   type TaskDateMenuItem,
   type TaskDateQuery,
 } from '../tasks/taskDateMenuItems';
+import {
+  activeTaskDateIndex,
+  CLOSED_TASK_DATE_MENU,
+  taskDateMenuIsOpen,
+  taskDateMenuKey,
+  taskDateMenuReducer,
+  tokenInsertion,
+  type TaskDateMenuAction,
+  type TaskDateMenuState as MenuState,
+} from '../tasks/taskDateMenuState';
+import { TASK_LINE_PREFIX } from '../tasks/taskLine';
 
 type Range = { from: number; to: number };
-type PickRange = Range & { kind: TaskDateKind };
 
-export type TaskDateMenuState = {
+export type TaskDateMenuState = MenuState & {
   /** Document positions of the `@word` or `due:word` at the caret on a `[ ]` line. */
   query: TaskDateQuery | null;
-  active: number;
-  dismissedAt: number | null;
-  picking: PickRange | null;
 };
 
-const CLOSED: TaskDateMenuState = {
-  query: null,
-  active: 0,
-  dismissedAt: null,
-  picking: null,
-};
+const CLOSED: TaskDateMenuState = { ...CLOSED_TASK_DATE_MENU, query: null };
 
-const activeEffect = StateEffect.define<number>();
-const dismissEffect = StateEffect.define<null>();
-const pickEffect = StateEffect.define<PickRange | null>();
-
-const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
+const menuEffect = StateEffect.define<TaskDateMenuAction>();
 
 function queryAt(state: EditorState, today: string): TaskDateQuery | null {
   const { main } = state.selection;
@@ -59,8 +55,15 @@ function queryAt(state: EditorState, today: string): TaskDateQuery | null {
 }
 
 export const taskDateMenuOpen = (value: TaskDateMenuState) =>
-  value.picking !== null ||
-  (value.query !== null && value.query.from !== value.dismissedAt);
+  taskDateMenuIsOpen(value, value.query?.from ?? null);
+
+const reduce = (
+  value: TaskDateMenuState,
+  action: TaskDateMenuAction,
+): TaskDateMenuState => ({
+  ...taskDateMenuReducer(value, action),
+  query: value.query,
+});
 
 function menuField(today: string) {
   return StateField.define<TaskDateMenuState>({
@@ -68,27 +71,14 @@ function menuField(today: string) {
     update(value, tr) {
       let next = value;
       if (tr.docChanged) {
-        next = {
-          ...next,
-          // Typing reopens a menu closed with Esc, as in the quick-add.
-          dismissedAt: tr.isUserEvent('input')
-            ? null
-            : next.dismissedAt === null
-              ? null
-              : tr.changes.mapPos(next.dismissedAt),
-          picking: next.picking && {
-            ...next.picking,
-            from: tr.changes.mapPos(next.picking.from),
-            to: tr.changes.mapPos(next.picking.to),
-          },
-        };
+        next = reduce(next, {
+          type: 'mapped',
+          mapPos: (p) => tr.changes.mapPos(p),
+        });
+        if (tr.isUserEvent('input')) next = reduce(next, { type: 'typed' });
       }
       for (const effect of tr.effects) {
-        if (effect.is(activeEffect)) next = { ...next, active: effect.value };
-        if (effect.is(dismissEffect)) {
-          next = { ...next, dismissedAt: next.query?.from ?? null };
-        }
-        if (effect.is(pickEffect)) next = { ...next, picking: effect.value };
+        if (effect.is(menuEffect)) next = reduce(next, effect.value);
       }
       if (tr.docChanged || tr.selection) {
         const query = queryAt(tr.state, today);
@@ -96,7 +86,10 @@ function menuField(today: string) {
           query?.from === next.query?.from &&
           query?.query === next.query?.query &&
           query?.kind === next.query?.kind;
-        next = { ...next, query, active: same ? next.active : 0 };
+        next = {
+          ...(same ? next : reduce(next, { type: 'query-changed' })),
+          query,
+        };
       }
       return next;
     },
@@ -104,15 +97,15 @@ function menuField(today: string) {
 }
 
 function insertToken(view: EditorView, range: Range, token: string) {
-  const following = view.state.doc.sliceString(range.to, range.to + 1);
-  const spaced = /^\s/.test(following);
-  const open = tokenNeedsDate(token);
-  const insert = spaced || (open && following === '') ? token : `${token} `;
-  const caret = range.from + token.length + (open ? 0 : 1);
+  const change = tokenInsertion(
+    range,
+    token,
+    view.state.doc.sliceString(range.to, range.to + 1),
+  );
   view.dispatch({
-    changes: { from: range.from, to: range.to, insert },
-    selection: EditorSelection.cursor(caret),
-    effects: pickEffect.of(null),
+    changes: { from: change.from, to: change.to, insert: change.insert },
+    selection: EditorSelection.cursor(change.caret),
+    effects: menuEffect.of({ type: 'close-picker' }),
     userEvent: 'input.complete',
   });
 }
@@ -136,49 +129,36 @@ export function taskDateMenuEditor({
       ? taskDateMenuItems(today, value.query.query, value.query.kind)
       : [];
 
-  const whenOpen =
-    (run: (view: EditorView, value: TaskDateMenuState) => void) =>
-    (view: EditorView) => {
-      const value = view.state.field(field);
-      if (!taskDateMenuOpen(value) || value.picking) return false;
-      run(view, value);
-      return true;
-    };
-  const move = (step: number | 'first' | 'last') =>
-    whenOpen((view, value) => {
-      const count = itemsOf(value).length;
-      const active =
-        step === 'first'
-          ? 0
-          : step === 'last'
-            ? count - 1
-            : (Math.min(value.active, count - 1) + step + count) % count;
-      view.dispatch({ effects: activeEffect.of(active) });
-    });
+  const onKey = (key: string) => (view: EditorView) => {
+    const value = view.state.field(field);
+    if (!taskDateMenuOpen(value) || value.picking) return false;
+    const items = itemsOf(value);
+    const action = taskDateMenuKey(key, items.length);
+    if (action === 'choose') {
+      const item = items[activeTaskDateIndex(value, items.length)];
+      if (item) chooseTaskDate(view, value, item);
+    } else if (action === 'dismiss') {
+      view.dispatch({
+        effects: menuEffect.of({
+          type: 'dismiss',
+          at: value.query?.from ?? null,
+        }),
+      });
+    } else if (action) {
+      view.dispatch({ effects: menuEffect.of(action) });
+    }
+    return action !== null;
+  };
 
   return [
     field,
     Prec.highest(
       keymap.of([
-        { key: 'ArrowDown', run: move(1) },
-        { key: 'ArrowUp', run: move(-1) },
-        { key: 'Home', run: move('first') },
-        { key: 'End', run: move('last') },
-        {
-          key: 'Enter',
-          run: whenOpen((view, value) => {
-            const items = itemsOf(value);
-            const item = items[Math.min(value.active, items.length - 1)];
-            if (item) chooseTaskDate(view, value, item);
-          }),
-        },
-        {
-          key: 'Escape',
-          run: whenOpen((view) => {
-            view.dispatch({ effects: dismissEffect.of(null) });
-          }),
-          stopPropagation: true,
-        },
+        ...['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter'].map((key) => ({
+          key,
+          run: onKey(key),
+        })),
+        { key: 'Escape', run: onKey('Escape'), stopPropagation: true },
       ]),
     ),
     EditorView.contentAttributes.of((view) => {
@@ -186,7 +166,7 @@ export function taskDateMenuEditor({
       const base = { 'aria-haspopup': 'listbox', 'aria-autocomplete': 'list' };
       if (!taskDateMenuOpen(value) || value.picking) return base;
       const items = itemsOf(value);
-      const item = items[Math.min(value.active, items.length - 1)];
+      const item = items[activeTaskDateIndex(value, items.length)];
       return {
         ...base,
         'aria-controls': ids.listbox,
@@ -218,12 +198,9 @@ function chooseTaskDate(
   if (item.token) {
     insertToken(view, value.query, item.token);
   } else {
+    const { from, to, kind } = value.query;
     view.dispatch({
-      effects: pickEffect.of({
-        from: value.query.from,
-        to: value.query.to,
-        kind: value.query.kind,
-      }),
+      effects: menuEffect.of({ type: 'pick', range: { from, to, kind } }),
     });
   }
 }
@@ -287,8 +264,10 @@ export function useTaskDateMenuEditor({
       open={open}
       kind={picking?.kind ?? value.query?.kind ?? 'start'}
       items={items}
-      activeIndex={Math.min(value.active, items.length - 1)}
-      onActivate={(i) => view?.dispatch({ effects: activeEffect.of(i) })}
+      activeIndex={activeTaskDateIndex(value, items.length)}
+      onActivate={(index) =>
+        view?.dispatch({ effects: menuEffect.of({ type: 'activate', index }) })
+      }
       onChoose={(item) => {
         if (view) chooseTaskDate(view, value, item);
       }}
@@ -326,7 +305,7 @@ export function useTaskDateMenuEditor({
                 setPicked('');
                 view.dispatch({
                   selection: EditorSelection.cursor(picking.to),
-                  effects: [pickEffect.of(null), dismissEffect.of(null)],
+                  effects: menuEffect.of({ type: 'cancel-pick' }),
                 });
                 view.focus();
               },

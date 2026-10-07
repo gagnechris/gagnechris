@@ -1,6 +1,7 @@
 import {
   useId,
   useLayoutEffect,
+  useReducer,
   useRef,
   useState,
   type InputHTMLAttributes,
@@ -12,11 +13,17 @@ import {
   openTaskDateQuery,
   taskDateMenuIds,
   taskDateMenuItems,
-  tokenNeedsDate,
   tomorrowOf,
-  type TaskDateKind,
   type TaskDateMenuItem,
 } from './taskDateMenuItems';
+import {
+  activeTaskDateIndex,
+  CLOSED_TASK_DATE_MENU,
+  taskDateMenuIsOpen,
+  taskDateMenuKey,
+  taskDateMenuReducer,
+  tokenInsertion,
+} from './taskDateMenuState';
 import './taskSyntax.css';
 
 type Props = Omit<
@@ -46,23 +53,19 @@ export function TaskSyntaxInput({
   const ids = taskDateMenuIds(baseId);
 
   const [caret, setCaret] = useState<number | null>(null);
-  const [active, setActive] = useState(0);
-  // The `@` position whose menu was closed with Esc stays closed.
-  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
-  const [picking, setPicking] = useState<{
-    from: number;
-    to: number;
-    kind: TaskDateKind;
-  } | null>(null);
+  const [menu, dispatch] = useReducer(
+    taskDateMenuReducer,
+    CLOSED_TASK_DATE_MENU,
+  );
+  const { picking } = menu;
   const [picked, setPicked] = useState('');
   // A fresh object per insert, so the same caret position re-runs the effect.
   const [placeCaret, setPlaceCaret] = useState<{ at: number } | null>(null);
 
   const query = caret === null ? null : openTaskDateQuery(value, caret, today);
   const items = query ? taskDateMenuItems(today, query.query, query.kind) : [];
-  const open =
-    picking !== null || (query !== null && query.from !== dismissedAt);
-  const activeIndex = Math.min(active, items.length - 1);
+  const open = taskDateMenuIsOpen(menu, query?.from ?? null);
+  const activeIndex = activeTaskDateIndex(menu, items.length);
   const activeItem = items[activeIndex];
 
   useLayoutEffect(() => {
@@ -78,14 +81,11 @@ export function TaskSyntaxInput({
   };
 
   const insert = (range: { from: number; to: number }, token: string) => {
-    const after = value.slice(range.to).replace(/^\s+/, '');
-    const open = tokenNeedsDate(token);
-    const next = `${value.slice(0, range.from)}${token}${open && !after ? '' : ' '}${after}`;
-    const at = range.from + token.length + (open ? 0 : 1);
-    setCaret(at);
-    setPlaceCaret({ at });
-    setPicking(null);
-    setActive(0);
+    const change = tokenInsertion(range, token, value.slice(range.to));
+    const next = `${value.slice(0, change.from)}${change.insert}${value.slice(change.to)}`;
+    setCaret(change.caret);
+    setPlaceCaret({ at: change.caret });
+    dispatch({ type: 'close-picker' });
     onChange(next);
   };
 
@@ -95,7 +95,10 @@ export function TaskSyntaxInput({
       insert(query, item.token);
       return;
     }
-    setPicking({ from: query.from, to: query.to, kind: query.kind });
+    dispatch({
+      type: 'pick',
+      range: { from: query.from, to: query.to, kind: query.kind },
+    });
     setPicked(tomorrowOf(today));
   };
 
@@ -110,36 +113,24 @@ export function TaskSyntaxInput({
 
   const cancelPicking = () => {
     if (!picking) return;
-    setDismissedAt(picking.from);
     setCaret(picking.to);
     setPlaceCaret({ at: picking.to });
-    setPicking(null);
+    dispatch({ type: 'cancel-pick' });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (open && !picking && activeItem) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const step = e.key === 'ArrowDown' ? 1 : -1;
-        setActive((activeIndex + step + items.length) % items.length);
-        return;
-      }
-      if (e.key === 'Home' || e.key === 'End') {
-        e.preventDefault();
-        setActive(e.key === 'Home' ? 0 : items.length - 1);
-        return;
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        choose(activeItem);
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
+    const action =
+      open && !picking && activeItem
+        ? taskDateMenuKey(e.key, items.length)
+        : null;
+    if (action) {
+      e.preventDefault();
+      if (action === 'choose') choose(activeItem!);
+      else if (action === 'dismiss') {
         e.stopPropagation();
-        setDismissedAt(query?.from ?? null);
-        return;
-      }
+        dispatch({ type: 'dismiss', at: query?.from ?? null });
+      } else dispatch(action);
+      return;
     }
     onKeyDown?.(e);
   };
@@ -149,7 +140,7 @@ export function TaskSyntaxInput({
       className="task-syntax"
       onBlur={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-        setPicking(null);
+        dispatch({ type: 'close-picker' });
         setCaret(null);
       }}
     >
@@ -170,8 +161,7 @@ export function TaskSyntaxInput({
         }
         onChange={(e) => {
           setCaret(e.target.selectionStart);
-          setActive(0);
-          setDismissedAt(null);
+          dispatch({ type: 'typed' });
           onChange(e.target.value);
         }}
         onSelect={syncCaret}
@@ -186,7 +176,7 @@ export function TaskSyntaxInput({
         items={items}
         activeIndex={activeIndex}
         onChoose={choose}
-        onActivate={setActive}
+        onActivate={(index) => dispatch({ type: 'activate', index })}
         hint={hint}
         picker={
           picking

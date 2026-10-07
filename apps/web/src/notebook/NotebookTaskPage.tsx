@@ -13,6 +13,10 @@ import {
   taskPayloadFromDraft,
 } from './taskDraft';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import {
+  TASK_PRIORITY_OPTIONS,
+  TASK_STATUS_OPTIONS,
+} from '../kit/tasks/taskOptions';
 
 export default function NotebookTaskPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -147,10 +151,11 @@ export default function NotebookTaskPage() {
             }))
           }
         >
-          <option value="todo">Todo</option>
-          <option value="in_progress">In progress</option>
-          <option value="done">Done</option>
-          <option value="dropped">Dropped</option>
+          {TASK_STATUS_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </Select>
       </Field>
 
@@ -164,9 +169,11 @@ export default function NotebookTaskPage() {
             }))
           }
         >
-          <option value="high">High</option>
-          <option value="med">Med</option>
-          <option value="low">Low</option>
+          {TASK_PRIORITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </Select>
       </Field>
 

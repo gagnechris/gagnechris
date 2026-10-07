@@ -9,7 +9,10 @@ import type { TaskLineDraft } from '../kit/tasks/taskLine';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import type { SourceNote } from '../kit/tasks/todayTaskBuckets';
 import { groupUpcomingTasks, noteChipLabel } from '../kit/tasks/upcomingGroups';
-import { areaQueryParam } from './notebookAreaPreference';
+import {
+  areaQueryParam,
+  NOTEBOOK_AREA_HEADINGS,
+} from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';
@@ -91,11 +94,7 @@ export default function NotebookUpcomingPage() {
       <div className="admin-panel__header">
         <div>
           <p className="notebook-today__kicker">
-            {areaFilter === 'work'
-              ? 'Work notebook'
-              : areaFilter === 'personal'
-                ? 'Personal notebook'
-                : 'All areas'}
+            {NOTEBOOK_AREA_HEADINGS[areaFilter]}
           </p>
           <h1>Upcoming</h1>
           <p className="admin-panel__lede">

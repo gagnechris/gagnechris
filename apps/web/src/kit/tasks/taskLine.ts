@@ -13,6 +13,9 @@ export type TaskLineDraft = {
   priority: TaskPriority;
 };
 
+/** `[ ] ` at the start of a line, after any indent. */
+export const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
+
 const TASK_LINE = /^([ \t]*)\[ \][ \t]+(\S.*?)[ \t]*$/;
 
 /** The one place a typed line becomes task fields, task syntax included. */
