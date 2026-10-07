@@ -1,5 +1,9 @@
-import { formatTaskDay, isOpenTaskStatus, type Task } from '@gagnechris/shared';
-import { addLocalDays } from '../calendarDates';
+import {
+  formatTaskDay,
+  isOpenTaskStatus,
+  relativeDayLabel,
+  type Task,
+} from '@gagnechris/shared';
 
 export type TaskDue = {
   text: string;
@@ -19,12 +23,9 @@ export function taskDue(
   const { dueDate } = task;
   if (!dueDate || !isOpenTaskStatus(task.status)) return null;
   const full = formatTaskDay(dueDate);
-  const weekday = full.slice(0, 3);
-  const monthDay = formatTaskDay(dueDate, false);
   if (dueDate < today) {
-    const short = dueDate > addLocalDays(today, -7) ? weekday : monthDay;
     return {
-      text: `Overdue · ${short}`,
+      text: `Overdue · ${relativeDayLabel(dueDate, today, 'past')}`,
       title: `Overdue, was due ${full}`,
       overdue: true,
     };
@@ -32,6 +33,9 @@ export function taskDue(
   if (dueDate === today) {
     return { text: 'due today', title: `Due today, ${full}`, overdue: false };
   }
-  const short = dueDate < addLocalDays(today, 7) ? weekday : monthDay;
-  return { text: `due ${short}`, title: `Due ${full}`, overdue: false };
+  return {
+    text: `due ${relativeDayLabel(dueDate, today, 'future')}`,
+    title: `Due ${full}`,
+    overdue: false,
+  };
 }

@@ -1,3 +1,4 @@
+import { pawsLeft } from '../shared/rating';
 import { tipById, type BearTip } from '../tips';
 import {
   CAMP_FOOD_SIZE,
@@ -20,6 +21,7 @@ export const JUMP_SPEED = 760;
 export const GRAVITY = 2000;
 
 export const START_FAT = 15;
+export const MAX_FAT = 100;
 export const CAMP_FOOD_GAIN = 15;
 export const COMFY_LIMIT = 3;
 export const WELL_FED_FAT = 70;
@@ -41,6 +43,8 @@ export const DOG_CYCLE = { periodMs: 4_400, activeMs: 1_700 };
 const HIGH_ROUTE_CLEARANCE = 100;
 const PUSHBACK_MS = 500;
 const PUSHBACK_SPEED = 450;
+/** How far short of the road a car stops Maple. */
+const ROAD_STOP_GAP = 10;
 const BUBBLE_MS = 1_400;
 const GOAL_MARGIN = 80;
 const START_X = 80;
@@ -328,7 +332,7 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
     ) {
       eaten.push(food.id);
       const gain = FOOD_GAIN[food.kind];
-      fat = Math.min(100, fat + gain);
+      fat = Math.min(MAX_FAT, fat + gain);
       naturalEaten += 1;
       events.push({
         type: 'eat',
@@ -350,7 +354,7 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
     };
     if (overlaps(box, foodBox)) {
       eaten.push(food.id);
-      fat = Math.min(100, fat + CAMP_FOOD_GAIN);
+      fat = Math.min(MAX_FAT, fat + CAMP_FOOD_GAIN);
       comfy += 1;
       campSnacks += 1;
       events.push({
@@ -366,37 +370,38 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
   const warned = [...s.warned];
   const high = onHighRoute(maple);
 
-  for (const person of level.people) {
-    const dist = Math.abs(center - person.x);
-    if (!warned.includes(person.id) && dist < WARN_RANGE && center < person.x) {
-      warned.push(person.id);
-      events.push({ type: 'warn', who: 'person' });
-    }
-    if (high || t < (reactReadyAt[person.id] ?? 0)) continue;
-    if (dist < PERSON_RANGE && personWatching(t, person.offsetMs)) {
-      maple = pushAwayFrom(maple, person.x, t);
-      reactReadyAt[person.id] = t + REACT_COOLDOWN_MS;
-      bubble = {
-        text: 'CLAP CLAP! GO ON, BEAR!',
-        x: person.x,
-        until: t + BUBBLE_MS,
-      };
-      events.push({ type: 'clap' });
-    }
-  }
-
-  for (const dog of level.dogs) {
-    const dist = Math.abs(center - dog.x);
-    if (!warned.includes(dog.id) && dist < WARN_RANGE && center < dog.x) {
-      warned.push(dog.id);
-      events.push({ type: 'warn', who: 'dog' });
-    }
-    if (high || t < (reactReadyAt[dog.id] ?? 0)) continue;
-    if (dist < DOG_RANGE && dogAwake(t, dog.offsetMs)) {
-      maple = pushAwayFrom(maple, dog.x, t);
-      reactReadyAt[dog.id] = t + REACT_COOLDOWN_MS;
-      bubble = { text: 'Woof!', x: dog.x, until: t + BUBBLE_MS };
-      events.push({ type: 'bark' });
+  const reactors = [
+    {
+      who: 'person',
+      list: level.people,
+      range: PERSON_RANGE,
+      active: personWatching,
+      bubble: 'CLAP CLAP! GO ON, BEAR!',
+      event: 'clap',
+    },
+    {
+      who: 'dog',
+      list: level.dogs,
+      range: DOG_RANGE,
+      active: dogAwake,
+      bubble: 'Woof!',
+      event: 'bark',
+    },
+  ] as const;
+  for (const r of reactors) {
+    for (const it of r.list) {
+      const dist = Math.abs(center - it.x);
+      if (!warned.includes(it.id) && dist < WARN_RANGE && center < it.x) {
+        warned.push(it.id);
+        events.push({ type: 'warn', who: r.who });
+      }
+      if (high || t < (reactReadyAt[it.id] ?? 0)) continue;
+      if (dist < r.range && r.active(t, it.offsetMs)) {
+        maple = pushAwayFrom(maple, it.x, t);
+        reactReadyAt[it.id] = t + REACT_COOLDOWN_MS;
+        bubble = { text: r.bubble, x: it.x, until: t + BUBBLE_MS };
+        events.push({ type: r.event });
+      }
     }
   }
 
@@ -405,7 +410,7 @@ export function stepWild(state: WildState, input: WildInput): WildStepResult {
     if (onRoad && carOnRoad(t, road)) {
       maple = {
         ...maple,
-        x: road.x - MAPLE_W - 10,
+        x: road.x - MAPLE_W - ROAD_STOP_GAP,
         vx: 0,
         pushedUntil: t + PUSHBACK_MS,
       };
@@ -461,12 +466,12 @@ export function wildScore(state: WildState): number {
 }
 
 export function wildPaws(state: WildState): number {
-  return Math.max(0, COMFY_LIMIT - state.comfy);
+  return pawsLeft(state.comfy, COMFY_LIMIT);
 }
 
 export function wildTip(state: WildState): BearTip {
   if (state.phase === 'habituated' || state.campSnacks > 0) {
-    return tipById('fed-bear')!;
+    return tipById('fed-bear');
   }
-  return tipById('never-feed')!;
+  return tipById('never-feed');
 }

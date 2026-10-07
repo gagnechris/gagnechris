@@ -89,7 +89,7 @@ treats redirect slugs as reserved.
 | Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                                                                                                                                                |
 | List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only, summary attributes via `ProjectionExpression`), page in that order; the flag comes from META, and a META row without it is compared with `PUBLISHED` |
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
-| List published by date  | Query GSI1 `STATUS#published` for META ids → `GetItem` each `PUBLISHED`                                                                                                                                            |
+| List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
 | List by tag (published) | See tag items below                                                                                                                                                                                                |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
 | Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
@@ -259,6 +259,27 @@ prerenders HTML from that list and React renders the same list as JSX
 The site header and footer around every page come from
 `@gagnechris/shared/site-chrome` (see [architecture.md](./architecture.md#public-pages)).
 The prerender footer year is fixed at publish time; the SPA uses the live year.
+
+## Site publish row
+
+#### `SITE#publish` / `META`
+
+One row, updated in the same transaction as every write or delete of a post,
+project, home or resume `PUBLISHED` row (`buildSitePublishUpdate` in
+`@gagnechris/data`). Its sort key is not `PUBLISHED`, so the publisher stream
+filter ignores it.
+
+| Attribute    | Type          | Notes                                                              |
+| ------------ | ------------- | ------------------------------------------------------------------ |
+| `entityType` | `sitePublish` |                                                                    |
+| `generation` | number        | +1 on every publish, unpublish and soft delete; missing reads as 0 |
+| `postIds`    | string set    | Posts with a `PUBLISHED` row (absent when empty)                   |
+| `projectIds` | string set    | Projects with a `PUBLISHED` row (absent when empty)                |
+
+The publisher reads it with `ConsistentRead`: `generation` tells a rebuild
+whether a commit landed while it ran, and the id sets list just-published
+items GSI1 has not indexed yet. Ids are added only by publishes made through
+`PublishableRepository`, so the publisher still unions them with GSI1.
 
 ## Contact messages
 
@@ -436,6 +457,7 @@ Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHa
 
 - **Race (two offline devices, same area/date, different ULIDs):** the daily claim Put is conditional; the first writer wins. The loser (`POST /notes` or `PUT /notes/daily/...`) gets **409 `daily_taken`** with `current` (the winner) and `currentVersion`. Nothing is dropped silently.
 - **Client merge rule (web and iOS):** on `daily_taken`, keep the local draft and show a conflict. Then either reload and adopt `current`, or re-send your text as an update to `current.id` with `version: current.version` once the user chooses to merge. Never retry the create with the losing ULID.
+- **Autosave:** `PUT /notes/daily/...` with a `version` or `If-Match` reads the note named by `id` (one consistent read) and writes it with the version condition. Only when that id is not this area and day's note does it read the claim, then update the claim's note or create one.
 - **Placeholder writers:** `PUT /notes/daily/...` with no `version` or `If-Match` when the day already exists returns 409 (`daily_taken` for a different id, `version_conflict` for the same id with changed content). Re-sending the exact create (same id and content) returns 200 with the stored note.
 - **Carry-in on open:** `POST /notes/daily/{area}/{date}/open` with a client `id` returns the day's note as `GET` does, except when no note exists: it then collects the open, non-someday tasks of that area that show on that day but are not scheduled for exactly that day (at most 100), and if there are any creates the note with that `id` and a `## Carried in` block of their embeds. The daily claim makes this happen once: a concurrent opener that loses the claim returns the winner, and an existing note (even an empty one) is never changed. With nothing to carry it returns the empty placeholder and writes nothing.
 - **Delete frees the day:** soft-deleting a daily note removes its claim in the same transaction (only if the claim still points at that note). A claim pointing at a tombstone or at a missing META row (purged tombstone, partial restore) reads as empty on `GET`, and is freed on the next create (conditional on the claim still holding that `noteId`). `scripts/scan-orphan-daily-claims.mjs` counts and releases such claims (see `infra/RUNBOOK.md`).

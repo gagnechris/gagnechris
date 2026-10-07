@@ -48,3 +48,8 @@ export function areaQueryParam(
 ): NotebookArea | undefined {
   return filter === 'all' ? undefined : filter;
 }
+
+/** New notes and tasks go to the filtered area; All means Work. */
+export function areaForNewItem(filter: NotebookAreaFilter): NotebookArea {
+  return filter === 'personal' ? 'personal' : 'work';
+}

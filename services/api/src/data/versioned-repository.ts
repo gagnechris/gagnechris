@@ -12,13 +12,11 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import {
+  SYNC_CREATE_CLAIM_TTL_DAYS,
   isOptimisticLockConflict,
-  ownerSyncCreateClaimPk,
-  syncCreateClaimPk,
-  syncCreateClaimSk,
+  keys,
   syncPk,
   syncSk,
-  SYNC_CREATE_CLAIM_TTL_DAYS,
   ttlDaysFromNow,
 } from '@gagnechris/data';
 import { ZodError } from 'zod';
@@ -63,8 +61,6 @@ export type EntityScope<T, TKey> = {
     changeType: string,
     key: TKey,
   ) => ItemKey & Record<string, unknown>;
-  /** Attributes removed from tombstones so list indexes drop the row. */
-  tombstoneOmits: readonly string[];
 };
 
 export function unscoped<T>(opts: {
@@ -77,17 +73,14 @@ export function unscoped<T>(opts: {
     idOfKey: (id) => id,
     itemKey: opts.keyForId,
     owns: () => true,
-    createClaim: (changeType, id) => ({
-      pk: syncCreateClaimPk(changeType, id),
-      sk: syncCreateClaimSk(),
-    }),
-    tombstoneOmits: [],
+    createClaim: (changeType, id) => keys.sync.createClaim(changeType, id),
   };
 }
 
-const LIST_GSI_KEYS = ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const;
-
-/** Another owner's rows read as missing; tombstones drop list GSI keys so lists skip them. */
+/**
+ * Another owner's rows read as missing. Tombstones leave list indexes because
+ * `toItem` (the `@gagnechris/data` item builder) omits GSI keys when deleted.
+ */
 export function ownerScoped<T>(opts: {
   keyForId: (userId: string, id: string) => ItemKey;
   idOf: (entity: T) => string;
@@ -103,11 +96,9 @@ export function ownerScoped<T>(opts: {
     itemKey: (key) => opts.keyForId(key.userId, key.id),
     owns: (key, entity) => opts.userIdOf(entity) === key.userId,
     createClaim: (changeType, key) => ({
-      pk: ownerSyncCreateClaimPk(key.userId, changeType, key.id),
-      sk: syncCreateClaimSk(),
+      ...keys.sync.ownerCreateClaim(key.userId, changeType, key.id),
       userId: key.userId,
     }),
-    tombstoneOmits: LIST_GSI_KEYS,
   };
 }
 
@@ -263,9 +254,6 @@ export class VersionedRepository<
     opts?: { ttl?: number; createHash?: string },
   ): TItem {
     const base: Record<string, unknown> = { ...this.config.toItem(entity) };
-    if (this.config.isDeleted?.(entity)) {
-      for (const attr of this.scope.tombstoneOmits) delete base[attr];
-    }
     const sync = this.config.sync;
     const syncAttrs = sync
       ? {
@@ -620,7 +608,7 @@ export class VersionedRepository<
       ...build(existing, this.now()),
       version: expectedVersion + 1,
     };
-    return this.softDelete(key, expectedVersion, tombstone);
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
   }
 
   private async putIfVersion(
@@ -657,11 +645,21 @@ export class VersionedRepository<
     expectedVersion: number,
     tombstone: T,
   ): Promise<T> {
+    const { existing } = await this.readForWrite(key, { allowDeleted: true });
+    return this.writeTombstone(key, expectedVersion, tombstone, existing);
+  }
+
+  /** `existing` is the row just read; its unique claims are released. */
+  private async writeTombstone(
+    key: TKey,
+    expectedVersion: number,
+    tombstone: T,
+    existing: T,
+  ): Promise<T> {
     this.assertOwns(key, tombstone);
     const sync = this.config.sync;
     const clock = new Date(this.now());
     const ttl = sync ? ttlDaysFromNow(undefined, clock) : undefined;
-    const { existing } = await this.readForWrite(key, { allowDeleted: true });
     await runVersionedWrite(
       () =>
         this.doc.send(

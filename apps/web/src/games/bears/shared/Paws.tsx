@@ -1,5 +1,7 @@
+import { MAX_PAWS } from './rating';
+
 type PawsProps = {
-  /** 0–3 */
+  /** 0 to MAX_PAWS */
   count: number;
 };
 
@@ -20,10 +22,14 @@ const Paw = ({ filled }: { filled: boolean }) => (
 );
 
 const Paws = ({ count }: PawsProps) => {
-  const n = Math.max(0, Math.min(3, Math.round(count)));
+  const n = Math.max(0, Math.min(MAX_PAWS, Math.round(count)));
   return (
-    <div className="bears-paws" role="img" aria-label={`${n} of 3 paws`}>
-      {[0, 1, 2].map((k) => (
+    <div
+      className="bears-paws"
+      role="img"
+      aria-label={`${n} of ${MAX_PAWS} paws`}
+    >
+      {Array.from({ length: MAX_PAWS }, (_, k) => (
         <Paw key={k} filled={k < n} />
       ))}
     </div>

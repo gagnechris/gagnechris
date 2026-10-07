@@ -132,6 +132,7 @@ function sources(
 ) {
   const getPublishedHome = vi.fn(async () => home());
   const src: RebuildSiteSources = {
+    readGeneration: async () => 0,
     listPublishedPosts: async () => ({
       posts: newestFirst(getPosts()),
       corruptSlugs: [],

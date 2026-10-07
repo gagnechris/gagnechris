@@ -11,7 +11,7 @@ export type SyncFeedChange = {
 export type SyncEntityAdapter = {
   /** Must match VersionedEntityConfig.sync.changeType / item.entityType. */
   changeType: string;
-  /** Return undefined to skip unrecognized / corrupt rows. */
+  /** Undefined skips the row; build it with `toSyncChange` so corrupt rows are logged and counted. */
   toChange: (item: Record<string, unknown>) => SyncFeedChange | undefined;
 };
 

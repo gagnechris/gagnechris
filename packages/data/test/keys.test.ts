@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   API_LAMBDA_TIMEOUT_MS,
   keys,
+  noteDateGsi1Sk,
+  noteGsi1SkRanges,
+  notePageGsi1Sk,
+  noteTasksGsi2Pk,
+  notebookAreaGsi1Pk,
+  taskAreaStatusGsi1Pk,
+  taskDueGsi1Sk,
+  taskSomedayGsi1Sk,
+  taskStartGsi1Sk,
+  taskUpdatedGsi1Sk,
   parsePostMetaItem,
   postPk,
   SK_META,
@@ -52,9 +62,6 @@ describe('@gagnechris/data keys', () => {
     expect(syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
       '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
-    expect(keys.sync.sk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
-      '2026-09-28T12:00:00.000Z#NOTE#n1',
-    );
     expect(syncSk('2026-09-28T12:00:00Z', 'note', 'n1')).toBe(
       syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1'),
     );
@@ -79,24 +86,20 @@ describe('@gagnechris/data keys', () => {
       pk: 'USER#sub-1#DAILY#work#2026-10-02',
       sk: 'NOTE',
     });
-    expect(keys.notebook.areaGsi1('sub-1', 'personal')).toBe(
+    expect(notebookAreaGsi1Pk('sub-1', 'personal')).toBe(
       'USER#sub-1#AREA#personal',
     );
-    expect(keys.notebook.noteDateSk('2026-10-02', '01ABC')).toBe(
+    expect(noteDateGsi1Sk('2026-10-02', '01ABC')).toBe(
       'DATE#2026-10-02#NOTE#01ABC',
     );
-    expect(keys.notebook.taskAreaStatusGsi1('sub-1', 'work', 'todo')).toBe(
+    expect(taskAreaStatusGsi1Pk('sub-1', 'work', 'todo')).toBe(
       'USER#sub-1#AREA#work#STATUS#todo',
     );
-    expect(keys.notebook.taskDueSk('2026-10-03', '01T')).toBe(
-      'DUE#2026-10-03#TASK#01T',
-    );
-    expect(keys.notebook.taskUpdatedSk('2026-10-02T12:00:00.000Z', '01T')).toBe(
+    expect(taskDueGsi1Sk('2026-10-03', '01T')).toBe('DUE#2026-10-03#TASK#01T');
+    expect(taskUpdatedGsi1Sk('2026-10-02T12:00:00.000Z', '01T')).toBe(
       'UPDATED#2026-10-02T12:00:00.000Z#TASK#01T',
     );
-    expect(keys.notebook.noteTasksGsi2('sub-1', '01N')).toBe(
-      'USER#sub-1#NOTE#01N#TASKS',
-    );
+    expect(noteTasksGsi2Pk('sub-1', '01N')).toBe('USER#sub-1#NOTE#01N#TASKS');
     expect(keys.sync.ownerCreateClaim('sub-1', 'fakeNote', '01ABC')).toEqual({
       pk: 'CREATED#FAKENOTE#USER#sub-1#01ABC',
       sk: SK_META,
@@ -137,14 +140,14 @@ describe('task start-date GSI1 ranges', () => {
   const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
   const day = '2026-10-14';
   const sks = {
-    startBefore: keys.notebook.taskStartSk('2026-10-13', id),
-    startOn: keys.notebook.taskStartSk(day, id),
-    startAfter: keys.notebook.taskStartSk('2026-10-15', id),
-    legacyBefore: keys.notebook.taskDueSk('2026-10-13', id),
-    legacyOn: keys.notebook.taskDueSk(day, id),
-    legacyAfter: keys.notebook.taskDueSk('2026-10-15', id),
-    now: keys.notebook.taskUpdatedSk('2026-10-20T00:00:00.000Z', id),
-    someday: keys.notebook.taskSomedaySk('2026-10-01T00:00:00.000Z', id),
+    startBefore: taskStartGsi1Sk('2026-10-13', id),
+    startOn: taskStartGsi1Sk(day, id),
+    startAfter: taskStartGsi1Sk('2026-10-15', id),
+    legacyBefore: taskDueGsi1Sk('2026-10-13', id),
+    legacyOn: taskDueGsi1Sk(day, id),
+    legacyAfter: taskDueGsi1Sk('2026-10-15', id),
+    now: taskUpdatedGsi1Sk('2026-10-20T00:00:00.000Z', id),
+    someday: taskSomedayGsi1Sk('2026-10-01T00:00:00.000Z', id),
   };
   const hits = (ranges: SortKeyRange[]) =>
     Object.entries(sks)
@@ -159,5 +162,65 @@ describe('task start-date GSI1 ranges', () => {
     expect(hits(taskGsi1SkRanges.startsAfter(day))).toEqual(['startAfter']);
     expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(['startOn']);
     expect(hits(taskGsi1SkRanges.someday())).toEqual(['someday']);
+  });
+});
+
+describe('note GSI1 ranges', () => {
+  const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const sks = {
+    before: noteDateGsi1Sk('2026-10-13', id),
+    first: noteDateGsi1Sk('2026-10-14', id),
+    last: noteDateGsi1Sk('2026-10-16', id),
+    after: noteDateGsi1Sk('2026-10-17', id),
+    page: notePageGsi1Sk('2026-10-15T00:00:00.000Z', id),
+  };
+  const hits = ({ from, to }: SortKeyRange) =>
+    Object.entries(sks)
+      .filter(([, sk]) => sk >= from && sk <= to)
+      .map(([name]) => name);
+
+  it('date ranges are inclusive at both ends and never hold pages', () => {
+    expect(hits(noteGsi1SkRanges.dates('2026-10-14', '2026-10-16'))).toEqual([
+      'first',
+      'last',
+    ]);
+    expect(hits(noteGsi1SkRanges.dates(undefined, '2026-10-14'))).toEqual([
+      'before',
+      'first',
+    ]);
+    expect(hits(noteGsi1SkRanges.dates('2026-10-16'))).toEqual([
+      'last',
+      'after',
+    ]);
+  });
+
+  it('daily and page ranges split the partition', () => {
+    expect(hits(noteGsi1SkRanges.daily())).toEqual([
+      'before',
+      'first',
+      'last',
+      'after',
+    ]);
+    expect(hits(noteGsi1SkRanges.pages())).toEqual(['page']);
+  });
+});
+
+describe('keys surface', () => {
+  it('every `keys` entry builds an item key; key strings come from the functions', () => {
+    const walk = (node: unknown, path: string): string[] => {
+      if (typeof node === 'function') {
+        const built = (node as (...args: string[]) => unknown)('a', 'b', 'c');
+        const ok =
+          built !== null &&
+          typeof built === 'object' &&
+          Object.keys(built).sort().join(',') === 'pk,sk' &&
+          Object.values(built).every((v) => typeof v === 'string');
+        return ok ? [] : [path];
+      }
+      return Object.entries(node as Record<string, unknown>).flatMap(
+        ([name, child]) => walk(child, `${path}.${name}`),
+      );
+    };
+    expect(walk(keys, 'keys')).toEqual([]);
   });
 });

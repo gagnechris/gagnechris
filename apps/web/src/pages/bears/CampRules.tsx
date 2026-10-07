@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import CampRulesGame, {
   type CampMode,
 } from '../../games/bears/camp/CampRulesGame';
-import { campShortDate, dailyCampKey } from '../../games/bears/camp/dailyCamp';
+import { campShortDate } from '../../games/bears/camp/campResult';
+import { dailyCampKey } from '../../games/bears/camp/dailyCamp';
 import BearsPageMeta from '../../games/bears/shared/BearsPageMeta';
 import SkipToTips from '../../games/bears/shared/SkipToTips';
 import SoundToggle from '../../games/bears/shared/SoundToggle';

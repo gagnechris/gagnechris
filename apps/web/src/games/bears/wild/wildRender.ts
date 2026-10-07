@@ -19,6 +19,7 @@ import {
   isSniffing,
   type WildState,
 } from './wildLogic';
+import { PALETTE } from '../shared/palette';
 
 type Palette = {
   sky: string;
@@ -36,23 +37,23 @@ const PALETTES: Readonly<Record<Season, Palette>> = {
     far: '#a9c7b0',
     near: '#7aa58a',
     grass: '#6f9a4a',
-    dirt: '#8b6a4c',
+    dirt: PALETTE.dirt,
   },
   summer: {
-    sky: '#dbecf2',
+    sky: PALETTE.skySummer,
     sun: '#ffe7a3',
     far: '#a9c7b0',
     near: '#6f9c86',
     grass: '#5b8a3a',
-    dirt: '#8b6a4c',
+    dirt: PALETTE.dirt,
   },
   fall: {
-    sky: '#f6e3c8',
-    sun: '#f4b942',
-    far: '#b5652f',
-    near: '#8a4b25',
-    grass: '#5b7f3a',
-    dirt: '#6b4f3a',
+    sky: PALETTE.skyAutumn,
+    sun: PALETTE.gold,
+    far: PALETTE.autumnFar,
+    near: PALETTE.autumnNear,
+    grass: PALETTE.moss,
+    dirt: PALETTE.earth,
   },
 };
 
@@ -124,7 +125,7 @@ function tree(ctx: CanvasRenderingContext2D, d: Decor) {
   const x = d.x;
   switch (d.kind) {
     case 'pine':
-      ctx.fillStyle = '#2f5d50';
+      ctx.fillStyle = PALETTE.pine;
       ctx.beginPath();
       ctx.moveTo(x, GROUND_Y);
       ctx.lineTo(x + 45, GROUND_Y - 150);
@@ -140,8 +141,8 @@ function tree(ctx: CanvasRenderingContext2D, d: Decor) {
         d.kind === 'beech'
           ? '#c98a2c'
           : d.kind === 'oak'
-            ? '#a8552a'
-            : '#5b7f3a';
+            ? PALETTE.acorn
+            : PALETTE.moss;
       ctx.fillStyle = leaf;
       for (const [cx, cy, r] of [
         [45, -260, 70],
@@ -153,7 +154,7 @@ function tree(ctx: CanvasRenderingContext2D, d: Decor) {
         ctx.fill();
       }
       if (d.kind === 'apple') {
-        ctx.fillStyle = '#c2552d';
+        ctx.fillStyle = PALETTE.rust;
         for (const [ax, ay] of [
           [20, -250],
           [70, -270],
@@ -167,13 +168,13 @@ function tree(ctx: CanvasRenderingContext2D, d: Decor) {
       return;
     }
     case 'tent':
-      ctx.fillStyle = '#c2552d';
+      ctx.fillStyle = PALETTE.rust;
       ctx.beginPath();
       ctx.moveTo(x, GROUND_Y);
       ctx.lineTo(x + 70, GROUND_Y - 100);
       ctx.lineTo(x + 140, GROUND_Y);
       ctx.fill();
-      ctx.fillStyle = '#7a2e17';
+      ctx.fillStyle = PALETTE.rustDark;
       ctx.beginPath();
       ctx.moveTo(x + 55, GROUND_Y);
       ctx.lineTo(x + 70, GROUND_Y - 50);
@@ -181,23 +182,23 @@ function tree(ctx: CanvasRenderingContext2D, d: Decor) {
       ctx.fill();
       return;
     case 'table':
-      ctx.fillStyle = '#8a5a35';
+      ctx.fillStyle = PALETTE.beechnut;
       ctx.fillRect(x, GROUND_Y - 44, 120, 10);
       ctx.fillRect(x + 12, GROUND_Y - 34, 8, 34);
       ctx.fillRect(x + 100, GROUND_Y - 34, 8, 34);
       return;
     case 'den':
-      ctx.fillStyle = '#6b4f3a';
+      ctx.fillStyle = PALETTE.earth;
       ctx.beginPath();
       ctx.ellipse(x + 90, GROUND_Y, 110, 80, 0, Math.PI, 0);
       ctx.fill();
-      ctx.fillStyle = '#2b2018';
+      ctx.fillStyle = PALETTE.soil;
       ctx.beginPath();
       ctx.ellipse(x + 90, GROUND_Y, 45, 38, 0, Math.PI, 0);
       ctx.fill();
       return;
     case 'cattails':
-      ctx.strokeStyle = '#5b7f3a';
+      ctx.strokeStyle = PALETTE.moss;
       ctx.lineWidth = 4;
       for (let i = 0; i < 6; i++) {
         ctx.beginPath();
@@ -228,7 +229,7 @@ function food(
   }
   switch (kind) {
     case 'berries':
-      ctx.fillStyle = '#2f5d50';
+      ctx.fillStyle = PALETTE.pine;
       for (const [cx, cy, r] of [
         [12, 22, 13],
         [30, 14, 15],
@@ -238,7 +239,7 @@ function food(
         ctx.arc(x + cx, top + cy, r, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.fillStyle = '#6b2a4a';
+      ctx.fillStyle = PALETTE.berry;
       for (const [cx, cy] of [
         [14, 18],
         [30, 10],
@@ -251,7 +252,7 @@ function food(
       }
       return;
     case 'greens':
-      ctx.strokeStyle = '#4f8a3a';
+      ctx.strokeStyle = PALETTE.leaf;
       ctx.lineWidth = 5;
       for (let i = 0; i < 5; i++) {
         ctx.beginPath();
@@ -261,16 +262,16 @@ function food(
       }
       return;
     case 'roots':
-      ctx.fillStyle = '#4f8a3a';
+      ctx.fillStyle = PALETTE.leaf;
       ctx.fillRect(x + 16, top, 4, h - 8);
-      ctx.fillStyle = '#c9a27a';
+      ctx.fillStyle = PALETTE.muzzle;
       ctx.beginPath();
       ctx.ellipse(x + 18, bottom - 6, 14, 7, 0, 0, Math.PI * 2);
       ctx.fill();
       return;
     case 'beechnuts':
     case 'acorns':
-      ctx.fillStyle = kind === 'beechnuts' ? '#8a5a35' : '#a8552a';
+      ctx.fillStyle = kind === 'beechnuts' ? PALETTE.beechnut : PALETTE.acorn;
       ctx.beginPath();
       ctx.moveTo(x + w / 2, top);
       ctx.lineTo(x + w, bottom);
@@ -279,15 +280,15 @@ function food(
       ctx.fill();
       return;
     case 'apples':
-      ctx.fillStyle = '#c2552d';
+      ctx.fillStyle = PALETTE.rust;
       ctx.beginPath();
       ctx.arc(x + w / 2, top + h / 2 + 2, w / 2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#5b7f3a';
+      ctx.fillStyle = PALETTE.moss;
       ctx.fillRect(x + w / 2 - 1, top - 4, 3, 8);
       return;
     case 'insects':
-      ctx.fillStyle = '#2b2018';
+      ctx.fillStyle = PALETTE.soil;
       for (let i = 0; i < 6; i++) {
         ctx.beginPath();
         ctx.arc(x + 4 + i * 6, bottom - 6 - (i % 2) * 5, 3, 0, Math.PI * 2);
@@ -313,36 +314,36 @@ function campFood(
   ctx.fill();
   switch (kind) {
     case 'trash':
-      ctx.fillStyle = '#4d5871';
+      ctx.fillStyle = PALETTE.steel;
       ctx.fillRect(x + 4, top + 12, w - 8, h - 12);
-      ctx.fillStyle = '#2b3138';
+      ctx.fillStyle = PALETTE.charcoal;
       ctx.save();
       ctx.translate(x, top + 10);
       ctx.rotate(-0.25);
       ctx.fillRect(0, -6, w, 8);
       ctx.restore();
-      ctx.fillStyle = '#f4b942';
+      ctx.fillStyle = PALETTE.gold;
       ctx.fillRect(x + 12, top + 4, 14, 10);
       return;
     case 'feeder':
-      ctx.fillStyle = '#6b4f3a';
+      ctx.fillStyle = PALETTE.earth;
       ctx.fillRect(x + w / 2 - 3, top, 6, h);
-      ctx.fillStyle = '#f4b942';
+      ctx.fillStyle = PALETTE.gold;
       ctx.fillRect(x + 8, top, w - 16, 26);
-      ctx.fillStyle = '#2f5d50';
+      ctx.fillStyle = PALETTE.pine;
       ctx.fillRect(x + 4, top - 6, w - 8, 8);
       return;
     case 'cooler':
-      ctx.fillStyle = '#4ea5d9';
+      ctx.fillStyle = PALETTE.water;
       ctx.fillRect(x, top + 22, w, h - 22);
-      ctx.fillStyle = '#2b6f97';
+      ctx.fillStyle = PALETTE.waterDark;
       ctx.fillRect(x, top + 10, w, 10);
       return;
   }
 }
 
 function cueBubble(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.white;
   ctx.beginPath();
   ctx.arc(x, y, 22, 0, Math.PI * 2);
   ctx.fill();
@@ -360,16 +361,16 @@ function person(
   watching: boolean,
   clapping: boolean,
 ) {
-  ctx.fillStyle = '#16191d';
+  ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(x - 8, GROUND_Y - 40, 6, 40);
   ctx.fillRect(x + 2, GROUND_Y - 40, 6, 40);
-  ctx.fillStyle = watching ? '#c2552d' : '#9a4323';
+  ctx.fillStyle = watching ? PALETTE.rust : '#9a4323';
   ctx.fillRect(x - 12, GROUND_Y - 90, 24, 52);
-  ctx.fillStyle = watching ? '#f2c9a0' : '#6b4f3a';
+  ctx.fillStyle = watching ? PALETTE.skin : PALETTE.earth;
   ctx.beginPath();
   ctx.arc(x, GROUND_Y - 104, 14, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#f2c9a0';
+  ctx.strokeStyle = PALETTE.skin;
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -389,7 +390,7 @@ function person(
   }
   ctx.stroke();
   if (!watching && !clapping) {
-    ctx.fillStyle = '#2b3138';
+    ctx.fillStyle = PALETTE.charcoal;
     ctx.beginPath();
     ctx.ellipse(x + 42, GROUND_Y - 70, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -399,15 +400,15 @@ function person(
   const cy = GROUND_Y - 160;
   cueBubble(ctx, x, cy);
   if (watching) {
-    ctx.fillStyle = '#16191d';
+    ctx.fillStyle = PALETTE.ink;
     ctx.beginPath();
     ctx.ellipse(x, cy, 14, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = PALETTE.white;
     ctx.beginPath();
     ctx.arc(x, cy, 5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#16191d';
+    ctx.fillStyle = PALETTE.ink;
     ctx.beginPath();
     ctx.arc(x - 1, cy, 2.5, 0, Math.PI * 2);
     ctx.fill();
@@ -448,7 +449,7 @@ function dog(ctx: CanvasRenderingContext2D, x: number, awake: boolean) {
   }
   const cy = GROUND_Y - 90;
   cueBubble(ctx, x + 10, cy);
-  ctx.fillStyle = awake ? '#a3341f' : '#667085';
+  ctx.fillStyle = awake ? PALETTE.alert : '#667085';
   ctx.font = '800 22px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -479,10 +480,10 @@ function highLog(
 }
 
 function car(ctx: CanvasRenderingContext2D, x: number) {
-  ctx.fillStyle = '#4ea5d9';
+  ctx.fillStyle = PALETTE.water;
   ctx.fillRect(x, GROUND_Y - 58, 170, 40);
   ctx.fillRect(x + 36, GROUND_Y - 88, 96, 32);
-  ctx.fillStyle = '#16191d';
+  ctx.fillStyle = PALETTE.ink;
   for (const cx of [36, 134]) {
     ctx.beginPath();
     ctx.arc(x + cx, GROUND_Y - 16, 16, 0, Math.PI * 2);
@@ -504,7 +505,7 @@ function maple(
   ctx.translate(m.x + MAPLE_W / 2, m.y + bob);
   ctx.scale(m.facing, 1);
   ctx.translate(-MAPLE_W / 2, 0);
-  const fur = '#1d1a19';
+  const fur = PALETTE.bearFur;
   ctx.fillStyle = fur;
   // legs
   const stride =
@@ -524,7 +525,7 @@ function maple(
   ctx.arc(82, headY - 16, 7, 0, Math.PI * 2);
   ctx.arc(99, headY - 17, 7, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#c9a27a';
+  ctx.fillStyle = PALETTE.muzzle;
   ctx.beginPath();
   ctx.ellipse(106, headY + 5, 10, 8, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -532,7 +533,7 @@ function maple(
   ctx.beginPath();
   ctx.arc(113, headY + 2, 3.5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.white;
   ctx.beginPath();
   ctx.arc(96, headY - 5, 3, 0, Math.PI * 2);
   ctx.fill();
@@ -591,10 +592,10 @@ function popup(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 7;
-  ctx.strokeStyle = '#ffffff';
+  ctx.strokeStyle = PALETTE.white;
   ctx.lineJoin = 'round';
   ctx.strokeText(p.text, p.x, p.y - rise);
-  ctx.fillStyle = p.tone === 'good' ? '#2f6f4f' : '#a3341f';
+  ctx.fillStyle = p.tone === 'good' ? '#2f6f4f' : PALETTE.alert;
   ctx.fillText(p.text, p.x, p.y - rise);
   ctx.globalAlpha = 1;
 }
@@ -603,11 +604,11 @@ function bubble(ctx: CanvasRenderingContext2D, text: string, x: number) {
   ctx.font = '700 20px Inter, system-ui, sans-serif';
   const w = Math.min(320, ctx.measureText(text).width + 28);
   const y = GROUND_Y - 190;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.white;
   ctx.beginPath();
   ctx.roundRect(x - w / 2, y, w, 40, 14);
   ctx.fill();
-  ctx.fillStyle = '#16191d';
+  ctx.fillStyle = PALETTE.ink;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, y + 20, w - 20);
@@ -647,9 +648,9 @@ export function renderWild(
 
   for (const road of level.roads) {
     if (!inView(road.x, road.w)) continue;
-    ctx.fillStyle = '#4a515a';
+    ctx.fillStyle = PALETTE.slate;
     ctx.fillRect(road.x, GROUND_Y, road.w, 24);
-    ctx.fillStyle = '#f4b942';
+    ctx.fillStyle = PALETTE.gold;
     for (let x = road.x + 10; x < road.x + road.w - 20; x += 40) {
       ctx.fillRect(x, GROUND_Y + 10, 20, 4);
     }

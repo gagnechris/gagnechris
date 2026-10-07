@@ -1,4 +1,4 @@
-import { isOpenTaskStatus } from '@gagnechris/shared';
+import { NOTEBOOK_PAGE_SIZE, isOpenTaskStatus } from '@gagnechris/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createMemoryDoc } from './support/memory-doc.js';
 import { makeEvent } from './support/make-event.js';
@@ -56,6 +56,52 @@ describe('multi-partition list paging', () => {
           expectExactIds(got, expected);
         }
       }
+    }
+  });
+
+  it('one default page size whether a list reads one partition or many', async () => {
+    const { doc } = createMemoryDoc();
+    const { routes, tasks } = await seedPagingCorpus(doc, TABLE, {
+      notes: N,
+      tasks: N,
+    });
+    for (let i = 0; i < NOTEBOOK_PAGE_SIZE + 5; i += 1) {
+      await tasks.createFromRequest(PAGING_USER, {
+        id: testUlid('X', i),
+        area: 'work',
+        title: `extra ${i}`,
+        description: '',
+        priority: 'med',
+        status: 'todo',
+        dueDate: null,
+        startDate: null,
+        someday: false,
+        tags: [],
+      });
+    }
+    const firstPage = async (path: string, query: Record<string, string>) => {
+      const res = await dispatchRoutes(
+        routes,
+        makeEvent('GET', path, { query, jwtClaims: { sub: PAGING_USER } }),
+        'GET',
+        path,
+      );
+      return JSON.parse(res!.body as string) as {
+        items: unknown[];
+        nextCursor?: string;
+      };
+    };
+    for (const [path, query] of [
+      ['/api/notebook/notes', {}],
+      ['/api/notebook/notes', { area: 'work' }],
+      ['/api/notebook/tasks', {}],
+      ['/api/notebook/tasks', { area: 'work', status: 'todo' }],
+    ] as const) {
+      const page = await firstPage(path, query);
+      expect(page.items, `${path} ${JSON.stringify(query)}`).toHaveLength(
+        NOTEBOOK_PAGE_SIZE,
+      );
+      expect(page.nextCursor).toBeDefined();
     }
   });
 

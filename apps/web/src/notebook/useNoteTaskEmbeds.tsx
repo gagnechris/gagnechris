@@ -6,7 +6,6 @@ import {
   useCreateTaskMutation,
   usePatchTaskMutation,
   useTasksByIds,
-  type CreateTaskRequest,
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
@@ -21,29 +20,10 @@ import { taskLineDraftKey, type TaskLineDraft } from '../kit/tasks/taskLine';
 import { taskDue } from '../kit/tasks/taskDue';
 import { taskScheduleLabel } from '../kit/tasks/taskScheduleLabel';
 import { useLocalToday } from './useLocalToday';
+import { taskRequestFromDraft } from './taskRequest';
 import { useTaskToggle } from './useTaskToggle';
 
 export type EmbedNote = { id: string; area: NotebookArea };
-
-export function taskRequestFromLine(
-  id: string,
-  draft: TaskLineDraft,
-  note: EmbedNote,
-): CreateTaskRequest {
-  return {
-    id,
-    area: note.area,
-    title: draft.title,
-    description: '',
-    priority: draft.priority,
-    status: 'todo',
-    startDate: draft.startDate,
-    someday: draft.someday,
-    dueDate: draft.dueDate,
-    noteId: note.id,
-    tags: [],
-  };
-}
 
 export const EMBED_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
 
@@ -119,7 +99,10 @@ export function useNoteTaskEmbeds({
     async (id: string, draft: TaskLineDraft): Promise<Task | null> => {
       const note = noteRef.current;
       if (!note) return null;
-      const body = taskRequestFromLine(id, draft, note);
+      const body = taskRequestFromDraft(id, draft, {
+        area: note.area,
+        noteId: note.id,
+      });
       setPendingEntry(id, { draft, failed: false });
       for (let attempt = 0; ; attempt += 1) {
         try {

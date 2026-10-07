@@ -6032,7 +6032,7 @@ export interface paths {
                     type?: "daily" | "page";
                     /** @description Opaque pagination cursor from a previous list response */
                     cursor?: string;
-                    /** @description Page size (1-100) */
+                    /** @description Page size (1-100; default 50) */
                     limit?: number;
                 };
                 header?: never;
@@ -7413,6 +7413,7 @@ export interface paths {
                     /** @description Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today */
                     today?: string;
                     cursor?: string;
+                    /** @description Page size (1-100; default 50) */
                     limit?: number;
                 };
                 header?: never;
@@ -9830,7 +9831,7 @@ export interface components {
             type?: "daily" | "page";
             /** @description Opaque pagination cursor from a previous list response */
             cursor?: string;
-            /** @description Page size (1-100) */
+            /** @description Page size (1-100; default 50) */
             limit?: number;
         };
         EmptyDailyNote: {
@@ -10031,6 +10032,7 @@ export interface components {
             /** @description Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today */
             today?: string;
             cursor?: string;
+            /** @description Page size (1-100; default 50) */
             limit?: number;
         };
         NotebookSearchRequest: {

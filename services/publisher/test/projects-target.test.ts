@@ -11,12 +11,10 @@ import type {
 } from '../src/publish-targets/types.js';
 import {
   collectRebuildScope,
-  collectStreamPublishedProjectItems,
   fullRebuildScope,
   streamNeedsRebuild,
   type RebuildScope,
 } from '../src/rebuild-scope.js';
-import { mergeStreamPublishedProjects } from '../src/s3-site.js';
 import type { SiteStorage } from '../src/storage.js';
 
 vi.mock('../src/viewer-request-slugs.js', () => ({
@@ -101,6 +99,7 @@ function sources(
   posts: Post[] = [post],
 ): RebuildSiteSources {
   return {
+    readGeneration: async () => 0,
     listPublishedPosts: async () => ({ posts, corruptSlugs: [] }),
     listPublishedProjects: async () => catalog,
     getPublishedResume: async () => ({ status: 'missing' }),
@@ -449,24 +448,5 @@ describe('project stream records', () => {
         publishTargets,
       ),
     ).toBe(true);
-  });
-
-  it('a just-published project renders before GSI1 catches up', () => {
-    const items = collectStreamPublishedProjectItems([
-      record('INSERT', published),
-    ]);
-    const merged = mergeStreamPublishedProjects(
-      { projects: [], corruptSlugs: [] },
-      items,
-    );
-    expect(merged.projects.map((p) => p.slug)).toEqual(['notebook']);
-  });
-
-  it('publish then unpublish in one batch does not add it back', () => {
-    const items = collectStreamPublishedProjectItems([
-      record('INSERT', published),
-      record('REMOVE', undefined, published),
-    ]);
-    expect(items).toEqual([]);
   });
 });

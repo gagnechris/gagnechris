@@ -370,6 +370,15 @@ describe('stack Template assertions', () => {
       AlarmName: 'gagnechris-prod-publisher-kvs-sync-failed',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-publisher-rebuild-unsettled',
+      Namespace: 'gagnechris',
+      MetricName: 'RebuildUnsettled',
+      Dimensions: Match.arrayWith([
+        Match.objectLike({ Name: 'service', Value: 'gagnechris-publisher' }),
+      ]),
+      AlarmActions: alarmActions,
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-publisher-data-integrity',
       Namespace: 'gagnechris',
       MetricName: 'DataIntegrityError',
@@ -416,7 +425,13 @@ describe('stack Template assertions', () => {
     );
     expect(itemRead?.Condition).toEqual({
       'ForAllValues:StringLike': {
-        'dynamodb:LeadingKeys': ['POST#*', 'HOME#*', 'RESUME#*', 'PROJECT#*'],
+        'dynamodb:LeadingKeys': [
+          'POST#*',
+          'HOME#*',
+          'RESUME#*',
+          'PROJECT#*',
+          'SITE#publish',
+        ],
       },
     });
     const indexQuery = statements.find(
@@ -525,6 +540,12 @@ describe('stack Template assertions', () => {
       AlarmName: 'gagnechris-prod-api-sync-adapter-missing',
       Namespace: 'gagnechris',
       MetricName: 'SyncAdapterMissing',
+      AlarmActions: Match.anyValue(),
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-sync-corrupt-row',
+      Namespace: 'gagnechris',
+      MetricName: 'SyncCorruptRow',
       AlarmActions: Match.anyValue(),
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { addLocalDays, localToday } from '../kit/calendarDates';
+import { addDays, localDateString } from '@gagnechris/shared';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTasksPage from './NotebookTasksPage';
@@ -30,6 +30,7 @@ type Task = {
 const state = vi.hoisted(() => ({
   tasks: [] as Task[],
   created: [] as Record<string, unknown>[],
+  failCreate: false,
 }));
 
 vi.mock('../workspace/api/client', () => ({
@@ -87,6 +88,14 @@ vi.mock('../workspace/api/client', () => ({
       if (path === '/api/notebook/tasks') {
         const body = init?.body ?? {};
         state.created.push(body);
+        // Mirrors the API's title limit.
+        if (state.failCreate || String(body.title).length > 300) {
+          return {
+            data: undefined,
+            error: { error: 'bad_request', message: 'Validation failed' },
+            response: { status: 400 },
+          };
+        }
         const now = '2026-10-02T12:00:00.000Z';
         const task: Task = {
           id: String(body.id),
@@ -180,6 +189,44 @@ describe('NotebookTasksPage', () => {
     localStorage.clear();
     state.tasks = [];
     state.created = [];
+    state.failCreate = false;
+  });
+
+  test('a failed quick add shows an error and keeps the text', async () => {
+    state.failCreate = true;
+    const user = userEvent.setup();
+    renderTasks();
+    const input = await screen.findByRole('combobox', {
+      name: 'Quick add task',
+    });
+
+    await user.type(input, 'Ship API{Enter}');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not add “Ship API”. Please try again.',
+    );
+    expect(input).toHaveValue('Ship API');
+    expect(state.tasks).toHaveLength(0);
+  });
+
+  test('quick add truncates an overlong title instead of failing', async () => {
+    const user = userEvent.setup();
+    renderTasks();
+    const input = await screen.findByRole('combobox', {
+      name: 'Quick add task',
+    });
+    const long = 'x'.repeat(350);
+
+    await user.click(input);
+    await user.paste(`${long} !high`);
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(state.tasks).toHaveLength(1));
+    expect(state.tasks[0]).toMatchObject({
+      title: 'x'.repeat(300),
+      priority: 'high',
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   test('quick-adds a task and completes it', async () => {
@@ -271,7 +318,7 @@ describe('NotebookTasksPage', () => {
   });
 
   test('?show=later lists open tasks after today, and Dropped finds dropped ones', async () => {
-    const today = localToday();
+    const today = localDateString();
     const mk = (
       i: number,
       title: string,
@@ -298,8 +345,8 @@ describe('NotebookTasksPage', () => {
     });
     state.tasks = [
       mk(1, 'Today task', today),
-      mk(2, 'Next week task', addLocalDays(today, 7)),
-      mk(3, 'Dropped later', addLocalDays(today, 3), 'dropped'),
+      mk(2, 'Next week task', addDays(today, 7)),
+      mk(3, 'Dropped later', addDays(today, 3), 'dropped'),
     ];
     const user = userEvent.setup();
     renderTasks('/tasks?show=later');

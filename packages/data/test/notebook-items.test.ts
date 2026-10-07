@@ -81,6 +81,16 @@ describe('Notebook Dynamo items', () => {
     expect(tombstone.gsi1sk).toBeUndefined();
   });
 
+  it('strips every list GSI key from a task tombstone', () => {
+    const live = buildTaskMetaItem(task);
+    expect(live.gsi1pk).toBeDefined();
+    expect(live.gsi2pk).toBeDefined();
+    const tombstone = buildTaskMetaItem({ ...task, deleted: true });
+    for (const attr of ['gsi1pk', 'gsi1sk', 'gsi2pk', 'gsi2sk'] as const) {
+      expect(tombstone).not.toHaveProperty(attr);
+    }
+  });
+
   it('builds daily claim and task META with START# / note GSI2', () => {
     const claim = buildDailyNoteClaimItem(
       'sub-1',
