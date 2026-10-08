@@ -95,7 +95,7 @@ The TanStack Query cache is persisted as one JSON value (`createAsyncStoragePers
 - Editors use the app-core hooks (`useVersionedEntityEditor`, `useVersionedDocEditor`) with the web's autosave rules: network, 408, 429 and 5xx failures retry on the 2 s to 60 s backoff, 409/412 and other 4xx don't.
 - `retrySignals` on iOS fires when NetInfo goes from not connected to connected and when `AppState` becomes `active`, so a held edit saves as soon as the phone is back online.
 - An editor with an unsaved edit while offline shows "Offline — will save when connected". Leaving it hands the edit to app-core's pending-save queue, which keeps retrying; the app shows a count of unsaved edits until the queue is empty.
-- **Exactly once.** If a save landed but its response was lost, the retry sends the old version and gets a version conflict. A conflict whose `current` already holds the exact fields being sent is a save that landed: the client adopts `current.version` and reports Saved. app-core doesn't do this yet.
+- **Exactly once.** If a save landed but its response was lost, the retry sends the old version and gets a version conflict. A conflict whose `current` already holds the exact fields being sent is a save that landed: app-core's autosave adopts `current`, binds `current.version` and reports Saved.
 - Held edits live in memory. They survive navigation and backgrounding, not the app being killed; the outbox makes them durable.
 
 ## 3. Data at rest

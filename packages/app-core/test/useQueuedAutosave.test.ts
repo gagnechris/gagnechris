@@ -664,3 +664,62 @@ describe('useQueuedAutosave recovery', () => {
     vi.useRealTimers();
   });
 });
+
+describe('useQueuedAutosave version conflict whose current holds the draft', () => {
+  type Entity = { version: number; body: string };
+
+  const renderConflicting = (status: number, error: string | undefined) => {
+    const current: Entity = { version: 2, body: 'typed' };
+    const onSaved = vi.fn();
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status,
+      error,
+      current,
+    }));
+    const { result } = renderHook(() => {
+      const [dirty, setDirty] = useState(true);
+      const autosave = useQueuedAutosave<string, Entity>({
+        draft: 'typed',
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        getBaseVersion: () => 1,
+        performSave,
+        onSaved,
+        isSavedIn: (draft, stored) => stored.body === draft,
+        conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
+      });
+      return { ...autosave, dirty };
+    });
+    return { result, onSaved, current };
+  };
+
+  test.each([
+    [412, 'precondition_failed'],
+    [409, 'version_conflict'],
+    [409, 'conflict'],
+  ])('%i %s counts as saved with current', async (status, error) => {
+    const { result, onSaved, current } = renderConflicting(status, error);
+    await act(async () => {
+      await expect(result.current.save()).resolves.toBe('clean');
+    });
+    expect(onSaved).toHaveBeenCalledWith(current);
+    expect(result.current.saveState).toBe('saved');
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.dirty).toBe(false);
+  });
+
+  test.each(['deleted', 'daily_taken', 'slug_taken', 'payload_mismatch'])(
+    '409 %s stays an error',
+    async (error) => {
+      const { result, onSaved } = renderConflicting(409, error);
+      await act(async () => {
+        await expect(result.current.save()).resolves.toBe('error');
+      });
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(result.current.dirty).toBe(true);
+    },
+  );
+});

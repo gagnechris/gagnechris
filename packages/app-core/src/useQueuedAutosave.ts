@@ -10,7 +10,8 @@ import { useLatest } from './useLatest.js';
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type AutosaveResult<TEntity> =
-  { ok: true; entity: TEntity } | { ok: false; status: number; error?: string };
+  | { ok: true; entity: TEntity }
+  | { ok: false; status: number; error?: string; current?: TEntity };
 
 export type FlushResult = 'clean' | 'pending' | 'error';
 
@@ -31,6 +32,12 @@ type Options<TDraft, TEntity> = {
    * `getBaseVersion`. Do not replace the draft here.
    */
   onSaved: (entity: TEntity) => void;
+  /**
+   * Whether a version conflict's `current` already holds everything `draft`
+   * sends. If so, an earlier attempt landed and only its response was lost,
+   * so the save counts as done with `current`.
+   */
+  isSavedIn?: (draft: TDraft, current: TEntity) => boolean;
   conflictMessage: string;
   conflictMessages?: Record<string, string>;
   /** Shown for a 413; each resource states its own limits. */
@@ -52,6 +59,15 @@ export const AUTOSAVE_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 const isRetryableStatus = (status: number) =>
   status === 0 || status === 408 || status === 429 || status >= 500;
 
+// Other 409 codes (deleted, slug_taken, daily_taken, payload_mismatch) are not
+// a stale version, so a matching `current` proves nothing.
+const isVersionConflict = (status: number, error: string | undefined) =>
+  status === 412 ||
+  (status === 409 &&
+    (error === undefined ||
+      error === 'conflict' ||
+      error === 'version_conflict'));
+
 /**
  * Callers must not clobber the live draft with the normalized server response;
  * only update version / metadata via `onSaved`.
@@ -72,6 +88,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   getBaseVersion,
   performSave,
   onSaved,
+  isSavedIn,
   conflictMessage,
   conflictMessages,
   tooLargeMessage,
@@ -92,6 +109,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const getBaseVersionRef = useLatest(getBaseVersion);
   const performSaveRef = useLatest(performSave);
   const onSavedRef = useLatest(onSaved);
+  const isSavedInRef = useLatest(isSavedIn);
   const timersRef = useLatest(timers);
   const retrySignalsRef = useLatest(retrySignals);
   const retryDelaysRef = useLatest(retryDelaysMs);
@@ -155,10 +173,18 @@ export function useQueuedAutosave<TDraft, TEntity>({
           setSaveState('saving');
           setSaveError(null);
 
-          const result = await performSaveRef.current(
+          let result = await performSaveRef.current(
             current,
             getBaseVersionRef.current(),
           );
+          if (
+            !result.ok &&
+            result.current !== undefined &&
+            isVersionConflict(result.status, result.error) &&
+            isSavedInRef.current?.(current, result.current)
+          ) {
+            result = { ok: true, entity: result.current };
+          }
           if (!result.ok) {
             const retryable = isRetryableStatus(result.status);
             lastFailureRetryableRef.current = retryable;

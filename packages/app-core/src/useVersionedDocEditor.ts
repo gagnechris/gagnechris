@@ -1,3 +1,4 @@
+import { deepEqual } from '@gagnechris/shared';
 import { useCallback, useEffect, useRef } from 'react';
 import { useGetApiClient } from './AppApiProvider.js';
 import { useEditorStore } from './editorStore.js';
@@ -16,6 +17,17 @@ import { useQueuedAutosave } from './useQueuedAutosave.js';
 export type VersionedDocEntity = {
   version: number;
 };
+
+// The API stores a cleared field (null) by omitting it.
+const holdsSentFields = (sent: Record<string, unknown>, current: object) =>
+  Object.entries(sent).every(
+    ([key, value]) =>
+      value === undefined ||
+      deepEqual(
+        value ?? null,
+        (current as Record<string, unknown>)[key] ?? null,
+      ),
+  );
 
 export type VersionedDocDeleteOptions = {
   confirm: string;
@@ -168,14 +180,27 @@ export function useVersionedDocController<
         });
         return { ok: true as const, entity: entitySaved };
       } catch (err) {
+        if (!(err instanceof ApiError))
+          return { ok: false as const, status: 0 };
+        const current =
+          err.current && typeof err.current === 'object'
+            ? (err.current as TEntity)
+            : undefined;
         return {
           ok: false as const,
-          status: err instanceof ApiError ? err.status : 0,
-          error: err instanceof ApiError ? err.error : undefined,
+          status: err.status,
+          error: err.error,
+          current,
         };
       }
     },
     [enabled, entityRef, getClient, params, resource, toPayload],
+  );
+
+  const isSavedIn = useCallback(
+    (current: TDraft, stored: TEntity) =>
+      holdsSentFields(toPayload(current, entityRef.current ?? stored), stored),
+    [entityRef, toPayload],
   );
 
   const getBoundVersion = useCallback(
@@ -216,6 +241,7 @@ export function useVersionedDocController<
     getBaseVersion: getBoundVersion,
     performSave,
     onSaved,
+    isSavedIn,
     conflictMessage,
     conflictMessages,
     tooLargeMessage: resource.tooLargeMessage,
