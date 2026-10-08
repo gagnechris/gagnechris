@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useCachedTasks,
   useNotebookSearchQuery,
   useTaskToggle,
 } from '@gagnechris/app-core';
+import {
+  highlightParts,
+  wordMatches,
+  type TextRange,
+} from '@gagnechris/shared';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { areaQueryParam } from './notebookAreaPreference';
@@ -14,7 +19,6 @@ type Props = {
   areaFilter: NotebookAreaFilter;
 };
 
-type Range = { start: number; end: number };
 type Scope = 'area' | 'all';
 
 const GROUPS = ['Notes', 'Tasks'] as const;
@@ -24,36 +28,11 @@ const SCOPE_OPTIONS = [
   { value: 'all', label: 'All areas' },
 ] as const;
 
-function highlight(text: string, matches: Range[]) {
+function highlight(text: string, matches: TextRange[]) {
   if (matches.length === 0) return text;
-  const parts: ReactNode[] = [];
-  let cursor = 0;
-  for (const [i, m] of matches.entries()) {
-    if (m.start < cursor) continue;
-    if (m.start > cursor) parts.push(text.slice(cursor, m.start));
-    parts.push(
-      <mark key={`${i}-${m.start}`}>{text.slice(m.start, m.end)}</mark>,
-    );
-    cursor = m.end;
-  }
-  if (cursor < text.length) parts.push(text.slice(cursor));
-  return parts;
-}
-
-/** The query's words in `text`, case-insensitive, in order. */
-function wordMatches(text: string, q: string): Range[] {
-  const lower = text.toLowerCase();
-  const ranges: Range[] = [];
-  for (const word of q.toLowerCase().split(/\s+/).filter(Boolean)) {
-    for (
-      let at = lower.indexOf(word);
-      at !== -1;
-      at = lower.indexOf(word, at + word.length)
-    ) {
-      ranges.push({ start: at, end: at + word.length });
-    }
-  }
-  return ranges.sort((a, b) => a.start - b.start);
+  return highlightParts(text, matches).map((part, i) =>
+    part.match ? <mark key={i}>{part.text}</mark> : part.text,
+  );
 }
 
 export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {

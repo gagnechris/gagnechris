@@ -37,6 +37,7 @@ const RootStack = () => {
         <Stack.Protected guard={guards.notebook}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="index" />
+          <Stack.Screen name="search" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={guards.noAccess}>
           <Stack.Screen name="no-access" />

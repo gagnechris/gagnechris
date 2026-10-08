@@ -34,6 +34,8 @@ export async function readStoredArea(
 type AreaState = {
   area: NotebookAreaFilter;
   setArea: (area: NotebookAreaFilter) => void;
+  /** The device store the area lives in, for other per-device settings. */
+  store: KeyValueStore;
 };
 
 const AreaContext = createContext<AreaState | null>(null);
@@ -69,8 +71,8 @@ export const AreaProvider = ({
   );
 
   const value = useMemo(
-    () => (area ? { area, setArea } : null),
-    [area, setArea],
+    () => (area ? { area, setArea, store } : null),
+    [area, setArea, store],
   );
   if (!value) return null;
   return <AreaContext.Provider value={value}>{children}</AreaContext.Provider>;

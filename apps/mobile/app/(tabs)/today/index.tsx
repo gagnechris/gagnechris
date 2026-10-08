@@ -123,7 +123,17 @@ const TodayScreen = () => {
           </Text>
           <Text style={styles.title}>{heading}</Text>
         </View>
-        <AreaChip />
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search"
+            onPress={() => router.push('/search')}
+            style={styles.navButton}
+          >
+            <Icon name="magnifyingglass" size={20} color={color.ink} />
+          </Pressable>
+          <AreaChip />
+        </View>
       </View>
       <View style={styles.dayNav}>
         <Pressable
@@ -258,6 +268,11 @@ const styles = StyleSheet.create({
     gap: tokens.space[3],
   },
   heading: { flexShrink: 1 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[1],
+  },
   kicker: {
     ...font.medium,
     fontSize: tokens.text.base,

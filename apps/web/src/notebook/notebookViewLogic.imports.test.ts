@@ -35,6 +35,8 @@ const VIEW_LOGIC = [
   'matchesTaskShowOn',
   'taskMentions',
   'embedContext',
+  'wordMatches',
+  'highlightParts',
   'newestById',
   'byNewest',
 ] as const;
