@@ -1,5 +1,3 @@
-import { registerRootComponent } from 'expo';
-
-import App from './App';
-
-registerRootComponent(App);
+// Polyfills must run before expo-router evaluates any route module.
+import './src/polyfills';
+import 'expo-router/entry';

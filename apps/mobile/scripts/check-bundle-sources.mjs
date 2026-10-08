@@ -2,6 +2,8 @@
  * A resolver that remaps zod's `.js` to `.d.ts` bundles a declaration with no
  * runtime and the export still succeeds, so the sourcemap is the only place it
  * shows. Shared targets zod 4, but Metro can still resolve Expo CLI's zod 3.
+ * It also fails when the app graph stops reaching app-core, react-query, the
+ * expo-crypto polyfill, or expo-router.
  *
  * Usage: node scripts/check-bundle-sources.mjs <export-dir>
  */
@@ -27,6 +29,15 @@ if (maps.length === 0) {
     `No sourcemaps under ${exportDir} — export with \`--source-maps\``,
   );
 }
+
+// The app's own graph must reach these, or the bundle checks above prove
+// nothing about them.
+const requiredSources = {
+  '@gagnechris/app-core': /\/packages\/app-core\/src\//,
+  '@tanstack/react-query': /node_modules\/@tanstack\/react-query\//,
+  'expo-crypto': /node_modules\/expo-crypto\//,
+  'expo-router': /node_modules\/expo-router\//,
+};
 
 const failures = [];
 for (const map of maps) {
@@ -55,9 +66,20 @@ for (const map of maps) {
       `${map}: zod/v3/ sources must not ship (shared targets zod 4):\n  ${zodSources.filter((s) => /\/zod\/v3\//.test(s)).join('\n  ')}`,
     );
   }
-  if (declarations.length === 0 && hasZodV4 && !hasZodV3) {
+  const missing = Object.entries(requiredSources)
+    .filter(([, pattern]) => !sources.some((source) => pattern.test(source)))
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    failures.push(`${map}: no sources from ${missing.join(', ')}`);
+  }
+  if (
+    declarations.length === 0 &&
+    hasZodV4 &&
+    !hasZodV3 &&
+    missing.length === 0
+  ) {
     console.log(
-      `${map}: ${sources.length} sources, no .d.ts, zod/v4 runtime present`,
+      `${map}: ${sources.length} sources, no .d.ts, zod/v4 runtime, ${Object.keys(requiredSources).join(', ')} present`,
     );
   }
 }

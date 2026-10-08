@@ -43,7 +43,7 @@ Native modules follow the installed SDK. `apps/mobile/node_modules/expo/bundledN
 
 Install them with `npx expo install <package>` inside `apps/mobile` so the version comes from that file. `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` are plain JavaScript and track the installed `@tanstack/react-query` minor (5.104).
 
-The minimum iOS version is Expo SDK 57's 16.4 until the HTTPS callback lands, which needs 17.4 (§5).
+The iOS deployment target is 17.4 (set with `expo-build-properties` in `app.json`), the minimum for the HTTPS callback (§5).
 
 ### Navigation
 

@@ -369,7 +369,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
-CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths, and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`) in the iOS export sourcemap.
+CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths, and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`), app-core, `@tanstack/react-query`, `expo-crypto` and `expo-router` sources in the iOS export sourcemap.
 
 ## Media, deploy excludes, and backups
 

@@ -1,11 +1,59 @@
 # Mobile (Expo)
 
-`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro. Its single screen shows the API base URL and a button that calls:
+`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`. The root layout (`app/_layout.tsx`) provides `AppApiProvider` and a TanStack `QueryClientProvider`; the only screen (`app/index.tsx`) shows the API base URL, a client-generated ULID (also logged as `[ulid] <id>`), and the result of `GET /api/health` fetched through app-core `useGetApiClient` + `useQuery`.
 
-1. `GET /api/health` (public client, parsed with `HealthResponseSchema`)
-2. `GET /api/admin/home` (authed client), then shows the result's version and status
+The app has no sign-in, tabs, cache persistence or offline support yet, and it does not render notes. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. When the app renders notes, it should parse task embeds (`{{task:<ULID>}}` lines, see [data-model.md](./data-model.md#task-embeds)) with the shared helpers and render them from the task records, or fall back to `taskEmbedFallbackLine` so a raw token never shows. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
 
-The app has no sign-in, navigation, local store or offline support yet, and it does not render notes. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. When the app renders notes, it should parse task embeds (`{{task:<ULID>}}` lines, see [data-model.md](./data-model.md#task-embeds)) with the shared helpers and render them from the task records, or fall back to `taskEmbedFallbackLine` so a raw token never shows. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids; it needs `crypto.getRandomValues`, which Hermes provides only with a polyfill such as `expo-crypto` (not installed yet).
+## Entry and polyfills
+
+`package.json` `main` is `index.ts`, which imports `src/polyfills.ts` and then `expo-router/entry`, so the polyfills run before any route module is evaluated. Hermes has no `crypto.getRandomValues`, which `createUlid` requires (it throws rather than fall back to `Math.random`); `src/polyfills.ts` installs expo-crypto's `getRandomValues` on `globalThis.crypto` unless the runtime already has one.
+
+## Native modules
+
+Every module listed in `expo/bundledNativeModules.json` uses exactly the range given there (React is the exception; see [React versions](#react-versions)); `src/native-config.test.ts` fails on drift. Adding or removing a native module needs a new dev client build; JS-only changes do not.
+
+| Module                                                                                                       | Use                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `expo-router` (+ `react-native-screens`, `react-native-safe-area-context`, `expo-linking`, `expo-constants`) | File-based navigation in `app/`                                                                     |
+| `expo-dev-client`                                                                                            | Debug builds open the dev launcher instead of Expo Go                                               |
+| `expo-auth-session`, `expo-web-browser`                                                                      | Cognito managed login in `ASWebAuthenticationSession`                                               |
+| `expo-secure-store`                                                                                          | Tokens in the Keychain                                                                              |
+| `expo-crypto`                                                                                                | `crypto.getRandomValues` for `createUlid`                                                           |
+| `@react-native-async-storage/async-storage`                                                                  | Cache store for cached reads (with TanStack's async-storage persister)                              |
+| `@react-native-community/netinfo`                                                                            | Online / offline state                                                                              |
+| `expo-sqlite`                                                                                                | Local database for the later offline outbox                                                         |
+| `expo-build-properties`                                                                                      | iOS deployment target **17.4**, the minimum for an `https` callback in `ASWebAuthenticationSession` |
+
+The cache store, netinfo and SQLite are installed so the dev client already contains them; no code reads or writes them yet.
+
+`app.json` registers the config plugins for `expo-router`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
+
+## Run in the simulator
+
+Simulator builds need Xcode and an iOS Simulator runtime, but no Apple Developer membership or signing.
+
+Local build (needs Xcode):
+
+```bash
+npm ci --prefix apps/mobile
+npm run local:dev                      # terminal 1: local API on :8787
+npm run ios --prefix apps/mobile       # terminal 2: expo run:ios
+```
+
+`npm run ios` runs `expo run:ios`: it prebuilds `ios/`, installs pods, builds the debug dev client, installs it on a booted simulator (or picks one), and starts Metro. Later JS-only changes reload from Metro; rerun it after a native module or `app.json` change. To skip the native build when the dev client is already installed, run `npm start --prefix apps/mobile` and press `i`.
+
+EAS simulator build (builds in the cloud; needs an Expo account and `eas login`):
+
+```bash
+cd apps/mobile
+npx eas-cli build --profile development --platform ios
+```
+
+The `development` profile in `eas.json` sets `developmentClient: true` and `ios.simulator: true`, so the result is a `.app` for the simulator. EAS offers to install it on a booted simulator when the build finishes (or run `npx eas-cli build:run --profile development --platform ios --latest`); then start Metro with `npm start`.
+
+The screen logs `[ulid] <id>` to the Metro terminal on launch, which shows `createUlid` running on Hermes with the expo-crypto polyfill.
+
+`eas.json` also defines `preview` (internal distribution) and `production` (`autoIncrement: true`, with `appVersionSource: "remote"` so EAS owns the build number). Both build for devices and need the Apple Developer membership and Team ID.
 
 ## What it imports
 
@@ -24,8 +72,8 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 
 ### iOS sign-in and associated domains
 
-- Expo `scheme` is `gagnechris`, and the Cognito `ios` app client (public, PKCE) has the callback `gagnechris://auth/callback` plus `https://gagnechris.com/auth/callback`, inherited from the settings the clients share. The API trusts no token from the `ios` client yet: the `/api/admin` and `/api/notebook` authorizers accept only `admin-web` and `notebook-web`.
-- iOS bundle id is `com.gagnechris.mobile`. `app.json` lists the associated domains `applinks:gagnechris.com` and `webcredentials:gagnechris.com`; the first matches no paths, because the apex AASA has no `applinks`.
+- Expo `scheme` is `gagnechris`, and the Cognito `ios` app client (public, PKCE) has the callback `gagnechris://auth/callback` plus `https://gagnechris.com/auth/callback`, inherited from the settings the clients share. The `/api/notebook` authorizer and router accept tokens from `notebook-web` and `ios`; `/api/admin` (including `/api/admin/users`) accepts only `admin-web`, so the app's Admin space needs its own change. The local API maps `Bearer local-ios:<sub>` to ios-audience claims.
+- iOS bundle id is `com.gagnechris.mobile`. `app.json` lists the associated domains `applinks:gagnechris.com`, `applinks:notebook.gagnechris.com`, and `webcredentials:gagnechris.com`. `applinks:gagnechris.com` matches no paths, because the apex AASA has no `applinks`; universal links come from the notebook host.
 - Each host serves its own `/.well-known/apple-app-site-association`, never redirected (Apple fetches it without following redirects); deploy forces `Content-Type: application/json`:
   - Apex (`apps/web/public/.well-known/`): `webcredentials` only, no `applinks`. The apex also serves `/.well-known/webauthn`.
   - `notebook.gagnechris.com` (`apps/web/public-notebook/.well-known/`): `applinks` for `/today`, `/notes/*` and `/tasks/*`, with `"exclude": true` on `/auth/*` so web sign-in on an iPhone with the app installed stays in the browser.
@@ -44,7 +92,7 @@ Consequences:
 - Install mobile deps with `npm ci` (or `npm install`) **inside `apps/mobile`** — a root install does not cover it.
 - Root `npm run typecheck` / `npm test` / `npm run lint` do not include mobile. Use `--prefix apps/mobile`; the Mobile workflow does this.
 - Adding a dependency to `packages/*` needs `npm install` in `apps/mobile` too, to refresh its lockfile.
-- Add Expo native modules with `npx expo install <package>` inside `apps/mobile`, so the version comes from SDK 57's `node_modules/expo/bundledNativeModules.json`.
+- Add Expo native modules with `npx expo install <package>` inside `apps/mobile`, then check the range matches `node_modules/expo/bundledNativeModules.json` (`expo install` can pick the newest SDK patch's list; `src/native-config.test.ts` fails on a mismatch).
 
 ## React versions
 
@@ -63,8 +111,8 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
 2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
-4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, or if `zod/v4/` is absent.
-5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas, running the Notebook view logic (`bucketTodayTasks`, `groupUpcomingTasks`), asserting Zod 4 APIs (`z.email`), and resolving app-core `createVersionedResource` (including its `useQuery` hook) + `fetch` through Metro. Hook rendering under a single React / react-query instance is asserted in `src/app-core.test.ts`.
+4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, if `zod/v4/` is absent, or if no sources come from app-core, `@tanstack/react-query`, `expo-crypto`, or `expo-router`.
+5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**: it evaluates shared Zod schemas, runs the Notebook view logic (`bucketTodayTasks`, `groupUpcomingTasks`), asserts Zod 4 APIs (`z.email`), generates a ULID with the native `crypto` removed and the app's `getRandomValues` installer in its place, and renders app-core's `createVersionedResource(...).useQuery` with `react-test-renderer` under `AppApiProvider` + `QueryClientProvider` until the query resolves. A second React or react-query copy in the Metro graph fails that render.
 
 A successful `expo export` alone does not prove the bundle runs: a resolver that maps `.js` to `.d.ts` inside `node_modules` (for example `zod/v4/classic/external.js`) exports cleanly, then throws `TypeError: undefined is not a function` at module load. Step 4 reports the `.d.ts` sources and step 5 fails (e.g. `TypeError: _zod.z.literal is not a function`).
 
@@ -85,4 +133,4 @@ npm run export:ios && npm run check:bundle
 npm run smoke:bundle
 ```
 
-iOS Simulator: `npm run ios --prefix apps/mobile` (requires Xcode Simulator). The bundle smoke covers Metro resolution and module evaluation; only launching on a simulator or device exercises the RN runtime itself.
+The bundle smoke runs in Node, not Hermes, and does not load native modules; only launching on a simulator or device (see [Run in the simulator](#run-in-the-simulator)) exercises the RN runtime and the native expo-crypto call.
