@@ -10,6 +10,12 @@ import {
 } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { requireEnv } from './config.js';
+import {
+  deleteObjectMeta,
+  OBJECT_META_DIR,
+  readObjectMeta,
+  writeObjectMeta,
+} from './fs-object-meta.js';
 import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
 
 const TMP_SUFFIX = '.publisher-tmp';
@@ -27,6 +33,7 @@ async function walkFiles(root: string, prefix: string): Promise<string[]> {
   for (const entry of entries) {
     const rel = prefix ? `${prefix}${entry.name}` : entry.name;
     if (entry.isDirectory()) {
+      if (rel === OBJECT_META_DIR) continue;
       out.push(...(await walkFiles(root, `${rel}/`)));
     } else if (entry.isFile() && !entry.name.endsWith(TMP_SUFFIX)) {
       out.push(rel);
@@ -65,12 +72,24 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
       }
     },
 
-    async put({ key, body }): Promise<boolean> {
+    async put({
+      key,
+      body,
+      contentType,
+      contentDisposition,
+    }): Promise<boolean> {
       const path = join(root, key);
       const next = bodyBytes(body);
+      const meta = await readObjectMeta(root, key);
+      const sameMeta =
+        meta?.contentType === contentType &&
+        meta.contentDisposition === contentDisposition;
+      if (!sameMeta) {
+        await writeObjectMeta(root, key, { contentType, contentDisposition });
+      }
       try {
         const existing = await readFile(path);
-        if (sameBytes(existing, next)) {
+        if (sameBytes(existing, next) && sameMeta) {
           return false;
         }
       } catch (err) {
@@ -99,6 +118,7 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
         throw err;
       }
       await rm(path, { force: true });
+      await deleteObjectMeta(root, key);
       return true;
     },
 

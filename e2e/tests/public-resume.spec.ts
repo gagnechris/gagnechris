@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import type { ResumeContent } from '@gagnechris/shared';
 import { expect, focusJustBefore, requireEnv, Seed, test } from '../fixtures';
@@ -57,6 +58,28 @@ test.describe('the resume page', () => {
     await expect
       .poll(async () => (await request.get(`${site()}/resume`)).text())
       .toContain('Earlier roles, 1999–2012');
+  });
+
+  test('the PDF downloads as Chris-Gagne-Resume.pdf', async ({
+    page,
+    request,
+  }) => {
+    const response = await request.get(`${site()}/resume.pdf`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(response.headers()['content-disposition']).toBe(
+      'attachment; filename="Chris-Gagne-Resume.pdf"',
+    );
+    expect((await response.body()).subarray(0, 5).toString()).toBe('%PDF-');
+
+    await page.goto(`${site()}/resume`);
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('link', { name: 'Download PDF' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe('Chris-Gagne-Resume.pdf');
+    const path = await download.path();
+    expect((await readFile(path)).subarray(0, 5).toString()).toBe('%PDF-');
   });
 
   test('the page source has every role, earlier ones included, and they toggle without JS', async ({

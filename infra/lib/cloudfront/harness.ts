@@ -95,13 +95,15 @@ export function loadAppViewerRequest(
 }
 
 /** What the origin holds at a key: text CloudFront functions can see, or bytes. */
+type ObjectHeaders = { contentType: string; contentDisposition?: string };
+
 export type OriginObject =
-  | { kind: 'text'; contentType: string; body: string }
-  | { kind: 'binary'; contentType: string; body: Uint8Array };
+  | ({ kind: 'text'; body: string } & ObjectHeaders)
+  | ({ kind: 'binary'; body: Uint8Array } & ObjectHeaders);
 
 export type EdgeResult =
   | { kind: 'response'; response: CfResponse }
-  | { kind: 'binary'; contentType: string; body: Uint8Array };
+  | ({ kind: 'binary'; body: Uint8Array } & ObjectHeaders);
 
 /** S3's answer for a missing key. CloudFront runs no viewer-response on it. */
 export const noSuchKey = (uri: string): CfResponse => ({
@@ -136,7 +138,12 @@ export function edgePipeline(options: {
         response: {
           statusCode: 200,
           statusDescription: 'OK',
-          headers: { 'content-type': { value: object.contentType } },
+          headers: {
+            'content-type': { value: object.contentType },
+            ...(object.contentDisposition
+              ? { 'content-disposition': { value: object.contentDisposition } }
+              : {}),
+          },
           body: object.body,
         },
       }),

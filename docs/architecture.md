@@ -347,7 +347,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 ## Analytics stay off the signed-in apps
 
-- GA4 loads only in the public shells of the production build: `analyticsPlugin` (`apps/web/scripts/analyticsPlugin.ts`) adds gtag.js and writes `/ga.js` only when the public build runs with `GA_MEASUREMENT_ID`, which only `scripts/deploy-web.sh` sets (read from the process environment, never a `.env` file). Dev servers, `npm run preview`, local and e2e builds load no GA, and `e2e/tests/no-analytics.spec.ts` fails on any request to a Google Analytics host. The admin and Notebook shells never include it (`check:web-shells`), and the apex serves no signed-in page: old `/admin*` and `/auth*` URLs 301 to the app hosts at the edge.
+- GA4 loads only in the public shells of the production build: `analyticsPlugin` (`apps/web/scripts/analyticsPlugin.ts`) adds gtag.js and writes `/ga.js` only when the public build runs with `GA_MEASUREMENT_ID`, which only `scripts/deploy-web.sh` sets (read from the process environment, never a `.env` file). Dev servers, `npm run preview`, local and e2e builds load no GA, and `e2e/tests/no-analytics.spec.ts` fails on any request to a Google Analytics host from the public site, the admin app or Notebook. The admin and Notebook shells never include it (`check:web-shells`), and the apex serves no signed-in page: old `/admin*` and `/auth*` URLs 301 to the app hosts at the edge.
 
 ## Dates and locale
 

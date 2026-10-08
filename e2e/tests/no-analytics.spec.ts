@@ -37,3 +37,32 @@ for (const [label, origin] of Object.entries(origins)) {
     expect(await page.evaluate(() => 'gtag' in window)).toBe(false);
   });
 }
+
+test('the admin and Notebook apps send nothing to Google Analytics', async ({
+  context,
+  page,
+  apps,
+  signIn,
+}) => {
+  const hits: string[] = [];
+  await context.route(
+    (url) => GA_HOST.test(url.hostname),
+    (route) => {
+      hits.push(route.request().url());
+      return route.abort();
+    },
+  );
+  await signIn();
+
+  await page.goto(apps.admin);
+  await expect(page.getByRole('heading', { name: 'Posts' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  expect(await page.evaluate(() => 'gtag' in window)).toBe(false);
+
+  await page.goto(`${apps.notebook}/today`);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  expect(await page.evaluate(() => 'gtag' in window)).toBe(false);
+
+  expect(hits).toEqual([]);
+});

@@ -43,8 +43,14 @@ afterwards:
    The API runs one rebuild at a time and answers a publish only after its
    rebuild, so the item is in the site from then on; the filesystem storage
    replaces files by rename, so a page read mid-rebuild is never partial.
+   The filesystem storage keeps each object's Content-Type and
+   Content-Disposition under `.object-meta/` in the site root, and the
+   static server sends them, so `/rss.xml` and `/resume.pdf` carry the same
+   headers as from S3.
    The KeyValueStore is `e2e/.stack/<run>/kvs.json` (`LOCAL_KVS_FILE`),
-   seeded with both sentinels so unknown slugs 404 as in prod.
+   seeded with both sentinels so unknown slugs 404 as in prod. Mail the API
+   sends (contact form, resume download) goes to `e2e/.stack/<run>/outbox.jsonl`
+   (`LOCAL_OUTBOX_FILE`, `E2E_OUTBOX_FILE` in specs), one JSON line per message.
    `tests/apex-cutover.spec.ts` checks the old apex `/admin*` and `/auth*`
    301s against it
 4. One Vite dev server per app (public, admin, Notebook) with
