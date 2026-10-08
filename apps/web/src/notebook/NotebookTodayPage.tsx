@@ -222,6 +222,7 @@ export default function NotebookTodayPage() {
     useOutletContext<NotebookOutletContext>();
   const openSearch = useOpenWorkspaceSearch();
   const stripRef = useRef<HTMLButtonElement>(null);
+  const calendarRef = useRef<HTMLDetailsElement>(null);
   const appendEmbedRef = useRef<((taskId: string) => void) | null>(null);
   const [noteReady, setNoteReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -362,7 +363,7 @@ export default function NotebookTodayPage() {
             >
               ›
             </button>
-            <details className="notebook-today__calendar">
+            <details ref={calendarRef} className="notebook-today__calendar">
               <summary>
                 <svg
                   className="notebook-today__calendar-icon"
@@ -384,7 +385,14 @@ export default function NotebookTodayPage() {
               </summary>
               <NotebookCalendar
                 selected={date}
-                onSelect={setDate}
+                onSelect={(next) => {
+                  setDate(next);
+                  // The open calendar covers the note.
+                  const calendar = calendarRef.current;
+                  if (!calendar) return;
+                  calendar.open = false;
+                  calendar.querySelector('summary')?.focus();
+                }}
                 markedDates={datesQuery.data}
               />
             </details>
