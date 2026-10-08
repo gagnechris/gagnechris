@@ -258,7 +258,7 @@
 
 - Each domain "must serve its own `apple-app-site-association` file", over HTTPS "with no redirects". Apple's CDN fetches it within 24 hours, and devices re-check about weekly ([Apple: Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains)).
 - `notebook.` serves AASA from `public-notebook/.well-known/`. `applinks` cover Notebook paths (`/today`, `/notes/*`, `/tasks/*`) and use `"exclude": true` for `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app.
-- A future iOS universal-link OAuth callback uses a distinct path, e.g. `/ios/auth/callback`, on the iOS client only.
+- The iOS https OAuth callback uses a distinct path, `/ios/auth/callback`, on the iOS client only.
 - The apex AASA keeps only what still applies, with no `/auth/*`.
 - The RP ID stays `auth.gagnechris.com`. `webcredentials:notebook.gagnechris.com` does nothing for passkeys until the RP ID changes, which ADR 0001 keeps out of scope.
 

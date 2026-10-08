@@ -27,23 +27,33 @@ const aasa = (publicDir: string): Aasa =>
     ),
   ) as Aasa;
 
+const APP_ID = 'FF9YB7FZ7A.com.gagnechris.mobile';
+
 describe('apple-app-site-association', () => {
   it('claims no universal links on the apex, only web credentials', () => {
     const apex = aasa('public');
     expect(apex.applinks).toBeUndefined();
-    expect(apex.webcredentials?.apps).toEqual([
-      'APPLE_TEAM_ID.com.gagnechris.mobile',
+    expect(apex.webcredentials?.apps).toEqual([APP_ID]);
+  });
+
+  it('opens only Notebook pages in the app and keeps web sign-in out', () => {
+    const details = aasa('public-notebook').applinks?.details ?? [];
+    expect(details).toEqual([
+      {
+        appIDs: [APP_ID],
+        components: [
+          { '/': '/auth/*', exclude: true },
+          { '/': '/today' },
+          { '/': '/notes/*' },
+          { '/': '/tasks/*' },
+        ],
+      },
     ]);
   });
 
-  it('keeps web sign-in on the Notebook host out of the app', () => {
-    const details = aasa('public-notebook').applinks?.details ?? [];
-    expect(details).toHaveLength(1);
-    const components = details[0]!.components ?? [];
-    expect(components[0]).toEqual({ '/': '/auth/*', exclude: true });
-    expect(
-      components.filter((c) => c['/'].startsWith('/auth') && !c.exclude),
-    ).toEqual([]);
-    expect(details[0]!.paths).toBeUndefined();
+  // ASWebAuthenticationSession returns an https callback only to an app the
+  // callback host lists under webcredentials; applinks don't count.
+  it('associates the app with the Notebook host for the https sign-in callback', () => {
+    expect(aasa('public-notebook').webcredentials?.apps).toEqual([APP_ID]);
   });
 });

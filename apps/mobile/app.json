@@ -10,9 +10,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gagnechris.mobile",
+      "appleTeamId": "FF9YB7FZ7A",
       "associatedDomains": [
-        "applinks:gagnechris.com",
         "applinks:notebook.gagnechris.com",
+        "webcredentials:notebook.gagnechris.com",
         "webcredentials:gagnechris.com"
       ]
     },

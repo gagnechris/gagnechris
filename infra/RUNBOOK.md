@@ -240,6 +240,15 @@ done
 # Expect: 200, CSP with script-src 'self' and no google hosts, {"status":"ok",...}
 ```
 
+AASA: each host serves its own `/.well-known/apple-app-site-association` (app ID `FF9YB7FZ7A.com.gagnechris.mobile`). Devices read it from Apple's CDN, which caches it for hours, so an AASA change reaches iPhones only after the CDN refetches; reinstalling the app doesn't help before then. Compare what the host and Apple serve:
+
+```bash
+curl -sS https://notebook.gagnechris.com/.well-known/apple-app-site-association
+curl -sS https://app-site-association.cdn-apple.com/a/v1/notebook.gagnechris.com
+curl -sS https://app-site-association.cdn-apple.com/a/v1/gagnechris.com
+# Expect the same JSON from the host and the CDN; the notebook one has applinks and webcredentials.
+```
+
 ## Web deploy pipeline
 
 On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk deploy --all`, CI runs `scripts/deploy-web.sh`. **Prod only**. It reads everything from SSM under `/gagnechris/prod/`: `site-bucket-name`, `cloudfront-distribution-id`, `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`, `cognito-user-pool-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-auth-domain` and `publisher-function-name`. The deploy role (`gagnechris-prod-gha-deploy`, `AdministratorAccess`) covers the syncs, invalidations and SSM reads.
@@ -676,7 +685,7 @@ SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-admin-web-client-id`, `co
 - Users are managed in Admin under **Settings › Users & access** (`/settings/users`), which calls `/api/admin/users*` (`docs/architecture.md`, Users and access). Removing someone never deletes their Cognito user or Notebook; don't delete pool users by hand either, since a deleted user's Notebook data is orphaned under a `sub` nobody can sign in as. Invite emails come from the Cognito default sender, which has a low daily limit.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
 - API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
-- The `ios` client trusts only `https://gagnechris.com` and `gagnechris://`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
+- The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`, plus `gagnechris://auth/callback` and `gagnechris://` until the app's sign-in uses the https callback. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools
