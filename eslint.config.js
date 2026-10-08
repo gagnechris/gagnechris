@@ -178,6 +178,28 @@ const platformNeutralRestrictedImports = {
   ],
 };
 
+// The native markdown AST needs marked's lexer; its HTML parser and renderer
+// stay behind /render.
+const markdownAstRestrictedImports = {
+  'no-restricted-imports': [
+    'error',
+    {
+      ...platformNeutralRestrictedImports['no-restricted-imports'][1],
+      paths: platformNeutralRestrictedImports[
+        'no-restricted-imports'
+      ][1].paths.map((path) =>
+        path.name === 'marked'
+          ? {
+              name: 'marked',
+              allowImportNames: ['Lexer', 'Token', 'Tokens'],
+              message: "The markdown AST may only use marked's Lexer.",
+            }
+          : path,
+      ),
+    },
+  ],
+};
+
 const platformNeutralRestrictedGlobals = {
   'no-restricted-globals': [
     'error',
@@ -500,6 +522,10 @@ export default tseslint.config(
       ...platformNeutralRestrictedGlobals,
       ...platformNeutralRestrictedSyntax,
     },
+  },
+  {
+    files: ['packages/shared/src/markdown-ast.ts'],
+    rules: markdownAstRestrictedImports,
   },
   {
     files: ['packages/public-ui/**/*.{ts,tsx}'],
