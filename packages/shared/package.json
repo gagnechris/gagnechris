@@ -16,6 +16,12 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./markdown-ast": {
+      "types": "./src/markdown-ast.ts",
+      "react-native": "./src/markdown-ast.ts",
+      "import": "./src/markdown-ast.ts",
+      "default": "./src/markdown-ast.ts"
+    },
     "./render": {
       "types": "./src/render.ts",
       "import": "./src/render.ts",

@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["APPLE_TEAM_ID.com.gagnechris.mobile"],
+        "appIDs": ["FF9YB7FZ7A.com.gagnechris.mobile"],
         "components": [
           { "/": "/auth/*", "exclude": true },
           { "/": "/today" },
@@ -11,5 +11,8 @@
         ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["FF9YB7FZ7A.com.gagnechris.mobile"]
   }
 }

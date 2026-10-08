@@ -280,7 +280,7 @@ Post, Project, Home, and Resume containers are mostly field layout; shared wirin
 - **Search:** `POST /api/notebook/search` with a JSON body `{ q, area?, limit? }` (POST so terms stay out of URLs and access logs) scans the user's notes/tasks in memory (no OpenSearch). ⌘K / Search in the notebook chrome opens a palette that searches once typing pauses for 200 ms. Its groups are headed `Notes · N` and `Tasks · N`, with the query's words highlighted in both titles and snippets. A daily note hit is titled with its date and opens Today on that day and area; a page hit opens the page editor. A This area / All areas radio group sets the scope (hidden when the area filter is already All). The input is an ARIA combobox: focus stays in it, arrow keys move `aria-activedescendant` through the options, Enter opens the active hit, and ⌘⏎ / Ctrl+Enter checks off an active task hit through the shared task cache, so its checkbox and every list update at once.
 - **Export:** the Notes page **Export** button builds a ZIP in the browser (store/no compression) from paged notes + tasks APIs: one Markdown file per note (YAML frontmatter; task embeds written as checklist lines, see [data-model.md](./data-model.md#task-embeds)) plus `tasks.json`. This is a human-readable backup/migration path, not Dynamo restore — infra PITR / AWS Backup are in `infra/RUNBOOK.md`.
 - **PWA:** `notebook.html` links `manifest.json` (`id`, `start_url` and `scope` all `/`, `display: standalone`) plus apple-touch / `apple-mobile-web-app-*` meta so iPhone Add to Home Screen from `notebook.gagnechris.com` opens Today full-screen. Icons under `/icons/`, both from `apps/web/public-notebook/`. There is no offline cache; it is not required for installability.
-- **AASA:** `public-notebook/.well-known/apple-app-site-association` covers `/today`, `/notes/*` and `/tasks/*` and excludes `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app.
+- **AASA:** `public-notebook/.well-known/apple-app-site-association` covers `/today`, `/notes/*` and `/tasks/*` and excludes `/auth/*`, so web sign-in on an iPhone with the app installed never opens the app. Its `webcredentials` entry lets the iPhone app's sign-in return on `https://notebook.gagnechris.com/ios/auth/callback` ([mobile.md](./mobile.md#ios-sign-in-and-associated-domains)).
 
 ## Notebook sync contract
 
@@ -360,6 +360,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 | Import                            | Contents                                                                                                                 |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `@gagnechris/shared`              | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo)                           |
+| `@gagnechris/shared/markdown-ast` | Markdown as plain data for React Native (`marked`'s lexer only; no HTML)                                                 |
 | `@gagnechris/shared/render`       | Markdown + HTML prerender helpers (web / publisher); also re-exports `/html` helpers                                     |
 | `@gagnechris/shared/public-pages` | Contact heading and the 404 page markup, for the SPA, the Vite build and the CloudFront 404 generator                    |
 | `@gagnechris/shared/html`         | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
@@ -369,7 +370,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
-CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths, and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`), app-core, `@tanstack/react-query`, `expo-crypto` and `expo-router` sources in the iOS export sourcemap.
+CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `shared/markdown-ast`, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths (`markdown-ast` alone may import `marked`, for its lexer; see [mobile.md](./mobile.md#markdown)), and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`), app-core, `@tanstack/react-query`, `expo-crypto` and `expo-router` sources in the iOS export sourcemap.
 
 ## Media, deploy excludes, and backups
 

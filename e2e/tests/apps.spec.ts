@@ -59,6 +59,22 @@ test('the Notebook app opens on Today and deep-links to its own pages', async ({
   ).toBeVisible();
 });
 
+test('the Notebook host answers the iPhone app sign-in return URLs without signing in', async ({
+  page,
+  apps,
+}) => {
+  for (const path of [
+    '/ios/auth/callback?code=c&state=s',
+    '/ios/auth/signed-out',
+  ]) {
+    await page.goto(`${apps.notebook}${path}`);
+    await expect(
+      page.getByRole('heading', { name: 'Finish in the iPhone app' }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(`${apps.notebook}${path}`);
+  }
+});
+
 test('the public site has no admin, Notebook or sign-in pages', async ({
   page,
   apps,

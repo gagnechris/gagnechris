@@ -7,6 +7,9 @@ export const notebookRoutes: RouteObject[] = [
     path: 'auth/callback',
     load: () => import('../workspace/auth/AuthCallback.tsx'),
   }),
+  ...['ios/auth/callback', 'ios/auth/signed-out'].map((path) =>
+    lazyRoute({ path, load: () => import('./IosAuthReturnPage.tsx') }),
+  ),
   lazyRoute({
     path: '/',
     load: () => import('./NotebookShell.tsx'),

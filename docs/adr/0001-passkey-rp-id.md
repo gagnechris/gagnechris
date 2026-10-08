@@ -14,7 +14,7 @@ Do **not** change the RP ID to the apex (`gagnechris.com`) before iOS ships unle
 1. **Cognito constraint with managed login.** With a custom domain and managed login, Cognito expects the passkey RP ID to be that custom domain’s FQDN (`auth.gagnechris.com`). See [WebAuthnConfigurationType](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_WebAuthnConfigurationType.html) and the [passkey authentication flow docs](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-authentication-flow-methods.html).
 2. **Changing RP ID orphans credentials.** Existing passkeys are bound to the current RP ID; a switch forces every user to re-register.
 3. **AASA cannot be hosted on the Cognito domain.** We control `gagnechris.com` (S3 + CloudFront), not `auth.gagnechris.com`. Native `ASAuthorization` / `webcredentials:` against the Cognito host is therefore not available today.
-4. **iOS path that works without RP ID change.** Sign-in via **managed login inside `ASWebAuthenticationSession`** (or equivalent) keeps passkeys in the browser context on `auth.gagnechris.com`. The custom scheme `gagnechris://auth/callback` (already registered on the Cognito iOS client) returns tokens to the app.
+4. **iOS path that works without RP ID change.** Sign-in via **managed login inside `ASWebAuthenticationSession`** (or equivalent) keeps passkeys in the browser context on `auth.gagnechris.com`. The callback `https://notebook.gagnechris.com/ios/auth/callback` (with the custom scheme `gagnechris://auth/callback` until the app switches over, [ADR 0004](./0004-ios-app.md#5-auth-callback)) returns the code to the app.
 
 ## Apex `/.well-known` files
 
@@ -25,7 +25,7 @@ We still publish on **`https://gagnechris.com`**:
 | `/.well-known/apple-app-site-association` | `webcredentials` only, for a **future** apex RP ID; no `applinks` (Notebook universal links are in `notebook.gagnechris.com`'s own AASA) |
 | `/.well-known/webauthn`                   | Related-origins placeholder for apex WebAuthn                                                                                            |
 
-Replace `APPLE_TEAM_ID` in the apex and notebook AASA files with the real Apple Team ID before enabling Associated Domains in a shipping build.
+Both AASA files name the app `FF9YB7FZ7A.com.gagnechris.mobile` (Apple Team ID `FF9YB7FZ7A`). The notebook host's AASA also lists the app under `webcredentials`, which associates it for the https sign-in callback, not for passkeys: the RP ID is still `auth.gagnechris.com`.
 
 ## Consequences
 

@@ -69,9 +69,16 @@ describe('native build config', () => {
     ]);
   });
 
-  it('claims the notebook host for universal links', () => {
-    expect(app.ios.associatedDomains).toContain(
+  it('associates the notebook host for universal links and the https sign-in callback', () => {
+    expect(app.ios.associatedDomains).toEqual([
       'applinks:notebook.gagnechris.com',
-    );
+      'webcredentials:notebook.gagnechris.com',
+      'webcredentials:gagnechris.com',
+    ]);
+  });
+
+  it('signs and submits with the Apple Team ID the AASA files name', () => {
+    expect(app.ios.appleTeamId).toBe('FF9YB7FZ7A');
+    expect(eas.submit.production.ios.appleTeamId).toBe('FF9YB7FZ7A');
   });
 });
