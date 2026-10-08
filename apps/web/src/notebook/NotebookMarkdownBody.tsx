@@ -12,6 +12,7 @@ import { taskListToggle } from '../kit/markdown/taskListToggle';
 import { livePreview } from '../kit/markdown/livePreview';
 import { useEditorViewMode } from '../kit/markdown/editorViewMode';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
+import { loadMarkdownPreview } from '../kit/markdown/markdownPreviewModule';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
@@ -45,6 +46,7 @@ export function NotebookMarkdownBody({
   const mode = useEditorViewMode({
     rawStorageKey: 'notebook.rawMarkdown',
     editorRef,
+    preloadPreview: loadMarkdownPreview,
   });
   const getView = useCallback(() => editorRef.current?.view(), []);
   const phone = useMediaQuery(PHONE_QUERY);

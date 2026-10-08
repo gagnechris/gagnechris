@@ -3,7 +3,7 @@ import { EditorView } from '@codemirror/view';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { QueryClientTestProvider } from '../test-utils';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 
@@ -20,6 +20,12 @@ const renderBody = (initial = '# Plan\n\nShip **today**') =>
       </MemoryRouter>
     </QueryClientTestProvider>,
   );
+
+beforeAll(() => {
+  // jsdom has no layout; switching modes measures the caret.
+  Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+});
 
 afterEach(() => {
   try {
@@ -94,6 +100,23 @@ describe('NotebookMarkdownBody', () => {
       expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull(),
     );
     expect(container.querySelector('.cm-content')).toHaveFocus();
+  });
+
+  test('Markdown in Preview leaves Preview for raw markdown in one click', async () => {
+    const { container } = renderBody();
+    const user = userEvent.setup();
+    await screen.findByRole('textbox', { name: 'Note body' });
+    await user.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByRole('region', { name: 'Preview' });
+
+    await user.click(screen.getByRole('button', { name: 'Markdown' }));
+    expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Markdown' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(container.querySelector('.cm-live')).toBeNull();
+    expect(window.localStorage.getItem('notebook.rawMarkdown')).toBe('1');
   });
 
   test('the Markdown toggle shows raw markdown everywhere and is remembered', async () => {

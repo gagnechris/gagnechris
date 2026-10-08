@@ -2,6 +2,7 @@ import { useId, useMemo, useRef, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
 import type { EditorView } from '@codemirror/view';
 import { LazyMarkdownPreview } from './LazyMarkdownPreview';
+import { loadMarkdownPreview } from './markdownPreviewModule';
 // Static, not lazy: only lazy editor routes use this, and React throttles
 // Suspense reveals to 300 ms, so a fallback here would hold the editor back.
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
@@ -48,6 +49,7 @@ export function MarkdownBodyEditor({
   const mode = useEditorViewMode({
     rawStorageKey: 'admin.rawMarkdown',
     editorRef,
+    preloadPreview: preview ? undefined : loadMarkdownPreview,
   });
   const extensions = useMemo(
     () => [
