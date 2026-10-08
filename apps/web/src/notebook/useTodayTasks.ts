@@ -7,15 +7,15 @@ import {
   type Task,
   type TaskPatch,
 } from '@gagnechris/app-core';
-import { addDays } from '@gagnechris/shared';
 import {
+  addDays,
   bucketTodayTasks,
   COMING_UP_DAYS,
-  stillOpenSource,
   type SourceNote,
-} from '../kit/tasks/todayTaskBuckets';
+  stillOpenSource,
+  taskDue,
+} from '@gagnechris/shared';
 import type { StillOpenRow } from '../kit/tasks/TodayPanels';
-import { taskDue } from '../kit/tasks/taskDue';
 import { taskActionError } from './taskActionError';
 
 /** Every open task showing on `day`, and every one starting in Coming up's window after it. */

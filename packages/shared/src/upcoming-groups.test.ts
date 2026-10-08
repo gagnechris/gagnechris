@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { Task } from '@gagnechris/shared';
-import { groupUpcomingTasks, noteChipLabel } from './upcomingGroups';
+import type { Task } from './schemas.js';
+import { groupUpcomingTasks, noteChipLabel } from './upcoming-groups.js';
 
 const task = (
   id: string,

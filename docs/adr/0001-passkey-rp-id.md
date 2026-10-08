@@ -20,17 +20,17 @@ Do **not** change the RP ID to the apex (`gagnechris.com`) before iOS ships unle
 
 We still publish on **`https://gagnechris.com`**:
 
-| Path                                      | Purpose                                                                                                 |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `/.well-known/apple-app-site-association` | Universal Links (`applinks`) for `/auth/*`; optional `webcredentials` entry for a **future** apex RP ID |
-| `/.well-known/webauthn`                   | Related-origins placeholder for apex WebAuthn                                                           |
+| Path                                      | Purpose                                                                                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `/.well-known/apple-app-site-association` | `webcredentials` only, for a **future** apex RP ID; no `applinks` (Notebook universal links are in `notebook.gagnechris.com`'s own AASA) |
+| `/.well-known/webauthn`                   | Related-origins placeholder for apex WebAuthn                                                                                            |
 
-Replace `APPLE_TEAM_ID` in the AASA file with the real Apple Team ID before enabling Associated Domains in a shipping build.
+Replace `APPLE_TEAM_ID` in the apex and notebook AASA files with the real Apple Team ID before enabling Associated Domains in a shipping build.
 
 ## Consequences
 
 - Native in-app passkey UI (`ASAuthorizationController`) stays **out of scope** until either Cognito serves AASA on the auth host, or we deliberately migrate RP ID (with a passkey re-enrollment plan).
-- Refresh tokens remain **30 days** — acceptable for v1; offline users re-auth monthly (documented in `docs/mobile.md`).
+- Refresh tokens last **30 days** from sign-in; rotation doesn't extend them, so the iOS user signs in again monthly ([ADR 0004](./0004-ios-app.md)).
 - The iOS Cognito sign-in (tokens in SecureStore) uses managed login in `ASWebAuthenticationSession`, not an apex RP ID.
 
 ## Alternatives considered

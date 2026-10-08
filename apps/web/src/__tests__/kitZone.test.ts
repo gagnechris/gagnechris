@@ -76,11 +76,7 @@ describe('kit import zone', () => {
   );
 
   // The public Notebook demo renders Today from these with its own reducer.
-  it.each([
-    'tasks/todayTaskBuckets.ts',
-    'tasks/TodayPanels.tsx',
-    'tasks/SnoozeMenu.tsx',
-  ])(
+  it.each(['tasks/TodayPanels.tsx', 'tasks/SnoozeMenu.tsx'])(
     '%s stays inside the zone',
     async (file) => {
       const [result] = await eslint.lintFiles([

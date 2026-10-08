@@ -5,6 +5,7 @@ export default defineConfig({
     env: {
       ADMIN_WEB_CLIENT_ID: 'test-admin-web',
       NOTEBOOK_WEB_CLIENT_ID: 'test-notebook-web',
+      IOS_CLIENT_ID: 'test-ios',
     },
     projects: [
       {

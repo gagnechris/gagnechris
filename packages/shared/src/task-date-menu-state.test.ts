@@ -5,7 +5,7 @@ import {
   taskDateMenuKey,
   taskDateMenuReducer as reduce,
   tokenInsertion,
-} from './taskDateMenuState';
+} from './task-date-menu-state.js';
 
 describe('taskDateMenuReducer', () => {
   test('moves wrap, Home/End jump, and an out-of-range active is clamped first', () => {

@@ -1,11 +1,11 @@
 # Mobile (Expo)
 
-`apps/mobile` is an Expo (SDK 57, React Native 0.86.3) app that runs the monorepo's client packages under Metro. Its single screen shows the API base URL and a button that calls:
+`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro. Its single screen shows the API base URL and a button that calls:
 
 1. `GET /api/health` (public client, parsed with `HealthResponseSchema`)
 2. `GET /api/admin/home` (authed client), then shows the result's version and status
 
-The app has no local store and no offline support, and it does not render notes yet. When it does, it should parse task embeds (`{{task:<ULID>}}` lines, see [data-model.md](./data-model.md#task-embeds)) with the shared helpers and render them from the task records, or fall back to `taskEmbedFallbackLine` so a raw token never shows. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids.
+The app has no sign-in, navigation, local store or offline support yet, and it does not render notes. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. When the app renders notes, it should parse task embeds (`{{task:<ULID>}}` lines, see [data-model.md](./data-model.md#task-embeds)) with the shared helpers and render them from the task records, or fall back to `taskEmbedFallbackLine` so a raw token never shows. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids; it needs `crypto.getRandomValues`, which Hermes provides only with a polyfill such as `expo-crypto` (not installed yet).
 
 ## What it imports
 
@@ -24,14 +24,14 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 
 ### iOS sign-in and associated domains
 
-- Expo `scheme` is `gagnechris`, so Cognito can return to `gagnechris://auth/callback` (registered on the iOS app client). iOS bundle id is `com.gagnechris.mobile`, with associated domains `applinks:gagnechris.com` and `webcredentials:gagnechris.com`.
+- Expo `scheme` is `gagnechris`, and the Cognito `ios` app client (public, PKCE) has the callback `gagnechris://auth/callback` plus `https://gagnechris.com/auth/callback`, inherited from the settings the clients share. The API trusts no token from the `ios` client yet: the `/api/admin` and `/api/notebook` authorizers accept only `admin-web` and `notebook-web`.
+- iOS bundle id is `com.gagnechris.mobile`. `app.json` lists the associated domains `applinks:gagnechris.com` and `webcredentials:gagnechris.com`; the first matches no paths, because the apex AASA has no `applinks`.
 - Each host serves its own `/.well-known/apple-app-site-association`, never redirected (Apple fetches it without following redirects); deploy forces `Content-Type: application/json`:
   - Apex (`apps/web/public/.well-known/`): `webcredentials` only, no `applinks`. The apex also serves `/.well-known/webauthn`.
   - `notebook.gagnechris.com` (`apps/web/public-notebook/.well-known/`): `applinks` for `/today`, `/notes/*` and `/tasks/*`, with `"exclude": true` on `/auth/*` so web sign-in on an iPhone with the app installed stays in the browser.
-  - `applinks:gagnechris.com` in `app.json` matches no paths; universal links need `applinks:notebook.gagnechris.com`. A universal-link OAuth callback, if added, should use its own path (for example `/ios/auth/callback`) on the iOS client only.
-- Replace `APPLE_TEAM_ID` in both AASA files before shipping Associated Domains.
-- **Passkey RP ID** is `auth.gagnechris.com` — see [ADR 0001](./adr/0001-passkey-rp-id.md). iOS sign-in uses managed login in `ASWebAuthenticationSession`, not native `ASAuthorization` against the apex.
-- Cognito refresh tokens last **30 days**; after a month without a refresh the user signs in again. There is no silent refresh beyond Cognito’s refresh token lifetime.
+- Both AASA files hold the placeholder `APPLE_TEAM_ID` until the Apple Developer Team ID exists. ADR 0004 lists the changes that come with it: an HTTPS callback at `https://notebook.gagnechris.com/ios/auth/callback`, `webcredentials` on the notebook host, and removing the custom scheme from the `ios` client.
+- **Passkey RP ID** is `auth.gagnechris.com` (see [ADR 0001](./adr/0001-passkey-rp-id.md)). iOS sign-in uses managed login in `ASWebAuthenticationSession`, not native `ASAuthorization` against the apex.
+- Every Cognito client has 1-hour ID and access tokens and a 30-day refresh token with rotation on (30 s grace) in `infra/lib/stacks/auth-stack.ts`. A rotated refresh token keeps the original expiry, so a session ends 30 days after the interactive sign-in however often it refreshes.
 
 ## Install layout: not a root workspace
 
@@ -44,6 +44,7 @@ Consequences:
 - Install mobile deps with `npm ci` (or `npm install`) **inside `apps/mobile`** — a root install does not cover it.
 - Root `npm run typecheck` / `npm test` / `npm run lint` do not include mobile. Use `--prefix apps/mobile`; the Mobile workflow does this.
 - Adding a dependency to `packages/*` needs `npm install` in `apps/mobile` too, to refresh its lockfile.
+- Add Expo native modules with `npx expo install <package>` inside `apps/mobile`, so the version comes from SDK 57's `node_modules/expo/bundledNativeModules.json`.
 
 ## React versions
 
@@ -63,7 +64,7 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
 4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, or if `zod/v4/` is absent.
-5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas, asserting Zod 4 APIs (`z.email`), and resolving app-core `createVersionedResource` (including its `useQuery` hook) + `fetch` through Metro. Hook rendering under a single React / react-query instance is asserted in `src/app-core.test.ts`.
+5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**, evaluating shared Zod schemas, running the Notebook view logic (`bucketTodayTasks`, `groupUpcomingTasks`), asserting Zod 4 APIs (`z.email`), and resolving app-core `createVersionedResource` (including its `useQuery` hook) + `fetch` through Metro. Hook rendering under a single React / react-query instance is asserted in `src/app-core.test.ts`.
 
 A successful `expo export` alone does not prove the bundle runs: a resolver that maps `.js` to `.d.ts` inside `node_modules` (for example `zod/v4/classic/external.js`) exports cleanly, then throws `TypeError: undefined is not a function` at module load. Step 4 reports the `.d.ts` sources and step 5 fails (e.g. `TypeError: _zod.z.literal is not a function`).
 

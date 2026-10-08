@@ -1,4 +1,4 @@
-import type { TaskDue } from './taskDue';
+import type { TaskDue } from '@gagnechris/shared';
 import './taskDue.css';
 
 export function TaskDuePill({ due }: { due: TaskDue | null | undefined }) {

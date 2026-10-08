@@ -1,12 +1,14 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { breakpoint } from '@gagnechris/tokens';
 import { Button } from '../../kit/Button';
-import { formatCalendarDay } from '@gagnechris/shared';
+import {
+  formatCalendarDay,
+  taskDue,
+  taskScheduleLabel,
+} from '@gagnechris/shared';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
 import { TaskEmbedRow } from '../../kit/tasks/TaskEmbedRow';
-import { taskDue } from '../../kit/tasks/taskDue';
-import { taskScheduleLabel } from '../../kit/tasks/taskScheduleLabel';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
 import { useMediaQuery } from '../../kit/useMediaQuery';

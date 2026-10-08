@@ -7,23 +7,21 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent,
 } from 'react';
-import { taskDateToken } from '@gagnechris/shared';
-import { TaskDateMenu } from './TaskDateMenu';
-import {
-  openTaskDateQuery,
-  taskDateMenuIds,
-  taskDateMenuItems,
-  tomorrowOf,
-  type TaskDateMenuItem,
-} from './taskDateMenuItems';
 import {
   activeTaskDateIndex,
   CLOSED_TASK_DATE_MENU,
+  openTaskDateQuery,
+  taskDateMenuIds,
   taskDateMenuIsOpen,
+  type TaskDateMenuItem,
+  taskDateMenuItems,
   taskDateMenuKey,
   taskDateMenuReducer,
+  taskDateToken,
   tokenInsertion,
-} from './taskDateMenuState';
+  tomorrowOf,
+} from '@gagnechris/shared';
+import { TaskDateMenu } from './TaskDateMenu';
 import './taskSyntax.css';
 
 type Props = Omit<

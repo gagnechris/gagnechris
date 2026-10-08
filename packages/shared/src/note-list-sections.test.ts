@@ -2,10 +2,12 @@ import { describe, expect, test } from 'vitest';
 import {
   noteDayLabel,
   noteFirstLine,
+  noteOpenTaskCount,
   noteSections,
   noteTitle,
   type ListNote,
-} from './noteListSections';
+} from './note-list-sections.js';
+import { taskEmbedToken } from './task-embeds.js';
 
 const FRI = '2026-10-02';
 
@@ -83,5 +85,23 @@ describe('note row text', () => {
     ).toBe('Standup');
     expect(noteFirstLine('- [ ] buy milk')).toBe('buy milk');
     expect(noteFirstLine('')).toBe('');
+  });
+});
+
+describe('noteOpenTaskCount', () => {
+  const [a, b, c] = [
+    '01J9Z3A0000000000000000001',
+    '01J9Z3A0000000000000000002',
+    '01J9Z3A0000000000000000003',
+  ];
+  const body = ['Plan', '', ...[a, b, c].map(taskEmbedToken)].join('\n');
+
+  test('counts the embedded tasks that are still open', () => {
+    expect(noteOpenTaskCount(body, new Set([a, c, 'other']))).toBe(2);
+    expect(noteOpenTaskCount(body, new Set())).toBe(0);
+  });
+
+  test('is 0 until the open list has loaded in full', () => {
+    expect(noteOpenTaskCount(body, null)).toBe(0);
   });
 });

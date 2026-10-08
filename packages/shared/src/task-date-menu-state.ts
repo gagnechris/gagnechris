@@ -1,4 +1,4 @@
-import { tokenNeedsDate, type TaskDateKind } from './taskDateMenuItems';
+import { tokenNeedsDate, type TaskDateKind } from './task-date-menu-items.js';
 
 /** The `@word` / `due:word` a Pick a date… replaces once the day is set. */
 export type TaskDateMenuRange = {

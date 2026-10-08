@@ -137,23 +137,29 @@ export type AuthPolicy = {
   prefix: (typeof API_GATEWAY_JWT_PREFIXES)[number];
   group: string;
   clientIdEnv: string;
+  trustsIos: boolean;
 };
+
+export const IOS_CLIENT_ID_ENV = 'IOS_CLIENT_ID';
 
 export const AUTH_POLICIES: Record<ProtectedAuth, AuthPolicy> = {
   'site-admin': {
     prefix: '/admin',
     group: 'site-admin',
     clientIdEnv: 'ADMIN_WEB_CLIENT_ID',
+    trustsIos: false,
   },
   'user-admin': {
     prefix: '/admin',
     group: 'user-admin',
     clientIdEnv: 'ADMIN_WEB_CLIENT_ID',
+    trustsIos: false,
   },
   notebook: {
     prefix: '/notebook',
     group: 'notebook',
     clientIdEnv: 'NOTEBOOK_WEB_CLIENT_ID',
+    trustsIos: true,
   },
 };
 
@@ -238,8 +244,11 @@ export function authorize(
   const policy = AUTH_POLICIES[auth];
   const clientId = tokenClientId(claims);
   const groups = claimGroups(claims['cognito:groups']);
-  const appClientId = envClientId(policy.clientIdEnv);
-  if (clientId && clientId === appClientId) {
+  const trusted = [
+    envClientId(policy.clientIdEnv),
+    policy.trustsIos ? envClientId(IOS_CLIENT_ID_ENV) : undefined,
+  ];
+  if (clientId && trusted.includes(clientId)) {
     return groups.includes(policy.group)
       ? { ok: true }
       : {

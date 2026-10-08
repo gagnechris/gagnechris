@@ -529,10 +529,11 @@ describe('app hosts: Cognito', () => {
     ).toBe(true);
   });
 
-  it('publishes both client IDs to SSM', () => {
+  it('publishes the app client IDs to SSM', () => {
     for (const [key, logicalPrefix] of [
       ['cognito-admin-web-client-id', 'UserPoolAdminWebClient'],
       ['cognito-notebook-web-client-id', 'UserPoolNotebookWebClient'],
+      ['cognito-ios-client-id', 'UserPoolIosClient'],
     ] as const) {
       const param = Object.values(
         resourcesOf(built.auth, 'AWS::SSM::Parameter'),
@@ -561,28 +562,32 @@ describe('app hosts: API Gateway', () => {
     return byRoute;
   }
 
-  it('checks each prefix against its own client only', () => {
+  it('pins each prefix to its audience: admin-web on admin, notebook-web and ios on notebook', () => {
     const byRoute = authorizersByRoute(built.api);
-    for (const [keys, own, other] of [
+    for (const [keys, audience] of [
       [
         ['ANY /api/admin', 'ANY /api/admin/{proxy+}'],
-        'cognitoadminwebclientid',
-        /notebook|IosClient|DevClient/i,
+        ['cognitoadminwebclientid'],
       ],
       [
         ['ANY /api/notebook', 'ANY /api/notebook/{proxy+}'],
-        'cognitonotebookwebclientid',
-        /adminweb|IosClient|DevClient/i,
+        ['cognitonotebookwebclientid', 'cognitoiosclientid'],
       ],
     ] as const) {
       for (const key of keys) {
-        const audience = JSON.parse(byRoute[key]!);
-        expect(audience, key).toHaveLength(1);
-        expect(JSON.stringify(audience[0])).toContain(own);
-        expect(byRoute[key]).not.toMatch(other);
-        expect(byRoute[key]).not.toMatch(/ImportValue|UserPoolWebClient/);
+        expect(JSON.parse(byRoute[key]!), key).toEqual(
+          audience.map((param) => ({
+            Ref: expect.stringMatching(
+              new RegExp(`^SsmParameterValue.*${param}`),
+            ),
+          })),
+        );
       }
     }
+    expect(byRoute['ANY /api/admin']).not.toMatch(/ios|notebook|dev/i);
+    expect(JSON.stringify(byRoute)).not.toMatch(
+      /DevClient|cognitodevclientid|ImportValue|UserPoolWebClient/,
+    );
     const params = built.api.toJSON().Parameters as Record<
       string,
       { Default?: string }
@@ -592,9 +597,10 @@ describe('app hosts: API Gateway', () => {
     expect(defaults).toContain(
       '/gagnechris/prod/cognito-notebook-web-client-id',
     );
+    expect(defaults).toContain('/gagnechris/prod/cognito-ios-client-id');
   });
 
-  it('passes only the two app client IDs to the Lambda', () => {
+  it('passes the two web client IDs and the iOS client ID to the Lambda', () => {
     const fn = Object.values(
       resourcesOf(built.api, 'AWS::Lambda::Function'),
     ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api')!;
@@ -605,7 +611,11 @@ describe('app hosts: API Gateway', () => {
     expect(vars.NOTEBOOK_WEB_CLIENT_ID).toEqual({
       Ref: expect.stringMatching(/cognitonotebookwebclientid/),
     });
+    expect(vars.IOS_CLIENT_ID).toEqual({
+      Ref: expect.stringMatching(/cognitoiosclientid/),
+    });
     expect(vars.AUTH_LEGACY_WEB_CLIENT_ID).toBeUndefined();
+    expect(JSON.stringify(vars)).not.toMatch(/cognitodevclientid/);
   });
 
   it('leaves no trace of the web client in Auth or Api', () => {
