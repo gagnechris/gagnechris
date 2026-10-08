@@ -171,13 +171,22 @@ export class AuthStack extends Stack {
       oAuth: hostOAuth(NOTEBOOK_HOST),
     });
 
+    // The custom scheme stays only until the app's sign-in passes
+    // preferUniversalLinks; TestFlight builds use the https URLs, which iOS
+    // returns only to an app the notebook host's AASA names (webcredentials).
     this.iosClient = this.userPool.addClient('IosClient', {
       ...clientCommon,
       userPoolClientName: 'ios',
       oAuth: {
         ...clientCommon.oAuth,
-        callbackUrls: [...callbackUrls, 'gagnechris://auth/callback'],
-        logoutUrls: [...logoutUrls, 'gagnechris://'],
+        callbackUrls: [
+          `https://${NOTEBOOK_HOST}/ios/auth/callback`,
+          'gagnechris://auth/callback',
+        ],
+        logoutUrls: [
+          `https://${NOTEBOOK_HOST}/ios/auth/signed-out`,
+          'gagnechris://',
+        ],
       },
     });
 
