@@ -85,6 +85,7 @@ export function NotebookMarkdownBody({
     ],
   );
 
+  const { previewing, showEditor } = mode;
   const handledHighlight = useRef<string | null>(null);
   useEffect(() => {
     if (!highlightTaskId) {
@@ -92,6 +93,10 @@ export function NotebookMarkdownBody({
       return;
     }
     if (handledHighlight.current === highlightTaskId) return;
+    if (previewing) {
+      showEditor();
+      return;
+    }
     let frame = 0;
     const deadline = performance.now() + HIGHLIGHT_WAIT_MS;
     // The editor can apply a new `value` a beat after this render: it holds
@@ -131,7 +136,7 @@ export function NotebookMarkdownBody({
     };
     attempt();
     return () => cancelAnimationFrame(frame);
-  }, [highlightTaskId, onHighlighted, value]);
+  }, [highlightTaskId, onHighlighted, value, previewing, showEditor]);
 
   return (
     <>
