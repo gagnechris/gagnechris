@@ -42,7 +42,7 @@ export const authMode = resolveAuthMode(
 );
 
 /** The `ios` app client is public (PKCE, no secret); SSM `/gagnechris/prod/cognito-ios-client-id`. */
-const IOS_CLIENT_ID = '';
+const IOS_CLIENT_ID = '4abm22if5quulq4paaelcsmbmm';
 
 /**
  * Where managed login sends the code back. `universalLink` needs a build with
