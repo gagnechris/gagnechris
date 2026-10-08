@@ -317,8 +317,10 @@ describe('a 20 KB note', () => {
       act(() => renderer.unmount());
       return elapsed;
     }).sort((a, b) => a - b);
-    // Median; about 8 ms on a laptop, generous for CI.
-    expect(runs[2]).toBeLessThan(100);
+    // Median; about 8 ms on a laptop and up to ~150 ms on a busy CI runner.
+    // The bound catches superlinear regressions (a quadratic walk takes
+    // seconds), not frame-level timing, which a parallel test run can't measure.
+    expect(runs[2]).toBeLessThan(500);
   });
 
   it('skips unchanged blocks when the parent re-renders', () => {
