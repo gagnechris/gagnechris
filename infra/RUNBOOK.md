@@ -809,6 +809,31 @@ npx tsx scripts/measure-api-init.ts --docker --cpus 0.58 --runs 40
 
 For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/local-e2e.md](../docs/local-e2e.md)**. Day-to-day admin: `npm run local:dev`. Smoke: `npm run e2e:local`.
 
+## iOS release (TestFlight)
+
+The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions): it runs the mobile checks, then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
+
+**One-time setup**
+
+1. App Store Connect: an app record for bundle ID `com.gagnechris.mobile` (needed for TestFlight even without a listing). Fill in only what TestFlight asks for: name, beta description, a privacy policy URL (external testing requires one; the site has no privacy page yet), and export compliance (standard HTTPS only; `app.json` sets `ITSAppUsesNonExemptEncryption` to false, so builds skip the question).
+2. Put the record's Apple ID (the number under App Information) in `apps/mobile/eas.json` as `submit.production.ios.ascAppId`. It is not secret. The workflow stops with a message until it is set.
+3. App Store Connect API key (Users and Access → Integrations, App Manager role): upload it to EAS with `npx eas-cli credentials --platform ios` (App Store Connect API Key → add), so it never leaves EAS. Never put the `.p8` in the repo, Linear or a GitHub secret.
+4. Expo access token (expo.dev → Account settings → Access tokens, a robot user if you prefer): add it as `EXPO_TOKEN` in a GitHub environment named `testflight` (Settings → Environments), which the release job uses. Restrict the environment to tags `ios-v*` if you like.
+
+**Release**
+
+```bash
+git tag ios-v1.0.0 && git push origin ios-v1.0.0
+```
+
+The job takes about as long as the EAS build (20 to 40 minutes). App Store Connect processes the build for a few more minutes before TestFlight offers it.
+
+**Testers**
+
+- Internal testers (App Store Connect users on the team, up to 100) get each build as soon as it is processed, with no review. Add them under TestFlight → Internal Testing.
+- External testers (email or public link) need Beta App Review for each new version. The reviewer needs a demo account: create a Notebook-only test user and a site-admin test user in the Cognito user pool, and give their sign-in details only in App Store Connect's Beta App Review Information, never in the repo or Linear.
+- Builds expire 90 days after upload. Tag a release at least monthly so testers always have a live build.
+
 ## Existing resources (CDK decisions)
 
 | Resource                                  | Decision                                                                |

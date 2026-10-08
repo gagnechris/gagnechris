@@ -215,6 +215,8 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 
 ## CI
 
+Releases go to TestFlight from an `ios-v*` tag through `.github/workflows/ios-release.yml` (EAS build and submit); setup and tester management are in [infra/RUNBOOK.md](../infra/RUNBOOK.md#ios-release-testflight).
+
 `.github/workflows/mobile.yml` uses no AWS credentials. It runs on every PR and push to `main` so the required check **Mobile typecheck, lint, test, bundle** always reports; an in-job `dorny/paths-filter` step skips the steps below (the job still passes) unless mobile, the client packages, the root lockfile or the workflow changed. When it applies, it runs:
 
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.

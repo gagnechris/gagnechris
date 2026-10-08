@@ -1,0 +1,70 @@
+name: iOS release
+
+# A tag `ios-vX.Y.Z` builds the app on EAS and submits it to TestFlight.
+# EAS owns the build number (`autoIncrement`); the App Store Connect API key
+# lives in EAS credentials, so this job only holds the Expo token.
+on:
+  push:
+    tags: ['ios-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and submit to TestFlight
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: testflight
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Non-interactive submit needs the App Store Connect app id.
+      - name: Require the App Store Connect app id
+        working-directory: apps/mobile
+        run: |
+          node -e '
+            const id = require("./eas.json").submit?.production?.ios?.ascAppId;
+            if (!/^\d+$/.test(id ?? "")) {
+              console.error("Set submit.production.ios.ascAppId in apps/mobile/eas.json (infra/RUNBOOK.md, iOS release).");
+              process.exit(1);
+            }'
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install mobile
+        working-directory: apps/mobile
+        run: npm ci
+
+      - name: Typecheck, lint and test
+        run: |
+          npm run typecheck -w @gagnechris/app-core
+          npm run typecheck --prefix apps/mobile
+          npm run lint --prefix apps/mobile
+          npm test -w @gagnechris/app-core
+          npm test --prefix apps/mobile
+
+      - name: Check the bundle
+        working-directory: apps/mobile
+        run: |
+          npm run export:ios
+          npm run check:bundle
+          npm run smoke:bundle
+
+      - name: Install EAS CLI
+        run: npm install --global --ignore-scripts eas-cli@24.7.0
+
+      - name: Build and submit
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: >-
+          eas build --platform ios --profile production
+          --non-interactive --auto-submit
