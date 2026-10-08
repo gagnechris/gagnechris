@@ -1,8 +1,30 @@
 # Mobile (Expo)
 
-`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`. The root layout (`app/_layout.tsx`) provides `AppApiProvider` and a TanStack `QueryClientProvider`; the only screen (`app/index.tsx`) shows the API base URL, a client-generated ULID (also logged as `[ulid] <id>`), and the result of `GET /api/health` fetched through app-core `useGetApiClient` + `useQuery`.
+`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`.
 
-The app has no sign-in, tabs, cache persistence or offline support yet. `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
+## Notebook shell
+
+| Route                                  | Screen                                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `app/_layout.tsx`                      | Providers (session, TanStack Query, area, `AppApiProvider`) and the root stack with its gate    |
+| `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                    |
+| `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                |
+| `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                           |
+| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                               |
+| `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                      |
+| `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                             |
+| `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out |
+| `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                |
+
+The tab screens are shells with their empty states; they don't load Notebook data yet. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+
+- **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
+- **Session:** `SessionProvider` takes an `AuthBackend` (`restore`, `signIn`, `signOut`, `getToken`); `getToken` goes to `createApiClient`. The only backend is the local API's fake auth: it starts signed in as `local-dev-user` and sends `Bearer local-ios:local-dev-user`, which the local API maps to `ios`-audience claims. `EXPO_PUBLIC_LOCAL_AUTH_GROUPS` (comma-separated, default `site-admin,notebook,user-admin`) sets the user's groups, so `EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` shows No access.
+- **Area:** Work / Personal / All, shared between the Today chip (an action sheet), the Upcoming segmented control and More's Default area row. It's stored in AsyncStorage under `gagnechris.notebook.areaFilter`, the key the web keeps in localStorage; the filter values, labels and key come from `@gagnechris/shared` (`notebook-area.ts`).
+- **Look:** colours and sizes from `@gagnechris/tokens` through `src/theme.ts`. Inter (400, 500, 600, 700 from `@expo-google-fonts/inter`) is embedded at build time by the `expo-font` config plugin, so no font loads at runtime; styles spread `font.<weight>` from `src/theme.ts`, which sets both the PostScript name (`Inter-SemiBold`) and the `fontWeight`; with the name alone React Native can fall back to the regular face. Native large titles on Upcoming, Notes, Tasks and More.
+- **Accessibility:** every control has a role and a label and is at least 44 pt tall; icons are hidden from VoiceOver; text never sets `numberOfLines`, `allowFontScaling={false}` or a fixed height, so Dynamic Type sizes wrap instead of truncating. `src/screens.test.tsx` checks all of this on every screen.
+
+The app has no Cognito sign-in, cache persistence or offline support yet. `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
 
 ## Entry and polyfills
 
@@ -24,21 +46,23 @@ The app has no sign-in, tabs, cache persistence or offline support yet. `src/mar
 
 Every module listed in `expo/bundledNativeModules.json` uses exactly the range given there (React is the exception; see [React versions](#react-versions)); `src/native-config.test.ts` fails on drift. Adding or removing a native module needs a new dev client build; JS-only changes do not.
 
-| Module                                                                                                       | Use                                                                                                 |
-| ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `expo-router` (+ `react-native-screens`, `react-native-safe-area-context`, `expo-linking`, `expo-constants`) | File-based navigation in `app/`                                                                     |
-| `expo-dev-client`                                                                                            | Debug builds open the dev launcher instead of Expo Go                                               |
-| `expo-auth-session`, `expo-web-browser`                                                                      | Cognito managed login in `ASWebAuthenticationSession`                                               |
-| `expo-secure-store`                                                                                          | Tokens in the Keychain                                                                              |
-| `expo-crypto`                                                                                                | `crypto.getRandomValues` for `createUlid`                                                           |
-| `@react-native-async-storage/async-storage`                                                                  | Cache store for cached reads (with TanStack's async-storage persister)                              |
-| `@react-native-community/netinfo`                                                                            | Online / offline state                                                                              |
-| `expo-sqlite`                                                                                                | Local database for the later offline outbox                                                         |
-| `expo-build-properties`                                                                                      | iOS deployment target **17.4**, the minimum for an `https` callback in `ASWebAuthenticationSession` |
+| Module                                                                                                       | Use                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `expo-router` (+ `react-native-screens`, `react-native-safe-area-context`, `expo-linking`, `expo-constants`) | File-based navigation in `app/`                                                                                                                                                                                           |
+| `expo-dev-client`                                                                                            | Debug builds open the dev launcher instead of Expo Go                                                                                                                                                                     |
+| `expo-auth-session`, `expo-web-browser`                                                                      | Cognito managed login in `ASWebAuthenticationSession`                                                                                                                                                                     |
+| `expo-secure-store`                                                                                          | Tokens in the Keychain                                                                                                                                                                                                    |
+| `expo-crypto`                                                                                                | `crypto.getRandomValues` for `createUlid`                                                                                                                                                                                 |
+| `@react-native-async-storage/async-storage`                                                                  | Cache store for cached reads (with TanStack's async-storage persister)                                                                                                                                                    |
+| `@react-native-community/netinfo`                                                                            | Online / offline state                                                                                                                                                                                                    |
+| `expo-sqlite`                                                                                                | Local database for the later offline outbox                                                                                                                                                                               |
+| `expo-build-properties`                                                                                      | iOS deployment target **17.4** (the minimum for an `https` callback in `ASWebAuthenticationSession`) and `enableSceneSupport`: apps built with the iOS 27 SDK trap at launch unless they adopt the UIKit scene life cycle |
+| `expo-font`                                                                                                  | Embeds the Inter `.ttf` files at build time                                                                                                                                                                               |
+| `expo-symbols`                                                                                               | SF Symbols for the tab bar and icons                                                                                                                                                                                      |
 
 The cache store, netinfo and SQLite are installed so the dev client already contains them; no code reads or writes them yet.
 
-`app.json` registers the config plugins for `expo-router`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
+`app.json` registers the config plugins for `expo-router`, `expo-font`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
 
 ## Run in the simulator
 
@@ -52,7 +76,17 @@ npm run local:dev                      # terminal 1: local API on :8787
 npm run ios --prefix apps/mobile       # terminal 2: expo run:ios
 ```
 
-`npm run ios` runs `expo run:ios`: it prebuilds `ios/`, installs pods, builds the debug dev client, installs it on a booted simulator (or picks one), and starts Metro. Later JS-only changes reload from Metro; rerun it after a native module or `app.json` change. To skip the native build when the dev client is already installed, run `npm start --prefix apps/mobile` and press `i`.
+`npm run ios` runs `expo run:ios`: it prebuilds `ios/`, installs pods, builds the debug dev client, installs it on a booted simulator (or picks one), and starts Metro. Later JS-only changes reload from Metro; rerun it after a native module or `app.json` change (with `npx expo prebuild --platform ios --clean` first if `app.json` changed). To skip the native build when the dev client is already installed, run `npm start --prefix apps/mobile` and press `i`.
+
+With Xcode 27, `expo run:ios` stops with "No code signing certificates are available": `xcrun devicectl` lists booted simulators as connected devices, and Expo CLI treats them as phones. `npm run ios:sim` does the same build without it:
+
+```bash
+cd apps/mobile
+npx expo start --dev-client --port 8081   # terminal 2: Metro
+npm run ios:sim                           # terminal 3: build, install, launch on the booted iPhone simulator
+```
+
+`scripts/ios-sim.sh` takes a simulator UDID (default: the first booted iPhone), `METRO_PORT` and `SKIP_BUILD=1`, and launches with `--initialUrl`, which the dev launcher opens without the "Open in gagnechris?" prompt that `simctl openurl` shows.
 
 EAS simulator build (builds in the cloud; needs an Expo account and `eas login`):
 
@@ -62,8 +96,6 @@ npx eas-cli build --profile development --platform ios
 ```
 
 The `development` profile in `eas.json` sets `developmentClient: true` and `ios.simulator: true`, so the result is a `.app` for the simulator. EAS offers to install it on a booted simulator when the build finishes (or run `npx eas-cli build:run --profile development --platform ios --latest`); then start Metro with `npm start`.
-
-The screen logs `[ulid] <id>` to the Metro terminal on launch, which shows `createUlid` running on Hermes with the expo-crypto polyfill.
 
 `eas.json` also defines `preview` (internal distribution) and `production` (`autoIncrement: true`, with `appVersionSource: "remote"` so EAS owns the build number). Both build for devices and sign with the Team ID in `app.json`; `eas.json` sets the same Team ID for `submit`.
 
