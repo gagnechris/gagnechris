@@ -15,6 +15,7 @@ import {
   groupUpcomingTasks,
   slugify,
 } from '@gagnechris/shared';
+import { parseMarkdownBlocks } from '@gagnechris/shared/markdown-ast';
 import { tokens } from '@gagnechris/tokens';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement } from 'react';
@@ -66,6 +67,17 @@ if (
   smokeUpcoming[0]?.label !== 'Monday'
 ) {
   throw new Error('Notebook view logic did not run in the bundle');
+}
+
+// marked's lexer, resolved by Metro from the workspace root.
+const smokeMarkdown = parseMarkdownBlocks(
+  '## Hi\n\n- [x] [a](https://a.example) [b](javascript:alert(1))',
+);
+if (
+  JSON.stringify(smokeMarkdown.map((b) => b.type)) !== '["heading","list"]' ||
+  JSON.stringify(smokeMarkdown).includes('javascript:')
+) {
+  throw new Error(`markdown AST did not run: ${JSON.stringify(smokeMarkdown)}`);
 }
 
 if (typeof tokens.space[4] !== 'number') {
@@ -177,7 +189,7 @@ void (async () => {
     );
   }
   console.log(
-    'bundle smoke ok: zod v4 parsed, schema rejected, notebook views, tokens numeric, ulid polyfilled, app-core hook rendered',
+    'bundle smoke ok: zod v4 parsed, schema rejected, notebook views, markdown parsed, tokens numeric, ulid polyfilled, app-core hook rendered',
   );
 })().catch((err: unknown) => {
   console.error(err);

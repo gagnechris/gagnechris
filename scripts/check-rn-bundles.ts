@@ -9,6 +9,8 @@ type Entry = {
   path: string;
   /** Modules mobile depends on: the bundle must contain them, not just pass. */
   requiredInputs?: readonly string[];
+  /** Banned imports this entry may use. */
+  allowImports?: readonly string[];
 };
 
 const entries: readonly Entry[] = [
@@ -25,6 +27,16 @@ const entries: readonly Entry[] = [
       'task-date-menu-state.ts',
       'note-list-sections.ts',
     ].map((file) => `packages/shared/src/${file}`),
+  },
+  {
+    // The native markdown renderer's AST: marked's lexer, never the sanitizers.
+    name: '@gagnechris/shared/markdown-ast',
+    path: join(repoRoot, 'packages/shared/src/markdown-ast.ts'),
+    requiredInputs: [
+      'packages/shared/src/markdown-ast.ts',
+      'node_modules/marked/lib/marked.esm.js',
+    ],
+    allowImports: ['marked'],
   },
   {
     name: '@gagnechris/api-client',
@@ -47,6 +59,9 @@ const bannedImportPrefixes = [
   '@codemirror/',
   'react-dom',
   'marked',
+  'sanitize-html',
+  'dompurify',
+  '#sanitizer',
   '@asteasolutions/zod-to-openapi',
   '@gagnechris/shared/',
 ] as const;
@@ -76,18 +91,22 @@ const exactExternals = new Set([
   '@gagnechris/tokens',
 ]);
 
-function isBannedImport(path: string): boolean {
+function isBannedImport(
+  path: string,
+  allowImports: readonly string[] = [],
+): boolean {
+  if (allowImports.includes(path)) return false;
   return bannedImportPrefixes.some(
     (prefix) => path === prefix || path.startsWith(prefix),
   );
 }
 
-const banImportsPlugin: Plugin = {
+const banImportsPlugin = (allowImports?: readonly string[]): Plugin => ({
   name: 'ban-platform-modules',
   setup(buildApi) {
     buildApi.onResolve({ filter: /.*/ }, (args) => {
       if (args.kind === 'entry-point') return undefined;
-      if (!isBannedImport(args.path)) return undefined;
+      if (!isBannedImport(args.path, allowImports)) return undefined;
       return {
         path: args.path,
         errors: [
@@ -98,7 +117,7 @@ const banImportsPlugin: Plugin = {
       };
     });
   },
-};
+});
 
 const exactExternalPlugin: Plugin = {
   name: 'exact-external',
@@ -129,7 +148,7 @@ async function assertNegativeFixtureFails(): Promise<boolean> {
       format: 'esm',
       metafile: true,
       logLevel: 'silent',
-      plugins: [banImportsPlugin, exactExternalPlugin],
+      plugins: [banImportsPlugin(), exactExternalPlugin],
     });
     console.error(
       'Negative fixture: expected banned marked import to fail, but bundle succeeded.',
@@ -160,7 +179,7 @@ for (const entry of entries) {
       format: 'esm',
       metafile: true,
       logLevel: 'silent',
-      plugins: [banImportsPlugin, exactExternalPlugin],
+      plugins: [banImportsPlugin(entry.allowImports), exactExternalPlugin],
     });
   } catch (err) {
     failed = true;
