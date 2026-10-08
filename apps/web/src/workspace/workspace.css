@@ -578,7 +578,8 @@
 
 .notebook-today__calendar[open] > .notebook-calendar {
   position: absolute;
-  z-index: 20;
+  /* Over the sticky day header below it, which also sits at 20 and comes later. */
+  z-index: 21;
   top: 100%;
   left: 0;
   width: min(18rem, 100vw - 2rem);
