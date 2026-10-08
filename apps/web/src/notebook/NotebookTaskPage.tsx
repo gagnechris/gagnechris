@@ -1,5 +1,8 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
+  emptyTaskDraft,
+  taskDraftFromTask,
+  taskPayloadFromDraft,
   taskResource,
   useDeleteTaskMutation,
   useTaskToggle,
@@ -10,11 +13,6 @@ import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { TaskMentions } from './TaskMentions';
-import {
-  emptyTaskDraft,
-  taskDraftFromTask,
-  taskPayloadFromDraft,
-} from './taskDraft';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 import {
   TASK_PRIORITY_OPTIONS,

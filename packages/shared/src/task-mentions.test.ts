@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ListNote } from '@gagnechris/shared';
-import { embedContext, taskMentions } from './taskMentionsData';
+import type { ListNote } from './note-list-sections.js';
+import { embedContext, taskMentions } from './task-mentions.js';
 
 const A = '01JAAAAAAAAAAAAAAAAAAAAAAA';
 const B = '01JBBBBBBBBBBBBBBBBBBBBBBB';

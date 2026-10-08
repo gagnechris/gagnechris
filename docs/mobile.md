@@ -14,6 +14,7 @@
 | `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
 | `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
 | `app/(tabs)/tasks/index.tsx`           | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
+| `app/(tabs)/tasks/[id].tsx`            | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                      |
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
@@ -55,6 +56,7 @@ Query caching and offline state are described in [Cached reads and offline](#cac
 
 - **Upcoming.** Reads the open tasks starting after today and the Someday ones (every page) and groups them with `groupUpcomingTasks` from `@gagnechris/shared`, as web does: Tomorrow, each day of the coming week, Later (rows show their date), Someday. Rows show the deadline and the home note (read with `notes/batch`), and Do today moves the task to today through `useTaskPatch`.
 - **All tasks.** Open, Done or Dropped, a show-on filter (`matchesTaskShowOn` from `@gagnechris/shared`, the web Tasks page's filter) and the area. A full swipe right completes (or reopens), a full swipe left drops (`src/ui/SwipeRow.tsx`, built on `PanResponder`); the checkbox, ⋯ and VoiceOver actions do the same.
+- **Task detail.** `/tasks/:id` edits the task with `taskResource` and app-core's `taskDraft` (shared with web): checkbox and title, then Shows on, Deadline, Priority, Area and Status rows that open the shared date items or a choice sheet, a markdown description with Preview, Mentioned in (`taskMentions` from `@gagnechris/shared`: every note that embeds the task, the home note first and marked "(created here)") and a bottom bar with Complete and Snooze. Typing autosaves on the usual debounce; a field change saves at once, and `setCachedTask` moves the task in every cached list, so Today, Coming up and Upcoming follow without a refetch. ⋯ has Share and Delete (with a confirm).
 - **Quick add.** Both screens take task syntax (`Call Sam @tomorrow !high`) through app-core's `useQuickAddTask`, which web uses too: the task goes to the filtered area (All means Work), a failed create shows an error and keeps the text, and on Upcoming a task without a later date says it shows on Today.
 - **Refresh.** Pull to refresh on both.
 
