@@ -6,18 +6,19 @@ import {
   useTasksQuery,
   type NotebookArea,
 } from '@gagnechris/app-core';
-import { taskEmbedIds, type NoteType } from '@gagnechris/shared';
-import { createUlid } from '../lib/ulid';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
-import type { NotebookOutletContext } from './NotebookLayout';
 import {
   noteDay,
   noteDayLabel,
   noteFirstLine,
+  noteOpenTaskCount,
   noteSections,
   noteTitle,
-} from './noteListSections';
+  type NoteType,
+} from '@gagnechris/shared';
+import { createUlid } from '../lib/ulid';
+import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
+import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
 import { useLoadAllPages } from './useTodayTasks';
@@ -175,11 +176,7 @@ export default function NotebookNotesPage() {
             <h2 id={`notes-${section.key}`}>{section.label}</h2>
             <ul className="notebook-notes__list">
               {section.notes.map((note) => {
-                const open = openIds
-                  ? taskEmbedIds(note.bodyMarkdown).filter((id) =>
-                      openIds.has(id),
-                    ).length
-                  : 0;
+                const open = noteOpenTaskCount(note.bodyMarkdown, openIds);
                 const firstLine = noteFirstLine(note.bodyMarkdown);
                 return (
                   <li key={note.id} data-note-id={note.id}>

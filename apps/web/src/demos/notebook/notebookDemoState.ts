@@ -1,17 +1,15 @@
 import {
   addDays,
+  bucketTodayTasks,
   localDateString,
   parseTaskSyntax,
   relativeDayLabel,
-  type Task,
-} from '@gagnechris/shared';
-import {
-  bucketTodayTasks,
+  type SourceNote,
   sourceNoteName,
   stillOpenSource,
-  type SourceNote,
   type StillOpenSource,
-} from '../../kit/tasks/todayTaskBuckets';
+  type Task,
+} from '@gagnechris/shared';
 
 export type DemoTask = Pick<
   Task,

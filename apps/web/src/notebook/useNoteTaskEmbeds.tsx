@@ -10,15 +10,13 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import type { Extension } from '@codemirror/state';
-import { taskEmbedIds } from '@gagnechris/shared';
+import { taskDue, taskEmbedIds, taskScheduleLabel } from '@gagnechris/shared';
 import {
   useTaskEmbedEditor,
   type TaskEmbedCreate,
 } from '../kit/markdown/taskEmbeds';
 import { TaskEmbedRow, type TaskEmbedView } from '../kit/tasks/TaskEmbedRow';
 import { taskLineDraftKey, type TaskLineDraft } from '../kit/tasks/taskLine';
-import { taskDue } from '../kit/tasks/taskDue';
-import { taskScheduleLabel } from '../kit/tasks/taskScheduleLabel';
 import { taskActionError } from './taskActionError';
 import { useLocalToday } from './useLocalToday';
 import { taskRequestFromDraft } from './taskRequest';

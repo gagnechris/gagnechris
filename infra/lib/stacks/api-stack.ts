@@ -89,6 +89,10 @@ export class ApiStack extends Stack {
       this,
       ssmParameterName(config.name, 'cognitoNotebookWebClientId'),
     );
+    const iosClientId = StringParameter.valueForStringParameter(
+      this,
+      ssmParameterName(config.name, 'cognitoIosClientId'),
+    );
 
     // Via SSM to avoid Site↔Api CFN exports.
     const siteBucketName = StringParameter.valueForStringParameter(
@@ -129,6 +133,7 @@ export class ApiStack extends Stack {
         SITE_APEX_DOMAIN: config.domainName,
         ADMIN_WEB_CLIENT_ID: adminWebClientId,
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
+        IOS_CLIENT_ID: iosClientId,
         USER_POOL_ID: userPool.userPoolId,
       },
     });
@@ -141,9 +146,9 @@ export class ApiStack extends Stack {
     // Users & access. No delete: removing someone keeps their account and Notebook.
     userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
-    // One authorizer per prefix so a token from the other app's client gets a
-    // gateway 401. The iOS client (custom-scheme callback) stays out of both
-    // audiences until the app ships with universal links.
+    // One authorizer per prefix so a token from the other web app's client
+    // gets a gateway 401. The iOS app calls Notebook, so its client is in that
+    // audience only; groups still gate every route in the Lambda.
     const issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`;
     const adminAuthorizer = new HttpJwtAuthorizer('CognitoJwtAdmin', issuer, {
       jwtAudience: [adminWebClientId],
@@ -153,7 +158,7 @@ export class ApiStack extends Stack {
       'CognitoJwtNotebook',
       issuer,
       {
-        jwtAudience: [notebookWebClientId],
+        jwtAudience: [notebookWebClientId, iosClientId],
         identitySource: ['$request.header.Authorization'],
       },
     );

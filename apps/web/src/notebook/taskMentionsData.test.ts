@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ListNote } from './noteListSections';
+import type { ListNote } from '@gagnechris/shared';
 import { embedContext, taskMentions } from './taskMentionsData';
 
 const A = '01JAAAAAAAAAAAAAAAAAAAAAAA';

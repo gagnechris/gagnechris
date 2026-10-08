@@ -10,7 +10,9 @@ import {
   HealthResponseSchema,
   PostSchema,
   UlidSchema,
+  bucketTodayTasks,
   createUlid,
+  groupUpcomingTasks,
   slugify,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -41,6 +43,29 @@ if (rejected.success) {
 
 if (slugify('Hello There') !== 'hello-there') {
   throw new Error('slugify did not run');
+}
+
+const smokeTask = {
+  id: 't1',
+  title: 't1',
+  version: 1,
+  deleted: false,
+  status: 'todo' as const,
+  startDate: '2026-10-05',
+  someday: false,
+  dueDate: null,
+  createdAt: '2026-10-01T12:00:00.000Z',
+};
+const smokeBuckets = bucketTodayTasks([smokeTask], {
+  day: '2026-10-02',
+  embeddedIds: new Set(),
+});
+const smokeUpcoming = groupUpcomingTasks([smokeTask], '2026-10-02');
+if (
+  smokeBuckets.comingUp[0]?.date !== '2026-10-05' ||
+  smokeUpcoming[0]?.label !== 'Monday'
+) {
+  throw new Error('Notebook view logic did not run in the bundle');
 }
 
 if (typeof tokens.space[4] !== 'number') {
@@ -152,7 +177,7 @@ void (async () => {
     );
   }
   console.log(
-    'bundle smoke ok: zod v4 parsed, schema rejected, tokens numeric, ulid polyfilled, app-core hook rendered',
+    'bundle smoke ok: zod v4 parsed, schema rejected, notebook views, tokens numeric, ulid polyfilled, app-core hook rendered',
   );
 })().catch((err: unknown) => {
   console.error(err);

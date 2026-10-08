@@ -14,6 +14,7 @@ import { appIdTokenClaims, makeEvent } from './support/make-event.js';
 
 const ADMIN_CLIENT = 'test-admin-web';
 const NOTEBOOK_CLIENT = 'test-notebook-web';
+const IOS_CLIENT = 'test-ios';
 const LEGACY_CLIENT = 'test-legacy-web';
 
 const idToken = (aud: string, groups: string) => ({
@@ -244,6 +245,16 @@ describe('user-admin routes', () => {
     });
   });
 
+  it('user-admin from the iOS client → 403 (client check)', async () => {
+    const result = await getUsers(
+      idToken(IOS_CLIENT, '[site-admin notebook user-admin]'),
+    );
+    expect(result).toMatchObject({
+      status: 403,
+      body: { message: 'Token is not from the admin app client' },
+    });
+  });
+
   it('user-admin from the Notebook client → 403 (client check)', async () => {
     const result = await getUsers(
       idToken(NOTEBOOK_CLIENT, '[site-admin notebook user-admin]'),
@@ -269,7 +280,74 @@ describe('user-admin routes', () => {
   });
 });
 
-describe('only the two app clients are trusted', () => {
+describe('iOS client', () => {
+  const iosAccessToken = (groups: string) => ({
+    sub: 'user-1',
+    token_use: 'access',
+    client_id: IOS_CLIENT,
+    'cognito:groups': groups,
+  });
+
+  describe('notebook-only user', () => {
+    it.each(routesOf('notebook'))('%s %s → 200', async (method, path) => {
+      expect(
+        (await probe(method, path, idToken(IOS_CLIENT, '[notebook]'))).status,
+      ).toBe(200);
+    });
+
+    it.each(routesOf('site-admin'))('%s %s → 403', async (method, path) => {
+      expect(
+        await probe(method, path, idToken(IOS_CLIENT, '[notebook]')),
+      ).toMatchObject({
+        status: 403,
+        body: { message: 'Token is not from the admin app client' },
+      });
+    });
+  });
+
+  it('an access token with notebook passes on /api/notebook', async () => {
+    const [method, path] = routesOf('notebook')[0]!;
+    expect(
+      (await probe(method, path, iosAccessToken('[notebook]'))).status,
+    ).toBe(200);
+  });
+
+  it('without the notebook group → 403 (group check)', async () => {
+    const [method, path] = routesOf('notebook')[0]!;
+    for (const groups of ['[]', '[site-admin user-admin]']) {
+      expect(
+        await probe(method, path, idToken(IOS_CLIENT, groups)),
+      ).toMatchObject({
+        status: 403,
+        body: { message: 'Requires the notebook group' },
+      });
+    }
+  });
+
+  it('all three groups still cannot reach /api/admin', async () => {
+    const allGroups = '[site-admin notebook user-admin]';
+    const [method, path] = routesOf('site-admin')[0]!;
+    expect(
+      (await probe(method, path, idToken(IOS_CLIENT, allGroups))).status,
+    ).toBe(403);
+    expect((await probe(method, path, iosAccessToken(allGroups))).status).toBe(
+      403,
+    );
+  });
+
+  it('unset IOS_CLIENT_ID fails closed', async () => {
+    vi.stubEnv('IOS_CLIENT_ID', '');
+    const [method, path] = routesOf('notebook')[0]!;
+    expect(
+      (await probe(method, path, idToken(IOS_CLIENT, '[notebook]'))).status,
+    ).toBe(403);
+    expect((await probe(method, path, idToken('', '[notebook]'))).status).toBe(
+      403,
+    );
+  });
+});
+
+describe('only the app clients are trusted', () => {
   const both = [...routesOf('site-admin'), ...routesOf('notebook')];
 
   // A stale env var left on the Lambda must not reopen a third client.

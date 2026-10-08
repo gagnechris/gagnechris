@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import type { Task } from '@gagnechris/shared';
+import type { Task } from './schemas.js';
 import {
   bucketTodayTasks,
   comingUpDayLabel,
   comingUpWindow,
   snoozeBaseDay,
   stillOpenSource,
-} from './todayTaskBuckets';
+} from './today-task-buckets.js';
 
 const base = (overrides: Partial<Task> & Pick<Task, 'id' | 'title'>): Task => ({
   userId: 'u1',

@@ -17,6 +17,7 @@ import {
   addDays,
   formatCalendarDay,
   isCalendarDay,
+  snoozeBaseDay,
   taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
@@ -46,7 +47,6 @@ import {
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
-import { snoozeBaseDay } from '../kit/tasks/todayTaskBuckets';
 import { useLocalToday } from './useLocalToday';
 import { useTaskToggle } from './useTaskToggle';
 import { useTaskPatch, useTodayTasks } from './useTodayTasks';

@@ -5,6 +5,7 @@ import { authorize } from '../src/router.js';
 const env = {
   ADMIN_WEB_CLIENT_ID: 'local-admin-web',
   NOTEBOOK_WEB_CLIENT_ID: 'local-notebook-web',
+  IOS_CLIENT_ID: 'local-ios',
 };
 
 afterEach(() => {
@@ -56,6 +57,7 @@ describe('local API fake claims', () => {
   it('the injected claims pass the router once the local env is applied', () => {
     vi.stubEnv('ADMIN_WEB_CLIENT_ID', '');
     vi.stubEnv('NOTEBOOK_WEB_CLIENT_ID', '');
+    vi.stubEnv('IOS_CLIENT_ID', '');
     applyLocalAuthEnv();
     expect(process.env).toMatchObject(env);
     for (const auth of ['site-admin', 'user-admin', 'notebook'] as const) {
@@ -66,6 +68,37 @@ describe('local API fake claims', () => {
     expect(
       authorize('notebook', localClaims(undefined, 'site-admin')),
     ).toMatchObject({ ok: false, status: 403 });
+  });
+
+  it('a local-ios token carries the iOS client as aud', () => {
+    expect(
+      localClaims('Bearer local-ios:local-dev-user', 'notebook', env),
+    ).toMatchObject({
+      sub: 'local-dev-user',
+      token_use: 'id',
+      aud: 'local-ios',
+      'cognito:groups': '[notebook]',
+    });
+    expect(
+      localClaims('Bearer local-ios:e2e-second', 'site-admin', env),
+    ).toMatchObject({ sub: 'e2e-second', aud: 'local-ios' });
+  });
+
+  it('the router lets a local iOS token into Notebook only', () => {
+    vi.stubEnv('ADMIN_WEB_CLIENT_ID', '');
+    vi.stubEnv('NOTEBOOK_WEB_CLIENT_ID', '');
+    vi.stubEnv('IOS_CLIENT_ID', '');
+    applyLocalAuthEnv();
+    const ios = 'Bearer local-ios:local-dev-user';
+    expect(authorize('notebook', localClaims(ios, 'notebook'))).toEqual({
+      ok: true,
+    });
+    for (const auth of ['site-admin', 'user-admin'] as const) {
+      expect(authorize(auth, localClaims(ios, auth))).toMatchObject({
+        ok: false,
+        status: 403,
+      });
+    }
   });
 
   it('keeps client IDs already in the environment', () => {

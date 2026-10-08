@@ -4,10 +4,27 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const entries = [
+type Entry = {
+  name: string;
+  path: string;
+  /** Modules mobile depends on: the bundle must contain them, not just pass. */
+  requiredInputs?: readonly string[];
+};
+
+const entries: readonly Entry[] = [
   {
     name: '@gagnechris/shared',
     path: join(repoRoot, 'packages/shared/src/index.ts'),
+    requiredInputs: [
+      'task-syntax.ts',
+      'today-task-buckets.ts',
+      'upcoming-groups.ts',
+      'task-schedule-label.ts',
+      'task-due.ts',
+      'task-date-menu-items.ts',
+      'task-date-menu-state.ts',
+      'note-list-sections.ts',
+    ].map((file) => `packages/shared/src/${file}`),
   },
   {
     name: '@gagnechris/api-client',
@@ -21,7 +38,7 @@ const entries = [
     name: '@gagnechris/tokens',
     path: join(repoRoot, 'packages/tokens/src/index.ts'),
   },
-] as const;
+];
 
 const bannedImportPrefixes = [
   'node:',
@@ -167,6 +184,17 @@ for (const entry of entries) {
     for (const hit of hits) {
       console.error(`  ${relative(repoRoot, hit) || hit}`);
     }
+    continue;
+  }
+
+  const normalizedInputs = inputs.map((p) => p.replace(/\\/g, '/'));
+  const missing = (entry.requiredInputs ?? []).filter(
+    (required) => !normalizedInputs.some((p) => p.endsWith(required)),
+  );
+  if (missing.length > 0) {
+    failed = true;
+    console.error(`${entry.name}: missing required modules:`);
+    for (const file of missing) console.error(`  ${file}`);
     continue;
   }
 
