@@ -1,0 +1,146 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  addDays,
+  bucketTodayTasks,
+  COMING_UP_DAYS,
+  type SourceNote,
+  stillOpenSource,
+  type StillOpenSource,
+  taskDue,
+  type TaskDue,
+} from '@gagnechris/shared';
+import type { NotebookArea, Task } from './api.js';
+import { useNotesByIds } from './notes.js';
+import { taskActionError } from './taskActionError.js';
+import {
+  usePatchTaskMutation,
+  useTasksQuery,
+  type TaskPatch,
+} from './tasks.js';
+
+export type TodayStillOpenRow = {
+  task: Task;
+  source: StillOpenSource;
+  due: TaskDue | null;
+};
+
+/** Every open task showing on `day`, and every one starting in Coming up's window after it. */
+export function useTodayTasks({
+  area,
+  day,
+  embeddedIds,
+}: {
+  area: NotebookArea | undefined;
+  day: string;
+  /** Null until the day's note has loaded, so its tasks never flash as Still open. */
+  embeddedIds: ReadonlySet<string> | null;
+}) {
+  const showing = useTasksQuery({
+    area,
+    open: true,
+    startOnOrBefore: day,
+    today: day,
+    limit: 100,
+  });
+  // Coming up shows (day, day + COMING_UP_DAYS]; later tasks are Upcoming's.
+  const later = useTasksQuery({
+    area,
+    open: true,
+    startAfter: day,
+    startBefore: addDays(day, COMING_UP_DAYS + 1),
+    today: day,
+    limit: 100,
+  });
+  useLoadAllPages(showing);
+  useLoadAllPages(later);
+
+  const buckets = useMemo(
+    () =>
+      bucketTodayTasks(
+        [
+          ...(showing.data?.pages.flatMap((p) => p.items) ?? []),
+          ...(later.data?.pages.flatMap((p) => p.items) ?? []),
+        ],
+        { day, embeddedIds: embeddedIds ?? new Set() },
+      ),
+    [showing.data, later.data, day, embeddedIds],
+  );
+
+  const sourceNoteIds = useMemo(
+    () => [
+      ...new Set(
+        buckets.stillOpen
+          .filter((t) => t.startDate === null && t.noteId)
+          .map((t) => t.noteId!),
+      ),
+    ],
+    [buckets.stillOpen],
+  );
+  const noteResults = useNotesByIds(sourceNoteIds);
+  const notesById = new Map<string, SourceNote>();
+  sourceNoteIds.forEach((id, i) => {
+    const note = noteResults[i]?.data;
+    if (note && !note.deleted) notesById.set(id, note);
+  });
+
+  const stillOpenRows: TodayStillOpenRow[] = buckets.stillOpen.map((task) => ({
+    task,
+    source: stillOpenSource(
+      task,
+      day,
+      task.noteId ? notesById.get(task.noteId) : undefined,
+    ),
+    due: taskDue(task, day),
+  }));
+
+  const showingLoading =
+    embeddedIds === null || showing.isPending || showing.hasNextPage;
+  const laterLoading =
+    embeddedIds === null || later.isPending || later.hasNextPage;
+
+  return {
+    buckets,
+    stillOpenRows,
+    loading: { stillOpen: showingLoading, comingUp: laterLoading },
+    loadError: showing.isError || later.isError,
+  };
+}
+
+/** Snooze, Drop and Do today: the row moves at once, and comes back if the write fails. */
+export function useTaskPatch() {
+  const { mutateAsync } = usePatchTaskMutation();
+  const [error, setError] = useState<string | null>(null);
+  const patch = useCallback(
+    async (
+      task: Pick<Task, 'id' | 'title' | 'version'>,
+      change: TaskPatch,
+      verb?: string,
+    ) => {
+      setError(null);
+      const action = verb ?? (change.status === 'dropped' ? 'drop' : 'snooze');
+      try {
+        await mutateAsync({
+          id: task.id,
+          version: task.version,
+          patch: change,
+        });
+      } catch (err) {
+        setError(taskActionError(action, task.title, err));
+      }
+    },
+    [mutateAsync],
+  );
+  return { patch, error };
+}
+
+export function useLoadAllPages(query: {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isError: boolean;
+  fetchNextPage: () => Promise<unknown>;
+}) {
+  const { hasNextPage, isFetchingNextPage, isError, fetchNextPage } = query;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isError) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
+}

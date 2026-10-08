@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
+  useLoadAllPages,
   useNotesByIds,
+  useTaskPatch,
   useTasksQuery,
   useTaskToggle,
   type Task,
@@ -24,7 +26,6 @@ import {
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';
-import { useLoadAllPages, useTaskPatch } from './useTodayTasks';
 
 export default function NotebookUpcomingPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();

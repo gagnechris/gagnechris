@@ -1,5 +1,5 @@
 import type { Note, Task } from '@gagnechris/app-core';
-import { isOpenTaskStatus } from '@gagnechris/shared';
+import { isOpenTaskStatus, taskShowsOn } from '@gagnechris/shared';
 
 export const makeNote = (
   id: string,
@@ -88,7 +88,8 @@ const matchesTask = (task: Task, params: URLSearchParams) => {
   if (get('someday') === 'true' && !task.someday) return false;
   const start = task.startDate;
   if (get('startOn') && start !== get('startOn')) return false;
-  if (get('startOnOrBefore') && (!start || start > get('startOnOrBefore')!))
+  // As the API's index: unscheduled open tasks show on every day.
+  if (get('startOnOrBefore') && !taskShowsOn(task, get('startOnOrBefore')!))
     return false;
   if (get('startAfter') && (!start || start <= get('startAfter')!))
     return false;
@@ -256,13 +257,19 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       if (input.method === 'PUT') {
         const body = (await input.json()) as Partial<Note> & {
           id?: string;
-          version: number;
+          version?: number;
         };
+        // A first write sends no version; if another device created the day
+        // meanwhile, it loses the claim.
+        if (existing && body.version === undefined && body.id !== existing.id) {
+          state.conflicts += 1;
+          return json(409, { error: 'daily_taken', current: existing });
+        }
         if (existing) {
           const result = put(store, existing, body);
           return result instanceof Response ? result : json(200, result);
         }
-        if (body.version !== 0) {
+        if (body.version !== undefined && body.version !== 0) {
           state.conflicts += 1;
           return json(412, { error: 'version_conflict' });
         }

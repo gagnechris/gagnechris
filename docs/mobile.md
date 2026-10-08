@@ -9,7 +9,7 @@
 | `app/_layout.tsx`                      | Providers (session, persisted query cache, area, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
 | `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
 | `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
-| `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                                                |
+| `app/(tabs)/today/index.tsx`           | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                            |
 | `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                                                    |
 | `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
 | `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
@@ -17,7 +17,7 @@
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
-Today, Upcoming and Tasks are shells with their empty states. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+Upcoming and Tasks are shells with their empty states. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
 
 - **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
@@ -41,6 +41,15 @@ Each row has Pin / Unpin and Delete, each behind a confirm alert: long press, th
 - **Keyboard.** The screen's `ScrollView` uses `automaticallyAdjustKeyboardInsets`, so content scrolls above the keyboard and toolbar.
 
 Query caching and offline state are described in [Cached reads and offline](#cached-reads-and-offline). `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)); the note editor's Preview uses it. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
+
+## Today
+
+`/today` shows one day for the area chosen on the area chip; the day follows the device's date (`useLocalToday` rolls it over at midnight and when the app returns) until ‹ or › picks another, and Today comes back to it.
+
+- **Tasks.** app-core's `useTodayTasks` (shared with web) loads the open tasks showing on the day and those starting in the next 14 days, and splits them with `bucketTodayTasks`: a task the day's note embeds is in the note, an open task showing on the day is Still open, a later one is Coming up. Carry-forward is that computation, so nothing is written overnight. The banner ("N still open · N coming up") opens a sheet with the two lists as tabs. A Still open row shows the source ("Thu note · 1 day", "Scheduled Sep 28") and has + Note (today only), and ⋯ or a long press for Snooze (the shared date items, or Pick a date…) and Drop. Snooze and Drop go through app-core's `useTaskPatch`, so the row leaves at once and comes back if the write fails.
+- **Note.** `TodayNote` edits the day's daily note with `dailyNoteResource` and the note editor ([Notes](#notes)). Today's note is opened with carry-in, as on web; any other day is written on first edit. If another device created the day first, the save fails with `daily_taken`: the typed text stays, and "Add it to their note" appends it to that note (app-core's `useMergeIntoDailyNoteMutation`) and shows the result.
+- **Footer.** "N open tasks will carry to <next day> if not done" on today and later days.
+- **All.** With All selected there is no note, and the lists are read-only.
 
 ## Entry and polyfills
 

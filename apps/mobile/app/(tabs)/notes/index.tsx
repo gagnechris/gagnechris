@@ -1,5 +1,6 @@
 import {
   useCreateNoteMutation,
+  useLoadAllPages,
   useNotebookSearchQuery,
   useNotesQuery,
   type Note,
@@ -21,7 +22,6 @@ import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
 import { useArea } from '../../../src/area';
 import { useNoteRowActions } from '../../../src/notebook/noteActions';
-import { useLoadAllPages } from '../../../src/notebook/useLoadAllPages';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { useOpenTaskIds } from '../../../src/notebook/useOpenTaskIds';
 import { createUlid } from '../../../src/ulid';

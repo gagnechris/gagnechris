@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   useCreateNoteMutation,
+  useLoadAllPages,
   useNotesQuery,
   useTasksQuery,
   type NotebookArea,
@@ -21,7 +22,6 @@ import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
-import { useLoadAllPages } from './useTodayTasks';
 
 type TypeFilter = 'all' | NoteType;
 

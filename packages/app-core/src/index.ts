@@ -190,6 +190,7 @@ export {
   useCreateNoteMutation,
   useDailyNoteDatesQuery,
   useDeleteNoteMutation,
+  useMergeIntoDailyNoteMutation,
   useNotesByIds,
   useNotesQuery,
   usePinNoteMutation,
@@ -217,6 +218,12 @@ export { useNotebookSearchQuery } from './query/search.js';
 export { taskActionError } from './query/taskActionError.js';
 export { taskRequestFromDraft } from './query/taskRequest.js';
 export { useTaskToggle } from './query/useTaskToggle.js';
+export {
+  useLoadAllPages,
+  useTaskPatch,
+  useTodayTasks,
+  type TodayStillOpenRow,
+} from './query/today.js';
 export {
   EMBED_RETRY_DELAYS_MS,
   useNoteTaskEmbedSync,
