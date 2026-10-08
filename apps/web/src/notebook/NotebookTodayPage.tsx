@@ -10,6 +10,7 @@ import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   dailyNoteResource,
   useDailyNoteDatesQuery,
+  useTaskPatch,
   useTaskToggle,
   type NotebookArea,
   type Task,
@@ -49,7 +50,7 @@ import {
 } from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
 import { useLocalToday } from './useLocalToday';
-import { useTaskPatch, useTodayTasks } from './useTodayTasks';
+import { useTodayTasks } from './useTodayTasks';
 
 function resolveDate(param: string | null, today: string): string {
   if (param && isCalendarDay(param)) return param;

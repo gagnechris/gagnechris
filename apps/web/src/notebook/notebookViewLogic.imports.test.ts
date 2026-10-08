@@ -70,15 +70,12 @@ const importOf = (file: string, name: string) =>
 describe('Notebook view logic', () => {
   test('the Notebook app and the demo import it from @gagnechris/shared', () => {
     const uses: [string, string][] = [
-      ['notebook/useTodayTasks.ts', 'bucketTodayTasks'],
-      ['notebook/useTodayTasks.ts', 'stillOpenSource'],
       ['demos/notebook/notebookDemoState.ts', 'bucketTodayTasks'],
       ['demos/notebook/notebookDemoState.ts', 'stillOpenSource'],
       ['kit/tasks/TodayPanels.tsx', 'comingUpShortLabel'],
       ['kit/tasks/TodaySheet.tsx', 'comingUpDayLabel'],
       ['notebook/NotebookUpcomingPage.tsx', 'groupUpcomingTasks'],
       ['demos/notebook/index.tsx', 'taskScheduleLabel'],
-      ['notebook/useTodayTasks.ts', 'taskDue'],
       ['demos/notebook/index.tsx', 'taskDue'],
       ['notebook/NotebookNotesPage.tsx', 'noteSections'],
       ['notebook/NotebookNotesPage.tsx', 'noteOpenTaskCount'],

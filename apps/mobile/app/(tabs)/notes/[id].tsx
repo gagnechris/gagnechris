@@ -8,11 +8,10 @@ import {
 import { NOTEBOOK_AREA_LABELS, noteTitle } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
-  AppState,
   Pressable,
   ScrollView,
   Share,
@@ -39,6 +38,7 @@ import {
 } from '../../../src/notebook/noteDraft';
 import { saveLabel } from '../../../src/notebook/saveLabel';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
+import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
 import { Icon } from '../../../src/ui/Icon';
@@ -88,13 +88,7 @@ const NoteScreen = () => {
     entity?.type ?? 'page',
   );
 
-  // iOS may end a backgrounded app without warning: send edits on the way out.
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' && dirty) void save();
-    });
-    return () => subscription.remove();
-  }, [dirty, save]);
+  useSaveOnBackground(dirty, save);
 
   const embedNote = useMemo(
     () => (entity ? { id: entity.id, area: entity.area } : null),

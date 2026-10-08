@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useNotesQuery } from '@gagnechris/app-core';
+import { useLoadAllPages, useNotesQuery } from '@gagnechris/app-core';
 import { noteDay, noteDayLabel, noteTitle } from '@gagnechris/shared';
 import { taskMentions } from './taskMentionsData';
 import { useLocalToday } from './useLocalToday';
-import { useLoadAllPages } from './useTodayTasks';
 
 type Props = {
   taskId: string;

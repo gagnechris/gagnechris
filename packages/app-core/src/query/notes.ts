@@ -217,3 +217,38 @@ export const usePinNoteMutation = () => {
     onSuccess: (note) => setCachedNote(queryClient, note),
   });
 };
+
+/**
+ * After `daily_taken`: adds what this device typed to the daily note another
+ * device created, and puts that note in the cache, so the editor rehydrates
+ * from it.
+ */
+export const useMergeIntoDailyNoteMutation = () => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      area,
+      date,
+      bodyMarkdown,
+    }: {
+      area: NotebookArea;
+      date: string;
+      bodyMarkdown: string;
+    }) => {
+      const client = getClient();
+      const current = await fetchDailyNote(client, area, date);
+      if (isEmptyDailyNote(current)) {
+        throw new Error('That daily note no longer exists.');
+      }
+      const typed = bodyMarkdown.trim();
+      if (!typed || current.bodyMarkdown.includes(typed)) return current;
+      const base = current.bodyMarkdown.replace(/\s+$/, '');
+      return updateNote(client, current.id, {
+        version: current.version,
+        bodyMarkdown: base ? `${base}\n\n${typed}\n` : `${typed}\n`,
+      });
+    },
+    onSuccess: (note) => setCachedNote(queryClient, note),
+  });
+};

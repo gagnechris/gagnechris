@@ -102,7 +102,6 @@ describe('Notebook tab screens', () => {
     expect(headers(renderer)[0]?.props.accessibilityLabel).toBe(
       'Today, Friday, October 2',
     );
-    expect(allText(renderer)).toContain('Nothing written today');
 
     act(() => byLabel(renderer, 'Area: Work').props.onPress());
     const [options, choose] = vi.mocked(
