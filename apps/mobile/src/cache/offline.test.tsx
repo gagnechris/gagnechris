@@ -238,6 +238,28 @@ describe('cached reads', () => {
     expect(server.state.calls).toEqual([]);
   });
 
+  it('keeps the saved copy when a refetch fails while the radio is still up', async () => {
+    unmount(await syncOnline());
+    server.state.offline = true;
+    const unreachable = await render(
+      <App>
+        <NotesScreen />
+      </App>,
+    );
+    await advance(30_000);
+    unmount(unreachable);
+    expect(stored()).toContain('first words');
+
+    setConnected(false);
+    const offline = await render(
+      <App>
+        <NotesScreen />
+      </App>,
+    );
+    expect(screenText(offline)).toContain('note: first words');
+    expect(screenText(offline)).toContain('list: Note n1');
+  });
+
   it('never writes search terms or results to disk', async () => {
     const renderer = await syncOnline();
     expect(server.state.requests).toContain('POST /api/notebook/search');

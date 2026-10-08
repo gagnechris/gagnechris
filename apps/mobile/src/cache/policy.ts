@@ -39,8 +39,11 @@ export const isPersistedQueryKey = (key: QueryKey): boolean => {
   return !hasSearchTerm(key[root.length + 1]);
 };
 
+// A refetch that fails (server unreachable while NetInfo says connected) leaves
+// the query in `error` with its data; persisting only `success` would delete
+// the saved copy on the next write.
 export const shouldPersistQuery = (query: Query): boolean =>
-  query.state.status === 'success' && isPersistedQueryKey(query.queryKey);
+  query.state.data !== undefined && isPersistedQueryKey(query.queryKey);
 
 export const createAppQueryClient = () => {
   const queryClient = new QueryClient();
