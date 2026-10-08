@@ -811,7 +811,7 @@ For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/lo
 
 ## iOS release (TestFlight)
 
-The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions): it runs the mobile checks, then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`).
+The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions): it runs the mobile checks, then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
 
 **One-time setup**
 

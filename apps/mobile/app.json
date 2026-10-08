@@ -33,6 +33,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7c31fdf7-d648-40bd-b184-fe45df1b358e"
+      }
+    },
     "plugins": [
       "expo-router",
       [

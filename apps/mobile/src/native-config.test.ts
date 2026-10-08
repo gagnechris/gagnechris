@@ -32,6 +32,7 @@ describe('native build config', () => {
     expect(app.version).toMatch(/^[1-9]\d*\.\d+\.\d+$/);
     expect(app.ios.config.usesNonExemptEncryption).toBe(false);
     expect(eas.submit.production.ios.appleTeamId).toBe(app.ios.appleTeamId);
+    expect(app.extra.eas.projectId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('installs the sign-in, token, entropy, cache, and network modules', () => {
