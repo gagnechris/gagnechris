@@ -17,7 +17,7 @@ import {
   tokenInsertion,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { apiBaseUrl, localDevToken } from './config';
+import { apiBaseUrl } from './config';
 
 describe('mobile imports', () => {
   it('resolves @gagnechris/shared domain schemas', () => {
@@ -149,6 +149,5 @@ describe('mobile imports', () => {
 
   it('defaults API base URL to local stack', () => {
     expect(apiBaseUrl).toContain('8787');
-    expect(localDevToken).toBe('local-dev-token');
   });
 });

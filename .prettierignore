@@ -9,3 +9,5 @@ packages/api-client/src/schema.d.ts
 packages/shared/openapi/openapi.json
 packages/tokens/src/variables.css
 *.min.js
+apps/mobile/ios
+apps/mobile/android

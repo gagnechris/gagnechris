@@ -1,8 +1,8 @@
 # Mobile (Expo)
 
-Expo app (expo-router, dev client) that runs the monorepo client packages under
-Metro. Its one screen shows a client-generated ULID and `GET /api/health` from
-the configured API.
+Expo app (expo-router, dev client) for Notebook on iPhone: tabs for Today,
+Upcoming, Notes, Tasks and More, the Work / Personal / All area switch, and the
+No access screen. It runs the monorepo client packages under Metro.
 
 This app is not part of the root npm workspaces and has its own lockfile, so its
 dependencies install separately. See `docs/mobile.md`.
@@ -21,7 +21,8 @@ npm run ios --prefix apps/mobile   # expo run:ios
 ```
 
 With the dev client already installed, `npm start --prefix apps/mobile` and
-press `i`. An EAS simulator build (`npx eas-cli build --profile development
+press `i`. With Xcode 27, `expo run:ios` mistakes booted simulators for phones;
+use `npm run ios:sim` with Metro running (see `docs/mobile.md`). An EAS simulator build (`npx eas-cli build --profile development
 --platform ios`) is the alternative; see `docs/mobile.md#run-in-the-simulator`.
 
 Override API target:
@@ -30,13 +31,13 @@ Override API target:
 EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 ```
 
-(Authenticated admin calls need a real Cognito ID token against prod; local uses `local-dev-token`.)
+(Sign-in is the local API's fake auth for now; `EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` signs in without Notebook to show No access.)
 
 ## Packages exercised
 
-- `@gagnechris/shared` — `HealthResponseSchema`, `createUlid`
-- `@gagnechris/api-client` — `createApiClient` (public + TokenProvider)
-- `@gagnechris/app-core` — `AppApiProvider`, `useGetApiClient`
+- `@gagnechris/shared` — area filters, access levels, calendar labels, `createUlid`
+- `@gagnechris/api-client` — `createApiClient` with the session's `getToken`
+- `@gagnechris/app-core` — `AppApiProvider`
 - `@gagnechris/tokens` — colors plus numeric space / text / radius scales
 
 ## Bundle checks
