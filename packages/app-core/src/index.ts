@@ -218,6 +218,7 @@ export { useNotebookSearchQuery } from './query/search.js';
 export { taskActionError } from './query/taskActionError.js';
 export { taskRequestFromDraft } from './query/taskRequest.js';
 export { useTaskToggle } from './query/useTaskToggle.js';
+export { useQuickAddTask } from './query/useQuickAddTask.js';
 export {
   useLoadAllPages,
   useTaskPatch,

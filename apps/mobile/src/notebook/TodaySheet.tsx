@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { SegmentedControl } from '../ui/SegmentedControl';
-import { TodayTaskRow } from '../ui/TodayTaskRow';
+import { TaskRow } from '../ui/TaskRow';
 
 type Tab = 'stillOpen' | 'comingUp';
 const TABS = ['stillOpen', 'comingUp'] as const;
@@ -108,7 +108,7 @@ export const TodaySheet = ({
               <Text style={styles.empty}>Nothing left open.</Text>
             ) : (
               stillOpen.map(({ task, source, due }) => (
-                <TodayTaskRow
+                <TaskRow
                   key={task.id}
                   task={task}
                   detail={source.label}
@@ -134,7 +134,7 @@ export const TodaySheet = ({
                   {comingUpDayLabel(date, day)}
                 </Text>
                 {tasks.map((task) => (
-                  <TodayTaskRow
+                  <TaskRow
                     key={task.id}
                     task={task}
                     onOpen={() => onOpenTask(task)}

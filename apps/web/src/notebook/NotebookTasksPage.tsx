@@ -2,16 +2,18 @@ import { useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   useTasksQuery,
+  useQuickAddTask,
   useTaskToggle,
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
 import {
-  addDays,
+  matchesTaskShowOn,
   taskDue,
+  taskShowOnParam,
   type TaskPriority,
+  type TaskShowOnFilter,
   type TaskStatus,
-  weekdayOf,
 } from '@gagnechris/shared';
 import {
   areaQueryParam,
@@ -25,54 +27,8 @@ import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useLocalToday } from './useLocalToday';
-import { useQuickAddTask } from './useQuickAddTask';
+
 import type { NotebookOutletContext } from './NotebookLayout';
-
-const SHOW_ON_FILTERS = [
-  '',
-  'earlier',
-  'today',
-  'week',
-  'later',
-  'none',
-  'someday',
-] as const;
-
-type ShowOnFilter = (typeof SHOW_ON_FILTERS)[number];
-
-const showOnParam = (value: string | null): ShowOnFilter =>
-  SHOW_ON_FILTERS.find((f) => f === value) ?? '';
-
-function endOfLocalWeek(today: string): string {
-  const day = weekdayOf(today);
-  if (day === null) return today;
-  // Sunday = 0 … Saturday = 6; inclusive end of this calendar week (Sat).
-  return addDays(today, day === 0 ? 6 : 6 - day);
-}
-
-function matchesShowOnFilter(
-  task: Task,
-  showOn: ShowOnFilter,
-  today: string,
-): boolean {
-  if (!showOn) return true;
-  if (showOn === 'someday') return task.someday;
-  if (task.someday) return false;
-  if (showOn === 'none') return task.startDate === null;
-  if (showOn === 'later') {
-    return task.startDate !== null && task.startDate > today;
-  }
-  if (showOn === 'today') return task.startDate === today;
-  if (showOn === 'earlier') {
-    return task.startDate !== null && task.startDate < today;
-  }
-  if (showOn === 'week') {
-    if (!task.startDate) return false;
-    const weekEnd = endOfLocalWeek(today);
-    return task.startDate >= today && task.startDate <= weekEnd;
-  }
-  return true;
-}
 
 export default function NotebookTasksPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
@@ -83,8 +39,8 @@ export default function NotebookTasksPage() {
   const [status, setStatus] = useState<TaskStatus | ''>('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
   const [searchParams, setSearchParams] = useSearchParams();
-  const showOn = showOnParam(searchParams.get('show'));
-  const setShowOn = (next: ShowOnFilter) =>
+  const showOn = taskShowOnParam(searchParams.get('show'));
+  const setShowOn = (next: TaskShowOnFilter) =>
     setSearchParams(
       (params) => {
         if (next) params.set('show', next);
@@ -133,7 +89,7 @@ export default function NotebookTasksPage() {
     const completed = status
       ? main
       : (completedQuery.data?.pages.flatMap((page) => page.items) ?? []);
-    const matches = (t: Task) => matchesShowOnFilter(t, showOn, today);
+    const matches = (t: Task) => matchesTaskShowOn(t, showOn, today);
     return {
       openItems: main.filter((t) => t.status !== 'done' && matches(t)),
       doneItems: completed.filter((t) => t.status === 'done' && matches(t)),
@@ -239,7 +195,7 @@ export default function NotebookTasksPage() {
           <select
             className="admin-input"
             value={showOn}
-            onChange={(e) => setShowOn(e.target.value as ShowOnFilter)}
+            onChange={(e) => setShowOn(e.target.value as TaskShowOnFilter)}
             aria-label="Filter by show-on date"
           >
             <option value="">Any</option>

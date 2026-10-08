@@ -5,6 +5,7 @@ import {
   useNotesByIds,
   useTaskPatch,
   useTasksQuery,
+  useQuickAddTask,
   useTaskToggle,
   type Task,
 } from '@gagnechris/app-core';
@@ -25,7 +26,6 @@ import {
 } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
-import { useQuickAddTask } from './useQuickAddTask';
 
 export default function NotebookUpcomingPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();

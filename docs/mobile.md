@@ -10,14 +10,14 @@
 | `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
 | `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
 | `app/(tabs)/today/index.tsx`           | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                            |
-| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                                                    |
+| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: scheduled tasks by day, then Later and Someday (see [Tasks](#tasks))                                    |
 | `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
 | `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
-| `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                                                  |
+| `app/(tabs)/tasks/index.tsx`           | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
-Upcoming and Tasks are shells with their empty states. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+`app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
 
 - **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
@@ -50,6 +50,13 @@ Query caching and offline state are described in [Cached reads and offline](#cac
 - **Note.** `TodayNote` edits the day's daily note with `dailyNoteResource` and the note editor ([Notes](#notes)). Today's note is opened with carry-in, as on web; any other day is written on first edit. If another device created the day first, the save fails with `daily_taken`: the typed text stays, and "Add it to their note" appends it to that note (app-core's `useMergeIntoDailyNoteMutation`) and shows the result.
 - **Footer.** "N open tasks will carry to <next day> if not done" on today and later days.
 - **All.** With All selected there is no note, and the lists are read-only.
+
+## Tasks
+
+- **Upcoming.** Reads the open tasks starting after today and the Someday ones (every page) and groups them with `groupUpcomingTasks` from `@gagnechris/shared`, as web does: Tomorrow, each day of the coming week, Later (rows show their date), Someday. Rows show the deadline and the home note (read with `notes/batch`), and Do today moves the task to today through `useTaskPatch`.
+- **All tasks.** Open, Done or Dropped, a show-on filter (`matchesTaskShowOn` from `@gagnechris/shared`, the web Tasks page's filter) and the area. A full swipe right completes (or reopens), a full swipe left drops (`src/ui/SwipeRow.tsx`, built on `PanResponder`); the checkbox, ⋯ and VoiceOver actions do the same.
+- **Quick add.** Both screens take task syntax (`Call Sam @tomorrow !high`) through app-core's `useQuickAddTask`, which web uses too: the task goes to the filtered area (All means Work), a failed create shows an error and keeps the text, and on Upcoming a task without a later date says it shows on Today.
+- **Refresh.** Pull to refresh on both.
 
 ## Entry and polyfills
 
