@@ -19,7 +19,7 @@ export type CreateApiClientOptions = {
   retryOnUnauthorized?: boolean;
 };
 
-const RETRIED_HEADER = 'x-gagnechris-auth-retried';
+type Sent = { retry: globalThis.Request; refreshesBefore: number };
 
 export const createApiClient = ({
   baseUrl,
@@ -31,39 +31,54 @@ export const createApiClient = ({
     return client;
   }
 
-  // Cloned up front so POST bodies survive a retry.
-  const clones = new Map<string, globalThis.Request>();
+  // Keyed by the request object so an entry dies with its request, even when fetch throws.
+  const sent = new WeakMap<globalThis.Request, Sent>();
+  let refreshes = 0;
+  let latestRefresh: Promise<string | null | undefined> | undefined;
+
+  // A request sent before the latest refresh started reuses it instead of refreshing again.
+  const refreshedToken = (refreshesBefore: number) => {
+    if (!latestRefresh || refreshesBefore === refreshes) {
+      latestRefresh = getToken({ forceRefresh: true });
+      refreshes += 1;
+    }
+    return latestRefresh;
+  };
 
   const authMiddleware: Middleware = {
-    async onRequest({ request, id }) {
-      clones.set(id, request.clone());
+    async onRequest({ request }) {
+      if (retryOnUnauthorized) {
+        // Cloned before the body is consumed so POST bodies survive a retry.
+        sent.set(request, {
+          retry: request.clone(),
+          refreshesBefore: refreshes,
+        });
+      }
       const token = await getToken();
       if (token) {
         request.headers.set('Authorization', `Bearer ${token}`);
       }
       return request;
     },
-    async onResponse({ request, response, options, id }) {
-      const clone = clones.get(id);
-      clones.delete(id);
-      if (
-        !retryOnUnauthorized ||
-        (response.status !== 401 && response.status !== 403) ||
-        request.headers.get(RETRIED_HEADER) === '1' ||
-        !clone
-      ) {
+    async onResponse({ request, response, options }) {
+      const entry = sent.get(request);
+      sent.delete(request);
+      if (!entry || (response.status !== 401 && response.status !== 403)) {
         return undefined;
       }
-      const token = await getToken({ forceRefresh: true });
-      const headers = new globalThis.Headers(clone.headers);
-      headers.set(RETRIED_HEADER, '1');
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      } else {
-        headers.delete('Authorization');
+      let token: string | null | undefined;
+      try {
+        token = await refreshedToken(entry.refreshesBefore);
+      } catch {
+        return undefined;
       }
-      // options.fetch bypasses middleware, so the refreshed token is set here.
-      return options.fetch(new globalThis.Request(clone, { headers }));
+      if (!token) {
+        return undefined;
+      }
+      const headers = new globalThis.Headers(entry.retry.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      // options.fetch bypasses middleware, so the retry is never retried again.
+      return options.fetch(new globalThis.Request(entry.retry, { headers }));
     },
   };
   client.use(authMiddleware);

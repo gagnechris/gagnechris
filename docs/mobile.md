@@ -20,7 +20,7 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 
 - `EXPO_PUBLIC_API_BASE_URL` sets the API origin; the default is the local API at `http://127.0.0.1:8787` (`npm run local:dev`).
 - The authed client sends the fake bearer `local-dev-token`, which the local API maps to the default local admin (`local-dev-user`, the same user `VITE_AUTH_MODE=local` signs in as). Authenticated calls against production need a real Cognito ID token.
-- `TokenProvider` in `@gagnechris/api-client` accepts `{ forceRefresh?: boolean }`. The client retries a request once on HTTP 401 or 403 with `getToken({ forceRefresh: true })`, once per refused request, so any single-flight refresh belongs in the token provider.
+- `TokenProvider` in `@gagnechris/api-client` accepts `{ forceRefresh?: boolean }`. On a 401 or 403 the client calls it once with `forceRefresh: true` and retries the request once with the new token. Requests already in flight when a refresh starts share it, so concurrent 401s cause one refresh. If the refresh throws or returns no token, the caller gets the original response.
 
 ### iOS sign-in and associated domains
 
