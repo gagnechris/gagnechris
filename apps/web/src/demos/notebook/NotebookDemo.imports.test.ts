@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { parseTaskSyntax } from '@gagnechris/shared';
-import { taskLineDraft } from '../../kit/tasks/taskLine';
 import { notebookDemoReducer, seedNotebookDemo } from './notebookDemoState';
 
 vi.mock('@gagnechris/shared', async (importOriginal) => {
@@ -25,13 +24,12 @@ const parserImport = (file: string): string | undefined => {
 
 describe('the Notebook demo parser', () => {
   test('is imported from the module the Notebook app imports it from', () => {
-    expect(parserImport('kit/tasks/taskLine.ts')).toBe('@gagnechris/shared');
     expect(parserImport('demos/notebook/notebookDemoState.ts')).toBe(
       '@gagnechris/shared',
     );
   });
 
-  test('is the same function: the demo and the note-line parser both call it', () => {
+  test('is the function the demo calls', () => {
     const parser = vi.mocked(parseTaskSyntax);
     const state = seedNotebookDemo(new Date(2026, 9, 2, 9));
     notebookDemoReducer(
@@ -39,8 +37,6 @@ describe('the Notebook demo parser', () => {
       { type: 'add' },
     );
     expect(parser).toHaveBeenLastCalledWith('Call Sam @mon', '2026-10-02');
-    taskLineDraft('Ship it !high', '2026-10-02');
-    expect(parser).toHaveBeenLastCalledWith('Ship it !high', '2026-10-02');
-    expect(parser).toHaveBeenCalledTimes(2);
+    expect(parser).toHaveBeenCalledTimes(1);
   });
 });

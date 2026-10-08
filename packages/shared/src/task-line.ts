@@ -1,8 +1,5 @@
-import {
-  NOTEBOOK_TITLE_MAX_LENGTH,
-  parseTaskSyntax,
-  type TaskPriority,
-} from '@gagnechris/shared';
+import { NOTEBOOK_TITLE_MAX_LENGTH, type TaskPriority } from './schemas.js';
+import { parseTaskSyntax } from './task-syntax.js';
 
 /** Fields a typed `[ ] …` line contributes to the task it creates. */
 export type TaskLineDraft = {

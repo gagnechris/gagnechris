@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useCachedTasks, useNotebookSearchQuery } from '@gagnechris/app-core';
+import {
+  useCachedTasks,
+  useNotebookSearchQuery,
+  useTaskToggle,
+} from '@gagnechris/app-core';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { areaQueryParam } from './notebookAreaPreference';
 import type { NotebookAreaFilter } from './notebookAreaPreference';
-import { useTaskToggle } from './useTaskToggle';
 
 type Props = {
   onClose: () => void;

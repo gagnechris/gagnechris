@@ -12,7 +12,7 @@
 | `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                                                |
 | `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                                                    |
 | `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
-| `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: title and markdown body with autosave and the save state                                               |
+| `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
 | `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                                                  |
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
@@ -31,7 +31,16 @@ Today, Upcoming and Tasks are shells with their empty states. `app/index.tsx` re
 
 Each row has Pin / Unpin and Delete, each behind a confirm alert: long press, the row's ⋯ button and VoiceOver's actions rotor all offer them. Pinning goes through app-core's `usePinNoteMutation`.
 
-Query caching and offline state are described in [Cached reads and offline](#cached-reads-and-offline). `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
+`/notes/:id` edits a note with app-core's `useVersionedDocEditor` (the web autosave and debounce); the header shows Saving… / Edited / Saved / Offline, the Preview toggle and a ⋯ menu with Pin / Unpin, Share and Delete. Under the title (read-only for a daily note) are the area, a pin marker, the tags (tap one to remove it) and "+ tag". Leaving the foreground saves straight away, without waiting for the debounce.
+
+- **Body.** `NoteBodyEditor` keeps the body as plain markdown. `noteSegments` splits it into runs of text, each a native multiline `TextInput`, around the `{{task:…}}` lines, which show as task rows. A text run sits before, between and after every task, and is keyed by the task after it, so the view being typed in stays mounted when a line above it turns into a task.
+- **Tasks from lines.** A `[ ] …` line becomes a task when the caret moves to another line or the field loses focus, with the web rules: `parseTaskLine` from `@gagnechris/shared` (task syntax for `@…`, `due:…` and `!…`), a client ULID, and app-core's `useNoteTaskEmbedSync`, which creates the task (retrying while the API is unreachable) and reports what each row shows. A line is only converted if its text is unchanged, so a backspace that pulls a task line up does not convert it. Lines in a code fence stay text.
+- **Task rows.** The box completes or reopens the task with a light haptic (`expo-haptics`) through app-core's task mutations, so Today, Tasks and other notes update from the same cache. The title opens `/tasks/:id`. Long press or the VoiceOver action removes the line from the note; the task stays.
+- **Keyboard toolbar.** An `InputAccessoryView` with Task, Date (`@`), Priority (`!`), Heading, List, Link and Hide keyboard. `applyToolbarAction` (`src/notebook/toolbarEdits.ts`) inserts at the caret or wraps the selection; the line markers toggle. While `@…` or `due:…` is being typed on a task line, the toolbar shows the shared `taskDateMenuItems` as chips ("Show this task on": Tomorrow, Monday, Next week, Someday, Pick a date…, Deadline…) and inserts the choice with `tokenInsertion`. Pick a date… opens a calendar sheet (`@react-native-community/datetimepicker`).
+- **Preview.** The eye button swaps the editor for `MarkdownView` with live task rows.
+- **Keyboard.** The screen's `ScrollView` uses `automaticallyAdjustKeyboardInsets`, so content scrolls above the keyboard and toolbar.
+
+Query caching and offline state are described in [Cached reads and offline](#cached-reads-and-offline). `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)); the note editor's Preview uses it. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
 
 ## Entry and polyfills
 
@@ -66,6 +75,8 @@ Every module listed in `expo/bundledNativeModules.json` uses exactly the range g
 | `expo-build-properties`                                                                                      | iOS deployment target **17.4** (the minimum for an `https` callback in `ASWebAuthenticationSession`) and `enableSceneSupport`: apps built with the iOS 27 SDK trap at launch unless they adopt the UIKit scene life cycle |
 | `expo-font`                                                                                                  | Embeds the Inter `.ttf` files at build time                                                                                                                                                                               |
 | `expo-symbols`                                                                                               | SF Symbols for the tab bar and icons                                                                                                                                                                                      |
+| `expo-haptics`                                                                                               | Haptic on completing a task in a note                                                                                                                                                                                     |
+| `@react-native-community/datetimepicker`                                                                     | Pick a date… in the note editor                                                                                                                                                                                           |
 
 SQLite is installed so the dev client already contains it; no code uses it yet.
 

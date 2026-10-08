@@ -128,6 +128,13 @@ export {
   type TaskEmbed,
   type TaskEmbedMarkdownTask,
 } from './task-embeds.js';
+export {
+  parseTaskLine,
+  TASK_LINE_PREFIX,
+  taskLineDraft,
+  taskLineDraftKey,
+  type TaskLineDraft,
+} from './task-line.js';
 export { byNewest } from './by-newest.js';
 export { deepEqual } from './deep-equal.js';
 export { newestById } from './newest-by-id.js';

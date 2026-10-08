@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { TaskEmbedCreate } from '../kit/markdown/taskEmbeds';
 import { QueryClientTestProvider } from '../test-utils';
-import { EMBED_RETRY_DELAYS_MS, useNoteTaskEmbeds } from './useNoteTaskEmbeds';
+import { EMBED_RETRY_DELAYS_MS } from '@gagnechris/app-core';
+import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
 
 const TASK_ID = '01JTASKAAAAAAAAAAAAAAAAAAA';
 const NOTE = { id: '01JNOTEAAAAAAAAAAAAAAAAAAA', area: 'work' as const };

@@ -30,6 +30,8 @@ const VIEW_LOGIC = [
   'taskDateMenuKey',
   'taskDateMenuIsOpen',
   'tokenInsertion',
+  'parseTaskLine',
+  'taskLineDraft',
   'newestById',
   'byNewest',
 ] as const;
@@ -75,7 +77,6 @@ describe('Notebook view logic', () => {
       ['kit/tasks/TodayPanels.tsx', 'comingUpShortLabel'],
       ['kit/tasks/TodaySheet.tsx', 'comingUpDayLabel'],
       ['notebook/NotebookUpcomingPage.tsx', 'groupUpcomingTasks'],
-      ['notebook/useNoteTaskEmbeds.tsx', 'taskScheduleLabel'],
       ['demos/notebook/index.tsx', 'taskScheduleLabel'],
       ['notebook/useTodayTasks.ts', 'taskDue'],
       ['demos/notebook/index.tsx', 'taskDue'],
