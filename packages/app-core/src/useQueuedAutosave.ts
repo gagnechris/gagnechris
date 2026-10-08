@@ -34,8 +34,9 @@ type Options<TDraft, TEntity> = {
   onSaved: (entity: TEntity) => void;
   /**
    * Whether a version conflict's `current` already holds everything `draft`
-   * sends. If so, an earlier attempt landed and only its response was lost,
-   * so the save counts as done with `current`.
+   * sends. If it holds this draft, the save counts as done with `current`; if
+   * it holds an earlier attempt whose response was lost, that attempt counts
+   * as done and this draft is sent again on `current`'s version.
    */
   isSavedIn?: (draft: TDraft, current: TEntity) => boolean;
   conflictMessage: string;
@@ -67,6 +68,10 @@ const isVersionConflict = (status: number, error: string | undefined) =>
     (error === undefined ||
       error === 'conflict' ||
       error === 'version_conflict'));
+
+// Drafts of failed attempts that may still have reached the server. Each can be
+// up to a note body, so only the latest few are kept.
+const MAX_UNCONFIRMED = 10;
 
 /**
  * Callers must not clobber the live draft with the normalized server response;
@@ -126,6 +131,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const chainRef = useRef<Promise<FlushResult> | null>(null);
   const heldRef = useRef(false);
   const lastFailureRetryableRef = useRef(false);
+  const unconfirmedRef = useRef<TDraft[]>([]);
   // A signal that lands before the retry loop is armed (mid-request, or
   // between the failure and the next commit) would otherwise be lost.
   const signalledSinceSendRef = useRef(false);
@@ -180,13 +186,33 @@ export function useQueuedAutosave<TDraft, TEntity>({
           if (
             !result.ok &&
             result.current !== undefined &&
-            isVersionConflict(result.status, result.error) &&
-            isSavedInRef.current?.(current, result.current)
+            isVersionConflict(result.status, result.error)
           ) {
-            result = { ok: true, entity: result.current };
+            const stored = result.current;
+            const isSavedIn = isSavedInRef.current;
+            if (isSavedIn?.(current, stored)) {
+              result = { ok: true, entity: stored };
+            } else if (
+              isSavedIn &&
+              unconfirmedRef.current.some((sent) => isSavedIn(sent, stored))
+            ) {
+              unconfirmedRef.current = [];
+              onSavedRef.current(stored);
+              continue;
+            }
           }
           if (!result.ok) {
             const retryable = isRetryableStatus(result.status);
+            if (retryable) {
+              const unconfirmed = unconfirmedRef.current;
+              if (!unconfirmed.includes(current)) {
+                unconfirmedRef.current = [...unconfirmed, current].slice(
+                  -MAX_UNCONFIRMED,
+                );
+              }
+            } else {
+              unconfirmedRef.current = [];
+            }
             lastFailureRetryableRef.current = retryable;
             setSaveState('error');
             setRetryAttempt((n) => (retryable ? n + 1 : 0));
@@ -194,7 +220,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
               ? conflictMessagesRef.current?.[result.error]
               : undefined;
             setSaveError(
-              result.status === 409
+              result.status === 409 || result.status === 412
                 ? (codeMessage ?? conflictMessageRef.current)
                 : result.status === 413
                   ? tooLargeMessageRef.current
@@ -204,6 +230,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
             break;
           }
 
+          unconfirmedRef.current = [];
           setRetryAttempt(0);
           onSavedRef.current(result.entity);
           lastSavedGenRef.current = genAtStart;

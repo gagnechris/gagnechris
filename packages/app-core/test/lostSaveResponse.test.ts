@@ -34,6 +34,8 @@ const fakeServer = <T extends Versioned>(
 ) => {
   let stored: Versioned = { ...initial };
   let loseNext = false;
+  let inFlight = 0;
+  let maxInFlight = 0;
   const puts: Versioned[] = [];
   const client = {
     GET: vi.fn(async () => ({
@@ -43,6 +45,10 @@ const fakeServer = <T extends Versioned>(
     })),
     PUT: vi.fn(async (_path: string, { body }: { body: Versioned }) => {
       puts.push(body);
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      inFlight -= 1;
       if (body.version !== stored.version) {
         return {
           data: undefined,
@@ -78,6 +84,7 @@ const fakeServer = <T extends Versioned>(
     client,
     puts,
     stored: () => stored,
+    maxInFlight: () => maxInFlight,
     editElsewhere: (fields: Record<string, unknown>) => {
       stored = { ...stored, ...fields, version: stored.version + 1 };
     },
@@ -136,6 +143,23 @@ const post: Post = {
 
 type Body = { body: string };
 
+const signalHub = () => {
+  const listeners = new Set<() => void>();
+  return {
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    fire: () => {
+      for (const listener of [...listeners]) listener();
+    },
+  };
+};
+
+type Hub = ReturnType<typeof signalHub>;
+
 type EditorHandle = {
   isLoading: boolean;
   dirty: boolean;
@@ -146,7 +170,7 @@ type EditorHandle = {
   save: () => Promise<string>;
 };
 
-const renderNotebookEditor = () => {
+const renderNotebookEditor = (hub?: Hub) => {
   const server = fakeServer(note, {
     status: 412,
     error: 'precondition_failed',
@@ -167,13 +191,14 @@ const renderNotebookEditor = () => {
         }),
         conflictMessage: CONFLICT,
         confirm: async () => true,
+        retrySignals: hub?.subscribe,
       }),
     { wrapper: wrapperFor(server.client) },
   );
   return { server, result };
 };
 
-const renderSiteEditor = () => {
+const renderSiteEditor = (hub?: Hub) => {
   const server = fakeServer(post, { status: 409, error: 'conflict' });
   const { result } = renderHook(
     (): EditorHandle =>
@@ -195,6 +220,7 @@ const renderSiteEditor = () => {
         confirm: async () => true,
         unpublishConfirm: 'Unpublish?',
         discardConfirm: 'Discard?',
+        retrySignals: hub?.subscribe,
       }),
     { wrapper: wrapperFor(server.client) },
   );
@@ -212,8 +238,9 @@ const save = async (result: { current: EditorHandle }) => {
 const editAndLoseResponse = async (
   render: typeof renderNotebookEditor,
   text: string,
+  hub?: Hub,
 ) => {
-  const rendered = render();
+  const rendered = render(hub);
   const { result, server } = rendered;
   await waitUntil(() => !result.current.isLoading, 'hydrate');
   act(() => {
@@ -230,14 +257,9 @@ describe.each([
   {
     name: 'Notebook note (412)',
     render: renderNotebookEditor,
-    conflictError: 'Save failed (412).',
   },
-  {
-    name: 'site post (409)',
-    render: renderSiteEditor,
-    conflictError: CONFLICT,
-  },
-])('retry after a lost save response: $name', ({ render, conflictError }) => {
+  { name: 'site post (409)', render: renderSiteEditor },
+])('retry after a lost save response: $name', ({ render }) => {
   test('a conflict whose current holds the sent fields resolves as saved', async () => {
     const { result, server } = await editAndLoseResponse(render, 'edited');
 
@@ -266,8 +288,57 @@ describe.each([
 
     expect(await save(result)).toBe('error');
     expect(result.current.saveState).toBe('error');
-    expect(result.current.saveError).toBe(conflictError);
+    expect(result.current.saveError).toBe(CONFLICT);
     expect(result.current.dirty).toBe(true);
+    expect(server.stored()).toMatchObject({
+      bodyMarkdown: 'from another device',
+      version: 3,
+    });
+  });
+
+  test('edits typed after the lost save are saved on reconnect, with no conflict', async () => {
+    const hub = signalHub();
+    const { result, server } = await editAndLoseResponse(render, 'first', hub);
+    act(() => {
+      result.current.updateDraft(() => ({ body: 'first and more' }));
+    });
+
+    act(() => {
+      hub.fire();
+    });
+    await waitUntil(() => result.current.saveState === 'saved', 'saved');
+
+    expect(server.puts.map((p) => [p.version, p.bodyMarkdown])).toEqual([
+      [1, 'first'],
+      [1, 'first and more'],
+      [2, 'first and more'],
+    ]);
+    expect(server.maxInFlight()).toBe(1);
+    expect(server.stored()).toMatchObject({
+      bodyMarkdown: 'first and more',
+      version: 3,
+    });
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.entity?.version).toBe(3);
+  });
+
+  test('edits typed after the lost save still conflict with a change from elsewhere', async () => {
+    const hub = signalHub();
+    const { result, server } = await editAndLoseResponse(render, 'first', hub);
+    act(() => {
+      result.current.updateDraft(() => ({ body: 'first and more' }));
+    });
+    server.editElsewhere({ bodyMarkdown: 'from another device' });
+
+    act(() => {
+      hub.fire();
+    });
+    await waitUntil(() => result.current.saveError === CONFLICT, 'conflict');
+
+    expect(result.current.saveError).toBe(CONFLICT);
+    expect(result.current.dirty).toBe(true);
+    expect(server.puts).toHaveLength(2);
     expect(server.stored()).toMatchObject({
       bodyMarkdown: 'from another device',
       version: 3,
