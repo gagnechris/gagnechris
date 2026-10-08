@@ -360,6 +360,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 | Import                            | Contents                                                                                                                 |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `@gagnechris/shared`              | Domain schemas/types, site config, slugify, post dates (no `marked` / HTML / OpenAPI / Dynamo)                           |
+| `@gagnechris/shared/markdown-ast` | Markdown as plain data for React Native (`marked`'s lexer only; no HTML)                                                 |
 | `@gagnechris/shared/render`       | Markdown + HTML prerender helpers (web / publisher); also re-exports `/html` helpers                                     |
 | `@gagnechris/shared/public-pages` | Contact heading and the 404 page markup, for the SPA, the Vite build and the CloudFront 404 generator                    |
 | `@gagnechris/shared/html`         | Leaf HTML escape/meta helpers only (no markdown). For Node/Vite config that cannot load `/render` (`.js` source imports) |
@@ -369,7 +370,7 @@ Fixture-note **routes** and the `fakeNote` change schema are test-only; the prod
 
 DynamoDB helpers live in `@gagnechris/data` (not a shared subpath).
 
-CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths, and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`), app-core, `@tanstack/react-query`, `expo-crypto` and `expo-router` sources in the iOS export sourcemap.
+CI runs `npm run check:rn-bundles` (esbuild metafile + exact-package externals + ban list) so every RN-facing entry (`shared` domain, `shared/markdown-ast`, `api-client`, `app-core`, `tokens`) cannot pull banned modules or shared subpaths (`markdown-ast` alone may import `marked`, for its lexer; see [mobile.md](./mobile.md#markdown)), and the `shared` bundle must contain the modules iOS depends on (task syntax and the Notebook view logic). `npm run check:platform-neutral-lint` verifies ESLint `no-restricted-imports` / `no-restricted-globals` bans. Mobile CI also requires `zod/v4/` (not `zod/v3/`), app-core, `@tanstack/react-query`, `expo-crypto` and `expo-router` sources in the iOS export sourcemap.
 
 ## Media, deploy excludes, and backups
 
