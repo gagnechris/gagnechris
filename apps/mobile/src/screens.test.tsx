@@ -19,8 +19,8 @@ import {
   memoryStore,
   Providers,
   render,
+  signedInBackend,
 } from '../test/render';
-import { localAuthBackend } from './session';
 import { MIN_TARGET } from './theme';
 
 const flatStyle = (style: unknown): Record<string, unknown> =>
@@ -129,7 +129,7 @@ describe('Notebook tab screens', () => {
   });
 
   it('More shows the account, Notebook as the only app, and signs out', async () => {
-    const backend = localAuthBackend();
+    const backend = signedInBackend();
     const signOut = vi.spyOn(backend, 'signOut');
     const renderer = await render(
       <Providers backend={backend} store={memoryStore().store}>
@@ -155,7 +155,7 @@ describe('Notebook tab screens', () => {
 
 describe('No access', () => {
   it('explains who is signed in and offers sign-out', async () => {
-    const backend = localAuthBackend(['site-admin']);
+    const backend = signedInBackend(['site-admin']);
     const signOut = vi.spyOn(backend, 'signOut');
     const renderer = await render(
       <Providers backend={backend}>

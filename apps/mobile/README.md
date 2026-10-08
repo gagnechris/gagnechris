@@ -31,7 +31,10 @@ Override API target:
 EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 ```
 
-(Sign-in is the local API's fake auth for now; `EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` signs in without Notebook to show No access.)
+Against the local API, sign-in is the local fake auth
+(`EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` signs in without Notebook to show No
+access). Anything else uses Cognito managed login and needs
+`EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID`; see `.env.example` and `docs/mobile.md#sign-in`.
 
 ## Packages exercised
 
