@@ -1,5 +1,7 @@
 import { createElement, type ReactNode } from 'react';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
+import { notebookServer } from './notebookServer';
+import { searchParams } from './router';
 
 /**
  * react-native ships Flow sources Node can't load, so screen tests render
@@ -35,6 +37,12 @@ vi.mock('react-native', () => ({
   Text: host('Text'),
   ScrollView: host('ScrollView'),
   Pressable,
+  TextInput: host('TextInput'),
+  RefreshControl: host('RefreshControl'),
+  AppState: {
+    currentState: 'active',
+    addEventListener: () => ({ remove: () => undefined }),
+  },
   StyleSheet: {
     create: <T>(styles: T) => styles,
     hairlineWidth: 0.5,
@@ -47,4 +55,38 @@ vi.mock('expo-symbols', () => ({ SymbolView: host('SymbolView') }));
 
 vi.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+
+/** A screen's header items render inline, so tests can press them. */
+const StackScreen = ({
+  options,
+}: {
+  options?: {
+    headerRight?: () => ReactNode;
+    headerLeft?: () => ReactNode;
+  };
+}) =>
+  createElement(
+    'Header',
+    null,
+    options?.headerLeft?.(),
+    options?.headerRight?.(),
+  );
+
+vi.mock('expo-router', async () => {
+  const { router, searchParams } = await import('./router');
+  return {
+    useRouter: () => router,
+    useLocalSearchParams: () => searchParams.current,
+    Stack: Object.assign(host('Stack'), { Screen: StackScreen }),
+  };
+});
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', notebookServer([]).fetch);
+  searchParams.current = {};
+});
+
+vi.mock('@react-native-community/netinfo', async () => ({
+  default: (await import('./nativeFakes')).netInfo,
 }));

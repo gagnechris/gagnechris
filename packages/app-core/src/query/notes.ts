@@ -206,3 +206,14 @@ export const useCreateNoteMutation = () => {
 
 export const useDeleteNoteMutation = () =>
   useDeleteEntityMutation(deleteNote, setCachedNote);
+
+/** Pins or unpins a note from a list row, outside its editor. */
+export const usePinNoteMutation = () => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ note, pinned }: { note: Note; pinned: boolean }) =>
+      updateNote(getClient(), note.id, { version: note.version, pinned }),
+    onSuccess: (note) => setCachedNote(queryClient, note),
+  });
+};

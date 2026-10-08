@@ -12,17 +12,24 @@
 | `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                                                |
 | `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                                                    |
 | `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
+| `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: title and markdown body with autosave and the save state                                               |
 | `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                                                  |
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
-The tab screens are shells with their empty states; they don't load Notebook data yet. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+Today, Upcoming and Tasks are shells with their empty states. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
 
 - **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
 - **Area:** Work / Personal / All, shared between the Today chip (an action sheet), the Upcoming segmented control and More's Default area row. It's stored in AsyncStorage under `gagnechris.notebook.areaFilter`, the key the web keeps in localStorage; the filter values, labels and key come from `@gagnechris/shared` (`notebook-area.ts`).
 - **Look:** colours and sizes from `@gagnechris/tokens` through `src/theme.ts`. Inter (400, 500, 600, 700 from `@expo-google-fonts/inter`) is embedded at build time by the `expo-font` config plugin, so no font loads at runtime; styles spread `font.<weight>` from `src/theme.ts`, which sets both the PostScript name (`Inter-SemiBold`) and the `fontWeight`; with the name alone React Native can fall back to the regular face. Native large titles on Upcoming, Notes, Tasks and More.
 - **Accessibility:** every control has a role and a label and is at least 44 pt tall; icons are hidden from VoiceOver; text never sets `numberOfLines`, `allowFontScaling={false}` or a fixed height, so Dynamic Type sizes wrap instead of truncating. `src/screens.test.tsx` checks all of this on every screen.
+
+## Notes
+
+`/notes` lists every note in the area (all list pages load, since pages aren't date-ordered) under Pinned, This week and Earlier with `noteSections` from `@gagnechris/shared`, the grouping the web list uses. A row shows the title, the first line, the day and, in All, the area, plus "N open" for embedded tasks that are still open (counted once every open task, any area, has loaded). All / Daily / Pages filters the list request. Typing in "Search notes" switches to the server search (`POST /api/notebook/search`, note hits only), so it finds notes that aren't loaded. Pull to refresh refetches. The compose button creates an Untitled page in the current area (Work for All) and opens it.
+
+Each row has Pin / Unpin and Delete, each behind a confirm alert: long press, the row's ⋯ button and VoiceOver's actions rotor all offer them. Pinning goes through app-core's `usePinNoteMutation`.
 
 Query caching and offline state are described in [Cached reads and offline](#cached-reads-and-offline). `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
 

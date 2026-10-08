@@ -4,7 +4,10 @@ import {
   type ReactTestInstance,
   type ReactTestRenderer,
 } from 'react-test-renderer';
-import type { ReactElement, ReactNode } from 'react';
+import { createApiClient } from '@gagnechris/api-client';
+import { AppApiProvider } from '@gagnechris/app-core';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { AreaProvider, type KeyValueStore } from '../src/area';
 import { createAuthBackend } from '../src/auth/backend';
 import { localIssuer } from '../src/auth/local';
@@ -62,6 +65,30 @@ export function signedInBackend(
   });
 }
 
+const getClient = () =>
+  createApiClient({
+    baseUrl: 'http://api.test',
+    getToken: async () => 'local-ios:u1',
+  });
+
+/** Requests go to the global `fetch`, which tests stub with `notebookServer`. */
+const Api = ({ children }: { children: ReactNode }) => {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false },
+          mutations: { retry: false },
+        },
+      }),
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppApiProvider getClient={getClient}>{children}</AppApiProvider>
+    </QueryClientProvider>
+  );
+};
+
 export const Providers = ({
   store = memoryStore().store,
   backend = signedInBackend(),
@@ -74,9 +101,20 @@ export const Providers = ({
   children: ReactNode;
 }) => (
   <SessionProvider backend={backend} wipe={wipe}>
-    <AreaProvider store={store}>{children}</AreaProvider>
+    <Api>
+      <AreaProvider store={store}>{children}</AreaProvider>
+    </Api>
   </SessionProvider>
 );
+
+/** Lets pending requests and the renders they cause finish. */
+export async function settle(times = 5) {
+  for (let i = 0; i < times; i += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
 
 /** Renders and lets the providers' async restores settle. */
 export async function render(
