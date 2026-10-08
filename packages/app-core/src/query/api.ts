@@ -36,18 +36,22 @@ export class ApiError extends Error {
   readonly error?: string;
   /** Per-field codes from a 400, e.g. `{ noteId: 'not_found' }`. */
   readonly fields?: ApiFieldErrors;
+  /** The stored entity a 409 or 412 carries. */
+  readonly current?: unknown;
 
   constructor(
     message: string,
     status: number,
     error?: string,
     fields?: ApiFieldErrors,
+    current?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.error = error;
     this.fields = fields;
+    this.current = current;
   }
 }
 
@@ -78,6 +82,11 @@ function fieldErrorsFromBody(body: unknown): ApiFieldErrors | undefined {
   return out;
 }
 
+function currentFromBody(body: unknown): unknown {
+  if (!body || typeof body !== 'object') return undefined;
+  return (body as { current?: unknown }).current;
+}
+
 export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
     throw new ApiError(
@@ -85,6 +94,7 @@ export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
       result.response.status,
       errorCodeFromBody(result.error),
       fieldErrorsFromBody(result.error),
+      currentFromBody(result.error),
     );
   }
   return result.data;

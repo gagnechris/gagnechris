@@ -60,6 +60,13 @@ describe('Notebook routes', () => {
     expect(leafPath(notebookRoutes, '/auth/callback')).toBe('auth/callback');
   });
 
+  it('serve the iPhone app sign-in return pages outside the signed-in shell', () => {
+    for (const path of ['ios/auth/callback', 'ios/auth/signed-out']) {
+      const matches = matchRoutes(notebookRoutes, `/${path}`) ?? [];
+      expect(matches.map((m) => m.route.path)).toEqual([path]);
+    }
+  });
+
   it('have no CMS routes', () => {
     expect(leafPath(notebookRoutes, '/posts/01J9ZX')).toBe('*');
     expect(leafPath(notebookRoutes, '/resume')).toBe('*');

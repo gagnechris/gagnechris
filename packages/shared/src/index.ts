@@ -129,6 +129,7 @@ export {
   type TaskEmbedMarkdownTask,
 } from './task-embeds.js';
 export { byNewest } from './by-newest.js';
+export { deepEqual } from './deep-equal.js';
 export { newestById } from './newest-by-id.js';
 export {
   bucketTodayTasks,

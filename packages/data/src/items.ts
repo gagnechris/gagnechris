@@ -21,11 +21,11 @@ import {
   type Task,
 } from '@gagnechris/shared';
 import {
+  deepEqual,
   EMPTY_SLUG_FALLBACK,
   slugify as sharedSlugify,
   taskEmbedIds,
 } from '@gagnechris/shared';
-import { deepEqual } from './deep-equal.js';
 import {
   HOME_ID,
   homeMetaSk,

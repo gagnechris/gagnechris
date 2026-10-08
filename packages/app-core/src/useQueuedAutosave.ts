@@ -10,7 +10,8 @@ import { useLatest } from './useLatest.js';
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type AutosaveResult<TEntity> =
-  { ok: true; entity: TEntity } | { ok: false; status: number; error?: string };
+  | { ok: true; entity: TEntity }
+  | { ok: false; status: number; error?: string; current?: TEntity };
 
 export type FlushResult = 'clean' | 'pending' | 'error';
 
@@ -31,6 +32,13 @@ type Options<TDraft, TEntity> = {
    * `getBaseVersion`. Do not replace the draft here.
    */
   onSaved: (entity: TEntity) => void;
+  /**
+   * Whether a version conflict's `current` already holds everything `draft`
+   * sends. If it holds this draft, the save counts as done with `current`; if
+   * it holds an earlier attempt whose response was lost, that attempt counts
+   * as done and this draft is sent again on `current`'s version.
+   */
+  isSavedIn?: (draft: TDraft, current: TEntity) => boolean;
   conflictMessage: string;
   conflictMessages?: Record<string, string>;
   /** Shown for a 413; each resource states its own limits. */
@@ -52,6 +60,19 @@ export const AUTOSAVE_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 const isRetryableStatus = (status: number) =>
   status === 0 || status === 408 || status === 429 || status >= 500;
 
+// Other 409 codes (deleted, slug_taken, daily_taken, payload_mismatch) are not
+// a stale version, so a matching `current` proves nothing.
+const isVersionConflict = (status: number, error: string | undefined) =>
+  status === 412 ||
+  (status === 409 &&
+    (error === undefined ||
+      error === 'conflict' ||
+      error === 'version_conflict'));
+
+// Drafts of failed attempts that may still have reached the server. Each can be
+// up to a note body, so only the latest few are kept.
+const MAX_UNCONFIRMED = 10;
+
 /**
  * Callers must not clobber the live draft with the normalized server response;
  * only update version / metadata via `onSaved`.
@@ -72,6 +93,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   getBaseVersion,
   performSave,
   onSaved,
+  isSavedIn,
   conflictMessage,
   conflictMessages,
   tooLargeMessage,
@@ -92,6 +114,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const getBaseVersionRef = useLatest(getBaseVersion);
   const performSaveRef = useLatest(performSave);
   const onSavedRef = useLatest(onSaved);
+  const isSavedInRef = useLatest(isSavedIn);
   const timersRef = useLatest(timers);
   const retrySignalsRef = useLatest(retrySignals);
   const retryDelaysRef = useLatest(retryDelaysMs);
@@ -108,6 +131,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const chainRef = useRef<Promise<FlushResult> | null>(null);
   const heldRef = useRef(false);
   const lastFailureRetryableRef = useRef(false);
+  const unconfirmedRef = useRef<TDraft[]>([]);
   // A signal that lands before the retry loop is armed (mid-request, or
   // between the failure and the next commit) would otherwise be lost.
   const signalledSinceSendRef = useRef(false);
@@ -155,12 +179,40 @@ export function useQueuedAutosave<TDraft, TEntity>({
           setSaveState('saving');
           setSaveError(null);
 
-          const result = await performSaveRef.current(
+          let result = await performSaveRef.current(
             current,
             getBaseVersionRef.current(),
           );
+          if (
+            !result.ok &&
+            result.current !== undefined &&
+            isVersionConflict(result.status, result.error)
+          ) {
+            const stored = result.current;
+            const isSavedIn = isSavedInRef.current;
+            if (isSavedIn?.(current, stored)) {
+              result = { ok: true, entity: stored };
+            } else if (
+              isSavedIn &&
+              unconfirmedRef.current.some((sent) => isSavedIn(sent, stored))
+            ) {
+              unconfirmedRef.current = [];
+              onSavedRef.current(stored);
+              continue;
+            }
+          }
           if (!result.ok) {
             const retryable = isRetryableStatus(result.status);
+            if (retryable) {
+              const unconfirmed = unconfirmedRef.current;
+              if (!unconfirmed.includes(current)) {
+                unconfirmedRef.current = [...unconfirmed, current].slice(
+                  -MAX_UNCONFIRMED,
+                );
+              }
+            } else {
+              unconfirmedRef.current = [];
+            }
             lastFailureRetryableRef.current = retryable;
             setSaveState('error');
             setRetryAttempt((n) => (retryable ? n + 1 : 0));
@@ -168,7 +220,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
               ? conflictMessagesRef.current?.[result.error]
               : undefined;
             setSaveError(
-              result.status === 409
+              result.status === 409 || result.status === 412
                 ? (codeMessage ?? conflictMessageRef.current)
                 : result.status === 413
                   ? tooLargeMessageRef.current
@@ -178,6 +230,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
             break;
           }
 
+          unconfirmedRef.current = [];
           setRetryAttempt(0);
           onSavedRef.current(result.entity);
           lastSavedGenRef.current = genAtStart;

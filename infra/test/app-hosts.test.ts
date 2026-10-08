@@ -458,6 +458,18 @@ describe('app hosts: Cognito', () => {
     }
   });
 
+  it('returns the ios client only to its own /ios/auth paths, never a web callback', () => {
+    const props = client('ios');
+    expect(props.CallbackURLs).toEqual([
+      'https://notebook.gagnechris.com/ios/auth/callback',
+      'gagnechris://auth/callback',
+    ]);
+    expect(props.LogoutURLs).toEqual([
+      'https://notebook.gagnechris.com/ios/auth/signed-out',
+      'gagnechris://',
+    ]);
+  });
+
   // Deleting or renaming one of these logical IDs replaces the client and
   // signs out every device holding its refresh tokens.
   it('has exactly the four clients, under stable logical IDs', () => {
@@ -643,6 +655,8 @@ describe('app-viewer-request function', () => {
       '/posts/new',
       '/notes/abc/',
       '/auth/callback',
+      '/ios/auth/callback',
+      '/ios/auth/signed-out',
       '/Today',
       '/apix',
       '/assetsfoo/bar',

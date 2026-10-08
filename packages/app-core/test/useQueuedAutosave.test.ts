@@ -664,3 +664,149 @@ describe('useQueuedAutosave recovery', () => {
     vi.useRealTimers();
   });
 });
+
+describe('useQueuedAutosave version conflict whose current holds the draft', () => {
+  type Entity = { version: number; body: string };
+
+  const renderConflicting = (status: number, error: string | undefined) => {
+    const current: Entity = { version: 2, body: 'typed' };
+    const onSaved = vi.fn();
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status,
+      error,
+      current,
+    }));
+    const { result } = renderHook(() => {
+      const [dirty, setDirty] = useState(true);
+      const autosave = useQueuedAutosave<string, Entity>({
+        draft: 'typed',
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        getBaseVersion: () => 1,
+        performSave,
+        onSaved,
+        isSavedIn: (draft, stored) => stored.body === draft,
+        conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
+      });
+      return { ...autosave, dirty };
+    });
+    return { result, onSaved, current };
+  };
+
+  test.each([
+    [412, 'precondition_failed'],
+    [409, 'version_conflict'],
+    [409, 'conflict'],
+  ])('%i %s counts as saved with current', async (status, error) => {
+    const { result, onSaved, current } = renderConflicting(status, error);
+    await act(async () => {
+      await expect(result.current.save()).resolves.toBe('clean');
+    });
+    expect(onSaved).toHaveBeenCalledWith(current);
+    expect(result.current.saveState).toBe('saved');
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.dirty).toBe(false);
+  });
+
+  test.each(['deleted', 'daily_taken', 'slug_taken', 'payload_mismatch'])(
+    '409 %s stays an error',
+    async (error) => {
+      const { result, onSaved } = renderConflicting(409, error);
+      await act(async () => {
+        await expect(result.current.save()).resolves.toBe('error');
+      });
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(result.current.dirty).toBe(true);
+    },
+  );
+});
+
+describe('useQueuedAutosave conflict whose current holds a lost attempt', () => {
+  type Entity = { version: number; body: string };
+
+  const renderAfterLostAttempt = (stored: Entity) => {
+    const versionRef = { current: 1 };
+    const responses: Array<
+      | { ok: true; entity: Entity }
+      | { ok: false; status: number; error?: string; current?: Entity }
+    > = [
+      { ok: false, status: 0 },
+      { ok: false, status: 412, error: 'precondition_failed', current: stored },
+      { ok: true, entity: { version: 3, body: 'ab' } },
+    ];
+    const performSave = vi.fn(async (_draft: string, _version: number) =>
+      responses.shift()!,
+    );
+    const { result } = renderHook(() => {
+      const [draft, setDraft] = useState('a');
+      const [dirty, setDirty] = useState(true);
+      const autosave = useQueuedAutosave<string, Entity>({
+        draft,
+        dirty,
+        setDirty,
+        debounceMs: 10_000,
+        getBaseVersion: () => versionRef.current,
+        performSave,
+        onSaved: (entity) => {
+          versionRef.current = entity.version;
+        },
+        isSavedIn: (sent, current) => current.body === sent,
+        conflictMessage: 'Conflict',
+        tooLargeMessage: 'Too large.',
+      });
+      return { ...autosave, setDraft, dirty };
+    });
+    return { result, performSave };
+  };
+
+  const loseThenType = async (result: {
+    current: {
+      save: () => Promise<FlushResult>;
+      bumpEdit: () => void;
+      setDraft: (d: string) => void;
+    };
+  }) => {
+    await act(async () => {
+      await expect(result.current.save()).resolves.toBe('error');
+    });
+    act(() => {
+      result.current.bumpEdit();
+      result.current.setDraft('ab');
+    });
+    let outcome!: FlushResult;
+    await act(async () => {
+      outcome = await result.current.save();
+    });
+    return outcome;
+  };
+
+  test('adopts the lost attempt, then re-sends the newer draft on its version', async () => {
+    const { result, performSave } = renderAfterLostAttempt({
+      version: 2,
+      body: 'a',
+    });
+    expect(await loseThenType(result)).toBe('clean');
+    expect(performSave.mock.calls).toEqual([
+      ['a', 1],
+      ['ab', 1],
+      ['ab', 2],
+    ]);
+    expect(result.current.saveState).toBe('saved');
+    expect(result.current.saveError).toBeNull();
+    expect(result.current.dirty).toBe(false);
+  });
+
+  test('a current that holds neither attempt is a conflict', async () => {
+    const { result, performSave } = renderAfterLostAttempt({
+      version: 2,
+      body: 'elsewhere',
+    });
+    expect(await loseThenType(result)).toBe('error');
+    expect(performSave).toHaveBeenCalledTimes(2);
+    expect(result.current.saveError).toBe('Conflict');
+    expect(result.current.dirty).toBe(true);
+  });
+});

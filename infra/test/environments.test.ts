@@ -503,8 +503,12 @@ describe('AuthStack', () => {
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'ios',
       CallbackURLs: [
-        'https://gagnechris.com/auth/callback',
+        'https://notebook.gagnechris.com/ios/auth/callback',
         'gagnechris://auth/callback',
+      ],
+      LogoutURLs: [
+        'https://notebook.gagnechris.com/ios/auth/signed-out',
+        'gagnechris://',
       ],
     });
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {

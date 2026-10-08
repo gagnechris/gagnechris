@@ -95,7 +95,7 @@ The TanStack Query cache is persisted as one JSON value (`createAsyncStoragePers
 - Editors use the app-core hooks (`useVersionedEntityEditor`, `useVersionedDocEditor`) with the web's autosave rules: network, 408, 429 and 5xx failures retry on the 2 s to 60 s backoff, 409/412 and other 4xx don't.
 - `retrySignals` on iOS fires when NetInfo goes from not connected to connected and when `AppState` becomes `active`, so a held edit saves as soon as the phone is back online.
 - An editor with an unsaved edit while offline shows "Offline — will save when connected". Leaving it hands the edit to app-core's pending-save queue, which keeps retrying; the app shows a count of unsaved edits until the queue is empty.
-- **Exactly once.** If a save landed but its response was lost, the retry sends the old version and gets a version conflict. A conflict whose `current` already holds the exact fields being sent is a save that landed: the client adopts `current.version` and reports Saved. app-core doesn't do this yet.
+- **Exactly once.** If a save landed but its response was lost, the retry sends the old version and gets a version conflict. A conflict whose `current` already holds the exact fields being sent is a save that landed: app-core's autosave adopts `current`, binds `current.version` and reports Saved. If the user kept typing, `current` holds an earlier attempt instead; autosave binds `current.version` and sends the newer text again on it, so both edits save with no conflict.
 - Held edits live in memory. They survive navigation and backgrounding, not the app being killed; the outbox makes them durable.
 
 ## 3. Data at rest
@@ -148,7 +148,7 @@ TestFlight needs the Apple Team ID, and so does the HTTPS callback, so they ship
 
 1. The notebook host's AASA (`apps/web/public-notebook/.well-known/apple-app-site-association`) gets the real Team ID and a `webcredentials` entry for the app. An HTTPS callback is verified through the callback host's `webcredentials` association, not `applinks`, and iOS gives no error when it's missing: the sign-in sheet just closes. `applinks` stay as they are, so a stray link to the callback path opens the notebook website, where the code is useless without the app's PKCE verifier.
 2. `app.json` gets `webcredentials:notebook.gagnechris.com` and `applinks:notebook.gagnechris.com`. `applinks:gagnechris.com` matches no paths and goes.
-3. The `ios` client's callbacks become `https://notebook.gagnechris.com/ios/auth/callback` only: `gagnechris://auth/callback` and the inherited apex `https://gagnechris.com/auth/callback` go, and the logout URLs match.
+3. The `ios` client's callbacks become `https://notebook.gagnechris.com/ios/auth/callback` and its logout URL `https://notebook.gagnechris.com/ios/auth/signed-out`; the inherited apex `https://gagnechris.com/auth/callback` and `/` go. `gagnechris://auth/callback` and `gagnechris://` stay only until the app's sign-in passes `preferUniversalLinks: true`, so dev builds keep signing in during the switch, and are removed before the first TestFlight build.
 4. `promptAsync` passes `preferUniversalLinks: true`. expo-web-browser 57 then uses `ASWebAuthenticationSession.Callback.https(host:path:)`, which completes only for an app associated with that host, and exists only on iOS 17.4 or later; below that, or without the option, it falls back to scheme matching. `expo-build-properties` sets the deployment target to 17.4, so the fallback never runs.
 
 ### API audience
