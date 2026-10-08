@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { access, mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readObjectMeta } from '../src/fs-object-meta.js';
 import { createFilesystemSiteStorage } from '../src/storage-fs.js';
 import { postSlugsFromKeys, SITE_SHELL_KEY } from '../src/storage.js';
 
@@ -85,6 +86,34 @@ describe('filesystem site storage', () => {
     });
     expect(await storage.delete('resume.pdf')).toBe(true);
     expect(await storage.delete('resume.pdf')).toBe(false);
+  });
+
+  it('keeps each object’s Content-Type and Content-Disposition out of the listing', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    const storage = createFilesystemSiteStorage(root);
+    const pdf = {
+      key: 'resume.pdf',
+      body: new Uint8Array([1]),
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment; filename="r.pdf"',
+      cacheControl: '',
+    };
+    expect(await storage.put(pdf)).toBe(true);
+    expect(await readObjectMeta(root, 'resume.pdf')).toEqual({
+      contentType: 'application/pdf',
+      contentDisposition: 'attachment; filename="r.pdf"',
+    });
+    expect(await storage.list('')).toEqual(['resume.pdf']);
+
+    expect(await storage.put({ ...pdf, contentDisposition: undefined })).toBe(
+      true,
+    );
+    expect(await readObjectMeta(root, 'resume.pdf')).toEqual({
+      contentType: 'application/pdf',
+    });
+
+    await storage.delete('resume.pdf');
+    expect(await readObjectMeta(root, 'resume.pdf')).toBeUndefined();
   });
 
   it('skips put when bytes are unchanged', async () => {

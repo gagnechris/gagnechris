@@ -120,7 +120,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                       |
 | `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees) |
 
-Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials.
+Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: mail it sends (contact form, resume download) is logged, and appended as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`services/api/local/outbox.ts`).
 
 `scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
 

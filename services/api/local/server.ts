@@ -13,6 +13,7 @@ import { rebuildPublishedSite } from '@gagnechris/publisher/rebuild';
 import { routeAuthForPath } from '../src/router.js';
 import { routes } from '../src/routes.js';
 import { applyLocalAuthEnv, localClaims } from './claims.js';
+import { installLocalOutbox } from './outbox.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
 
@@ -132,6 +133,7 @@ if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {
 }
 
 applyLocalAuthEnv();
+installLocalOutbox();
 
 // Local upload URLs point here, so the browser PUT is cross-origin like the
 // prod PUT to the site bucket, which allows it with a CORS rule.

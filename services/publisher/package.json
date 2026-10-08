@@ -9,6 +9,10 @@
     "./rebuild": {
       "types": "./src/rebuild.ts",
       "import": "./src/rebuild.ts"
+    },
+    "./fs-object-meta": {
+      "types": "./src/fs-object-meta.ts",
+      "import": "./src/fs-object-meta.ts"
     }
   },
   "scripts": {

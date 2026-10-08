@@ -8,6 +8,7 @@ import {
   join,
   relative,
   resolve,
+  sep,
 } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
@@ -18,6 +19,10 @@ import {
   type CfQueryString,
   type OriginObject,
 } from '@gagnechris/infra/cloudfront-harness';
+import {
+  OBJECT_META_DIR,
+  readObjectMeta,
+} from '@gagnechris/publisher/fs-object-meta';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.LOCAL_SITE_PORT || 4177);
@@ -92,22 +97,34 @@ class Forbidden extends Error {}
 async function readOrigin(uri: string): Promise<OriginObject | null> {
   const filePath = safeJoin(root!, uri);
   if (!filePath) throw new Forbidden(uri);
-  const contentType =
-    contentTypes[extname(filePath).toLowerCase()] || 'application/octet-stream';
+  const key = relative(resolve(root!), filePath);
+  if (key.split(sep)[0] === OBJECT_META_DIR) return null;
   try {
     if (!(await stat(filePath)).isFile()) return null;
   } catch {
     return null;
   }
   const body = await readFile(filePath);
+  // Files the publisher wrote carry its headers, as S3 objects do.
+  const meta = await readObjectMeta(root!, key.split(sep).join('/'));
+  const contentType =
+    meta?.contentType ??
+    (contentTypes[extname(filePath).toLowerCase()] ||
+      'application/octet-stream');
+  const contentDisposition = meta?.contentDisposition;
   const isText =
     contentType.startsWith('text/') ||
     contentType.includes('json') ||
     contentType.includes('xml') ||
     contentType.includes('svg');
   return isText
-    ? { kind: 'text', contentType, body: body.toString('utf8') }
-    : { kind: 'binary', contentType, body };
+    ? {
+        kind: 'text',
+        contentType,
+        contentDisposition,
+        body: body.toString('utf8'),
+      }
+    : { kind: 'binary', contentType, contentDisposition, body };
 }
 
 const edge = edgePipeline({
@@ -134,6 +151,9 @@ const server = createServer(async (req, res) => {
     if (result.kind === 'binary') {
       res.statusCode = 200;
       res.setHeader('Content-Type', result.contentType);
+      if (result.contentDisposition) {
+        res.setHeader('Content-Disposition', result.contentDisposition);
+      }
       res.end(result.body);
       return;
     }

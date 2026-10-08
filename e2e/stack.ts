@@ -29,6 +29,7 @@ export type Stack = {
   siteUrl: string;
   /** The publisher's filesystem bucket that `siteUrl` serves. */
   siteRoot: string;
+  outboxFile: string;
   logDir: string;
   /** Throws if a dev server re-bundled dependencies mid-run. */
   checkDevServers: () => Promise<void>;
@@ -170,6 +171,7 @@ export async function startStack(): Promise<Stack> {
     USER_DIRECTORY: 'memory',
     CLOUDFRONT_DISTRIBUTION_ID: 'local',
     LOCAL_KVS_FILE: join(runDir, 'kvs.json'),
+    LOCAL_OUTBOX_FILE: join(runDir, 'outbox.jsonl'),
     SITE_APEX_DOMAIN: 'gagnechris.com',
     LOCAL_API_PORT: String(ports.api),
     LOCAL_SITE_PORT: String(ports.site),
@@ -386,6 +388,7 @@ export async function startStack(): Promise<Stack> {
     apiUrl,
     siteUrl,
     siteRoot,
+    outboxFile: env.LOCAL_OUTBOX_FILE!,
     logDir: runDir,
     checkDevServers,
     stop,
