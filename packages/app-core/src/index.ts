@@ -192,6 +192,7 @@ export {
   useDeleteNoteMutation,
   useNotesByIds,
   useNotesQuery,
+  usePinNoteMutation,
   type DailyNoteResourceParams,
   type NoteResourceParams,
 } from './query/notes.js';

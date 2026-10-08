@@ -19,6 +19,7 @@ import {
   memoryStore,
   Providers,
   render,
+  settle,
   signedInBackend,
 } from '../test/render';
 import { MIN_TARGET } from './theme';
@@ -124,6 +125,7 @@ describe('Notebook tab screens', () => {
           <Screen />
         </Providers>,
       );
+      await settle();
       expect(allText(renderer)).toContain(title);
     }
   });
