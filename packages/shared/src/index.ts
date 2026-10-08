@@ -138,6 +138,11 @@ export {
 export { byNewest } from './by-newest.js';
 export { parseTagsText } from './tags-text.js';
 export {
+  highlightParts,
+  wordMatches,
+  type TextRange,
+} from './search-highlight.js';
+export {
   embedContext,
   taskMentions,
   type TaskMention,

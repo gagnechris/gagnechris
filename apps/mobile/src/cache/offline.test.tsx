@@ -46,6 +46,10 @@ import {
   unsavedEditCount,
   wipeLocalData,
 } from '.';
+import {
+  RECENT_SEARCHES_KEY,
+  writeRecentSearches,
+} from '../notebook/recentSearches';
 import { createCachePersister } from './persister';
 import { CACHE_STORAGE_KEY } from './policy';
 
@@ -537,6 +541,8 @@ describe('sign-out', () => {
   it('signing out through the session leaves no Notebook keys in AsyncStorage', async () => {
     const { order, signOut } = await signedIn();
     await asyncStorage.setItem('gagnechris.installed', '1');
+    await writeRecentSearches(asyncStorage, ['passport']);
+    expect(asyncStorage.data.has(RECENT_SEARCHES_KEY)).toBe(true);
 
     await act(async () => {
       await signOut();

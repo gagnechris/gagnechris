@@ -1,5 +1,10 @@
 import type { Note, Task } from '@gagnechris/app-core';
-import { isOpenTaskStatus, taskShowsOn } from '@gagnechris/shared';
+import {
+  isOpenTaskStatus,
+  replaceTaskEmbeds,
+  taskEmbedFallbackLine,
+  taskShowsOn,
+} from '@gagnechris/shared';
 
 export const makeNote = (
   id: string,
@@ -188,6 +193,12 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (route === 'POST /api/notebook/search') {
       const { q, area } = (await input.json()) as { q: string; area?: string };
       const needle = q.toLowerCase();
+      // As the API: embeds read as the task's line, never the raw token.
+      const searchable = (n: Note) =>
+        replaceTaskEmbeds(n.bodyMarkdown, (embed) => {
+          const t = taskStore.get(embed.id);
+          return t ? taskEmbedFallbackLine(embed, t) : '';
+        });
       const hit = (
         type: 'note' | 'task',
         item: { id: string; area: Note['area']; title: string },
@@ -200,7 +211,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
         area: item.area,
         title: item.title,
         ...(date ? { date } : {}),
-        snippet: text.slice(0, 80),
+        snippet: text.slice(0, 80).replace(/\s+/g, ' ').trim(),
         matches: [],
         ...extra,
       });
@@ -210,9 +221,9 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
             (n) =>
               !n.deleted &&
               (!area || n.area === area) &&
-              `${n.title}\n${n.bodyMarkdown}`.toLowerCase().includes(needle),
+              `${n.title}\n${searchable(n)}`.toLowerCase().includes(needle),
           )
-          .map((n) => hit('note', n, n.bodyMarkdown, n.date)),
+          .map((n) => hit('note', n, searchable(n), n.date)),
         tasks: [...taskStore.values()]
           .filter(
             (t) =>

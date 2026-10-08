@@ -16,6 +16,7 @@
 | `app/(tabs)/tasks/index.tsx`           | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
 | `app/(tabs)/tasks/[id].tsx`            | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                      |
 | `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
+| `app/search.tsx`                       | `/search`: a modal over the tabs (see [Search](#search))                                                             |
 | `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
 `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
@@ -59,6 +60,10 @@ Query caching and offline state are described in [Cached reads and offline](#cac
 - **Task detail.** `/tasks/:id` edits the task with `taskResource` and app-core's `taskDraft` (shared with web): checkbox and title, then Shows on, Deadline, Priority, Area and Status rows that open the shared date items or a choice sheet, a markdown description with Preview, Mentioned in (`taskMentions` from `@gagnechris/shared`: every note that embeds the task, the home note first and marked "(created here)") and a bottom bar with Complete and Snooze. Typing autosaves on the usual debounce; a field change saves at once, and `setCachedTask` moves the task in every cached list, so Today, Coming up and Upcoming follow without a refetch. ⋯ has Share and Delete (with a confirm).
 - **Quick add.** Both screens take task syntax (`Call Sam @tomorrow !high`) through app-core's `useQuickAddTask`, which web uses too: the task goes to the filtered area (All means Work), a failed create shows an error and keeps the text, and on Upcoming a task without a later date says it shows on Today.
 - **Refresh.** Pull to refresh on both.
+
+## Search
+
+The magnifying glass on Today opens `/search`. It sends the query to `POST /api/notebook/search` (app-core's `useNotebookSearchQuery`, 200 ms after typing stops), which searches every note and task server side and returns titles and snippets with embeds already replaced by the task's line, so no `{{task:…}}` token shows. Results are grouped Notes, then Tasks; matches are bold (`wordMatches` and `highlightParts` from `@gagnechris/shared`, as on web), and a task hit's checkbox completes it from the hit's status and version. The scope is the chosen area, with All areas beside it. Recent searches (the last 8) live in AsyncStorage under `gagnechris.notebook.recentSearches`, so sign-out's wipe removes them.
 
 ## Entry and polyfills
 
