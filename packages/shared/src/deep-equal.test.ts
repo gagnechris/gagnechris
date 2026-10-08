@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deepEqual } from '../src/deep-equal.js';
+import { deepEqual } from './deep-equal.js';
 
 describe('deepEqual', () => {
   it('treats reordered object keys as equal', () => {
