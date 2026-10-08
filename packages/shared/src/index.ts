@@ -160,6 +160,13 @@ export {
   type UpcomingTask,
 } from './upcoming-groups.js';
 export { taskScheduleLabel } from './task-schedule-label.js';
+export {
+  matchesTaskShowOn,
+  TASK_SHOW_ON_FILTERS,
+  TASK_SHOW_ON_LABELS,
+  taskShowOnParam,
+  type TaskShowOnFilter,
+} from './task-show-on.js';
 export { taskDue, type TaskDue } from './task-due.js';
 export {
   openTaskDateQuery,

@@ -1,14 +1,13 @@
-import { useCallback, useState } from 'react';
-import {
-  taskRequestFromDraft,
-  useCreateTaskMutation,
-} from '@gagnechris/app-core';
-import { taskLineDraft, type TaskLineDraft } from '@gagnechris/shared';
-import { createUlid } from '../lib/ulid';
 import {
   areaForNewItem,
+  createUlid,
+  taskLineDraft,
   type NotebookAreaFilter,
-} from './notebookAreaPreference';
+  type TaskLineDraft,
+} from '@gagnechris/shared';
+import { useCallback, useState } from 'react';
+import { taskRequestFromDraft } from './taskRequest.js';
+import { useCreateTaskMutation } from './tasks.js';
 
 type Options = {
   /** A note to show once the task is created, e.g. where it will appear. */

@@ -47,6 +47,21 @@ vi.mock('react-native', () => ({
   StyleSheet: {
     create: <T>(styles: T) => styles,
     hairlineWidth: 0.5,
+    absoluteFill: {},
+  },
+  Animated: {
+    View: host('Animated.View'),
+    Value: class {
+      constructor(public value: number) {}
+      setValue(value: number) {
+        this.value = value;
+      }
+    },
+    spring: () => ({ start: (done?: () => void) => done?.() }),
+  },
+  // The handlers land on the row as props, so a test can call them as a swipe.
+  PanResponder: {
+    create: (config: Record<string, unknown>) => ({ panHandlers: config }),
   },
   Platform: {
     OS: 'ios',

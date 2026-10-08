@@ -15,12 +15,13 @@ type Props = {
   /** Read-only rows (All areas) have no checkbox action, + Note or ⋯. */
   onToggle?: () => void;
   onAddToNote?: () => void;
-  /** Snooze and Drop. */
   onMore?: () => void;
+  /** VoiceOver's name for ⋯. */
+  moreLabel?: string;
+  onDoToday?: () => void;
 };
 
-/** A Still open or Coming up row on Today. */
-export const TodayTaskRow = ({
+export const TaskRow = ({
   task,
   detail,
   due,
@@ -29,20 +30,24 @@ export const TodayTaskRow = ({
   onToggle,
   onAddToNote,
   onMore,
+  moreLabel = 'Snooze or drop',
+  onDoToday,
 }: Props) => {
   const done = task.status === 'done';
+  const closed = done || task.status === 'dropped';
   const actions = [
     ...(onAddToNote ? [{ name: 'note', label: 'Add to today’s note' }] : []),
-    ...(onMore ? [{ name: 'more', label: 'Snooze or drop' }] : []),
+    ...(onDoToday ? [{ name: 'today', label: 'Do today' }] : []),
+    ...(onMore ? [{ name: 'more', label: moreLabel }] : []),
   ];
   return (
     <View style={styles.row}>
       {onToggle ? (
         <Pressable
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: done }}
+          accessibilityState={{ checked: closed }}
           accessibilityLabel={
-            done ? `Reopen ${task.title}` : `Complete ${task.title}`
+            closed ? `Reopen ${task.title}` : `Complete ${task.title}`
           }
           onPress={() => {
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -52,9 +57,15 @@ export const TodayTaskRow = ({
           style={styles.box}
         >
           <Icon
-            name={done ? 'checkmark.square.fill' : 'square'}
+            name={
+              done
+                ? 'checkmark.square.fill'
+                : closed
+                  ? 'xmark.square'
+                  : 'square'
+            }
             size={22}
-            color={done ? color.accent : color.inkSoft}
+            color={done ? color.accent : closed ? color.muted : color.inkSoft}
           />
         </Pressable>
       ) : null}
@@ -68,12 +79,13 @@ export const TodayTaskRow = ({
           accessibilityActions={actions.length ? actions : undefined}
           onAccessibilityAction={(event) => {
             if (event.nativeEvent.actionName === 'note') onAddToNote?.();
+            if (event.nativeEvent.actionName === 'today') onDoToday?.();
             if (event.nativeEvent.actionName === 'more') onMore?.();
           }}
           onPress={onOpen}
           onLongPress={onMore}
         >
-          <Text style={[styles.title, done && styles.done]} numberOfLines={2}>
+          <Text style={[styles.title, closed && styles.done]} numberOfLines={2}>
             {task.title}
           </Text>
         </Pressable>
@@ -110,6 +122,16 @@ export const TodayTaskRow = ({
           <Text style={styles.actionText}>+ Note</Text>
         </Pressable>
       ) : null}
+      {onDoToday ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Do ${task.title} today`}
+          onPress={onDoToday}
+          style={styles.action}
+        >
+          <Text style={styles.actionText}>Do today</Text>
+        </Pressable>
+      ) : null}
       {onMore ? (
         <Pressable
           accessibilityRole="button"
@@ -130,6 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: MIN_TARGET + tokens.space[2],
     gap: tokens.space[1],
+    paddingRight: tokens.space[2],
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.border,
   },

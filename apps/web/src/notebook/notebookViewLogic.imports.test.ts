@@ -32,6 +32,7 @@ const VIEW_LOGIC = [
   'tokenInsertion',
   'parseTaskLine',
   'taskLineDraft',
+  'matchesTaskShowOn',
   'newestById',
   'byNewest',
 ] as const;
