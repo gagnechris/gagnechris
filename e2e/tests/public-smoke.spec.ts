@@ -38,7 +38,11 @@ async function editorOnlyFiles(request: APIRequestContext) {
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() !== 'error') return;
+    const { url } = message.location();
+    // Other specs publish projects whose images were never uploaded.
+    if (url && new URL(url).pathname.startsWith('/media/projects/e2e-')) return;
+    errors.push(`${message.text()} ${url}`);
   });
   page.on('pageerror', (error) => errors.push(error.message));
   return errors;
