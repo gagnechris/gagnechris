@@ -187,6 +187,17 @@ export {
   type NoteSection,
 } from './note-list-sections.js';
 export {
+  areaForNewItem,
+  areaQueryParam,
+  DEFAULT_NOTEBOOK_AREA_FILTER,
+  isNotebookAreaFilter,
+  NOTEBOOK_AREA_FILTERS,
+  NOTEBOOK_AREA_HEADINGS,
+  NOTEBOOK_AREA_LABELS,
+  NOTEBOOK_AREA_STORAGE_KEY,
+  type NotebookAreaFilter,
+} from './notebook-area.js';
+export {
   fenceLineKind,
   scanFences,
   type FenceBlock,

@@ -62,10 +62,29 @@ describe('native build config', () => {
     );
   });
 
+  const buildProperties = () =>
+    app.plugins.find(
+      (plugin) =>
+        Array.isArray(plugin) && plugin[0] === 'expo-build-properties',
+    )?.[1] as { ios?: Record<string, unknown> } | undefined;
+
   it('targets iOS 17.4 for the HTTPS auth callback', () => {
-    expect(app.plugins).toContainEqual([
-      'expo-build-properties',
-      { ios: { deploymentTarget: '17.4' } },
+    expect(buildProperties()?.ios?.deploymentTarget).toBe('17.4');
+  });
+
+  it('adopts the scene life cycle, which the iOS 27 SDK requires at launch', () => {
+    expect(buildProperties()?.ios?.enableSceneSupport).toBe(true);
+  });
+
+  it('embeds the Inter faces the theme names', () => {
+    const fonts = app.plugins.find(
+      (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-font',
+    )?.[1] as { fonts: string[] } | undefined;
+    expect(fonts?.fonts.map((path) => path.split('/').pop())).toEqual([
+      'Inter_400Regular.ttf',
+      'Inter_500Medium.ttf',
+      'Inter_600SemiBold.ttf',
+      'Inter_700Bold.ttf',
     ]);
   });
 
