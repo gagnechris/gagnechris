@@ -66,6 +66,7 @@ export function useEditorViewMode({
   const [raw, setRaw] = useState(() => readFlag(rawStorageKey));
   const previewRef = useRef<HTMLDivElement>(null);
   const previewingRef = useRef(previewing);
+  const focusEditorOnExit = useRef(true);
   const swap = useRef<{ anchor: PaneAnchor | null; scrollTop: number } | null>(
     null,
   );
@@ -176,7 +177,8 @@ export function useEditorViewMode({
       const pane = editorRef.current?.view()?.dom;
       if (pane && from?.anchor) restorePaneAnchor(pane, from.anchor);
     }
-    editorRef.current?.focus();
+    if (focusEditorOnExit.current) editorRef.current?.focus();
+    focusEditorOnExit.current = true;
   }, [editorRef, previewing]);
 
   // Captured before the editor reconfigures (a passive effect in the child),
@@ -245,5 +247,12 @@ export function useEditorViewMode({
       </div>
     ) : null;
 
-  return { previewing, raw, previewKeymap, toggles, previewPane };
+  /** Leaves Preview without focusing the editor: the caller places the caret. */
+  const showEditor = useCallback(() => {
+    if (!previewingRef.current) return;
+    focusEditorOnExit.current = false;
+    setPreview(false);
+  }, [setPreview]);
+
+  return { previewing, raw, previewKeymap, toggles, previewPane, showEditor };
 }
