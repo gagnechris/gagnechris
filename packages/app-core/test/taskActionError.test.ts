@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { ApiError } from '@gagnechris/app-core';
+import { ApiError, taskActionError } from '../src/index.js';
 import { newestById } from '@gagnechris/shared';
-import { taskActionError } from './taskActionError';
 
 describe('taskActionError', () => {
   test('a version conflict says to reload; anything else to try again', () => {

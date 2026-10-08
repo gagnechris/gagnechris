@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorView } from '@codemirror/view';
+import type { EmbedNote } from '@gagnechris/app-core';
 import { findTaskEmbeds } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 // Static: only lazy routes render this body, so CodeMirror loads with the
@@ -16,7 +17,7 @@ import { loadMarkdownPreview } from '../kit/markdown/markdownPreviewModule';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
-import { useNoteTaskEmbeds, type EmbedNote } from './useNoteTaskEmbeds';
+import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
 
 type Props = {
   value: string;

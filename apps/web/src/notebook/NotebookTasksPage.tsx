@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   useTasksQuery,
+  useTaskToggle,
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
@@ -25,7 +26,6 @@ import { TaskRow } from '../kit/tasks/TaskRow';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';
-import { useTaskToggle } from './useTaskToggle';
 import type { NotebookOutletContext } from './NotebookLayout';
 
 const SHOW_ON_FILTERS = [

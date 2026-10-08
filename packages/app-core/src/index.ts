@@ -214,3 +214,13 @@ export {
   type TaskVersionVars,
 } from './query/tasks.js';
 export { useNotebookSearchQuery } from './query/search.js';
+export { taskActionError } from './query/taskActionError.js';
+export { taskRequestFromDraft } from './query/taskRequest.js';
+export { useTaskToggle } from './query/useTaskToggle.js';
+export {
+  EMBED_RETRY_DELAYS_MS,
+  useNoteTaskEmbedSync,
+  type EmbedNote,
+  type TaskEmbedCreate,
+  type TaskEmbedState,
+} from './query/useNoteTaskEmbedSync.js';

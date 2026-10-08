@@ -24,7 +24,7 @@ import {
   PAST_AUTOSAVE_MS,
   QueryClientTestProvider,
 } from '../test-utils';
-import { EMBED_RETRY_DELAYS_MS } from './useNoteTaskEmbeds';
+import { EMBED_RETRY_DELAYS_MS } from '@gagnechris/app-core';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';

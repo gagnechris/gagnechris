@@ -35,20 +35,50 @@ const Pressable = ({
 vi.mock('react-native', () => ({
   View: host('View'),
   Text: host('Text'),
+  Image: host('Image'),
   ScrollView: host('ScrollView'),
   Pressable,
   TextInput: host('TextInput'),
   RefreshControl: host('RefreshControl'),
   AppState: {
     currentState: 'active',
-    addEventListener: () => ({ remove: () => undefined }),
+    addEventListener: vi.fn(() => ({ remove: () => undefined })),
   },
   StyleSheet: {
     create: <T>(styles: T) => styles,
     hairlineWidth: 0.5,
   },
+  Platform: {
+    OS: 'ios',
+    select: (options: Record<string, unknown>) =>
+      options.ios ?? options.default,
+  },
+  Linking: { openURL: vi.fn() },
+  InputAccessoryView: host('InputAccessoryView'),
+  Modal: ({
+    visible,
+    children,
+  }: {
+    visible?: boolean;
+    children?: ReactNode;
+  }) => (visible ? createElement('Modal', null, children) : null),
+  Keyboard: { dismiss: vi.fn() },
+  Share: { share: vi.fn(async () => ({ action: 'sharedAction' })) },
   ActionSheetIOS: { showActionSheetWithOptions: vi.fn() },
-  Alert: { alert: vi.fn() },
+  Alert: { alert: vi.fn(), prompt: vi.fn() },
+}));
+
+vi.mock('expo-web-browser', () => ({
+  openBrowserAsync: vi.fn(async () => ({ type: 'dismiss' })),
+}));
+
+vi.mock('expo-haptics', () => ({
+  impactAsync: vi.fn(async () => undefined),
+  ImpactFeedbackStyle: { Light: 'light' },
+}));
+
+vi.mock('@react-native-community/datetimepicker', () => ({
+  default: host('DateTimePicker'),
 }));
 
 vi.mock('expo-symbols', () => ({ SymbolView: host('SymbolView') }));

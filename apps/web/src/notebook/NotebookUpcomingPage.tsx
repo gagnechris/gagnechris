@@ -1,16 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { useNotesByIds, useTasksQuery, type Task } from '@gagnechris/app-core';
+import {
+  useNotesByIds,
+  useTasksQuery,
+  useTaskToggle,
+  type Task,
+} from '@gagnechris/app-core';
 import {
   formatTaskDay,
   groupUpcomingTasks,
   noteChipLabel,
   type SourceNote,
   taskDue,
+  type TaskLineDraft,
 } from '@gagnechris/shared';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
-import type { TaskLineDraft } from '../kit/tasks/taskLine';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import {
   areaQueryParam,
@@ -19,7 +24,6 @@ import {
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';
-import { useTaskToggle } from './useTaskToggle';
 import { useLoadAllPages, useTaskPatch } from './useTodayTasks';
 
 export default function NotebookUpcomingPage() {

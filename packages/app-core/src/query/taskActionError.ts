@@ -1,4 +1,4 @@
-import { ApiError } from '@gagnechris/app-core';
+import { ApiError } from './api.js';
 
 /** The message for a failed task action; a version conflict says to reload. */
 export function taskActionError(

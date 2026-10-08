@@ -1,12 +1,15 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { taskResource, useDeleteTaskMutation } from '@gagnechris/app-core';
+import {
+  taskResource,
+  useDeleteTaskMutation,
+  useTaskToggle,
+} from '@gagnechris/app-core';
 import { Field, Select, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { TaskMentions } from './TaskMentions';
-import { useTaskToggle } from './useTaskToggle';
 import {
   emptyTaskDraft,
   taskDraftFromTask,

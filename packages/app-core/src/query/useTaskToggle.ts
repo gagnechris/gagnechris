@@ -1,10 +1,7 @@
 import { useCallback, useState } from 'react';
-import {
-  useCompleteTaskMutation,
-  useReopenTaskMutation,
-  type Task,
-} from '@gagnechris/app-core';
-import { taskActionError } from './taskActionError';
+import type { Task } from './api.js';
+import { taskActionError } from './taskActionError.js';
+import { useCompleteTaskMutation, useReopenTaskMutation } from './tasks.js';
 
 /**
  * The mutations already roll back their optimistic patch; this surfaces the

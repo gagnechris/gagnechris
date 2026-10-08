@@ -18,8 +18,11 @@ import {
   createUlid,
   fenceLineKind,
   findTaskEmbeds,
+  parseTaskLine,
   scanFences,
   taskEmbedToken,
+  taskLineDraftKey,
+  type TaskLineDraft,
 } from '@gagnechris/shared';
 import {
   Fragment,
@@ -31,11 +34,6 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  parseTaskLine,
-  taskLineDraftKey,
-  type TaskLineDraft,
-} from '../tasks/taskLine';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 

@@ -18,6 +18,7 @@ import {
   taskDateMenuItems,
   taskDateMenuKey,
   taskDateMenuReducer,
+  TASK_LINE_PREFIX,
   type TaskDateMenuState as MenuState,
   type TaskDateQuery,
   taskDateToken,
@@ -28,7 +29,6 @@ import { useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PHONE_QUERY, useMediaQuery } from '../useMediaQuery';
 import { TaskDateMenu } from '../tasks/TaskDateMenu';
-import { TASK_LINE_PREFIX } from '../tasks/taskLine';
 
 type Range = { from: number; to: number };
 

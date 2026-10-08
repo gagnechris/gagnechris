@@ -2,10 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test, vi } from 'vitest';
-import { taskScheduleLabel } from '@gagnechris/shared';
+import { parseTaskLine, taskScheduleLabel } from '@gagnechris/shared';
 import MarkdownPreview from '../markdown/MarkdownPreview';
 import { TaskEmbedRow } from './TaskEmbedRow';
-import { parseTaskLine } from './taskLine';
 
 const ID = '01JAAAAAAAAAAAAAAAAAAAAAAA';
 

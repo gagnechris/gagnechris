@@ -1,5 +1,5 @@
-import type { CreateTaskRequest, NotebookArea } from '@gagnechris/app-core';
-import type { TaskLineDraft } from '../kit/tasks/taskLine';
+import type { TaskLineDraft } from '@gagnechris/shared';
+import type { CreateTaskRequest, NotebookArea } from './api.js';
 
 export function taskRequestFromDraft(
   id: string,

@@ -8,6 +8,9 @@ import { ActionSheetIOS } from 'react-native';
 import { confirmAction, showError } from '../ui/confirm';
 import type { RowAction } from '../ui/NoteRow';
 
+export const deleteNoteTitle = (note: Pick<Note, 'type'>) =>
+  note.type === 'daily' ? 'Delete this daily note?' : 'Delete this page?';
+
 export const deleteNoteMessage = (note: Pick<Note, 'type'>) =>
   note.type === 'daily'
     ? 'That day starts again with an empty note.'
@@ -53,9 +56,7 @@ export function useNoteRowActions() {
           run: () => {
             void (async () => {
               const ok = await confirmAction(
-                note.type === 'daily'
-                  ? 'Delete this daily note?'
-                  : 'Delete this page?',
+                deleteNoteTitle(note),
                 deleteNoteMessage(note),
                 'Delete',
               );
