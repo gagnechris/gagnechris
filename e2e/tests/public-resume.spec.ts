@@ -159,4 +159,34 @@ test.describe('the resume page', () => {
       page.locator('[aria-labelledby="resume-experience"] .resume-role'),
     ).toHaveCount(content.experience.length);
   });
+
+  test('a Summary edit published from the admin editor updates /resume and the PDF', async ({
+    page,
+    apps,
+    signIn,
+    request,
+  }) => {
+    const pdf = async () => (await request.get(`${site()}/resume.pdf`)).body();
+    const before = await pdf();
+    await signIn();
+    await page.goto(`${apps.admin}/resume`);
+    const summary = page.getByRole('textbox', { name: 'Summary', exact: true });
+    await expect(summary).not.toHaveValue('');
+    const line = `Edited in the admin at ${Date.now()}.`;
+    await summary.fill(`${await summary.inputValue()} ${line}`);
+    await expect(
+      page.getByRole('status').filter({ hasText: /^Saved$/ }),
+    ).toBeVisible();
+    expect(await (await request.get(`${site()}/resume`)).text()).not.toContain(
+      line,
+    );
+
+    await page.getByRole('button', { name: /^Publish( changes)?$/ }).click();
+    await expect
+      .poll(async () => (await request.get(`${site()}/resume`)).text())
+      .toContain(line);
+    const after = await pdf();
+    expect(after.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(after.equals(before)).toBe(false);
+  });
 });

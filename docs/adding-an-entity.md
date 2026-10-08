@@ -595,7 +595,7 @@ The editor is built from the shared pieces in `apps/web/src/admin/editor/`, as `
 - **`useImageUpload(editor.setSaveError)`**: `uploadImage` for an `ImageUploadField` (its errors show under the field) and `uploadBodyImages` for `MarkdownBodyEditor` (its errors show as the save error). Both upload to `/media` through `uploadImages`.
 - **Widgets**: `ChipsInput` for list-of-strings fields, `ImageUploadField` (`dropzone` or `thumbnail`), `SegmentedRadio` (`workspace/ui`) for a small enum, and `BodyPreview` for a markdown body rendered as its public page.
 
-`e2e/tests/admin-projects.spec.ts` drives create, edit, upload, publish, unpublish, delete and a slug conflict through the admin against the local publisher.
+`e2e/tests/admin-projects.spec.ts` drives create, edit, upload, publish, unpublish, delete and a slug conflict through the admin against the local publisher; `admin-post-flows.spec.ts` does the same for posts and adds Publish changes, Discard changes, a two-tab conflict, ⌘⏎ in the body and the leave guard.
 
 The CloudFront function change and the IAM change deploy with CDK. Add the new `LeadingKeys` to `infra/test/publisher-iam.test.ts`, which evaluates the synthesized policy and also proves `USER#…` stays unreadable.
 
