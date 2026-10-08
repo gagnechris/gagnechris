@@ -28,6 +28,12 @@ describe('native build config', () => {
     expect(eas.build.preview).toBeDefined();
   });
 
+  it('builds for TestFlight without the export-compliance question', () => {
+    expect(app.version).toMatch(/^[1-9]\d*\.\d+\.\d+$/);
+    expect(app.ios.config.usesNonExemptEncryption).toBe(false);
+    expect(eas.submit.production.ios.appleTeamId).toBe(app.ios.appleTeamId);
+  });
+
   it('installs the sign-in, token, entropy, cache, and network modules', () => {
     for (const name of [
       'expo-auth-session',

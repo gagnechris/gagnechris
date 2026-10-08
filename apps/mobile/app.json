@@ -2,7 +2,7 @@
   "expo": {
     "name": "gagnechris",
     "slug": "gagnechris-mobile",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,10 @@
         "applinks:notebook.gagnechris.com",
         "webcredentials:notebook.gagnechris.com",
         "webcredentials:gagnechris.com"
-      ]
+      ],
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
