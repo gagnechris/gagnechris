@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { emptyTaskDraft, taskPayloadFromDraft } from './taskDraft';
+import {
+  emptyTaskDraft,
+  taskPayloadFromDraft,
+} from '../src/query/taskDraft.js';
 
 describe('taskPayloadFromDraft', () => {
   test('sends the show-on date and the deadline independently', () => {

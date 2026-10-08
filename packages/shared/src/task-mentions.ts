@@ -1,9 +1,6 @@
-import {
-  byNewest,
-  findTaskEmbeds,
-  type ListNote,
-  noteDay,
-} from '@gagnechris/shared';
+import { byNewest } from './by-newest.js';
+import { noteDay, type ListNote } from './note-list-sections.js';
+import { findTaskEmbeds } from './task-embeds.js';
 
 export type TaskMention<T extends ListNote> = {
   note: T;

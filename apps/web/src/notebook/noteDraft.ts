@@ -1,4 +1,5 @@
 import type { Note } from '@gagnechris/app-core';
+import { parseTagsText } from '@gagnechris/shared';
 
 export type NoteDraft = {
   title: string;
@@ -20,12 +21,6 @@ export const noteDraftFromNote = (note: Note): NoteDraft => ({
   tagsText: note.tags.join(', '),
   pinned: note.pinned,
 });
-
-export const parseTagsText = (tagsText: string): string[] =>
-  tagsText
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
 
 export const notePayloadFromDraft = (draft: NoteDraft) => ({
   title: draft.title,

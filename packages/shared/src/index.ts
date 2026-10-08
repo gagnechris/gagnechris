@@ -136,6 +136,12 @@ export {
   type TaskLineDraft,
 } from './task-line.js';
 export { byNewest } from './by-newest.js';
+export { parseTagsText } from './tags-text.js';
+export {
+  embedContext,
+  taskMentions,
+  type TaskMention,
+} from './task-mentions.js';
 export { deepEqual } from './deep-equal.js';
 export { newestById } from './newest-by-id.js';
 export {

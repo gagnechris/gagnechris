@@ -1,8 +1,13 @@
-import type { Task } from '@gagnechris/app-core';
-import type { TaskPriority, TaskStatus } from '@gagnechris/shared';
-import { parseTagsText } from './noteDraft';
+import {
+  parseTagsText,
+  type NotebookArea,
+  type TaskPriority,
+  type TaskStatus,
+} from '@gagnechris/shared';
+import type { Task } from './api.js';
 
 export type TaskDraft = {
+  area: NotebookArea;
   title: string;
   description: string;
   priority: TaskPriority;
@@ -15,6 +20,7 @@ export type TaskDraft = {
 };
 
 export const emptyTaskDraft = (): TaskDraft => ({
+  area: 'work',
   title: '',
   description: '',
   priority: 'med',
@@ -27,6 +33,7 @@ export const emptyTaskDraft = (): TaskDraft => ({
 });
 
 export const taskDraftFromTask = (task: Task): TaskDraft => ({
+  area: task.area,
   title: task.title,
   description: task.description,
   priority: task.priority,
@@ -39,6 +46,7 @@ export const taskDraftFromTask = (task: Task): TaskDraft => ({
 });
 
 export const taskPayloadFromDraft = (draft: TaskDraft) => ({
+  area: draft.area,
   title: draft.title.trim() || 'Untitled',
   description: draft.description,
   priority: draft.priority,

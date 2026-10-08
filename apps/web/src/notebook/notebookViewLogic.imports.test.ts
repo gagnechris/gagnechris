@@ -33,6 +33,8 @@ const VIEW_LOGIC = [
   'parseTaskLine',
   'taskLineDraft',
   'matchesTaskShowOn',
+  'taskMentions',
+  'embedContext',
   'newestById',
   'byNewest',
 ] as const;

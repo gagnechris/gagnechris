@@ -1,5 +1,52 @@
-import { taskDateMenuItems, type TaskSchedule } from '@gagnechris/shared';
+import {
+  taskDateMenuItems,
+  type TaskDateKind,
+  type TaskSchedule,
+} from '@gagnechris/shared';
 import { ActionSheetIOS } from 'react-native';
+
+/** The shared date items as a sheet; Pick a date… calls `onPickDate`. */
+export const showTaskDates = ({
+  title,
+  from,
+  kind = 'start',
+  extra = [],
+  onSchedule,
+  onPickDate,
+}: {
+  title: string;
+  /** The day the options count from. */
+  from: string;
+  kind?: TaskDateKind;
+  /** Options after the dates, such as No date. */
+  extra?: { label: string; run: () => void }[];
+  onSchedule: (schedule: TaskSchedule) => void;
+  onPickDate: () => void;
+}) => {
+  const items = taskDateMenuItems(from, '', kind, { deadline: false });
+  ActionSheetIOS.showActionSheetWithOptions(
+    {
+      title,
+      options: [
+        ...items.map((item) =>
+          item.detail ? `${item.label} · ${item.detail}` : item.label,
+        ),
+        ...extra.map((e) => e.label),
+        'Cancel',
+      ],
+      cancelButtonIndex: items.length + extra.length,
+    },
+    (choice) => {
+      const item = items[choice];
+      if (!item) {
+        extra[choice - items.length]?.run();
+        return;
+      }
+      if (item.schedule) onSchedule(item.schedule);
+      else onPickDate();
+    },
+  );
+};
 
 /** ⋯ on a Still open row: Snooze (then the shared date items) or Drop. */
 export const showSnoozeOrDrop = ({
@@ -26,26 +73,35 @@ export const showSnoozeOrDrop = ({
     (index) => {
       if (index === 1) onDrop();
       if (index !== 0) return;
-      const items = taskDateMenuItems(snoozeFrom, '', 'start', {
-        deadline: false,
+      showTaskDates({
+        title: 'Show this task on',
+        from: snoozeFrom,
+        onSchedule: onSnooze,
+        onPickDate,
       });
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: 'Show this task on',
-          options: [
-            ...items.map((item) =>
-              item.detail ? `${item.label} · ${item.detail}` : item.label,
-            ),
-            'Cancel',
-          ],
-          cancelButtonIndex: items.length,
-        },
-        (choice) => {
-          const item = items[choice];
-          if (!item) return;
-          if (item.schedule) onSnooze(item.schedule);
-          else onPickDate();
-        },
-      );
+    },
+  );
+
+/** One choice from a short list, as an action sheet. */
+export const showChoice = <T extends string>({
+  title,
+  options,
+  labels,
+  onChoose,
+}: {
+  title: string;
+  options: readonly T[];
+  labels: Record<T, string>;
+  onChoose: (value: T) => void;
+}) =>
+  ActionSheetIOS.showActionSheetWithOptions(
+    {
+      title,
+      options: [...options.map((o) => labels[o]), 'Cancel'],
+      cancelButtonIndex: options.length,
+    },
+    (index) => {
+      const value = options[index];
+      if (value !== undefined) onChoose(value);
     },
   );

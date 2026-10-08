@@ -1,8 +1,12 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLoadAllPages, useNotesQuery } from '@gagnechris/app-core';
-import { noteDay, noteDayLabel, noteTitle } from '@gagnechris/shared';
-import { taskMentions } from './taskMentionsData';
+import {
+  noteDay,
+  noteDayLabel,
+  noteTitle,
+  taskMentions,
+} from '@gagnechris/shared';
 import { useLocalToday } from './useLocalToday';
 
 type Props = {
