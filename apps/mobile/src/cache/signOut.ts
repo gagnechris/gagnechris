@@ -20,7 +20,7 @@ export const wipeLocalData = async () => {
   await session?.stop();
   session?.queryClient.clear();
   clearPendingFlushes();
-  // Nothing else lives in AsyncStorage; anything stored on disk later joins
-  // this list and the sign-out test.
+  // Everything in AsyncStorage is per-user (cache, area preference, install
+  // marker, which sign-in rewrites); new on-disk data must join the sign-out test.
   await AsyncStorage.clear();
 };
