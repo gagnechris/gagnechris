@@ -5,4 +5,5 @@ export {
   cacheBuster,
   isPersistedQueryKey,
 } from './policy';
-export { unsavedEditCount, wipeLocalData } from './signOut';
+export { SessionQueryCache } from './SessionQueryCache';
+export { signOutWarning, unsavedEditCount, wipeLocalData } from './signOut';

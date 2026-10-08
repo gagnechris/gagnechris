@@ -3,29 +3,27 @@ import { AppApiProvider } from '@gagnechris/app-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AreaProvider } from '../src/area';
-import { CachedQueryProvider } from '../src/cache';
+import { createAppAuth } from '../src/auth';
+import { SessionQueryCache, wipeLocalData } from '../src/cache';
 import { apiBaseUrl } from '../src/config';
-import {
-  localAuthBackend,
-  rootGuards,
-  SessionProvider,
-  useSession,
-} from '../src/session';
 import { NetworkStatus, startConnectivity } from '../src/net';
+import { rootGuards, SessionProvider, useSession } from '../src/session';
 import { color } from '../src/theme';
 
-const backend = localAuthBackend();
+const backend = createAppAuth();
 
 const RootStack = () => {
   const { status, hasNotebook, getToken } = useSession();
-  const getClient = useCallback(
+  // One client, so concurrent 401s share its refresh.
+  const client = useMemo(
     () => createApiClient({ baseUrl: apiBaseUrl, getToken }),
     [getToken],
   );
+  const getClient = useCallback(() => client, [client]);
   if (status === 'restoring') return null;
   const guards = rootGuards(status, hasNotebook);
   return (
@@ -51,20 +49,11 @@ const RootStack = () => {
   );
 };
 
-const UserCache = ({ children }: { children: ReactNode }) => {
-  const { user } = useSession();
-  return (
-    <CachedQueryProvider sub={user?.sub ?? null}>
-      {children}
-    </CachedQueryProvider>
-  );
-};
-
 const RootLayout = () => {
   useEffect(() => startConnectivity(), []);
   return (
-    <SessionProvider backend={backend}>
-      <UserCache>
+    <SessionProvider backend={backend} wipe={wipeLocalData}>
+      <SessionQueryCache>
         <AreaProvider store={AsyncStorage}>
           <View style={{ flex: 1 }}>
             <NetworkStatus />
@@ -75,7 +64,7 @@ const RootLayout = () => {
           </View>
         </AreaProvider>
         <StatusBar style="dark" />
-      </UserCache>
+      </SessionQueryCache>
     </SessionProvider>
   );
 };

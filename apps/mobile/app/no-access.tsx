@@ -11,7 +11,9 @@ const NoAccessScreen = () => {
   const level = user ? accessLevelFromGroups(user.groups) : null;
   const switchAccount = async () => {
     await signOut();
-    await signIn();
+    await signIn({ newAccount: true }).catch(() => {
+      // Closed or failed: sign-in shows next.
+    });
   };
 
   return (

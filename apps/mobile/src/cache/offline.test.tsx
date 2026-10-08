@@ -36,10 +36,13 @@ import {
   nativeRetrySignals,
   startConnectivity,
 } from '../net';
+import { SessionProvider, useSession, type AuthBackend } from '../session';
 import {
   CACHE_SCHEMA_VERSION,
   CachedQueryProvider,
   cacheBuster,
+  SessionQueryCache,
+  signOutWarning,
   unsavedEditCount,
   wipeLocalData,
 } from '.';
@@ -472,5 +475,88 @@ describe('sign-out', () => {
     setConnected(true);
     await advance(120_000);
     expect(server.state.writes).toBe(0);
+  });
+
+  const sessionUser = {
+    sub: SUB,
+    email: 'u1@example.com',
+    name: null,
+    groups: ['notebook'],
+  };
+
+  const signedIn = async () => {
+    let expire = () => {};
+    const order: string[] = [];
+    const backend: AuthBackend = {
+      restore: async () => sessionUser,
+      signIn: async () => null,
+      signOut: async () => {
+        order.push(`revoke with ${asyncStorage.data.size} keys left`);
+      },
+      getToken: async () => `local-ios:${SUB}`,
+      onExpired: (listener) => {
+        expire = listener;
+        return () => {};
+      },
+      markInstalled: async () => {},
+    };
+    let signOut!: () => Promise<void>;
+    const Probe = ({
+      expose,
+    }: {
+      expose: (fn: () => Promise<void>) => void;
+    }) => {
+      expose(useSession().signOut);
+      return null;
+    };
+    const renderer = await render(
+      <SessionProvider backend={backend} wipe={wipeLocalData}>
+        <SessionQueryCache>
+          <AppApiProvider getClient={getClient}>
+            <NotesScreen />
+            <Probe
+              expose={(fn) => {
+                signOut = fn;
+              }}
+            />
+          </AppApiProvider>
+        </SessionQueryCache>
+      </SessionProvider>,
+    );
+    await advance(1_500);
+    expect(screenText(renderer)).toContain('note: first words');
+    expect(stored()).toContain('first words');
+    return {
+      renderer,
+      order,
+      signOut: () => signOut(),
+      expire: () => expire(),
+    };
+  };
+
+  it('signing out through the session leaves no Notebook keys in AsyncStorage', async () => {
+    const { order, signOut } = await signedIn();
+    await asyncStorage.setItem('gagnechris.installed', '1');
+
+    await act(async () => {
+      await signOut();
+    });
+    await advance(5_000);
+
+    expect([...asyncStorage.data.keys()]).toEqual([]);
+    expect(order).toEqual(['revoke with 0 keys left']);
+  });
+
+  it('a session that expires keeps the saved copy', async () => {
+    const { expire } = await signedIn();
+    await act(async () => expire());
+    await advance(5_000);
+    expect(stored()).toContain('first words');
+  });
+
+  it('warns about unsaved edits only when there are some', () => {
+    expect(signOutWarning(0)).toBeUndefined();
+    expect(signOutWarning(1)).toBe('1 unsaved edit will be lost.');
+    expect(signOutWarning(3)).toBe('3 unsaved edits will be lost.');
   });
 });
