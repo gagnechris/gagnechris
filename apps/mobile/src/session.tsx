@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { localAuthGroups } from './config';
 
 export type SessionUser = {
   sub: string;
@@ -18,35 +17,24 @@ export type SessionUser = {
   groups: readonly string[];
 };
 
+export type SignInResult = {
+  user: SessionUser;
+  /** Someone else signed in last: their cached data must go before anything renders. */
+  differentUser: boolean;
+};
+
 export type AuthBackend = {
   /** The session kept from the last run, if any. */
   restore(): Promise<SessionUser | null>;
-  signIn(): Promise<SessionUser | null>;
+  signIn(options?: { newAccount?: boolean }): Promise<SignInResult | null>;
+  /** Revokes the refresh token and deletes the Keychain items. */
   signOut(): Promise<void>;
   getToken: TokenProvider;
+  /** Called when a refresh is refused; the session ends without a wipe. */
+  onExpired(listener: () => void): () => void;
+  /** Records this install after sign-in, once any wipe has run. */
+  markInstalled(): Promise<void>;
 };
-
-/**
- * The local API's fake auth (`npm run local:dev`): `Bearer local-ios:<sub>`
- * gets ID token claims with the `ios` client as `aud`. Like the web's
- * `VITE_AUTH_MODE=local`, a launch starts signed in.
- */
-export function localAuthBackend(
-  groups: readonly string[] = localAuthGroups,
-): AuthBackend {
-  const user: SessionUser = {
-    sub: 'local-dev-user',
-    email: 'local@gagnechris.com',
-    name: 'Local Admin',
-    groups,
-  };
-  return {
-    restore: async () => user,
-    signIn: async () => user,
-    signOut: async () => {},
-    getToken: async () => `local-ios:${user.sub}`,
-  };
-}
 
 export type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
 
@@ -54,22 +42,32 @@ type SessionState = {
   status: SessionStatus;
   user: SessionUser | null;
   hasNotebook: boolean;
-  signIn: () => Promise<void>;
+  /** The last session ended on its own (refresh refused), not by signing out. */
+  expired: boolean;
+  signIn: (options?: { newAccount?: boolean }) => Promise<void>;
   signOut: () => Promise<void>;
   getToken: TokenProvider;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
 
+/**
+ * `wipe` removes everything cached for the signed-in user (the query cache
+ * and AsyncStorage). It runs on sign-out before the tokens go, and before a
+ * different user's first render.
+ */
 export const SessionProvider = ({
   backend,
+  wipe,
   children,
 }: {
   backend: AuthBackend;
+  wipe: () => Promise<void>;
   children: ReactNode;
 }) => {
   const [status, setStatus] = useState<SessionStatus>('restoring');
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [expired, setExpired] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,37 +79,52 @@ export const SessionProvider = ({
         setUser(restored);
         setStatus(restored ? 'signedIn' : 'signedOut');
       });
+    const stopListening = backend.onExpired(() => {
+      setExpired(true);
+      setUser(null);
+      setStatus('signedOut');
+    });
     return () => {
       cancelled = true;
+      stopListening();
     };
   }, [backend]);
 
-  const signIn = useCallback(async () => {
-    const signedIn = await backend.signIn();
-    if (!signedIn) return;
-    setUser(signedIn);
-    setStatus('signedIn');
-  }, [backend]);
+  const signIn = useCallback(
+    async (options?: { newAccount?: boolean }) => {
+      const result = await backend.signIn(options);
+      if (!result) return;
+      if (result.differentUser) await wipe();
+      await backend.markInstalled();
+      setExpired(false);
+      setUser(result.user);
+      setStatus('signedIn');
+    },
+    [backend, wipe],
+  );
 
   const signOut = useCallback(async () => {
     try {
+      await wipe();
       await backend.signOut();
     } finally {
+      setExpired(false);
       setUser(null);
       setStatus('signedOut');
     }
-  }, [backend]);
+  }, [backend, wipe]);
 
   const value = useMemo<SessionState>(
     () => ({
       status,
       user,
       hasNotebook: user?.groups.includes(NOTEBOOK_GROUP) ?? false,
+      expired,
       signIn,
       signOut,
       getToken: backend.getToken,
     }),
-    [status, user, signIn, signOut, backend],
+    [status, user, expired, signIn, signOut, backend],
   );
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

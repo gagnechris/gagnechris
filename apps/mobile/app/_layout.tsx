@@ -4,25 +4,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AreaProvider } from '../src/area';
+import { createAppAuth } from '../src/auth';
 import { apiBaseUrl } from '../src/config';
-import {
-  localAuthBackend,
-  rootGuards,
-  SessionProvider,
-  useSession,
-} from '../src/session';
+import { rootGuards, SessionProvider, useSession } from '../src/session';
 import { color } from '../src/theme';
 
-const backend = localAuthBackend();
+const backend = createAppAuth();
 
 const RootStack = () => {
   const { status, hasNotebook, getToken } = useSession();
-  const getClient = useCallback(
+  // One client, so concurrent 401s share its refresh.
+  const client = useMemo(
     () => createApiClient({ baseUrl: apiBaseUrl, getToken }),
     [getToken],
   );
+  const getClient = useCallback(() => client, [client]);
   if (status === 'restoring') return null;
   const guards = rootGuards(status, hasNotebook);
   return (
@@ -50,8 +48,12 @@ const RootStack = () => {
 
 const RootLayout = () => {
   const [queryClient] = useState(() => new QueryClient());
+  const wipe = useCallback(async () => {
+    queryClient.clear();
+    await AsyncStorage.clear();
+  }, [queryClient]);
   return (
-    <SessionProvider backend={backend}>
+    <SessionProvider backend={backend} wipe={wipe}>
       <QueryClientProvider client={queryClient}>
         <AreaProvider store={AsyncStorage}>
           <RootStack />
