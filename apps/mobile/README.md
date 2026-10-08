@@ -2,7 +2,9 @@
 
 Expo app (expo-router, dev client) that runs the monorepo client packages under
 Metro. Its one screen shows a client-generated ULID and `GET /api/health` from
-the configured API.
+the configured API. The Notebook query cache is persisted for offline reads
+(`src/cache/`), with an offline banner and autosave retry on reconnect
+(`src/net/`); see `docs/mobile.md#cached-reads-and-offline`.
 
 This app is not part of the root npm workspaces and has its own lockfile, so its
 dependencies install separately. See `docs/mobile.md`.
@@ -43,7 +45,7 @@ EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 
 ```bash
 npm run export:ios      # expo export --platform ios --source-maps
-npm run check:bundle    # no .d.ts; zod/v4, app-core, react-query, expo-crypto, expo-router present; no zod/v3
+npm run check:bundle    # no .d.ts; zod/v4, app-core, react-query, persister, netinfo, expo-crypto, expo-router present; no zod/v3
 npm run smoke:bundle    # Metro bundle run in Node: zod v4, polyfilled ULID, app-core hook render
 ```
 

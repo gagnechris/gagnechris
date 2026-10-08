@@ -3,3 +3,6 @@ export const apiBaseUrl =
 
 /** Matches web local auth (`VITE_AUTH_MODE=local`). */
 export const localDevToken = 'local-dev-token';
+
+/** The `sub` the local API gives `local-dev-token`; keys the cache until sign-in. */
+export const localDevSub = 'local-dev-user';

@@ -1,0 +1,62 @@
+import { tokens } from '@gagnechris/tokens';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsOnline } from './connectivity';
+import { useUnsavedEditCount } from './useUnsavedEditCount';
+
+export const OFFLINE_MESSAGE = 'Offline — showing saved copy';
+export const EDITOR_OFFLINE_MESSAGE = 'Offline — will save when connected';
+
+export const unsavedEditsLabel = (count: number) =>
+  count === 1 ? '1 unsaved edit' : `${count} unsaved edits`;
+
+/**
+ * The offline banner and the count of edits still waiting to save. Sits above
+ * the navigator and takes the top inset only while it shows.
+ */
+export const NetworkStatus = () => {
+  const online = useIsOnline();
+  const unsaved = useUnsavedEditCount();
+  const insets = useSafeAreaInsets();
+  if (online && unsaved === 0) return null;
+  return (
+    <View
+      style={[styles.bar, { paddingTop: insets.top + tokens.space[1] }]}
+      accessibilityRole="summary"
+    >
+      {online ? null : <Text style={styles.text}>{OFFLINE_MESSAGE}</Text>}
+      {unsaved > 0 ? (
+        <Text style={styles.text} testID="unsaved-edits">
+          {unsavedEditsLabel(unsaved)}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+/** For an editor whose own draft is not saved yet. */
+export const EditorOfflineNotice = ({ dirty }: { dirty: boolean }) => {
+  const online = useIsOnline();
+  if (online || !dirty) return null;
+  return <Text style={styles.notice}>{EDITOR_OFFLINE_MESSAGE}</Text>;
+};
+
+const styles = StyleSheet.create({
+  bar: {
+    backgroundColor: tokens.neutral[100],
+    borderBottomColor: tokens.neutral[200],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: tokens.space[1],
+    paddingHorizontal: tokens.space[4],
+    alignItems: 'center',
+    gap: tokens.space[1],
+  },
+  text: {
+    fontSize: tokens.text.xs,
+    color: tokens.neutral[600],
+  },
+  notice: {
+    fontSize: tokens.text.xs,
+    color: tokens.neutral[500],
+  },
+});
