@@ -14,11 +14,26 @@ export type PendingFlush = {
 };
 
 const pending = new Map<string, PendingFlush>();
+const listeners = new Set<() => void>();
+
+const notify = () => {
+  for (const listener of [...listeners]) listener();
+};
 
 /** A hung request must not leave the remounted editor loading forever. */
 const SETTLE_TIMEOUT_MS = 15_000;
 
 export const hasPendingFlushes = (): boolean => pending.size > 0;
+
+export const pendingFlushCount = (): number => pending.size;
+
+/** Called whenever the queue gains or loses an entry. */
+export const subscribePendingFlushes = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
 
 export const peekPendingFlush = (key: string): PendingFlush | undefined =>
   pending.get(key);
@@ -44,19 +59,27 @@ export const takePendingFlush = async (
     }),
   ]);
   defaultTimers.clearTimeout(handle);
-  if (pending.get(key) === entry) pending.delete(key);
+  if (pending.get(key) === entry) {
+    pending.delete(key);
+    notify();
+  }
   return { outcome, draft: entry.draft(), version: entry.version() };
 };
 
 export const registerPendingFlush = (key: string, entry: PendingFlush) => {
   pending.set(key, entry);
+  notify();
 };
 
 export const resolvePendingFlush = (key: string, entry: PendingFlush) => {
-  if (pending.get(key) === entry) pending.delete(key);
+  if (pending.get(key) !== entry) return;
+  pending.delete(key);
+  notify();
 };
 
 export const clearPendingFlushes = () => {
+  if (pending.size === 0) return;
   for (const entry of pending.values()) void entry.settle();
   pending.clear();
+  notify();
 };

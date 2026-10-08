@@ -1,13 +1,16 @@
 import { createApiClient } from '@gagnechris/api-client';
 import { AppApiProvider } from '@gagnechris/app-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AreaProvider } from '../src/area';
 import { createAppAuth } from '../src/auth';
+import { SessionQueryCache, wipeLocalData } from '../src/cache';
 import { apiBaseUrl } from '../src/config';
+import { NetworkStatus, startConnectivity } from '../src/net';
 import { rootGuards, SessionProvider, useSession } from '../src/session';
 import { color } from '../src/theme';
 
@@ -47,19 +50,21 @@ const RootStack = () => {
 };
 
 const RootLayout = () => {
-  const [queryClient] = useState(() => new QueryClient());
-  const wipe = useCallback(async () => {
-    queryClient.clear();
-    await AsyncStorage.clear();
-  }, [queryClient]);
+  useEffect(() => startConnectivity(), []);
   return (
-    <SessionProvider backend={backend} wipe={wipe}>
-      <QueryClientProvider client={queryClient}>
+    <SessionProvider backend={backend} wipe={wipeLocalData}>
+      <SessionQueryCache>
         <AreaProvider store={AsyncStorage}>
-          <RootStack />
+          <View style={{ flex: 1 }}>
+            <NetworkStatus />
+            {/* Measures its own insets, so screens below the banner don't pad twice. */}
+            <SafeAreaProvider>
+              <RootStack />
+            </SafeAreaProvider>
+          </View>
         </AreaProvider>
         <StatusBar style="dark" />
-      </QueryClientProvider>
+      </SessionQueryCache>
     </SessionProvider>
   );
 };

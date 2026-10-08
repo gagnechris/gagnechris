@@ -4,17 +4,17 @@
 
 ## Notebook shell
 
-| Route                                  | Screen                                                                                          |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `app/_layout.tsx`                      | Providers (session, TanStack Query, area, `AppApiProvider`) and the root stack with its gate    |
-| `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                    |
-| `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                |
-| `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                           |
-| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                               |
-| `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                      |
-| `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                             |
-| `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out |
-| `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                |
+| Route                                  | Screen                                                                                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `app/_layout.tsx`                      | Providers (session, persisted query cache, area, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
+| `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
+| `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
+| `app/(tabs)/today/index.tsx`           | `/today`: weekday and date heading with the area chip                                                                |
+| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: large title, Work / Personal / All segmented control                                                    |
+| `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
+| `app/(tabs)/tasks/index.tsx`           | `/tasks`: large title, filter chips                                                                                  |
+| `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
+| `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
 
 The tab screens are shells with their empty states; they don't load Notebook data yet. `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
 
@@ -24,7 +24,7 @@ The tab screens are shells with their empty states; they don't load Notebook dat
 - **Look:** colours and sizes from `@gagnechris/tokens` through `src/theme.ts`. Inter (400, 500, 600, 700 from `@expo-google-fonts/inter`) is embedded at build time by the `expo-font` config plugin, so no font loads at runtime; styles spread `font.<weight>` from `src/theme.ts`, which sets both the PostScript name (`Inter-SemiBold`) and the `fontWeight`; with the name alone React Native can fall back to the regular face. Native large titles on Upcoming, Notes, Tasks and More.
 - **Accessibility:** every control has a role and a label and is at least 44 pt tall; icons are hidden from VoiceOver; text never sets `numberOfLines`, `allowFontScaling={false}` or a fixed height, so Dynamic Type sizes wrap instead of truncating. `src/screens.test.tsx` checks all of this on every screen.
 
-The app has no cache persistence or offline support yet. `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
+Query caching and offline state are described in [Cached reads and offline](#cached-reads-and-offline). `src/markdown/MarkdownView.tsx` renders markdown (see [Markdown](#markdown)), but no screen shows notes yet. [ADR 0004](./adr/0004-ios-app.md) sets the stack (expo-router, EAS dev client), the v1 offline policy (cached reads, online edits), what is stored on the phone, token storage and the auth callback. `src/ulid.ts` re-exports `createUlid` from `@gagnechris/shared` for client-generated ids. `createUlid` is not monotonic within one millisecond: two ids from the same millisecond sort by their random part.
 
 ## Entry and polyfills
 
@@ -60,9 +60,21 @@ Every module listed in `expo/bundledNativeModules.json` uses exactly the range g
 | `expo-font`                                                                                                  | Embeds the Inter `.ttf` files at build time                                                                                                                                                                               |
 | `expo-symbols`                                                                                               | SF Symbols for the tab bar and icons                                                                                                                                                                                      |
 
-The cache store, netinfo and SQLite are installed so the dev client already contains them; no code reads or writes them yet.
+SQLite is installed so the dev client already contains it; no code uses it yet.
 
 `app.json` registers the config plugins for `expo-router`, `expo-font`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
+
+## Cached reads and offline
+
+The v1 policy from ADR 0004: cached reads, online edits. The code is in `src/cache/` and `src/net/`.
+
+- **Persisted cache.** `CachedQueryProvider` (`sub`: the signed-in user's Cognito `sub`, or `null`) persists the query cache to AsyncStorage under `gagnechris.queryCache` with `@tanstack/query-async-storage-persister` (1 s throttle). It restores before queries run (`IsRestoringProvider`), so last-seen data renders with no network. The root layout passes the session user's `sub`.
+- **What is persisted** (`isPersistedQueryKey` in `src/cache/policy.ts`): Notebook notes and tasks queries that hold data (including one whose refetch just failed, so an unreachable server never deletes the saved copy) under the app-core keys `list`, `detail`, `batch` and `daily`. Search queries, a notes list filtered by a search term, `daily-dates` (its data is a `Set`) and everything else stay in memory only. Persisted keys get a `gcTime` of 30 days so a restore keeps them.
+- **Expiry and versioning.** `maxAge` is 30 days. The buster is `<CACHE_SCHEMA_VERSION>:<sub>`; a stored cache from another schema version or another user is deleted on restore. Bump `CACHE_SCHEMA_VERSION` when a persisted query's data shape changes.
+- **Connectivity.** `startConnectivity()` feeds NetInfo into TanStack's `onlineManager` (only `isConnected === false` counts as offline) and `AppState` into `focusManager`. Offline, queries pause and keep their cached data, and `NetworkStatus` shows "Offline — showing saved copy".
+- **Edits.** Editors pass `nativeRetrySignals` as app-core's `retrySignals`: a held save retries when `onlineManager` goes back online and when `AppState` becomes `active`. `EditorOfflineNotice` shows "Offline — will save when connected" in an editor with an unsaved draft. Edits whose editor has closed stay in app-core's pending-save queue; `NetworkStatus` shows their count ("2 unsaved edits") until the queue is empty. Held edits are in memory only.
+- **Sign-out.** `wipeLocalData()` from `src/cache` stops the persister (later and throttled writes are dropped), runs `queryClient.clear()` and `clearPendingFlushes()`, then `AsyncStorage.clear()`. The root layout passes it to `SessionProvider` as `wipe`, which runs it on sign-out and before a different user's first render, not on session expiry (the buster's `sub` covers that). `signOutWarning()` builds More's "N unsaved edits will be lost." message. Token revocation and Keychain deletion follow it, in [Sign-in](#sign-in). AsyncStorage lives in Application Support, which iOS excludes from backups, under the default Data Protection class.
+- `@tanstack/react-query-persist-client` and `@tanstack/query-async-storage-persister` are pinned to the installed `@tanstack/react-query` version (`src/native-config.test.ts` checks), so one `query-core` is bundled.
 
 ## Run in the simulator
 
@@ -127,7 +139,7 @@ Metro config (`metro.config.js`) watches the repo root, sets `nodeModulesPaths` 
 - **Tokens:** `expo-secure-store`, one Keychain item each for the refresh token, ID token, `sub` and sign-in time, all with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (`KEYCHAIN_OPTIONS` in `src/auth/index.ts`). The app sends the ID token. `getToken` returns it while it has more than a minute left, else refreshes (`refreshAsync`, the `refresh_token` grant). Refresh is single flight: concurrent callers share one request, and the rotated refresh token is in the Keychain before any of them gets the new ID token. The app keeps one API client, so its own single-flight retry applies across screens too.
 - **Expiry:** `invalid_grant` on refresh ends the session: the tokens go, the cache and `sub` stay, and sign-in says "Your session ended". A network failure keeps the tokens. If a different `sub` signs in next, `wipe` runs before the first render.
 - **Relaunch:** `restore()` reads the Keychain, so a killed app comes back signed in. AsyncStorage holds an install marker (`gagnechris.installed`); a launch without one deletes the Keychain items first, because Keychain items outlive an uninstall. The marker is written again after each sign-in, since sign-out clears AsyncStorage.
-- **Sign-out:** `wipe` (the query client is cleared and AsyncStorage emptied), then the refresh token is revoked (`/oauth2/revoke`, best effort), then the Keychain items are deleted. With `ephemeralSession: false` (the fallback if passkeys fail in an ephemeral session) it also opens `/logout` with the configured `logout_uri`, and "Use a different account" adds `prompt=login`.
+- **Sign-out:** More's confirmation warns "N unsaved edits will be lost." (`signOutWarning`) when the pending-save queue isn't empty. Then `wipe` (`wipeLocalData`, see [Cached reads and offline](#cached-reads-and-offline)), then the refresh token is revoked (`/oauth2/revoke`, best effort), then the Keychain items are deleted. With `ephemeralSession: false` (the fallback if passkeys fail in an ephemeral session) it also opens `/logout` with the configured `logout_uri`, and "Use a different account" adds `prompt=login`.
 - **Access:** the `notebook` group comes from the ID token's `cognito:groups`; without it the app shows No access.
 
 ### iOS sign-in and associated domains
@@ -172,7 +184,7 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
 2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.
 3. `npm run export:ios` — `expo export --platform ios --source-maps`.
-4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, if `zod/v4/` is absent, or if no sources come from app-core, `@tanstack/react-query`, `expo-crypto`, or `expo-router`.
+4. `npm run check:bundle` — fails if any sourcemap lists a `.d.ts` source, if zod is missing, if `zod/v3/` appears, if `zod/v4/` is absent, or if no sources come from app-core, `@tanstack/react-query`, `@tanstack/query-async-storage-persister`, `@react-native-community/netinfo`, `expo-crypto`, or `expo-router`.
 5. `npm run smoke:bundle` — builds a Metro bundle from `scripts/smoke-entry.ts` with the app's real `metro.config.js` and **executes it in Node**: it evaluates shared Zod schemas, runs the Notebook view logic (`bucketTodayTasks`, `groupUpcomingTasks`), parses markdown with `parseMarkdownBlocks`, asserts Zod 4 APIs (`z.email`), generates a ULID with the native `crypto` removed and the app's `getRandomValues` installer in its place, and renders app-core's `createVersionedResource(...).useQuery` with `react-test-renderer` under `AppApiProvider` + `QueryClientProvider` until the query resolves. A second React or react-query copy in the Metro graph fails that render.
 
 A successful `expo export` alone does not prove the bundle runs: a resolver that maps `.js` to `.d.ts` inside `node_modules` (for example `zod/v4/classic/external.js`) exports cleanly, then throws `TypeError: undefined is not a function` at module load. Step 4 reports the `.d.ts` sources and step 5 fails (e.g. `TypeError: _zod.z.literal is not a function`).

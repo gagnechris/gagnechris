@@ -7,7 +7,12 @@ export {
 } from './platform.js';
 export { mergeEditorSeo } from './mergeEditorSeo.js';
 export { useLatest } from './useLatest.js';
-export { clearPendingFlushes, hasPendingFlushes } from './pendingFlushes.js';
+export {
+  clearPendingFlushes,
+  hasPendingFlushes,
+  pendingFlushCount,
+  subscribePendingFlushes,
+} from './pendingFlushes.js';
 export {
   AUTOSAVE_DEBOUNCE_MS,
   AUTOSAVE_RETRY_DELAYS_MS,

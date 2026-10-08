@@ -6,6 +6,7 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useArea } from '../../../src/area';
+import { signOutWarning } from '../../../src/cache';
 import { displayName, initials, useSession } from '../../../src/session';
 import { color, font } from '../../../src/theme';
 import { useAreaPicker } from '../../../src/ui/AreaChip';
@@ -24,7 +25,7 @@ const MoreScreen = () => {
   const name = displayName(user);
 
   const confirmSignOut = () =>
-    Alert.alert('Sign out of Notebook?', undefined, [
+    Alert.alert('Sign out of Notebook?', signOutWarning(), [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
     ]);

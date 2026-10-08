@@ -2,6 +2,7 @@ import bundledNativeModules from 'expo/bundledNativeModules.json';
 import { describe, expect, it } from 'vitest';
 import appJson from '../app.json';
 import eas from '../eas.json';
+import lock from '../package-lock.json';
 import pkg from '../package.json';
 
 const app = appJson.expo;
@@ -48,6 +49,17 @@ describe('native build config', () => {
       .filter(([name]) => name !== 'react' && name in bundled)
       .filter(([name, range]) => bundled[name] !== range);
     expect(mismatched).toEqual([]);
+  });
+
+  it('pins the query persisters to the installed react-query', () => {
+    const installed =
+      lock.packages['node_modules/@tanstack/react-query'].version;
+    expect(pkg.dependencies['@tanstack/react-query-persist-client']).toBe(
+      installed,
+    );
+    expect(pkg.dependencies['@tanstack/query-async-storage-persister']).toBe(
+      installed,
+    );
   });
 
   const buildProperties = () =>

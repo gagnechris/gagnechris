@@ -8,6 +8,8 @@ import { createVersionedResource } from '../src/query/createVersionedResource.js
 import {
   clearPendingFlushes,
   hasPendingFlushes,
+  pendingFlushCount,
+  subscribePendingFlushes,
 } from '../src/pendingFlushes.js';
 import { useVersionedDocEditor } from '../src/useVersionedDocEditor.js';
 import { act, renderHook } from './renderHook.js';
@@ -128,6 +130,32 @@ describe('unsaved edits outliving their editor', () => {
     await waitUntil(() => store.get('n1')?.body === 'offline words', 'retry');
     expect(store.get('n1')?.version).toBe(2);
     await waitUntil(() => !hasPendingFlushes(), 'queue drained');
+  });
+
+  test('subscribers see the queued count rise and fall', async () => {
+    const { server, signals, mount } = setup();
+    const counts: number[] = [];
+    const unsubscribe = subscribePendingFlushes(() => {
+      counts.push(pendingFlushCount());
+    });
+    const first = mount();
+    await waitUntil(() => !first.result.current.isLoading, 'hydrate');
+
+    server.offline = true;
+    act(() => {
+      first.result.current.updateDraft(() => ({ body: 'queued' }));
+    });
+    first.unmount();
+    await waitUntil(() => signals.count > 0, 'waiting for a retry signal');
+    expect(counts).toEqual([1]);
+
+    server.offline = false;
+    act(() => {
+      signals.fire();
+    });
+    await waitUntil(() => pendingFlushCount() === 0, 'queue drained');
+    expect(counts).toEqual([1, 0]);
+    unsubscribe();
   });
 
   test('remounting during the unmount save waits for it instead of hydrating stale text', async () => {

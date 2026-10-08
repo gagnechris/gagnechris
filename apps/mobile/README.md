@@ -2,7 +2,10 @@
 
 Expo app (expo-router, dev client) for Notebook on iPhone: tabs for Today,
 Upcoming, Notes, Tasks and More, the Work / Personal / All area switch, and the
-No access screen. It runs the monorepo client packages under Metro.
+No access screen. It runs the monorepo client packages under Metro. The Notebook query
+cache is persisted for offline reads (`src/cache/`), with an offline banner and
+autosave retry on reconnect (`src/net/`); see
+`docs/mobile.md#cached-reads-and-offline`.
 
 This app is not part of the root npm workspaces and has its own lockfile, so its
 dependencies install separately. See `docs/mobile.md`.
@@ -47,7 +50,7 @@ access). Anything else uses Cognito managed login and needs
 
 ```bash
 npm run export:ios      # expo export --platform ios --source-maps
-npm run check:bundle    # no .d.ts; zod/v4, app-core, react-query, expo-crypto, expo-router present; no zod/v3
+npm run check:bundle    # no .d.ts; zod/v4, app-core, react-query, persister, netinfo, expo-crypto, expo-router present; no zod/v3
 npm run smoke:bundle    # Metro bundle run in Node: zod v4, polyfilled ULID, app-core hook render
 ```
 
