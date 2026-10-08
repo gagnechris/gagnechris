@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { useNotesByIds, useTasksQuery, type Task } from '@gagnechris/app-core';
-import { formatTaskDay } from '@gagnechris/shared';
+import {
+  formatTaskDay,
+  groupUpcomingTasks,
+  noteChipLabel,
+  type SourceNote,
+  taskDue,
+} from '@gagnechris/shared';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
-import { taskDue } from '../kit/tasks/taskDue';
 import type { TaskLineDraft } from '../kit/tasks/taskLine';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
-import type { SourceNote } from '../kit/tasks/todayTaskBuckets';
-import { groupUpcomingTasks, noteChipLabel } from '../kit/tasks/upcomingGroups';
 import {
   areaQueryParam,
   NOTEBOOK_AREA_HEADINGS,

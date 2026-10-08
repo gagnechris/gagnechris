@@ -9,6 +9,10 @@ import {
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
+  COMING_UP_DAYS,
+  type ComingUpDay,
+  comingUpDayLabel,
+  comingUpWindow,
   formatTaskDay,
   nextWeekday,
   type Task,
@@ -19,12 +23,6 @@ import { useTabs } from '../useTabs';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
-import {
-  COMING_UP_DAYS,
-  comingUpDayLabel,
-  comingUpWindow,
-  type ComingUpDay,
-} from './todayTaskBuckets';
 import './todayPanels.css';
 
 type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;

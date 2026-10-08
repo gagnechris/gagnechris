@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { taskDue } from './taskDue';
+import { taskDue } from './task-due.js';
 
 // 2026-10-02 is a Friday.
 const FRI = '2026-10-02';

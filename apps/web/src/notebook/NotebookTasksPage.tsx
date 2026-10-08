@@ -7,6 +7,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   addDays,
+  taskDue,
   type TaskPriority,
   type TaskStatus,
   weekdayOf,
@@ -21,7 +22,6 @@ import {
 } from '../kit/tasks/taskOptions';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
-import { taskDue } from '../kit/tasks/taskDue';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import { useLocalToday } from './useLocalToday';
 import { useQuickAddTask } from './useQuickAddTask';

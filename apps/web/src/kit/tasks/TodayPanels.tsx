@@ -1,24 +1,22 @@
 import { createElement, useId, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  COMING_UP_DAYS,
+  type ComingUpDay,
+  comingUpDayLabel,
+  comingUpShortLabel,
+  comingUpWindow,
   formatTaskDay,
   nextWeekday,
+  type StillOpenSource,
   type Task,
+  type TaskDue,
   type TaskSchedule,
   weekdayName,
 } from '@gagnechris/shared';
 import { SnoozeMenu } from './SnoozeMenu';
 import { TaskDuePill } from './TaskDuePill';
-import type { TaskDue } from './taskDue';
 import { TaskCheckbox } from './TaskRow';
-import {
-  COMING_UP_DAYS,
-  comingUpDayLabel,
-  comingUpShortLabel,
-  comingUpWindow,
-  type ComingUpDay,
-  type StillOpenSource,
-} from './todayTaskBuckets';
 import './todayPanels.css';
 
 type PanelTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;

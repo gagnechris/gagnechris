@@ -1,4 +1,4 @@
-import { addDays, isCalendarDay, relativeDayLabel } from '@gagnechris/shared';
+import { addDays, isCalendarDay, relativeDayLabel } from './calendar.js';
 
 /** `@Tue` within the coming week, else `@Oct 12`; undefined when unscheduled. */
 export function taskScheduleLabel(
