@@ -164,7 +164,7 @@ Metro config (`metro.config.js`) watches the repo root, resolves `node_modules` 
 
 ## API target and auth
 
-- `EXPO_PUBLIC_API_BASE_URL` sets the API origin; the default is the local API at `http://127.0.0.1:8787` (`npm run local:dev`).
+- `EXPO_PUBLIC_API_BASE_URL` sets the API origin; the default is the local API at `http://127.0.0.1:8787` (`npm run local:dev`). The `preview` and `production` profiles in `eas.json` set it to `https://gagnechris.com`, because EAS has no `.env.local` and a device build would otherwise call the local default.
 - `EXPO_PUBLIC_AUTH_MODE` is `local` or `cognito`. Unset, it is `local` against a local API and `cognito` otherwise. `local` only takes effect in dev builds (`__DEV__`); a release build always uses Cognito.
 - `TokenProvider` in `@gagnechris/api-client` accepts `{ forceRefresh?: boolean }`. On a 401 or 403 the client calls it once with `forceRefresh: true` and retries the request once with the new token. Requests already in flight when a refresh starts share it, so concurrent 401s cause one refresh. If the refresh throws or returns no token, the caller gets the original response.
 

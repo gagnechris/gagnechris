@@ -28,6 +28,14 @@ describe('native build config', () => {
     expect(eas.build.preview).toBeDefined();
   });
 
+  it('points device builds at the production API, never the local default', () => {
+    for (const profile of [eas.build.preview, eas.build.production]) {
+      expect(profile.env.EXPO_PUBLIC_API_BASE_URL).toBe(
+        'https://gagnechris.com',
+      );
+    }
+  });
+
   it('builds for TestFlight without the export-compliance question', () => {
     expect(app.version).toMatch(/^[1-9]\d*\.\d+\.\d+$/);
     expect(app.ios.config.usesNonExemptEncryption).toBe(false);
