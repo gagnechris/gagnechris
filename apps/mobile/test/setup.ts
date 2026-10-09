@@ -32,6 +32,8 @@ const Pressable = ({
     typeof children === 'function' ? children({ pressed: false }) : children,
   );
 
+vi.mock('expo-sqlite', async () => (await import('./expoSqlite')).expoSqlite);
+
 vi.mock('react-native', () => ({
   View: host('View'),
   Text: host('Text'),

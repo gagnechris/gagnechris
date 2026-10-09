@@ -1,6 +1,7 @@
 export {
   createApiClient,
   type ApiClient,
+  type ApiMiddleware,
   type CreateApiClientOptions,
   type TokenProvider,
   type TokenProviderOptions,

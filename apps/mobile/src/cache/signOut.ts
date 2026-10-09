@@ -1,8 +1,15 @@
 import { clearPendingFlushes, pendingFlushCount } from '@gagnechris/app-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteOutboxDb } from '../outbox/nativeDb';
+import {
+  outboxFailedCount,
+  outboxPendingCount,
+  stopOutbox,
+} from '../outbox/session';
 import { activeCacheSession } from './session';
 
-export const unsavedEditCount = pendingFlushCount;
+export const unsavedEditCount = () =>
+  pendingFlushCount() + outboxPendingCount() + outboxFailedCount();
 
 /** The sign-out confirmation's message, when edits would be lost. */
 export const signOutWarning = (count = unsavedEditCount()) =>
@@ -13,9 +20,11 @@ export const signOutWarning = (count = unsavedEditCount()) =>
 /**
  * Wipes every local copy of the user's data. Order matters: the persister
  * stops first so a throttled write can't put the cache back after the clear.
+ * The outbox closes before anything else, so no queued write is sent after it.
  * Token revocation and Keychain deletion follow, owned by sign-in.
  */
 export const wipeLocalData = async () => {
+  await stopOutbox(deleteOutboxDb);
   const session = activeCacheSession();
   await session?.stop();
   session?.queryClient.clear();

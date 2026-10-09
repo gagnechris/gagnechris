@@ -1,4 +1,4 @@
-import { createApiClient } from '@gagnechris/api-client';
+import { createApiClient, type ApiClient } from '@gagnechris/api-client';
 import { AppApiProvider } from '@gagnechris/app-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack } from 'expo-router';
@@ -11,13 +11,15 @@ import { createAppAuth } from '../src/auth';
 import { SessionQueryCache, wipeLocalData } from '../src/cache';
 import { apiBaseUrl } from '../src/config';
 import { NetworkStatus, startConnectivity } from '../src/net';
+import { outboxMiddleware, useOutboxSession } from '../src/outbox';
 import { rootGuards, SessionProvider, useSession } from '../src/session';
 import { sendClientVersion, useSyncFeed } from '../src/sync';
 import { color } from '../src/theme';
 
 const backend = createAppAuth();
 
-const SyncFeed = () => {
+const NotebookSync = ({ client }: { client: ApiClient }) => {
+  useOutboxSession(client);
   useSyncFeed();
   return null;
 };
@@ -26,7 +28,14 @@ const RootStack = () => {
   const { status, hasNotebook, getToken } = useSession();
   // One client, so concurrent 401s share its refresh.
   const client = useMemo(
-    () => sendClientVersion(createApiClient({ baseUrl: apiBaseUrl, getToken })),
+    () =>
+      sendClientVersion(
+        createApiClient({
+          baseUrl: apiBaseUrl,
+          getToken,
+          before: [outboxMiddleware],
+        }),
+      ),
     [getToken],
   );
   const getClient = useCallback(() => client, [client]);
@@ -34,7 +43,7 @@ const RootStack = () => {
   const guards = rootGuards(status, hasNotebook);
   return (
     <AppApiProvider getClient={getClient}>
-      {guards.notebook ? <SyncFeed /> : null}
+      {guards.notebook ? <NotebookSync client={client} /> : null}
       <Stack
         screenOptions={{
           headerShown: false,

@@ -103,7 +103,8 @@ The TanStack Query cache is persisted as one JSON value (`createAsyncStoragePers
 | Data                         | Where                                         | Protection                            |
 | ---------------------------- | --------------------------------------------- | ------------------------------------- |
 | Persisted query cache        | AsyncStorage (Application Support, no backup) | Data Protection, default class        |
-| Unsaved edits (v1)           | Memory only                                   | none needed                           |
+| Edits open in an editor      | Memory only                                   | none needed                           |
+| Outbox (unsent edits)        | expo-sqlite (`Documents/SQLite`, backed up)   | Data Protection, default class        |
 | Refresh token, ID token      | Keychain via expo-secure-store                | `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` |
 | Install marker, cache schema | AsyncStorage                                  | as the cache                          |
 
@@ -113,7 +114,7 @@ The TanStack Query cache is persisted as one JSON value (`createAsyncStoragePers
 
 1. Stop the persister subscription.
 2. `queryClient.clear()` and clear app-core's pending-save queue. Sign-out with unsaved edits asks first ("N unsaved edits will be lost").
-3. `AsyncStorage.clear()` (nothing else lives there in v1). Anything the app later stores on disk joins this list, and the sign-out test asserts every store is empty.
+3. Close and delete the outbox database, then `AsyncStorage.clear()`. Anything the app later stores on disk joins this list, and the sign-out test asserts every store is empty.
 4. Revoke the refresh token (`/oauth2/revoke`; the clients have token revocation on).
 5. Delete the Keychain items.
 
@@ -161,7 +162,7 @@ These policies bind the outbox work; v1 implements none of them except where not
 
 ### Store
 
-expo-sqlite, one database for the outbox and synced entities, opened in a directory excluded from backup (not the default `Documents/SQLite`). Sign-out closes and deletes the database file instead of deleting rows. Its schema has its own migrations, and an app update never drops pending operations.
+expo-sqlite, one database (`notebook-outbox.db`) holding only the operations not yet on the server; synced entities stay in the persisted query cache. It lives in expo-sqlite's default `Documents/SQLite`, which encrypted device backups include: neither expo-sqlite nor expo-file-system can mark a file excluded from backup, `Caches` can be purged by iOS with unsent edits in it, and a restored copy only replays its operations against version checks. Sign-out closes and deletes the database file instead of deleting rows. Its schema has its own migrations, and an app update never drops pending operations.
 
 ### Ordering and dependencies
 
