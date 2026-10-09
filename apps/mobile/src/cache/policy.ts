@@ -19,8 +19,9 @@ const notebookRoots: readonly QueryKey[] = [
   queryKeys.tasks.all,
 ];
 
-// `daily-dates` holds a Set, which JSON turns into `{}`.
-const persistedKinds = new Set(['list', 'detail', 'batch', 'daily']);
+// `daily-dates` holds a Set, which JSON turns into `{}`. `sync` is the change
+// feed watermark, which is only valid alongside the cache it describes.
+const persistedKinds = new Set(['list', 'detail', 'batch', 'daily', 'sync']);
 
 const hasSearchTerm = (filters: unknown) =>
   typeof filters === 'object' &&

@@ -8,5 +8,6 @@ export {
   EditorOfflineNotice,
   NetworkStatus,
   OFFLINE_MESSAGE,
+  upgradeMessage,
 } from './NetworkStatus';
 export { useUnsavedEditCount } from './useUnsavedEditCount';

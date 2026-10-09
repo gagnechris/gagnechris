@@ -12,15 +12,21 @@ import { SessionQueryCache, wipeLocalData } from '../src/cache';
 import { apiBaseUrl } from '../src/config';
 import { NetworkStatus, startConnectivity } from '../src/net';
 import { rootGuards, SessionProvider, useSession } from '../src/session';
+import { sendClientVersion, useSyncFeed } from '../src/sync';
 import { color } from '../src/theme';
 
 const backend = createAppAuth();
+
+const SyncFeed = () => {
+  useSyncFeed();
+  return null;
+};
 
 const RootStack = () => {
   const { status, hasNotebook, getToken } = useSession();
   // One client, so concurrent 401s share its refresh.
   const client = useMemo(
-    () => createApiClient({ baseUrl: apiBaseUrl, getToken }),
+    () => sendClientVersion(createApiClient({ baseUrl: apiBaseUrl, getToken })),
     [getToken],
   );
   const getClient = useCallback(() => client, [client]);
@@ -28,6 +34,7 @@ const RootStack = () => {
   const guards = rootGuards(status, hasNotebook);
   return (
     <AppApiProvider getClient={getClient}>
+      {guards.notebook ? <SyncFeed /> : null}
       <Stack
         screenOptions={{
           headerShown: false,
