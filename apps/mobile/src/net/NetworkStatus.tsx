@@ -1,29 +1,40 @@
 import { tokens } from '@gagnechris/tokens';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUpgradeRequired } from '../sync/upgradeRequired';
 import { useIsOnline } from './connectivity';
 import { useUnsavedEditCount } from './useUnsavedEditCount';
 
 export const OFFLINE_MESSAGE = 'Offline — showing saved copy';
 export const EDITOR_OFFLINE_MESSAGE = 'Offline — will save when connected';
 
+export const upgradeMessage = (minimum: string) =>
+  `Update the app from TestFlight to keep syncing${minimum ? ` (${minimum} or later)` : ''}.`;
+
 export const unsavedEditsLabel = (count: number) =>
   count === 1 ? '1 unsaved edit' : `${count} unsaved edits`;
 
 /**
- * The offline banner and the count of edits still waiting to save. Sits above
+ * The offline banner, the count of edits still waiting to save, and the
+ * update prompt after the API refuses this app version. Sits above
  * the navigator and takes the top inset only while it shows.
  */
 export const NetworkStatus = () => {
   const online = useIsOnline();
   const unsaved = useUnsavedEditCount();
+  const upgrade = useUpgradeRequired();
   const insets = useSafeAreaInsets();
-  if (online && unsaved === 0) return null;
+  if (online && unsaved === 0 && upgrade === null) return null;
   return (
     <View
       style={[styles.bar, { paddingTop: insets.top + tokens.space[1] }]}
       accessibilityRole="summary"
     >
+      {upgrade === null ? null : (
+        <Text style={styles.text} testID="upgrade-required">
+          {upgradeMessage(upgrade)}
+        </Text>
+      )}
       {online ? null : <Text style={styles.text}>{OFFLINE_MESSAGE}</Text>}
       {unsaved > 0 ? (
         <Text style={styles.text} testID="unsaved-edits">

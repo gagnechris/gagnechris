@@ -1,6 +1,9 @@
 import type { Note, Task } from '@gagnechris/app-core';
 import {
+  CLIENT_VERSION_HEADER,
+  isClientVersionSupported,
   isOpenTaskStatus,
+  parseClientVersion,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
   taskShowsOn,
@@ -121,6 +124,12 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     requests: [] as string[],
     writes: 0,
     conflicts: 0,
+    /** `x-gagnechris-client-version` of every request. */
+    clientVersions: [] as (string | null)[],
+    /** The sync feed answers 426 below it. */
+    minClientVersion: null as string | null,
+    /** The sync feed answers 410 for a `since` older than this. */
+    resyncBefore: null as string | null,
   };
   let clock = Date.parse('2026-10-02T12:00:00.000Z');
   const now = () => new Date((clock += 1_000)).toISOString();
@@ -146,6 +155,47 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     return next;
   };
 
+  /** A write from another device: bumps the version and the feed position. */
+  const remoteEdit = <T extends Note | Task>(
+    map: Map<string, T>,
+    id: string,
+    fields: Partial<T>,
+  ): T => {
+    const current = map.get(id)!;
+    const next = {
+      ...current,
+      ...fields,
+      version: current.version + 1,
+      updatedAt: now(),
+    };
+    map.set(id, next);
+    return next;
+  };
+
+  const syncChanges = (params: URLSearchParams) => {
+    const watermark = now();
+    const since = params.get('since');
+    const entries = [
+      ...[...store.values()].map((entity) => ['note', entity] as const),
+      ...[...taskStore.values()].map((entity) => ['task', entity] as const),
+    ]
+      .filter(([, entity]) => !since || entity.updatedAt >= since)
+      .sort(([, a], [, b]) => a.updatedAt.localeCompare(b.updatedAt))
+      .map(([type, entity]) => ({
+        type,
+        id: entity.id,
+        version: entity.version,
+        updatedAt: entity.updatedAt,
+        ...(entity.deleted ? { deleted: true } : { deleted: false, entity }),
+      }));
+    const { items, nextCursor } = page(entries, params);
+    return {
+      changes: items,
+      ...(nextCursor ? { nextCursor } : {}),
+      nextSince: watermark,
+    };
+  };
+
   const fetch = async (input: Request): Promise<Response> => {
     const url = new URL(input.url);
     const route = `${input.method} ${url.pathname}`;
@@ -154,6 +204,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       throw new TypeError('Network request failed');
     }
     state.requests.push(route);
+    const clientVersion = input.headers.get(CLIENT_VERSION_HEADER);
+    state.clientVersions.push(clientVersion);
     const params = url.searchParams;
     const note = url.pathname.match(/^\/api\/notebook\/notes\/([^/]+)$/);
     const daily = url.pathname.match(
@@ -163,6 +215,31 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       /^\/api\/notebook\/tasks\/([^/]+)(\/complete|\/reopen)?$/,
     );
 
+    if (route === 'GET /api/notebook/sync/changes') {
+      const minimum = state.minClientVersion;
+      if (
+        minimum &&
+        clientVersion &&
+        !isClientVersionSupported(
+          parseClientVersion(clientVersion)!,
+          parseClientVersion(minimum)!,
+        )
+      ) {
+        return json(426, {
+          error: 'upgrade_required',
+          message: 'Upgrade required',
+          minClientVersion: minimum,
+        });
+      }
+      const since = params.get('since');
+      if (since && state.resyncBefore && since < state.resyncBefore) {
+        return json(410, {
+          error: 'resync_required',
+          message: 'Full resync required',
+        });
+      }
+      return json(200, syncChanges(params));
+    }
     if (route === 'GET /api/notebook/notes') {
       const all = [...store.values()].filter((n) => matchesNote(n, params));
       return json(200, page(all, params));
@@ -371,5 +448,12 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     }
     return json(404, { error: 'not_found' });
   };
-  return { state, fetch };
+  return {
+    state,
+    fetch,
+    editNote: (id: string, fields: Partial<Note>) =>
+      remoteEdit(store, id, fields),
+    editTask: (id: string, fields: Partial<Task>) =>
+      remoteEdit(taskStore, id, fields),
+  };
 };
