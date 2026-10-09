@@ -33,6 +33,7 @@ const MIGRATIONS: readonly string[] = [
     status INTEGER,
     error TEXT
   )`,
+  `ALTER TABLE ops ADD COLUMN base TEXT NOT NULL DEFAULT '{}'`,
 ];
 
 export const OUTBOX_SCHEMA_VERSION = MIGRATIONS.length;
@@ -65,6 +66,7 @@ type Row = {
   state: string;
   status: number | null;
   error: string | null;
+  base: string;
 };
 
 const toOp = (row: Row): Op => ({
@@ -75,6 +77,7 @@ const toOp = (row: Row): Op => ({
   method: row.method as Op['method'],
   path: row.path,
   body: JSON.parse(row.body) as Body,
+  base: JSON.parse(row.base) as Body,
   sent: row.sent === 1,
   state: row.state as Op['state'],
   status: row.status,
@@ -89,13 +92,14 @@ export const insertOp = async (
   op: Omit<Op, 'seq' | 'sent' | 'state' | 'status' | 'error'>,
 ): Promise<number> => {
   const result = await db.runAsync(
-    'INSERT INTO ops (entity, entity_id, kind, method, path, body) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO ops (entity, entity_id, kind, method, path, body, base) VALUES (?, ?, ?, ?, ?, ?, ?)',
     op.entity,
     op.entityId,
     op.kind,
     op.method,
     op.path,
     JSON.stringify(op.body),
+    JSON.stringify(op.base),
   );
   return result.lastInsertRowId;
 };
@@ -105,11 +109,21 @@ export const rewriteOp = (
   seq: number,
   body: Body,
   path: string,
+  base: Body,
 ) =>
   db.runAsync(
-    'UPDATE ops SET body = ?, path = ? WHERE seq = ?',
+    'UPDATE ops SET body = ?, path = ?, base = ? WHERE seq = ?',
     JSON.stringify(body),
     path,
+    JSON.stringify(base),
+    seq,
+  );
+
+/** A failed op goes back in line with the body the user chose. */
+export const requeueOp = (db: OutboxDb, seq: number, body: Body) =>
+  db.runAsync(
+    "UPDATE ops SET body = ?, state = 'pending', status = NULL, error = NULL WHERE seq = ?",
+    JSON.stringify(body),
     seq,
   );
 

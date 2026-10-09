@@ -1,6 +1,7 @@
 export { CLIENT_VERSION, sendClientVersion } from './clientVersion';
 export {
   applySyncChange,
+  findCached,
   pullSyncChanges,
   syncWatermarkKey,
   UpgradeRequiredError,

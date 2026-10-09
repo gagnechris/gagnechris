@@ -7,10 +7,22 @@ import {
 import { createApiClient } from '@gagnechris/api-client';
 import { AppApiProvider } from '@gagnechris/app-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactElement, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { AreaProvider, type KeyValueStore } from '../src/area';
 import { createAuthBackend } from '../src/auth/backend';
 import { localIssuer } from '../src/auth/local';
+import {
+  openOutboxDb,
+  outboxMiddleware,
+  startOutbox,
+  stopOutbox,
+} from '../src/outbox';
 import {
   createTokenStore,
   INSTALL_MARKER_KEY,
@@ -71,8 +83,25 @@ const getClient = () =>
     getToken: async () => 'local-ios:u1',
   });
 
-/** Requests go to the global `fetch`, which tests stub with `notebookServer`. */
-const Api = ({ children }: { children: ReactNode }) => {
+/**
+ * Requests go to the global `fetch`, which tests stub with `notebookServer`.
+ * With `outbox`, Notebook writes go through the outbox as in the app; the
+ * test stops it and clears `databases` afterwards.
+ */
+const Api = ({
+  outbox = false,
+  children,
+}: {
+  outbox?: boolean;
+  children: ReactNode;
+}) => {
+  const [client] = useState(() =>
+    createApiClient({
+      baseUrl: 'http://api.test',
+      getToken: async () => 'local-ios:u1',
+      before: [outboxMiddleware],
+    }),
+  );
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -82,9 +111,19 @@ const Api = ({ children }: { children: ReactNode }) => {
         },
       }),
   );
+  // Without the outbox, a client per call picks up a `fetch` stubbed mid-test.
+  const getApiClient = useCallback(
+    () => (outbox ? client : getClient()),
+    [client, outbox],
+  );
+  useEffect(() => {
+    if (!outbox) return;
+    void startOutbox({ db: openOutboxDb, client, queryClient });
+    return () => void stopOutbox();
+  }, [client, outbox, queryClient]);
   return (
     <QueryClientProvider client={queryClient}>
-      <AppApiProvider getClient={getClient}>{children}</AppApiProvider>
+      <AppApiProvider getClient={getApiClient}>{children}</AppApiProvider>
     </QueryClientProvider>
   );
 };
@@ -93,15 +132,17 @@ export const Providers = ({
   store = memoryStore().store,
   backend = signedInBackend(),
   wipe = async () => {},
+  outbox,
   children,
 }: {
   store?: KeyValueStore;
   backend?: AuthBackend;
   wipe?: () => Promise<void>;
+  outbox?: boolean;
   children: ReactNode;
 }) => (
   <SessionProvider backend={backend} wipe={wipe}>
-    <Api>
+    <Api outbox={outbox}>
       <AreaProvider store={store}>{children}</AreaProvider>
     </Api>
   </SessionProvider>

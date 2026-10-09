@@ -1,15 +1,23 @@
+import type { Note } from '@gagnechris/app-core';
 import {
   alreadyApplied,
+  autoMerge,
+  baseOf,
   classifyWrite,
+  conflictOf,
   dependsOn,
+  mergeDailyText,
   planEnqueue,
   project,
   rebase,
+  serverCopy,
   versionAfter,
   type Body,
   type Entity,
   type EntityType,
   type Op,
+  type OpKind,
+  type OpMethod,
 } from './ops';
 import {
   deleteOps,
@@ -18,6 +26,7 @@ import {
   markFailed,
   markSent,
   migrate,
+  requeueOp,
   rewriteOp,
   type OutboxDb,
 } from './store';
@@ -30,11 +39,26 @@ export type OutboxDeps = {
   lookup: (entity: EntityType, id: string) => Entity | undefined;
   /** A queued op landed; the cache takes the server's copy. */
   onSaved: (entity: EntityType, saved: Entity) => void;
+  /** The cache takes this copy even over a newer local one (a conflict resolved). */
+  onReplaced: (entity: EntityType, copy: Entity) => void;
+  /** A daily note that lost its day: the cache forgets it. */
+  onDropped: (entity: EntityType, id: string) => void;
+  /** Ids of cached tasks whose home note is `noteId`. */
+  tasksInNote: (noteId: string) => string[];
   isOnline: () => boolean;
   now?: () => string;
 };
 
 type Waiter = { resolve: (response: Response) => void; optimistic: Response };
+
+type Target = {
+  entity: EntityType;
+  entityId: string;
+  kind: OpKind;
+  path: string;
+  method: OpMethod;
+  body: Body;
+};
 
 const RETRY_MIN_MS = 2_000;
 const RETRY_MAX_MS = 60_000;
@@ -142,11 +166,14 @@ export class Outbox {
   }
 
   private async enqueue(
-    next: ReturnType<typeof classifyWrite> & object & { body: Body },
-  ): Promise<{ seq: number | null; optimistic: Response } | undefined> {
+    next: Target,
+  ): Promise<
+    { seq: number | null; optimistic: Response; entity?: Entity } | undefined
+  > {
     const { db } = this.deps;
-    const plan = planEnqueue(this.ops, next, this.inFlight);
     const current = this.deps.lookup(next.entity, next.entityId);
+    const base = baseOf(next.body, current);
+    const plan = planEnqueue(this.ops, { ...next, base }, this.inFlight);
     const status = next.kind === 'create' ? 201 : 200;
 
     if (plan.type === 'vanish') {
@@ -158,7 +185,11 @@ export class Outbox {
       await db.withTransactionAsync(() => deleteOps(db, plan.drop));
       this.ops = this.ops.filter((op) => !plan.drop.includes(op.seq));
       this.notify();
-      return { seq: null, optimistic: jsonResponse(gone ?? {}, 200) };
+      return {
+        seq: null,
+        optimistic: jsonResponse(gone ?? {}, 200),
+        entity: gone,
+      };
     }
 
     const merged =
@@ -171,32 +202,29 @@ export class Outbox {
       versionAfter({ kind: merged?.kind ?? next.kind, body: plan.body }),
       current?.version ?? 0,
     );
-    const entity = project(
-      { ...next, body: next.body },
-      current,
-      version,
-      this.now(),
-    );
+    const entity = project(next, current, version, this.now());
     if (!entity) return undefined;
     const optimistic = jsonResponse(entity, status);
 
     if (plan.type === 'merge') {
       const path = plan.path ?? merged!.path;
-      await rewriteOp(db, plan.seq, plan.body, path);
+      await rewriteOp(db, plan.seq, plan.body, path, plan.base);
       merged!.body = plan.body;
       merged!.path = path;
-      return { seq: plan.seq, optimistic };
+      merged!.base = plan.base;
+      return { seq: plan.seq, optimistic, entity };
     }
 
     let seq = 0;
     await db.withTransactionAsync(async () => {
       await deleteOps(db, plan.drop);
-      seq = await insertOp(db, { ...next, body: plan.body });
+      seq = await insertOp(db, { ...next, body: plan.body, base });
     });
     this.ops = this.ops.filter((op) => !plan.drop.includes(op.seq));
     this.ops.push({
       ...next,
       body: plan.body,
+      base,
       seq,
       sent: false,
       state: 'pending',
@@ -204,7 +232,7 @@ export class Outbox {
       error: null,
     });
     this.notify();
-    return { seq, optimistic };
+    return { seq, optimistic, entity };
   }
 
   /** The first op that may go now: failures block their entity and what depends on it. */
@@ -273,40 +301,23 @@ export class Outbox {
   }
 
   private async settle(op: Op, response: Response): Promise<boolean> {
-    const { db } = this.deps;
     const status = response.status;
     if (retryable(status)) {
       this.scheduleRetry();
       return false;
     }
     const body = await readJson(response);
-    const current =
-      body && typeof body === 'object'
-        ? (body as { current?: unknown }).current
-        : undefined;
+    const current = serverCopy(body);
     const landed =
       status < 300
         ? (body as Entity)
         : (status === 409 || status === 412) && alreadyApplied(op, current)
-          ? (current as Entity)
+          ? current
           : undefined;
 
     if (landed) {
       this.retryDelay = RETRY_MIN_MS;
-      const rebased = rebase(
-        this.ops.filter((other) => other.seq !== op.seq),
-        op,
-        landed.version,
-      );
-      await db.withTransactionAsync(async () => {
-        await deleteOps(db, [op.seq]);
-        for (const { seq, body: next } of rebased) {
-          const queued = this.ops.find((other) => other.seq === seq)!;
-          await rewriteOp(db, seq, next, queued.path);
-          queued.body = next;
-        }
-      });
-      this.ops = this.ops.filter((other) => other.seq !== op.seq);
+      await this.remove([op.seq], op, landed.version);
       this.deps.onSaved(op.entity, landed);
       this.resolveWaiters(op.seq, () =>
         jsonResponse(landed, status < 300 ? status : 200),
@@ -315,29 +326,222 @@ export class Outbox {
       return true;
     }
 
-    if (this.waiters.has(op.seq)) {
-      // The caller is still waiting, so it handles the refusal itself, as it
-      // would without the outbox (a 412 shows its conflict state).
-      await deleteOps(db, [op.seq]);
+    const conflict = conflictOf(status, body);
+    if (conflict === 'changed') {
+      const retry = autoMerge(op, current!);
+      if (retry) {
+        await this.rewrite(op, retry, current!.version);
+        return true;
+      }
+    }
+    if (
+      conflict === 'daily_taken' &&
+      !String(op.body.bodyMarkdown ?? '').trim()
+    ) {
+      // Nothing typed yet, so nothing is lost by taking the other device's day.
+      await this.adopt(op.entityId, current as Note);
+      this.resolveWaiters(op.seq, () => jsonResponse(current, 200));
+      return true;
+    }
+
+    if (!conflict && this.waiters.has(op.seq)) {
+      // The caller is still waiting, so it handles the error itself, as it
+      // would without the outbox (a payload too large shows its message).
+      await deleteOps(this.deps.db, [op.seq]);
       this.ops = this.ops.filter((other) => other.seq !== op.seq);
       this.resolveWaiters(op.seq, () => jsonResponse(body, status));
       this.notify();
       return true;
     }
 
-    await markFailed(db, op.seq, status, body);
+    // Parked until the user decides; the caller moves on with its local copy.
+    await markFailed(this.deps.db, op.seq, status, body);
     op.state = 'failed';
     op.status = status;
     op.error = body;
+    this.resolveWaiters(op.seq, (waiter) => waiter.optimistic);
     this.notify();
     return true;
   }
 
-  private resolveWaiters(seq: number, response: () => Response) {
+  /** Drops `seqs` and renumbers the entity's other ops from `version`. */
+  private async remove(seqs: number[], target: Op, version: number) {
+    const { db } = this.deps;
+    const rest = this.ops.filter((other) => !seqs.includes(other.seq));
+    const rebased = rebase(rest, target, version);
+    await db.withTransactionAsync(async () => {
+      await deleteOps(db, seqs);
+      for (const { seq, body } of rebased) {
+        const queued = rest.find((other) => other.seq === seq)!;
+        await rewriteOp(db, seq, body, queued.path, queued.base);
+        queued.body = body;
+      }
+    });
+    this.ops = rest;
+  }
+
+  /** Puts `op` back in line on top of the server's `version`, with `body`. */
+  private async rewrite(op: Op, body: Body, version: number) {
+    const { db } = this.deps;
+    const rebased = rebase(
+      this.ops.filter((other) => other.seq !== op.seq),
+      op,
+      version + 1,
+    );
+    await db.withTransactionAsync(async () => {
+      await requeueOp(db, op.seq, body);
+      for (const { seq, body: next } of rebased) {
+        const queued = this.ops.find((other) => other.seq === seq)!;
+        await rewriteOp(db, seq, next, queued.path, queued.base);
+        queued.body = next;
+      }
+    });
+    op.body = body;
+    op.state = 'pending';
+    op.status = null;
+    op.error = null;
+  }
+
+  /**
+   * The day belongs to `winner`: the losing note's ops go, unsent task creates
+   * move to the winner, and tasks already on the server get an update.
+   */
+  private async adopt(loserId: string, winner: Note) {
+    const { db } = this.deps;
+    const losing = this.ops.filter((op) => op.entityId === loserId);
+    const moved = this.ops.filter(
+      (op) => op.entity === 'task' && !op.sent && op.body.noteId === loserId,
+    );
+    await db.withTransactionAsync(async () => {
+      await deleteOps(
+        db,
+        losing.map((op) => op.seq),
+      );
+      for (const op of moved) {
+        op.body = { ...op.body, noteId: winner.id };
+        await rewriteOp(db, op.seq, op.body, op.path, op.base);
+      }
+    });
+    this.ops = this.ops.filter((op) => op.entityId !== loserId);
+    this.deps.onDropped('note', loserId);
+    this.deps.onReplaced('note', winner);
+    const queuedCreates = new Set(moved.map((op) => op.entityId));
+    for (const id of this.deps.tasksInNote(loserId)) {
+      if (queuedCreates.has(id)) continue;
+      const task = this.deps.lookup('task', id);
+      if (!task) continue;
+      const queued = await this.enqueue({
+        entity: 'task',
+        entityId: id,
+        kind: 'update',
+        method: 'PUT',
+        path: `/api/notebook/tasks/${id}`,
+        body: { version: task.version, noteId: winner.id },
+      });
+      if (queued?.entity) this.deps.onSaved('task', queued.entity);
+    }
+    this.notify();
+  }
+
+  /** Ops the server refused, one per entity, waiting for the user. */
+  conflicts = (): readonly Op[] =>
+    this.ops.filter((op) => op.state === 'failed');
+
+  conflictFor = (entityId: string): Op | undefined =>
+    this.ops.find((op) => op.entityId === entityId && op.state === 'failed');
+
+  private parked(entityId: string) {
+    const op = this.conflictFor(entityId);
+    if (!op) throw new Error(`No conflict on ${entityId}`);
+    return op;
+  }
+
+  /** Sends the phone's version over the server's. */
+  keepMine(entityId: string) {
+    return this.resolve(async () => {
+      const op = this.parked(entityId);
+      const current = serverCopy(op.error);
+      if (!current || current.deleted) throw new Error('Nothing to overwrite');
+      await this.rewrite(
+        op,
+        { ...op.body, version: current.version },
+        current.version,
+      );
+    });
+  }
+
+  /** Drops the phone's edits to the entity; the cache takes the server's copy. */
+  keepTheirs(entityId: string) {
+    return this.resolve(async () => {
+      const op = this.parked(entityId);
+      const current = serverCopy(op.error);
+      await this.dropEntity(entityId);
+      const copy =
+        current ??
+        (() => {
+          const local = this.deps.lookup(op.entity, entityId);
+          return local && { ...local, deleted: true };
+        })();
+      if (copy) this.deps.onReplaced(op.entity, copy);
+    });
+  }
+
+  /** Drops the phone's edits to the entity and leaves the cache to refetch. */
+  discard(entityId: string) {
+    return this.resolve(() => this.dropEntity(entityId));
+  }
+
+  /** The other device's daily note wins and the phone's text is dropped. */
+  useSavedDaily(entityId: string) {
+    return this.resolve(async () => {
+      const op = this.parked(entityId);
+      await this.adopt(entityId, serverCopy(op.error) as Note);
+    });
+  }
+
+  /** The phone's daily note text goes under the other device's. */
+  mergeDaily(entityId: string) {
+    return this.resolve(async () => {
+      const op = this.parked(entityId);
+      const winner = serverCopy(op.error) as Note;
+      const local = this.deps.lookup('note', entityId) as Note | undefined;
+      const typed = local?.bodyMarkdown ?? String(op.body.bodyMarkdown ?? '');
+      await this.adopt(entityId, winner);
+      const merged = mergeDailyText(winner.bodyMarkdown, typed);
+      if (merged === winner.bodyMarkdown) return;
+      const queued = await this.enqueue({
+        entity: 'note',
+        entityId: winner.id,
+        kind: 'update',
+        method: 'PUT',
+        path: `/api/notebook/notes/${winner.id}`,
+        body: { version: winner.version, bodyMarkdown: merged },
+      });
+      if (queued?.entity) this.deps.onReplaced('note', queued.entity);
+    });
+  }
+
+  private async dropEntity(entityId: string) {
+    const seqs = this.ops
+      .filter((op) => op.entityId === entityId)
+      .map((op) => op.seq);
+    await this.deps.db.withTransactionAsync(() =>
+      deleteOps(this.deps.db, seqs),
+    );
+    this.ops = this.ops.filter((op) => op.entityId !== entityId);
+  }
+
+  private async resolve(task: () => Promise<void>) {
+    await this.serial(task);
+    this.notify();
+    void this.drain();
+  }
+
+  private resolveWaiters(seq: number, response: (waiter: Waiter) => Response) {
     const list = this.waiters.get(seq);
     if (!list) return;
     this.waiters.delete(seq);
-    for (const waiter of list) waiter.resolve(response());
+    for (const waiter of list) waiter.resolve(response(waiter));
   }
 
   private settleWaiters() {

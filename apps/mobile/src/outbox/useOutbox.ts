@@ -6,6 +6,7 @@ import { openOutboxDb } from './nativeDb';
 import type { OutboxDb } from './store';
 import {
   drainOutbox,
+  outboxConflicts,
   outboxFailedCount,
   outboxPendingCount,
   startOutbox,
@@ -40,3 +41,9 @@ export const useOutboxFailedCount = () =>
 
 export const useOutboxPendingCount = () =>
   useSyncExternalStore(subscribeOutbox, outboxPendingCount, outboxPendingCount);
+
+export const useOutboxConflicts = () =>
+  useSyncExternalStore(subscribeOutbox, outboxConflicts, outboxConflicts);
+
+export const useConflict = (entityId: string) =>
+  useOutboxConflicts().find((conflict) => conflict.entityId === entityId);

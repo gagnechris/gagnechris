@@ -1,17 +1,17 @@
 import {
   dailyNoteResource,
-  useMergeIntoDailyNoteMutation,
   useNoteTaskEmbedSync,
   useVersionedDocEditor,
   type NotebookArea,
 } from '@gagnechris/app-core';
 import { taskEmbedIds, taskEmbedToken } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { useEffect, useMemo, type RefObject } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { EditorOfflineNotice, nativeRetrySignals, useIsOnline } from '../net';
-import { color, font, MIN_TARGET } from '../theme';
+import { color, font } from '../theme';
 import { nativeConfirm } from '../ui/confirm';
+import { ConflictPanel } from './ConflictPanel';
 import { NoteBodyEditor } from './NoteBodyEditor';
 import {
   emptyNoteDraft,
@@ -21,7 +21,7 @@ import {
 import { saveLabel } from './saveLabel';
 import { useSaveOnBackground } from './useSaveOnBackground';
 
-export const DAILY_TAKEN_MESSAGE =
+const DAILY_TAKEN_MESSAGE =
   'Another device started this daily note first. What you typed is still here.';
 
 /** The embed, then an empty line for the context written under it. */
@@ -42,14 +42,27 @@ type Props = {
 };
 
 /** A day's note in the note editor; written on first edit, as on web. */
-export const TodayNote = ({
+export const TodayNote = (props: Props) => {
+  // Remounted after a conflict is settled, so the editor takes the result.
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <DailyNoteEditor
+      key={`${props.area}:${props.date}:${epoch}`}
+      {...props}
+      onReload={() => setEpoch((n) => n + 1)}
+    />
+  );
+};
+
+const DailyNoteEditor = ({
   area,
   date,
   today,
   onEmbeddedIds,
   appendEmbedRef,
   onOpenTask,
-}: Props) => {
+  onReload,
+}: Props & { onReload: () => void }) => {
   const online = useIsOnline();
   const editor = useVersionedDocEditor({
     resource: dailyNoteResource,
@@ -70,7 +83,6 @@ export const TodayNote = ({
   });
   const { draft, updateDraft, entity, dirty, saveState, save, saveError } =
     editor;
-  const merge = useMergeIntoDailyNoteMutation();
   useSaveOnBackground(dirty, save);
 
   const ready = !editor.loadError && !editor.isLoading && Boolean(entity);
@@ -122,30 +134,11 @@ export const TodayNote = ({
           ? 'New'
           : saveLabel(saveState, dirty, !online)}
       </Text>
+      <ConflictPanel entityId={entity!.id} onResolved={onReload} />
       {saveError ? (
-        <View style={styles.alert} accessibilityRole="alert">
-          <Text style={styles.error}>
-            {merge.error ? merge.error.message : saveError}
-          </Text>
-          {saveError === DAILY_TAKEN_MESSAGE ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add it to their note"
-              onPress={() =>
-                merge.mutate(
-                  { area, date, bodyMarkdown: draft.bodyMarkdown },
-                  { onSuccess: () => editor.setSaveError(null) },
-                )
-              }
-              disabled={merge.isPending}
-              style={styles.mergeButton}
-            >
-              <Text style={styles.mergeText}>
-                {merge.isPending ? 'Adding…' : 'Add it to their note'}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <Text style={styles.error} accessibilityRole="alert">
+          {saveError}
+        </Text>
       ) : null}
       <EditorOfflineNotice dirty={dirty} />
       <NoteBodyEditor
@@ -169,14 +162,7 @@ const styles = StyleSheet.create({
     color: color.inkSoft,
     alignSelf: 'flex-end',
   },
-  alert: { gap: tokens.space[1] },
   error: { ...font.medium, fontSize: tokens.text.base, color: color.alert },
-  mergeButton: { minHeight: MIN_TARGET, justifyContent: 'center' },
-  mergeText: {
-    ...font.semibold,
-    fontSize: tokens.text.base,
-    color: color.accent,
-  },
   status: {
     ...font.regular,
     fontSize: tokens.text.base,

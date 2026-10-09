@@ -128,6 +128,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     clientVersions: [] as (string | null)[],
     /** The sync feed answers 426 below it. */
     minClientVersion: null as string | null,
+    /** Every write gets this refusal while set. */
+    refuseWrites: null as { status: number; body: unknown } | null,
     /** The sync feed answers 410 for a `since` older than this. */
     resyncBefore: null as string | null,
   };
@@ -141,7 +143,11 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
   ): Response | T => {
     if (body.version !== undefined && body.version !== current.version) {
       state.conflicts += 1;
-      return json(412, { error: 'version_conflict', current });
+      return json(412, {
+        error: 'version_conflict',
+        current,
+        currentVersion: current.version,
+      });
     }
     const { version: _version, ...fields } = body;
     const next = {
@@ -170,6 +176,16 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     };
     map.set(id, next);
     return next;
+  };
+
+  /** A write to an entity another device deleted, as the API answers it. */
+  const deletedConflict = (current: Note | Task) => {
+    state.conflicts += 1;
+    return json(409, {
+      error: 'deleted',
+      current,
+      currentVersion: current.version,
+    });
   };
 
   const syncChanges = (params: URLSearchParams) => {
@@ -204,6 +220,9 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       throw new TypeError('Network request failed');
     }
     state.requests.push(route);
+    if (state.refuseWrites && input.method !== 'GET') {
+      return json(state.refuseWrites.status, state.refuseWrites.body);
+    }
     const clientVersion = input.headers.get(CLIENT_VERSION_HEADER);
     state.clientVersions.push(clientVersion);
     const params = url.searchParams;
@@ -387,6 +406,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (note && input.method === 'PUT') {
       const current = store.get(note[1]!);
       if (!current) return json(404, { error: 'not_found' });
+      if (current.deleted) return deletedConflict(current);
       const body = (await input.json()) as Partial<Note> & { version: number };
       const result = put(store, current, body);
       if (result instanceof Response) return result;
@@ -399,6 +419,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (note && input.method === 'DELETE') {
       const current = store.get(note[1]!);
       if (!current) return json(404, { error: 'not_found' });
+      if (current.deleted) return deletedConflict(current);
       const result = put(store, current, {
         ...((await input.json()) as { version: number }),
         deleted: true,
@@ -427,8 +448,9 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (task) {
       const [, id, action] = task;
       const current = taskStore.get(id!);
-      if (!current || (current.deleted && input.method !== 'GET'))
-        return json(404, { error: 'not_found' });
+      if (!current) return json(404, { error: 'not_found' });
+      if (current.deleted && input.method !== 'GET')
+        return deletedConflict(current);
       if (input.method === 'GET') {
         return current.deleted
           ? json(404, { error: 'not_found' })
@@ -455,5 +477,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       remoteEdit(store, id, fields),
     editTask: (id: string, fields: Partial<Task>) =>
       remoteEdit(taskStore, id, fields),
+    deleteNote: (id: string) => remoteEdit(store, id, { deleted: true }),
+    deleteTask: (id: string) => remoteEdit(taskStore, id, { deleted: true }),
   };
 };

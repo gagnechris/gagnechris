@@ -1,5 +1,5 @@
 import type { Note, Task } from '@gagnechris/app-core';
-import { taskEmbedIds } from '@gagnechris/shared';
+import { deepEqual, taskEmbedIds } from '@gagnechris/shared';
 
 export type EntityType = 'note' | 'task';
 
@@ -22,6 +22,8 @@ export type Op = OpTarget & {
   /** From `/api/notebook`, so it resends through the same client. */
   path: string;
   body: Body;
+  /** The local values of the fields `body` changes, before the first unsent edit. */
+  base: Body;
   /** Attempted at least once; its body is frozen from then on. */
   sent: boolean;
   state: 'pending' | 'failed';
@@ -81,7 +83,7 @@ export const classifyWrite = (
 export const baseVersion = (body: Body): number | undefined =>
   typeof body.version === 'number' ? body.version : undefined;
 
-const fieldsOf = (body: Body): Body => {
+export const fieldsOf = (body: Body): Body => {
   const { version: _version, id: _id, ...fields } = body;
   return fields;
 };
@@ -99,9 +101,21 @@ const sameEntity = (a: OpTarget, b: OpTarget) =>
 const isFieldWrite = (kind: OpKind) =>
   kind === 'update' || kind === 'daily' || kind === 'create';
 
+// The API stores a cleared field (null) by omitting it.
+const same = (a: unknown, b: unknown) => deepEqual(a ?? null, b ?? null);
+
+/** What `body` changes, as the local copy held it before. */
+export const baseOf = (body: Body, current: Entity | undefined): Body => {
+  if (!current) return {};
+  const values = current as unknown as Body;
+  return Object.fromEntries(
+    Object.keys(fieldsOf(body)).map((key) => [key, values[key] ?? null]),
+  );
+};
+
 export type EnqueuePlan =
   /** Rewrite `seq`'s body; the new op is absorbed into it. */
-  | { type: 'merge'; seq: number; body: Body; path?: string }
+  | { type: 'merge'; seq: number; body: Body; base: Body; path?: string }
   /** Append the op, after dropping `drop`. */
   | { type: 'append'; drop: number[]; body: Body }
   /** A create and delete that never left the phone: drop both, send nothing. */
@@ -113,7 +127,7 @@ export type EnqueuePlan =
  */
 export const planEnqueue = (
   queue: readonly Op[],
-  next: OpTarget & { path: string; body: Body },
+  next: OpTarget & { path: string; body: Body; base: Body },
   inFlight: number | null,
 ): EnqueuePlan => {
   const mine = queue.filter((op) => sameEntity(op, next));
@@ -140,13 +154,21 @@ export const planEnqueue = (
         type: 'merge',
         seq: last.seq,
         body: { ...last.body, ...fieldsOf(next.body) },
+        // The earliest base of each field: what the server held before any of it.
+        base: { ...next.base, ...last.base },
       };
     }
     if (
       (next.kind === 'complete' || next.kind === 'reopen') &&
       (last.kind === 'complete' || last.kind === 'reopen')
     ) {
-      return { type: 'merge', seq: last.seq, body: last.body, path: next.path };
+      return {
+        type: 'merge',
+        seq: last.seq,
+        body: last.body,
+        base: last.base,
+        path: next.path,
+      };
     }
   }
   return { type: 'append', drop: [], body: next.body };
@@ -298,8 +320,98 @@ export const alreadyApplied = (op: Op, current: unknown): boolean => {
     case 'reopen':
       return server.status !== 'done';
     default:
-      return Object.entries(fieldsOf(op.body)).every(
-        ([key, value]) => JSON.stringify(server[key]) === JSON.stringify(value),
+      return Object.entries(fieldsOf(op.body)).every(([key, value]) =>
+        same(server[key], value),
       );
   }
+};
+
+/** The fields the op changes that the server also changed since its base. */
+export const conflictingFields = (op: Op, current: Entity): string[] => {
+  const server = current as unknown as Body;
+  return Object.entries(fieldsOf(op.body))
+    .filter(
+      ([key, value]) =>
+        !same(server[key], value) &&
+        (!(key in op.base) || !same(server[key], op.base[key])),
+    )
+    .map(([key]) => key);
+};
+
+/**
+ * The body to re-send on top of `current` after a version conflict, or null
+ * when the user has to choose: field writes merge where the server left the
+ * field alone, and complete and reopen apply to any version.
+ */
+export const autoMerge = (op: Op, current: Entity): Body | null => {
+  if (current.deleted) return null;
+  switch (op.kind) {
+    case 'update':
+    case 'daily':
+      return conflictingFields(op, current).length === 0
+        ? { ...op.body, version: current.version }
+        : null;
+    case 'complete':
+    case 'reopen':
+      return { ...op.body, version: current.version };
+    default:
+      return null;
+  }
+};
+
+/** Why the server refused an op the user has to decide about. */
+export type ConflictKind = 'changed' | 'deleted' | 'daily_taken' | 'refused';
+
+type Refusal = { error?: unknown; current?: unknown; message?: unknown };
+
+const refusalOf = (body: unknown): Refusal =>
+  body && typeof body === 'object' ? (body as Refusal) : {};
+
+/** The server's copy a refusal carries, when it has one. */
+export const serverCopy = (body: unknown): Entity | undefined => {
+  const { current } = refusalOf(body);
+  return current && typeof current === 'object'
+    ? (current as Entity)
+    : undefined;
+};
+
+export const refusalMessage = (body: unknown): string | undefined => {
+  const { message } = refusalOf(body);
+  return typeof message === 'string' ? message : undefined;
+};
+
+/** Null for a refusal the outbox treats as an error, not a conflict. */
+export const conflictOf = (
+  status: number,
+  body: unknown,
+): Exclude<ConflictKind, 'refused'> | null => {
+  const { error } = refusalOf(body);
+  if (status === 409 && error === 'deleted') return 'deleted';
+  if (status === 409 && error === 'daily_taken' && serverCopy(body))
+    return 'daily_taken';
+  if (
+    (status === 412 || (status === 409 && error === 'version_conflict')) &&
+    serverCopy(body)
+  )
+    return 'changed';
+  return null;
+};
+
+/**
+ * The phone's daily note text under the winner's, without the embed lines
+ * for tasks the winner already embeds (both days may carry the same ones in).
+ */
+export const mergeDailyText = (winner: string, local: string): string => {
+  const embedded = new Set(taskEmbedIds(winner));
+  const kept = local
+    .split('\n')
+    .filter((line) => {
+      const ids = taskEmbedIds(line);
+      return ids.length === 0 || ids.some((id) => !embedded.has(id));
+    })
+    .join('\n')
+    .trim();
+  const base = winner.replace(/\s+$/, '');
+  if (!kept || base.includes(kept)) return winner;
+  return base ? `${base}\n\n${kept}\n` : `${kept}\n`;
 };
