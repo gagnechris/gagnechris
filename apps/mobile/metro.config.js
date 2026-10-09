@@ -2,8 +2,9 @@ const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 
 /**
- * node_modules resolve from this app before the workspace root so the
- * Expo-pinned React wins over the root copy (see docs/mobile.md).
+ * node_modules resolve only from this app, as on EAS, which installs nothing
+ * at the workspace root: the shared packages' runtime deps must be listed in
+ * this app's package.json, and the Expo-pinned React is the only copy.
  */
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -12,10 +13,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 
 config.watchFolders = [workspaceRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(workspaceRoot, 'node_modules'),
-];
+config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
 config.resolver.disableHierarchicalLookup = true;
 config.resolver.unstable_enablePackageExports = true;
 
