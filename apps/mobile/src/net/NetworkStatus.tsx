@@ -1,6 +1,7 @@
 import { tokens } from '@gagnechris/tokens';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useOutboxFailedCount } from '../outbox/useOutbox';
 import { useUpgradeRequired } from '../sync/upgradeRequired';
 import { useIsOnline } from './connectivity';
 import { useUnsavedEditCount } from './useUnsavedEditCount';
@@ -14,6 +15,9 @@ export const upgradeMessage = (minimum: string) =>
 export const unsavedEditsLabel = (count: number) =>
   count === 1 ? '1 unsaved edit' : `${count} unsaved edits`;
 
+export const failedEditsLabel = (count: number) =>
+  count === 1 ? "1 edit couldn't sync" : `${count} edits couldn't sync`;
+
 /**
  * The offline banner, the count of edits still waiting to save, and the
  * update prompt after the API refuses this app version. Sits above
@@ -22,9 +26,10 @@ export const unsavedEditsLabel = (count: number) =>
 export const NetworkStatus = () => {
   const online = useIsOnline();
   const unsaved = useUnsavedEditCount();
+  const failed = useOutboxFailedCount();
   const upgrade = useUpgradeRequired();
   const insets = useSafeAreaInsets();
-  if (online && unsaved === 0 && upgrade === null) return null;
+  if (online && unsaved === 0 && failed === 0 && upgrade === null) return null;
   return (
     <View
       style={[styles.bar, { paddingTop: insets.top + tokens.space[1] }]}
@@ -39,6 +44,11 @@ export const NetworkStatus = () => {
       {unsaved > 0 ? (
         <Text style={styles.text} testID="unsaved-edits">
           {unsavedEditsLabel(unsaved)}
+        </Text>
+      ) : null}
+      {failed > 0 ? (
+        <Text style={styles.text} testID="failed-edits">
+          {failedEditsLabel(failed)}
         </Text>
       ) : null}
     </View>

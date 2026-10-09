@@ -55,6 +55,31 @@ describe('createApiClient', () => {
     expect(getToken).not.toHaveBeenCalled();
   });
 
+  it('lets a `before` middleware answer without fetching a token', async () => {
+    const getToken = vi.fn(async () => 'test-token');
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const client = createApiClient({
+      baseUrl: 'https://example.com',
+      getToken,
+      before: [
+        {
+          onRequest: () =>
+            new Response('{"id":"n1"}', {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+        },
+      ],
+    });
+    const { data } = await client.GET('/api/notebook/notes/{id}', {
+      params: { path: { id: 'n1' } },
+    });
+    expect(data).toEqual({ id: 'n1' });
+    expect(getToken).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('retries once on 401 with getToken({ forceRefresh: true })', async () => {
     const getToken = vi
       .fn()

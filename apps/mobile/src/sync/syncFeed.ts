@@ -42,7 +42,7 @@ const isPaged = (data: unknown): data is Paged =>
   Array.isArray((data as { pages?: unknown }).pages);
 
 /** The cached copy of an entity from its detail, daily or list entries. */
-const findCached = (
+export const findCached = (
   queryClient: QueryClient,
   type: SyncChange['type'],
   id: string,
@@ -65,7 +65,7 @@ const findCached = (
 // @tanstack/query-core, which tsc sees as a different class.
 type CoreQueryClient = Parameters<typeof setCachedNote>[0];
 
-const writeEntity = (
+export const writeEntity = (
   queryClient: QueryClient,
   entity: Entity,
   type: SyncChange['type'],
@@ -114,6 +114,7 @@ export const applySyncChange = (
 const dropMissing = (
   queryClient: QueryClient,
   seen: Record<SyncChange['type'], Set<string>>,
+  keep: (id: string) => boolean,
 ) => {
   for (const type of ['note', 'task'] as const) {
     const keys = kindOf(type);
@@ -127,7 +128,10 @@ const dropMissing = (
           pages: data.pages.map((page) => ({
             ...page,
             items: page.items.filter(
-              (item) => !(item as Entity).id || ids.has((item as Entity).id),
+              (item) =>
+                !(item as Entity).id ||
+                ids.has((item as Entity).id) ||
+                keep((item as Entity).id),
             ),
           })),
         });
@@ -136,7 +140,8 @@ const dropMissing = (
         data !== null &&
         typeof (data as Entity).id === 'string' &&
         (data as Entity).version > 0 &&
-        !ids.has((data as Entity).id)
+        !ids.has((data as Entity).id) &&
+        !keep((data as Entity).id)
       ) {
         queryClient.removeQueries({ queryKey: key, exact: true });
       }
@@ -172,13 +177,15 @@ const isResyncRequired = (error: unknown) =>
 export const pullSyncChanges = async (
   client: ApiClient,
   queryClient: QueryClient,
+  /** Entities with local edits not yet sent: their local copy stays. */
+  hasLocalEdits: (id: string) => boolean = () => false,
 ): Promise<void> => {
   const stored = queryClient.getQueryData<string>(syncWatermarkKey);
   try {
-    await pullFrom(client, queryClient, stored);
+    await pullFrom(client, queryClient, stored, hasLocalEdits);
   } catch (error) {
     if (stored === undefined || !isResyncRequired(error)) throw error;
-    await pullFrom(client, queryClient, undefined);
+    await pullFrom(client, queryClient, undefined, hasLocalEdits);
   }
 };
 
@@ -186,6 +193,7 @@ const pullFrom = async (
   client: ApiClient,
   queryClient: QueryClient,
   since: string | undefined,
+  hasLocalEdits: (id: string) => boolean,
 ) => {
   const seen = { note: new Set<string>(), task: new Set<string>() };
   let cursor: string | undefined;
@@ -194,11 +202,11 @@ const pullFrom = async (
     const page = await fetchPage(client, since, cursor);
     for (const change of page.changes) {
       seen[change.type].add(change.id);
-      applySyncChange(queryClient, change);
+      if (!hasLocalEdits(change.id)) applySyncChange(queryClient, change);
     }
     cursor = page.nextCursor;
     nextSince = page.nextSince;
   } while (cursor);
-  if (since === undefined) dropMissing(queryClient, seen);
+  if (since === undefined) dropMissing(queryClient, seen, hasLocalEdits);
   queryClient.setQueryData(syncWatermarkKey, nextSince);
 };

@@ -7,6 +7,7 @@ export {
   EDITOR_OFFLINE_MESSAGE,
   EditorOfflineNotice,
   NetworkStatus,
+  failedEditsLabel,
   OFFLINE_MESSAGE,
   upgradeMessage,
 } from './NetworkStatus';

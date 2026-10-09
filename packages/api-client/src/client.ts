@@ -17,7 +17,14 @@ export type CreateApiClientOptions = {
    * lacks the new `cognito:groups` until refreshed.
    */
   retryOnUnauthorized?: boolean;
+  /**
+   * Registered ahead of auth, so one can answer a request (from a local
+   * store) before a token is fetched or refreshed.
+   */
+  before?: Middleware[];
 };
+
+export type ApiMiddleware = Middleware;
 
 type Sent = { retry: globalThis.Request; refreshesBefore: number };
 
@@ -25,8 +32,10 @@ export const createApiClient = ({
   baseUrl,
   getToken,
   retryOnUnauthorized = true,
+  before = [],
 }: CreateApiClientOptions) => {
   const client = createClient<paths>({ baseUrl });
+  if (before.length > 0) client.use(...before);
   if (!getToken) {
     return client;
   }

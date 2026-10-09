@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
+import { hasLocalEdits } from '../outbox/session';
 import { pullSyncChanges, UpgradeRequiredError } from './syncFeed';
 import { setUpgradeRequired, upgradeRequired } from './upgradeRequired';
 
@@ -26,7 +27,7 @@ export const useSyncFeed = () => {
     const pull = () => {
       if (stopped || running || upgradeRequired() !== null) return;
       if (!onlineManager.isOnline()) return;
-      running = pullSyncChanges(getClient(), queryClient)
+      running = pullSyncChanges(getClient(), queryClient, hasLocalEdits)
         .catch((error: unknown) => {
           if (error instanceof UpgradeRequiredError) {
             setUpgradeRequired(error.minClientVersion);
