@@ -75,6 +75,83 @@ export const writeEntity = (
   else setCachedTask(core, entity as Task);
 };
 
+/** Swaps every cached copy of the entity for `entity`, whatever its version. */
+export const replaceEntity = (
+  queryClient: QueryClient,
+  entity: Entity,
+  type: SyncChange['type'],
+) => {
+  const keys = kindOf(type);
+  for (const [key, data] of queryClient.getQueriesData({
+    queryKey: keys.all,
+  })) {
+    if (hasId(data, entity.id)) {
+      queryClient.setQueryData(key, entity);
+    } else if (isPaged(data)) {
+      queryClient.setQueryData<Paged>(key, {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          items: page.items.map((item) =>
+            hasId(item, entity.id) ? entity : item,
+          ),
+        })),
+      });
+    }
+  }
+  const note = entity as Note;
+  if (type === 'note' && note.type === 'daily' && note.date) {
+    queryClient.setQueryData(queryKeys.notes.daily(note.area, note.date), note);
+  }
+  writeEntity(queryClient, entity, type);
+};
+
+/** Removes the entity's detail and its rows in cached lists. */
+export const forgetEntity = (
+  queryClient: QueryClient,
+  type: SyncChange['type'],
+  id: string,
+) => {
+  const keys = kindOf(type);
+  for (const [key, data] of queryClient.getQueriesData({
+    queryKey: keys.all,
+  })) {
+    if (hasId(data, id)) {
+      queryClient.removeQueries({ queryKey: key, exact: true });
+    } else if (isPaged(data)) {
+      queryClient.setQueryData<Paged>(key, {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          items: page.items.filter((item) => !hasId(item, id)),
+        })),
+      });
+    }
+  }
+};
+
+/** Cached tasks whose home note is `noteId`. */
+export const cachedTaskIdsInNote = (
+  queryClient: QueryClient,
+  noteId: string,
+): string[] => {
+  const ids = new Set<string>();
+  for (const [, data] of queryClient.getQueriesData({
+    queryKey: queryKeys.tasks.all,
+  })) {
+    const items = isPaged(data)
+      ? data.pages.flatMap((page) => page.items)
+      : [data];
+    for (const item of items) {
+      const task = item as Task | undefined;
+      if (task && typeof task === 'object' && task.noteId === noteId) {
+        ids.add(task.id);
+      }
+    }
+  }
+  return [...ids];
+};
+
 /** Keys a write would create for an entity the phone never opened. */
 const ownKeys = (type: SyncChange['type'], entity: Entity): QueryKey[] => {
   const keys: QueryKey[] = [kindOf(type).detail(entity.id)];

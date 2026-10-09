@@ -3,8 +3,10 @@ import { ActionSheetIOS } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TodayScreen from '../app/(tabs)/today/index';
+import { databases } from '../test/expoSqlite';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
+import { stopOutbox } from './outbox';
 
 const YESTERDAY_NOTE = '01YESTERDAYNOTE00000000000';
 const TODAY_NOTE = '01TODAYNOTE000000000000000';
@@ -40,9 +42,11 @@ beforeEach(() => {
   vi.useFakeTimers({ now: new Date(2026, 9, 2, 9), toFake: ['Date'] });
 });
 
-afterEach(() => {
+afterEach(async () => {
   act(() => mounted.forEach((renderer) => renderer.unmount()));
   mounted = [];
+  await stopOutbox();
+  databases.clear();
   clearPendingFlushes();
   vi.useRealTimers();
   vi.clearAllMocks();
@@ -221,9 +225,15 @@ describe('Today', () => {
     expect(allText(renderer)).toContain('Friday · Today');
   });
 
-  it('when another device started the day first, keeps what was typed and adds it to their note', async () => {
+  it('when another device started the day first, keeps what was typed and merges it into their note', async () => {
     serve([], []);
-    const renderer = await launch();
+    const renderer = await render(
+      <Providers outbox>
+        <TodayScreen />
+      </Providers>,
+    );
+    mounted.push(renderer);
+    await settle(15);
     // The other device creates today's note while this one shows the empty day.
     server.state.store.set(
       TODAY_NOTE,
@@ -234,12 +244,13 @@ describe('Today', () => {
       }),
     );
 
-    const body = renderer.root.find(
-      (node) =>
-        (node.type as string) === 'TextInput' &&
-        node.props.accessibilityLabel === 'Note body',
-    );
-    act(() => body.props.onChangeText('From the phone'));
+    const body = () =>
+      renderer.root.find(
+        (node) =>
+          (node.type as string) === 'TextInput' &&
+          node.props.accessibilityLabel === 'Note body',
+      );
+    act(() => body().props.onChangeText('From the phone'));
     await vi.waitFor(
       () =>
         expect(allText(renderer)).toContain(
@@ -247,30 +258,20 @@ describe('Today', () => {
         ),
       { timeout: 3_000 },
     );
+    expect(allText(renderer)).toContain('From the laptop');
     expect(server.state.store.get(TODAY_NOTE)!.bodyMarkdown).toBe(
       'From the laptop',
     );
-    expect(
-      renderer.root.find(
-        (node) =>
-          (node.type as string) === 'TextInput' &&
-          node.props.accessibilityLabel === 'Note body',
-      ).props.value,
-    ).toBe('From the phone');
+    expect(body().props.value).toBe('From the phone');
 
-    await act(async () =>
-      byLabel(renderer, 'Add it to their note').props.onPress(),
+    await act(async () => byLabel(renderer, 'Merge').props.onPress());
+    await vi.waitFor(() =>
+      expect(server.state.store.get(TODAY_NOTE)!.bodyMarkdown).toBe(
+        'From the laptop\n\nFrom the phone\n',
+      ),
     );
     await settle(10);
-    expect(server.state.store.get(TODAY_NOTE)!.bodyMarkdown).toBe(
-      'From the laptop\n\nFrom the phone\n',
-    );
     expect(allText(renderer)).not.toContain('Another device started');
-    const shown = renderer.root.find(
-      (node) =>
-        (node.type as string) === 'TextInput' &&
-        node.props.accessibilityLabel === 'Note body',
-    );
-    expect(shown.props.value).toBe('From the laptop\n\nFrom the phone\n');
+    expect(body().props.value).toBe('From the laptop\n\nFrom the phone\n');
   });
 });

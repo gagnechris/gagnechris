@@ -1,7 +1,9 @@
 import { tokens } from '@gagnechris/tokens';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOutboxFailedCount } from '../outbox/useOutbox';
+import { color, MIN_TARGET } from '../theme';
 import { useUpgradeRequired } from '../sync/upgradeRequired';
 import { useIsOnline } from './connectivity';
 import { useUnsavedEditCount } from './useUnsavedEditCount';
@@ -29,6 +31,7 @@ export const NetworkStatus = () => {
   const failed = useOutboxFailedCount();
   const upgrade = useUpgradeRequired();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   if (online && unsaved === 0 && failed === 0 && upgrade === null) return null;
   return (
     <View
@@ -47,9 +50,17 @@ export const NetworkStatus = () => {
         </Text>
       ) : null}
       {failed > 0 ? (
-        <Text style={styles.text} testID="failed-edits">
-          {failedEditsLabel(failed)}
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Shows the edits and what you can do about them"
+          onPress={() => router.push('/conflicts')}
+          style={styles.review}
+          testID="failed-edits"
+        >
+          <Text style={styles.reviewText}>
+            {failedEditsLabel(failed)} · Review
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -75,6 +86,12 @@ const styles = StyleSheet.create({
   text: {
     fontSize: tokens.text.xs,
     color: tokens.neutral[600],
+  },
+  review: { minHeight: MIN_TARGET, justifyContent: 'center' },
+  reviewText: {
+    fontSize: tokens.text.xs,
+    color: color.accent,
+    fontWeight: '600',
   },
   notice: {
     fontSize: tokens.text.xs,

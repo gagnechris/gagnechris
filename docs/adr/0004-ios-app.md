@@ -176,8 +176,8 @@ expo-sqlite, one database (`notebook-outbox.db`) holding only the operations not
 
 The `412` body has `current` and `currentVersion`. First, if `current` already holds the operation's fields, the operation landed earlier (§2) and is done.
 
-- **Tasks: field merge.** Task fields are independent, so for each field the operation changed, if `current` still has the base value, the change is re-sent with `If-Match: "<currentVersion>"`. If the server changed the same field, the task is a conflict.
-- **Note bodies: server wins, local copy kept.** No automatic three-way merge of markdown: a line merge of prose can produce text neither side wrote, silently. The editor shows the server's note with the local text alongside, and three actions: **Keep mine** (send the local text with `If-Match` on `currentVersion`), **Keep theirs**, **Save mine as a new page**. Note metadata (title, tags, pinned) uses the task field merge.
+- **Tasks: field merge.** Task fields are independent, so for each field the operation changed, if `current` still has the base value, the change is re-sent on `currentVersion`. If the server changed the same field, the task is a conflict.
+- **Note bodies: server wins, local copy kept.** No automatic three-way merge of markdown: a line merge of prose can produce text neither side wrote, silently. The editor shows the server's note with the local text alongside, and three actions: **Keep mine** (send the local text on `currentVersion`), **Keep theirs**, **Save mine as a new page**. Note metadata (title, tags, pinned) uses the task field merge.
 - A conflict parks that entity's operations, shows a conflicts count, and keeps the local copy until the user picks; nothing is discarded without a choice.
 - **409 `deleted`** (deleted on another device while edited here): the local copy is kept and offered as **Restore as new**, a create with a new ULID.
 

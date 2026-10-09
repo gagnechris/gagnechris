@@ -36,6 +36,7 @@ import {
   noteDraftFromNote,
   notePayloadFromDraft,
 } from '../../../src/notebook/noteDraft';
+import { ConflictPanel } from '../../../src/notebook/ConflictPanel';
 import { saveLabel } from '../../../src/notebook/saveLabel';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
@@ -46,7 +47,7 @@ import { TaskEmbedRow } from '../../../src/ui/TaskEmbedRow';
 
 const DELETE_PROMPT = 'delete-note';
 
-const NoteScreen = () => {
+const NoteScreen = ({ onReload }: { onReload: () => void }) => {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const online = useIsOnline();
@@ -156,11 +157,26 @@ const NoteScreen = () => {
     );
   };
 
+  const conflict = (
+    <ConflictPanel
+      entityId={id}
+      onResolved={(after) => {
+        if (after.type === 'open') router.replace(`/notes/${after.id}`);
+        else if (after.type === 'close') router.back();
+        else onReload();
+      }}
+    />
+  );
+
   if (editor.loadError) {
+    // A note or task deleted elsewhere no longer loads; its conflict still shows.
     return (
-      <Text style={styles.status} accessibilityRole="alert">
-        {editor.loadError}
-      </Text>
+      <View style={styles.content}>
+        {conflict}
+        <Text style={styles.status} accessibilityRole="alert">
+          {editor.loadError}
+        </Text>
+      </View>
     );
   }
 
@@ -214,6 +230,7 @@ const NoteScreen = () => {
           ),
         }}
       />
+      {conflict}
       {editor.saveError ? (
         <Text style={styles.error} accessibilityRole="alert">
           {editor.saveError}
@@ -305,7 +322,19 @@ const NoteScreen = () => {
   );
 };
 
-export default NoteScreen;
+/** Remounts the editor after a conflict is settled, so it takes the result. */
+const NoteScreenRoute = () => {
+  const { id = '' } = useLocalSearchParams<{ id: string }>();
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <NoteScreen
+      key={`${id}:${epoch}`}
+      onReload={() => setEpoch((n) => n + 1)}
+    />
+  );
+};
+
+export default NoteScreenRoute;
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: color.surface },

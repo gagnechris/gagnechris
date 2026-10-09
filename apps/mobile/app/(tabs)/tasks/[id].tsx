@@ -37,6 +37,7 @@ import {
   useIsOnline,
 } from '../../../src/net';
 import { PickDateModal } from '../../../src/notebook/PickDateModal';
+import { ConflictPanel } from '../../../src/notebook/ConflictPanel';
 import { saveLabel } from '../../../src/notebook/saveLabel';
 import {
   showChoice,
@@ -77,7 +78,7 @@ const showsOnText = (draft: TaskDraft, today: string) =>
       ? 'Today'
       : formatTaskDay(draft.startDate);
 
-const TaskScreen = () => {
+const TaskScreen = ({ onReload }: { onReload: () => void }) => {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -184,11 +185,26 @@ const TaskScreen = () => {
       },
     );
 
+  const conflict = (
+    <ConflictPanel
+      entityId={id}
+      onResolved={(after) => {
+        if (after.type === 'open') router.replace(`/tasks/${after.id}`);
+        else if (after.type === 'close') router.back();
+        else onReload();
+      }}
+    />
+  );
+
   if (editor.loadError) {
+    // A note or task deleted elsewhere no longer loads; its conflict still shows.
     return (
-      <Text style={styles.status} accessibilityRole="alert">
-        {editor.loadError}
-      </Text>
+      <View style={styles.content}>
+        {conflict}
+        <Text style={styles.status} accessibilityRole="alert">
+          {editor.loadError}
+        </Text>
+      </View>
     );
   }
   const ready = !editor.isLoading && entity;
@@ -228,6 +244,7 @@ const TaskScreen = () => {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
       >
+        {conflict}
         {editor.saveError ? (
           <Text style={styles.error} accessibilityRole="alert">
             {editor.saveError}
@@ -415,7 +432,19 @@ const TaskScreen = () => {
   );
 };
 
-export default TaskScreen;
+/** Remounts the editor after a conflict is settled, so it takes the result. */
+const TaskScreenRoute = () => {
+  const { id = '' } = useLocalSearchParams<{ id: string }>();
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <TaskScreen
+      key={`${id}:${epoch}`}
+      onReload={() => setEpoch((n) => n + 1)}
+    />
+  );
+};
+
+export default TaskScreenRoute;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.background },

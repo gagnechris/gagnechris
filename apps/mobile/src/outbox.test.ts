@@ -194,11 +194,11 @@ describe('the outbox', () => {
     expect(server.state.store.get('n1')?.version).toBe(2);
   });
 
-  it('holds a refused write without blocking the others', async () => {
+  it('parks a conflicting write without blocking the others', async () => {
     setOnline(false);
-    // Edited on another device meanwhile, so this base version is stale.
+    // Renamed on another device meanwhile, as the phone renames it too.
     server.editNote('n1', { title: 'Renamed on web' });
-    await putNote('n1', { version: 1, bodyMarkdown: 'phone text' });
+    await putNote('n1', { version: 1, title: 'Renamed on phone' });
     await postTask({ id: T1, area: 'work', title: 'Independent' });
 
     setOnline(true);
@@ -206,7 +206,7 @@ describe('the outbox', () => {
     expect(outboxFailedCount()).toBe(1);
     expect(outboxPendingCount()).toBe(0);
     expect(server.state.taskStore.has(T1)).toBe(true);
-    expect(server.state.store.get('n1')?.bodyMarkdown).toBe('first');
+    expect(server.state.store.get('n1')?.title).toBe('Renamed on web');
   });
 
   it('keeps local edits when the change feed brings the server copy', async () => {
