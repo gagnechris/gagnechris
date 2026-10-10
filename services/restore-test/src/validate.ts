@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import {
   ContactMsgItemSchema,
   DailyNoteClaimItemSchema,
+  DailyTemplateItemSchema,
   HomeMetaItemSchema,
   NoteMetaItemSchema,
   PostMetaItemSchema,
@@ -16,6 +17,8 @@ import {
   contactPk,
   dailyNoteClaimPk,
   dailyNoteClaimSk,
+  dailyTemplatePk,
+  dailyTemplateSk,
   homePk,
   keys,
   noteMetaSk,
@@ -130,6 +133,12 @@ const ENTITY_RULES: Record<string, EntityRule> = {
       i.pk === dailyNoteClaimPk(str(i.userId), str(i.area), str(i.date)) &&
       i.sk === dailyNoteClaimSk(),
   },
+  dailyTemplate: {
+    schema: DailyTemplateItemSchema,
+    keyMatches: (i) =>
+      i.pk === dailyTemplatePk(str(i.userId), str(i.area)) &&
+      i.sk === dailyTemplateSk(),
+  },
 };
 
 export const SCHEMA_CHECKED_ENTITY_TYPES: readonly string[] =
@@ -148,6 +157,7 @@ export const COUNT_FLOOR_ENTITY_TYPES: readonly string[] = [
   'removedUser',
   'note',
   'task',
+  'dailyTemplate',
 ];
 
 export const COUNT_FLOOR_FRACTION = 0.9;

@@ -293,8 +293,8 @@ export class NotesRepository {
   private readonly base: VersionedRepository<Note, NoteMetaItem, OwnerKey>;
 
   constructor(
-    private readonly doc: DynamoDBDocumentClient = getDocClient(),
-    private readonly tableName: string = requireTableName(),
+    readonly doc: DynamoDBDocumentClient = getDocClient(),
+    readonly tableName: string = requireTableName(),
     private readonly nowIso: Clock = systemClock,
   ) {
     this.base = new VersionedRepository<Note, NoteMetaItem, OwnerKey>(

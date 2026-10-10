@@ -118,6 +118,17 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
             },
           ],
         },
+        {
+          label: 'Settings',
+          items: [
+            {
+              to: withArea('/settings/templates'),
+              label: 'Daily templates',
+              tabLabel: 'Templates',
+              icon: 'templates',
+            },
+          ],
+        },
       ]}
       renderSearch={(close) => (
         <NotebookSearchPalette onClose={close} areaFilter={areaFilter} />

@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { taskEmbedIds } from '@gagnechris/shared';
+import {
+  DEFAULT_DAILY_TEMPLATES,
+  fillDailyTemplate,
+  taskEmbedIds,
+} from '@gagnechris/shared';
 import { dispatchRoutes, type RouteDef } from '../../src/router.js';
 import { clearSyncEntities } from '../../src/sync/registry.js';
 import { createNoteRoutes } from '../../src/notes/handlers.js';
@@ -98,6 +102,14 @@ describe('opening a daily note carries in open tasks', () => {
     expect(monday.body).toMatchObject({ id: id(81), date: MON, version: 1 });
     const body = String(monday.body.bodyMarkdown);
     expect(body.startsWith('## Carried in\n\n')).toBe(true);
+    expect(
+      body.endsWith(
+        fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
+          area: 'work',
+          date: MON,
+        }),
+      ),
+    ).toBe(true);
     expect(new Set(taskEmbedIds(body))).toEqual(new Set([id(1), id(6)]));
     expect(monday.body.taskIds).toHaveLength(2);
   });
@@ -129,7 +141,14 @@ describe('opening a daily note carries in open tasks', () => {
 
   it('leaves an existing note alone and creates nothing when nothing is open', async () => {
     const empty = await open(MON, id(81));
-    expect(empty.body).toMatchObject({ exists: false, date: MON });
+    expect(empty.body).toMatchObject({
+      exists: false,
+      date: MON,
+      templateMarkdown: fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
+        area: 'work',
+        date: MON,
+      }),
+    });
     expect(await dailyClaims()).toBe(0);
 
     await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {

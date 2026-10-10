@@ -62,6 +62,7 @@ export {
   discardProject,
   discardResume,
   fetchDailyNote,
+  fetchDailyTemplate,
   fetchHome,
   fetchNote,
   fetchNotesBatch,
@@ -80,6 +81,8 @@ export {
   publishPost,
   publishProject,
   publishResume,
+  resetDailyTemplate,
+  updateDailyTemplate,
   reopenTask,
   searchNotebook,
   unpublishHome,
@@ -100,6 +103,7 @@ export {
   type CreateProjectRequest,
   type CreateTaskRequest,
   type DailyNoteGetResponse,
+  type DailyTemplate,
   type EmptyDailyNote,
   type ExpectedVersionRequest,
   type Home,
@@ -186,7 +190,9 @@ export {
   dailyNoteResource,
   emptyDailyPlaceholder,
   fetchDailyNoteEntity,
+  isTemplateStartedDaily,
   noteResource,
+  startDailyNoteBlank,
   useCreateNoteMutation,
   useDailyNoteDatesQuery,
   useDeleteNoteMutation,
@@ -197,6 +203,11 @@ export {
   type DailyNoteResourceParams,
   type NoteResourceParams,
 } from './query/notes.js';
+export {
+  dailyTemplateResource,
+  useResetDailyTemplateMutation,
+  type DailyTemplateResourceParams,
+} from './query/templates.js';
 export {
   applyTaskPatch,
   taskResource,

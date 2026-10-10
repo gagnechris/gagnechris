@@ -1,8 +1,17 @@
+import { DAILY_TEMPLATE_DATE_TOKEN } from '@gagnechris/shared';
+
 export type Selection = { start: number; end: number };
 export type TextEdit = { text: string; selection: Selection };
 
 export type ToolbarAction =
-  'task' | 'date' | 'priority' | 'heading' | 'list' | 'link';
+  | 'task'
+  | 'date'
+  | 'priority'
+  | 'heading'
+  | 'list'
+  | 'checklist'
+  | 'dateToken'
+  | 'link';
 
 const lineStart = (text: string, offset: number) =>
   text.lastIndexOf('\n', offset - 1) + 1;
@@ -64,6 +73,15 @@ export function applyToolbarAction(
       return toggleLineMarker(text, selection, '# ', /^#{1,6}[ \t]+/);
     case 'list':
       return toggleLineMarker(text, selection, '- ', /^[-*+][ \t]+/);
+    case 'checklist':
+      return toggleLineMarker(
+        text,
+        selection,
+        '- [ ] ',
+        /^[-*+][ \t]+\[[ xX]\][ \t]+/,
+      );
+    case 'dateToken':
+      return insertWord(text, selection, DAILY_TEMPLATE_DATE_TOKEN);
     case 'date':
       return insertWord(text, selection, '@');
     case 'priority':

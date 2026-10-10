@@ -15,6 +15,8 @@ import {
   UpdateNoteRequestSchema,
   UpsertDailyNoteRequestSchema,
   carriedInMarkdown,
+  fillDailyTemplate,
+  type NotebookArea,
   type Note,
 } from '@gagnechris/shared';
 import { jsonEntity, versionedMutationRoute } from '../data/versioned-route.js';
@@ -22,10 +24,12 @@ import { ConflictError } from '../data/errors.js';
 import { json } from '../http.js';
 import { defineRoute, type RouteDef } from '../router.js';
 import { tasksRepository, type TasksRepository } from '../tasks/repository.js';
+import { DailyTemplatesRepository } from '../templates/repository.js';
 import {
   isEmptyDaily,
   notesRepository,
   type DailyNoteResult,
+  type EmptyDailyNote,
   type NotesRepository,
 } from './repository.js';
 
@@ -42,9 +46,34 @@ function parseNote(note: Note): Note {
 export function createNoteRoutes(
   repo?: NotesRepository,
   taskRepo?: TasksRepository,
+  templateRepo?: DailyTemplatesRepository,
 ): RouteDef[] {
   const notes = () => repo ?? notesRepository();
   const tasks = () => taskRepo ?? tasksRepository();
+  // Defaults to the notes table so a test's in-memory table serves both.
+  const templates = () =>
+    templateRepo ??
+    new DailyTemplatesRepository(notes().doc, notes().tableName);
+  const filledTemplate = async (
+    userId: string,
+    area: NotebookArea,
+    date: string,
+  ) => {
+    const template = await templates().get(userId, area);
+    return fillDailyTemplate(template.bodyMarkdown, { area, date });
+  };
+  const emptyDay = async (result: EmptyDailyNote) =>
+    json(
+      200,
+      DailyNoteGetResponseSchema.parse({
+        ...result,
+        templateMarkdown: await filledTemplate(
+          result.userId,
+          result.area,
+          result.date,
+        ),
+      }),
+    );
   return [
     defineRoute({
       method: 'POST',
@@ -101,11 +130,8 @@ export function createNoteRoutes(
           params.area,
           params.date,
         );
-        const body = DailyNoteGetResponseSchema.parse(result);
-        if ('exists' in body && body.exists === false) {
-          return json(200, body);
-        }
-        return jsonEntity(200, body as Note, parseNote);
+        if (isEmptyDaily(result)) return emptyDay(result);
+        return jsonEntity(200, result, parseNote);
       },
     }),
     defineRoute({
@@ -119,7 +145,7 @@ export function createNoteRoutes(
         const { area, date } = params;
         const respond = (result: DailyNoteResult) =>
           isEmptyDaily(result)
-            ? json(200, DailyNoteGetResponseSchema.parse(result))
+            ? emptyDay(result)
             : jsonEntity(200, result, parseNote);
 
         const existing = await notes().getDaily(ctx.userId!, area, date);
@@ -127,9 +153,10 @@ export function createNoteRoutes(
         const carried = await tasks().carriedInto(ctx.userId!, area, date);
         if (carried.length === 0) return respond(existing);
         try {
+          const template = await filledTemplate(ctx.userId!, area, date);
           const note = await notes().createDaily(ctx.userId!, area, date, {
             id: body.id,
-            bodyMarkdown: carriedInMarkdown(carried),
+            bodyMarkdown: `${carriedInMarkdown(carried)}${template}`,
           });
           return jsonEntity(200, note, parseNote);
         } catch (error) {

@@ -223,6 +223,19 @@ export {
   type NotebookAreaFilter,
 } from './notebook-area.js';
 export {
+  DAILY_TEMPLATE_DATE_TOKEN,
+  DAILY_TEMPLATE_MAX_BYTES,
+  DAILY_TEMPLATE_TASK_MESSAGE,
+  DailyTemplateSchema,
+  DEFAULT_DAILY_TEMPLATES,
+  UpdateDailyTemplateRequestSchema,
+  dailyTemplateHasTasks,
+  defaultDailyTemplate,
+  fillDailyTemplate,
+  type DailyTemplate,
+  type UpdateDailyTemplateRequest,
+} from './daily-templates.js';
+export {
   fenceLineKind,
   scanFences,
   type FenceBlock,

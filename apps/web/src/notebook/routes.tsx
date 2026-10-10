@@ -42,6 +42,10 @@ export const notebookRoutes: RouteObject[] = [
         path: 'tasks/:id',
         load: () => import('./NotebookTaskPage.tsx'),
       }),
+      lazyRoute({
+        path: 'settings/templates',
+        load: () => import('./NotebookTemplatesPage.tsx'),
+      }),
       { path: '*', element: <WorkspaceNotFound /> },
     ],
   }),

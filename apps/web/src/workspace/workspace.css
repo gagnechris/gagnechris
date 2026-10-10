@@ -565,6 +565,121 @@
   min-width: 0;
 }
 
+.notebook-today__template {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--primary-50);
+  color: var(--primary-800);
+  font-size: var(--text-sm);
+}
+
+.notebook-today__template-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.notebook-today__template-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notebook-today__template-action:hover {
+  background: var(--primary-100);
+}
+
+.notebook-templates {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 1000px) {
+  .notebook-templates {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    align-items: start;
+  }
+}
+
+.notebook-templates__editor,
+.notebook-templates__side {
+  min-width: 0;
+}
+
+.notebook-templates__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.notebook-templates__bar h2 {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+}
+
+.notebook-templates__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.notebook-card {
+  padding: var(--space-4);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.notebook-card + .notebook-card {
+  margin-top: var(--space-4);
+}
+
+.notebook-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+}
+
+.notebook-card ul {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.notebook-card__meta {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
+.notebook-card__preview {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--neutral-50);
+  font-size: var(--text-sm);
+}
+
 .notebook-today__calendar {
   position: relative;
 }

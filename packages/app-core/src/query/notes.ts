@@ -44,7 +44,16 @@ export type DailyNoteResourceParams = {
 /** Kept until the first successful upsert so re-renders reuse one client id. */
 const pendingDailyIds = new Map<string, string>();
 
+/** Days whose template was cleared with Start blank, until the note is saved. */
+const blankDailyStarts = new Set<string>();
+
 const pendingDailyKey = (area: NotebookArea, date: string) => `${area}:${date}`;
+
+const forgetPendingDaily = (area: NotebookArea, date: string) => {
+  const key = pendingDailyKey(area, date);
+  pendingDailyIds.delete(key);
+  blankDailyStarts.delete(key);
+};
 
 const pendingDailyId = (area: NotebookArea, date: string): string => {
   const key = pendingDailyKey(area, date);
@@ -56,12 +65,21 @@ const pendingDailyId = (area: NotebookArea, date: string): string => {
   return id;
 };
 
+/**
+ * A day with no note yet shows its area's template as unsaved starting text;
+ * this is how the editor tells it apart from a saved note.
+ */
+export const isTemplateStartedDaily = (note: Note): boolean =>
+  note.type === 'daily' && note.version === 0 && note.bodyMarkdown !== '';
+
 export const emptyDailyPlaceholder = (
   area: NotebookArea,
   date: string,
   userId: string,
+  templateMarkdown = '',
 ): Note => {
   const id = pendingDailyId(area, date);
+  const blank = blankDailyStarts.has(pendingDailyKey(area, date));
   const now = new Date().toISOString();
   return {
     id,
@@ -70,7 +88,7 @@ export const emptyDailyPlaceholder = (
     type: 'daily',
     date,
     title: '',
-    bodyMarkdown: '',
+    bodyMarkdown: blank ? '' : templateMarkdown,
     tags: [],
     pinned: false,
     taskIds: [],
@@ -91,9 +109,14 @@ export const fetchDailyNoteEntity = async (
     ? await openDailyNote(client, area, date, pendingDailyId(area, date))
     : await fetchDailyNote(client, area, date);
   if (isEmptyDailyNote(data)) {
-    return emptyDailyPlaceholder(area, date, data.userId);
+    return emptyDailyPlaceholder(
+      area,
+      date,
+      data.userId,
+      data.templateMarkdown,
+    );
   }
-  pendingDailyIds.delete(pendingDailyKey(area, date));
+  forgetPendingDaily(area, date);
   return data;
 };
 
@@ -126,12 +149,21 @@ export const dailyNoteResource = createVersionedResource<
       tags: Array.isArray(body.tags) ? (body.tags as string[]) : undefined,
       pinned: typeof body.pinned === 'boolean' ? body.pinned : undefined,
     });
-    pendingDailyIds.delete(pendingDailyKey(area, date));
+    forgetPendingDaily(area, date);
     return saved;
   },
   setCache: setCachedNote,
   tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
+
+/**
+ * Start blank: the unsaved day drops its template text and stays blank on
+ * refetch until it is saved. Returns the entity for the editor to show.
+ */
+export const startDailyNoteBlank = (note: Note): Note => {
+  if (note.date) blankDailyStarts.add(pendingDailyKey(note.area, note.date));
+  return { ...note, bodyMarkdown: '' };
+};
 
 /** One `POST /notes/batch` for every id; see {@link useBatchedByIds}. */
 export const useNotesByIds = (ids: readonly string[]): ByIdResult<Note>[] => {

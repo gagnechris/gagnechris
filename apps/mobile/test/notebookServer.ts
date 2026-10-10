@@ -132,6 +132,10 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     refuseWrites: null as { status: number; body: unknown } | null,
     /** The sync feed answers 410 for a `since` older than this. */
     resyncBefore: null as string | null,
+    /** Saved daily templates by area; an empty day starts from its area's. */
+    dailyTemplates: {} as Partial<
+      Record<Note['area'], { bodyMarkdown: string; version: number }>
+    >,
   };
   let clock = Date.parse('2026-10-02T12:00:00.000Z');
   const now = () => new Date((clock += 1_000)).toISOString();
@@ -227,6 +231,32 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     state.clientVersions.push(clientVersion);
     const params = url.searchParams;
     const note = url.pathname.match(/^\/api\/notebook\/notes\/([^/]+)$/);
+    const template = url.pathname.match(
+      /^\/api\/notebook\/templates\/daily\/(work|personal)$/,
+    );
+    if (template) {
+      const area = template[1] as Note['area'];
+      if (input.method === 'PUT') {
+        const body = (await input.json()) as {
+          bodyMarkdown: string;
+          version?: number;
+        };
+        const version = (state.dailyTemplates[area]?.version ?? 0) + 1;
+        state.dailyTemplates[area] = {
+          bodyMarkdown: body.bodyMarkdown,
+          version,
+        };
+        state.writes += 1;
+      }
+      const saved = state.dailyTemplates[area];
+      return json(200, {
+        area,
+        bodyMarkdown: saved?.bodyMarkdown ?? '',
+        isDefault: !saved,
+        version: saved?.version ?? 0,
+        updatedAt: saved ? now() : null,
+      });
+    }
     const daily = url.pathname.match(
       /^\/api\/notebook\/notes\/daily\/(work|personal)\/([\d-]+)(\/open)?$/,
     );
@@ -358,6 +388,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
             tags: [],
             pinned: false,
             version: 0,
+            templateMarkdown:
+              state.dailyTemplates[area as Note['area']]?.bodyMarkdown ?? '',
           },
         );
       }

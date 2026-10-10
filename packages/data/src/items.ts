@@ -12,6 +12,7 @@ import {
   ResumeContentSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
+  type DailyTemplate,
   type Home,
   type Note,
   type Post,
@@ -22,6 +23,7 @@ import {
 } from '@gagnechris/shared';
 import {
   deepEqual,
+  DEFAULT_DAILY_TEMPLATES,
   EMPTY_SLUG_FALLBACK,
   slugify as sharedSlugify,
   taskEmbedIds,
@@ -33,6 +35,8 @@ import {
   homePublishedSk,
   dailyNoteClaimPk,
   dailyNoteClaimSk,
+  dailyTemplatePk,
+  dailyTemplateSk,
   noteDateGsi1Sk,
   noteMetaSk,
   notePageGsi1Sk,
@@ -799,6 +803,62 @@ export function buildDailyNoteClaimItem(
     area,
     date,
     noteId,
+  };
+}
+
+export const DailyTemplateItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('dailyTemplate'),
+  userId: z.string().min(1),
+  area: NotebookAreaSchema,
+  /** A reset keeps the row, so versions only grow, and serves the built-in text. */
+  isDefault: z.boolean(),
+  bodyMarkdown: z.string(),
+  version: z.number().int().positive(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export type DailyTemplateItem = z.infer<typeof DailyTemplateItemSchema>;
+
+export function parseDailyTemplateItem(raw: unknown): DailyTemplateItem {
+  return DailyTemplateItemSchema.parse(raw);
+}
+
+export function buildDailyTemplateItem(
+  userId: string,
+  template: Pick<
+    DailyTemplate,
+    'area' | 'bodyMarkdown' | 'isDefault' | 'version'
+  > & {
+    createdAt: string;
+    updatedAt: string;
+  },
+): DailyTemplateItem {
+  return {
+    pk: dailyTemplatePk(userId, template.area),
+    sk: dailyTemplateSk(),
+    entityType: 'dailyTemplate',
+    userId,
+    area: template.area,
+    isDefault: template.isDefault,
+    bodyMarkdown: template.isDefault ? '' : template.bodyMarkdown,
+    version: template.version,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt,
+  };
+}
+
+export function dailyTemplateFromItem(item: DailyTemplateItem): DailyTemplate {
+  return {
+    area: item.area,
+    bodyMarkdown: item.isDefault
+      ? DEFAULT_DAILY_TEMPLATES[item.area]
+      : item.bodyMarkdown,
+    isDefault: item.isDefault,
+    version: item.version,
+    updatedAt: item.updatedAt,
   };
 }
 

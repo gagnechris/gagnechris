@@ -6539,6 +6539,8 @@ export interface paths {
                             pinned: false;
                             /** @enum {number} */
                             version: 0;
+                            /** @description The area's daily template filled in for this date: the editor's starting text, not saved until edited */
+                            templateMarkdown: string;
                         };
                     };
                 };
@@ -6904,6 +6906,8 @@ export interface paths {
                             pinned: false;
                             /** @enum {number} */
                             version: 0;
+                            /** @description The area's daily template filled in for this date: the editor's starting text, not saved until edited */
+                            templateMarkdown: string;
                         };
                     };
                 };
@@ -9140,6 +9144,456 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/templates/daily/{area}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the area's daily note template (stored, or the built-in one) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    area: "work" | "personal";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Daily template */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            area: "work" | "personal";
+                            bodyMarkdown: string;
+                            /** @description True when the built-in template applies (never saved, or reset) */
+                            isDefault: boolean;
+                            /** @description 0 until the template is first saved or reset */
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Save the daily template; applies to days with no note yet, never to existing notes */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
+                    "if-match"?: string;
+                };
+                path: {
+                    area: "work" | "personal";
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version?: number;
+                        /** @description Up to 10 KB (UTF-8; larger → 413); no task lines or embeds */
+                        bodyMarkdown: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            area: "work" | "personal";
+                            bodyMarkdown: string;
+                            /** @description True when the built-in template applies (never saved, or reset) */
+                            isDefault: boolean;
+                            /** @description 0 until the template is first saved or reset */
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Precondition failed (`If-Match` version mismatch) */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "precondition_failed";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description A field is over its size limit (`payload_too_large`, with `fields`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Reset the daily template to the built-in one */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
+                    "if-match"?: string;
+                };
+                path: {
+                    area: "work" | "personal";
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description The built-in template, at a new version */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            area: "work" | "personal";
+                            bodyMarkdown: string;
+                            /** @description True when the built-in template applies (never saved, or reset) */
+                            isDefault: boolean;
+                            /** @description 0 until the template is first saved or reset */
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Precondition failed (`If-Match` version mismatch) */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "precondition_failed";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/sync/changes": {
         parameters: {
             query?: never;
@@ -10158,6 +10612,8 @@ export interface components {
             pinned: false;
             /** @enum {number} */
             version: 0;
+            /** @description The area's daily template filled in for this date: the editor's starting text, not saved until edited */
+            templateMarkdown: string;
         };
         DailyNoteGetResponse: {
             id: string;
@@ -10197,6 +10653,8 @@ export interface components {
             pinned: false;
             /** @enum {number} */
             version: 0;
+            /** @description The area's daily template filled in for this date: the editor's starting text, not saved until edited */
+            templateMarkdown: string;
         };
         UpsertDailyNoteRequest: {
             /** @description Client ULID used when creating the daily note */
@@ -10207,6 +10665,22 @@ export interface components {
             bodyMarkdown?: string;
             tags?: string[];
             pinned?: boolean;
+        };
+        DailyTemplate: {
+            /** @enum {string} */
+            area: "work" | "personal";
+            bodyMarkdown: string;
+            /** @description True when the built-in template applies (never saved, or reset) */
+            isDefault: boolean;
+            /** @description 0 until the template is first saved or reset */
+            version: number;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        UpdateDailyTemplateRequest: {
+            version?: number;
+            /** @description Up to 10 KB (UTF-8; larger → 413); no task lines or embeds */
+            bodyMarkdown: string;
         };
         Task: {
             id: string;

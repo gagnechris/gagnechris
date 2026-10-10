@@ -88,6 +88,12 @@ const PATHS = {
       <path d="m8 12 3 3 5-6" />
     </>
   ),
+  templates: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </>
+  ),
   more: (
     <>
       <circle cx="5" cy="12" r="1.6" />
