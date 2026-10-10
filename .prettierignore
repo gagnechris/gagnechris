@@ -8,6 +8,7 @@ package-lock.json
 packages/api-client/src/schema.d.ts
 packages/shared/openapi/openapi.json
 packages/tokens/src/variables.css
+go/internal/contract/contract.json
 *.min.js
 apps/mobile/ios
 apps/mobile/android

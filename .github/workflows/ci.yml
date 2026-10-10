@@ -38,6 +38,9 @@ jobs:
       - name: OpenAPI contract drift
         run: npm run openapi:check
 
+      - name: Go contract drift
+        run: npm run go:generate:check
+
       - name: Design token CSS drift
         run: npm run tokens:check
       - name: Publish surface drift

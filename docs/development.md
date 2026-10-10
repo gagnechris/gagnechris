@@ -80,6 +80,8 @@ npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
 npm run go:lint       # golangci-lint on go/ (gofmt, goimports, vet, staticcheck, revive...; config in go/.golangci.yml) (CI)
 npm run go:test       # go test ./... in go/ (CI)
+npm run go:generate:check # go/internal/contract/contract.json drift from packages/shared and packages/data (CI)
+npm run go:fmt        # gofmt + goimports on go/
 npm run openapi:check # OpenAPI + generated client drift (CI)
 npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # Option B pages, KVS keys, publish routes and publisher-owned S3 keys from publisher targets (CI)

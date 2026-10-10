@@ -16,6 +16,39 @@ export const RESTORE_TEST_METRICS = {
   backupCheckCompleted: 'BackupCheckCompleted',
 } as const;
 
+/** AWS Backup names restore-test scratch tables with this prefix. */
+export const RESTORE_TEST_TABLE_PREFIX = 'awsbackup-restore-test-' as const;
+
+/** Entity types whose rows the restore-test validator checks against their item schema and key builders. */
+export const RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES = [
+  'post',
+  'project',
+  'home',
+  'removedUser',
+  'resume',
+  'contact',
+  'note',
+  'task',
+  'dailyNoteClaim',
+  'dailyTemplate',
+] as const;
+
+/**
+ * Types whose rows carry `createdAt` or `updatedAt`, so the source can say
+ * which rows provably existed at the restore point. Daily claims have neither.
+ */
+export const RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES = [
+  'post',
+  'project',
+  'home',
+  'resume',
+  'contact',
+  'removedUser',
+  'note',
+  'task',
+  'dailyTemplate',
+] as const;
+
 /**
  * The only attributes the restore-test validator's COUNT scans of the live
  * table may name; its IAM condition allows exactly these.

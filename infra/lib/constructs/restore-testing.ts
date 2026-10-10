@@ -18,7 +18,6 @@ import { LogGroup, ResourcePolicy, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
-import { join } from 'node:path';
 import {
   POWERTOOLS_METRICS_NAMESPACE,
   RESTORE_TEST_METRICS,
@@ -27,7 +26,7 @@ import {
 } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { emfServiceAlarm, heartbeatAlarm } from './emf-alarm.js';
-import { NodeLambda, REPO_ROOT } from './node-lambda.js';
+import { GoLambda } from './go-lambda.js';
 
 /** AWS Backup picks this name itself and deletes the table by it. */
 export const RESTORE_TEST_TABLE_PATTERN = 'awsbackup-restore-test-*';
@@ -47,7 +46,7 @@ export class AppTableRestoreTesting extends Construct {
   readonly plan: CfnRestoreTestingPlan;
   readonly selection: CfnRestoreTestingSelection;
   readonly restoreRole: Role;
-  readonly validator: NodeLambda;
+  readonly validator: GoLambda;
   readonly validationFailedAlarm: Alarm;
   readonly leftoverTablesAlarm: Alarm;
   readonly staleRecoveryPointAlarm: Alarm;
@@ -125,12 +124,11 @@ export class AppTableRestoreTesting extends Construct {
     const tableArn = (pattern: string) =>
       `arn:${stack.partition}:dynamodb:${stack.region}:${stack.account}:table/${pattern}`;
 
-    this.validator = new NodeLambda(stack, 'RestoreTestFunction', {
+    this.validator = new GoLambda(stack, 'RestoreTestFunction', {
       functionName: `${prefix}-restore-test`,
       description:
         'Validate AWS Backup restore-test tables and alarm on leftover restore scratch tables',
-      entry: join(REPO_ROOT, 'services/restore-test/src/handler.ts'),
-      handler: 'handler',
+      cmd: 'restore-test',
       memorySize: 256,
       timeout: Duration.minutes(2),
       powertoolsServiceName: RESTORE_TEST_SERVICE_NAME,
@@ -145,9 +143,6 @@ export class AppTableRestoreTesting extends Construct {
             '/^Resource::arn:<AWS::Partition>:dynamodb:.*:table/.*-restore-.*$/g',
         },
       ],
-      bundling: {
-        externalModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'],
-      },
       environment: {
         LEFTOVER_MAX_AGE_HOURS: String(LEFTOVER_MAX_AGE_HOURS),
         SOURCE_TABLE_NAME: table.tableName,
