@@ -1,10 +1,12 @@
+import type { ReactNode } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
 import { projectCardViews, type Project } from '@gagnechris/shared';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import { renderProjectsIndexBodyHtml } from '@gagnechris/shared/render';
-import ProjectsIndexBody from './ProjectsIndexBody';
+import { ProjectsIndexBody, PublicLinkContext } from '@gagnechris/public-ui';
+import { renderProjectsIndexBodyHtml } from '@gagnechris/public-ui/server';
+import SiteLink from '../components/SiteLink';
 import { projectsIndexFromDocument } from './publishedProjects';
 
 const normalize = (html: string): string => {
@@ -34,18 +36,26 @@ const parsed = (html: string) =>
     new DOMParser().parseFromString(html, 'text/html'),
   )!;
 
-describe('ProjectsIndexBody', () => {
+const InApp = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter>
+    <PublicLinkContext.Provider value={SiteLink}>
+      {children}
+    </PublicLinkContext.Provider>
+  </MemoryRouter>
+);
+
+describe('ProjectsIndexBody in the public app', () => {
   test.each(Object.entries(LISTS))(
-    'renders the prerender markup for %s',
+    'reads back the cards the publisher rendered, and prints its markup, for %s',
     (_name, projects) => {
       const prerender = renderProjectsIndexBodyHtml(projects);
       const fromDocument = parsed(prerender);
       expect(fromDocument).toEqual(projectCardViews(projects));
 
       const { container } = render(
-        <MemoryRouter>
+        <InApp>
           <ProjectsIndexBody projects={fromDocument} />
-        </MemoryRouter>,
+        </InApp>,
       );
       expect(container.innerHTML).toBe(normalize(prerender));
     },
@@ -53,9 +63,9 @@ describe('ProjectsIndexBody', () => {
 
   test('lists by order; each entry with a destination is one link', () => {
     render(
-      <MemoryRouter>
+      <InApp>
         <ProjectsIndexBody projects={projectCardViews(SAMPLE_PROJECTS)} />
-      </MemoryRouter>,
+      </InApp>,
     );
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
     expect(
@@ -77,9 +87,9 @@ describe('ProjectsIndexBody', () => {
 
   test('an idea with no page is not focusable', () => {
     const { container } = render(
-      <MemoryRouter>
+      <InApp>
         <ProjectsIndexBody projects={projectCardViews(SAMPLE_PROJECTS)} />
-      </MemoryRouter>,
+      </InApp>,
     );
     const idea = container.querySelector('[data-slug="next-project"]')!;
     expect(
@@ -89,9 +99,9 @@ describe('ProjectsIndexBody', () => {
 
   test('stage is text, with the note after it', () => {
     render(
-      <MemoryRouter>
+      <InApp>
         <ProjectsIndexBody projects={projectCardViews(SAMPLE_PROJECTS)} />
-      </MemoryRouter>,
+      </InApp>,
     );
     const stages = [...document.querySelectorAll('.project-stage')].map((p) => [
       p.getAttribute('data-stage'),
@@ -107,9 +117,9 @@ describe('ProjectsIndexBody', () => {
 
   test('preview: the image, else a dashed box for ideas, else the demo mini-UI', () => {
     const { container } = render(
-      <MemoryRouter>
+      <InApp>
         <ProjectsIndexBody projects={projectCardViews(SAMPLE_PROJECTS)} />
-      </MemoryRouter>,
+      </InApp>,
     );
     const previews = [...container.querySelectorAll('.project-preview')];
     expect(previews.map((p) => p.className)).toEqual([
@@ -126,9 +136,9 @@ describe('ProjectsIndexBody', () => {
 
   test('says so when nothing is published', () => {
     render(
-      <MemoryRouter>
+      <InApp>
         <ProjectsIndexBody projects={[]} />
-      </MemoryRouter>,
+      </InApp>,
     );
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Projects',

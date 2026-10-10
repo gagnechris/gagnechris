@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import {
   PROJECT_IDEA_PREVIEW_TEXT,
   PROJECT_MINI_UI,
@@ -7,9 +8,6 @@ import {
   type ProjectCardView,
   type ProjectMiniNode,
 } from '@gagnechris/shared';
-import './ProjectPreview.css';
-
-// Markup must match the prerender's `previewHtml` (ProjectCard.test.tsx).
 
 const Mini = ({ nodes }: { nodes: readonly ProjectMiniNode[] }) =>
   nodes.map(({ className, text, children }, i) => (
@@ -19,10 +17,12 @@ const Mini = ({ nodes }: { nodes: readonly ProjectMiniNode[] }) =>
     </span>
   ));
 
-const ProjectPreview = ({
+export const ProjectPreview = ({
   card,
+  loading,
 }: {
   card: Pick<ProjectCardView, 'previewImage' | 'stage' | 'demo'>;
+  loading?: 'lazy';
 }) => {
   const preview = projectPreview(card);
   switch (preview.kind) {
@@ -33,6 +33,7 @@ const ProjectPreview = ({
             alt=""
             width={PROJECT_PREVIEW_WIDTH}
             height={PROJECT_PREVIEW_HEIGHT}
+            loading={loading}
             src={preview.src}
           />
         </div>
@@ -57,5 +58,3 @@ const ProjectPreview = ({
       );
   }
 };
-
-export default ProjectPreview;

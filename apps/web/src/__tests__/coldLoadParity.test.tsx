@@ -291,11 +291,29 @@ describe('cold load: first React render matches the prerender', () => {
 
   test.each([
     ['with projects', PRERENDERS['/projects']!],
+    [
+      'with a preview image',
+      renderProjectsIndexPrerenderHtml(
+        SAMPLE_PROJECTS.map((p) =>
+          p.slug === 'notebook'
+            ? { ...p, previewImage: '/media/notebook.png' }
+            : p,
+        ),
+      ),
+    ],
     ['with nothing published', renderProjectsIndexPrerenderHtml([])],
-  ])('/projects %s mounts the same DOM as the prerender', async (_, html) => {
-    const loaded = await coldLoad('/projects', html);
+  ])('/projects %s hydrates the published markup in place', async (_, html) => {
+    const onRecoverableError = vi.fn();
+    const loaded = await coldLoad(
+      '/projects',
+      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      HEADS['/projects'],
+      onRecoverableError,
+    );
     unmount = loaded.unmount;
 
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
     expect(fetch).not.toHaveBeenCalled();
   });

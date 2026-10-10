@@ -1,14 +1,13 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import {
-  DEFAULT_HOME,
-  renderHomeBodyHtml,
-  type HomeRecentPost,
-} from '@gagnechris/shared/render';
+import { DEFAULT_HOME, type HomeRecentPost } from '@gagnechris/shared/render';
 import { selectHomeProjects } from '@gagnechris/shared';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import { renderHomePrerenderHtml } from '@gagnechris/public-ui/server';
+import {
+  renderHomeBodyHtml,
+  renderHomePrerenderHtml,
+} from '@gagnechris/public-ui/server';
 import App from './App';
 import { renderWithProviders } from './test-utils';
 import * as analytics from './utils/analytics';

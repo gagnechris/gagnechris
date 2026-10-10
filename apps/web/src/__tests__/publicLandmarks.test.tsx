@@ -8,9 +8,9 @@ import {
   renderHomeBodyHtml,
   renderPostPageBodyHtml,
   renderProjectPageBodyHtml,
-  renderProjectsIndexBodyHtml,
   renderResumeBodyHtml,
 } from '@gagnechris/shared/render';
+import { renderProjectsIndexBodyHtml } from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import { routes } from '../routes';
 

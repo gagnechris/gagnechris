@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_HOME, DEFAULT_RESUME, type Post } from '@gagnechris/shared';
+import {
+  DEFAULT_HOME,
+  DEFAULT_RESUME,
+  selectHomeProjects,
+  type Post,
+} from '@gagnechris/shared';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
@@ -14,6 +19,7 @@ import {
   renderHomePage,
   renderPostPage,
   renderProjectPage,
+  renderProjectsIndexPage,
   renderResumePage,
   renderResumeUnavailablePage,
 } from '../src/render.js';
@@ -94,6 +100,17 @@ describe('render HTML snapshots', () => {
         samplePost(),
         { ...samplePost(), id: '01OLDER', slug: 'older', excerpt: '' },
       ]),
+    ).toMatchSnapshot();
+  });
+
+  it('matches frozen output for the Projects index and Home with projects', () => {
+    const projects = SAMPLE_PROJECTS.map((p) =>
+      p.slug === 'notebook' ? { ...p, previewImage: '/media/notebook.png' } : p,
+    );
+    expect(renderProjectsIndexPage(shell, projects)).toMatchSnapshot();
+    expect(renderProjectsIndexPage(shell, [])).toMatchSnapshot();
+    expect(
+      renderHomePage(shell, DEFAULT_HOME, [], selectHomeProjects(projects)),
     ).toMatchSnapshot();
   });
 

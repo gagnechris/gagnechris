@@ -1,5 +1,5 @@
 import { pageTitle, PROJECTS_PATH, siteUrl } from '@gagnechris/shared';
-import ProjectsIndexBody from '../projects/ProjectsIndexBody';
+import { ProjectsIndexBody } from '@gagnechris/public-ui';
 import {
   documentProjectsIndex,
   loadPublishedProjects,
@@ -7,6 +7,9 @@ import {
 import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
 import './ProjectsIndex.css';
+import '../projects/ProjectCard.css';
+import '../projects/ProjectStage.css';
+import '../projects/ProjectPreview.css';
 import PageHead from '../components/PageHead';
 
 function ProjectsIndex() {

@@ -6,12 +6,12 @@ import {
   PROJECT_BUILD_LOG_ID,
   PROJECT_BUILD_LOG_RSS_LINK,
   projectBuildLogEmptyText,
+  PROJECTS_INDEX_TITLE,
   PROJECTS_PATH,
   projectStageText,
   type ProjectBuildLogPost,
   type ProjectPageView,
 } from '@gagnechris/shared';
-import { PROJECTS_INDEX_TITLE } from '@gagnechris/shared/render';
 import SiteLink from '../components/SiteLink';
 import ProjectDemoSlot from './ProjectDemoSlot';
 import './ProjectStage.css';

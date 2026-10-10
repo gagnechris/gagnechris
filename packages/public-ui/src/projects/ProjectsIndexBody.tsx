@@ -1,14 +1,13 @@
+/** @jsxRuntime automatic */
 import {
   PROJECTS_INDEX_EMPTY_TEXT,
   PROJECTS_INDEX_INTRO,
+  PROJECTS_INDEX_TITLE,
   type ProjectCardView,
 } from '@gagnechris/shared';
-import { PROJECTS_INDEX_TITLE } from '@gagnechris/shared/render';
-import ProjectCard from './ProjectCard';
+import { ProjectCard } from './ProjectCard.js';
 
-// Markup must match `renderProjectsIndexBodyHtml` (ProjectCard.test.tsx).
-
-const ProjectsIndexBody = ({
+export const ProjectsIndexBody = ({
   projects,
   message,
 }: {
@@ -37,5 +36,3 @@ const ProjectsIndexBody = ({
     </div>
   </main>
 );
-
-export default ProjectsIndexBody;

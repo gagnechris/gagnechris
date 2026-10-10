@@ -4,14 +4,14 @@ import { renderToString } from 'react-dom/server';
 import {
   PROJECTS_PATH,
   postsIndexView,
+  projectCardViews,
   type PostsIndexItem,
   type ProjectCardView,
   type ProjectPageView,
 } from '@gagnechris/shared';
 import {
-  renderHomeBodyHtml,
+  renderHomeBodyHtml as renderHomeBodyWithCardsHtml,
   renderProjectPageBodyHtml,
-  renderProjectsIndexBodyHtml,
   renderResumeBodyHtml,
   renderResumeUnavailableBodyHtml,
   type Home,
@@ -24,6 +24,8 @@ import { SiteFooter, SiteHeader, SitePage } from './chrome/SiteChrome.js';
 import { ContactPageBody } from './pages/ContactPageBody.js';
 import { NotFoundBody } from './pages/NotFoundBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
+import { ProjectCard } from './projects/ProjectCard.js';
+import { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
 
 const thisYear = () => new Date().getFullYear();
 
@@ -43,6 +45,24 @@ const page = (
 export const renderPostsIndexBodyHtml = (
   posts: readonly PostsIndexItem[],
 ): string => renderToString(<PostsIndexBody years={postsIndexView(posts)} />);
+
+export const renderProjectsIndexBodyHtml = (
+  projects: readonly ProjectsIndexItem[],
+): string =>
+  renderToString(<ProjectsIndexBody projects={projectCardViews(projects)} />);
+
+export const renderHomeBodyHtml = (
+  home: Home,
+  recentPosts: readonly HomeRecentPost[] = [],
+  projects: readonly ProjectCardView[] = [],
+): string =>
+  renderHomeBodyWithCardsHtml(
+    home,
+    recentPosts,
+    projects.map((card) =>
+      renderToString(<ProjectCard card={card} heading="h3" />),
+    ),
+  );
 
 /**
  * The chrome around a body that is still a string. Elements are adjacent at

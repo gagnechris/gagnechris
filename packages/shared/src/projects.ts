@@ -185,6 +185,8 @@ export const projectStageText = (
   PROJECT_STAGE_LABELS[project.stage] +
   (project.stageNote ? ` · ${project.stageNote}` : '');
 
+export const PROJECTS_INDEX_TITLE = 'Projects';
+
 export const PROJECTS_INDEX_INTRO =
   'Things I’m building, mostly for myself, in the open. Most of them sit behind a login, so some pages have a demo you can play with.';
 

@@ -7,8 +7,7 @@ import {
   PROJECT_MINI_UI,
   PROJECT_PREVIEW_HEIGHT,
   PROJECT_PREVIEW_WIDTH,
-  PROJECTS_INDEX_EMPTY_TEXT,
-  PROJECTS_INDEX_INTRO,
+  PROJECTS_INDEX_TITLE,
   PROJECTS_PATH,
   PROJECT_BUILD_LOG_HEADING,
   PROJECT_BUILD_LOG_ID,
@@ -16,7 +15,6 @@ import {
   PROJECT_DEMO_LABEL,
   PROJECT_DEMO_LABEL_ID,
   projectBuildLogEmptyText,
-  projectCardViews,
   projectPreview,
   projectStageText,
   type ProjectBuildLogPost,
@@ -27,7 +25,7 @@ import {
 } from './projects.js';
 import type { Project } from './schemas.js';
 
-export const PROJECTS_INDEX_TITLE = 'Projects';
+export { PROJECTS_INDEX_TITLE };
 
 export type ProjectsIndexItem = ProjectCardSource;
 
@@ -62,56 +60,6 @@ const previewHtml = (
         `</div>`
       );
   }
-};
-
-/*
- * React's ProjectCard renders exactly this (ProjectCard.test.tsx), and
- * `projectCardsFromDocument` reads it back on a cold load.
- */
-export const renderProjectCardHtml = (
-  card: ProjectCardView,
-  heading: 'h2' | 'h3',
-): string => {
-  const inner =
-    previewHtml(card) +
-    `<div class="project-card__text">` +
-    `<p class="project-stage" data-stage="${card.stage}">${escapeHtml(projectStageText(card))}</p>` +
-    `<${heading} class="project-card__name">${escapeHtml(card.name)}</${heading}>` +
-    (card.pitch
-      ? `<p class="project-card__pitch">${escapeHtml(card.pitch)}</p>`
-      : '') +
-    (card.stack.length
-      ? `<p class="project-card__stack">` +
-        card.stack.map((s) => `<span>${escapeHtml(s)}</span>`).join(' · ') +
-        `</p>`
-      : '') +
-    `</div>`;
-  return (
-    `<li class="project-card" data-id="${escapeHtml(card.id)}" data-slug="${escapeHtml(card.slug)}"${card.demo ? ` data-demo="${card.demo}"` : ''}>` +
-    (card.href
-      ? `<a class="project-card__link" href="${escapeHtml(card.href)}">${inner}</a>`
-      : `<div class="project-card__link">${inner}</div>`) +
-    `</li>`
-  );
-};
-
-export const renderProjectsIndexBodyHtml = (
-  projects: readonly ProjectsIndexItem[],
-): string => {
-  const cards = projectCardViews(projects);
-  return (
-    `<main class="projects-index">` +
-    `<header class="projects-index__header">` +
-    `<h1>${PROJECTS_INDEX_TITLE}</h1>` +
-    `<p class="projects-index__intro">${escapeHtml(PROJECTS_INDEX_INTRO)}</p>` +
-    `</header>` +
-    `<div class="projects-index__list">` +
-    (cards.length
-      ? `<ul class="project-list">${cards.map((c) => renderProjectCardHtml(c, 'h2')).join('')}</ul>`
-      : `<p class="projects-index__empty">${escapeHtml(PROJECTS_INDEX_EMPTY_TEXT)}</p>`) +
-    `</div>` +
-    `</main>`
-  );
 };
 
 const projectStackHtml = (stack: readonly string[]): string =>

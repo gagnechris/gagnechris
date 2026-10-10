@@ -72,9 +72,7 @@ export type {
 } from './schemas.js';
 export {
   PROJECTS_INDEX_TITLE,
-  renderProjectCardHtml,
   projectPageView,
   renderProjectPageBodyHtml,
-  renderProjectsIndexBodyHtml,
   type ProjectsIndexItem,
 } from './project-html.js';

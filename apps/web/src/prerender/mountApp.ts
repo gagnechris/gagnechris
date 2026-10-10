@@ -11,6 +11,7 @@ import {
 // replaces the prerender.
 const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
   { path: /^\/posts\/?$/, selector: 'main.posts-index' },
+  { path: /^\/projects\/?$/, selector: 'main.projects-index' },
   { path: /^\/contact\/?$/, selector: 'main.contact-page' },
   // 404.html answers any path CloudFront has no object for.
   { path: /^\//, selector: 'main.not-found' },

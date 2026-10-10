@@ -1,14 +1,11 @@
+/** @jsxRuntime automatic */
 import { Fragment } from 'react';
 import { projectStageText, type ProjectCardView } from '@gagnechris/shared';
-import SiteLink from '../components/SiteLink';
-import ProjectPreview from './ProjectPreview';
-import './ProjectCard.css';
-import './ProjectStage.css';
+import { PublicLink } from '../link.js';
+import { ProjectPreview } from './ProjectPreview.js';
 
-// Markup must match `renderProjectCardHtml` element for element
-// (ProjectCard.test.tsx).
-
-const ProjectCard = ({
+/** `projectCardsFromList` in the app reads this back on a cold load. */
+export const ProjectCard = ({
   card,
   heading: Heading,
 }: {
@@ -17,7 +14,9 @@ const ProjectCard = ({
 }) => {
   const inner = (
     <>
-      <ProjectPreview card={card} />
+      {/* Lazy: otherwise the server renderer puts a preload <link> for each
+          image inside #root, which hydration doesn't expect. */}
+      <ProjectPreview card={card} loading="lazy" />
       <div className="project-card__text">
         <p className="project-stage" data-stage={card.stage}>
           {projectStageText(card)}
@@ -47,14 +46,12 @@ const ProjectCard = ({
       data-demo={card.demo ?? undefined}
     >
       {card.href ? (
-        <SiteLink className="project-card__link" href={card.href}>
+        <PublicLink className="project-card__link" href={card.href}>
           {inner}
-        </SiteLink>
+        </PublicLink>
       ) : (
         <div className="project-card__link">{inner}</div>
       )}
     </li>
   );
 };
-
-export default ProjectCard;

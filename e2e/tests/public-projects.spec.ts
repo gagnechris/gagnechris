@@ -160,16 +160,62 @@ test.describe('/projects', () => {
     }
   });
 
-  test('a cold load mounts the same DOM as the prerender', async ({ page }) => {
+  test('a cold load hydrates the published list in place', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      // The seeded preview images don't exist on the local site.
+      if (
+        message.type() === 'error' &&
+        !message.text().startsWith('Failed to load resource')
+      ) {
+        errors.push(message.text());
+      }
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
     await capturePrerender(page);
+    // Keeps the element the HTML parser made, before any script runs.
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const main = document.querySelector('#root > main.projects-index');
+        if (!main) return;
+        (window as { parsedMain?: Element }).parsedMain = main;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
     await page.goto(`${site()}/projects`);
     await expect(card(page, slugs.live)).toBeVisible();
-    const { before, after } = await page.evaluate(() => ({
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const main = document.querySelector('#root > main.projects-index');
+          return Boolean(
+            main && Object.keys(main).some((k) => k.startsWith('__reactFiber')),
+          );
+        }),
+      )
+      .toBe(true);
+    const { before, after, same } = await page.evaluate(() => ({
       before: (window as unknown as { prerender: string }).prerender,
       after: document.getElementById('root')!.innerHTML,
+      same:
+        (window as { parsedMain?: Element }).parsedMain ===
+        document.querySelector('#root > main.projects-index'),
     }));
     expect(before).toContain(`data-slug="${slugs.live}"`);
     expect(after).toBe(before);
+    expect(same).toBe(true);
+    expect(errors).toEqual([]);
+
+    await card(page, slugs.live).locator('a').click();
+    await expect(page).toHaveURL(new RegExp(`/projects/${slugs.live}$`));
+    // Same window, so the link navigated in the app.
+    expect(
+      await page.evaluate(
+        () => (window as { parsedMain?: Element }).parsedMain !== undefined,
+      ),
+    ).toBe(true);
   });
 
   test('Home lists projects that are not ideas under What I’m building', async ({
