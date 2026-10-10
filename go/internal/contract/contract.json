@@ -71,6 +71,8 @@
     "noteMetaSk()": "META",
     "taskPk({userId},{taskId})": "USER#{userId}#TASK#{taskId}",
     "taskMetaSk()": "META",
+    "notebookAreaGsi1Pk({userId},{area})": "USER#{userId}#AREA#{area}",
+    "taskAreaStatusGsi1Pk({userId},{area},{status})": "USER#{userId}#AREA#{area}#STATUS#{status}",
     "dailyNoteClaimPk({userId},{area},{date})": "USER#{userId}#DAILY#{area}#{date}",
     "dailyNoteClaimSk()": "NOTE",
     "dailyTemplatePk({userId},{area})": "USER#{userId}#DAILY_TEMPLATE#{area}",
@@ -274,6 +276,28 @@
         ]
       }
     }
+  },
+  "users": {
+    "accessGroups": [
+      "site-admin",
+      "notebook",
+      "user-admin"
+    ],
+    "accessLevelGroups": {
+      "full": [
+        "site-admin",
+        "notebook",
+        "user-admin"
+      ],
+      "cms": [
+        "site-admin"
+      ],
+      "notebook": [
+        "notebook"
+      ]
+    },
+    "reauthSeconds": 300,
+    "reauthRequired": "reauth_required"
   },
   "itemSchemas": {
     "post": {

@@ -26,6 +26,8 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/posts"
 	"github.com/gagnechris/gagnechris/go/internal/projects"
 	"github.com/gagnechris/gagnechris/go/internal/resume"
+	"github.com/gagnechris/gagnechris/go/internal/search"
+	"github.com/gagnechris/gagnechris/go/internal/users"
 )
 
 var processStart = time.Now()
@@ -56,6 +58,8 @@ func main() {
 	routes = append(routes, projects.Routes(table, nil)...)
 	routes = append(routes, home.Routes(table, nil)...)
 	routes = append(routes, resume.Routes(table, nil)...)
+	routes = append(routes, search.Routes(table, nil)...)
+	routes = append(routes, users.Routes(users.Deps{Table: table, AWS: cfg})...)
 	routes = append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
 	app := api.NewApp(
 		api.NewRouter(routes),

@@ -20,6 +20,7 @@ import { AuthStack } from '../lib/stacks/auth-stack.js';
 import {
   ApiStack,
   GO_ADMIN_ROUTES,
+  GO_NOTEBOOK_ROUTES,
   USER_ADMIN_COGNITO_ACTIONS,
 } from '../lib/stacks/api-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
@@ -791,8 +792,8 @@ describe('ApiStack', () => {
       'ANY /api/admin/{proxy+}',
       'ANY /api/notebook',
       'ANY /api/notebook/{proxy+}',
-      ...GO_ADMIN_ROUTES.flatMap(([path, methods]) =>
-        methods.map((method) => `${method} ${path}`),
+      ...[...GO_ADMIN_ROUTES, ...GO_NOTEBOOK_ROUTES].flatMap(
+        ([path, methods]) => methods.map((method) => `${method} ${path}`),
       ),
     ]);
     const expectedPublicRouteKeys = new Set([

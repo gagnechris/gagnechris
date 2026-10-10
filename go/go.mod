@@ -8,10 +8,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.21.11
 	github.com/aws/aws-sdk-go-v2/service/backup v1.69.1
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.75.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.70.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.79.1
 	github.com/aws/smithy-go v1.28.5
+	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/nullable v1.1.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/oklog/ulid/v2 v2.1.2
@@ -37,5 +39,4 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.38.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.4 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 )

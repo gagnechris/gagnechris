@@ -79,7 +79,24 @@ export const GO_ADMIN_ROUTES: ReadonlyArray<
   ...publishVerbs('/api/admin/resume'),
   ['/api/admin/media/upload-url', [HttpMethod.POST]],
   ['/api/admin/media/objects/{key+}', [HttpMethod.PUT]],
+  ['/api/admin/users', [HttpMethod.GET, HttpMethod.POST]],
+  ['/api/admin/users/{id}/access', [HttpMethod.PUT]],
+  ...[
+    'disable',
+    'enable',
+    'sign-out',
+    'remove',
+    'resend-invite',
+    'restore',
+  ].map(
+    (action) => [`/api/admin/users/{id}/${action}`, [HttpMethod.POST]] as const,
+  ),
 ];
+
+/** Notebook routes the Go API serves, each behind the Notebook authorizer. */
+export const GO_NOTEBOOK_ROUTES: ReadonlyArray<
+  readonly [path: string, methods: readonly HttpMethod[]]
+> = [['/api/notebook/search', [HttpMethod.POST]]];
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -166,7 +183,6 @@ export class ApiStack extends Stack {
         ADMIN_WEB_CLIENT_ID: adminWebClientId,
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
         IOS_CLIENT_ID: iosClientId,
-        USER_POOL_ID: userPool.userPoolId,
       },
     });
 
@@ -175,13 +191,11 @@ export class ApiStack extends Stack {
     siteBucket.grantPut(this.apiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
-    // Users & access. No delete: removing someone keeps their account and Notebook.
-    userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
       description:
-        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media)',
+        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media, users, search)',
       cmd: 'api',
       memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
@@ -205,12 +219,15 @@ export class ApiStack extends Stack {
         ADMIN_WEB_CLIENT_ID: adminWebClientId,
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
         IOS_CLIENT_ID: iosClientId,
+        USER_POOL_ID: userPool.userPoolId,
       },
     });
     dataTable.grantReadWriteData(this.goApiFunction);
     siteBucket.grantPut(this.goApiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.goApiFunction);
     notifyEmailIdentity.grantSendEmail(this.goApiFunction);
+    // Users & access. No delete: removing someone keeps their account and Notebook.
+    userPool.grant(this.goApiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     // One authorizer per prefix so a token from the other web app's client
     // gets a gateway 401. The iOS app calls Notebook, so its client is in that
@@ -380,6 +397,14 @@ export class ApiStack extends Stack {
       integration,
       authorizer: adminAuthorizer,
     });
+    for (const [path, methods] of GO_NOTEBOOK_ROUTES) {
+      this.httpApi.addRoutes({
+        path,
+        methods: [...methods],
+        integration: goIntegration,
+        authorizer: notebookAuthorizer,
+      });
+    }
     this.httpApi.addRoutes({
       path: '/api/notebook/{proxy+}',
       methods: [HttpMethod.ANY],

@@ -284,3 +284,36 @@ func (r *ItemReader) NullEnum(key string, values ...string) *string {
 	s := r.Enum(key, values...)
 	return &s
 }
+
+// Bool is a required z.boolean().
+func (r *ItemReader) Bool(key string) bool {
+	if _, ok := r.item[key]; !ok {
+		r.bad(key, "missing")
+		return false
+	}
+	b := r.OptBool(key)
+	return b != nil && *b
+}
+
+// OptOnlyStr is z.string().optional(): missing is fine, null is not.
+func (r *ItemReader) OptOnlyStr(key string, minLen int) *string {
+	s, ok := r.str(key, false, minLen)
+	if !ok {
+		return nil
+	}
+	return &s
+}
+
+// OptPositiveInt is z.number().int().positive().optional().
+func (r *ItemReader) OptPositiveInt(key string) {
+	if _, ok := r.item[key]; !ok {
+		return
+	}
+	before := len(*r.problems)
+	if n := r.NonNegativeInt(key); n == 0 && len(*r.problems) == before {
+		r.bad(key, "not positive")
+	}
+}
+
+// Fail records a problem a caller's own check found.
+func (r *ItemReader) Fail(key, why string) { r.bad(key, why) }
