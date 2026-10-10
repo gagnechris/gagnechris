@@ -1,4 +1,3 @@
-import { NOTEBOOK_GROUP } from '@gagnechris/shared';
 import type { TokenProvider } from '@gagnechris/api-client';
 import {
   createContext,
@@ -9,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { spacesFor, type Space } from './space';
 
 export type SessionUser = {
   sub: string;
@@ -41,7 +41,8 @@ export type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
 type SessionState = {
   status: SessionStatus;
   user: SessionUser | null;
-  hasNotebook: boolean;
+  /** The spaces the user's groups open; none means No access. */
+  spaces: readonly Space[];
   /** The last session ended on its own (refresh refused), not by signing out. */
   expired: boolean;
   signIn: (options?: { newAccount?: boolean }) => Promise<void>;
@@ -118,7 +119,7 @@ export const SessionProvider = ({
     () => ({
       status,
       user,
-      hasNotebook: user?.groups.includes(NOTEBOOK_GROUP) ?? false,
+      spaces: user ? spacesFor(user.groups) : [],
       expired,
       signIn,
       signOut,
@@ -149,12 +150,13 @@ export function initials(user: SessionUser): string {
   return letters.toUpperCase();
 }
 
-/** Which root screens a session may see: the tabs, No access, or sign-in. */
-export function rootGuards(status: SessionStatus, hasNotebook: boolean) {
+/** Which root screens a session may see: each space, No access, or sign-in. */
+export function rootGuards(status: SessionStatus, spaces: readonly Space[]) {
   const signedIn = status === 'signedIn';
   return {
-    notebook: signedIn && hasNotebook,
-    noAccess: signedIn && !hasNotebook,
+    notebook: signedIn && spaces.includes('notebook'),
+    admin: signedIn && spaces.includes('admin'),
+    noAccess: signedIn && spaces.length === 0,
     signIn: status === 'signedOut',
   };
 }

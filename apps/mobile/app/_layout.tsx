@@ -13,6 +13,7 @@ import { apiBaseUrl } from '../src/config';
 import { NetworkStatus, startConnectivity } from '../src/net';
 import { outboxMiddleware, useOutboxSession } from '../src/outbox';
 import { rootGuards, SessionProvider, useSession } from '../src/session';
+import { SpaceProvider } from '../src/space';
 import { sendClientVersion, useSyncFeed } from '../src/sync';
 import { color } from '../src/theme';
 
@@ -25,7 +26,7 @@ const NotebookSync = ({ client }: { client: ApiClient }) => {
 };
 
 const RootStack = () => {
-  const { status, hasNotebook, getToken } = useSession();
+  const { status, spaces, getToken } = useSession();
   // One client, so concurrent 401s share its refresh.
   const client = useMemo(
     () =>
@@ -40,7 +41,7 @@ const RootStack = () => {
   );
   const getClient = useCallback(() => client, [client]);
   if (status === 'restoring') return null;
-  const guards = rootGuards(status, hasNotebook);
+  const guards = rootGuards(status, spaces);
   return (
     <AppApiProvider getClient={getClient}>
       {guards.notebook ? <NotebookSync client={client} /> : null}
@@ -50,9 +51,14 @@ const RootStack = () => {
           contentStyle: { backgroundColor: color.background },
         }}
       >
-        <Stack.Protected guard={guards.notebook}>
-          <Stack.Screen name="(tabs)" />
+        <Stack.Protected guard={guards.notebook || guards.admin}>
           <Stack.Screen name="index" />
+        </Stack.Protected>
+        <Stack.Protected guard={guards.admin}>
+          <Stack.Screen name="admin" options={{ animation: 'fade' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={guards.notebook}>
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
           <Stack.Screen name="search" options={{ presentation: 'modal' }} />
           <Stack.Screen name="conflicts" options={{ presentation: 'modal' }} />
         </Stack.Protected>
@@ -73,13 +79,15 @@ const RootLayout = () => {
     <SessionProvider backend={backend} wipe={wipeLocalData}>
       <SessionQueryCache>
         <AreaProvider store={AsyncStorage}>
-          <View style={{ flex: 1 }}>
-            <NetworkStatus />
-            {/* Measures its own insets, so screens below the banner don't pad twice. */}
-            <SafeAreaProvider>
-              <RootStack />
-            </SafeAreaProvider>
-          </View>
+          <SpaceProvider store={AsyncStorage}>
+            <View style={{ flex: 1 }}>
+              <NetworkStatus />
+              {/* Measures its own insets, so screens below the banner don't pad twice. */}
+              <SafeAreaProvider>
+                <RootStack />
+              </SafeAreaProvider>
+            </View>
+          </SpaceProvider>
         </AreaProvider>
         <StatusBar style="dark" />
       </SessionQueryCache>
