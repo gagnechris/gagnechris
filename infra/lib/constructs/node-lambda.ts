@@ -1,4 +1,4 @@
-import { Aspects, Duration, type IAspect } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import {
   Alarm,
   ComparisonOperator,
@@ -15,36 +15,33 @@ import {
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import {
-  NagSuppressions,
-  type NagPackSuppression,
-  type NagPackSuppressionAppliesTo,
-} from 'cdk-nag';
+import { NagSuppressions } from 'cdk-nag';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Construct, type IConstruct } from 'constructs';
+import { Construct } from 'constructs';
 import { POWERTOOLS_METRICS_NAMESPACE } from '../config/constants.js';
+import {
+  addLambdaGuardrails,
+  type LambdaGuardrailProps,
+} from './lambda-guardrails.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = join(__dirname, '../../..');
 
 export const DEFAULT_EXTERNAL_MODULES = ['@aws-sdk/*'] as const;
 
-export interface NodeLambdaProps extends Omit<
-  NodejsFunctionProps,
-  | 'runtime'
-  | 'architecture'
-  | 'tracing'
-  | 'logGroup'
-  | 'depsLockFilePath'
-  | 'projectRoot'
-> {
-  readonly powertoolsServiceName: string;
-  readonly alertsTopic: ITopic;
-  readonly alarmNamePrefix: string;
-  readonly iam5NagReason: string;
-  readonly iam5NagAppliesTo: NagPackSuppressionAppliesTo[];
+export interface NodeLambdaProps
+  extends
+    Omit<
+      NodejsFunctionProps,
+      | 'runtime'
+      | 'architecture'
+      | 'tracing'
+      | 'logGroup'
+      | 'depsLockFilePath'
+      | 'projectRoot'
+    >,
+    LambdaGuardrailProps {
   readonly logRetention?: RetentionDays;
-  readonly enableDurationAlarm?: boolean;
 }
 
 export interface LambdaFailureDestinationProps {
@@ -158,79 +155,17 @@ export class NodeLambda extends NodejsFunction {
       ...rest,
     });
 
-    this.errorsAlarm = new Alarm(scope, `${baseId}LambdaErrors`, {
-      alarmName: `${alarmNamePrefix}-lambda-errors`,
-      alarmDescription: `${powertoolsServiceName} Lambda errors > 0 in 5 minutes`,
-      metric: this.metricErrors({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
+    const alarms = addLambdaGuardrails(scope, id, this, {
+      powertoolsServiceName,
+      alertsTopic,
+      alarmNamePrefix,
+      iam5NagReason,
+      iam5NagAppliesTo,
+      enableDurationAlarm,
+      timeout,
     });
-    this.errorsAlarm.addAlarmAction(new SnsAction(alertsTopic));
-
-    this.throttlesAlarm = new Alarm(scope, `${id}ThrottlesAlarm`, {
-      alarmName: `${alarmNamePrefix}-lambda-throttles`,
-      alarmDescription: `${powertoolsServiceName} Lambda throttles > 0 in 5 minutes`,
-      metric: this.metricThrottles({
-        period: Duration.minutes(5),
-        statistic: 'Sum',
-      }),
-      threshold: 1,
-      evaluationPeriods: 1,
-      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-      treatMissingData: TreatMissingData.NOT_BREACHING,
-    });
-    this.throttlesAlarm.addAlarmAction(new SnsAction(alertsTopic));
-
-    if (enableDurationAlarm && timeout) {
-      const thresholdMs = Math.floor(timeout.toMilliseconds() * 0.8);
-      this.durationAlarm = new Alarm(scope, `${id}DurationAlarm`, {
-        alarmName: `${alarmNamePrefix}-lambda-duration`,
-        alarmDescription: `${powertoolsServiceName} Lambda p99 duration ≥ 80% of timeout`,
-        metric: this.metricDuration({
-          period: Duration.minutes(5),
-          statistic: 'p99',
-        }),
-        threshold: thresholdMs,
-        evaluationPeriods: 1,
-        comparisonOperator:
-          ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-        treatMissingData: TreatMissingData.NOT_BREACHING,
-      });
-      this.durationAlarm.addAlarmAction(new SnsAction(alertsTopic));
-    }
-
-    const nagSuppressions: NagPackSuppression[] = [
-      {
-        id: 'AwsSolutions-IAM4',
-        reason:
-          'NodejsFunction uses AWSLambdaBasicExecutionRole for CloudWatch Logs.',
-        appliesTo: [
-          'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-        ],
-      },
-      {
-        id: 'AwsSolutions-IAM5',
-        reason: iam5NagReason,
-        appliesTo: iam5NagAppliesTo,
-      },
-    ];
-    Aspects.of(this).add(new ApplyNodeLambdaNagSuppressions(nagSuppressions), {
-      priority: 100,
-    });
-  }
-}
-
-class ApplyNodeLambdaNagSuppressions implements IAspect {
-  constructor(private readonly suppressions: NagPackSuppression[]) {}
-
-  visit(node: IConstruct): void {
-    if (node instanceof NodeLambda) {
-      NagSuppressions.addResourceSuppressions(node, this.suppressions, true);
-    }
+    this.errorsAlarm = alarms.errorsAlarm;
+    this.throttlesAlarm = alarms.throttlesAlarm;
+    this.durationAlarm = alarms.durationAlarm;
   }
 }

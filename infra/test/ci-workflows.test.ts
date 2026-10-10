@@ -520,6 +520,7 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
   const infra = commit('infra/lib/stacks/data-stack.ts');
   const web = commit('apps/web/src/main.tsx');
   const runbook = commit('infra/RUNBOOK.md');
+  const goSource = commit('go/internal/observability/logger.go');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -558,6 +559,7 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
     // deployed-sha predates a cancelled infra build, so a later
     // docs-only head still deploys the stranded infra change.
     expect(paths(docs, runbook)).toBe('cdk=true\nweb=true');
+    expect(paths(runbook, goSource)).toBe('cdk=true\nweb=false');
   });
 });
 
