@@ -159,6 +159,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
+    // Yoga packs wrapped lines at the top, so without this the title sits
+    // above the centered checkbox.
+    alignContent: 'center',
     gap: tokens.space[2],
     minHeight: MIN_TARGET,
   },
