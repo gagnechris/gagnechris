@@ -1974,5 +1974,301 @@
       "createdAt": "2026-10-01T12:00:00.000Z",
       "removedBy": "user-sub-1"
     }
+  },
+  "apiSamples": {
+    "post": {
+      "id": "01POST",
+      "slug": "hello",
+      "title": "Hello",
+      "excerpt": "",
+      "bodyMarkdown": "",
+      "tags": [],
+      "projectIds": [
+        "01PROJECT"
+      ],
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "coverImage": null,
+      "seo": null,
+      "version": 1,
+      "hasUnpublishedChanges": true
+    },
+    "project": {
+      "id": "01PROJECT",
+      "slug": "notebook",
+      "name": "Notebook",
+      "pitch": "",
+      "stage": "building",
+      "stageNote": "",
+      "previewImage": null,
+      "bodyMarkdown": "",
+      "stack": [],
+      "links": [],
+      "demo": null,
+      "order": 0,
+      "href": null,
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "version": 2,
+      "hasUnpublishedChanges": false
+    },
+    "home": {
+      "name": "Chris Gagne",
+      "title": "Engineering Leader",
+      "about": "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.",
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1,
+      "hasUnpublishedChanges": false
+    },
+    "resume": {
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "content": {
+        "headline": "Director of Software Engineering",
+        "earlierRolesThrough": 2012,
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro",
+            "start": "2019-07",
+            "end": null,
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player",
+            "start": "2017-03",
+            "end": "2019-07",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock",
+            "start": "2014-09",
+            "end": "2017-03",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom",
+            "start": "2014-09",
+            "end": "2015-04",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images",
+            "start": "2012-06",
+            "end": "2014-09",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack",
+            "start": "2010-08",
+            "end": "2012-06",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack",
+            "start": "2004-12",
+            "end": "2010-08",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation",
+            "start": "2000-07",
+            "end": "2004-12",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation",
+            "start": "1999-01",
+            "end": "2000-04",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      },
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1,
+      "hasUnpublishedChanges": false
+    },
+    "note": {
+      "id": "01NOTE",
+      "userId": "user-sub-1",
+      "area": "work",
+      "type": "daily",
+      "date": "2026-10-01",
+      "title": "Daily",
+      "bodyMarkdown": "private text",
+      "tags": [],
+      "pinned": false,
+      "taskIds": [],
+      "version": 3,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false
+    },
+    "task": {
+      "id": "01K6G0000000000000000TASK0",
+      "userId": "user-sub-1",
+      "area": "work",
+      "title": "Do it",
+      "description": "",
+      "priority": "med",
+      "status": "todo",
+      "dueDate": null,
+      "startDate": null,
+      "someday": false,
+      "completedAt": null,
+      "noteId": "01NOTE",
+      "tags": [],
+      "version": 1,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false
+    },
+    "syncNote": {
+      "type": "note",
+      "id": "01NOTE",
+      "version": 3,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false,
+      "entity": {
+        "id": "01NOTE",
+        "userId": "user-sub-1",
+        "area": "work",
+        "type": "daily",
+        "date": "2026-10-01",
+        "title": "Daily",
+        "bodyMarkdown": "private text",
+        "tags": [],
+        "pinned": false,
+        "taskIds": [],
+        "version": 3,
+        "createdAt": "2026-10-01T12:00:00.000Z",
+        "updatedAt": "2026-10-01T12:00:00.000Z",
+        "deleted": false
+      }
+    },
+    "syncTask": {
+      "type": "task",
+      "id": "01K6G0000000000000000TASK0",
+      "version": 1,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false,
+      "entity": {
+        "id": "01K6G0000000000000000TASK0",
+        "userId": "user-sub-1",
+        "area": "work",
+        "title": "Do it",
+        "description": "",
+        "priority": "med",
+        "status": "todo",
+        "dueDate": null,
+        "startDate": null,
+        "someday": false,
+        "completedAt": null,
+        "noteId": "01NOTE",
+        "tags": [],
+        "version": 1,
+        "createdAt": "2026-10-01T12:00:00.000Z",
+        "updatedAt": "2026-10-01T12:00:00.000Z",
+        "deleted": false
+      }
+    },
+    "syncTaskDeleted": {
+      "type": "task",
+      "id": "01K6G0000000000000000TASK0",
+      "version": 2,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": true
+    }
   }
 }
