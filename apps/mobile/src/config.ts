@@ -62,6 +62,13 @@ export const IOS_AUTH_REDIRECTS = {
   },
 } as const;
 
+export type AuthRedirect = keyof typeof IOS_AUTH_REDIRECTS;
+
+/** Device builds set `EXPO_PUBLIC_AUTH_REDIRECT=universalLink` in `eas.json`. */
+export function resolveAuthRedirect(raw: string | undefined): AuthRedirect {
+  return raw === 'universalLink' ? 'universalLink' : 'scheme';
+}
+
 export type CognitoConfig = {
   domain: string;
   clientId: string;
@@ -79,6 +86,10 @@ export type CognitoConfig = {
 export const cognitoConfig: CognitoConfig = {
   domain: process.env.EXPO_PUBLIC_COGNITO_DOMAIN ?? 'auth.gagnechris.com',
   clientId: process.env.EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID || IOS_CLIENT_ID,
-  ...IOS_AUTH_REDIRECTS.scheme,
+  ...IOS_AUTH_REDIRECTS[
+    resolveAuthRedirect(
+      process.env.EXPO_PUBLIC_AUTH_REDIRECT as string | undefined,
+    )
+  ],
   ephemeralSession: true,
 };
