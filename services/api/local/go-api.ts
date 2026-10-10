@@ -3,6 +3,9 @@
 //
 //   tsx services/api/local/go-api.ts test   # HTTP suite: PORT, X-Test-Claims
 //   tsx services/api/local/go-api.ts local  # local stack: LOCAL_API_PORT, local tokens
+//
+// GO_API_BIN names a prebuilt binary; otherwise each run builds one. Build
+// once first when starting many servers at a time, as the HTTP suite does.
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -69,12 +72,14 @@ function shutdown(code: number): never {
 process.on('SIGTERM', () => shutdown(0));
 process.on('SIGINT', () => shutdown(0));
 
-const bin = path.join(binDir, 'api');
-const build = spawnSync('go', ['-C', 'go', 'build', '-o', bin, './cmd/api'], {
-  cwd: repoRoot,
-  stdio: 'inherit',
-});
-if (build.status !== 0) shutdown(1);
+const bin = process.env.GO_API_BIN || path.join(binDir, 'api');
+if (!process.env.GO_API_BIN) {
+  const build = spawnSync('go', ['-C', 'go', 'build', '-o', bin, './cmd/api'], {
+    cwd: repoRoot,
+    stdio: 'inherit',
+  });
+  if (build.status !== 0) shutdown(1);
+}
 
 const nodePort = await freePort();
 const nodeUrl = `http://127.0.0.1:${nodePort}`;
