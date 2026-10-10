@@ -52,6 +52,22 @@ import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
 import { GoLambda } from '../constructs/go-lambda.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
+/** Admin routes the Go API serves, each behind the admin authorizer. */
+export const GO_ADMIN_ROUTES: ReadonlyArray<
+  readonly [path: string, methods: readonly HttpMethod[]]
+> = [
+  ['/api/admin/posts', [HttpMethod.GET, HttpMethod.POST]],
+  [
+    '/api/admin/posts/{id}',
+    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
+  ],
+  ['/api/admin/posts/{id}/publish', [HttpMethod.POST]],
+  ['/api/admin/posts/{id}/unpublish', [HttpMethod.POST]],
+  ['/api/admin/posts/{id}/discard', [HttpMethod.POST]],
+  ['/api/admin/media/upload-url', [HttpMethod.POST]],
+  ['/api/admin/media/objects/{key+}', [HttpMethod.PUT]],
+];
+
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly userPool: IUserPool;
@@ -151,7 +167,8 @@ export class ApiStack extends Stack {
 
     this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
-      description: 'gagnechris HTTP API routes served by Go (health, contact)',
+      description:
+        'gagnechris HTTP API routes served by Go (health, contact, posts, media)',
       cmd: 'api',
       memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
@@ -159,10 +176,16 @@ export class ApiStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api-go`,
       iam5NagReason:
-        'X-Ray tracing wildcards, DynamoDB index/*, and SES send on the domain identity.',
-      iam5NagAppliesTo: ['Resource::*', { regex: '/^Resource::.*/index*/g' }],
+        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity.',
+      iam5NagAppliesTo: [
+        'Resource::*',
+        'Action::s3:Abort*',
+        { regex: '/^Resource::.*/index*/g' },
+        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/*/g' },
+      ],
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
+        SITE_BUCKET_NAME: siteBucketName,
         CONTACT_TO_EMAIL: config.alertsEmail,
         CONTACT_FROM_EMAIL: fromEmail,
         SITE_APEX_DOMAIN: config.domainName,
@@ -172,6 +195,7 @@ export class ApiStack extends Stack {
       },
     });
     dataTable.grantReadWriteData(this.goApiFunction);
+    siteBucket.grantPut(this.goApiFunction, 'media/*');
     emailIdentity.grantSendEmail(this.goApiFunction);
     notifyEmailIdentity.grantSendEmail(this.goApiFunction);
 
@@ -321,6 +345,16 @@ export class ApiStack extends Stack {
       true,
     );
 
+    // More specific than /api/admin/{proxy+}, so API Gateway sends these to
+    // Go and every other admin route to Node.
+    for (const [path, methods] of GO_ADMIN_ROUTES) {
+      this.httpApi.addRoutes({
+        path,
+        methods: [...methods],
+        integration: goIntegration,
+        authorizer: adminAuthorizer,
+      });
+    }
     this.httpApi.addRoutes({
       path: '/api/admin/{proxy+}',
       methods: [HttpMethod.ANY],

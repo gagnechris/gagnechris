@@ -24,7 +24,7 @@ func TestValidatorCodes(t *testing.T) {
 	check := func(v *Validator) {
 		v.String("name", true, true, MinLen(1), MaxLen(3))
 		v.String("email", false, true, Email, MaxLen(20))
-		v.OptionalNonNegativeInt("n")
+		v.Int("n", false, NonNegative)
 	}
 	cases := []struct {
 		body string
