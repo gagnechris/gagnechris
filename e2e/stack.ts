@@ -290,9 +290,14 @@ export async function startStack(): Promise<Stack> {
       }),
     );
 
-    const apiLogs = start('api', join(BIN, 'tsx'), [
-      'services/api/local/server.ts',
-    ]);
+    // API_SERVER=go puts the Go API in front of the Node one.
+    const apiLogs = start(
+      'api',
+      join(BIN, 'tsx'),
+      process.env.API_SERVER === 'go'
+        ? ['services/api/local/go-api.ts', 'local']
+        : ['services/api/local/server.ts'],
+    );
     const siteLogs = start('site', join(BIN, 'tsx'), [
       'services/api/local/static-server.ts',
     ]);

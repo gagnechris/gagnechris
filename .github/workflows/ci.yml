@@ -120,6 +120,7 @@ jobs:
               - 'services/api/**'
               - 'packages/data/**'
               - 'packages/shared/**'
+              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'
@@ -154,6 +155,23 @@ jobs:
           COMPOSE_PROJECT_NAME: gagnechris-ci
           SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
         run: npm run test:integration -w @gagnechris/api
+
+      - name: Build the Go API
+        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        run: go -C go build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
+
+      - name: API HTTP suite against the Go API
+        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        env:
+          GO_API_BIN: ${{ runner.temp }}/gagnechris-api
+          AWS_ACCESS_KEY_ID: local
+          AWS_SECRET_ACCESS_KEY: local
+          AWS_REGION: us-east-1
+          AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
+          COMPOSE_PROJECT_NAME: gagnechris-ci
+          SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
+          API_SERVER_COMMAND: node --import tsx services/api/local/go-api.ts test
+        run: npm run test:http -w @gagnechris/api
 
       - name: Stop CI DynamoDB Local
         if: always() && (github.event_name == 'push' || steps.filter.outputs.api == 'true')

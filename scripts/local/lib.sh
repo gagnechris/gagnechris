@@ -8,11 +8,12 @@ wait_dynamodb() {
   "${ROOT}/node_modules/.bin/tsx" "${ROOT}/scripts/local/wait-dynamodb.ts" "$@"
 }
 
-# wait_http <url> <label>: until <url> answers 2xx, for up to 10 s.
+# wait_http <url> <label> [tries]: until <url> answers 2xx, polling every
+# 0.25 s (40 tries, 10 s, by default).
 wait_http() {
   local url="$1"
   local label="$2"
-  for _ in $(seq 1 40); do
+  for _ in $(seq 1 "${3:-40}"); do
     if curl -sf "$url" >/dev/null 2>&1; then
       return 0
     fi

@@ -56,6 +56,7 @@ import {
   taskPk,
 } from '@gagnechris/data';
 import {
+  API_SERVICE_NAME,
   DEFAULT_HOME,
   DEFAULT_RESUME,
   HomeSchema,
@@ -344,6 +345,10 @@ for (const [name, [schema, body]] of Object.entries(API_SAMPLES)) {
 }
 
 const contract = {
+  api: {
+    serviceName: API_SERVICE_NAME,
+    metricsNamespace: POWERTOOLS_METRICS_NAMESPACE,
+  },
   restoreTest: {
     serviceName: RESTORE_TEST_SERVICE_NAME,
     metricsNamespace: POWERTOOLS_METRICS_NAMESPACE,

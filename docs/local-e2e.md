@@ -37,7 +37,8 @@ afterwards:
    `gagnechris-e2e-<run>`
 2. Site root `e2e/.stack/<run>/site` (`E2E_SITE_ROOT`), seeded from `apps/web/dist` when a
    build exists, else `scripts/local/minimal-shell.html`
-3. Local API + publisher (`services/api/local/server.ts`) and static site
+3. Local API + publisher (`services/api/local/server.ts`, or the Go API in
+   front of it with `API_SERVER=go`) and static site
    (`static-server.ts`, `E2E_SITE_URL`), which runs the real apex
    viewer-request function and returns its redirects with their headers.
    The API runs one rebuild at a time and answers a publish only after its
@@ -213,6 +214,7 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 | `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing                      |
 | `e2e/`                                | Playwright config, stack global setup, fixtures, specs               |
 | `services/api/local/server.ts`        | HTTP → Lambda handler + publisher rebuild                            |
+| `services/api/local/go-api.ts`        | Go API in front of the Node API (`API_SERVER=go`, HTTP suite)        |
 | `services/api/local/static-server.ts` | Serves `.local-site` through the real CloudFront functions           |
 | `infra/lib/cloudfront/harness.ts`     | Runs the CloudFront functions as deployed (local server, edge tests) |
 | `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)              |
