@@ -18,6 +18,7 @@ import { searchRoutes } from './search/handlers.js';
 import { registerProductionSyncAdapters } from './sync/adapters.js';
 import { syncRoutes } from './sync/handlers.js';
 import { taskRoutes } from './tasks/handlers.js';
+import { templateRoutes } from './templates/handlers.js';
 import { createUserRoutes } from './users/handlers.js';
 
 const health = defineRoute({
@@ -64,6 +65,7 @@ export const routes: RouteDef[] = [
   ...mediaRoutes,
   ...noteRoutes,
   ...taskRoutes,
+  ...templateRoutes,
   ...searchRoutes,
   ...syncRoutes,
   ...createUserRoutes(),

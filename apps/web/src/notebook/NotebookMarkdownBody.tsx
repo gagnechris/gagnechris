@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { EditorView } from '@codemirror/view';
 import type { EmbedNote } from '@gagnechris/app-core';
 import { findTaskEmbeds } from '@gagnechris/shared';
@@ -28,6 +36,10 @@ type Props = {
   /** Scrolls this task's embed into view and flashes it, once it is in `value`. */
   highlightTaskId?: string | null;
   onHighlighted?: () => void;
+  /** For callers that insert text at the caret. */
+  editorRef?: RefObject<MarkdownEditorHandle | null>;
+  label?: string;
+  placeholder?: string;
 };
 
 /** Room under the caret for the accessory bar and the docked date chips. */
@@ -42,8 +54,20 @@ export function NotebookMarkdownBody({
   ensureNoteSaved,
   highlightTaskId,
   onHighlighted,
+  editorRef: outerEditorRef,
+  label = 'Note body',
+  placeholder = 'Write in markdown…',
 }: Props) {
   const editorRef = useRef<MarkdownEditorHandle>(null);
+  useImperativeHandle(
+    outerEditorRef,
+    () => ({
+      focus: () => editorRef.current?.focus(),
+      insertText: (text) => editorRef.current?.insertText(text),
+      view: () => editorRef.current?.view(),
+    }),
+    [],
+  );
   const mode = useEditorViewMode({
     rawStorageKey: 'notebook.rawMarkdown',
     editorRef,
@@ -150,8 +174,8 @@ export function NotebookMarkdownBody({
             onChange={onChange}
             extensions={extensions}
             lineNumbers={false}
-            label="Note body"
-            placeholder="Write in markdown…"
+            label={label}
+            placeholder={placeholder}
           />
           {mode.previewPane(
             <LazyMarkdownPreview

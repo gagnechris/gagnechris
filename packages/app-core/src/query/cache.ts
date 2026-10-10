@@ -236,6 +236,16 @@ const noteMatches = (
 };
 
 export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
+  // An unsaved day (version 0) is not a note yet: no list row, no calendar dot.
+  if (note.version === 0) {
+    if (note.type === 'daily' && note.date) {
+      queryClient.setQueryData(
+        queryKeys.notes.daily(note.area, note.date),
+        note,
+      );
+    }
+    return;
+  }
   setDetail(queryClient, queryKeys.notes.detail(note.id), note);
   if (note.type === 'daily' && note.date) {
     const dailyKey = queryKeys.notes.daily(note.area, note.date);

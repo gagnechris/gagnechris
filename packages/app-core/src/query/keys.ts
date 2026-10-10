@@ -51,6 +51,8 @@ export const queryKeys = {
     batch: (ids: readonly string[]) =>
       [...queryKeys.tasks.all, 'batch', ids] as const,
   },
+  dailyTemplate: (area: 'work' | 'personal') =>
+    ['admin', 'notebook', 'templates', 'daily', area] as const,
   search: (filters: {
     q: string;
     area?: 'work' | 'personal';

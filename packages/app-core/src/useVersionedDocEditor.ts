@@ -352,6 +352,8 @@ export function useVersionedDocController<
     isLoading,
     runDelete,
     suppressLeaveGuardRef,
+    /** Shows `entity` as the clean, saved state (it is also cached). */
+    replaceFromEntity: onReplaceDraft,
   };
 
   const controller: VersionedDocController<TEntity> = {

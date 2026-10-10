@@ -1,15 +1,23 @@
 import {
   dailyNoteResource,
+  isTemplateStartedDaily,
+  startDailyNoteBlank,
   useNoteTaskEmbedSync,
   useVersionedDocEditor,
   type NotebookArea,
 } from '@gagnechris/app-core';
-import { taskEmbedIds, taskEmbedToken } from '@gagnechris/shared';
+import {
+  NOTEBOOK_AREA_LABELS,
+  taskEmbedIds,
+  taskEmbedToken,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { EditorOfflineNotice, nativeRetrySignals, useIsOnline } from '../net';
 import { color, font } from '../theme';
+import { Button } from '../ui/Button';
 import { nativeConfirm } from '../ui/confirm';
 import { ConflictPanel } from './ConflictPanel';
 import { NoteBodyEditor } from './NoteBodyEditor';
@@ -64,6 +72,7 @@ const DailyNoteEditor = ({
   onReload,
 }: Props & { onReload: () => void }) => {
   const online = useIsOnline();
+  const router = useRouter();
   const editor = useVersionedDocEditor({
     resource: dailyNoteResource,
     params: { area, date, carryIn: date === today },
@@ -141,6 +150,33 @@ const DailyNoteEditor = ({
         </Text>
       ) : null}
       <EditorOfflineNotice dirty={dirty} />
+      {isTemplateStartedDaily(entity!) && !dirty && saveState !== 'saving' ? (
+        <View style={styles.template} accessibilityRole="summary">
+          <Text style={styles.templateText}>
+            Started from your {NOTEBOOK_AREA_LABELS[area]} template. It’s saved
+            as soon as you type.
+          </Text>
+          <View style={styles.templateActions}>
+            <Button
+              title="Start blank"
+              variant="secondary"
+              onPress={() =>
+                editor.replaceFromEntity(startDailyNoteBlank(entity!))
+              }
+            />
+            <Button
+              title="Edit template"
+              variant="secondary"
+              onPress={() =>
+                router.push({
+                  pathname: '/more/templates',
+                  params: { template: area },
+                })
+              }
+            />
+          </View>
+        </View>
+      ) : null}
       <NoteBodyEditor
         markdown={body}
         onChange={(bodyMarkdown) =>
@@ -162,6 +198,18 @@ const styles = StyleSheet.create({
     color: color.inkSoft,
     alignSelf: 'flex-end',
   },
+  template: {
+    gap: tokens.space[2],
+    padding: tokens.space[3],
+    borderRadius: tokens.radius.sm,
+    backgroundColor: color.accentSoft,
+  },
+  templateText: {
+    ...font.regular,
+    fontSize: tokens.text.caption,
+    color: color.accentInk,
+  },
+  templateActions: { flexDirection: 'row', gap: tokens.space[2] },
   error: { ...font.medium, fontSize: tokens.text.base, color: color.alert },
   status: {
     ...font.regular,

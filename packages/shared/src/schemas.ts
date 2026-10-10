@@ -768,6 +768,11 @@ export const EmptyDailyNoteSchema = z.object({
   tags: z.array(z.string()).length(0),
   pinned: z.literal(false),
   version: z.literal(0),
+  templateMarkdown: z
+    .string()
+    .describe(
+      "The area's daily template filled in for this date: the editor's starting text, not saved until edited",
+    ),
 });
 
 export type EmptyDailyNote = z.infer<typeof EmptyDailyNoteSchema>;

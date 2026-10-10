@@ -15,6 +15,10 @@ const daily =
     return data;
   };
 
+test.beforeEach(async ({ seed }) => {
+  await seed.blankDailyTemplates();
+});
+
 const openToday = async (page: Page, notebook: string) => {
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await page.goto(`${notebook}/today`);

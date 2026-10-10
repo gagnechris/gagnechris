@@ -69,6 +69,7 @@ test('Add to today’s note from Preview returns to the editor with the caret un
   seed,
   prefix,
 }) => {
+  await seed.blankDailyTemplates();
   const task = await seed.task({
     title: `${prefix} reply to recruiter`,
     startDate: '2026-10-02',
@@ -141,6 +142,7 @@ test('text typed just before changing day is saved to its own day', async ({
   signIn,
   seed,
 }) => {
+  await seed.blankDailyTemplates();
   await seed.daily('2026-10-01', 'Yesterday');
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();

@@ -6,9 +6,11 @@ import {
   useState,
   type MutableRefObject,
 } from 'react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   dailyNoteResource,
+  isTemplateStartedDaily,
+  startDailyNoteBlank,
   useDailyNoteDatesQuery,
   useTaskPatch,
   useTaskToggle,
@@ -119,6 +121,7 @@ function TodayEditor({
     isLoading,
     dirty,
     saveState,
+    replaceFromEntity,
   } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
     params: { area, date, carryIn: date === today },
@@ -197,6 +200,29 @@ function TodayEditor({
         <p className="admin-panel__error" role="alert">
           {saveError}
         </p>
+      ) : null}
+      {isTemplateStartedDaily(entity) && !dirty && saveState !== 'saving' ? (
+        <div className="notebook-today__template" role="note">
+          <span>
+            Started from your <strong>{NOTEBOOK_AREA_LABELS[area]}</strong>{' '}
+            template. It’s saved as soon as you type.
+          </span>
+          <span className="notebook-today__template-actions">
+            <button
+              type="button"
+              className="notebook-today__template-action"
+              onClick={() => replaceFromEntity(startDailyNoteBlank(entity))}
+            >
+              Start blank
+            </button>
+            <Link
+              className="notebook-today__template-action"
+              to={`/settings/templates?template=${area}&area=${area}`}
+            >
+              Edit template
+            </Link>
+          </span>
+        </div>
       ) : null}
       <NotebookMarkdownBody
         note={entity}

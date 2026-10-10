@@ -187,4 +187,30 @@ describe('exportNotebook', () => {
     );
     expect(text).not.toContain('{{task:');
   });
+
+  test('includes the daily templates unfilled', async () => {
+    const { blob } = buildNotebookExportZip(
+      [],
+      [],
+      [
+        {
+          area: 'work',
+          bodyMarkdown: '## Focus for {{weekday}}\n',
+          isDefault: true,
+          version: 0,
+          updatedAt: null,
+        },
+        {
+          area: 'personal',
+          bodyMarkdown: '## Errands\n- [ ] \n',
+          isDefault: false,
+          version: 2,
+          updatedAt: '2026-10-09T12:00:00.000Z',
+        },
+      ],
+    );
+    const text = new TextDecoder().decode(await blob.arrayBuffer());
+    expect(text).toContain('templates/work.md## Focus for {{weekday}}\n');
+    expect(text).toContain('templates/personal.md## Errands\n- [ ] \n');
+  });
 });

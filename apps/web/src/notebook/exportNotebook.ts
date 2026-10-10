@@ -1,4 +1,4 @@
-import type { Note, Task } from '@gagnechris/app-core';
+import type { DailyTemplate, Note, Task } from '@gagnechris/app-core';
 import { replaceTaskEmbeds, taskEmbedFallbackLine } from '@gagnechris/shared';
 
 /** General-purpose flag bit 11: file names are UTF-8, not CP437. */
@@ -146,8 +146,12 @@ export function noteExportPath(note: Note): string {
 export function buildNotebookExportZip(
   notes: Note[],
   tasks: Task[],
+  templates: readonly DailyTemplate[] = [],
 ): { blob: Blob; fileCount: number } {
   const files: Record<string, string> = {};
+  for (const template of templates) {
+    files[`templates/${template.area}.md`] = template.bodyMarkdown;
+  }
   const liveTasks = tasks.filter((t) => !t.deleted);
   const tasksById = new Map(liveTasks.map((t) => [t.id, t]));
   for (const note of notes.filter((n) => !n.deleted)) {
@@ -160,6 +164,7 @@ Generated for personal backup / migration.
 
 - \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\`, \`- [x] Title\` when done and \`- [ ] ~~Title~~ (dropped)\` when dropped
 - \`tasks.json\` — all non-deleted tasks
+- \`templates/work.md\` and \`templates/personal.md\` — the daily note templates, with \`{{weekday}}\`, \`{{date}}\` and \`{{area}}\` unfilled
 
 This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).
 `;

@@ -168,6 +168,15 @@ async function dailyNote() {
   return { ...n, date };
 }
 
+const TEMPLATE = '/api/notebook/templates/daily/work';
+async function dailyTemplate() {
+  const t = await ok('GET', TEMPLATE);
+  return ok('PUT', TEMPLATE, {
+    version: t.version,
+    bodyMarkdown: `## ${unique()}\n`,
+  });
+}
+
 async function task() {
   return ok('POST', '/api/notebook/tasks', {
     id: ulid(),
@@ -371,6 +380,21 @@ const PROBES: Record<string, () => Promise<Target>> = {
       body: { id: n.id, version: n.version, title: 'Updated' },
     };
   },
+
+  'GET /api/notebook/templates/daily/{area}': onSingleton(
+    dailyTemplate,
+    TEMPLATE,
+    undefined,
+  ),
+  'PUT /api/notebook/templates/daily/{area}': onSingleton(
+    dailyTemplate,
+    TEMPLATE,
+    (version) => ({ version, bodyMarkdown: '## Updated\n' }),
+  ),
+  'DELETE /api/notebook/templates/daily/{area}': onSingleton(
+    dailyTemplate,
+    TEMPLATE,
+  ),
 
   'POST /api/notebook/tasks': create('/api/notebook/tasks', () => ({
     id: ulid(),

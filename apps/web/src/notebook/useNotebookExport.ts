@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  fetchDailyTemplate,
   fetchNotesPage,
   fetchTasksPage,
   useGetApiClient,
@@ -31,15 +32,17 @@ export function useNotebookExport() {
     setError(null);
     try {
       const client = getClient();
-      const [notes, tasks] = await Promise.all([
+      const [notes, tasks, work, personal] = await Promise.all([
         collectAllPages((cursor) =>
           fetchNotesPage(client, { cursor, limit: 100 }),
         ),
         collectAllPages((cursor) =>
           fetchTasksPage(client, { cursor, limit: 100 }),
         ),
+        fetchDailyTemplate(client, 'work'),
+        fetchDailyTemplate(client, 'personal'),
       ]);
-      const { blob } = buildNotebookExportZip(notes, tasks);
+      const { blob } = buildNotebookExportZip(notes, tasks, [work, personal]);
       triggerBlobDownload(blob, `notebook-export-${localDateString()}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');
