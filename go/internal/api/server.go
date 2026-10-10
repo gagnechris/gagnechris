@@ -59,6 +59,10 @@ func (a *App) HTTPHandler(mode ClaimsMode, fallback *url.URL) http.Handler {
 				headers[strings.ToLower(k)] = v[0]
 			}
 		}
+		// net/http moves Content-Length out of the header map.
+		if r.ContentLength > 0 {
+			headers["content-length"] = strconv.FormatInt(r.ContentLength, 10)
+		}
 		query := map[string]string{}
 		for k, v := range r.URL.Query() {
 			query[k] = v[len(v)-1]

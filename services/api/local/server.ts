@@ -3,8 +3,6 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
-import { isPublishRelevantAdminMutation } from '@gagnechris/data';
-import { rebuildPublishedSite } from '@gagnechris/publisher/rebuild';
 import { routeAuthForPath } from '../src/router.js';
 import { routes } from '../src/routes.js';
 import { applyLocalAuthEnv, localClaims } from './claims.js';
@@ -15,6 +13,7 @@ import {
   writeResult,
 } from './gateway.js';
 import { installLocalOutbox } from './outbox.js';
+import { maybeRebuild, mediaCors } from './site-hooks.js';
 
 const port = Number(process.env.LOCAL_API_PORT || 8787);
 
@@ -28,28 +27,6 @@ function localEvent(req: IncomingMessage, body: Buffer) {
   );
 }
 
-// One rebuild at a time: a rebuild that read the table before a publish can
-// then never write after the rebuild that has it, so once a publish responds
-// the site keeps the item until something else changes it.
-let rebuilds: Promise<void> = Promise.resolve();
-
-async function maybeRebuild(method: string, path: string, status: number) {
-  if (status < 200 || status >= 300) return;
-  // Local stand-in for stream filter Keys.sk == PUBLISHED (see isPublishRelevant).
-  if (!isPublishRelevantAdminMutation(method, path)) {
-    return;
-  }
-  rebuilds = rebuilds.then(async () => {
-    try {
-      const result = await rebuildPublishedSite();
-      console.info('[local-api] publisher rebuild', result);
-    } catch (err) {
-      console.error('[local-api] publisher rebuild failed', err);
-    }
-  });
-  await rebuilds;
-}
-
 if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {
   throw new Error('Refusing to start local API against gagnechris-prod');
 }
@@ -57,23 +34,12 @@ if (process.env.DATA_TABLE_NAME === 'gagnechris-prod') {
 applyLocalAuthEnv();
 installLocalOutbox();
 
-// Local upload URLs point here, so the browser PUT is cross-origin like the
-// prod PUT to the site bucket, which allows it with a CORS rule.
-const MEDIA_OBJECTS_PREFIX = '/api/admin/media/objects/';
+// Set when a front server (go-api.ts) runs the site hooks for every request.
+const behindFront = process.env.LOCAL_SITE_HOOKS === 'front';
 
 const server = createServer(async (req, res) => {
   try {
-    if ((req.url || '').startsWith(MEDIA_OBJECTS_PREFIX)) {
-      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-      res.setHeader('Access-Control-Allow-Methods', 'PUT');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-      res.setHeader('Vary', 'Origin');
-      if (req.method === 'OPTIONS') {
-        res.statusCode = 204;
-        res.end();
-        return;
-      }
-    }
+    if (!behindFront && mediaCors(req, res)) return;
     const event = localEvent(req, await readBody(req));
     const method = event.requestContext.http.method;
     const path = event.rawPath;
@@ -86,7 +52,7 @@ const server = createServer(async (req, res) => {
 
     const status = result.statusCode ?? 200;
     // Await rebuild before responding so publish/edit callers see fresh HTML.
-    await maybeRebuild(method, path, status);
+    if (!behindFront) await maybeRebuild(method, path, status);
 
     writeResult(res, result);
   } catch (err) {

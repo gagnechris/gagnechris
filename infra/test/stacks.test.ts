@@ -565,6 +565,7 @@ describe('stack Template assertions', () => {
         Variables: Match.objectLike({
           POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
           CONTACT_TO_EMAIL: config.alertsEmail,
+          SITE_BUCKET_NAME: Match.anyValue(),
         }),
       },
     });
@@ -591,6 +592,46 @@ describe('stack Template assertions', () => {
     ]) {
       expect(integrationFunction(route), route).toContain('GoApiFunction');
     }
+    const adminAuthorizers = Object.keys(
+      template.findResources('AWS::ApiGatewayV2::Authorizer', {
+        Properties: { Name: 'CognitoJwtAdmin' },
+      }),
+    );
+    expect(adminAuthorizers).toHaveLength(1);
+    for (const route of [
+      'GET /api/admin/posts',
+      'POST /api/admin/posts',
+      'GET /api/admin/posts/{id}',
+      'PUT /api/admin/posts/{id}',
+      'DELETE /api/admin/posts/{id}',
+      'POST /api/admin/posts/{id}/publish',
+      'POST /api/admin/posts/{id}/unpublish',
+      'POST /api/admin/posts/{id}/discard',
+      'POST /api/admin/media/upload-url',
+      'PUT /api/admin/media/objects/{key+}',
+    ]) {
+      expect(integrationFunction(route), route).toContain('GoApiFunction');
+      const [resource] = Object.values(
+        template.findResources('AWS::ApiGatewayV2::Route', {
+          Properties: { RouteKey: route },
+        }),
+      );
+      expect(resource?.Properties?.AuthorizationType, route).toBe('JWT');
+      expect(
+        JSON.stringify(resource?.Properties?.AuthorizerId),
+        route,
+      ).toContain(adminAuthorizers[0]);
+    }
+    expect(integrationFunction('ANY /api/admin/{proxy+}')).not.toContain(
+      'GoApiFunction',
+    );
+    const goPolicies = JSON.stringify(
+      Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
+      ),
+    );
+    expect(goPolicies).toContain('s3:PutObject');
+    expect(goPolicies).toContain('/media/*');
     expect(integrationFunction('ANY /api/notebook/{proxy+}')).toContain(
       'ApiFunction',
     );

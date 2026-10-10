@@ -55,9 +55,11 @@ type ConflictError struct {
 	Code           ConflictCode
 	CurrentVersion *int
 	Current        any
+	Cause          error
 }
 
 func (e *ConflictError) Error() string { return e.Message }
+func (e *ConflictError) Unwrap() error { return e.Cause }
 
 type PreconditionFailedError struct {
 	Message        string

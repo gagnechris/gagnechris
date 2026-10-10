@@ -75,10 +75,10 @@ func parseContactForm(body []byte) (contactForm, error) {
 	hp, _ := v.String("hp_field", false, false, api.MaxLen(200))
 	website, _ := v.String("website", false, false, api.MaxLen(200))
 	f.honeypot = api.TrimJS(hp) != "" || api.TrimJS(website) != ""
-	if n, ok := v.OptionalNonNegativeInt("elapsedMs"); ok {
+	if n, ok := v.Int("elapsedMs", false, api.NonNegative); ok {
 		f.elapsedMs = &n
 	}
-	if n, ok := v.OptionalNonNegativeInt("formStartedAt"); ok {
+	if n, ok := v.Int("formStartedAt", false, api.NonNegative); ok {
 		f.formStartedAt = &n
 	}
 	return f, v.Err()

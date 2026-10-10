@@ -13,13 +13,16 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 
 	"github.com/gagnechris/gagnechris/go/internal/api"
 	"github.com/gagnechris/gagnechris/go/internal/contact"
 	"github.com/gagnechris/gagnechris/go/internal/contract"
 	"github.com/gagnechris/gagnechris/go/internal/data"
+	"github.com/gagnechris/gagnechris/go/internal/media"
 	"github.com/gagnechris/gagnechris/go/internal/observability"
+	"github.com/gagnechris/gagnechris/go/internal/posts"
 )
 
 var processStart = time.Now()
@@ -46,6 +49,8 @@ func main() {
 
 	routes := api.Routes(table)
 	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
+	routes = append(routes, posts.Routes(table, nil)...)
+	routes = append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
 	app := api.NewApp(
 		api.NewRouter(routes),
 		logger,
