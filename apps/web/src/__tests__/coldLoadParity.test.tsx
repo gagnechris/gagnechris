@@ -487,33 +487,42 @@ describe('cold load: first React render matches the prerender', () => {
   });
 
   test.each([
-    ['with headline and earlier roles', PUBLISHED_RESUME],
+    [
+      'with headline and earlier roles',
+      renderResumePrerenderHtml(PUBLISHED_RESUME),
+    ],
     [
       'without headline or cut-off',
-      { ...PUBLISHED_RESUME, content: UNSET_CONTENT },
+      renderResumePrerenderHtml({
+        ...PUBLISHED_RESUME,
+        content: UNSET_CONTENT,
+      }),
     ],
-  ])('/resume %s mounts the same DOM as the prerender', async (_, resume) => {
-    const prerender = renderResumePrerenderHtml(resume);
-    const loaded = await coldLoad('/resume', prerender);
-    unmount = loaded.unmount;
-
-    expect(loaded.root.innerHTML).toBe(loaded.before.html);
-    expect(loaded.root.querySelector('.resume-download')).not.toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  test('/resume when unpublished', async () => {
+    ['when unpublished', renderResumeUnavailablePrerenderHtml()],
+  ])('/resume %s hydrates the published markup in place', async (_, html) => {
+    const onRecoverableError = vi.fn();
     const loaded = await coldLoad(
       '/resume',
-      renderResumeUnavailablePrerenderHtml(),
+      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      '',
+      onRecoverableError,
     );
     unmount = loaded.unmount;
 
-    expect(text(loaded.root)).toBe(loaded.before.text);
-    expect(text(loaded.root)).toContain('Resume available on request.');
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
-    expect(loaded.root.querySelector('.resume-download')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  test('/resume keeps Download PDF only while published', async () => {
+    let loaded = await coldLoad('/resume', PRERENDERS['/resume']!);
+    expect(loaded.root.querySelector('.resume-download')).not.toBeNull();
+    loaded.unmount();
+    loaded = await coldLoad('/resume', renderResumeUnavailablePrerenderHtml());
+    unmount = loaded.unmount;
+    expect(text(loaded.root)).toContain('Resume available on request.');
+    expect(loaded.root.querySelector('.resume-download')).toBeNull();
   });
 
   test('a prerender for another slug is not reused', async () => {

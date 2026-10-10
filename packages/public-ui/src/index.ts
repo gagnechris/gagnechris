@@ -31,3 +31,8 @@ export {
   ProjectPageBody,
 } from './projects/ProjectPageBody.js';
 export { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
+export {
+  ResumePageBody,
+  ResumeSections,
+  ResumeUnavailableBody,
+} from './resume/ResumePageBody.js';

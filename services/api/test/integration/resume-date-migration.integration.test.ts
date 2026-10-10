@@ -10,8 +10,8 @@ import {
   buildResumePublishedItem,
   keys,
 } from '@gagnechris/data';
-import { DEFAULT_RESUME, type Resume } from '@gagnechris/shared';
-import { renderResumeBodyHtml } from '@gagnechris/shared/render';
+import { DEFAULT_RESUME, resumeView, type Resume } from '@gagnechris/shared';
+import { resumeIntro } from '@gagnechris/shared/render';
 import { legacyResume } from '@gagnechris/shared/fixtures/legacy-resume';
 import { ResumeRepository } from '../../src/resume/repository.js';
 import {
@@ -133,7 +133,8 @@ describe('resume date migration (DynamoDB Local)', () => {
   it('--apply migrates draft and published, bumps versions, and is idempotent', async () => {
     const legacy = legacyPublished();
     await seed(legacy, legacy);
-    const htmlBefore = renderResumeBodyHtml(legacy);
+    // The page renders from these, so equal views mean an unchanged page.
+    const pageBefore = { intro: resumeIntro(legacy), view: resumeView(legacy) };
 
     const applied = await run('apply');
     expect(applied.rows.map((r) => r.status)).toEqual(['written', 'written']);
@@ -157,7 +158,10 @@ describe('resume date migration (DynamoDB Local)', () => {
       content: published.content,
       version: published.version,
     };
-    expect(renderResumeBodyHtml(publishedEntity)).toBe(htmlBefore);
+    expect({
+      intro: resumeIntro(publishedEntity),
+      view: resumeView(publishedEntity),
+    }).toEqual(pageBefore);
 
     const again = await run('apply');
     expect(again.rows.map((r) => r.status)).toEqual([

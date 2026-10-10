@@ -13,10 +13,7 @@ import {
   planResumeDateMigration,
   resumeRoleDates,
 } from './resume-dates.js';
-import {
-  renderResumeBodyHtml,
-  renderResumeSectionsHtml,
-} from './resume-html.js';
+import { resumeIntro } from './resume-html.js';
 import { resumeView } from './resume-view.js';
 import {
   ResumeContentSchema,
@@ -114,29 +111,30 @@ describe('planResumeDateMigration', () => {
 });
 
 describe('resume renders the same before and after migration', () => {
-  it('section HTML is identical for the old and migrated shapes', () => {
+  it('the sections view is identical for the old and migrated shapes', () => {
     const legacy = legacyResumeContent();
     const migrated = planResumeDateMigration(legacy).content;
-    expect(renderResumeSectionsHtml(migrated)).toBe(
-      renderResumeSectionsHtml(legacy),
+    expect(resumeView({ content: migrated })).toEqual(
+      resumeView({ content: legacy }),
     );
     const {
       headline: _headline,
       earlierRolesThrough: _cutoff,
       ...unset
     } = DEFAULT_RESUME.content;
-    expect(renderResumeSectionsHtml(unset)).toBe(
-      renderResumeSectionsHtml(legacy),
+    expect(resumeView({ content: unset })).toEqual(
+      resumeView({ content: legacy }),
     );
   });
 
-  it('the published page is identical for the old and migrated shapes', () => {
+  it('the published intro and sections are identical for the old and migrated shapes', () => {
     const legacy = legacyResume();
     const migrated = {
       ...legacy,
       content: planResumeDateMigration(legacy.content).content,
     };
-    expect(renderResumeBodyHtml(migrated)).toBe(renderResumeBodyHtml(legacy));
+    expect(resumeIntro(migrated)).toEqual(resumeIntro(legacy));
+    expect(resumeView(migrated)).toEqual(resumeView(legacy));
   });
 });
 

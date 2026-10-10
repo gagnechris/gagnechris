@@ -1,17 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
   projectPageView,
-  renderResumeBodyHtml,
 } from '@gagnechris/shared/render';
 import {
   renderHomeBodyHtml,
   renderPostPageBodyHtml,
   renderProjectPageBodyHtml,
   renderProjectsIndexBodyHtml,
+  renderResumeBodyHtml,
 } from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import { routes } from '../routes';
@@ -85,6 +85,10 @@ describe('every public page puts its body, h1 included, in one <main>', () => {
       <RouterProvider
         router={createMemoryRouter(routes, { initialEntries: [path] })}
       />,
+    );
+    // A page still loading its published view swaps in its own <main>.
+    await waitFor(() =>
+      expect(container.querySelector('main[aria-busy]')).toBeNull(),
     );
     const h1 = await screen.findByRole('heading', { level: 1 });
     const mains = container.querySelectorAll('main');
