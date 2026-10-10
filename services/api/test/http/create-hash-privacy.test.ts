@@ -1,19 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { NOTEBOOK_TEXT_MAX_BYTES } from '@gagnechris/shared';
-import { dispatchRoutes, type RouteDef } from '../../src/router.js';
-import { clearSyncEntities } from '../../src/sync/registry.js';
-import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { NotesRepository } from '../../src/notes/repository.js';
-import { createTaskRoutes } from '../../src/tasks/handlers.js';
-import { TasksRepository } from '../../src/tasks/repository.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-  truncateTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
+import { notebookUser } from './support/claims.js';
+import { useApi } from './support/harness.js';
 
 const USER = 'user-create-hash';
 const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5HA1';
@@ -22,41 +11,21 @@ const BIG_ID = '01ARZ3NDEKTSV4RRFFQ69G5HA3';
 const SECRET = 'my bank password is hunter2';
 
 describe('createHash privacy and size limits', () => {
-  let tableName: string;
-  let routes: RouteDef[];
-  const doc = createLocalDocClient();
-
-  beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('create-hash');
-  });
-
-  afterAll(async () => {
-    await deleteIntegrationTable(tableName);
-  });
-
-  beforeEach(async () => {
-    await truncateTable(doc, tableName);
-    clearSyncEntities();
-    const notes = new NotesRepository(doc, tableName);
-    const tasks = new TasksRepository(doc, tableName);
-    routes = [...createNoteRoutes(notes), ...createTaskRoutes(tasks, notes)];
-  });
+  const h = useApi('create-hash');
 
   async function call(method: string, path: string, body?: unknown) {
-    const res = await dispatchRoutes(
-      routes,
-      makeEvent(method, path, { body, jwtClaims: { sub: USER } }),
-      method,
-      path,
-    );
+    const res = await h.api.request(method, path, {
+      body,
+      claims: notebookUser(USER),
+    });
     return {
-      status: res?.statusCode,
-      body: JSON.parse(res!.body as string) as Record<string, unknown>,
+      status: res.status,
+      body: (res.body ?? {}) as Record<string, unknown>,
     };
   }
 
   async function scanAll(): Promise<Record<string, unknown>[]> {
-    const out = await doc.send(new ScanCommand({ TableName: tableName }));
+    const out = await h.doc.send(new ScanCommand({ TableName: h.tableName }));
     return (out.Items ?? []) as Record<string, unknown>[];
   }
 
@@ -134,9 +103,9 @@ describe('createHash privacy and size limits', () => {
     const legacy = [USER, 'work', 'page', '', 'Secrets', SECRET, '', '0'].join(
       '\0',
     );
-    await doc.send(
+    await h.doc.send(
       new PutCommand({
-        TableName: tableName,
+        TableName: h.tableName,
         Item: { ...meta, createHash: legacy },
       }),
     );

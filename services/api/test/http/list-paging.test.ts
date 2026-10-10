@@ -1,12 +1,6 @@
 import { isOpenTaskStatus } from '@gagnechris/shared';
-import { afterAll, beforeAll, describe, it } from 'vitest';
-import { clearSyncEntities } from '../../src/sync/registry.js';
-import type { RouteDef } from '../../src/router.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-} from '../support/dynamo-local.js';
+import { beforeAll, describe, it } from 'vitest';
+import { useApi } from './support/harness.js';
 import {
   AREAS,
   STATUSES,
@@ -16,34 +10,22 @@ import {
   SCHEDULE_QUERIES,
   seedPagingCorpus,
   walkRoute,
-} from '../support/paging-corpus.js';
+} from './support/paging-corpus.js';
 
 const N = 150;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
+const h = useApi('list-paging', { truncate: false });
+
 describe('list paging (DynamoDB Local)', () => {
-  let tableName: string;
-  let routes: RouteDef[];
-  const doc = createLocalDocClient();
-
   beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('list-paging');
-    process.env.DATA_TABLE_NAME = tableName;
-    clearSyncEntities();
-    ({ routes } = await seedPagingCorpus(doc, tableName, {
-      notes: N,
-      tasks: N,
-    }));
+    await seedPagingCorpus(h, { notes: N, tasks: N });
   }, 120_000);
-
-  afterAll(async () => {
-    await deleteIntegrationTable(tableName);
-  });
 
   it('notes: every area/type filter pages with no drops or duplicates', async () => {
     for (const area of [undefined, ...AREAS]) {
       for (const type of [undefined, 'daily', 'page'] as const) {
-        const got = await walkRoute(routes, '/api/notebook/notes', {
+        const got = await walkRoute(h, '/api/notebook/notes', {
           limit: '20',
           ...(area ? { area } : {}),
           ...(type ? { type } : {}),
@@ -65,7 +47,7 @@ describe('list paging (DynamoDB Local)', () => {
     for (const { query, matches } of SCHEDULE_QUERIES) {
       for (const area of [undefined, ...AREAS]) {
         for (const open of [undefined, 'true'] as const) {
-          const got = await walkRoute(routes, '/api/notebook/tasks', {
+          const got = await walkRoute(h, '/api/notebook/tasks', {
             limit: '7',
             ...query,
             ...(area ? { area } : {}),
@@ -92,7 +74,7 @@ describe('list paging (DynamoDB Local)', () => {
     for (const area of [undefined, ...AREAS]) {
       for (const status of [undefined, ...STATUSES]) {
         for (const open of [undefined, 'true'] as const) {
-          const got = await walkRoute(routes, '/api/notebook/tasks', {
+          const got = await walkRoute(h, '/api/notebook/tasks', {
             limit: '20',
             ...(area ? { area } : {}),
             ...(status ? { status } : {}),

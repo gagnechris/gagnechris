@@ -26,9 +26,9 @@ dependencies and `apps/mobile` dependencies, then downloads the Go toolchain
 and modules for `go/`. Lint, typecheck, `npm test`, the Go gates and the mobile
 tests work without further setup.
 
-Docker has no running daemon in cloud sessions, so `npm run local:dev`,
-`e2e:local`, `e2e:browser` and `test:integration` run in CI or on a local
-machine.
+Docker isn't running when a cloud session starts. `npm run local:dev`,
+`e2e:local`, `e2e:browser` and `test:integration` need it: start the daemon
+with `(dockerd >/tmp/dockerd.log 2>&1 &)` first.
 
 Linear is reached through the claude.ai Linear connector, which must be
 enabled for the project or session; the repository holds no Linear
@@ -74,7 +74,8 @@ Prefer `local:dev` unless you intentionally need the production API.
 
 ```bash
 npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, api unit, publisher, infra); mobile: npm test --prefix apps/mobile
-npm run test:integration -w @gagnechris/api   # DynamoDB Local transaction paths (Docker)
+npm run test:integration -w @gagnechris/api   # API over HTTP + in-process script tests on DynamoDB Local (Docker)
+npm run test:http -w @gagnechris/api          # only the black-box HTTP suite
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
@@ -133,6 +134,11 @@ Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accident
 ### Integration tests
 
 `npm run test:integration -w @gagnechris/api` **ignores** `DATA_TABLE_NAME`. Each file creates an ephemeral `gagnechris-it-*` table and deletes it afterward, so sourcing `env.sh` and running tests will not wipe `gagnechris-local`. Tables that do not start with `gagnechris-it-` are refused.
+
+The suite has two Vitest projects:
+
+- `http` (`services/api/test/http`): black-box tests of the API. Each file creates its table, starts the server under test on a free port and sends plain HTTP requests; it may seed and read rows in the table, but imports nothing from `services/api/src`. `API_SERVER_COMMAND` picks the server (default `node --import tsx services/api/local/test-server.ts`, the Lambda handler behind an API Gateway stand-in). The command runs from the repo root and must serve `DATA_TABLE_NAME` on `127.0.0.1:$PORT`. The tests send the authorizer's claims as JSON in `X-Test-Claims`, and the server passes them to the handler only on protected routes, as API Gateway's JWT authorizer does.
+- `integration` (`services/api/test/integration`): in-process tests of code no route reaches: the restore copy-back and data migration scripts, cursor encoding and the test table guard.
 
 Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000. Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
 

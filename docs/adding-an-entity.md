@@ -498,7 +498,7 @@ Import `bookmarkRoutes` and add `...bookmarkRoutes` to `routes`.
 
 ## 9. Test — `services/api/test/bookmarks-handlers.test.ts`
 
-Drive the routes with `createMemoryDoc()` (`test/support/memory-doc.ts`), a fixed clock, `dispatchRoutes`, and `makeEvent` with `jwtClaims: { sub }`. Cover at least: create (201 + `ETag: "1"`), idempotent re-create, update with `If-Match`, a stale `If-Match` (412), delete, and the change feed entry via `createSyncRoutes(new SyncLedger(doc, TABLE))`. `tasks-handlers.test.ts` is a full example. DynamoDB Local tests (`test/integration/*.integration.test.ts`) are optional per entity; the base repository is already covered there.
+Drive the routes with `createMemoryDoc()` (`test/support/memory-doc.ts`), a fixed clock, `dispatchRoutes`, and `makeEvent` with `jwtClaims: { sub }`. Cover at least: create (201 + `ETag: "1"`), idempotent re-create, update with `If-Match`, a stale `If-Match` (412), delete, and the change feed entry via `createSyncRoutes(new SyncLedger(doc, TABLE))`. `tasks-handlers.test.ts` is a full example. DynamoDB Local tests over HTTP (`test/http/*.test.ts`) are optional per entity; the base repository is already covered there.
 
 ## 10–12. Restore test, copy-back and search
 

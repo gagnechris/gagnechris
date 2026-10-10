@@ -1,18 +1,11 @@
 // For every operation the spec says returns `ETag` or accepts `If-Match`,
-// drive the real route table against DynamoDB Local and check the handler
-// does exactly that; the probed routes must also not do it unadvertised.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+// call the API over HTTP and check it does exactly that; the probed
+// operations must also not do it unadvertised.
+import { describe, expect, it } from 'vitest';
 import { ulid } from 'ulid';
 import { buildOpenApiDocument } from '@gagnechris/shared/openapi';
-import { setDocClient } from '../../src/data/client.js';
-import { dispatchRoutes, routePatternToOpenApiPath } from '../../src/router.js';
-import { routes } from '../../src/routes.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
+import { notebookUser, siteAdmin } from './support/claims.js';
+import { useApi } from './support/harness.js';
 
 const USER = 'user-concurrency-contract';
 
@@ -46,6 +39,22 @@ function advertisedByOperation(): Map<string, Advertised> {
   return out;
 }
 
+const h = useApi('http-concurrency');
+
+const claimsFor = (path: string) =>
+  path.startsWith('/api/admin/') ? siteAdmin(USER) : notebookUser(USER);
+
+function openApiPathPattern(path: string): RegExp {
+  const parts = path
+    .split(/(\{[^}]+\})/)
+    .map((part) =>
+      part.startsWith('{')
+        ? '[^/]+'
+        : part.replace(/[.*+?^$()|[\]\\]/g, '\\$&'),
+    );
+  return new RegExp(`^${parts.join('')}$`);
+}
+
 type Response = {
   status: number;
   etag: string | undefined;
@@ -58,22 +67,15 @@ async function call(
   body?: unknown,
   ifMatch?: string,
 ): Promise<Response> {
-  const res = await dispatchRoutes(
-    routes,
-    makeEvent(method, path, {
-      body,
-      headers: ifMatch ? { 'if-match': ifMatch } : undefined,
-      jwtClaims: { sub: USER },
-    }),
-    method,
-    path,
-  );
-  const headers = (res.headers ?? {}) as Record<string, string>;
-  const etagKey = Object.keys(headers).find((h) => h.toLowerCase() === 'etag');
+  const res = await h.api.request(method, path, {
+    body,
+    headers: ifMatch ? { 'if-match': ifMatch } : undefined,
+    claims: claimsFor(path),
+  });
   return {
-    status: res.statusCode ?? 0,
-    etag: etagKey ? headers[etagKey] : undefined,
-    body: res.body ? (JSON.parse(res.body as string) as never) : {},
+    status: res.status,
+    etag: res.headers.get('etag') ?? undefined,
+    body: (res.body ?? {}) as Record<string, unknown>,
   };
 }
 
@@ -214,11 +216,11 @@ const onSingleton =
   (
     setup: () => Promise<{ version: number }>,
     path: string,
-    body: ((version: number) => unknown) | undefined = versionBody,
+    body: (version: number) => unknown = versionBody,
   ) =>
   async (): Promise<Target> => {
     const e = await setup();
-    return { path, version: e.version, body: body?.(e.version) };
+    return { path, version: e.version, body: body(e.version) };
   };
 
 const HOME = '/api/admin/home';
@@ -384,7 +386,7 @@ const PROBES: Record<string, () => Promise<Target>> = {
   'GET /api/notebook/templates/daily/{area}': onSingleton(
     dailyTemplate,
     TEMPLATE,
-    undefined,
+    () => undefined,
   ),
   'PUT /api/notebook/templates/daily/{area}': onSingleton(
     dailyTemplate,
@@ -466,23 +468,6 @@ async function observe(key: string): Promise<Advertised> {
 
 describe('OpenAPI ETag / If-Match match handler behaviour (DynamoDB Local)', () => {
   const advertised = advertisedByOperation();
-  let tableName: string;
-  let previousTable: string | undefined;
-
-  beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('http-concurrency');
-    previousTable = process.env.DATA_TABLE_NAME;
-    process.env.DATA_TABLE_NAME = tableName;
-    setDocClient(createLocalDocClient());
-  });
-
-  afterAll(async () => {
-    setDocClient(undefined);
-    if (previousTable === undefined) delete process.env.DATA_TABLE_NAME;
-    else process.env.DATA_TABLE_NAME = previousTable;
-    await deleteIntegrationTable(tableName);
-  });
-
   it('probes every operation that advertises ETag or If-Match', () => {
     const unprobed = [...advertised]
       .filter(([key, a]) => (a.etag || a.ifMatch) && !(key in PROBES))
@@ -490,13 +475,14 @@ describe('OpenAPI ETag / If-Match match handler behaviour (DynamoDB Local)', () 
     expect(unprobed).toEqual([]);
   });
 
-  it('probes only operations that exist in the spec and the route table', () => {
-    const routeKeys = new Set(
-      routes.map((r) => `${r.method} ${routePatternToOpenApiPath(r.pattern)}`),
-    );
+  it('probes only operations that exist in the spec, at paths the spec matches', async () => {
     for (const key of Object.keys(PROBES)) {
       expect(advertised.has(key), `${key} in OpenAPI`).toBe(true);
-      expect(routeKeys.has(key), `${key} in routes`).toBe(true);
+      const target = await PROBES[key]!();
+      const specPath = key.slice(key.indexOf(' ') + 1);
+      expect(target.path, `${key} probe path`).toMatch(
+        openApiPathPattern(specPath),
+      );
     }
   });
 

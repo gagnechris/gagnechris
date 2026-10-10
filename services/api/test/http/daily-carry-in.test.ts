@@ -1,23 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 import {
   DEFAULT_DAILY_TEMPLATES,
   fillDailyTemplate,
   taskEmbedIds,
 } from '@gagnechris/shared';
-import { dispatchRoutes, type RouteDef } from '../../src/router.js';
-import { clearSyncEntities } from '../../src/sync/registry.js';
-import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { NotesRepository } from '../../src/notes/repository.js';
-import { createTaskRoutes } from '../../src/tasks/handlers.js';
-import { TasksRepository } from '../../src/tasks/repository.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-  truncateTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
+import { notebookUser } from './support/claims.js';
+import { useApi } from './support/harness.js';
 
 const USER = 'user-carry-in';
 const FRI = '2026-10-02';
@@ -26,39 +15,16 @@ const id = (n: number) =>
   `01ARZ3NDEKTSV4RRFFQ69G5H${String(n).padStart(2, '0')}`;
 
 describe('opening a daily note carries in open tasks', () => {
-  let tableName: string;
-  let routes: RouteDef[];
-  const doc = createLocalDocClient();
-
-  beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('carry-in');
-  });
-
-  afterAll(async () => {
-    await deleteIntegrationTable(tableName);
-  });
-
-  beforeEach(async () => {
-    await truncateTable(doc, tableName);
-    clearSyncEntities();
-    const notes = new NotesRepository(doc, tableName);
-    const tasks = new TasksRepository(doc, tableName);
-    routes = [
-      ...createNoteRoutes(notes, tasks),
-      ...createTaskRoutes(tasks, notes),
-    ];
-  });
+  const h = useApi('carry-in');
 
   async function call(method: string, path: string, body?: unknown) {
-    const res = await dispatchRoutes(
-      routes,
-      makeEvent(method, path, { body, jwtClaims: { sub: USER } }),
-      method,
-      path,
-    );
+    const res = await h.api.request(method, path, {
+      body,
+      claims: notebookUser(USER),
+    });
     return {
-      status: res?.statusCode,
-      body: JSON.parse(res!.body as string) as Record<string, unknown>,
+      status: res.status,
+      body: (res.body ?? {}) as Record<string, unknown>,
     };
   }
 
@@ -76,7 +42,7 @@ describe('opening a daily note carries in open tasks', () => {
     });
 
   async function dailyClaims(): Promise<number> {
-    const out = await doc.send(new ScanCommand({ TableName: tableName }));
+    const out = await h.doc.send(new ScanCommand({ TableName: h.tableName }));
     return (out.Items ?? []).filter((item) =>
       String(item.pk).includes('#DAILY#'),
     ).length;
