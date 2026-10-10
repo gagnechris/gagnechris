@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react';
-import {
-  RESUME_ACTION_LINKS,
-  RESUME_DOWNLOAD_FILENAME,
-  RESUME_DOWNLOAD_ICON_PATH,
-  RESUME_DOWNLOAD_LABEL,
-  RESUME_PAGE_TITLE,
-  type ResumeActionLink,
-  pageTitle,
-} from '@gagnechris/shared/render';
+import { pageTitle, RESUME_PAGE_TITLE } from '@gagnechris/shared/render';
 import { siteUrl } from '@gagnechris/shared';
+import { ResumePageBody, ResumeUnavailableBody } from '@gagnechris/public-ui';
 import { trackResumeDownload, trackResumeView } from '../utils/analytics';
 import {
   documentResumeView,
@@ -21,38 +14,6 @@ import { usePublishedView } from '../prerender/usePublishedView';
 import SiteLink from '../components/SiteLink';
 import './Resume.css';
 import PageHead from '../components/PageHead';
-
-// The intro must match `renderResumeIntroHtml` element for element
-// (coldLoadParity.test.tsx).
-
-const ActionLink = ({ link }: { link: ResumeActionLink }) => (
-  <SiteLink
-    className="resume-intro__link"
-    href={link.href}
-    spa={link.kind === 'spa'}
-    newTab={link.kind === 'external'}
-    trackId={link.trackId}
-  >
-    {link.label}
-  </SiteLink>
-);
-
-const DownloadIcon = () => (
-  <svg
-    className="resume-download__icon"
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d={RESUME_DOWNLOAD_ICON_PATH}></path>
-  </svg>
-);
 
 function Resume() {
   const published = usePublishedView(
@@ -87,73 +48,63 @@ function Resume() {
     setShowBearNote(true);
   };
 
-  const marker = !resume
-    ? ''
-    : resume.unavailable
-      ? ' resume-page-unavailable'
-      : ' resume-page-prerender';
+  const head = (
+    <PageHead
+      title={resume?.headTitle ?? pageTitle('Resume')}
+      url={siteUrl('/resume')}
+    />
+  );
+
+  if (!resume) {
+    return (
+      <main className="resume-page" aria-busy>
+        {head}
+        <header className="resume-intro">
+          <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
+        </header>
+      </main>
+    );
+  }
+
+  if (resume.unavailable) {
+    return (
+      <>
+        {head}
+        <ResumeUnavailableBody />
+      </>
+    );
+  }
 
   return (
-    <main className={`resume-page${marker}`} aria-busy={!resume || undefined}>
-      <PageHead
-        title={resume?.headTitle ?? pageTitle('Resume')}
-        url={siteUrl('/resume')}
+    <>
+      {head}
+      <ResumePageBody
+        intro={resume}
+        body={resume.body}
+        onDownload={handleDownload}
+        note={
+          showBearNote ? (
+            <div className="resume-bear-note" role="status">
+              <p>
+                Download started. While you wait —{' '}
+                <SiteLink href="/dont-feed-the-bears?from=resume">
+                  Don't Feed the Bears
+                </SiteLink>
+                ?
+              </p>
+              <button
+                type="button"
+                className="resume-bear-note__dismiss"
+                onClick={() => setShowBearNote(false)}
+                aria-label="Dismiss bear game note"
+              >
+                ×
+              </button>
+            </div>
+          ) : null
+        }
       />
-      <header className="resume-intro">
-        <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
-        {resume ? (
-          <>
-            {resume.headline ? (
-              <p className="resume-intro__headline">{resume.headline}</p>
-            ) : null}
-            <p className="resume-intro__summary">{resume.summary}</p>
-            <p className="resume-intro__actions">
-              {resume.pdfPath ? (
-                <a
-                  className="resume-download"
-                  href={resume.pdfPath}
-                  download={RESUME_DOWNLOAD_FILENAME}
-                  onClick={handleDownload}
-                >
-                  <DownloadIcon />
-                  {RESUME_DOWNLOAD_LABEL}
-                </a>
-              ) : null}
-              {RESUME_ACTION_LINKS.map((link) => (
-                <ActionLink key={link.href} link={link} />
-              ))}
-            </p>
-          </>
-        ) : null}
-      </header>
-
-      {showBearNote && (
-        <div className="resume-bear-note" role="status">
-          <p>
-            Download started. While you wait —{' '}
-            <SiteLink href="/dont-feed-the-bears?from=resume">
-              Don't Feed the Bears
-            </SiteLink>
-            ?
-          </p>
-          <button
-            type="button"
-            className="resume-bear-note__dismiss"
-            onClick={() => setShowBearNote(false)}
-            aria-label="Dismiss bear game note"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {resume?.bodyHtml ? (
-        <div
-          className="resume-body"
-          dangerouslySetInnerHTML={{ __html: resume.bodyHtml }}
-        />
-      ) : null}
-    </main>
+    </>
   );
 }
 

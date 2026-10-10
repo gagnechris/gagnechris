@@ -23,6 +23,7 @@ const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
     path: /^\/projects\/([^/]+)\/?$/,
     selector: 'main.project-page[data-slug]',
   },
+  { path: /^\/resume\/?$/, selector: 'main.resume-page' },
   { path: /^\/contact\/?$/, selector: 'main.contact-page' },
   // 404.html answers any path CloudFront has no object for.
   { path: /^\//, selector: 'main.not-found' },

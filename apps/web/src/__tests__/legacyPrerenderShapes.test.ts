@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import {
-  DEFAULT_RESUME,
-  projectPageView,
-  renderResumeBodyHtml,
-} from '@gagnechris/shared/render';
+import { DEFAULT_RESUME, projectPageView } from '@gagnechris/shared/render';
 import {
   renderProjectPageBodyHtml,
   renderProjectsIndexBodyHtml,
+  renderResumeBodyHtml,
 } from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import { projectPageViewFromDocument } from '../projects/publishedProject';

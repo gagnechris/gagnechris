@@ -13,8 +13,7 @@ import {
 import {
   postArticleView,
   renderHomeAboutHtml,
-  renderResumeBodyHtml,
-  renderResumeUnavailableBodyHtml,
+  resumeIntro,
   type Home,
   type HomeRecentPost,
   type PostArticleFields,
@@ -30,6 +29,10 @@ import { PostArticle, PostPageBody } from './posts/PostPageBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
 import { ProjectPageBody } from './projects/ProjectPageBody.js';
 import { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
+import {
+  ResumePageBody,
+  ResumeUnavailableBody,
+} from './resume/ResumePageBody.js';
 
 const thisYear = () => new Date().getFullYear();
 
@@ -142,6 +145,17 @@ export const renderProjectPagePrerenderHtml = (
   year?: number | string,
 ): string =>
   renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(view), year);
+
+export const renderResumeBodyHtml = (resume: Resume): string =>
+  renderToString(
+    <ResumePageBody
+      intro={resumeIntro(resume)}
+      body={{ content: resume.content }}
+    />,
+  );
+
+export const renderResumeUnavailableBodyHtml = (): string =>
+  renderToString(<ResumeUnavailableBody />);
 
 export const renderResumePrerenderHtml = (
   resume: Resume,
