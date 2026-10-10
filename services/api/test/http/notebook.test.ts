@@ -1,18 +1,9 @@
-// The Notebook as two people use it: every request goes through the
-// production route table and the real repositories on DynamoDB Local.
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+// The Notebook as two people use it.
+import { describe, expect, it } from 'vitest';
 import { ulid } from 'ulid';
 import { SYNC_TOMBSTONE_TTL_DAYS } from '@gagnechris/data';
-import { setDocClient } from '../../src/data/client.js';
-import { dispatchRoutes } from '../../src/router.js';
-import { routes } from '../../src/routes.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-  truncateTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
+import { notebookUser } from './support/claims.js';
+import { useApi } from './support/harness.js';
 
 const A = 'user-notebook-http-a';
 const B = 'user-notebook-http-b';
@@ -25,6 +16,8 @@ type Res = {
 
 type Entity = { id: string; version: number; [key: string]: unknown };
 
+const h = useApi('notebook-http');
+
 async function call(
   user: string,
   method: string,
@@ -35,22 +28,16 @@ async function call(
     ifMatch?: string;
   } = {},
 ): Promise<Res> {
-  const res = await dispatchRoutes(
-    routes,
-    makeEvent(method, path, {
-      body: opts.body,
-      query: opts.query,
-      headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
-      jwtClaims: { sub: user },
-    }),
-    method,
-    path,
-  );
-  const headers = (res.headers ?? {}) as Record<string, string>;
+  const res = await h.api.request(method, path, {
+    body: opts.body,
+    query: opts.query,
+    headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
+    claims: notebookUser(user),
+  });
   return {
-    status: res.statusCode ?? 0,
-    etag: headers.ETag ?? headers.etag,
-    body: res.body ? (JSON.parse(res.body as string) as never) : {},
+    status: res.status,
+    etag: res.headers.get('etag') ?? undefined,
+    body: res.body ?? {},
   };
 }
 
@@ -146,28 +133,6 @@ function day(offset: number): string {
 }
 
 describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
-  const doc = createLocalDocClient();
-  let tableName: string;
-  let previousTable: string | undefined;
-
-  beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('notebook-http');
-    previousTable = process.env.DATA_TABLE_NAME;
-    process.env.DATA_TABLE_NAME = tableName;
-    setDocClient(doc);
-  });
-
-  afterAll(async () => {
-    setDocClient(undefined);
-    if (previousTable === undefined) delete process.env.DATA_TABLE_NAME;
-    else process.env.DATA_TABLE_NAME = previousTable;
-    await deleteIntegrationTable(tableName);
-  });
-
-  beforeEach(async () => {
-    await truncateTable(doc, tableName);
-  });
-
   it("B cannot read, change, list, search or sync A's notes and tasks", async () => {
     const page = await createPage(A, {
       title: 'A plan',
