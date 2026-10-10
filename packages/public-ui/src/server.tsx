@@ -10,7 +10,7 @@ import {
   type ProjectPageView,
 } from '@gagnechris/shared';
 import {
-  renderHomeBodyHtml as renderHomeBodyWithCardsHtml,
+  renderHomeAboutHtml,
   renderProjectPageBodyHtml,
   renderResumeBodyHtml,
   renderResumeUnavailableBodyHtml,
@@ -22,9 +22,9 @@ import {
 import type { SiteNavHref } from '@gagnechris/shared/site-chrome';
 import { SiteFooter, SiteHeader, SitePage } from './chrome/SiteChrome.js';
 import { ContactPageBody } from './pages/ContactPageBody.js';
+import { HomeBody } from './home/HomeBody.js';
 import { NotFoundBody } from './pages/NotFoundBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
-import { ProjectCard } from './projects/ProjectCard.js';
 import { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
 
 const thisYear = () => new Date().getFullYear();
@@ -56,12 +56,14 @@ export const renderHomeBodyHtml = (
   recentPosts: readonly HomeRecentPost[] = [],
   projects: readonly ProjectCardView[] = [],
 ): string =>
-  renderHomeBodyWithCardsHtml(
-    home,
-    recentPosts,
-    projects.map((card) =>
-      renderToString(<ProjectCard card={card} heading="h3" />),
-    ),
+  renderToString(
+    <HomeBody
+      name={home.name}
+      title={home.title}
+      aboutHtml={renderHomeAboutHtml(home.about)}
+      recentPosts={recentPosts}
+      projects={projects}
+    />,
   );
 
 /**

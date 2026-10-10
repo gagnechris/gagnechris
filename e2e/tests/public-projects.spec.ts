@@ -221,10 +221,19 @@ test.describe('/projects', () => {
     ).toBe(true);
   });
 
-  test('Home lists projects that are not ideas under What I’m building', async ({
+  test('Home lists projects that are not ideas under What I’m building, and hydrates in place', async ({
     page,
   }) => {
     await capturePrerender(page);
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const main = document.querySelector('#root > main.home-page');
+        if (!main) return;
+        (window as { parsedMain?: Element }).parsedMain = main;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
     await page.goto(`${site()}/`);
     const section = page.getByRole('region', { name: 'What I’m building' });
     await expect(section).toBeVisible();
@@ -241,10 +250,26 @@ test.describe('/projects', () => {
         name: 'what I’m building',
       }),
     ).toHaveAttribute('href', '/projects');
-    const { before, after } = await page.evaluate(() => ({
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const main = document.querySelector('#root > main.home-page');
+          return Boolean(
+            main && Object.keys(main).some((k) => k.startsWith('__reactFiber')),
+          );
+        }),
+      )
+      .toBe(true);
+    const { before, after, same } = await page.evaluate(() => ({
       before: (window as unknown as { prerender: string }).prerender,
-      after: document.getElementById('root')!.innerHTML,
+      after: document
+        .getElementById('root')!
+        .innerHTML.replace(/<!--prerender:(start|end)-->/g, ''),
+      same:
+        (window as { parsedMain?: Element }).parsedMain ===
+        document.querySelector('#root > main.home-page'),
     }));
     expect(after).toBe(before);
+    expect(same).toBe(true);
   });
 });

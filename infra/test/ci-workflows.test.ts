@@ -521,6 +521,7 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
   const web = commit('apps/web/src/main.tsx');
   const runbook = commit('infra/RUNBOOK.md');
   const goSource = commit('go/internal/observability/logger.go');
+  const publicUi = commit('packages/public-ui/src/home/HomeBody.tsx');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -560,6 +561,8 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
     // docs-only head still deploys the stranded infra change.
     expect(paths(docs, runbook)).toBe('cdk=true\nweb=true');
     expect(paths(runbook, goSource)).toBe('cdk=true\nweb=false');
+    // The public app bundles public-ui, as the publisher does.
+    expect(paths(goSource, publicUi)).toBe('cdk=true\nweb=true');
   });
 });
 

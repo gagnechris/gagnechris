@@ -1,6 +1,6 @@
 # ADR 0003: One renderer for public pages
 
-**Status:** Accepted (2026-10-06): option (a), React rendered by the publisher and hydrated by the public app. The posts index, the site chrome, the 404 page, Contact, the Bears shells and the Projects index use it; the other pages follow the order in §8.  
+**Status:** Accepted (2026-10-06): option (a), React rendered by the publisher and hydrated by the public app. The posts index, the site chrome, the 404 page, Contact, the Bears shells, the Projects index and Home use it; the other pages follow the order in §8.  
 **Context:** Every public page body is built twice: a string renderer in `packages/shared` (`post-html.ts`, `project-html.ts`, `resume-html.ts`, `home-html.ts`, `site-chrome-html.ts`, `public-pages-html.ts`, about 950 lines) for the publisher and the Vite build, and a React twin in `apps/web` for the SPA. Parity tests keep each pair in step, the twins are written to avoid React's `<!-- -->` text separators, and the SPA parses each prerender back into a view model (`fromPrerender`) because `createRoot` throws the prerendered DOM away.
 
 ## Decision summary

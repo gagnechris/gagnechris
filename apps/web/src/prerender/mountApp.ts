@@ -10,6 +10,7 @@ import {
 // React twin only matches its string renderer after normalising, so it still
 // replaces the prerender.
 const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
+  { path: /^\/$/, selector: 'main.home-page' },
   { path: /^\/posts\/?$/, selector: 'main.posts-index' },
   { path: /^\/projects\/?$/, selector: 'main.projects-index' },
   { path: /^\/contact\/?$/, selector: 'main.contact-page' },
