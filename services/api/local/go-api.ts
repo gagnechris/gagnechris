@@ -4,15 +4,21 @@
 //   tsx services/api/local/go-api.ts test   # HTTP suite: PORT, X-Test-Claims
 //   tsx services/api/local/go-api.ts local  # local stack: LOCAL_API_PORT, local tokens
 //
+// In local mode a front server on LOCAL_API_PORT runs the site hooks (media
+// CORS, publisher rebuild) around Go, whichever server answers.
+//
 // GO_API_BIN names a prebuilt binary; otherwise each run builds one. Build
 // once first when starting many servers at a time, as the HTTP suite does.
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createServer as createHttpServer, request } from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyLocalAuthEnv } from './claims.js';
+import { readBody } from './gateway.js';
+import { maybeRebuild, mediaCors } from './site-hooks.js';
 
 const repoRoot = path.resolve(
   fileURLToPath(new URL('../../..', import.meta.url)),
@@ -86,21 +92,74 @@ const nodeUrl = `http://127.0.0.1:${nodePort}`;
 const node = spawn(process.execPath, ['--import', 'tsx', server], {
   cwd: repoRoot,
   stdio: 'inherit',
-  env: { ...process.env, [portEnv]: String(nodePort) },
+  env: {
+    ...process.env,
+    [portEnv]: String(nodePort),
+    ...(mode === 'local' ? { LOCAL_SITE_HOOKS: 'front' } : {}),
+  },
 });
 children.push(node);
 node.on('exit', (code) => shutdown(code ?? 1));
 await waitForHealth(nodeUrl, node);
 
+const goPort = mode === 'local' ? String(await freePort()) : port;
 const go = spawn(bin, [], {
   cwd: repoRoot,
   stdio: ['ignore', mode === 'test' ? 'ignore' : 'inherit', 'inherit'],
   env: {
     ...process.env,
-    PORT: port,
+    PORT: goPort,
     API_CLAIMS_MODE: mode,
     API_FALLBACK_URL: nodeUrl,
   },
 });
 children.push(go);
 go.on('exit', (code) => shutdown(code ?? 1));
+
+if (mode === 'local') {
+  await waitForHealth(`http://127.0.0.1:${goPort}`, go);
+  createHttpServer(async (req, res) => {
+    try {
+      if (mediaCors(req, res)) return;
+      const body = await readBody(req);
+      const upstream = await new Promise<{
+        status: number;
+        headers: Record<string, string | string[] | undefined>;
+        body: Buffer;
+      }>((resolve, reject) => {
+        const out = request(
+          {
+            host: '127.0.0.1',
+            port: goPort,
+            method: req.method,
+            path: req.url,
+            headers: req.headers,
+          },
+          async (upRes) => {
+            resolve({
+              status: upRes.statusCode ?? 502,
+              headers: upRes.headers,
+              body: await readBody(upRes),
+            });
+          },
+        );
+        out.on('error', reject);
+        out.end(body);
+      });
+      const path = new URL(req.url || '/', 'http://local').pathname;
+      // Await rebuild before responding so publish/edit callers see fresh HTML.
+      await maybeRebuild(req.method || 'GET', path, upstream.status);
+      for (const [key, value] of Object.entries(upstream.headers)) {
+        if (value !== undefined && key !== 'transfer-encoding') {
+          res.setHeader(key, value);
+        }
+      }
+      res.statusCode = upstream.status;
+      res.end(upstream.body);
+    } catch (err) {
+      console.error(err);
+      res.statusCode = 502;
+      res.end();
+    }
+  }).listen(Number(port), '127.0.0.1');
+}

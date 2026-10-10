@@ -50,7 +50,7 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 | Vite, admin app (`VITE_AUTH_MODE=local`)    | `5174`         |
 | Vite, Notebook app (`VITE_AUTH_MODE=local`) | `5175`         |
 
-`API_SERVER=go npm run local:dev` runs the Go API (`go/cmd/api`, built once, no watch) on `8787` instead, through `services/api/local/go-api.ts`: Go answers the routes it serves and proxies every other request to the Node local API on a private port, so the apps work whichever server owns a route.
+`API_SERVER=go npm run local:dev` runs the Go API (`go/cmd/api`, built once, no watch) on `8787` instead, through `services/api/local/go-api.ts`: Go answers the routes it serves and proxies every other request to the Node local API on a private port, so the apps work whichever server owns a route. A small front server on `8787` (`services/api/local/site-hooks.ts`) runs the local stand-ins for the site bucket's media CORS rule and the publisher's stream trigger around both, so a publish rebuilds the local site whichever server answered it.
 
 Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Local media upload URLs point at the local API, which answers the browser's CORS preflight for them the way the site bucket's CORS rule does in production. Fake local sign-in never uses Cognito or prod AWS.
 
