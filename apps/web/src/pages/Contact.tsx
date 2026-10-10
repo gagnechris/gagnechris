@@ -5,18 +5,13 @@ import {
   pageTitle,
   siteUrl,
 } from '@gagnechris/shared';
-import {
-  CONTACT_HEADING,
-  CONTACT_INTRO,
-} from '@gagnechris/shared/public-pages';
+import { ContactPageBody } from '@gagnechris/public-ui';
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
 import PageHead from '../components/PageHead';
 import SiteLink from '../components/SiteLink';
-
-// The header must stay byte-identical to `renderContactPrerenderBodyHtml`
-// (coldLoadParity.test.tsx); the form is added below it.
+import { useHydrated } from '../prerender/useHydrated';
 
 type FieldName = 'name' | 'email' | 'message';
 
@@ -65,6 +60,7 @@ const fieldsSummary = (count: number): string =>
 const errorId = (name: FieldName) => `contact-${name}-error`;
 
 function Contact() {
+  const hydrated = useHydrated();
   // Client-only elapsed clock — avoids comparing browser Date.now to server time.
   const [formOpenedAt] = useState(() => performance.now());
   const [values, setValues] = useState<Record<FieldName, string>>({
@@ -182,103 +178,111 @@ function Contact() {
   };
 
   return (
-    <main className="contact-page">
+    <>
       <PageHead title={pageTitle('Contact')} url={siteUrl('/contact')} />
-      <header className="contact-page__header">
-        <h1>{CONTACT_HEADING}</h1>
-        <p className="contact-page__intro">{CONTACT_INTRO}</p>
-      </header>
-      <div className="contact-page__body">
-        {submitted ? (
-          <section className="contact-success" aria-labelledby="contact-sent">
-            <h2 id="contact-sent" ref={successRef} tabIndex={-1}>
-              Thanks, your message is on its way.
-            </h2>
-            <p>I’ll reply to the email address you gave.</p>
-            <ul className="contact-success__links">
-              <li>
-                <SiteLink href="/">Back to Home</SiteLink>
-              </li>
-              <li>
-                <SiteLink href="/dont-feed-the-bears?from=contact">
-                  Don’t feed the bears while you wait
-                </SiteLink>
-              </li>
-            </ul>
-          </section>
-        ) : (
-          <form
-            onSubmit={handleSubmit}
-            className="contact-form"
-            autoComplete="on"
-            noValidate
-          >
-            {/* Honeypot — nonsemantic name resists autofill. */}
-            <div className="hp-field" aria-hidden="true">
-              <label htmlFor="hp_field">Leave blank</label>
-              <input
-                type="text"
-                id="hp_field"
-                name="hp_field"
-                value={hpField}
-                onChange={(e) => setHpField(e.target.value)}
-                tabIndex={-1}
-                autoComplete="off"
-              />
-            </div>
-
-            {FIELDS.map(({ name, label, placeholder, type, autoComplete }) => {
-              const error = fieldErrors[name];
-              const props = {
-                id: name,
-                name,
-                value: values[name],
-                onChange: handleChange,
-                placeholder,
-                autoComplete,
-                'aria-required': true,
-                'aria-invalid': error ? true : undefined,
-                'aria-describedby': error ? errorId(name) : undefined,
-              } as const;
-              const ref = (
-                el: HTMLInputElement | HTMLTextAreaElement | null,
-              ) => {
-                fieldRefs.current[name] = el;
-              };
-              return (
-                <div className="contact-field" key={name}>
-                  <label htmlFor={name}>{label}</label>
-                  {type ? (
-                    <input {...props} type={type} ref={ref} />
-                  ) : (
-                    <textarea {...props} rows={4} ref={ref} />
-                  )}
-                  {error ? (
-                    <p className="contact-field__error" id={errorId(name)}>
-                      {error}
-                    </p>
-                  ) : null}
+      <ContactPageBody>
+        {hydrated ? (
+          <div className="contact-page__body">
+            {submitted ? (
+              <section
+                className="contact-success"
+                aria-labelledby="contact-sent"
+              >
+                <h2 id="contact-sent" ref={successRef} tabIndex={-1}>
+                  Thanks, your message is on its way.
+                </h2>
+                <p>I’ll reply to the email address you gave.</p>
+                <ul className="contact-success__links">
+                  <li>
+                    <SiteLink href="/">Back to Home</SiteLink>
+                  </li>
+                  <li>
+                    <SiteLink href="/dont-feed-the-bears?from=contact">
+                      Don’t feed the bears while you wait
+                    </SiteLink>
+                  </li>
+                </ul>
+              </section>
+            ) : (
+              <form
+                onSubmit={handleSubmit}
+                className="contact-form"
+                autoComplete="on"
+                noValidate
+              >
+                {/* Honeypot — nonsemantic name resists autofill. */}
+                <div className="hp-field" aria-hidden="true">
+                  <label htmlFor="hp_field">Leave blank</label>
+                  <input
+                    type="text"
+                    id="hp_field"
+                    name="hp_field"
+                    value={hpField}
+                    onChange={(e) => setHpField(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
                 </div>
-              );
-            })}
 
-            <p className="contact-form__status" role="alert">
-              {status ? (
-                <span className="contact-form__message">{status}</span>
-              ) : null}
-            </p>
+                {FIELDS.map(
+                  ({ name, label, placeholder, type, autoComplete }) => {
+                    const error = fieldErrors[name];
+                    const props = {
+                      id: name,
+                      name,
+                      value: values[name],
+                      onChange: handleChange,
+                      placeholder,
+                      autoComplete,
+                      'aria-required': true,
+                      'aria-invalid': error ? true : undefined,
+                      'aria-describedby': error ? errorId(name) : undefined,
+                    } as const;
+                    const ref = (
+                      el: HTMLInputElement | HTMLTextAreaElement | null,
+                    ) => {
+                      fieldRefs.current[name] = el;
+                    };
+                    return (
+                      <div className="contact-field" key={name}>
+                        <label htmlFor={name}>{label}</label>
+                        {type ? (
+                          <input {...props} type={type} ref={ref} />
+                        ) : (
+                          <textarea {...props} rows={4} ref={ref} />
+                        )}
+                        {error ? (
+                          <p
+                            className="contact-field__error"
+                            id={errorId(name)}
+                          >
+                            {error}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  },
+                )}
 
-            <button
-              type="submit"
-              className="contact-form__submit"
-              aria-disabled={submitting || undefined}
-            >
-              {submitting ? 'Sending…' : 'Send message'}
-            </button>
-          </form>
-        )}
-      </div>
-    </main>
+                <p className="contact-form__status" role="alert">
+                  {status ? (
+                    <span className="contact-form__message">{status}</span>
+                  ) : null}
+                </p>
+
+                <button
+                  type="submit"
+                  className="contact-form__submit"
+                  aria-disabled={submitting || undefined}
+                >
+                  {submitting ? 'Sending…' : 'Send message'}
+                </button>
+              </form>
+            )}
+          </div>
+        ) : null}
+      </ContactPageBody>
+    </>
   );
 }
 

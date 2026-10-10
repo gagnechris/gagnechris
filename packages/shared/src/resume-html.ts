@@ -7,7 +7,6 @@ import {
 } from './resume-view.js';
 import type { Resume, ResumeContent } from './schemas.js';
 import { SITE_LINKEDIN_URL } from './site-config.js';
-import { renderSitePageHtml } from './site-chrome-html.js';
 
 // `apps/web/src/pages/Resume.tsx` renders the intro element for element
 // (coldLoadParity.test.tsx) and reuses the body as `.resume-body` innerHTML.
@@ -196,14 +195,6 @@ export const renderResumeUnavailableBodyHtml = (): string =>
     pdfPath: null,
   }) +
   `</main>`;
-
-export const renderResumePrerenderHtml = (
-  resume: Resume,
-  year?: number,
-): string => renderSitePageHtml('/resume', renderResumeBodyHtml(resume), year);
-
-export const renderResumeUnavailablePrerenderHtml = (year?: number): string =>
-  renderSitePageHtml('/resume', renderResumeUnavailableBodyHtml(), year);
 
 export const resumeSummaryExcerpt = (summary: string, max = 200): string =>
   textExcerpt(summary, max);

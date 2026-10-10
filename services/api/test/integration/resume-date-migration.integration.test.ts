@@ -11,7 +11,7 @@ import {
   keys,
 } from '@gagnechris/data';
 import { DEFAULT_RESUME, type Resume } from '@gagnechris/shared';
-import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
+import { renderResumeBodyHtml } from '@gagnechris/shared/render';
 import {
   LEGACY_COMPANY_LINES,
   legacyResume,
@@ -189,7 +189,7 @@ describe('resume date migration (DynamoDB Local)', () => {
   it('--apply migrates draft and published, bumps versions, and is idempotent', async () => {
     const legacy = legacyPublished();
     await seed(legacy, legacy);
-    const htmlBefore = renderResumePrerenderHtml(legacy, 2026);
+    const htmlBefore = renderResumeBodyHtml(legacy);
 
     const applied = await run('apply');
     expect(applied.rows.map((r) => r.status)).toEqual(['written', 'written']);
@@ -213,7 +213,7 @@ describe('resume date migration (DynamoDB Local)', () => {
       content: published.content,
       version: published.version,
     };
-    expect(renderResumePrerenderHtml(publishedEntity, 2026)).toBe(htmlBefore);
+    expect(renderResumeBodyHtml(publishedEntity)).toBe(htmlBefore);
 
     const again = await run('apply');
     expect(again.rows.map((r) => r.status)).toEqual([

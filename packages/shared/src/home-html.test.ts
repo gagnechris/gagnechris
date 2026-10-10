@@ -4,7 +4,7 @@ import {
   HOME_RECENT_POSTS_LIMIT,
   homeAboutExcerpt,
   renderHomeAboutHtml,
-  renderHomePrerenderHtml,
+  renderHomeBodyHtml,
   renderHomeRecentPostsHtml,
   selectHomeRecentPosts,
   type HomeRecentPost,
@@ -12,10 +12,6 @@ import {
 import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
 import { selectHomeProjects } from './projects.js';
 import type { Home } from './schemas.js';
-import {
-  renderSiteFooterHtml,
-  renderSiteHeaderHtml,
-} from './site-chrome-html.js';
 
 const home = (overrides: Partial<Home> = {}): Home => ({
   ...DEFAULT_HOME,
@@ -65,16 +61,15 @@ const recent = (
   ...overrides,
 });
 
-describe('renderHomePrerenderHtml', () => {
-  it('wraps Home in the site header and footer', () => {
-    const html = renderHomePrerenderHtml(home(), [], [], 2026);
-    expect(html.startsWith(renderSiteHeaderHtml(null))).toBe(true);
-    expect(html.endsWith(renderSiteFooterHtml(2026))).toBe(true);
-    expect(html).toContain('<main class="home-page home-page-prerender"');
+describe('renderHomeBodyHtml', () => {
+  it('is the Home main', () => {
+    expect(renderHomeBodyHtml(home())).toMatch(
+      /^<main class="home-page home-page-prerender"/,
+    );
   });
 
   it('renders the hero: name, italic title line, About lede, links sentence', () => {
-    const html = renderHomePrerenderHtml(home());
+    const html = renderHomeBodyHtml(home());
     expect(html).toContain('<h1 class="home-hero__name">Chris Gagne</h1>');
     expect(html).toContain(
       '<p class="home-hero__title">Engineering Leader</p>',
@@ -91,7 +86,7 @@ describe('renderHomePrerenderHtml', () => {
   });
 
   it('exposes name and title as data attributes the SPA reads back', () => {
-    const html = renderHomePrerenderHtml(home());
+    const html = renderHomeBodyHtml(home());
     expect(html).toContain('data-name="Chris Gagne"');
     expect(html).toContain('data-title="Engineering Leader"');
   });
@@ -99,7 +94,7 @@ describe('renderHomePrerenderHtml', () => {
   it("preserves $$, $&, $`, $' in prerendered name/title/about", () => {
     const tricky = "Making $$$ with $$ and $& and $` and $'";
     const escaped = 'Making $$$ with $$ and $&amp; and $` and $&#39;';
-    const html = renderHomePrerenderHtml(
+    const html = renderHomeBodyHtml(
       home({ name: tricky, title: tricky, about: 'echo $$\n\nand $&' }),
     );
     expect(html).toContain(`data-name="${escaped}"`);
@@ -109,21 +104,19 @@ describe('renderHomePrerenderHtml', () => {
   });
 
   it('escapes quotes in data attributes', () => {
-    const html = renderHomePrerenderHtml(
-      home({ name: 'A "B"', title: 'C "D"' }),
-    );
+    const html = renderHomeBodyHtml(home({ name: 'A "B"', title: 'C "D"' }));
     expect(html).toContain('data-name="A &quot;B&quot;"');
     expect(html).toContain('data-title="C &quot;D&quot;"');
   });
 
   it('has no Recent posts heading when there are no posts', () => {
-    const html = renderHomePrerenderHtml(home(), []);
+    const html = renderHomeBodyHtml(home(), []);
     expect(html).not.toContain('Recent posts');
     expect(html).not.toContain('home-section');
   });
 
   it('puts What I’m building below Recent posts, with an All projects link', () => {
-    const html = renderHomePrerenderHtml(
+    const html = renderHomeBodyHtml(
       home(),
       [recent(2)],
       selectHomeProjects(SAMPLE_PROJECTS),
@@ -145,12 +138,12 @@ describe('renderHomePrerenderHtml', () => {
   });
 
   it('has no What I’m building section without projects', () => {
-    const html = renderHomePrerenderHtml(home(), [recent(2)], []);
+    const html = renderHomeBodyHtml(home(), [recent(2)], []);
     expect(html).not.toContain('home-projects');
   });
 
   it('lists recent posts with title link, excerpt and UTC date', () => {
-    const html = renderHomePrerenderHtml(home(), [recent(2)]);
+    const html = renderHomeBodyHtml(home(), [recent(2)]);
     expect(html).toContain(
       '<h2 class="home-section__label" id="home-recent-posts">Recent posts</h2>' +
         '<a class="home-section__more" href="/posts">All posts</a>',

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  renderSiteFooterHtml,
-  renderSiteHeaderHtml,
-} from '@gagnechris/shared/render';
+import { renderSitePageHtml } from '@gagnechris/public-ui/server';
 import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
@@ -290,8 +287,11 @@ describe('publisher render', () => {
     ] as const;
     for (const [html, current] of pages) {
       const root = rootOf(html);
-      expect(root.startsWith(renderSiteHeaderHtml(current))).toBe(true);
-      expect(root.endsWith(renderSiteFooterHtml(year))).toBe(true);
+      const [header, footer] = renderSitePageHtml(current, '\0', year).split(
+        '\0',
+      );
+      expect(root.startsWith(header!)).toBe(true);
+      expect(root.endsWith(footer!)).toBe(true);
     }
   });
 

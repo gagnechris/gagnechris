@@ -1,11 +1,15 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { PublicLinkContext } from '@gagnechris/public-ui';
+import {
+  PublicLinkContext,
+  SiteFooter,
+  SiteHeader,
+} from '@gagnechris/public-ui';
 import { siteNavCurrent } from '@gagnechris/shared/site-chrome';
 import { useFooterYear } from '../prerender/footerYear';
 import { coldLoadedNotFound } from '../prerender/notFoundPrerender';
 import RouteTracker from './RouteTracker';
-import { SiteFooter, SiteHeader } from './SiteChrome';
 import SiteLink from './SiteLink';
+import AppSiteMenu from './SiteMenu';
 
 export default function AppWithTracking() {
   const { pathname } = useLocation();
@@ -17,7 +21,10 @@ export default function AppWithTracking() {
   return (
     <PublicLinkContext.Provider value={SiteLink}>
       <RouteTracker>
-        <SiteHeader current={current} />
+        <SiteHeader
+          current={current}
+          menu={<AppSiteMenu current={current} />}
+        />
         <Outlet />
         <SiteFooter year={footerYear} />
       </RouteTracker>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { selectHomeProjects } from '@gagnechris/shared';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
+import { renderHomePrerenderHtml } from '@gagnechris/public-ui/server';
 import {
   fallbackHomeView,
   homeDocumentFromRoot,

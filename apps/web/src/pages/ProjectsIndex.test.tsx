@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import { renderProjectsIndexPrerenderHtml } from '@gagnechris/shared/render';
+import { renderProjectsIndexPrerenderHtml } from '@gagnechris/public-ui/server';
 import ProjectsIndex from './ProjectsIndex';
 
 const renderPage = () =>

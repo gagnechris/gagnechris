@@ -1,59 +1,25 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import {
   createMemoryRouter,
   MemoryRouter,
   RouterProvider,
 } from 'react-router-dom';
 import { describe, expect, test, vi } from 'vitest';
-import {
-  renderSiteFooterHtml,
-  renderSiteHeaderHtml,
-  type SiteNavHref,
-} from '@gagnechris/shared/site-chrome';
+import { PublicLinkContext } from '@gagnechris/public-ui';
 import { routes } from '../routes';
 import { trackEvent } from '../utils/analytics';
-import { SiteFooter, SiteHeader } from './SiteChrome';
+import AppSiteMenu from './SiteMenu';
+import SiteLink from './SiteLink';
 
 vi.mock('../utils/analytics');
 
-const CURRENT: (SiteNavHref | null)[] = [null, '/posts', '/resume', '/contact'];
-
-/**
- * React's server renderer puts an image preload `<link>` in front of any
- * `<img>`; it isn't part of the component. Re-serializing through the HTML
- * parser also turns React's `<img …/>` into the browser's `<img …>`.
- */
-const staticMarkup = (node: React.ReactNode): string => {
-  const template = document.createElement('template');
-  template.innerHTML = renderToStaticMarkup(
-    <MemoryRouter>{node}</MemoryRouter>,
-  );
-  template.content
-    .querySelectorAll('link[rel="preload"][as="image"]')
-    .forEach((link) => link.remove());
-  return template.innerHTML;
-};
-
-const mountedMarkup = (node: React.ReactNode): string =>
-  render(<MemoryRouter>{node}</MemoryRouter>).container.innerHTML;
-
-describe('SiteHeader', () => {
-  test.each(CURRENT)('matches renderSiteHeaderHtml(%s)', (current) => {
-    expect(staticMarkup(<SiteHeader current={current} />)).toBe(
-      renderSiteHeaderHtml(current),
-    );
-    expect(mountedMarkup(<SiteHeader current={current} />)).toBe(
-      renderSiteHeaderHtml(current),
-    );
-  });
-});
-
-describe('SiteHeader menu', () => {
+describe('AppSiteMenu', () => {
   const renderMenu = () => {
     render(
       <MemoryRouter initialEntries={['/posts']}>
-        <SiteHeader current="/posts" />
+        <PublicLinkContext.Provider value={SiteLink}>
+          <AppSiteMenu current="/posts" />
+        </PublicLinkContext.Provider>
       </MemoryRouter>,
     );
     const button = screen.getByLabelText('Menu', { selector: 'summary' });
@@ -92,28 +58,6 @@ describe('SiteHeader menu', () => {
     expect(link).toHaveAttribute('target', '_blank');
     fireEvent.click(link);
     expect(trackEvent).toHaveBeenCalledWith('click', 'external_link', id);
-  });
-});
-
-describe('SiteFooter', () => {
-  test('matches renderSiteFooterHtml for the same year', () => {
-    expect(staticMarkup(<SiteFooter year={2031} />)).toBe(
-      renderSiteFooterHtml(2031),
-    );
-    expect(mountedMarkup(<SiteFooter year={2031} />)).toBe(
-      renderSiteFooterHtml(2031),
-    );
-  });
-
-  test('defaults to the current year', () => {
-    render(
-      <MemoryRouter>
-        <SiteFooter />
-      </MemoryRouter>,
-    );
-    expect(
-      screen.getByText(`© ${new Date().getFullYear()} Chris Gagne`),
-    ).toBeInTheDocument();
   });
 });
 

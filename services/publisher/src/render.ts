@@ -3,14 +3,8 @@ import {
   escapeHtml,
   homeAboutExcerpt,
   pageTitle,
-  renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   projectPageView,
-  renderProjectPagePrerenderHtml,
-  renderProjectsIndexPrerenderHtml,
-  renderResumePrerenderHtml,
-  renderResumeUnavailablePrerenderHtml,
-  renderSitePageHtml,
   resumeSummaryExcerpt,
 } from '@gagnechris/shared/render';
 import {
@@ -28,7 +22,15 @@ import {
   type Resume,
 } from '@gagnechris/shared';
 import type { HomeRecentPost } from '@gagnechris/shared/render';
-import { renderPostsIndexBodyHtml } from '@gagnechris/public-ui/server';
+import {
+  renderHomePrerenderHtml,
+  renderPostsIndexBodyHtml,
+  renderProjectPagePrerenderHtml,
+  renderProjectsIndexPrerenderHtml,
+  renderResumePrerenderHtml,
+  renderResumeUnavailablePrerenderHtml,
+  renderSitePageHtml,
+} from '@gagnechris/public-ui/server';
 import { APEX } from './config.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 

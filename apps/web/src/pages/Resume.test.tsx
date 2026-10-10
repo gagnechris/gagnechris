@@ -1,10 +1,10 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { DEFAULT_RESUME } from '@gagnechris/shared/render';
 import {
-  DEFAULT_RESUME,
   renderResumePrerenderHtml,
   renderResumeUnavailablePrerenderHtml,
-} from '@gagnechris/shared/render';
+} from '@gagnechris/public-ui/server';
 import Resume from './Resume';
 import { renderWithProviders } from '../test-utils';
 import { trackResumeDownload } from '../utils/analytics';

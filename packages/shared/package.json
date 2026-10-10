@@ -28,14 +28,14 @@
       "default": "./src/render.ts"
     },
     "./site-chrome": {
-      "types": "./src/site-chrome-html.ts",
-      "import": "./src/site-chrome-html.ts",
-      "default": "./src/site-chrome-html.ts"
+      "types": "./src/site-chrome.ts",
+      "import": "./src/site-chrome.ts",
+      "default": "./src/site-chrome.ts"
     },
     "./public-pages": {
-      "types": "./src/public-pages-html.ts",
-      "import": "./src/public-pages-html.ts",
-      "default": "./src/public-pages-html.ts"
+      "types": "./src/public-pages.ts",
+      "import": "./src/public-pages.ts",
+      "default": "./src/public-pages.ts"
     },
     "./fixtures/every-markdown-element": {
       "types": "./src/fixtures/every-markdown-element.ts",

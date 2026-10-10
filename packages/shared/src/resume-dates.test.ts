@@ -14,7 +14,7 @@ import {
   resumeRoleDates,
 } from './resume-dates.js';
 import {
-  renderResumePrerenderHtml,
+  renderResumeBodyHtml,
   renderResumeSectionsHtml,
 } from './resume-html.js';
 import { resumeView } from './resume-view.js';
@@ -136,9 +136,7 @@ describe('resume renders the same before and after migration', () => {
       ...legacy,
       content: planResumeDateMigration(legacy.content).content,
     };
-    expect(renderResumePrerenderHtml(migrated, 2026)).toBe(
-      renderResumePrerenderHtml(legacy, 2026),
-    );
+    expect(renderResumeBodyHtml(migrated)).toBe(renderResumeBodyHtml(legacy));
   });
 });
 

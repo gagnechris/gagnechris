@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { renderResumePrerenderHtml } from '@gagnechris/shared/render';
+import { renderResumePrerenderHtml } from '@gagnechris/public-ui/server';
 import { resumeResource, type Resume } from '@gagnechris/app-core';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import { publicUrl, withPublicUrls } from './publicUrl';

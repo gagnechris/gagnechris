@@ -257,7 +257,7 @@ once in `@gagnechris/shared/render` (`HOME_LINKS_SENTENCE`); the publisher
 prerenders HTML from that list and React renders the same list as JSX
 (`<Link>` / tracked `<a>`) so SPA navigation and GA4 click events stay intact.
 The site header and footer around every page come from
-`@gagnechris/shared/site-chrome` (see [architecture.md](./architecture.md#public-pages)).
+`@gagnechris/public-ui` (see [architecture.md](./architecture.md#public-pages)).
 The prerender footer year is fixed at publish time; the SPA uses the live year.
 
 ## Site publish row
