@@ -30,7 +30,13 @@ type RestoreTest struct {
 	SourceCountAttributes    []string           `json:"sourceCountAttributes"`
 }
 
+type API struct {
+	ServiceName      string `json:"serviceName"`
+	MetricsNamespace string `json:"metricsNamespace"`
+}
+
 type Contract struct {
+	API         API         `json:"api"`
 	RestoreTest RestoreTest `json:"restoreTest"`
 	// Keys maps a TypeScript key builder call with {placeholder} arguments to
 	// the key it returns.

@@ -15,7 +15,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/app-core` — UI-free admin hooks (autosave, versioned entity editor, TanStack Query resource factory)
 - `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
-- `go` — Go module for Go Lambdas: `cmd/<name>` per function (`restore-test`: AWS Backup restore-test validator + leftover restore-table check), shared code under `internal/`; `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `go/tools` pins golangci-lint and oapi-codegen
+- `go` — Go module for Go Lambdas: `cmd/<name>` per function (`restore-test`: AWS Backup restore-test validator + leftover restore-table check; `api`: the HTTP API, run locally in front of the Node API by `services/api/local/go-api.ts`), shared code under `internal/`; `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `go/tools` pins golangci-lint and oapi-codegen
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
@@ -32,7 +32,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)
 - Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
-- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth)
+- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth; `API_SERVER=go` puts the Go API in front of the Node one)
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`); `npm run test:integration -w @gagnechris/api` (DynamoDB Local: the black-box HTTP suite in `services/api/test/http` against the server `API_SERVER_COMMAND` starts, plus in-process script tests; see `docs/development.md`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)

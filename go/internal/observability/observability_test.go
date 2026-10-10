@@ -138,3 +138,16 @@ func TestMetricsFlushClearsAndSkipsEmpty(t *testing.T) {
 		t.Fatalf("second flush wrote %q, err %v", buf.String(), err)
 	}
 }
+
+func TestLoggerHonorsPowertoolsLogLevel(t *testing.T) {
+	t.Setenv(levelEnv, "error")
+	var buf bytes.Buffer
+	log := NewLogger(&buf, "svc")
+
+	log.Warn("dropped")
+	log.Error("kept")
+
+	if got := decode(t, buf.Bytes())["message"]; got != "kept" {
+		t.Errorf("message = %v, want only the ERROR record", got)
+	}
+}
