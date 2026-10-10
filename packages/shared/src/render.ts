@@ -33,7 +33,11 @@ export {
   type HomeLinksSegment,
   type HomeRecentPost,
 } from './home-html.js';
-export { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
+export {
+  postArticleView,
+  type PostArticleFields,
+  type PostArticleView,
+} from './post-html.js';
 export {
   RESUME_ACTION_LINKS,
   RESUME_DOWNLOAD_FILENAME,

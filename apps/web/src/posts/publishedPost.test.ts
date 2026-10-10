@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { renderPostPageBodyHtml } from '@gagnechris/shared/render';
+import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
 import { postViewFromDocument } from './publishedPost';
 
 const body = renderPostPageBodyHtml({

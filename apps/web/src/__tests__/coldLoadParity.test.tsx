@@ -5,12 +5,12 @@ import {
   applyPageMeta,
   DEFAULT_RESUME,
   pageTitle,
-  renderPostPageBodyHtml,
   projectPageView,
 } from '@gagnechris/shared/render';
 import { selectHomeProjects } from '@gagnechris/shared';
 import {
   renderHomePrerenderHtml,
+  renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
@@ -381,18 +381,44 @@ describe('cold load: first React render matches the prerender', () => {
     );
   });
 
-  test.each(['/posts', '/posts/hello-world'])(
-    '%s keeps the prerendered markup',
-    async (path) => {
-      const loaded = await coldLoad(path, PRERENDERS[path]);
+  test('/posts keeps the prerendered markup', async () => {
+    const loaded = await coldLoad('/posts', PRERENDERS['/posts']!);
+    unmount = loaded.unmount;
+
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+  });
+
+  test.each([
+    ['with Part of', PRERENDERS['/posts/hello-world']!],
+    [
+      'with no date, excerpt or projects',
+      renderSitePageHtml(
+        '/posts',
+        renderPostPageBodyHtml({
+          slug: 'hello-world',
+          title: 'Hello World',
+          excerpt: '',
+          publishedAt: null,
+          bodyMarkdown: 'Short.',
+        }),
+      ),
+    ],
+  ])(
+    '/posts/hello-world %s hydrates the published markup in place',
+    async (_, html) => {
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        '/posts/hello-world',
+        `<!--prerender:start-->${html}<!--prerender:end-->`,
+        '',
+        onRecoverableError,
+      );
       unmount = loaded.unmount;
 
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
-      if (path === '/posts/hello-world') {
-        expect(loaded.root.querySelector('.post-part-of')?.textContent).toBe(
-          'Part of the Notebook and Bears projects',
-        );
-      }
+      expect(fetch).not.toHaveBeenCalled();
     },
   );
 

@@ -4,8 +4,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
 import { readingMinutes, readingTimeLabel } from '@gagnechris/shared';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
-import { renderPostPageBodyHtml } from '@gagnechris/shared/render';
-import PostArticle from './PostArticle';
+import { PostPageBody, PublicLinkContext } from '@gagnechris/public-ui';
+import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
+import SiteLink from '../components/SiteLink';
 import { postViewFromDocument, type PostView } from './publishedPost';
 
 type PostInput = Parameters<typeof renderPostPageBodyHtml>[0];
@@ -51,28 +52,26 @@ const parse = (html: string): PostView => {
   return view;
 };
 
-const staticMarkup = (post: PostView): string =>
-  normalize(
-    renderToStaticMarkup(
-      <MemoryRouter>
-        <PostArticle post={post} />
-      </MemoryRouter>,
-    ),
-  );
+const InApp = ({ post }: { post: PostView }) => (
+  <MemoryRouter>
+    <PublicLinkContext.Provider value={SiteLink}>
+      <PostPageBody post={post} />
+    </PublicLinkContext.Provider>
+  </MemoryRouter>
+);
 
-describe('PostArticle', () => {
+const staticMarkup = (post: PostView): string =>
+  normalize(renderToStaticMarkup(<InApp post={post} />));
+
+describe('postViewFromDocument', () => {
   test.each(Object.entries(POSTS))(
-    'renders the prerender markup for %s',
+    'reads back %s, which the app renders as published',
     (_name, input) => {
       const prerender = renderPostPageBodyHtml(input);
       const view = parse(prerender);
 
       expect(staticMarkup(view)).toBe(normalize(prerender));
-      const { container } = render(
-        <MemoryRouter>
-          <PostArticle post={view} />
-        </MemoryRouter>,
-      );
+      const { container } = render(<InApp post={view} />);
       expect(container.innerHTML).toBe(normalize(prerender));
     },
   );
@@ -86,9 +85,7 @@ describe('PostArticle', () => {
         'text/html',
       );
       const { container } = render(
-        <MemoryRouter>
-          <PostArticle post={parse(renderPostPageBodyHtml(input))} />
-        </MemoryRouter>,
+        <InApp post={parse(renderPostPageBodyHtml(input))} />,
       );
 
       expect(prerender.querySelector('.post-reading-time')?.textContent).toBe(
@@ -100,7 +97,7 @@ describe('PostArticle', () => {
     },
   );
 
-  test('renders the prerender markup for Part of, linked and unlinked', () => {
+  test('reads back Part of, linked and unlinked, which the app renders as published', () => {
     const partOf = [
       { name: 'Notebook', href: '/projects/notebook' },
       { name: 'Bears & co', href: '/dont-feed-the-bears' },
@@ -115,11 +112,7 @@ describe('PostArticle', () => {
 
     expect(view.partOf).toEqual(partOf);
     expect(staticMarkup(view)).toBe(normalize(prerender));
-    const { container } = render(
-      <MemoryRouter>
-        <PostArticle post={view} />
-      </MemoryRouter>,
-    );
+    const { container } = render(<InApp post={view} />);
     expect(container.innerHTML).toBe(normalize(prerender));
     expect(container.querySelector('.post-part-of')?.textContent).toBe(
       'Part of the Notebook, Bears & co, Elsewhere and Someday projects',
