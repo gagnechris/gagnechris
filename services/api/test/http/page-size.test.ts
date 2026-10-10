@@ -1,20 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { NotesRepository } from '../../src/notes/repository.js';
-import { dispatchRoutes, type RouteDef } from '../../src/router.js';
-import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
-import { createSyncRoutes } from '../../src/sync/handlers.js';
-import { SyncLedger } from '../../src/sync/ledger.js';
-import { clearSyncEntities } from '../../src/sync/registry.js';
-import { createTaskRoutes } from '../../src/tasks/handlers.js';
-import { TasksRepository } from '../../src/tasks/repository.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
-import { testUlid } from '../support/paging-corpus.js';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { notebookUser } from './support/claims.js';
+import { useApi } from './support/harness.js';
+import { create, inBatches, testUlid } from './support/paging-corpus.js';
 
 const USER = 'user-page-size';
 const N = 100;
@@ -25,31 +12,20 @@ function bigText(i: number): string {
   return `${i} `.padEnd(BIG, 'x');
 }
 
+const h = useApi('page-size', { truncate: false });
+
 describe('list and sync page size (DynamoDB Local)', () => {
-  let tableName: string;
-  let routes: RouteDef[];
-  const doc = createLocalDocClient();
   const noteIds: string[] = [];
   const taskIds: string[] = [];
 
   beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('page-size');
-    clearSyncEntities();
-    registerProductionSyncAdapters();
-    const notes = new NotesRepository(doc, tableName);
-    const tasks = new TasksRepository(doc, tableName);
-    routes = [
-      ...createNoteRoutes(notes),
-      ...createTaskRoutes(tasks, notes),
-      ...createSyncRoutes(new SyncLedger(doc, tableName)),
-    ];
     for (let i = 0; i < N; i += 1) {
-      const noteId = testUlid('N', i);
-      const taskId = testUlid('T', i);
-      noteIds.push(noteId);
-      taskIds.push(taskId);
-      await notes.createFromRequest(USER, {
-        id: noteId,
+      noteIds.push(testUlid('N', i));
+      taskIds.push(testUlid('T', i));
+    }
+    await inBatches(N, async (i) => {
+      await create(h, USER, '/api/notebook/notes', {
+        id: noteIds[i],
         area: i % 2 === 0 ? 'work' : 'personal',
         type: 'page',
         title: `note ${i}`,
@@ -57,8 +33,8 @@ describe('list and sync page size (DynamoDB Local)', () => {
         tags: [],
         pinned: false,
       });
-      await tasks.createFromRequest(USER, {
-        id: taskId,
+      await create(h, USER, '/api/notebook/tasks', {
+        id: taskIds[i],
         area: i % 2 === 0 ? 'work' : 'personal',
         title: `task ${i}`,
         description: bigText(i),
@@ -67,12 +43,8 @@ describe('list and sync page size (DynamoDB Local)', () => {
         dueDate: null,
         tags: [],
       });
-    }
+    });
   }, 300_000);
-
-  afterAll(async () => {
-    await deleteIntegrationTable(tableName);
-  });
 
   /** Follows `nextCursor` to the end, checking every response's size. */
   async function walk(
@@ -83,28 +55,33 @@ describe('list and sync page size (DynamoDB Local)', () => {
     const ids: string[] = [];
     let cursor: string | undefined;
     for (let pages = 1; pages <= 200; pages += 1) {
-      const res = await dispatchRoutes(
-        routes,
-        makeEvent('GET', path, {
-          query: { ...query, ...(cursor ? { cursor } : {}) },
-          jwtClaims: { sub: USER },
-        }),
-        'GET',
-        path,
-      );
-      expect(res.statusCode).toBe(200);
-      const raw = res.body as string;
+      const res = await h.api.request<Record<string, unknown>>('GET', path, {
+        claims: notebookUser(USER),
+        query: { ...query, ...(cursor ? { cursor } : {}) },
+      });
+      expect(res.status).toBe(200);
+      // The harness hands back parsed JSON; its compact form is the body
+      // Lambda would carry, and Content-Length (when sent) is the wire size.
+      const raw = JSON.stringify(res.body);
       expect(Buffer.byteLength(raw, 'utf8')).toBeLessThanOrEqual(
         MAX_PAGE_BYTES,
       );
+      const wire = res.headers.get('content-length');
+      if (wire != null) {
+        expect(Number(wire)).toBeLessThanOrEqual(MAX_PAGE_BYTES);
+      }
       // What Lambda measures: the proxy result with the body escaped again.
+      const proxyResult = {
+        statusCode: res.status,
+        headers: Object.fromEntries(res.headers),
+        body: raw,
+      };
       expect(
-        Buffer.byteLength(JSON.stringify(res), 'utf8'),
+        Buffer.byteLength(JSON.stringify(proxyResult), 'utf8'),
       ).toBeLessThanOrEqual(MAX_PAGE_BYTES);
-      const body = JSON.parse(raw) as Record<string, unknown>;
-      const items = body[itemsKey] as Array<{ id: string }>;
+      const items = res.body[itemsKey] as Array<{ id: string }>;
       ids.push(...items.map((item) => item.id));
-      cursor = body.nextCursor as string | undefined;
+      cursor = res.body.nextCursor as string | undefined;
       if (!cursor) return { ids, pages };
     }
     throw new Error(`${path} paging did not terminate`);

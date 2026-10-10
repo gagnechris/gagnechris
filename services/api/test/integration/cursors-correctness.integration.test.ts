@@ -1,3 +1,5 @@
+// The forged cursor needs the server's cursor encoding to build, so this
+// case stays in-process; test/http/cursors-correctness.test.ts covers the rest.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { encodeCursor } from '../../src/data/cursor.js';
 import { SyncLedger } from '../../src/sync/ledger.js';
@@ -18,7 +20,6 @@ import { InvalidCursorError } from '../../src/data/errors.js';
 const USER_A = 'user-cursor-a';
 const USER_B = 'user-cursor-b';
 const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
-const NOTE_ID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
 
 describe('cursor correctness (DynamoDB Local)', () => {
   let tableName: string;
@@ -38,7 +39,7 @@ describe('cursor correctness (DynamoDB Local)', () => {
     registerFakeNoteSync();
   });
 
-  it('rejects other-user and changed-since sync cursors (400)', async () => {
+  it('rejects a sync cursor whose keys point at another user (400)', async () => {
     const repo = createFakeNotesRepo(
       doc,
       tableName,
@@ -58,30 +59,6 @@ describe('cursor correctness (DynamoDB Local)', () => {
         '2026-10-02T10:00:00.000Z',
       ),
     );
-    await repo.createIdempotent(
-      buildFakeNote(
-        USER_A,
-        NOTE_ID_2,
-        { title: 'a2' },
-        '2026-10-02T10:30:00.000Z',
-      ),
-    );
-
-    const page1 = await ledger.queryChangesSince(USER_A, { limit: 1 });
-    expect(page1.nextCursor).toBeTruthy();
-
-    await expect(
-      ledger.queryChangesSince(USER_B, { cursor: page1.nextCursor, limit: 1 }),
-    ).rejects.toBeInstanceOf(InvalidCursorError);
-
-    // Reusing a cursor under a tighter `since` that excludes the LEK sort key.
-    await expect(
-      ledger.queryChangesSince(USER_A, {
-        since: '2026-10-02T10:45:00.000Z',
-        cursor: page1.nextCursor,
-        limit: 1,
-      }),
-    ).rejects.toBeInstanceOf(InvalidCursorError);
 
     const foreign = encodeCursor({
       pk: `USER#${USER_A}#NOTE#${NOTE_ID}`,

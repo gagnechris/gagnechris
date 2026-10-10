@@ -1,37 +1,8 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { HomeRepository } from '../../src/home/repository.js';
-import { createHomeRoutes } from '../../src/home/handlers.js';
-import { createNoteRoutes } from '../../src/notes/handlers.js';
-import { NotesRepository } from '../../src/notes/repository.js';
-import { createPostRoutes } from '../../src/posts/handlers.js';
-import { PostsRepository } from '../../src/posts/repository.js';
-import { createResumeRoutes } from '../../src/resume/handlers.js';
-import { ResumeRepository } from '../../src/resume/repository.js';
-import { dispatchRoutes, type RouteDef } from '../../src/router.js';
-import { createSearchRoutes } from '../../src/search/handlers.js';
-import { registerProductionSyncAdapters } from '../../src/sync/adapters.js';
-import { createSyncRoutes } from '../../src/sync/handlers.js';
-import { SyncLedger } from '../../src/sync/ledger.js';
-import { clearSyncEntities } from '../../src/sync/registry.js';
-import { createTaskRoutes } from '../../src/tasks/handlers.js';
-import { TasksRepository } from '../../src/tasks/repository.js';
-import {
-  createEphemeralIntegrationTable,
-  createLocalDocClient,
-  deleteIntegrationTable,
-  truncateTable,
-} from '../support/dynamo-local.js';
-import { makeEvent } from '../support/make-event.js';
+import type { Claims } from './support/api.js';
+import { clientId, idToken } from './support/claims.js';
+import { useApi } from './support/harness.js';
 
 // One person, one sub: only the token's app client and groups differ, so
 // owner scoping can't be what stops a request.
@@ -40,73 +11,35 @@ const NOTE_ID = '01ARZ3NDEKTSV4RRFFQ69G5JA1';
 const TASK_ID = '01ARZ3NDEKTSV4RRFFQ69G5JA2';
 const LEGACY_CLIENT = 'test-legacy-web';
 
-const token = (aud: string, groups: string) => ({
-  sub: SUB,
-  token_use: 'id',
-  aud,
-  'cognito:groups': groups,
+const token = (aud: string, groups: string): Claims =>
+  idToken(SUB, 'notebook', [], { aud, 'cognito:groups': groups });
+const notebookOnly = token(clientId('notebook'), '[notebook]');
+const siteAdminOnly = token(clientId('admin'), '[site-admin]');
+
+const h = useApi('per-prefix-auth', {
+  env: { AUTH_LEGACY_WEB_CLIENT_ID: LEGACY_CLIENT },
 });
-const notebookOnly = token(process.env.NOTEBOOK_WEB_CLIENT_ID!, '[notebook]');
-const siteAdminOnly = token(process.env.ADMIN_WEB_CLIENT_ID!, '[site-admin]');
 
 describe('per-prefix authorization (DynamoDB Local)', () => {
-  let tableName: string;
-  let routes: RouteDef[];
-  const doc = createLocalDocClient();
-
-  beforeAll(async () => {
-    tableName = await createEphemeralIntegrationTable('per-prefix-auth');
-  });
-
-  afterAll(async () => {
-    await deleteIntegrationTable(tableName);
-  });
-
-  beforeEach(async () => {
-    await truncateTable(doc, tableName);
-    clearSyncEntities();
-    registerProductionSyncAdapters();
-    const notes = new NotesRepository(doc, tableName);
-    const tasks = new TasksRepository(doc, tableName);
-    routes = [
-      ...createPostRoutes(new PostsRepository(doc, tableName)),
-      ...createHomeRoutes(new HomeRepository(doc, tableName)),
-      ...createResumeRoutes(new ResumeRepository(doc, tableName)),
-      ...createNoteRoutes(notes),
-      ...createTaskRoutes(tasks, notes),
-      ...createSearchRoutes({ notes, tasks }),
-      ...createSyncRoutes(new SyncLedger(doc, tableName)),
-    ];
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   async function call(
-    claims: Record<string, string>,
+    claims: Claims,
     method: string,
     path: string,
     body?: unknown,
   ) {
-    const res = await dispatchRoutes(
-      routes,
-      makeEvent(method, path, { body, jwtClaims: claims, appToken: false }),
-      method,
-      path,
-    );
+    const res = await h.api.request(method, path, { claims, body });
     return {
-      status: res.statusCode,
-      body: JSON.parse(res.body as string) as Record<string, unknown>,
+      status: res.status,
+      body: (res.body ?? {}) as Record<string, unknown>,
     };
   }
 
   async function rowKeys(): Promise<string[]> {
-    const out = await doc.send(new ScanCommand({ TableName: tableName }));
+    const out = await h.doc.send(new ScanCommand({ TableName: h.tableName }));
     return (out.Items ?? []).map((item) => `${item.pk} ${item.sk}`).sort();
   }
 
-  async function writeNotebookData(claims: Record<string, string>) {
+  async function writeNotebookData(claims: Claims) {
     const note = await call(claims, 'POST', '/api/notebook/notes', {
       id: NOTE_ID,
       area: 'work',
@@ -122,7 +55,7 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     return [note.status, task.status];
   }
 
-  async function writeSiteContent(claims: Record<string, string>) {
+  async function writeSiteContent(claims: Claims) {
     const post = await call(claims, 'POST', '/api/admin/posts', {
       title: 'Public post',
     });
@@ -220,24 +153,20 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     const bothGroups = '[site-admin notebook]';
     const cases = [
       [
-        token(process.env.NOTEBOOK_WEB_CLIENT_ID!, bothGroups),
+        token(clientId('notebook'), bothGroups),
         'POST',
         '/api/admin/posts',
         { title: 'x' },
       ],
       [
-        token(process.env.ADMIN_WEB_CLIENT_ID!, '[notebook]'),
+        token(clientId('admin'), '[notebook]'),
         'POST',
         '/api/admin/posts',
         { title: 'x' },
       ],
+      [token(clientId('admin'), bothGroups), 'GET', '/api/notebook/notes'],
       [
-        token(process.env.ADMIN_WEB_CLIENT_ID!, bothGroups),
-        'GET',
-        '/api/notebook/notes',
-      ],
-      [
-        token(process.env.NOTEBOOK_WEB_CLIENT_ID!, '[site-admin]'),
+        token(clientId('notebook'), '[site-admin]'),
         'GET',
         '/api/notebook/notes',
       ],
@@ -254,24 +183,21 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
   });
 
   it('iOS client: notebook group reads and writes Notebook data, no group opens site content', async () => {
-    const iosNotebook = token(process.env.IOS_CLIENT_ID!, '[notebook]');
+    const iosNotebook = token(clientId('ios'), '[notebook]');
     expect(await writeNotebookData(iosNotebook)).toEqual([201, 201]);
     const list = await call(iosNotebook, 'GET', '/api/notebook/notes');
     expect(list.status).toBe(200);
     expect(list.body.items).toHaveLength(1);
 
     const before = await rowKeys();
-    const iosAll = token(
-      process.env.IOS_CLIENT_ID!,
-      '[site-admin notebook user-admin]',
-    );
+    const iosAll = token(clientId('ios'), '[site-admin notebook user-admin]');
     for (const claims of [iosNotebook, iosAll]) {
       const { post, home, homeUpdate } = await writeSiteContent(claims);
       expect([post.status, home.status, homeUpdate.status]).toEqual([
         403, 403, 403,
       ]);
     }
-    const noGroup = token(process.env.IOS_CLIENT_ID!, '[site-admin]');
+    const noGroup = token(clientId('ios'), '[site-admin]');
     expect((await call(noGroup, 'GET', '/api/notebook/notes')).status).toBe(
       403,
     );
@@ -280,7 +206,6 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
 
   it('web client + admin group reads and writes nothing, even with AUTH_LEGACY_WEB_CLIENT_ID set', async () => {
     const legacy = token(LEGACY_CLIENT, '[admin]');
-    vi.stubEnv('AUTH_LEGACY_WEB_CLIENT_ID', LEGACY_CLIENT);
     const before = await rowKeys();
     expect(await writeNotebookData(legacy)).toEqual([403, 403]);
     const { post, home, homeUpdate } = await writeSiteContent(legacy);

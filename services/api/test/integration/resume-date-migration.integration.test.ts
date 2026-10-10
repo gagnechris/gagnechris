@@ -12,19 +12,13 @@ import {
 } from '@gagnechris/data';
 import { DEFAULT_RESUME, type Resume } from '@gagnechris/shared';
 import { renderResumeBodyHtml } from '@gagnechris/shared/render';
-import {
-  LEGACY_COMPANY_LINES,
-  legacyResume,
-} from '@gagnechris/shared/fixtures/legacy-resume';
-import { createResumeRoutes } from '../../src/resume/handlers.js';
+import { legacyResume } from '@gagnechris/shared/fixtures/legacy-resume';
 import { ResumeRepository } from '../../src/resume/repository.js';
 import {
   formatResumeDateMigrationReport,
   migrateResumeDates,
   resumeDateMigrationExitCode,
 } from '../../src/resume/date-migration.js';
-import { dispatchRoutes } from '../../src/router.js';
-import { makeEvent } from '../support/make-event.js';
 import {
   createEphemeralIntegrationTable,
   createLocalDocClient,
@@ -98,56 +92,6 @@ describe('resume date migration (DynamoDB Local)', () => {
     mode: 'dry-run' | 'apply' | 'verify',
     client: DynamoDBDocumentClient = doc,
   ) => migrateResumeDates({ doc: client, tableName, mode, now: () => NOW });
-
-  const dispatch = (method: string, body?: unknown) =>
-    dispatchRoutes(
-      createResumeRoutes(new ResumeRepository(doc, tableName)),
-      makeEvent(method, '/api/admin/resume', {
-        jwtClaims: { sub: 'admin-1' },
-        ...(body ? { body } : {}),
-      }),
-      method,
-      '/api/admin/resume',
-    );
-
-  it('serves and saves old-shape rows without a data_integrity error', async () => {
-    const legacy = legacyPublished();
-    await seed(legacy, legacy);
-
-    const got = await dispatch('GET');
-    expect(got.statusCode).toBe(200);
-    const body = JSON.parse(got.body as string) as Resume;
-    expect(body.content.experience.map((e) => e.company)).toEqual([
-      ...LEGACY_COMPANY_LINES,
-    ]);
-    expect(body.hasUnpublishedChanges).toBe(false);
-
-    const saved = await dispatch('PUT', {
-      version: legacy.version,
-      content: legacy.content,
-    });
-    expect(saved.statusCode).toBe(200);
-  });
-
-  it('PUT then GET round-trips start, end, note, headline and cut-off', async () => {
-    const legacy = legacyPublished();
-    await seed(legacy, legacy);
-    const content = structuredClone(DEFAULT_RESUME.content);
-    content.experience[3]!.note = 'contract, concurrent';
-
-    const saved = await dispatch('PUT', { version: legacy.version, content });
-    expect(saved.statusCode).toBe(200);
-    const got = await dispatch('GET');
-    const body = JSON.parse(got.body as string) as Resume;
-    expect(body.content).toEqual(content);
-    expect(body.content.headline).toBe('Director of Software Engineering');
-    expect(body.content.earlierRolesThrough).toBe(2012);
-    expect(body.content.experience[0]).toMatchObject({
-      start: '2019-07',
-      end: null,
-    });
-    expect(body.hasUnpublishedChanges).toBe(true);
-  });
 
   it('dry run lists every experience row with its parsed dates and writes nothing', async () => {
     const legacy = legacyPublished();

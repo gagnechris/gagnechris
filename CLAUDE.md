@@ -34,7 +34,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth)
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
-- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`)
+- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`); `npm run test:integration -w @gagnechris/api` (DynamoDB Local: the black-box HTTP suite in `services/api/test/http` against the server `API_SERVER_COMMAND` starts, plus in-process script tests; see `docs/development.md`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list, KVS keys and slug cap, local publish-relevance routes and the publisher-owned S3 key list from publisher targets; fails on diff)
 - Local E2E: `npm run e2e:local` (publish lifecycle smoke: the Playwright `api` project, `e2e/tests/publish-lifecycle.spec.ts`, on its own stack)
