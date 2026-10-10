@@ -96,7 +96,30 @@ export const GO_ADMIN_ROUTES: ReadonlyArray<
 /** Notebook routes the Go API serves, each behind the Notebook authorizer. */
 export const GO_NOTEBOOK_ROUTES: ReadonlyArray<
   readonly [path: string, methods: readonly HttpMethod[]]
-> = [['/api/notebook/search', [HttpMethod.POST]]];
+> = [
+  ['/api/notebook/search', [HttpMethod.POST]],
+  ['/api/notebook/notes', [HttpMethod.GET, HttpMethod.POST]],
+  ['/api/notebook/notes/batch', [HttpMethod.POST]],
+  ['/api/notebook/notes/daily/{area}/{date}', [HttpMethod.GET, HttpMethod.PUT]],
+  ['/api/notebook/notes/daily/{area}/{date}/open', [HttpMethod.POST]],
+  [
+    '/api/notebook/notes/{id}',
+    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
+  ],
+  ['/api/notebook/tasks', [HttpMethod.GET, HttpMethod.POST]],
+  ['/api/notebook/tasks/batch', [HttpMethod.POST]],
+  [
+    '/api/notebook/tasks/{id}',
+    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
+  ],
+  ['/api/notebook/tasks/{id}/complete', [HttpMethod.POST]],
+  ['/api/notebook/tasks/{id}/reopen', [HttpMethod.POST]],
+  [
+    '/api/notebook/templates/daily/{area}',
+    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
+  ],
+  ['/api/notebook/sync/changes', [HttpMethod.GET]],
+];
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -195,7 +218,7 @@ export class ApiStack extends Stack {
     this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
       description:
-        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media, users, search)',
+        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media, users, Notebook)',
       cmd: 'api',
       memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),

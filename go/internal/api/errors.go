@@ -82,6 +82,15 @@ type UpgradeRequiredError struct {
 
 func (e *UpgradeRequiredError) Error() string { return e.Message }
 
+// PayloadTooLargeError is a body that fails only size limits; Fields are the
+// per-field codes a 400 would carry.
+type PayloadTooLargeError struct {
+	Message string
+	Fields  map[string]string
+}
+
+func (e *PayloadTooLargeError) Error() string { return e.Message }
+
 type ServiceUnavailableError struct{ Message string }
 
 func (e *ServiceUnavailableError) Error() string { return e.Message }
@@ -123,6 +132,7 @@ func withCurrent(body map[string]any, version *int, current any) map[string]any 
 func mapError(err error, log *slog.Logger, m *observability.Metrics) *Response {
 	var (
 		badRequest   *BadRequestError
+		tooLarge     *PayloadTooLargeError
 		notFound     *NotFoundError
 		resync       *ResyncRequiredError
 		upgrade      *UpgradeRequiredError
@@ -140,6 +150,12 @@ func mapError(err error, log *slog.Logger, m *observability.Metrics) *Response {
 			body["fields"] = badRequest.Fields
 		}
 		return JSON(http.StatusBadRequest, body)
+	case errors.As(err, &tooLarge):
+		return JSON(http.StatusRequestEntityTooLarge, map[string]any{
+			"error":   "payload_too_large",
+			"message": tooLarge.Message,
+			"fields":  tooLarge.Fields,
+		})
 	case errors.As(err, &notFound):
 		return errorJSON(http.StatusNotFound, "not_found", notFound.Message)
 	case errors.As(err, &resync):

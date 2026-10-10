@@ -1,7 +1,10 @@
 package notebook
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+
 	"github.com/gagnechris/gagnechris/go/internal/data"
+	"github.com/gagnechris/gagnechris/go/internal/keys"
 	"github.com/gagnechris/gagnechris/go/internal/store"
 )
 
@@ -101,14 +104,7 @@ func ParseNote(item data.Item) (Note, error) {
 	if _, ok := item["taskIds"]; ok {
 		n.TaskIDs = r.StrList("taskIds")
 	} else {
-		n.TaskIDs = []string{}
-		seen := map[string]bool{}
-		for _, e := range FindTaskEmbeds(n.BodyMarkdown) {
-			if !seen[e.ID] {
-				seen[e.ID] = true
-				n.TaskIDs = append(n.TaskIDs, e.ID)
-			}
-		}
+		n.TaskIDs = TaskEmbedIDs(n.BodyMarkdown)
 	}
 	n.Version, n.CreatedAt, n.UpdatedAt, n.Deleted = versionedMeta(r)
 	return n, r.Err("note")
@@ -146,4 +142,77 @@ func ParseTask(item data.Item) (Task, error) {
 	t.Tags = r.StrList("tags")
 	t.Version, t.CreatedAt, t.UpdatedAt, t.Deleted = versionedMeta(r)
 	return t, r.Err("task")
+}
+
+func optS(s *string) types.AttributeValue { return data.OptS(s) }
+
+// noteItem is buildNoteMetaItem: a tombstone leaves the list index.
+func noteItem(n Note) data.Item {
+	item := data.Key(keys.NotePk(n.UserID, n.ID), keys.NoteMetaSk())
+	item["entityType"] = data.S("note")
+	item["id"] = data.S(n.ID)
+	item["userId"] = data.S(n.UserID)
+	item["area"] = data.S(n.Area)
+	item["type"] = data.S(n.Type)
+	item["date"] = optS(n.Date)
+	item["title"] = data.S(n.Title)
+	item["bodyMarkdown"] = data.S(n.BodyMarkdown)
+	item["tags"] = data.StrList(n.Tags)
+	item["pinned"] = data.Bool(n.Pinned)
+	item["taskIds"] = data.StrList(n.TaskIDs)
+	item["version"] = data.N(int64(n.Version))
+	item["createdAt"] = data.S(n.CreatedAt)
+	item["updatedAt"] = data.S(n.UpdatedAt)
+	item["deleted"] = data.Bool(n.Deleted)
+	if !n.Deleted {
+		item["gsi1pk"] = data.S(keys.NotebookAreaGSI1Pk(n.UserID, n.Area))
+		if n.Type == "daily" && n.Date != nil && *n.Date != "" {
+			item["gsi1sk"] = data.S(keys.NoteDateGSI1Sk(*n.Date, n.ID))
+		} else {
+			item["gsi1sk"] = data.S(keys.NotePageGSI1Sk(n.UpdatedAt, n.ID))
+		}
+	}
+	return item
+}
+
+func taskGSI1Sk(t Task) string {
+	switch {
+	case t.Someday:
+		return keys.TaskSomedayGSI1Sk(t.UpdatedAt, t.ID)
+	case t.StartDate != nil && *t.StartDate != "":
+		return keys.TaskStartGSI1Sk(*t.StartDate, t.ID)
+	}
+	return keys.TaskUpdatedGSI1Sk(t.UpdatedAt, t.ID)
+}
+
+// taskItem is buildTaskMetaItem: a tombstone leaves the list indexes.
+func taskItem(t Task) data.Item {
+	item := data.Key(keys.TaskPk(t.UserID, t.ID), keys.TaskMetaSk())
+	item["entityType"] = data.S("task")
+	item["id"] = data.S(t.ID)
+	item["userId"] = data.S(t.UserID)
+	item["area"] = data.S(t.Area)
+	item["title"] = data.S(t.Title)
+	item["description"] = data.S(t.Description)
+	item["priority"] = data.S(t.Priority)
+	item["status"] = data.S(t.Status)
+	item["dueDate"] = optS(t.DueDate)
+	item["startDate"] = optS(t.StartDate)
+	item["someday"] = data.Bool(t.Someday)
+	item["completedAt"] = optS(t.CompletedAt)
+	item["noteId"] = optS(t.NoteID)
+	item["tags"] = data.StrList(t.Tags)
+	item["version"] = data.N(int64(t.Version))
+	item["createdAt"] = data.S(t.CreatedAt)
+	item["updatedAt"] = data.S(t.UpdatedAt)
+	item["deleted"] = data.Bool(t.Deleted)
+	if !t.Deleted {
+		item["gsi1pk"] = data.S(keys.TaskAreaStatusGSI1Pk(t.UserID, t.Area, t.Status))
+		item["gsi1sk"] = data.S(taskGSI1Sk(t))
+		if t.NoteID != nil && *t.NoteID != "" {
+			item["gsi2pk"] = data.S(keys.NoteTasksGSI2Pk(t.UserID, *t.NoteID))
+			item["gsi2sk"] = data.S(keys.NoteTasksGSI2Sk(t.ID))
+		}
+	}
+	return item
 }

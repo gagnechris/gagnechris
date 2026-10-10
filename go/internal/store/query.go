@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
 
 	"github.com/gagnechris/gagnechris/go/internal/api"
@@ -44,6 +45,8 @@ type PageQuery struct {
 	CursorKeys []string
 	// PartitionAttr and PartitionValue reject cursors from another partition.
 	PartitionAttr, PartitionValue string
+	// SortAttr and SortLowerBound reject cursors below a range's lower bound.
+	SortAttr, SortLowerBound string
 	// ByteBudget caps the JSON bytes of returned rows; the first row is
 	// always returned. Zero means no cap.
 	ByteBudget int
@@ -67,6 +70,11 @@ func QueryPage[T any](ctx context.Context, t *data.Table, q PageQuery, mapRow Ro
 			return Page[T]{}, err
 		}
 	}
+	if start != nil && q.SortAttr != "" && q.SortLowerBound != "" {
+		if s, ok := start[q.SortAttr].(*types.AttributeValueMemberS); !ok || s.Value < q.SortLowerBound {
+			return Page[T]{}, api.ErrInvalidCursor
+		}
+	}
 	in := q.Input
 	in.TableName = aws.String(t.Name)
 	in.ExclusiveStartKey = start
@@ -75,10 +83,7 @@ func QueryPage[T any](ctx context.Context, t *data.Table, q PageQuery, mapRow Ro
 	}
 	res, err := t.DB.Query(ctx, &in)
 	if err != nil {
-		if isStartKeyValidation(err) {
-			return Page[T]{}, api.ErrInvalidCursor
-		}
-		return Page[T]{}, err
+		return Page[T]{}, MapQueryError(err)
 	}
 	var page Page[T]
 	used := 0
@@ -111,6 +116,14 @@ func QueryPage[T any](ctx context.Context, t *data.Table, q PageQuery, mapRow Ro
 	}
 	page.NextCursor = EncodeCursor(res.LastEvaluatedKey)
 	return page, nil
+}
+
+// MapQueryError is a 400 for a cursor DynamoDB rejects as a start key.
+func MapQueryError(err error) error {
+	if isStartKeyValidation(err) {
+		return api.ErrInvalidCursor
+	}
+	return err
 }
 
 func isStartKeyValidation(err error) bool {

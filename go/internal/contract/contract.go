@@ -68,6 +68,28 @@ type Users struct {
 	ReauthRequired    string              `json:"reauthRequired"`
 }
 
+type Notebook struct {
+	TextMaxBytes             int               `json:"textMaxBytes"`
+	TitleMaxLength           int               `json:"titleMaxLength"`
+	TagMaxLength             int               `json:"tagMaxLength"`
+	TagsMax                  int               `json:"tagsMax"`
+	BatchMaxIDs              int               `json:"batchMaxIds"`
+	PageSize                 int               `json:"pageSize"`
+	DailyTemplates           map[string]string `json:"dailyTemplates"`
+	DailyTemplateMaxBytes    int               `json:"dailyTemplateMaxBytes"`
+	DailyTemplateTaskMessage string            `json:"dailyTemplateTaskMessage"`
+}
+
+type Sync struct {
+	DefaultPageLimit    int    `json:"defaultPageLimit"`
+	MinClientVersion    string `json:"minClientVersion"`
+	ClientVersionHeader string `json:"clientVersionHeader"`
+	TombstoneTTLDays    int    `json:"tombstoneTtlDays"`
+	CreateClaimTTLDays  int    `json:"createClaimTtlDays"`
+	ResyncMarginMs      int64  `json:"resyncMarginMs"`
+	OverlapMs           int64  `json:"overlapMs"`
+}
+
 type Contract struct {
 	API         API         `json:"api"`
 	RestoreTest RestoreTest `json:"restoreTest"`
@@ -76,12 +98,21 @@ type Contract struct {
 	Keys        map[string]string          `json:"keys"`
 	Limits      Limits                     `json:"limits"`
 	Defaults    Defaults                   `json:"defaults"`
+	Notebook    Notebook                   `json:"notebook"`
+	Sync        Sync                       `json:"sync"`
 	Users       Users                      `json:"users"`
 	ItemSchemas map[string]json.RawMessage `json:"itemSchemas"`
 	// Samples are rows built by the TypeScript item builders.
 	Samples map[string]map[string]any `json:"samples"`
 	// APISamples are API response bodies built by the TypeScript converters.
 	APISamples map[string]json.RawMessage `json:"apiSamples"`
+	// TextCases are inputs with the TypeScript text helpers' outputs.
+	TextCases map[string][]TextCase `json:"textCases"`
+}
+
+type TextCase struct {
+	Input json.RawMessage `json:"input"`
+	Want  json.RawMessage `json:"want"`
 }
 
 // Data is the generated contract.

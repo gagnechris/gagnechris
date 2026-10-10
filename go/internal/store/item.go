@@ -317,3 +317,11 @@ func (r *ItemReader) OptPositiveInt(key string) {
 
 // Fail records a problem a caller's own check found.
 func (r *ItemReader) Fail(key, why string) { r.bad(key, why) }
+
+// OptString is a string attribute, nil unless the row holds one.
+func OptString(item data.Item, key string) *string {
+	if s, ok := item[key].(*types.AttributeValueMemberS); ok {
+		return &s.Value
+	}
+	return nil
+}
