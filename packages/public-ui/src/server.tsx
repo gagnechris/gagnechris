@@ -1,10 +1,106 @@
 /** @jsxRuntime automatic */
+import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
-import { postsIndexView, type PostsIndexItem } from '@gagnechris/shared';
+import {
+  PROJECTS_PATH,
+  postsIndexView,
+  type PostsIndexItem,
+  type ProjectCardView,
+  type ProjectPageView,
+} from '@gagnechris/shared';
+import {
+  renderHomeBodyHtml,
+  renderProjectPageBodyHtml,
+  renderProjectsIndexBodyHtml,
+  renderResumeBodyHtml,
+  renderResumeUnavailableBodyHtml,
+  type Home,
+  type HomeRecentPost,
+  type ProjectsIndexItem,
+  type Resume,
+} from '@gagnechris/shared/render';
+import type { SiteNavHref } from '@gagnechris/shared/site-chrome';
+import { SiteFooter, SiteHeader, SitePage } from './chrome/SiteChrome.js';
+import { ContactPageBody } from './pages/ContactPageBody.js';
+import { NotFoundBody } from './pages/NotFoundBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
+
+const thisYear = () => new Date().getFullYear();
 
 // `renderToString`, not static markup: it marks adjacent text nodes, which
 // hydration needs to match them one to one.
+const page = (
+  current: SiteNavHref | null,
+  body: ReactNode,
+  year: number | string = thisYear(),
+): string =>
+  renderToString(
+    <SitePage current={current} year={year}>
+      {body}
+    </SitePage>,
+  );
+
 export const renderPostsIndexBodyHtml = (
   posts: readonly PostsIndexItem[],
 ): string => renderToString(<PostsIndexBody years={postsIndexView(posts)} />);
+
+/**
+ * The chrome around a body that is still a string. Elements are adjacent at
+ * the seams, so this matches rendering the whole page as one tree.
+ */
+export const renderSitePageHtml = (
+  current: SiteNavHref | null,
+  bodyHtml: string,
+  year: number | string = thisYear(),
+): string =>
+  renderToString(<SiteHeader current={current} />) +
+  bodyHtml +
+  renderToString(<SiteFooter year={year} />);
+
+export const renderNotFoundPageHtml = (year?: number | string): string =>
+  page(null, <NotFoundBody />, year);
+
+export const renderContactPageHtml = (year?: number | string): string =>
+  page('/contact', <ContactPageBody />, year);
+
+/** The bears pages are lazy chunks: before they load, the page is the chrome alone. */
+export const renderBearsShellHtml = (year?: number | string): string =>
+  page(null, null, year);
+
+export const renderHomePrerenderHtml = (
+  home: Home,
+  recentPosts: readonly HomeRecentPost[] = [],
+  projects: readonly ProjectCardView[] = [],
+  year?: number | string,
+): string =>
+  renderSitePageHtml(
+    null,
+    renderHomeBodyHtml(home, recentPosts, projects),
+    year,
+  );
+
+export const renderProjectsIndexPrerenderHtml = (
+  projects: readonly ProjectsIndexItem[],
+  year?: number | string,
+): string =>
+  renderSitePageHtml(
+    PROJECTS_PATH,
+    renderProjectsIndexBodyHtml(projects),
+    year,
+  );
+
+export const renderProjectPagePrerenderHtml = (
+  view: ProjectPageView,
+  year?: number | string,
+): string =>
+  renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(view), year);
+
+export const renderResumePrerenderHtml = (
+  resume: Resume,
+  year?: number | string,
+): string => renderSitePageHtml('/resume', renderResumeBodyHtml(resume), year);
+
+export const renderResumeUnavailablePrerenderHtml = (
+  year?: number | string,
+): string =>
+  renderSitePageHtml('/resume', renderResumeUnavailableBodyHtml(), year);

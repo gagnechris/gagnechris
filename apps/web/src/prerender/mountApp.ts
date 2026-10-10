@@ -11,6 +11,14 @@ import {
 // replaces the prerender.
 const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
   { path: /^\/posts\/?$/, selector: 'main.posts-index' },
+  { path: /^\/contact\/?$/, selector: 'main.contact-page' },
+  // 404.html answers any path CloudFront has no object for.
+  { path: /^\//, selector: 'main.not-found' },
+  // Their pages load in a lazy chunk, so the published page is the chrome alone.
+  {
+    path: /^\/dont-feed-the-bears(\/(camp|wild))?\/?$/,
+    selector: 'header.site-header + footer.site-footer',
+  },
 ];
 
 export const hydratesPrerender = (

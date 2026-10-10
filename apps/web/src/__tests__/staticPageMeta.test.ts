@@ -8,10 +8,7 @@ import {
   outputRelativePath,
   staticPagePrerender,
 } from '../../scripts/staticPageMeta';
-import {
-  renderSiteFooterHtml,
-  renderSiteHeaderHtml,
-} from '@gagnechris/shared/site-chrome';
+import { renderSitePageHtml } from '@gagnechris/public-ui/server';
 
 const shell = `<!doctype html>
 <html lang="en">
@@ -153,10 +150,12 @@ describe('staticPageMeta', () => {
       const html = applyStaticPageMeta(shell, meta);
       const root = /<div id="root">([\s\S]*?)<\/div><\/body>/.exec(html)![1]!;
       expect(root.startsWith('<!--prerender:start-->')).toBe(true);
-      expect(root).toContain(
-        renderSiteHeaderHtml(routePath === 'contact' ? '/contact' : null),
-      );
-      expect(root).toContain(renderSiteFooterHtml());
+      const [header, footer] = renderSitePageHtml(
+        routePath === 'contact' ? '/contact' : null,
+        '\0',
+      ).split('\0');
+      expect(root).toContain(header);
+      expect(root).toContain(footer);
       expect(root).toBe(staticPagePrerender(routePath));
     },
   );

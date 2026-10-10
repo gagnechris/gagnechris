@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { APEX_DOMAIN, pageTitle, siteUrl } from './site-config.js';
-import { notFoundLinks, NOT_FOUND_TITLE } from './public-pages-html.js';
+import { notFoundLinks, NOT_FOUND_TITLE } from './public-pages.js';
 
 describe('siteUrl', () => {
   it('puts a site path on the apex', () => {

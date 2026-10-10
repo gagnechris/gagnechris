@@ -10,7 +10,6 @@ import {
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
 } from './site-config.js';
-import { renderSitePageHtml } from './site-chrome-html.js';
 
 export { SITE_AUTHOR_NAME };
 
@@ -176,18 +175,6 @@ export const renderHomeBodyHtml = (
     `</main>`
   );
 };
-
-export const renderHomePrerenderHtml = (
-  home: Home,
-  recentPosts: readonly HomeRecentPost[] = [],
-  projects: readonly ProjectCardView[] = [],
-  year?: number,
-): string =>
-  renderSitePageHtml(
-    null,
-    renderHomeBodyHtml(home, recentPosts, projects),
-    year,
-  );
 
 export const homeAboutExcerpt = (about: string, max = 200): string =>
   textExcerpt(about, max);

@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, type FormEvent } from 'react';
-import { renderHomePrerenderHtml } from '@gagnechris/shared/render';
+import { renderHomePrerenderHtml } from '@gagnechris/public-ui/server';
 import { homeResource, type Home } from '@gagnechris/app-core';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { publicUrl, withPublicUrls } from './publicUrl';
