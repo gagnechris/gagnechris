@@ -1,10 +1,13 @@
-import { Fragment } from 'react';
+/** @jsxRuntime automatic */
+import { Fragment, type ReactNode, type Ref } from 'react';
 import {
   formatPostDate,
   postDateAttribute,
   PROJECT_BUILD_LOG_HEADING,
   PROJECT_BUILD_LOG_ID,
   PROJECT_BUILD_LOG_RSS_LINK,
+  PROJECT_DEMO_LABEL,
+  PROJECT_DEMO_LABEL_ID,
   projectBuildLogEmptyText,
   PROJECTS_INDEX_TITLE,
   PROJECTS_PATH,
@@ -12,18 +15,47 @@ import {
   type ProjectBuildLogPost,
   type ProjectPageView,
 } from '@gagnechris/shared';
-import SiteLink from '../components/SiteLink';
-import ProjectDemoSlot from './ProjectDemoSlot';
-import './ProjectStage.css';
+import { PublicLink } from '../link.js';
+import { ProjectPreview } from './ProjectPreview.js';
 
-// Markup must match `renderProjectPageBodyHtml` (ProjectPageBody.test.tsx).
+/**
+ * The Try it slot's preview. Low priority, or the server renderer would put
+ * an image preload inside `#root`; the app swaps in the demo soon anyway.
+ */
+export const ProjectDemoPreview = ({
+  project,
+}: {
+  project: Pick<ProjectPageView, 'previewImage' | 'stage' | 'demo'>;
+}) => <ProjectPreview card={project} fetchPriority="low" />;
+
+export const ProjectDemoSection = ({
+  children,
+  stageRef,
+  onPointerDown,
+}: {
+  children: ReactNode;
+  stageRef?: Ref<HTMLDivElement>;
+  onPointerDown?: () => void;
+}) => (
+  <section className="project-demo" aria-labelledby={PROJECT_DEMO_LABEL_ID}>
+    <h2 className="project-demo__label" id={PROJECT_DEMO_LABEL_ID}>
+      {PROJECT_DEMO_LABEL}
+    </h2>
+    <div
+      className="project-demo__stage"
+      ref={stageRef}
+      onPointerDown={onPointerDown}
+    >
+      {children}
+    </div>
+  </section>
+);
 
 const BuildLogEntry = ({ post }: { post: ProjectBuildLogPost }) => {
   const date = formatPostDate(post.publishedAt);
-  const attr = postDateAttribute(post.publishedAt);
   return (
     <li className="project-build-log__entry" data-id={post.id}>
-      <SiteLink
+      <PublicLink
         className="project-build-log__link"
         href={`/posts/${post.slug}`}
       >
@@ -31,21 +63,27 @@ const BuildLogEntry = ({ post }: { post: ProjectBuildLogPost }) => {
         {date ? (
           <time
             className="project-build-log__date"
-            dateTime={attr || undefined}
+            dateTime={postDateAttribute(post.publishedAt) || undefined}
           >
             {date}
           </time>
         ) : null}
-      </SiteLink>
+      </PublicLink>
     </li>
   );
 };
 
-const ProjectLink = ({ label, url }: ProjectPageView['links'][number]) => (
-  <SiteLink href={url}>{label}</SiteLink>
-);
-
-const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
+/**
+ * `demoSlot` is what the app shows in the Try it slot; it must first render
+ * what `ProjectDemoSection` with `ProjectDemoPreview` does.
+ */
+export const ProjectPageBody = ({
+  project,
+  demoSlot,
+}: {
+  project: ProjectPageView;
+  demoSlot?: ReactNode;
+}) => (
   <main
     className="project-page"
     data-slug={project.slug}
@@ -53,7 +91,7 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
   >
     <header className="project-header">
       <p className="project-back">
-        <SiteLink href={PROJECTS_PATH}>{PROJECTS_INDEX_TITLE}</SiteLink>
+        <PublicLink href={PROJECTS_PATH}>{PROJECTS_INDEX_TITLE}</PublicLink>
       </p>
       <p className="project-stage" data-stage={project.stage}>
         {projectStageText(project)}
@@ -61,7 +99,13 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
       <h1>{project.name}</h1>
       {project.pitch ? <p className="project-pitch">{project.pitch}</p> : null}
     </header>
-    {project.demo ? <ProjectDemoSlot project={project} /> : null}
+    {project.demo
+      ? (demoSlot ?? (
+          <ProjectDemoSection>
+            <ProjectDemoPreview project={project} />
+          </ProjectDemoSection>
+        ))
+      : null}
     <div className="project-main">
       <div
         className="post-content project-body"
@@ -81,7 +125,7 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
         <ul className="project-links">
           {project.links.map((link, i) => (
             <li key={i}>
-              <ProjectLink {...link} />
+              <PublicLink href={link.url}>{link.label}</PublicLink>
             </li>
           ))}
         </ul>
@@ -110,5 +154,3 @@ const ProjectPageBody = ({ project }: { project: ProjectPageView }) => (
     </div>
   </main>
 );
-
-export default ProjectPageBody;

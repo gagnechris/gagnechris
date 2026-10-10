@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { pageTitle, projectPagePath, siteUrl } from '@gagnechris/shared';
-import ProjectPageBody from '../projects/ProjectPageBody';
+import { ProjectPageBody } from '@gagnechris/public-ui';
+import ProjectDemoSlot from '../projects/ProjectDemoSlot';
 import {
   documentProjectPageView,
   loadPublishedProject,
@@ -9,6 +10,7 @@ import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
 import './PostPage.css';
 import './ProjectPage.css';
+import '../projects/ProjectStage.css';
 import PageHead from '../components/PageHead';
 
 function ProjectPage() {
@@ -42,7 +44,10 @@ function ProjectPage() {
         title={pageTitle(project.name)}
         url={siteUrl(projectPagePath(slug))}
       />
-      <ProjectPageBody project={project} />
+      <ProjectPageBody
+        project={project}
+        demoSlot={<ProjectDemoSlot project={project} />}
+      />
     </>
   );
 }
