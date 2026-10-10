@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { EVERY_MARKDOWN_ELEMENT } from './fixtures/every-markdown-element.js';
-import { readingMinutes } from './post-reading.js';
-import { renderPostPageBodyHtml } from './post-html.js';
+import { readingMinutes } from '@gagnechris/shared';
+import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
+import { renderPostArticleHtml, renderPostPageBodyHtml } from '../server.js';
 
-describe('renderPostPageBodyHtml', () => {
+describe('PostPageBody', () => {
   const post = {
     slug: 'hello',
     title: 'Hello & "you"',
@@ -15,7 +15,7 @@ describe('renderPostPageBodyHtml', () => {
   it('renders the meta line, title and excerpt above the body', () => {
     expect(renderPostPageBodyHtml(post)).toContain(
       '<article class="blog-post-prerender" data-slug="hello"><header class="post-header">' +
-        '<p class="post-meta"><time class="post-date" datetime="2026-02-01">February 1, 2026</time> · ' +
+        '<p class="post-meta"><time class="post-date" dateTime="2026-02-01">February 1, 2026</time> · ' +
         '<span class="post-reading-time" data-minutes="1">1 min read</span></p>' +
         '<h1>Hello &amp; &quot;you&quot;</h1><p class="post-excerpt">An &lt;intro&gt;.</p></header>' +
         '<div class="post-content blog-post-body"><p><strong>hi</strong></p>',
@@ -72,5 +72,43 @@ describe('renderPostPageBodyHtml', () => {
     }
     const levels = [...html.matchAll(/<h([1-6])>/g)].map(([, n]) => Number(n));
     expect(levels).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('PostArticle', () => {
+  it('takes the title level for embeds and has no author note', () => {
+    const html = renderPostArticleHtml(
+      {
+        slug: 'hello',
+        title: 'Hello',
+        excerpt: '',
+        publishedAt: '2026-02-01T00:00:00.000Z',
+        bodyMarkdown: '## Section',
+      },
+      [],
+      3,
+    );
+    expect(html).toContain('<h3>Hello</h3>');
+    expect(html).not.toMatch(/<h1|post-author|<main/);
+  });
+
+  it('lists the projects a post is part of, linked when they have a page', () => {
+    const html = renderPostArticleHtml(
+      {
+        slug: 'hello',
+        title: 'Hello',
+        excerpt: '',
+        publishedAt: null,
+        bodyMarkdown: 'Hi.',
+      },
+      [
+        { name: 'Notebook', href: '/projects/notebook' },
+        { name: 'Someday', href: null },
+      ],
+    );
+    expect(html).toContain(
+      '<p class="post-part-of">Part of the <a class="post-part-of__project" href="/projects/notebook">Notebook</a>' +
+        ' and <span class="post-part-of__project">Someday</span> projects</p>',
+    );
   });
 });

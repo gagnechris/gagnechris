@@ -5,11 +5,11 @@ import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
   projectPageView,
-  renderPostPageBodyHtml,
   renderResumeBodyHtml,
 } from '@gagnechris/shared/render';
 import {
   renderHomeBodyHtml,
+  renderPostPageBodyHtml,
   renderProjectPageBodyHtml,
   renderProjectsIndexBodyHtml,
 } from '@gagnechris/public-ui/server';

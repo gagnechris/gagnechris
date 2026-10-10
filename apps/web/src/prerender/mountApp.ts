@@ -14,6 +14,10 @@ import {
 const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
   { path: /^\/$/, selector: 'main.home-page' },
   { path: /^\/posts\/?$/, selector: 'main.posts-index' },
+  {
+    path: /^\/posts\/([^/]+)\/?$/,
+    selector: 'main.post-page > article[data-slug]',
+  },
   { path: /^\/projects\/?$/, selector: 'main.projects-index' },
   {
     path: /^\/projects\/([^/]+)\/?$/,

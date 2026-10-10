@@ -1,4 +1,5 @@
-import { pageTitle, type PostProjectLink } from '@gagnechris/shared';
+import { pageTitle } from '@gagnechris/shared';
+import type { PostArticleView } from '@gagnechris/shared/render';
 import {
   fetchPrerender,
   fromPrerender,
@@ -6,17 +7,7 @@ import {
 } from '../prerender/documentPrerender';
 import { publishedPostPageUrl } from './publishedPosts';
 
-export type PostView = {
-  slug: string;
-  title: string;
-  headTitle: string;
-  /** ISO date or `YYYY-MM-DD`, whichever the prerender carries. */
-  date: string;
-  excerpt: string;
-  minutes: number;
-  partOf: PostProjectLink[];
-  contentHtml: string;
-};
+export type PostView = PostArticleView & { headTitle: string };
 
 export function postViewFromDocument(root: ParentNode): PostView | null {
   const article = root.querySelector('article.blog-post-prerender');
