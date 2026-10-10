@@ -566,6 +566,7 @@ describe('stack Template assertions', () => {
           POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
           CONTACT_TO_EMAIL: config.alertsEmail,
           SITE_BUCKET_NAME: Match.anyValue(),
+          USER_POOL_ID: Match.anyValue(),
         }),
       },
     });
@@ -627,6 +628,15 @@ describe('stack Template assertions', () => {
       'POST /api/admin/resume/discard',
       'POST /api/admin/media/upload-url',
       'PUT /api/admin/media/objects/{key+}',
+      'GET /api/admin/users',
+      'POST /api/admin/users',
+      'PUT /api/admin/users/{id}/access',
+      'POST /api/admin/users/{id}/disable',
+      'POST /api/admin/users/{id}/enable',
+      'POST /api/admin/users/{id}/sign-out',
+      'POST /api/admin/users/{id}/remove',
+      'POST /api/admin/users/{id}/resend-invite',
+      'POST /api/admin/users/{id}/restore',
     ]) {
       expect(integrationFunction(route), route).toContain('GoApiFunction');
       const [resource] = Object.values(
@@ -650,6 +660,27 @@ describe('stack Template assertions', () => {
     );
     expect(goPolicies).toContain('s3:PutObject');
     expect(goPolicies).toContain('/media/*');
+    expect(goPolicies).toContain('cognito-idp:AdminCreateUser');
+    const nodePolicies = JSON.stringify(
+      Object.values(template.findResources('AWS::IAM::Policy')).filter(
+        (p) =>
+          JSON.stringify(p.Properties.Roles).includes('ApiFunction') &&
+          !JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
+      ),
+    );
+    expect(nodePolicies).not.toContain('cognito-idp:');
+    const search = Object.values(
+      template.findResources('AWS::ApiGatewayV2::Route', {
+        Properties: { RouteKey: 'POST /api/notebook/search' },
+      }),
+    )[0];
+    expect(integrationFunction('POST /api/notebook/search')).toContain(
+      'GoApiFunction',
+    );
+    expect(search?.Properties?.AuthorizationType).toBe('JWT');
+    expect(JSON.stringify(search?.Properties?.AuthorizerId)).not.toContain(
+      adminAuthorizers[0],
+    );
     expect(integrationFunction('ANY /api/notebook/{proxy+}')).toContain(
       'ApiFunction',
     );

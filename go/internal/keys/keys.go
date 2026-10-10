@@ -55,6 +55,14 @@ func TaskPk(userID, taskID string) string { return "USER#" + userID + "#TASK#" +
 
 func TaskMetaSk() string { return SKMeta }
 
+// NotebookAreaGSI1Pk is namespaced by user so Notebook never shares post
+// STATUS# partitions.
+func NotebookAreaGSI1Pk(userID, area string) string { return "USER#" + userID + "#AREA#" + area }
+
+func TaskAreaStatusGSI1Pk(userID, area, status string) string {
+	return NotebookAreaGSI1Pk(userID, area) + "#STATUS#" + status
+}
+
 func DailyNoteClaimPk(userID, area, date string) string {
 	return "USER#" + userID + "#DAILY#" + area + "#" + date
 }

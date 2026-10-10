@@ -432,7 +432,7 @@ func (v *Validator) CoercedInt(key string, rules ...IntRule) (int64, bool) {
 		v.fail(key, CodeInvalidType)
 		return 0, false
 	}
-	return v.checkInt(key, jsNumber(s), rules)
+	return v.checkInt(key, JSNumber(s), rules)
 }
 
 var (
@@ -440,8 +440,8 @@ var (
 	jsRadix   = regexp.MustCompile(`^0([xXoObB])([0-9a-fA-F]+)$`)
 )
 
-// jsNumber is Number(s) for a string: NaN when it isn't a numeric literal.
-func jsNumber(s string) float64 {
+// JSNumber is Number(s) for a string: NaN when it isn't a numeric literal.
+func JSNumber(s string) float64 {
 	s = strings.Trim(s, jsWhitespace)
 	if s == "" {
 		return 0

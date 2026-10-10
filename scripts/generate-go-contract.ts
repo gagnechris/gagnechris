@@ -47,6 +47,7 @@ import {
   metaToTask,
   noteMetaSk,
   notePk,
+  notebookAreaGsi1Pk,
   postPk,
   projectOrderGsi1Sk,
   projectPk,
@@ -64,10 +65,13 @@ import {
   slugRedirectSk,
   taskMetaSk,
   taskPk,
+  taskAreaStatusGsi1Pk,
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
 } from '@gagnechris/data';
 import {
+  ACCESS_GROUPS,
+  ACCESS_LEVEL_GROUPS,
   API_SERVICE_NAME,
   APEX_DOMAIN,
   CONTACT_PER_IP_PER_HOUR,
@@ -90,6 +94,7 @@ import {
   PROJECT_STACK_ITEM_MAX_LENGTH,
   PROJECT_STACK_MAX,
   PROJECT_STAGE_NOTE_MAX_LENGTH,
+  REAUTH_REQUIRED,
   RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES,
   RESTORE_TEST_METRICS,
   RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES,
@@ -102,6 +107,7 @@ import {
   SES_GLOBAL_DAILY_CAP,
   SyncChangeSchema,
   TaskSchema,
+  USER_ADMIN_REAUTH_SECONDS,
   type Project,
 } from '@gagnechris/shared';
 import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
@@ -151,6 +157,15 @@ const KEYS: Record<string, string> = {
   'noteMetaSk()': noteMetaSk(),
   'taskPk({userId},{taskId})': taskPk('{userId}', '{taskId}'),
   'taskMetaSk()': taskMetaSk(),
+  'notebookAreaGsi1Pk({userId},{area})': notebookAreaGsi1Pk(
+    '{userId}',
+    '{area}',
+  ),
+  'taskAreaStatusGsi1Pk({userId},{area},{status})': taskAreaStatusGsi1Pk(
+    '{userId}',
+    '{area}',
+    '{status}',
+  ),
   'dailyNoteClaimPk({userId},{area},{date})': dailyNoteClaimPk(
     '{userId}',
     '{area}',
@@ -424,6 +439,12 @@ const contract = {
   },
   // What Home and Resume read as before their first save.
   defaults: { home: DEFAULT_HOME, resume: DEFAULT_RESUME },
+  users: {
+    accessGroups: ACCESS_GROUPS,
+    accessLevelGroups: ACCESS_LEVEL_GROUPS,
+    reauthSeconds: USER_ADMIN_REAUTH_SECONDS,
+    reauthRequired: REAUTH_REQUIRED,
+  },
   itemSchemas: Object.fromEntries(
     RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES.map((type) => [
       type,

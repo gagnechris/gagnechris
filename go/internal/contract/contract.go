@@ -60,6 +60,14 @@ type Defaults struct {
 	Resume json.RawMessage `json:"resume"`
 }
 
+type Users struct {
+	// AccessGroups is ordered: Full Admin is all of them.
+	AccessGroups      []string            `json:"accessGroups"`
+	AccessLevelGroups map[string][]string `json:"accessLevelGroups"`
+	ReauthSeconds     int64               `json:"reauthSeconds"`
+	ReauthRequired    string              `json:"reauthRequired"`
+}
+
 type Contract struct {
 	API         API         `json:"api"`
 	RestoreTest RestoreTest `json:"restoreTest"`
@@ -68,6 +76,7 @@ type Contract struct {
 	Keys        map[string]string          `json:"keys"`
 	Limits      Limits                     `json:"limits"`
 	Defaults    Defaults                   `json:"defaults"`
+	Users       Users                      `json:"users"`
 	ItemSchemas map[string]json.RawMessage `json:"itemSchemas"`
 	// Samples are rows built by the TypeScript item builders.
 	Samples map[string]map[string]any `json:"samples"`
