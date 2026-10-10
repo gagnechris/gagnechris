@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// Local client ids match services/api/local/claims.ts, so the Go and Node
-// servers accept the same local tokens.
+// The aud local claims carry; ApplyLocalAuthEnv makes the router accept them.
 var localClientIDs = map[string]string{
 	"ADMIN_WEB_CLIENT_ID":    "local-admin-web",
 	"NOTEBOOK_WEB_CLIENT_ID": "local-notebook-web",

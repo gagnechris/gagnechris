@@ -76,7 +76,7 @@ describe('scripts/local/wait-dynamodb.ts', () => {
         .filter((f) => f.endsWith('.sh'))
         .map((f) => `scripts/local/${f}`),
       'e2e/stack.ts',
-      'services/api/test/integration/global-setup.ts',
+      'services/api/test/support/global-setup.ts',
     ].filter((path) => /ListTablesCommand/.test(read(path)));
     expect(inlined).toEqual([]);
   });

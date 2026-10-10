@@ -39,6 +39,8 @@ const siblingPackageRelativePatterns = [
       '../shared/**',
       '../data',
       '../data/**',
+      '../ops',
+      '../ops/**',
       '../api-client',
       '../api-client/**',
       '../app-core',
@@ -49,6 +51,7 @@ const siblingPackageRelativePatterns = [
       '../public-ui/**',
       '../../shared/**',
       '../../data/**',
+      '../../ops/**',
       '../../api-client/**',
       '../../app-core/**',
       '../../tokens/**',
@@ -63,8 +66,8 @@ const noCrossWorkspaceRelativeImports = {
   'no-restricted-imports': [
     'error',
     {
-      // Sibling bans (`../data`, …) apply only to packages/*: services/api has
-      // its own local src/data/ folder.
+      // Sibling bans (`../data`, …) are added only where siblings are
+      // packages (packages/*).
       patterns: crossWorkspaceRelativePatterns,
     },
   ],

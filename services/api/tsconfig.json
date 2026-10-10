@@ -7,10 +7,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "local/**/*.ts",
-    "vitest.config.ts"
-  ]
+  "include": ["test/**/*.ts", "local/**/*.ts", "vitest.config.ts"]
 }

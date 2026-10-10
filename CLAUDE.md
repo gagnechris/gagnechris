@@ -7,15 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm workspaces. Root scripts delegate across workspaces (see Commands).
 
 - `apps/web` — React/Vite: public site (`gagnechris.com`), admin (`admin.`) and Notebook (`notebook.`) apps; three Vite targets via `WEB_APP`
-- `services/api` — Lambda HTTP API
+- `services/api` — local runner for the Go API (`local/api.ts`, with the local site hooks and static server) and its black-box HTTP suite (`test/http`)
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
-- `packages/data` — DynamoDB keys, item schemas, DocumentClient, and Dynamo write helpers for API + publisher
+- `packages/data` — DynamoDB keys, item schemas and builders, DocumentClient, and Dynamo write helpers for the publisher, ops tools and tests
+- `packages/ops` — operator tools on the data table: note and task copy-back from a restore (`scripts/restore-copy-back.ts`) and row migrations
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, versioned entity editor, TanStack Query resource factory)
 - `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
-- `go` — Go module for Go Lambdas: `cmd/<name>` per function (`restore-test`: AWS Backup restore-test validator + leftover restore-table check; `api`: the HTTP API, run locally in front of the Node API by `services/api/local/go-api.ts`), shared code under `internal/`; `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `go/tools` pins golangci-lint and oapi-codegen
+- `go` — Go module for Go Lambdas: `cmd/<name>` per function (`api`: the HTTP API, every route; `restore-test`: AWS Backup restore-test validator + leftover restore-table check), shared code under `internal/` (`api` router, auth and errors; `store` cursors and versioned/publishable writes; one package per route group); `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `go/tools` pins golangci-lint and oapi-codegen
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
@@ -32,16 +33,16 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)
 - Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
-- Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth; `API_SERVER=go` puts the Go API in front of the Node one)
+- Local CMS stack: `npm run local:dev` (DynamoDB Local + the Go API, built once at start + publisher static + the three Vite apps; fake auth)
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
-- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`); `npm run test:integration -w @gagnechris/api` (DynamoDB Local: the black-box HTTP suite in `services/api/test/http` against the server `API_SERVER_COMMAND` starts, plus in-process script tests; see `docs/development.md`)
+- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`); `npm run test:integration -w @gagnechris/api` (DynamoDB Local: the black-box HTTP suite in `services/api/test/http` against the Go API, which the setup builds unless `GO_API_BIN` is set, plus the ops tool tests; see `docs/development.md`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list, KVS keys and slug cap, local publish-relevance routes and the publisher-owned S3 key list from publisher targets; fails on diff)
 - Local E2E: `npm run e2e:local` (publish lifecycle smoke: the Playwright `api` project, `e2e/tests/publish-lifecycle.spec.ts`, on its own stack)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync deletes whatever the public build doesn't produce, except publisher-owned paths)
-- CI: lint/typecheck/test/build/synth plus Go lint and test (the shared setup action installs Go from `go/go.mod`); the **Local E2E smoke** job builds the web app and runs `e2e:browser` with `API_SERVER=go` (the Go API in front of the Node one), whose `api` project (the publish lifecycle smoke) runs before the browser projects (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), iOS TestFlight builds from `ios-v*` tags (`ios-release.yml`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
+- CI: lint/typecheck/test/build/synth plus Go lint and test (the shared setup action installs Go from `go/go.mod`); the **Local E2E smoke** job builds the web app and runs `e2e:browser` against the Go API, whose `api` project (the publish lifecycle smoke) runs before the browser projects (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), iOS TestFlight builds from `ios-v*` tags (`ios-release.yml`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 
@@ -62,7 +63,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4, only in the production public build (`GA_MEASUREMENT_ID`, set by `scripts/deploy-web.sh`); local, preview and e2e builds load no GA
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)
-- **Go**: the version in `go/go.mod`; any Go 1.21+ fetches it (`GOTOOLCHAIN=auto`). CDK synth compiles the Go Lambdas, so synth and `npm test` (infra) need Go
+- **Go**: the version in `go/go.mod`; any Go 1.21+ fetches it (`GOTOOLCHAIN=auto`). CDK synth compiles the Go Lambdas and the local stack, e2e and HTTP suite build the Go API, so all of them need Go
 
 ## Code Style Guidelines
 

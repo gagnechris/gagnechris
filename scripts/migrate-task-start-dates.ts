@@ -19,7 +19,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
   migrateTaskStartDates,
   taskStartDateMigrationExitCode,
-} from '@gagnechris/api/tasks/start-date-migration';
+} from '@gagnechris/ops/task-start-date-migration';
 
 const { values } = parseArgs({
   options: {

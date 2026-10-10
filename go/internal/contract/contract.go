@@ -81,13 +81,14 @@ type Notebook struct {
 }
 
 type Sync struct {
-	DefaultPageLimit    int    `json:"defaultPageLimit"`
-	MinClientVersion    string `json:"minClientVersion"`
-	ClientVersionHeader string `json:"clientVersionHeader"`
-	TombstoneTTLDays    int    `json:"tombstoneTtlDays"`
-	CreateClaimTTLDays  int    `json:"createClaimTtlDays"`
-	ResyncMarginMs      int64  `json:"resyncMarginMs"`
-	OverlapMs           int64  `json:"overlapMs"`
+	ChangeTypes         []string `json:"changeTypes"`
+	DefaultPageLimit    int      `json:"defaultPageLimit"`
+	MinClientVersion    string   `json:"minClientVersion"`
+	ClientVersionHeader string   `json:"clientVersionHeader"`
+	TombstoneTTLDays    int      `json:"tombstoneTtlDays"`
+	CreateClaimTTLDays  int      `json:"createClaimTtlDays"`
+	ResyncMarginMs      int64    `json:"resyncMarginMs"`
+	OverlapMs           int64    `json:"overlapMs"`
 }
 
 type Contract struct {

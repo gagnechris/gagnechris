@@ -7,16 +7,6 @@ const repoRoot = path.resolve(
   fileURLToPath(new URL('../../../../..', import.meta.url)),
 );
 
-/**
- * Starts the API under test. API_SERVER_COMMAND picks the server (run from
- * the repo root through a shell); it must serve DATA_TABLE_NAME on 127.0.0.1
- * port PORT and take authorizer claims from X-Test-Claims.
- */
-const DEFAULT_COMMAND = 'node --import tsx services/api/local/test-server.ts';
-
-// Powertools warns on every request that publishes no metric.
-const QUIET_STDERR = /^No application metrics to publish/;
-
 export type Claims = Record<string, string>;
 
 // Bodies are whatever JSON the server sent; suites assert on their shape.
@@ -91,28 +81,26 @@ export async function startApi(
 ): Promise<Api> {
   const port = await freePort();
   const url = `http://127.0.0.1:${port}`;
-  const child = spawn(process.env.API_SERVER_COMMAND || DEFAULT_COMMAND, {
+  const bin = process.env.GO_API_BIN;
+  if (!bin)
+    throw new Error('GO_API_BIN is not set (the global setup builds it)');
+  // Test claims mode: the server takes authorizer claims from X-Test-Claims.
+  const child = spawn(bin, [], {
     cwd: repoRoot,
-    shell: true,
-    stdio: ['ignore', 'ignore', 'pipe'],
+    stdio: ['ignore', 'ignore', 'inherit'],
     env: {
       ...process.env,
       POWERTOOLS_LOG_LEVEL: 'ERROR',
       ...env,
+      API_CLAIMS_MODE: 'test',
       DATA_TABLE_NAME: tableName,
       PORT: String(port),
     },
-    detached: true,
-  });
-  child.stderr?.setEncoding('utf8').on('data', (chunk: string) => {
-    for (const line of chunk.split('\n')) {
-      if (line && !QUIET_STDERR.test(line)) process.stderr.write(`${line}\n`);
-    }
   });
   try {
     await waitUntilServing(url, child);
   } catch (err) {
-    killGroup(child);
+    child.kill('SIGTERM');
     throw err;
   }
 
@@ -143,18 +131,8 @@ export async function startApi(
     async stop() {
       if (child.exitCode != null) return;
       const exited = new Promise((r) => child.once('exit', r));
-      killGroup(child);
+      child.kill('SIGTERM');
       await exited;
     },
   };
-}
-
-// The shell's children (node, go run's binary) live in the child's group.
-function killGroup(child: ChildProcess): void {
-  if (child.pid == null) return;
-  try {
-    process.kill(-child.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
 }

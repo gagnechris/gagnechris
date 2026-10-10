@@ -1,5 +1,5 @@
-// Package projects serves the admin projects routes, writing the rows
-// services/api/src/projects writes.
+// Package projects serves the admin projects routes, writing the rows the
+// @gagnechris/data builders define.
 package projects
 
 import (

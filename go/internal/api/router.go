@@ -204,12 +204,6 @@ func (rt *Router) match(method, path string) (routeMatch, bool) {
 	return matches[0], true
 }
 
-// Owns reports whether a route serves method on rawPath.
-func (rt *Router) Owns(method, rawPath string) bool {
-	_, ok := rt.match(strings.ToUpper(method), CanonicalPath(rawPath))
-	return ok
-}
-
 // AuthFor is the auth of the route serving method on rawPath; Public when
 // none does.
 func (rt *Router) AuthFor(method, rawPath string) Auth {

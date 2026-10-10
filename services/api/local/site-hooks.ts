@@ -1,6 +1,5 @@
 // What the local stack adds around the API that prod gets from AWS: the
 // site bucket's CORS rule for media PUTs and the publisher's stream trigger.
-// Whichever process faces the browser runs them, once.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isPublishRelevantAdminMutation } from '@gagnechris/data';
 import { rebuildPublishedSite } from '@gagnechris/publisher/rebuild';

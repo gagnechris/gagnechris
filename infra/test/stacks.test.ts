@@ -12,7 +12,7 @@ import {
 } from '@gagnechris/data';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import { getEnvironment } from '../lib/config/environments.js';
-import { ApiStack, GO_NOTEBOOK_ROUTES } from '../lib/stacks/api-stack.js';
+import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
@@ -462,7 +462,7 @@ describe('stack Template assertions', () => {
     }
   });
 
-  it('ApiStack Lambda is arm64 Node 24 with powertools env and active tracing', () => {
+  it('ApiStack Lambda is arm64 Go with powertools env and active tracing', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ApiAssertDeps', {
@@ -512,7 +512,7 @@ describe('stack Template assertions', () => {
     const template = Template.fromStack(api);
     const alarmActions = alertsTopicAlarmActions(alertsTopic);
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs24.x',
+      Runtime: 'provided.al2023',
       Architectures: ['arm64'],
       TracingConfig: { Mode: 'Active' },
       Environment: {
@@ -523,7 +523,7 @@ describe('stack Template assertions', () => {
       },
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-errors',
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-handler-errors',
@@ -554,7 +554,7 @@ describe('stack Template assertions', () => {
       AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-throttles',
+      AlarmName: 'gagnechris-prod-api-go-lambda-throttles',
     });
 
     template.hasResourceProperties('AWS::Lambda::Function', {
@@ -586,73 +586,50 @@ describe('stack Template assertions', () => {
       const integration = template.toJSON().Resources[integrationId!];
       return JSON.stringify(integration.Properties.IntegrationUri);
     };
-    for (const route of [
-      'GET /api/health',
-      'POST /api/contact',
-      'POST /api/resume/download',
-    ]) {
-      expect(integrationFunction(route), route).toContain('GoApiFunction');
-    }
     const adminAuthorizers = Object.keys(
       template.findResources('AWS::ApiGatewayV2::Authorizer', {
         Properties: { Name: 'CognitoJwtAdmin' },
       }),
     );
     expect(adminAuthorizers).toHaveLength(1);
-    for (const route of [
-      'GET /api/admin/posts',
-      'POST /api/admin/posts',
-      'GET /api/admin/posts/{id}',
-      'PUT /api/admin/posts/{id}',
-      'DELETE /api/admin/posts/{id}',
-      'POST /api/admin/posts/{id}/publish',
-      'POST /api/admin/posts/{id}/unpublish',
-      'POST /api/admin/posts/{id}/discard',
-      'GET /api/admin/projects',
-      'POST /api/admin/projects',
-      'GET /api/admin/projects/{id}',
-      'PUT /api/admin/projects/{id}',
-      'DELETE /api/admin/projects/{id}',
-      'POST /api/admin/projects/{id}/publish',
-      'POST /api/admin/projects/{id}/unpublish',
-      'POST /api/admin/projects/{id}/discard',
-      'GET /api/admin/home',
-      'PUT /api/admin/home',
-      'POST /api/admin/home/publish',
-      'POST /api/admin/home/unpublish',
-      'POST /api/admin/home/discard',
-      'GET /api/admin/resume',
-      'PUT /api/admin/resume',
-      'POST /api/admin/resume/publish',
-      'POST /api/admin/resume/unpublish',
-      'POST /api/admin/resume/discard',
-      'POST /api/admin/media/upload-url',
-      'PUT /api/admin/media/objects/{key+}',
-      'GET /api/admin/users',
-      'POST /api/admin/users',
-      'PUT /api/admin/users/{id}/access',
-      'POST /api/admin/users/{id}/disable',
-      'POST /api/admin/users/{id}/enable',
-      'POST /api/admin/users/{id}/sign-out',
-      'POST /api/admin/users/{id}/remove',
-      'POST /api/admin/users/{id}/resend-invite',
-      'POST /api/admin/users/{id}/restore',
-    ]) {
-      expect(integrationFunction(route), route).toContain('GoApiFunction');
-      const [resource] = Object.values(
-        template.findResources('AWS::ApiGatewayV2::Route', {
-          Properties: { RouteKey: route },
-        }),
+    const routes = template.findResources('AWS::ApiGatewayV2::Route');
+    expect(
+      Object.values(routes)
+        .map((r) => r.Properties.RouteKey as string)
+        .sort(),
+    ).toEqual([
+      'ANY /api/admin',
+      'ANY /api/admin/{proxy+}',
+      'ANY /api/notebook',
+      'ANY /api/notebook/{proxy+}',
+      'GET /api/health',
+      'POST /api/contact',
+      'POST /api/resume/download',
+    ]);
+    for (const route of Object.values(routes)) {
+      const routeKey = route.Properties.RouteKey as string;
+      expect(integrationFunction(routeKey), routeKey).toContain(
+        'GoApiFunction',
       );
-      expect(resource?.Properties?.AuthorizationType, route).toBe('JWT');
-      expect(
-        JSON.stringify(resource?.Properties?.AuthorizerId),
-        route,
-      ).toContain(adminAuthorizers[0]);
+      const authorizer = JSON.stringify(route.Properties.AuthorizerId);
+      if (routeKey.includes('/api/admin')) {
+        expect(authorizer, routeKey).toContain(adminAuthorizers[0]);
+      } else if (routeKey.includes('/api/notebook')) {
+        expect(route.Properties.AuthorizationType, routeKey).toBe('JWT');
+        expect(authorizer, routeKey).not.toContain(adminAuthorizers[0]);
+      }
     }
-    expect(integrationFunction('ANY /api/admin/{proxy+}')).not.toContain(
-      'GoApiFunction',
-    );
+    // One invoke permission per route; Lambda caps the resource policy at 20 KB.
+    expect(
+      Object.keys(template.findResources('AWS::Lambda::Permission')).filter(
+        (id) => id.startsWith('HttpApi'),
+      ),
+    ).toHaveLength(Object.keys(routes).length);
+    expect(
+      Object.keys(template.findResources('AWS::Lambda::Function')).filter(
+        (id) => id.startsWith('ApiFunction'),
+      ),
+    ).toEqual([]);
     const goPolicies = JSON.stringify(
       Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
         JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
@@ -661,40 +638,5 @@ describe('stack Template assertions', () => {
     expect(goPolicies).toContain('s3:PutObject');
     expect(goPolicies).toContain('/media/*');
     expect(goPolicies).toContain('cognito-idp:AdminCreateUser');
-    const nodePolicies = JSON.stringify(
-      Object.values(template.findResources('AWS::IAM::Policy')).filter(
-        (p) =>
-          JSON.stringify(p.Properties.Roles).includes('ApiFunction') &&
-          !JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
-      ),
-    );
-    expect(nodePolicies).not.toContain('cognito-idp:');
-    for (const [path, methods] of GO_NOTEBOOK_ROUTES) {
-      for (const method of methods) {
-        const routeKey = `${method} ${path}`;
-        const [resource] = Object.values(
-          template.findResources('AWS::ApiGatewayV2::Route', {
-            Properties: { RouteKey: routeKey },
-          }),
-        );
-        expect(integrationFunction(routeKey), routeKey).toContain(
-          'GoApiFunction',
-        );
-        expect(resource?.Properties?.AuthorizationType, routeKey).toBe('JWT');
-        expect(
-          JSON.stringify(resource?.Properties?.AuthorizerId),
-          routeKey,
-        ).not.toContain(adminAuthorizers[0]);
-      }
-    }
-    expect(GO_NOTEBOOK_ROUTES.map(([path]) => path)).toContain(
-      '/api/notebook/sync/changes',
-    );
-    expect(integrationFunction('ANY /api/notebook/{proxy+}')).toContain(
-      'ApiFunction',
-    );
-    expect(integrationFunction('ANY /api/notebook/{proxy+}')).not.toContain(
-      'GoApiFunction',
-    );
   });
 });

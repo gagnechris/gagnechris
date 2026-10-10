@@ -19,8 +19,6 @@ import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import {
   ApiStack,
-  GO_ADMIN_ROUTES,
-  GO_NOTEBOOK_ROUTES,
   USER_ADMIN_COGNITO_ACTIONS,
 } from '../lib/stacks/api-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
@@ -792,9 +790,6 @@ describe('ApiStack', () => {
       'ANY /api/admin/{proxy+}',
       'ANY /api/notebook',
       'ANY /api/notebook/{proxy+}',
-      ...[...GO_ADMIN_ROUTES, ...GO_NOTEBOOK_ROUTES].flatMap(
-        ([path, methods]) => methods.map((method) => `${method} ${path}`),
-      ),
     ]);
     const expectedPublicRouteKeys = new Set([
       'GET /api/health',
@@ -841,7 +836,7 @@ describe('ApiStack', () => {
     ).toBe(5);
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs24.x',
+      Runtime: 'provided.al2023',
       Architectures: ['arm64'],
       Environment: {
         Variables: Match.objectLike({
@@ -851,10 +846,10 @@ describe('ApiStack', () => {
       },
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-errors',
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-throttles',
+      AlarmName: 'gagnechris-prod-api-go-lambda-throttles',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-handler-errors',

@@ -1,5 +1,5 @@
-// Package api is the HTTP API: routing, auth, errors and responses shaped
-// like the Node API's, so the two can serve the same contract.
+// Package api is the HTTP API: routing, auth, errors and responses for the
+// contract in packages/shared/openapi/openapi.json.
 package api
 
 import (
@@ -15,8 +15,8 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/observability"
 )
 
-// App serves one request at a time the way the Node Lambda handler does:
-// one "request" log, routing, gzip, and a single metrics flush.
+// App serves one request at a time: one "request" log, routing, gzip, and
+// a single metrics flush.
 type App struct {
 	router  *Router
 	log     *slog.Logger

@@ -136,6 +136,7 @@ import {
   SES_GLOBAL_DAILY_CAP,
   SYNC_DEFAULT_PAGE_LIMIT,
   SYNC_MIN_CLIENT_VERSION,
+  SYNC_CHANGE_TYPES,
   SyncChangeSchema,
   TaskSchema,
   USER_ADMIN_REAUTH_SECONDS,
@@ -549,6 +550,7 @@ const contract = {
     dailyTemplateTaskMessage: DAILY_TEMPLATE_TASK_MESSAGE,
   },
   sync: {
+    changeTypes: SYNC_CHANGE_TYPES,
     defaultPageLimit: SYNC_DEFAULT_PAGE_LIMIT,
     minClientVersion: SYNC_MIN_CLIENT_VERSION,
     clientVersionHeader: CLIENT_VERSION_HEADER,

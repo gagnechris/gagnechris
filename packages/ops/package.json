@@ -1,0 +1,37 @@
+{
+  "name": "@gagnechris/ops",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Operator tools for the data table: note and task copy-back from a restore, and row migrations.",
+  "exports": {
+    "./copy-back": {
+      "types": "./src/copy-back.ts",
+      "import": "./src/copy-back.ts"
+    },
+    "./resume-date-migration": {
+      "types": "./src/resume-date-migration.ts",
+      "import": "./src/resume-date-migration.ts"
+    },
+    "./task-start-date-migration": {
+      "types": "./src/task-start-date-migration.ts",
+      "import": "./src/task-start-date-migration.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/lib-dynamodb": "^3.1145.0",
+    "@gagnechris/data": "*",
+    "@gagnechris/shared": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

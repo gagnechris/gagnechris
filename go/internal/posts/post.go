@@ -1,6 +1,6 @@
-// Package posts serves the admin posts routes, writing the rows
-// services/api/src/posts writes, so the publisher's stream handler sees
-// the same items from either API.
+// Package posts serves the admin posts routes, writing the rows the
+// @gagnechris/data builders define, which the publisher's stream handler
+// reads.
 package posts
 
 import (

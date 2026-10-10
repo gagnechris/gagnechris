@@ -106,7 +106,7 @@ func (d CognitoDirectory) GetUser(ctx context.Context, id string) (*DirectoryUse
 	}
 	var groups []string
 	pages := cip.NewAdminListGroupsForUserPaginator(d.Client, &cip.AdminListGroupsForUserInput{UserPoolId: &d.UserPoolID, Username: &id})
-	// One page, as the Node API reads it: a user is in at most the three access groups.
+	// One page: a user is in at most the three access groups.
 	page, err := pages.NextPage(ctx)
 	if err != nil {
 		var missing *types.UserNotFoundException
