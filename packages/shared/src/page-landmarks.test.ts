@@ -3,11 +3,7 @@ import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
 import { DEFAULT_HOME } from './home-default.js';
 import { renderHomeBodyHtml } from './home-html.js';
 import { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
-import {
-  projectPageView,
-  renderProjectPageBodyHtml,
-  renderProjectsIndexBodyHtml,
-} from './project-html.js';
+import { projectPageView, renderProjectPageBodyHtml } from './project-html.js';
 import { DEFAULT_RESUME } from './resume-default.js';
 import {
   renderResumeBodyHtml,
@@ -25,7 +21,6 @@ const post = {
 const BODIES: [string, string][] = [
   ['home', renderHomeBodyHtml(DEFAULT_HOME)],
   ['post', renderPostPageBodyHtml(post)],
-  ['projects index', renderProjectsIndexBodyHtml(SAMPLE_PROJECTS)],
   [
     'project',
     renderProjectPageBodyHtml(projectPageView(SAMPLE_PROJECTS[0]!, [])),

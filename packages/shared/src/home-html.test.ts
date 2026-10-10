@@ -9,8 +9,6 @@ import {
   selectHomeRecentPosts,
   type HomeRecentPost,
 } from './home-html.js';
-import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
-import { selectHomeProjects } from './projects.js';
 import type { Home } from './schemas.js';
 
 const home = (overrides: Partial<Home> = {}): Home => ({
@@ -119,7 +117,7 @@ describe('renderHomeBodyHtml', () => {
     const html = renderHomeBodyHtml(
       home(),
       [recent(2)],
-      selectHomeProjects(SAMPLE_PROJECTS),
+      ['<li>Posts</li>', '<li>Notebook</li>'],
     );
     const recentAt = html.indexOf('id="home-recent-posts"');
     const projectsAt = html.indexOf(
@@ -128,13 +126,9 @@ describe('renderHomeBodyHtml', () => {
     );
     expect(recentAt).toBeGreaterThan(-1);
     expect(projectsAt).toBeGreaterThan(recentAt);
-    const cards = html
-      .slice(projectsAt)
-      .match(/<h3 class="project-card__name">[^<]+/g);
-    expect(cards).toEqual([
-      '<h3 class="project-card__name">Posts',
-      '<h3 class="project-card__name">Notebook',
-    ]);
+    expect(html.slice(projectsAt)).toContain(
+      '<ul class="project-list project-list--home"><li>Posts</li><li>Notebook</li></ul></section>',
+    );
   });
 
   it('has no What I’m building section without projects', () => {

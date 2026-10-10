@@ -24,10 +24,13 @@ import {
   loadRecentPosts,
 } from './home/publishedHome';
 import { usePublishedView } from './prerender/usePublishedView';
-import ProjectCard from './projects/ProjectCard';
+import { ProjectCard } from '@gagnechris/public-ui';
 import SiteLink from './components/SiteLink';
 import './App.css';
 import './home/homeSections.css';
+import './projects/ProjectCard.css';
+import './projects/ProjectStage.css';
+import './projects/ProjectPreview.css';
 import PageHead from './components/PageHead';
 
 // Markup must match `renderHomeBodyHtml` element for element (App.test.tsx).

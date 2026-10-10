@@ -39,7 +39,7 @@ export const previewImageFrom = (root: ParentNode): string | null =>
   root.querySelector('.project-preview--image img')?.getAttribute('src') ||
   null;
 
-/** Reads back what `renderProjectCardHtml` wrote. */
+/** Reads back what the public-ui `ProjectCard` printed. */
 export const projectCardsFromList = (list: Element): ProjectCardView[] =>
   [...list.querySelectorAll(':scope > li.project-card')].flatMap((item) => {
     const slug = item.getAttribute('data-slug') ?? '';

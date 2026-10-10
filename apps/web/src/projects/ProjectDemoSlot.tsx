@@ -4,8 +4,9 @@ import {
   PROJECT_DEMO_LABEL_ID,
   type ProjectPageView,
 } from '@gagnechris/shared';
-import ProjectPreview from './ProjectPreview';
+import { ProjectPreview } from '@gagnechris/public-ui';
 import { PROJECT_DEMO_LOADERS, type ProjectDemoProps } from './demoLoaders';
+import './ProjectPreview.css';
 
 type Loaded = { slug: string; Demo: ComponentType<ProjectDemoProps> };
 
