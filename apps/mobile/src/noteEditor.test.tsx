@@ -173,6 +173,28 @@ describe('note editor', () => {
     expect(bodies(renderer).at(-1)!.props.value).toBe('# [ ] Call Sam !');
   });
 
+  it('keeps an empty line between tasks a thin strip until it has the caret', async () => {
+    const SECOND = '01HTASKBBBBBBBBBBBBBBBBBBB';
+    serve(
+      [makeNote(NOTE, `{{task:${TASK}}}\n{{task:${SECOND}}}`)],
+      [makeTask(TASK, 'Ship it'), makeTask(SECOND, 'Tell Sam')],
+    );
+    const renderer = await renderNote();
+    const heights = () =>
+      bodies(renderer).map(
+        (input) =>
+          Object.assign({}, ...[input.props.style].flat(2)).height as unknown,
+      );
+    expect(heights()).toEqual([8, 8, undefined]);
+
+    act(() =>
+      bodies(renderer)[1]!.props.onSelectionChange({
+        nativeEvent: { selection: { start: 0, end: 0 } },
+      }),
+    );
+    expect(heights()).toEqual([8, undefined, undefined]);
+  });
+
   it('completes an embedded task everywhere, with a haptic', async () => {
     serve(
       [makeNote(NOTE, `Today\n{{task:${TASK}}}`)],
