@@ -556,5 +556,46 @@ describe('stack Template assertions', () => {
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-lambda-throttles',
     });
+
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-api-go',
+      Runtime: 'provided.al2023',
+      Architectures: ['arm64'],
+      Environment: {
+        Variables: Match.objectLike({
+          POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
+          CONTACT_TO_EMAIL: config.alertsEmail,
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
+    });
+    const integrationFunction = (routeKey: string) => {
+      const [route] = Object.values(
+        template.findResources('AWS::ApiGatewayV2::Route', {
+          Properties: { RouteKey: routeKey },
+        }),
+      );
+      const target = JSON.stringify(route?.Properties?.Target);
+      const [integrationId] = Object.keys(
+        template.findResources('AWS::ApiGatewayV2::Integration'),
+      ).filter((id) => target.includes(id));
+      const integration = template.toJSON().Resources[integrationId!];
+      return JSON.stringify(integration.Properties.IntegrationUri);
+    };
+    for (const route of [
+      'GET /api/health',
+      'POST /api/contact',
+      'POST /api/resume/download',
+    ]) {
+      expect(integrationFunction(route), route).toContain('GoApiFunction');
+    }
+    expect(integrationFunction('ANY /api/notebook/{proxy+}')).toContain(
+      'ApiFunction',
+    );
+    expect(integrationFunction('ANY /api/notebook/{proxy+}')).not.toContain(
+      'GoApiFunction',
+    );
   });
 });

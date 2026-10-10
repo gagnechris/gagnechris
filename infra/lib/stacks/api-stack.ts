@@ -49,6 +49,7 @@ export const USER_ADMIN_COGNITO_ACTIONS = [
   'cognito-idp:AdminUserGlobalSignOut',
 ] as const;
 import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
+import { GoLambda } from '../constructs/go-lambda.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
 export interface ApiStackProps extends StackProps {
@@ -65,6 +66,8 @@ export interface ApiStackProps extends StackProps {
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
   readonly apiFunction: NodeLambda;
+  /** Serves the routes moved to Go; the Node function serves the rest. */
+  readonly goApiFunction: GoLambda;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -108,7 +111,7 @@ export class ApiStack extends Stack {
     this.apiFunction = new NodeLambda(this, 'ApiFunction', {
       functionName: `gagnechris-${config.name}-api`,
       description:
-        'gagnechris HTTP API (health, contact, admin posts/media; shared data table)',
+        'gagnechris HTTP API routes the Go API does not serve yet (shared data table)',
       entry: join(REPO_ROOT, 'services/api/src/handler.ts'),
       handler: 'handler',
       // More memory is more CPU: cold-start init and JSON/zod work scale with it.
@@ -146,6 +149,32 @@ export class ApiStack extends Stack {
     // Users & access. No delete: removing someone keeps their account and Notebook.
     userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
+    this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
+      functionName: `gagnechris-${config.name}-api-go`,
+      description: 'gagnechris HTTP API routes served by Go (health, contact)',
+      cmd: 'api',
+      memorySize: 512,
+      timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
+      powertoolsServiceName: API_SERVICE_NAME,
+      alertsTopic,
+      alarmNamePrefix: `gagnechris-${config.name}-api-go`,
+      iam5NagReason:
+        'X-Ray tracing wildcards, DynamoDB index/*, and SES send on the domain identity.',
+      iam5NagAppliesTo: ['Resource::*', { regex: '/^Resource::.*/index*/g' }],
+      environment: {
+        DATA_TABLE_NAME: dataTable.tableName,
+        CONTACT_TO_EMAIL: config.alertsEmail,
+        CONTACT_FROM_EMAIL: fromEmail,
+        SITE_APEX_DOMAIN: config.domainName,
+        ADMIN_WEB_CLIENT_ID: adminWebClientId,
+        NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
+        IOS_CLIENT_ID: iosClientId,
+      },
+    });
+    dataTable.grantReadWriteData(this.goApiFunction);
+    emailIdentity.grantSendEmail(this.goApiFunction);
+    notifyEmailIdentity.grantSendEmail(this.goApiFunction);
+
     // One authorizer per prefix so a token from the other web app's client
     // gets a gateway 401. The iOS app calls Notebook, so its client is in that
     // audience only; groups still gate every route in the Lambda.
@@ -166,6 +195,10 @@ export class ApiStack extends Stack {
     const integration = new HttpLambdaIntegration(
       'ApiIntegration',
       this.apiFunction,
+    );
+    const goIntegration = new HttpLambdaIntegration(
+      'GoApiIntegration',
+      this.goApiFunction,
     );
 
     this.httpApi = new HttpApi(this, 'HttpApi', {
@@ -240,7 +273,7 @@ export class ApiStack extends Stack {
     const healthRoutes = this.httpApi.addRoutes({
       path: '/api/health',
       methods: [HttpMethod.GET],
-      integration,
+      integration: goIntegration,
     });
     NagSuppressions.addResourceSuppressions(
       healthRoutes,
@@ -257,7 +290,7 @@ export class ApiStack extends Stack {
     const contactRoutes = this.httpApi.addRoutes({
       path: '/api/contact',
       methods: [HttpMethod.POST],
-      integration,
+      integration: goIntegration,
     });
     NagSuppressions.addResourceSuppressions(
       contactRoutes,
@@ -274,7 +307,7 @@ export class ApiStack extends Stack {
     const resumeNotifyRoutes = this.httpApi.addRoutes({
       path: '/api/resume/download',
       methods: [HttpMethod.POST],
-      integration,
+      integration: goIntegration,
     });
     NagSuppressions.addResourceSuppressions(
       resumeNotifyRoutes,

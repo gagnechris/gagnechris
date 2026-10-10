@@ -28,9 +28,11 @@ type Request struct {
 	// Claims are the JWT authorizer's; nil on public routes.
 	Claims    map[string]string
 	RequestID string
-	Params    map[string]string
-	Log       *slog.Logger
-	Metrics   *observability.Metrics
+	// SourceIP is the caller's address as API Gateway saw it.
+	SourceIP string
+	Params   map[string]string
+	Log      *slog.Logger
+	Metrics  *observability.Metrics
 }
 
 // UserID is the caller's Cognito sub.

@@ -573,7 +573,7 @@ with a long cache. Paste/drop images in the post editor inserts
 can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
 (`p=none`) is published; there is no receiving MX.
 
-`Api-prod` public routes:
+`Api-prod` public routes (served by the Go function `gagnechris-prod-api-go`):
 
 - `POST /api/contact` — contact form (persists `CONTACT#<ulid>` first; honeypot `hp_field`; 3/IP/hour + global SES daily cap)
 - `POST /api/resume/download` — anonymous resume-download notify (IP/day dedupe; shared SES daily cap)
@@ -782,13 +782,14 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 
 ### Cold starts
 
-The first request on a new instance logs `bundleReadyMs` on its `request` line: milliseconds from Node process start until the bundle finished loading. The REPORT line's Init Duration minus that is Lambda runtime and sandbox time, which no bundle change shrinks.
+The first request on a new instance logs `bundleReadyMs` on its `request` line: milliseconds from process start until the bundle (Node) or the router (Go) was ready. The REPORT line's Init Duration minus that is Lambda runtime and sandbox time, which no bundle change shrinks.
 
 Per-route report (cold-start ratio, init p50/p95, cold and warm handler p50/p95, all routes and DynamoDB routes, per memory size):
 
 ```bash
 AWS_PROFILE=gagnechris-readonly AWS_REGION=us-east-1 npx tsx scripts/api-cold-start-report.ts --days 14
 # or --since 2026-10-07T00:00:00Z to start at a deploy
+# --function gagnechris-prod-api-go for the Go API
 ```
 
 It runs this Logs Insights query on the function's log group (`aws lambda get-function-configuration --function-name gagnechris-prod-api --query LoggingConfig.LogGroup`) and aggregates the rows:

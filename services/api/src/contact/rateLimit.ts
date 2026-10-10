@@ -13,11 +13,12 @@ import {
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
 } from '@gagnechris/data';
+import {
+  CONTACT_PER_IP_PER_HOUR,
+  SES_GLOBAL_DAILY_CAP,
+} from '@gagnechris/shared';
 
-export const CONTACT_PER_IP_PER_HOUR = 3;
-
-/** Shared by contact + resume notify; well under the SES sandbox 200/day. */
-export const SES_GLOBAL_DAILY_CAP = 100;
+export { CONTACT_PER_IP_PER_HOUR, SES_GLOBAL_DAILY_CAP };
 
 export class RateLimitExceededError extends Error {
   readonly code = 'rate_limited' as const;

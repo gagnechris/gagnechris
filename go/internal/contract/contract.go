@@ -31,8 +31,12 @@ type RestoreTest struct {
 }
 
 type API struct {
-	ServiceName      string `json:"serviceName"`
-	MetricsNamespace string `json:"metricsNamespace"`
+	ServiceName         string `json:"serviceName"`
+	MetricsNamespace    string `json:"metricsNamespace"`
+	ApexDomain          string `json:"apexDomain"`
+	ContactPerIPPerHour int    `json:"contactPerIpPerHour"`
+	SESGlobalDailyCap   int    `json:"sesGlobalDailyCap"`
+	MinContactSubmitMs  int64  `json:"minContactSubmitMs"`
 }
 
 type Contract struct {

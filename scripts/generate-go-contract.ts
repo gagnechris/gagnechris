@@ -49,17 +49,27 @@ import {
   notePk,
   postPk,
   projectPk,
+  rateContactIpPk,
+  rateDaySk,
+  rateHourSk,
+  rateResumeIpPk,
+  rateSesGlobalPk,
   removedUserSk,
   removedUsersPk,
   resumePk,
   taskMetaSk,
   taskPk,
+  ttlEndOfUtcDay,
+  ttlEndOfUtcHour,
 } from '@gagnechris/data';
 import {
   API_SERVICE_NAME,
+  APEX_DOMAIN,
+  CONTACT_PER_IP_PER_HOUR,
   DEFAULT_HOME,
   DEFAULT_RESUME,
   HomeSchema,
+  MIN_CONTACT_SUBMIT_MS,
   NoteSchema,
   POWERTOOLS_METRICS_NAMESPACE,
   RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES,
@@ -71,6 +81,7 @@ import {
   PostSchema,
   ProjectSchema,
   ResumeSchema,
+  SES_GLOBAL_DAILY_CAP,
   SyncChangeSchema,
   TaskSchema,
   type Project,
@@ -98,6 +109,9 @@ const ITEM_SCHEMAS: Record<
   dailyTemplate: DailyTemplateItemSchema,
 };
 
+// Late in the UTC day, so a builder that rounds the wrong way crosses midnight.
+const KEY_TIME = '2026-01-02T23:04:05.678Z';
+
 // Placeholders in braces; Go fills its builders with the same values.
 const KEYS: Record<string, string> = {
   SK_META,
@@ -122,6 +136,13 @@ const KEYS: Record<string, string> = {
   'dailyNoteClaimSk()': dailyNoteClaimSk(),
   'dailyTemplatePk({userId},{area})': dailyTemplatePk('{userId}', '{area}'),
   'dailyTemplateSk()': dailyTemplateSk(),
+  'rateContactIpPk({ip})': rateContactIpPk('{ip}'),
+  'rateResumeIpPk({ip})': rateResumeIpPk('{ip}'),
+  'rateSesGlobalPk()': rateSesGlobalPk(),
+  [`rateHourSk(${KEY_TIME})`]: rateHourSk(new Date(KEY_TIME)),
+  [`rateDaySk(${KEY_TIME})`]: rateDaySk(new Date(KEY_TIME)),
+  [`ttlEndOfUtcHour(${KEY_TIME})`]: String(ttlEndOfUtcHour(new Date(KEY_TIME))),
+  [`ttlEndOfUtcDay(${KEY_TIME})`]: String(ttlEndOfUtcDay(new Date(KEY_TIME))),
 };
 
 const USER = 'user-sub-1';
@@ -348,6 +369,10 @@ const contract = {
   api: {
     serviceName: API_SERVICE_NAME,
     metricsNamespace: POWERTOOLS_METRICS_NAMESPACE,
+    apexDomain: APEX_DOMAIN,
+    contactPerIpPerHour: CONTACT_PER_IP_PER_HOUR,
+    sesGlobalDailyCap: SES_GLOBAL_DAILY_CAP,
+    minContactSubmitMs: MIN_CONTACT_SUBMIT_MS,
   },
   restoreTest: {
     serviceName: RESTORE_TEST_SERVICE_NAME,

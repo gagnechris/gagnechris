@@ -1,7 +1,11 @@
 {
   "api": {
     "serviceName": "gagnechris-api",
-    "metricsNamespace": "gagnechris"
+    "metricsNamespace": "gagnechris",
+    "apexDomain": "gagnechris.com",
+    "contactPerIpPerHour": 3,
+    "sesGlobalDailyCap": 100,
+    "minContactSubmitMs": 2000
   },
   "restoreTest": {
     "serviceName": "gagnechris-restore-test",
@@ -65,7 +69,14 @@
     "dailyNoteClaimPk({userId},{area},{date})": "USER#{userId}#DAILY#{area}#{date}",
     "dailyNoteClaimSk()": "NOTE",
     "dailyTemplatePk({userId},{area})": "USER#{userId}#DAILY_TEMPLATE#{area}",
-    "dailyTemplateSk()": "META"
+    "dailyTemplateSk()": "META",
+    "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
+    "rateResumeIpPk({ip})": "RATE#resume#ip#{ip}",
+    "rateSesGlobalPk()": "RATE#ses#global",
+    "rateHourSk(2026-01-02T23:04:05.678Z)": "HOUR#2026-01-02T23",
+    "rateDaySk(2026-01-02T23:04:05.678Z)": "DAY#2026-01-02",
+    "ttlEndOfUtcHour(2026-01-02T23:04:05.678Z)": "1767402000",
+    "ttlEndOfUtcDay(2026-01-02T23:04:05.678Z)": "1767484800"
   },
   "itemSchemas": {
     "post": {
