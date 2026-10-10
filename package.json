@@ -48,7 +48,9 @@
     "check:platform-neutral-lint": "node scripts/check-platform-neutral-lint.mjs",
     "check:tsconfig-coverage": "node scripts/check-tsconfig-coverage.mjs",
     "check:case-collisions": "node scripts/check-case-collisions.mjs",
-    "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts"
+    "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts",
+    "go:lint": "go -C go tool -modfile=tools/go.mod golangci-lint run ./...",
+    "go:test": "go -C go test ./..."
   },
   "engines": {
     "node": "^22.12.0"

@@ -23,3 +23,9 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 npm install --no-audit --no-fund
 # npm ci: an install would rewrite the mobile lockfile's workspace link metadata.
 npm ci --prefix apps/mobile --no-audit --no-fund
+
+# The image's Go fetches the toolchain go/go.mod pins (GOTOOLCHAIN=auto).
+if command -v go >/dev/null; then
+  go -C go mod download
+  go -C go/tools mod download
+fi

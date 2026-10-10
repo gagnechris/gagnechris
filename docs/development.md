@@ -4,6 +4,7 @@
 
 - **Node.js** 22.12+ (see `.nvmrc`; `.npmrc` sets `engine-strict=true`)
 - **npm** (workspaces)
+- **Go** 1.21+ (it downloads the exact version in `go/go.mod`); CDK synth and the infra tests compile the Go Lambdas
 - **Docker** for DynamoDB Local (`npm run local:dev`, `e2e:local`, `e2e:browser`)
 
 ```bash
@@ -21,8 +22,9 @@ npm ci --prefix apps/mobile
 `.claude/hooks/session-start.sh` runs at the start of each cloud session (it
 exits immediately on a local machine). It installs the Node version from
 `.nvmrc` with nvm, puts it first on `PATH` for the session, then installs root
-dependencies and `apps/mobile` dependencies. Lint, typecheck, `npm test` and
-the mobile tests work without further setup.
+dependencies and `apps/mobile` dependencies, then downloads the Go toolchain
+and modules for `go/`. Lint, typecheck, `npm test`, the Go gates and the mobile
+tests work without further setup.
 
 Docker has no running daemon in cloud sessions, so `npm run local:dev`,
 `e2e:local`, `e2e:browser` and `test:integration` run in CI or on a local
@@ -76,6 +78,8 @@ npm run test:integration -w @gagnechris/api   # DynamoDB Local transaction paths
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
+npm run go:lint       # golangci-lint on go/ (gofmt, goimports, vet, staticcheck, revive...; config in go/.golangci.yml) (CI)
+npm run go:test       # go test ./... in go/ (CI)
 npm run openapi:check # OpenAPI + generated client drift (CI)
 npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # Option B pages, KVS keys, publish routes and publisher-owned S3 keys from publisher targets (CI)

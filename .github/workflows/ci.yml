@@ -49,6 +49,9 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Go lint
+        run: npm run go:lint
+
       - name: RN-facing package bundle guard
         run: npm run check:rn-bundles
 
@@ -64,6 +67,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Go test
+        run: npm run go:test
 
       - name: CDK synth
         env:
