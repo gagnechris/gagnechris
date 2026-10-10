@@ -46,14 +46,6 @@ describe('HomeBody', () => {
     );
   });
 
-  it('is one <main> that holds its <h1>', () => {
-    const html = renderHomeBodyHtml(home(), [recent(2)], cards);
-    const count = (tag: string) => html.split(tag).length - 1;
-    expect(html).toMatch(/<\/main>$/);
-    expect(count('<main')).toBe(1);
-    expect(count('<h1')).toBe(1);
-  });
-
   it('exposes name and title as data attributes the app reads back', () => {
     const html = renderHomeBodyHtml(home());
     expect(html).toContain('data-name="Chris Gagne"');

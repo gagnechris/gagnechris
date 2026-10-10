@@ -197,7 +197,11 @@ async function coldLoad(
 ) {
   window.history.replaceState(null, '', path);
   document.head.innerHTML = head;
-  document.body.innerHTML = `<div id="root">${prerender}</div>`;
+  // The publisher and the Vite build wrap every prerender in these markers.
+  const published = prerender.startsWith('<!--prerender:start-->')
+    ? prerender
+    : `<!--prerender:start-->${prerender}<!--prerender:end-->`;
+  document.body.innerHTML = `<div id="root">${published}</div>`;
   const root = document.getElementById('root')!;
   const before = {
     text: text(root),
@@ -275,8 +279,9 @@ describe('cold load: first React render matches the prerender', () => {
     // Same chrome element-for-element, so nothing above the page body moves.
     const header = loaded.root.querySelector('header.site-header');
     const footer = loaded.root.querySelector('footer.site-footer');
-    expect(loaded.before.html.startsWith(header!.outerHTML)).toBe(true);
-    expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
+    const published = withoutMarkers(loaded.before.html);
+    expect(published.startsWith(header!.outerHTML)).toBe(true);
+    expect(published.endsWith(footer!.outerHTML)).toBe(true);
   });
 
   test.each([
@@ -284,12 +289,7 @@ describe('cold load: first React render matches the prerender', () => {
     ['with no posts or projects', renderHomePrerenderHtml(PUBLISHED_HOME)],
   ])('/ %s hydrates the published markup in place', async (_, html) => {
     const onRecoverableError = vi.fn();
-    const loaded = await coldLoad(
-      '/',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
-      '',
-      onRecoverableError,
-    );
+    const loaded = await coldLoad('/', html, '', onRecoverableError);
     unmount = loaded.unmount;
 
     expect(onRecoverableError).not.toHaveBeenCalled();
@@ -315,7 +315,7 @@ describe('cold load: first React render matches the prerender', () => {
     const onRecoverableError = vi.fn();
     const loaded = await coldLoad(
       '/projects',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      html,
       HEADS['/projects'],
       onRecoverableError,
     );
@@ -353,7 +353,7 @@ describe('cold load: first React render matches the prerender', () => {
       const onRecoverableError = vi.fn();
       const loaded = await coldLoad(
         '/projects/posts',
-        `<!--prerender:start-->${html}<!--prerender:end-->`,
+        html,
         '',
         onRecoverableError,
       );
@@ -409,7 +409,7 @@ describe('cold load: first React render matches the prerender', () => {
       const onRecoverableError = vi.fn();
       const loaded = await coldLoad(
         '/posts/hello-world',
-        `<!--prerender:start-->${html}<!--prerender:end-->`,
+        html,
         '',
         onRecoverableError,
       );
@@ -454,7 +454,7 @@ describe('cold load: first React render matches the prerender', () => {
     const onRecoverableError = vi.fn();
     const loaded = await coldLoad(
       '/posts',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      html,
       HEADS['/posts'],
       onRecoverableError,
     );
@@ -501,12 +501,7 @@ describe('cold load: first React render matches the prerender', () => {
     ['when unpublished', renderResumeUnavailablePrerenderHtml()],
   ])('/resume %s hydrates the published markup in place', async (_, html) => {
     const onRecoverableError = vi.fn();
-    const loaded = await coldLoad(
-      '/resume',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
-      '',
-      onRecoverableError,
-    );
+    const loaded = await coldLoad('/resume', html, '', onRecoverableError);
     unmount = loaded.unmount;
 
     expect(onRecoverableError).not.toHaveBeenCalled();

@@ -5,7 +5,7 @@ import {
   renderHomeAboutHtml,
   selectHomeRecentPosts,
   type HomeRecentPost,
-} from './home-html.js';
+} from './home-page.js';
 
 describe('renderHomeAboutHtml', () => {
   it('wraps a single block in one paragraph', () => {

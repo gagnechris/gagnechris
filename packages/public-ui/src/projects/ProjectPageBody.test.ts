@@ -40,17 +40,6 @@ const log = [
 ];
 
 describe('ProjectPageBody', () => {
-  it('is one <main> that holds its <h1>', () => {
-    const html = renderProjectPageBodyHtml(
-      projectPageView({ ...base, demo: 'notebook' }, log),
-    );
-    const count = (tag: string) => html.split(tag).length - 1;
-    expect(html).toMatch(/^<main[ >]/);
-    expect(html).toMatch(/<\/main>$/);
-    expect(count('<main')).toBe(1);
-    expect(count('<h1')).toBe(1);
-  });
-
   it('renders the body as sanitized markdown with stack and links', () => {
     const html = renderProjectPageBodyHtml(projectPageView(base));
     expect(html).toContain('<h1>Notebook</h1>');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectPageView } from './project-html.js';
+import { projectPageView } from './project-page.js';
 import {
   projectCardHref,
   projectHasPage,
