@@ -198,7 +198,10 @@ test.describe('/projects', () => {
       .toBe(true);
     const { before, after, same } = await page.evaluate(() => ({
       before: (window as unknown as { prerender: string }).prerender,
-      after: document.getElementById('root')!.innerHTML,
+      // Hydration keeps the prerender markers; the capture drops them.
+      after: document
+        .getElementById('root')!
+        .innerHTML.replace(/<!--prerender:(start|end)-->/g, ''),
       same:
         (window as { parsedMain?: Element }).parsedMain ===
         document.querySelector('#root > main.projects-index'),
