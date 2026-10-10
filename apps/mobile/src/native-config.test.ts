@@ -4,6 +4,7 @@ import appJson from '../app.json';
 import eas from '../eas.json';
 import lock from '../package-lock.json';
 import pkg from '../package.json';
+import { resolveAuthRedirect } from './config';
 
 const app = appJson.expo;
 
@@ -34,6 +35,17 @@ describe('native build config', () => {
         'https://gagnechris.com',
       );
     }
+  });
+
+  it('signs device builds in through the https callback, dev builds through the scheme', () => {
+    for (const profile of [eas.build.preview, eas.build.production]) {
+      expect(resolveAuthRedirect(profile.env.EXPO_PUBLIC_AUTH_REDIRECT)).toBe(
+        'universalLink',
+      );
+    }
+    expect(eas.build.development).not.toHaveProperty('env');
+    expect(resolveAuthRedirect(undefined)).toBe('scheme');
+    expect(resolveAuthRedirect('universal-link')).toBe('scheme');
   });
 
   it('builds for TestFlight without the export-compliance question', () => {
