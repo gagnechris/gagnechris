@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NoteScreen from '../app/(tabs)/notes/[id]';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
-import { router, searchParams } from '../test/router';
+import { router, searchParams, segments } from '../test/router';
 
 const NOTE = '01NOTE0000000000000000000A';
 const TASK = '01HTASKAAAAAAAAAAAAAAAAAAA';
@@ -308,6 +308,14 @@ describe('note editor', () => {
     expect(title.props.accessibilityRole).toBe('button');
     act(() => title.props.onPress());
     expect(router.push).toHaveBeenCalledWith(`/tasks/${TASK}`);
+  });
+
+  it('opens an embedded task on the Notes stack, so Back returns to the note', async () => {
+    segments.current = ['(tabs)', 'notes', '[id]'];
+    serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
+    const renderer = await renderNote();
+    act(() => byLabel(renderer, 'Ship it').props.onPress());
+    expect(router.push).toHaveBeenCalledWith(`/notes/task/${TASK}`);
   });
 
   it('saves straight away when the app goes to the background', async () => {

@@ -17,10 +17,10 @@ import {
   type TaskLineDraft,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { useArea } from '../../../src/area';
+import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { QuickAddTask } from '../../../src/notebook/QuickAddTask';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font } from '../../../src/theme';
@@ -31,7 +31,7 @@ import { SegmentedControl } from '../../../src/ui/SegmentedControl';
 import { TaskRow } from '../../../src/ui/TaskRow';
 
 const UpcomingScreen = () => {
-  const router = useRouter();
+  const { openTask, openNote } = useDetailRoutes();
   const { area, setArea } = useArea();
   const today = useLocalToday();
   const [refreshing, setRefreshing] = useState(false);
@@ -167,10 +167,8 @@ const UpcomingScreen = () => {
                     .filter(Boolean)
                     .join(' · ')}
                   due={taskDue(task, today)}
-                  onOpen={() => router.push(`/tasks/${task.id}`)}
-                  onOpenDetail={
-                    note ? () => router.push(`/notes/${note.id}`) : undefined
-                  }
+                  onOpen={() => openTask(task.id)}
+                  onOpenDetail={note ? () => openNote(note.id) : undefined}
                   onToggle={() => void toggle(task)}
                   onDoToday={() =>
                     void patch(

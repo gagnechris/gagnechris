@@ -4,23 +4,26 @@
 
 ## Notebook shell
 
-| Route                                  | Screen                                                                                                               |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `app/_layout.tsx`                      | Providers (session, persisted query cache, area, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
-| `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
-| `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
-| `app/(tabs)/today/index.tsx`           | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                            |
-| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: scheduled tasks by day, then Later and Someday (see [Tasks](#tasks))                                    |
-| `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
-| `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
-| `app/(tabs)/tasks/index.tsx`           | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
-| `app/(tabs)/tasks/[id].tsx`            | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                      |
-| `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
-| `app/(tabs)/more/templates.tsx`        | `/more/templates`: the Work and Personal daily templates (see [Today](#today))                                       |
-| `app/search.tsx`                       | `/search`: a modal over the tabs (see [Search](#search))                                                             |
-| `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
+| Route                                                              | Screen                                                                                                               |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `app/_layout.tsx`                                                  | Providers (session, persisted query cache, area, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
+| `app/(tabs)/_layout.tsx`                                           | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
+| `app/(tabs)/<tab>/_layout.tsx`                                     | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
+| `app/(tabs)/today/index.tsx`                                       | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                            |
+| `app/(tabs)/upcoming/index.tsx`                                    | `/upcoming`: scheduled tasks by day, then Later and Someday (see [Tasks](#tasks))                                    |
+| `app/(tabs)/notes/index.tsx`                                       | `/notes`: large title, All / Daily / Pages                                                                           |
+| `app/(tabs)/notes/[id].tsx`                                        | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
+| `app/(tabs)/tasks/index.tsx`                                       | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
+| `app/(tabs)/tasks/[id].tsx`                                        | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                      |
+| `app/(tabs)/<tab>/task/[id].tsx`, `app/(tabs)/<tab>/note/[id].tsx` | Task detail and the note editor on the Today, Upcoming, Notes (task) and Tasks (note) stacks                         |
+| `app/(tabs)/more/index.tsx`                                        | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
+| `app/(tabs)/more/templates.tsx`                                    | `/more/templates`: the Work and Personal daily templates (see [Today](#today))                                       |
+| `app/search.tsx`                                                   | `/search`: a modal over the tabs (see [Search](#search))                                                             |
+| `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                     |
 
 `app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+
+A task or note opened from inside a tab is pushed on that tab's stack (`useDetailRoutes` in `src/notebook/detailRoutes.ts`), so Back returns to where it was opened: from Today a task opens at `/today/task/:id`, from a note at `/notes/task/:id`. On its own tab, and from screens outside the tabs (search, conflicts), it opens at `/tasks/:id` or `/notes/:id`, the paths universal links use.
 
 - **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
@@ -38,7 +41,7 @@ Each row has Pin / Unpin and Delete, each behind a confirm alert: long press, th
 
 - **Body.** `NoteBodyEditor` keeps the body as plain markdown. `noteSegments` splits it into runs of text, each a native multiline `TextInput`, around the `{{task:…}}` lines, which show as task rows. A text run sits before, between and after every task, and is keyed by the task after it, so the view being typed in stays mounted when a line above it turns into a task. An empty run between tasks is a thin strip until it has the caret; its tap area reaches 8 pt into the task rows around it. Every task row has the same space above and below, so rows whose pills wrap are spaced like one-line rows.
 - **Tasks from lines.** A `[ ] …` line becomes a task when the caret moves to another line or the field loses focus, with the web rules: `parseTaskLine` from `@gagnechris/shared` (task syntax for `@…`, `due:…` and `!…`), a client ULID, and app-core's `useNoteTaskEmbedSync`, which creates the task (retrying while the API is unreachable) and reports what each row shows. A line is only converted if its text is unchanged, so a backspace that pulls a task line up does not convert it. Lines in a code fence stay text.
-- **Task rows.** The box completes or reopens the task with a light haptic (`expo-haptics`) through app-core's task mutations, so Today, Tasks and other notes update from the same cache. The title opens `/tasks/:id`. Long press or the VoiceOver action removes the line from the note; the task stays.
+- **Task rows.** The box completes or reopens the task with a light haptic (`expo-haptics`) through app-core's task mutations, so Today, Tasks and other notes update from the same cache. The title opens the task on the current tab's stack (see [Notebook shell](#notebook-shell)). Long press or the VoiceOver action removes the line from the note; the task stays.
 - **Keyboard toolbar.** An `InputAccessoryView` with Task, Date (`@`), Priority (`!`), Heading, List, Link and Hide keyboard. `applyToolbarAction` (`src/notebook/toolbarEdits.ts`) inserts at the caret or wraps the selection; the line markers toggle. While `@…` or `due:…` is being typed on a task line, the toolbar shows the shared `taskDateMenuItems` as chips ("Show this task on": Tomorrow, Monday, Next week, Someday, Pick a date…, Deadline…) and inserts the choice with `tokenInsertion`. Pick a date… opens a calendar sheet (`@react-native-community/datetimepicker`).
 - **Preview.** The eye button swaps the editor for `MarkdownView` with live task rows.
 - **Keyboard.** The screen's `ScrollView` uses `automaticallyAdjustKeyboardInsets`, so content scrolls above the keyboard and toolbar.
