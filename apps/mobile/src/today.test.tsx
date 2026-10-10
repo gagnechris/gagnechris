@@ -6,6 +6,7 @@ import TodayScreen from '../app/(tabs)/today/index';
 import { databases } from '../test/expoSqlite';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
+import { router, segments } from '../test/router';
 import { stopOutbox } from './outbox';
 
 const YESTERDAY_NOTE = '01YESTERDAYNOTE00000000000';
@@ -184,6 +185,23 @@ describe('Today', () => {
     expect(labelled(renderer, 'Complete In the note')).toHaveLength(1);
     expect(labelled(renderer, 'Complete Still open one')).toHaveLength(1);
     expect(labelled(renderer, 'Complete Monday thing')).toHaveLength(0);
+  });
+
+  it('opens a task from today’s note on the Today stack, so Back returns to the note', async () => {
+    segments.current = ['(tabs)', 'today'];
+    serve(
+      [
+        makeNote(TODAY_NOTE, `{{task:${B}}}`, {
+          type: 'daily',
+          date: '2026-10-02',
+          title: '',
+        }),
+      ],
+      [makeTask(B, 'Book flights', { noteId: TODAY_NOTE })],
+    );
+    const renderer = await launch();
+    act(() => byLabel(renderer, 'Book flights').props.onPress());
+    expect(router.push).toHaveBeenCalledWith(`/today/task/${B}`);
   });
 
   it('adds a Still open task to today’s note with + Note', async () => {
