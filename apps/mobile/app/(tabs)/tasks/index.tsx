@@ -63,7 +63,7 @@ const scheduleText = (task: Task) =>
     ? 'Someday'
     : task.startDate
       ? `Shows ${formatTaskDay(task.startDate)}`
-      : 'No date';
+      : '';
 
 const TasksScreen = () => {
   const router = useRouter();
@@ -244,6 +244,7 @@ const TasksScreen = () => {
                     .filter(Boolean)
                     .join(' · ')}
                   due={open ? taskDue(task, today) : null}
+                  priority={task.priority}
                   onOpen={() => router.push(`/tasks/${task.id}`)}
                   onToggle={() => (open ? complete(task) : reopen(task))}
                   onMore={() => showMore(task)}
