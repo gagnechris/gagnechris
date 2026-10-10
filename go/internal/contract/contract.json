@@ -75,6 +75,16 @@
     "taskAreaStatusGsi1Pk({userId},{area},{status})": "USER#{userId}#AREA#{area}#STATUS#{status}",
     "dailyNoteClaimPk({userId},{area},{date})": "USER#{userId}#DAILY#{area}#{date}",
     "dailyNoteClaimSk()": "NOTE",
+    "noteDateGsi1Sk({date},{noteId})": "DATE#{date}#NOTE#{noteId}",
+    "notePageGsi1Sk({updatedAt},{noteId})": "PAGE#{updatedAt}#NOTE#{noteId}",
+    "taskStartGsi1Sk({date},{taskId})": "START#{date}#TASK#{taskId}",
+    "taskUpdatedGsi1Sk({updatedAt},{taskId})": "UPDATED#{updatedAt}#TASK#{taskId}",
+    "taskSomedayGsi1Sk({updatedAt},{taskId})": "SOMEDAY#{updatedAt}#TASK#{taskId}",
+    "noteTasksGsi2Pk({userId},{noteId})": "USER#{userId}#NOTE#{noteId}#TASKS",
+    "noteTasksGsi2Sk({taskId})": "TASK#{taskId}",
+    "syncPk({userId})": "SYNC#{userId}",
+    "ownerSyncCreateClaimPk({userId},task,{taskId})": "CREATED#TASK#USER#{userId}#{taskId}",
+    "syncCreateClaimSk()": "META",
     "dailyTemplatePk({userId},{area})": "USER#{userId}#DAILY_TEMPLATE#{area}",
     "dailyTemplateSk()": "META",
     "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
@@ -276,6 +286,29 @@
         ]
       }
     }
+  },
+  "notebook": {
+    "textMaxBytes": 100000,
+    "titleMaxLength": 300,
+    "tagMaxLength": 50,
+    "tagsMax": 50,
+    "batchMaxIds": 100,
+    "pageSize": 50,
+    "dailyTemplates": {
+      "work": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+      "personal": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n"
+    },
+    "dailyTemplateMaxBytes": 10000,
+    "dailyTemplateTaskMessage": "Templates can’t hold tasks, or a new one would be added every day. Use - [ ] for a checklist."
+  },
+  "sync": {
+    "defaultPageLimit": 50,
+    "minClientVersion": "0.0.0",
+    "clientVersionHeader": "x-gagnechris-client-version",
+    "tombstoneTtlDays": 30,
+    "createClaimTtlDays": 365,
+    "resyncMarginMs": 86400000,
+    "overlapMs": 15000
   },
   "users": {
     "accessGroups": [
@@ -2210,6 +2243,144 @@
       "createdAt": "2026-10-01T12:00:00.000Z",
       "removedBy": "user-sub-1"
     }
+  },
+  "textCases": {
+    "taskEmbedIds": [
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ]
+      },
+      {
+        "input": "  {{task:01arz3ndektsv4rrffq69g5fav}} \r\n\t{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+        ]
+      },
+      {
+        "input": "```\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n```\n~~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
+      },
+      {
+        "input": "- {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\ntext {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAI}}",
+        "want": []
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}} \n　{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
+      }
+    ],
+    "carriedInMarkdown": [
+      {
+        "input": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n"
+      },
+      {
+        "input": [
+          "01arz3ndektsv4rrffq69g5fav",
+          "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      }
+    ],
+    "normalizeTags": [
+      {
+        "input": [
+          "Work",
+          " work ",
+          "Big  Idea",
+          "big-idea",
+          ""
+        ],
+        "want": [
+          "work",
+          "big-idea"
+        ]
+      },
+      {
+        "input": [
+          " Ünïcode Tag﻿",
+          "İstanbul",
+          "ΣΊΣΥΦΟΣ",
+          "tab\tsep",
+          "   "
+        ],
+        "want": [
+          "ünïcode-tag",
+          "i̇stanbul",
+          "σίσυφος",
+          "tab-sep"
+        ]
+      }
+    ],
+    "fillDailyTemplate": [
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "work",
+          "date": "2026-10-06"
+        },
+        "want": "# Tuesday Tuesday, October 6 (Work) {{other}} Tuesday, October 6"
+      },
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "personal",
+          "date": "2024-02-29"
+        },
+        "want": "# Thursday Thursday, February 29 (Personal) {{other}} Thursday, February 29"
+      },
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "work",
+          "date": "2027-01-01"
+        },
+        "want": "# Friday Friday, January 1 (Work) {{other}} Friday, January 1"
+      }
+    ],
+    "dailyTemplateHasTasks": [
+      {
+        "input": "- [ ] checklist\n* [x] done",
+        "want": false
+      },
+      {
+        "input": "[ ] task line",
+        "want": true
+      },
+      {
+        "input": "  \t[ ] indented task",
+        "want": true
+      },
+      {
+        "input": "[ ]",
+        "want": false
+      },
+      {
+        "input": "[ ]   ",
+        "want": false
+      },
+      {
+        "input": "```\n[ ] in a fence\n```",
+        "want": false
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": true
+      },
+      {
+        "input": "~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n~~~",
+        "want": false
+      },
+      {
+        "input": "[x] not a task line",
+        "want": false
+      }
+    ]
   },
   "apiSamples": {
     "post": {

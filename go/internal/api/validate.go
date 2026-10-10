@@ -18,6 +18,7 @@ import (
 type Validator struct {
 	fields map[string]json.RawMessage
 	codes  map[string]string
+	*issues
 	prefix string
 	// notObject stops field checks, as zod does once the root fails.
 	notObject bool
@@ -36,7 +37,7 @@ const (
 // NewValidator reads body as a JSON object; an empty body is {}. Anything
 // but an object fails as a whole with `_root`.
 func NewValidator(body []byte) (*Validator, error) {
-	v := &Validator{codes: map[string]string{}}
+	v := &Validator{codes: map[string]string{}, issues: &issues{messages: map[string]string{}}}
 	trimmed := bytes.TrimSpace(body)
 	if len(trimmed) == 0 {
 		trimmed = []byte("{}")
@@ -57,21 +58,66 @@ func NewValidator(body []byte) (*Validator, error) {
 
 // NewQueryValidator checks query parameters, which are always strings.
 func NewQueryValidator(query map[string]string) *Validator {
-	v := &Validator{codes: map[string]string{}, fields: map[string]json.RawMessage{}}
+	v := &Validator{codes: map[string]string{}, issues: &issues{messages: map[string]string{}}, fields: map[string]json.RawMessage{}}
 	for k, s := range query {
 		v.fields[k], _ = json.Marshal(s)
 	}
 	return v
 }
 
+// issues keeps what a 413 needs: the order fields first failed in and the
+// messages zod would give them.
+type issues struct {
+	order    []string
+	messages map[string]string
+}
+
 func (v *Validator) fail(key, code string) {
 	if _, ok := v.codes[v.prefix+key]; !ok {
 		v.codes[v.prefix+key] = code
+		v.order = append(v.order, v.prefix+key)
 	}
 }
 
 // Fail records a refinement's issue on key.
 func (v *Validator) Fail(key, code string) { v.fail(key, code) }
+
+// FailWith records an issue with zod's message for it.
+func (v *Validator) FailWith(key, code, message string) {
+	if _, ok := v.codes[v.prefix+key]; !ok {
+		v.messages[v.prefix+key] = message
+	}
+	v.fail(key, code)
+}
+
+// Continuable is false once a type or enum check failed: zod then skips an
+// object's refinements.
+func (v *Validator) Continuable() bool {
+	for _, code := range v.codes {
+		if code == CodeInvalidType || code == CodeInvalidValue {
+			return false
+		}
+	}
+	return true
+}
+
+// ErrMaybeTooLarge is Err, except that a body failing only size limits is a
+// 413 with the first issue's message.
+func (v *Validator) ErrMaybeTooLarge() error {
+	if len(v.codes) == 0 {
+		return nil
+	}
+	for _, code := range v.codes {
+		if code != CodeTooBig {
+			return v.Err()
+		}
+	}
+	message := v.messages[v.order[0]]
+	if message == "" {
+		message = "Request body is too large"
+	}
+	return &PayloadTooLargeError{Message: message, Fields: v.codes}
+}
 
 // Clean is true while nothing under this validator has failed; zod runs an
 // object's refinements only then.
@@ -97,6 +143,9 @@ func (v *Validator) ErrWith(message string) error {
 }
 
 // raw is a field's JSON; JSON null counts as present.
+// Raw is the field's undecoded JSON, for checks the typed readers don't cover.
+func (v *Validator) Raw(key string) (json.RawMessage, bool) { return v.raw(key) }
+
 func (v *Validator) raw(key string) (json.RawMessage, bool) {
 	if v.notObject {
 		return nil, false
@@ -293,7 +342,7 @@ func (v *Validator) NullableEnum(key string, values ...string) (value *string, p
 }
 
 func (v *Validator) sub(key string, fields map[string]json.RawMessage) *Validator {
-	return &Validator{fields: fields, codes: v.codes, prefix: v.prefix + key + "."}
+	return &Validator{fields: fields, codes: v.codes, issues: v.issues, prefix: v.prefix + key + "."}
 }
 
 // Struct reads a nested object that may not be null; nil unless the field
@@ -342,6 +391,99 @@ func (v *Validator) ObjectArray(key string, required bool, maxItems int, elem fu
 		v.fail(key, CodeTooBig)
 	}
 	return true
+}
+
+var ulidPattern = regexp.MustCompile(`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+
+// ULID reads UlidSchema: a string is uppercased before the pattern check,
+// and the value returned is the uppercased one.
+func (v *Validator) ULID(key string, required bool) (string, bool) {
+	raw, ok := v.raw(key)
+	if !ok {
+		if required && !v.notObject {
+			v.fail(key, CodeInvalidType)
+		}
+		return "", false
+	}
+	return v.checkULID(key, raw)
+}
+
+func (v *Validator) checkULID(key string, raw json.RawMessage) (string, bool) {
+	var s string
+	if len(raw) == 0 || raw[0] != '"' || json.Unmarshal(raw, &s) != nil {
+		v.fail(key, CodeInvalidType)
+		return "", false
+	}
+	s = strings.ToUpper(s)
+	if !ulidPattern.MatchString(s) {
+		v.fail(key, CodeInvalidFormat)
+		return s, false
+	}
+	return s, true
+}
+
+// NullableULID is UlidSchema.nullable().optional().
+func (v *Validator) NullableULID(key string) (value *string, present, valid bool) {
+	raw, ok := v.raw(key)
+	if !ok {
+		return nil, false, true
+	}
+	if isNull(raw) {
+		return nil, true, true
+	}
+	s, valid := v.checkULID(key, raw)
+	return &s, true, valid
+}
+
+// ULIDArray reads z.array(UlidSchema) with item limits.
+func (v *Validator) ULIDArray(key string, required bool, minItems, maxItems int) ([]string, bool) {
+	raw, ok := v.raw(key)
+	if !ok {
+		if required && !v.notObject {
+			v.fail(key, CodeInvalidType)
+		}
+		return nil, false
+	}
+	var elems []json.RawMessage
+	if raw[0] != '[' || json.Unmarshal(raw, &elems) != nil {
+		v.fail(key, CodeInvalidType)
+		return nil, false
+	}
+	out := make([]string, 0, len(elems))
+	valid := true
+	for i, elem := range elems {
+		s, ok := v.checkULID(key+"."+strconv.Itoa(i), elem)
+		valid = valid && ok
+		out = append(out, s)
+	}
+	switch {
+	case len(elems) < minItems:
+		v.fail(key, CodeTooSmall)
+		valid = false
+	case len(elems) > maxItems:
+		v.fail(key, CodeTooBig)
+		valid = false
+	}
+	return out, valid
+}
+
+// Bool reads z.boolean().
+func (v *Validator) Bool(key string, required bool) (value, present bool) {
+	raw, ok := v.raw(key)
+	if !ok {
+		if required && !v.notObject {
+			v.fail(key, CodeInvalidType)
+		}
+		return false, false
+	}
+	switch string(raw) {
+	case "true":
+		return true, true
+	case "false":
+		return false, true
+	}
+	v.fail(key, CodeInvalidType)
+	return false, false
 }
 
 // IntRule returns the issue code for a value that fails it, or "".

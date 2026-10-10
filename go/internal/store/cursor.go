@@ -87,6 +87,9 @@ func AssertCursorPartition(key data.Item, attr, value string) error {
 	return nil
 }
 
+// KeyOf is the resume point for a page cut short after item.
+func KeyOf(item data.Item, names []string) data.Item { return keyOf(item, names) }
+
 func keyOf(item data.Item, names []string) data.Item {
 	out := data.Item{}
 	for _, n := range names {

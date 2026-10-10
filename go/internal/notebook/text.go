@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gagnechris/gagnechris/go/internal/api"
+	"github.com/gagnechris/gagnechris/go/internal/store"
 )
 
 var fence = regexp.MustCompile("^[ \t]{0,3}(`{3,}|~{3,})")
@@ -155,4 +156,86 @@ func NoteDisplayTitle(n Note) string {
 		return title
 	}
 	return "Untitled"
+}
+
+// TaskEmbedIDs are the embedded task ids, unique, in first-seen order.
+func TaskEmbedIDs(markdown string) []string {
+	ids := []string{}
+	seen := map[string]bool{}
+	for _, e := range FindTaskEmbeds(markdown) {
+		if !seen[e.ID] {
+			seen[e.ID] = true
+			ids = append(ids, e.ID)
+		}
+	}
+	return ids
+}
+
+const carriedInHeading = "## Carried in"
+
+// CarriedInMarkdown is the block a new daily note opens with: open tasks
+// from earlier days.
+func CarriedInMarkdown(taskIDs []string) string {
+	tokens := make([]string, len(taskIDs))
+	for i, id := range taskIDs {
+		tokens[i] = "{{task:" + strings.ToUpper(id) + "}}"
+	}
+	return carriedInHeading + "\n\n" + strings.Join(tokens, "\n") + "\n\n"
+}
+
+var jsSpaces = regexp.MustCompile(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
+
+// NormalizeTags trims, lowercases and hyphenates each tag, dropping empty
+// and repeated ones.
+func NormalizeTags(tags []string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, raw := range tags {
+		t := jsSpaces.ReplaceAllString(store.JSLower(api.TrimJS(raw)), "-")
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return out
+}
+
+var areaLabels = map[string]string{"work": "Work", "personal": "Personal"}
+
+var templateToken = regexp.MustCompile(`\{\{(weekday|date|area)\}\}`)
+
+// FillDailyTemplate fills {{weekday}}, {{date}} and {{area}} for the note's
+// own day; other {{…}} stay.
+func FillDailyTemplate(markdown, area, date string) string {
+	values := map[string]string{
+		"weekday": date,
+		"date":    date,
+		"area":    areaLabels[area],
+	}
+	if t, ok := ParseCalendarDay(date); ok {
+		values["weekday"] = t.Weekday().String()
+		values["date"] = t.Weekday().String() + ", " + t.Month().String() + " " + strconv.Itoa(t.Day())
+	}
+	return templateToken.ReplaceAllStringFunc(markdown, func(token string) string {
+		return values[token[2:len(token)-2]]
+	})
+}
+
+var templateTaskLine = regexp.MustCompile(`^[ \t]*\[ \][ \t]+\S`)
+
+// DailyTemplateHasTasks: task lines and embeds would create or repeat a
+// task in every new note.
+func DailyTemplateHasTasks(markdown string) bool {
+	if len(FindTaskEmbeds(markdown)) > 0 {
+		return true
+	}
+	lines := strings.Split(markdown, "\n")
+	fences := ScanFences(lines)
+	for i, line := range lines {
+		if !InFence(fences, i) && templateTaskLine.MatchString(line) {
+			return true
+		}
+	}
+	return false
 }

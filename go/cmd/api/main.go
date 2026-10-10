@@ -22,6 +22,7 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/data"
 	"github.com/gagnechris/gagnechris/go/internal/home"
 	"github.com/gagnechris/gagnechris/go/internal/media"
+	"github.com/gagnechris/gagnechris/go/internal/notebook"
 	"github.com/gagnechris/gagnechris/go/internal/observability"
 	"github.com/gagnechris/gagnechris/go/internal/posts"
 	"github.com/gagnechris/gagnechris/go/internal/projects"
@@ -59,6 +60,7 @@ func main() {
 	routes = append(routes, home.Routes(table, nil)...)
 	routes = append(routes, resume.Routes(table, nil)...)
 	routes = append(routes, search.Routes(table, nil)...)
+	routes = append(routes, notebook.Routes(table, nil)...)
 	routes = append(routes, users.Routes(users.Deps{Table: table, AWS: cfg})...)
 	routes = append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
 	app := api.NewApp(

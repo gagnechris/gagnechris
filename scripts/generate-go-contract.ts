@@ -21,6 +21,10 @@ import {
   ResumeMetaItemSchema,
   SK_META,
   SK_PUBLISHED,
+  SYNC_CREATE_CLAIM_TTL_DAYS,
+  SYNC_OVERLAP_MS,
+  SYNC_RESYNC_MARGIN_MS,
+  SYNC_TOMBSTONE_TTL_DAYS,
   TaskMetaItemSchema,
   buildDailyNoteClaimItem,
   buildDailyTemplateItem,
@@ -45,9 +49,15 @@ import {
   metaToProject,
   metaToResume,
   metaToTask,
+  normalizeTags,
   noteMetaSk,
   notePk,
+  noteDateGsi1Sk,
+  notePageGsi1Sk,
+  noteTasksGsi2Pk,
+  noteTasksGsi2Sk,
   notebookAreaGsi1Pk,
+  ownerSyncCreateClaimPk,
   postPk,
   projectOrderGsi1Sk,
   projectPk,
@@ -63,9 +73,14 @@ import {
   removedUsersPk,
   resumePk,
   slugRedirectSk,
+  syncCreateClaimSk,
+  syncPk,
   taskMetaSk,
   taskPk,
   taskAreaStatusGsi1Pk,
+  taskSomedayGsi1Sk,
+  taskStartGsi1Sk,
+  taskUpdatedGsi1Sk,
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
 } from '@gagnechris/data';
@@ -74,13 +89,27 @@ import {
   ACCESS_LEVEL_GROUPS,
   API_SERVICE_NAME,
   APEX_DOMAIN,
+  CLIENT_VERSION_HEADER,
   CONTACT_PER_IP_PER_HOUR,
+  DAILY_TEMPLATE_MAX_BYTES,
+  DAILY_TEMPLATE_TASK_MESSAGE,
+  DEFAULT_DAILY_TEMPLATES,
+  carriedInMarkdown,
+  dailyTemplateHasTasks,
+  fillDailyTemplate,
+  taskEmbedIds,
   DEFAULT_HOME,
   DEFAULT_RESUME,
   HomeSchema,
   LINK_HREF_MAX_LENGTH,
   MAX_SLUG_LENGTH,
   MIN_CONTACT_SUBMIT_MS,
+  NOTEBOOK_BATCH_MAX_IDS,
+  NOTEBOOK_PAGE_SIZE,
+  NOTEBOOK_TAG_MAX_LENGTH,
+  NOTEBOOK_TAGS_MAX,
+  NOTEBOOK_TEXT_MAX_BYTES,
+  NOTEBOOK_TITLE_MAX_LENGTH,
   NoteSchema,
   POST_LINK_SCHEMES,
   POWERTOOLS_METRICS_NAMESPACE,
@@ -105,6 +134,8 @@ import {
   ProjectSchema,
   ResumeSchema,
   SES_GLOBAL_DAILY_CAP,
+  SYNC_DEFAULT_PAGE_LIMIT,
+  SYNC_MIN_CLIENT_VERSION,
   SyncChangeSchema,
   TaskSchema,
   USER_ADMIN_REAUTH_SECONDS,
@@ -172,6 +203,29 @@ const KEYS: Record<string, string> = {
     '{date}',
   ),
   'dailyNoteClaimSk()': dailyNoteClaimSk(),
+  'noteDateGsi1Sk({date},{noteId})': noteDateGsi1Sk('{date}', '{noteId}'),
+  'notePageGsi1Sk({updatedAt},{noteId})': notePageGsi1Sk(
+    '{updatedAt}',
+    '{noteId}',
+  ),
+  'taskStartGsi1Sk({date},{taskId})': taskStartGsi1Sk('{date}', '{taskId}'),
+  'taskUpdatedGsi1Sk({updatedAt},{taskId})': taskUpdatedGsi1Sk(
+    '{updatedAt}',
+    '{taskId}',
+  ),
+  'taskSomedayGsi1Sk({updatedAt},{taskId})': taskSomedayGsi1Sk(
+    '{updatedAt}',
+    '{taskId}',
+  ),
+  'noteTasksGsi2Pk({userId},{noteId})': noteTasksGsi2Pk('{userId}', '{noteId}'),
+  'noteTasksGsi2Sk({taskId})': noteTasksGsi2Sk('{taskId}'),
+  'syncPk({userId})': syncPk('{userId}'),
+  'ownerSyncCreateClaimPk({userId},task,{taskId})': ownerSyncCreateClaimPk(
+    '{userId}',
+    'task',
+    '{taskId}',
+  ),
+  'syncCreateClaimSk()': syncCreateClaimSk(),
   'dailyTemplatePk({userId},{area})': dailyTemplatePk('{userId}', '{area}'),
   'dailyTemplateSk()': dailyTemplateSk(),
   'rateContactIpPk({ip})': rateContactIpPk('{ip}'),
@@ -403,6 +457,50 @@ for (const [name, [schema, body]] of Object.entries(API_SAMPLES)) {
   }
 }
 
+const EMBED_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+const EMBED_ID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
+const TEMPLATE_WITH_TOKENS =
+  '# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}';
+
+// The TypeScript helpers' outputs, so the Go ports are tested against them.
+const TEXT_CASES = {
+  taskEmbedIds: [
+    `{{task:${EMBED_ID}}}`,
+    `  {{task:${EMBED_ID.toLowerCase()}}} \r\n\t{{task:${EMBED_ID_2}}}\n{{task:${EMBED_ID}}}`,
+    `\`\`\`\n{{task:${EMBED_ID}}}\n\`\`\`\n~~~~\n{{task:${EMBED_ID_2}}}\n~~~\n{{task:${EMBED_ID_2}}}`,
+    `- {{task:${EMBED_ID}}}\ntext {{task:${EMBED_ID}}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAI}}`,
+    `{{task:${EMBED_ID}}}\u00a0\n\u3000{{task:${EMBED_ID_2}}}`,
+  ].map((input) => ({ input, want: taskEmbedIds(input) })),
+  carriedInMarkdown: [[EMBED_ID], [EMBED_ID.toLowerCase(), EMBED_ID_2]].map(
+    (input) => ({ input, want: carriedInMarkdown(input) }),
+  ),
+  normalizeTags: [
+    ['Work', ' work ', 'Big  Idea', 'big-idea', ''],
+    ['\u00a0Ünïcode\u2028Tag\ufeff', 'İstanbul', 'ΣΊΣΥΦΟΣ', 'tab\tsep', '   '],
+  ].map((input) => ({ input, want: normalizeTags(input) })),
+  fillDailyTemplate: (
+    [
+      ['work', '2026-10-06'],
+      ['personal', '2024-02-29'],
+      ['work', '2027-01-01'],
+    ] as const
+  ).map(([area, date]) => ({
+    input: { markdown: TEMPLATE_WITH_TOKENS, area, date },
+    want: fillDailyTemplate(TEMPLATE_WITH_TOKENS, { area, date }),
+  })),
+  dailyTemplateHasTasks: [
+    '- [ ] checklist\n* [x] done',
+    '[ ] task line',
+    '  \t[ ] indented task',
+    '[ ]',
+    '[ ]   ',
+    '```\n[ ] in a fence\n```',
+    `{{task:${EMBED_ID}}}`,
+    `~~~\n{{task:${EMBED_ID}}}\n~~~`,
+    '[x] not a task line',
+  ].map((input) => ({ input, want: dailyTemplateHasTasks(input) })),
+};
+
 const contract = {
   api: {
     serviceName: API_SERVICE_NAME,
@@ -439,6 +537,26 @@ const contract = {
   },
   // What Home and Resume read as before their first save.
   defaults: { home: DEFAULT_HOME, resume: DEFAULT_RESUME },
+  notebook: {
+    textMaxBytes: NOTEBOOK_TEXT_MAX_BYTES,
+    titleMaxLength: NOTEBOOK_TITLE_MAX_LENGTH,
+    tagMaxLength: NOTEBOOK_TAG_MAX_LENGTH,
+    tagsMax: NOTEBOOK_TAGS_MAX,
+    batchMaxIds: NOTEBOOK_BATCH_MAX_IDS,
+    pageSize: NOTEBOOK_PAGE_SIZE,
+    dailyTemplates: DEFAULT_DAILY_TEMPLATES,
+    dailyTemplateMaxBytes: DAILY_TEMPLATE_MAX_BYTES,
+    dailyTemplateTaskMessage: DAILY_TEMPLATE_TASK_MESSAGE,
+  },
+  sync: {
+    defaultPageLimit: SYNC_DEFAULT_PAGE_LIMIT,
+    minClientVersion: SYNC_MIN_CLIENT_VERSION,
+    clientVersionHeader: CLIENT_VERSION_HEADER,
+    tombstoneTtlDays: SYNC_TOMBSTONE_TTL_DAYS,
+    createClaimTtlDays: SYNC_CREATE_CLAIM_TTL_DAYS,
+    resyncMarginMs: SYNC_RESYNC_MARGIN_MS,
+    overlapMs: SYNC_OVERLAP_MS,
+  },
   users: {
     accessGroups: ACCESS_GROUPS,
     accessLevelGroups: ACCESS_LEVEL_GROUPS,
@@ -455,6 +573,7 @@ const contract = {
     ]),
   ),
   samples: SAMPLES,
+  textCases: TEXT_CASES,
   apiSamples: Object.fromEntries(
     Object.entries(API_SAMPLES).map(([name, [, body]]) => [name, body]),
   ),

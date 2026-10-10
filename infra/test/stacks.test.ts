@@ -12,7 +12,7 @@ import {
 } from '@gagnechris/data';
 import { applyStandardTags } from '../lib/aspects/standard-tags.js';
 import { getEnvironment } from '../lib/config/environments.js';
-import { ApiStack } from '../lib/stacks/api-stack.js';
+import { ApiStack, GO_NOTEBOOK_ROUTES } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
@@ -669,17 +669,26 @@ describe('stack Template assertions', () => {
       ),
     );
     expect(nodePolicies).not.toContain('cognito-idp:');
-    const search = Object.values(
-      template.findResources('AWS::ApiGatewayV2::Route', {
-        Properties: { RouteKey: 'POST /api/notebook/search' },
-      }),
-    )[0];
-    expect(integrationFunction('POST /api/notebook/search')).toContain(
-      'GoApiFunction',
-    );
-    expect(search?.Properties?.AuthorizationType).toBe('JWT');
-    expect(JSON.stringify(search?.Properties?.AuthorizerId)).not.toContain(
-      adminAuthorizers[0],
+    for (const [path, methods] of GO_NOTEBOOK_ROUTES) {
+      for (const method of methods) {
+        const routeKey = `${method} ${path}`;
+        const [resource] = Object.values(
+          template.findResources('AWS::ApiGatewayV2::Route', {
+            Properties: { RouteKey: routeKey },
+          }),
+        );
+        expect(integrationFunction(routeKey), routeKey).toContain(
+          'GoApiFunction',
+        );
+        expect(resource?.Properties?.AuthorizationType, routeKey).toBe('JWT');
+        expect(
+          JSON.stringify(resource?.Properties?.AuthorizerId),
+          routeKey,
+        ).not.toContain(adminAuthorizers[0]);
+      }
+    }
+    expect(GO_NOTEBOOK_ROUTES.map(([path]) => path)).toContain(
+      '/api/notebook/sync/changes',
     );
     expect(integrationFunction('ANY /api/notebook/{proxy+}')).toContain(
       'ApiFunction',

@@ -4,6 +4,7 @@ package keys
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -62,6 +63,41 @@ func NotebookAreaGSI1Pk(userID, area string) string { return "USER#" + userID + 
 func TaskAreaStatusGSI1Pk(userID, area, status string) string {
 	return NotebookAreaGSI1Pk(userID, area) + "#STATUS#" + status
 }
+
+func NoteDateGSI1Sk(noteDate, noteID string) string { return "DATE#" + noteDate + "#NOTE#" + noteID }
+
+// NotePageGSI1Sk keeps freeform pages out of DATE# calendar ranges.
+func NotePageGSI1Sk(updatedAt, noteID string) string { return "PAGE#" + updatedAt + "#NOTE#" + noteID }
+
+func TaskStartGSI1Sk(startDate, taskID string) string {
+	return "START#" + startDate + "#TASK#" + taskID
+}
+
+// TaskUpdatedGSI1Sk is a task that shows now: no startDate, not someday.
+func TaskUpdatedGSI1Sk(updatedAt, taskID string) string {
+	return "UPDATED#" + updatedAt + "#TASK#" + taskID
+}
+
+func TaskSomedayGSI1Sk(updatedAt, taskID string) string {
+	return "SOMEDAY#" + updatedAt + "#TASK#" + taskID
+}
+
+func NoteTasksGSI2Pk(userID, noteID string) string {
+	return "USER#" + userID + "#NOTE#" + noteID + "#TASKS"
+}
+
+func NoteTasksGSI2Sk(taskID string) string { return "TASK#" + taskID }
+
+// SyncPk is written on each record's META row, not a separate ledger row.
+func SyncPk(userID string) string { return "SYNC#" + userID }
+
+// OwnerSyncCreateClaimPk includes the owner so two users never share a
+// claim even if ULIDs collide.
+func OwnerSyncCreateClaimPk(userID, changeType, entityID string) string {
+	return "CREATED#" + strings.ToUpper(changeType) + "#USER#" + userID + "#" + entityID
+}
+
+func SyncCreateClaimSk() string { return SKMeta }
 
 func DailyNoteClaimPk(userID, area, date string) string {
 	return "USER#" + userID + "#DAILY#" + area + "#" + date
