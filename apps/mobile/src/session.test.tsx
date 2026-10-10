@@ -10,25 +10,33 @@ import {
 } from './session';
 
 describe('root gate', () => {
-  it('shows the tabs only to a signed-in user with the notebook group', () => {
-    expect(rootGuards('signedIn', true)).toEqual({
+  it('opens each space the groups allow', () => {
+    expect(rootGuards('signedIn', ['notebook', 'admin'])).toEqual({
       notebook: true,
+      admin: true,
       noAccess: false,
       signIn: false,
     });
+    expect(rootGuards('signedIn', ['admin'])).toMatchObject({
+      notebook: false,
+      admin: true,
+      noAccess: false,
+    });
   });
 
-  it('shows No access to a signed-in user without it', () => {
-    expect(rootGuards('signedIn', false)).toEqual({
+  it('shows No access to a signed-in user with no space', () => {
+    expect(rootGuards('signedIn', [])).toEqual({
       notebook: false,
+      admin: false,
       noAccess: true,
       signIn: false,
     });
   });
 
   it('shows sign-in when signed out, and nothing while restoring', () => {
-    expect(rootGuards('signedOut', false).signIn).toBe(true);
-    expect(Object.values(rootGuards('restoring', false))).toEqual([
+    expect(rootGuards('signedOut', []).signIn).toBe(true);
+    expect(Object.values(rootGuards('restoring', ['notebook']))).toEqual([
+      false,
       false,
       false,
       false,
@@ -119,14 +127,24 @@ describe('SessionProvider', () => {
     expect(wipe).not.toHaveBeenCalled();
   });
 
-  it('a user without the notebook group gets No access', async () => {
+  it('a Public CMS user gets only the Admin space', async () => {
     const { backend } = fakeBackend({
       restore: vi.fn(async () => ({ ...user, groups: ['site-admin'] })),
     });
     const session = await mount(backend, async () => {});
-    expect(rootGuards(session().status, session().hasNotebook)).toMatchObject({
-      noAccess: true,
+    expect(session().spaces).toEqual(['admin']);
+    expect(rootGuards(session().status, session().spaces)).toMatchObject({
+      noAccess: false,
       notebook: false,
+      admin: true,
     });
+  });
+
+  it('a user with no app group gets No access', async () => {
+    const { backend } = fakeBackend({
+      restore: vi.fn(async () => ({ ...user, groups: ['user-admin'] })),
+    });
+    const session = await mount(backend, async () => {});
+    expect(rootGuards(session().status, session().spaces).noAccess).toBe(true);
   });
 });

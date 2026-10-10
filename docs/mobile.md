@@ -2,27 +2,32 @@
 
 `apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`.
 
-## Notebook shell
+## App shell
 
-| Route                                  | Screen                                                                                                               |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `app/_layout.tsx`                      | Providers (session, persisted query cache, area, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
-| `app/(tabs)/_layout.tsx`               | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                         |
-| `app/(tabs)/<tab>/_layout.tsx`         | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                     |
-| `app/(tabs)/today/index.tsx`           | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                            |
-| `app/(tabs)/upcoming/index.tsx`        | `/upcoming`: scheduled tasks by day, then Later and Someday (see [Tasks](#tasks))                                    |
-| `app/(tabs)/notes/index.tsx`           | `/notes`: large title, All / Daily / Pages                                                                           |
-| `app/(tabs)/notes/[id].tsx`            | `/notes/:id`: the note editor (see [Notes](#notes))                                                                  |
-| `app/(tabs)/tasks/index.tsx`           | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                            |
-| `app/(tabs)/tasks/[id].tsx`            | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                      |
-| `app/(tabs)/more/index.tsx`            | `/more`: account (name, email, access level), Your apps (Notebook only), default area, sign out                      |
-| `app/(tabs)/more/templates.tsx`        | `/more/templates`: the Work and Personal daily templates (see [Today](#today))                                       |
-| `app/search.tsx`                       | `/search`: a modal over the tabs (see [Search](#search))                                                             |
-| `app/no-access.tsx`, `app/sign-in.tsx` | Outside the tabs                                                                                                     |
+The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and Admin (`app/admin`). `spacesFor` in `src/space.tsx` maps groups to spaces: `notebook` opens Notebook, `site-admin` opens Admin. More › Your apps lists the user's spaces and switches between them with `router.replace`.
 
-`app/index.tsx` redirects to `/today`, and the paths match the notebook web paths.
+| Route                                              | Screen                                                                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `app/_layout.tsx`                                  | Providers (session, persisted query cache, area, space, `NetworkStatus`, `AppApiProvider`) and the root stack with its gate |
+| `app/(tabs)/_layout.tsx`                           | Tab bar: Today, Upcoming, Notes, Tasks, More (SF Symbols via `expo-symbols`)                                                |
+| `app/(tabs)/<tab>/_layout.tsx`                     | One native stack per tab, so detail screens keep the tab bar and edge-swipe back                                            |
+| `app/(tabs)/today/index.tsx`                       | `/today`: the day's note, Still open / Coming up and day navigation (see [Today](#today))                                   |
+| `app/(tabs)/upcoming/index.tsx`                    | `/upcoming`: scheduled tasks by day, then Later and Someday (see [Tasks](#tasks))                                           |
+| `app/(tabs)/notes/index.tsx`                       | `/notes`: large title, All / Daily / Pages                                                                                  |
+| `app/(tabs)/notes/[id].tsx`                        | `/notes/:id`: the note editor (see [Notes](#notes))                                                                         |
+| `app/(tabs)/tasks/index.tsx`                       | `/tasks`: all tasks with status and show-on filters (see [Tasks](#tasks))                                                   |
+| `app/(tabs)/tasks/[id].tsx`                        | `/tasks/:id`: task detail (see [Tasks](#tasks))                                                                             |
+| `app/(tabs)/more/index.tsx`                        | `/more`: account (name, email, access level), Your apps, default area, daily templates, sign out                            |
+| `app/(tabs)/more/templates.tsx`                    | `/more/templates`: the Work and Personal daily templates (see [Today](#today))                                              |
+| `app/search.tsx`                                   | `/search`: a modal over the tabs (see [Search](#search))                                                                    |
+| `app/admin/_layout.tsx`                            | Admin tab bar: Posts, Pages, Projects, Users (only with `user-admin`), More                                                 |
+| `app/admin/{posts,pages,projects,users}/index.tsx` | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
+| `app/admin/more/index.tsx`                         | `/admin/more`: account, Your apps, sign out                                                                                 |
+| `app/no-access.tsx`, `app/sign-in.tsx`             | Outside the tabs                                                                                                            |
 
-- **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user with the `notebook` group sees the tabs, one without it sees No access, a signed-out user sees sign-in.
+`app/index.tsx` redirects to the last space used (`gagnechris.space` in AsyncStorage, written when a space's tab bar mounts) if the user still has it, else to their first space: `/today` or `/admin/posts`. The Notebook paths match the notebook web paths.
+
+- **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user sees the spaces their groups open, one with no space sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
 - **Area:** Work / Personal / All, shared between the Today chip (an action sheet), the Upcoming segmented control and More's Default area row. It's stored in AsyncStorage under `gagnechris.notebook.areaFilter`, the key the web keeps in localStorage; the filter values, labels and key come from `@gagnechris/shared` (`notebook-area.ts`).
 - **Look:** colours and sizes from `@gagnechris/tokens` through `src/theme.ts`. Inter (400, 500, 600, 700 from `@expo-google-fonts/inter`) is embedded at build time by the `expo-font` config plugin, so no font loads at runtime; styles spread `font.<weight>` from `src/theme.ts`, which sets both the PostScript name (`Inter-SemiBold`) and the `fontWeight`; with the name alone React Native can fall back to the regular face. Native large titles on Upcoming, Notes, Tasks and More.
@@ -173,17 +178,17 @@ Metro config (`metro.config.js`) watches the repo root, resolves `node_modules` 
 
 `src/auth/backend.ts` (`createAuthBackend`) holds the session for both modes; a `TokenIssuer` supplies the mode-specific parts.
 
-| Mode      | Issuer                | Sign-in                                                                                                                                                                                                                                           |
-| --------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cognito` | `src/auth/cognito.ts` | Managed login on `EXPO_PUBLIC_COGNITO_DOMAIN` (default `auth.gagnechris.com`) in `ASWebAuthenticationSession` with `expo-auth-session`: authorization code, PKCE `S256`, scopes `openid email profile`, ephemeral session                         |
-| `local`   | `src/auth/local.ts`   | No browser: stores `local-ios:local-dev-user`, which the local API maps to `ios`-audience claims. `EXPO_PUBLIC_LOCAL_AUTH_GROUPS` (comma-separated, default `site-admin,notebook,user-admin`) sets the groups; `site-admin` alone shows No access |
+| Mode      | Issuer                | Sign-in                                                                                                                                                                                                                                            |
+| --------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cognito` | `src/auth/cognito.ts` | Managed login on `EXPO_PUBLIC_COGNITO_DOMAIN` (default `auth.gagnechris.com`) in `ASWebAuthenticationSession` with `expo-auth-session`: authorization code, PKCE `S256`, scopes `openid email profile`, ephemeral session                          |
+| `local`   | `src/auth/local.ts`   | No browser: stores `local-ios:local-dev-user`, which the local API maps to `ios`-audience claims. `EXPO_PUBLIC_LOCAL_AUTH_GROUPS` (comma-separated, default `site-admin,notebook,user-admin`) sets the groups; `site-admin` alone opens only Admin |
 
 - **Config** (`src/config.ts`): `EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID` is the public `ios` app client ID (SSM `/gagnechris/prod/cognito-ios-client-id`; not a secret). `IOS_CLIENT_ID` in the same file is the built-in default. `cognitoConfig` spreads one of `IOS_AUTH_REDIRECTS`: `scheme` (`gagnechris://auth/callback`, logout `gagnechris://`) is the default and the only one that works in the simulator; `universalLink` (`https://notebook.gagnechris.com/ios/auth/callback`, logout `/ios/auth/signed-out`, `preferUniversalLinks: true`) needs a signed build with the notebook host's `webcredentials` entitlement and the AASA served. Switching is that one spread.
 - **Tokens:** `expo-secure-store`, one Keychain item each for the refresh token, ID token, `sub` and sign-in time, all with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (`KEYCHAIN_OPTIONS` in `src/auth/index.ts`). The app sends the ID token. `getToken` returns it while it has more than a minute left, else refreshes (`refreshAsync`, the `refresh_token` grant). Refresh is single flight: concurrent callers share one request, and the rotated refresh token is in the Keychain before any of them gets the new ID token. The app keeps one API client, so its own single-flight retry applies across screens too.
 - **Expiry:** `invalid_grant` on refresh ends the session: the tokens go, the cache and `sub` stay, and sign-in says "Your session ended". A network failure keeps the tokens. If a different `sub` signs in next, `wipe` runs before the first render.
 - **Relaunch:** `restore()` reads the Keychain, so a killed app comes back signed in. AsyncStorage holds an install marker (`gagnechris.installed`); a launch without one deletes the Keychain items first, because Keychain items outlive an uninstall. The marker is written again after each sign-in, since sign-out clears AsyncStorage.
 - **Sign-out:** More's confirmation warns "N unsaved edits will be lost." (`signOutWarning`) when the pending-save queue or the outbox isn't empty. Then `wipe` (`wipeLocalData`, see [Cached reads and offline](#cached-reads-and-offline)), then the refresh token is revoked (`/oauth2/revoke`, best effort), then the Keychain items are deleted. With `ephemeralSession: false` (the fallback if passkeys fail in an ephemeral session) it also opens `/logout` with the configured `logout_uri`, and "Use a different account" adds `prompt=login`.
-- **Access:** the `notebook` group comes from the ID token's `cognito:groups`; without it the app shows No access.
+- **Access:** groups come from the ID token's `cognito:groups`; `notebook` opens Notebook, `site-admin` opens Admin, and with neither the app shows No access.
 
 ### iOS sign-in and associated domains
 

@@ -125,6 +125,7 @@ vi.mock('expo-router', async () => {
   return {
     useRouter: () => router,
     useLocalSearchParams: () => searchParams.current,
+    Redirect: host('Redirect'),
     Stack: Object.assign(host('Stack'), { Screen: StackScreen }),
   };
 });

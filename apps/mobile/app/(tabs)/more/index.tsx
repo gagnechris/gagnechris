@@ -1,20 +1,17 @@
-import {
-  ACCESS_LEVEL_LABELS,
-  accessLevelFromGroups,
-  NOTEBOOK_AREA_LABELS,
-} from '@gagnechris/shared';
-import { tokens } from '@gagnechris/tokens';
+import { NOTEBOOK_AREA_LABELS } from '@gagnechris/shared';
 import { useRouter } from 'expo-router';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useArea } from '../../../src/area';
 import { signOutWarning } from '../../../src/cache';
-import { displayName, initials, useSession } from '../../../src/session';
-import { color, font } from '../../../src/theme';
+import { useSession } from '../../../src/session';
+import { color } from '../../../src/theme';
+import { AccountCard } from '../../../src/ui/AccountCard';
 import { useAreaPicker } from '../../../src/ui/AreaChip';
 import { Icon } from '../../../src/ui/Icon';
 import { Row } from '../../../src/ui/Row';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
+import { YourApps } from '../../../src/ui/YourApps';
 
 const MoreScreen = () => {
   const { user, signOut } = useSession();
@@ -22,9 +19,6 @@ const MoreScreen = () => {
   const pickArea = useAreaPicker();
   const router = useRouter();
   if (!user) return null;
-  const level = accessLevelFromGroups(user.groups);
-  const levelLabel = level ? ACCESS_LEVEL_LABELS[level] : null;
-  const name = displayName(user);
 
   const confirmSignOut = () =>
     Alert.alert('Sign out of Notebook?', signOutWarning(), [
@@ -34,48 +28,9 @@ const MoreScreen = () => {
 
   return (
     <Screen>
-      <View
-        style={styles.account}
-        accessible
-        accessibilityLabel={[
-          name,
-          user.email !== name ? user.email : null,
-          levelLabel,
-        ]
-          .filter(Boolean)
-          .join(', ')}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.initials}>{initials(user)}</Text>
-        </View>
-        <View style={styles.accountText}>
-          <Text style={styles.name}>{name}</Text>
-          {user.email !== name ? (
-            <Text style={styles.email}>{user.email}</Text>
-          ) : null}
-          {levelLabel ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{levelLabel}</Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
+      <AccountCard user={user} />
 
-      <Section
-        title="Your apps"
-        footer="Only apps you have access to are listed."
-      >
-        <Row
-          title="Notebook"
-          accessibilityLabel="Notebook, current app"
-          leading={
-            <View style={styles.appIcon}>
-              <Icon name="book.closed" size={18} color={color.surface} />
-            </View>
-          }
-          trailing={<Text style={styles.current}>Current</Text>}
-        />
-      </Section>
+      <YourApps current="notebook" />
 
       <Section title="Notebook">
         <Row
@@ -105,59 +60,3 @@ const MoreScreen = () => {
 };
 
 export default MoreScreen;
-
-const styles = StyleSheet.create({
-  account: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[4],
-    padding: tokens.space[4],
-    backgroundColor: color.surface,
-    borderRadius: tokens.radius.lg - 4,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: tokens.primary[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initials: {
-    ...font.bold,
-    fontSize: tokens.text.lg,
-    color: color.accentInk,
-  },
-  accountText: { flex: 1, gap: 2, alignItems: 'flex-start' },
-  name: { ...font.bold, fontSize: tokens.text.xl, color: color.ink },
-  email: {
-    ...font.regular,
-    fontSize: tokens.text.base,
-    color: color.inkSoft,
-  },
-  badge: {
-    marginTop: tokens.space[1],
-    backgroundColor: color.ink,
-    borderRadius: tokens.radius.sm + 2,
-    paddingHorizontal: tokens.space[2],
-    paddingVertical: 2,
-  },
-  badgeText: {
-    ...font.semibold,
-    fontSize: tokens.text.caption,
-    color: color.surface,
-  },
-  appIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: tokens.radius.md,
-    backgroundColor: color.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  current: {
-    ...font.semibold,
-    fontSize: tokens.text.base,
-    color: color.accent,
-  },
-});
