@@ -55,7 +55,6 @@ import {
   NotebookBatchRequestSchema,
   NoteSchema,
   NoteSyncChangeSchema,
-  SyncChangeSchema,
   SyncChangesResponseSchema,
   SyncChangesQuerySchema,
   TaskBatchResponseSchema,
@@ -656,10 +655,19 @@ export function buildOpenApiDocument() {
   registry.register('ListTasksQuery', ListTasksQuerySchema);
   registry.register('NotebookSearchRequest', NotebookSearchRequestSchema);
   registry.register('NotebookSearchResponse', NotebookSearchResponseSchema);
-  registry.register('NoteSyncChange', NoteSyncChangeSchema);
-  registry.register('TaskSyncChange', TaskSyncChangeSchema);
-  registry.register('SyncChange', SyncChangeSchema);
-  registry.register('SyncChangesResponse', SyncChangesResponseSchema);
+  // Built from the registered variants so they appear as $refs: inlined
+  // unions nested in a union don't generate usable Go types.
+  const syncChange = registry.register(
+    'SyncChange',
+    z.discriminatedUnion('type', [
+      registry.register('NoteSyncChange', NoteSyncChangeSchema),
+      registry.register('TaskSyncChange', TaskSyncChangeSchema),
+    ]),
+  );
+  const syncChangesResponse = registry.register(
+    'SyncChangesResponse',
+    SyncChangesResponseSchema.extend({ changes: z.array(syncChange) }),
+  );
   registry.register(
     'UpgradeRequiredErrorResponse',
     UpgradeRequiredErrorResponseSchema,
@@ -1009,7 +1017,7 @@ export function buildOpenApiDocument() {
       headers: ClientVersionHeadersSchema,
     },
     responses: {
-      200: ok(SyncChangesResponseSchema, 'Sync change feed page'),
+      200: ok(syncChangesResponse, 'Sync change feed page'),
       400: r400,
       426: {
         description: `Client build older than the server minimum (\`upgrade_required\`; header \`${CLIENT_VERSION_HEADER}\`)`,

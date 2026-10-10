@@ -36,7 +36,7 @@
     "e2e:local": "bash scripts/local/e2e.sh",
     "e2e:browser": "playwright test -c e2e/playwright.config.ts",
     "migrate:posts": "npx tsx scripts/migrate-posts.ts",
-    "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client",
+    "openapi": "npm run openapi -w @gagnechris/shared && npm run generate -w @gagnechris/api-client && npm run go:generate",
     "openapi:check": "npm run openapi && git diff --exit-code -- packages/shared/openapi/openapi.json packages/api-client/src/schema.d.ts",
     "tokens:generate": "npm run generate -w @gagnechris/tokens",
     "tokens:check": "npm run tokens:generate && git diff --exit-code -- packages/tokens/src/variables.css",
@@ -52,8 +52,8 @@
     "go:lint": "go -C go tool -modfile=tools/go.mod golangci-lint run ./...",
     "go:test": "go -C go test ./...",
     "go:fmt": "go -C go tool -modfile=tools/go.mod golangci-lint fmt ./...",
-    "go:generate": "tsx scripts/generate-go-contract.ts",
-    "go:generate:check": "npm run go:generate && git diff --exit-code -- go/internal/contract/contract.json"
+    "go:generate": "tsx scripts/generate-go-contract.ts && go -C go generate ./...",
+    "go:generate:check": "npm run go:generate && git diff --exit-code -- go/internal/contract/contract.json go/internal/apitypes/apitypes.gen.go"
   },
   "engines": {
     "node": "^22.12.0"
