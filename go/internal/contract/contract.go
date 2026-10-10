@@ -39,12 +39,35 @@ type API struct {
 	MinContactSubmitMs  int64  `json:"minContactSubmitMs"`
 }
 
+type Limits struct {
+	MaxSlugLength             int      `json:"maxSlugLength"`
+	LinkHrefMaxLength         int      `json:"linkHrefMaxLength"`
+	PostLinkSchemes           []string `json:"postLinkSchemes"`
+	ProjectHrefSchemes        []string `json:"projectHrefSchemes"`
+	ProjectNameMaxLength      int      `json:"projectNameMaxLength"`
+	ProjectPitchMaxLength     int      `json:"projectPitchMaxLength"`
+	ProjectStageNoteMaxLength int      `json:"projectStageNoteMaxLength"`
+	ProjectStackMax           int      `json:"projectStackMax"`
+	ProjectStackItemMaxLength int      `json:"projectStackItemMaxLength"`
+	ProjectLinksMax           int      `json:"projectLinksMax"`
+	ProjectLinkLabelMaxLength int      `json:"projectLinkLabelMaxLength"`
+	ProjectOrderMax           int64    `json:"projectOrderMax"`
+	ProjectDemoIDs            []string `json:"projectDemoIds"`
+}
+
+type Defaults struct {
+	Home   json.RawMessage `json:"home"`
+	Resume json.RawMessage `json:"resume"`
+}
+
 type Contract struct {
 	API         API         `json:"api"`
 	RestoreTest RestoreTest `json:"restoreTest"`
 	// Keys maps a TypeScript key builder call with {placeholder} arguments to
 	// the key it returns.
 	Keys        map[string]string          `json:"keys"`
+	Limits      Limits                     `json:"limits"`
+	Defaults    Defaults                   `json:"defaults"`
 	ItemSchemas map[string]json.RawMessage `json:"itemSchemas"`
 	// Samples are rows built by the TypeScript item builders.
 	Samples map[string]map[string]any `json:"samples"`

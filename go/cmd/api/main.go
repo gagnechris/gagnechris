@@ -20,9 +20,12 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/contact"
 	"github.com/gagnechris/gagnechris/go/internal/contract"
 	"github.com/gagnechris/gagnechris/go/internal/data"
+	"github.com/gagnechris/gagnechris/go/internal/home"
 	"github.com/gagnechris/gagnechris/go/internal/media"
 	"github.com/gagnechris/gagnechris/go/internal/observability"
 	"github.com/gagnechris/gagnechris/go/internal/posts"
+	"github.com/gagnechris/gagnechris/go/internal/projects"
+	"github.com/gagnechris/gagnechris/go/internal/resume"
 )
 
 var processStart = time.Now()
@@ -50,6 +53,9 @@ func main() {
 	routes := api.Routes(table)
 	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
 	routes = append(routes, posts.Routes(table, nil)...)
+	routes = append(routes, projects.Routes(table, nil)...)
+	routes = append(routes, home.Routes(table, nil)...)
+	routes = append(routes, resume.Routes(table, nil)...)
 	routes = append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
 	app := api.NewApp(
 		api.NewRouter(routes),

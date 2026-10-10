@@ -74,20 +74,6 @@ func (h handlers) list(ctx context.Context, r *api.Request) (*api.Response, erro
 	return api.JSON(http.StatusOK, res), nil
 }
 
-func readSeoInput(v *api.Validator) (seo *Seo, present bool) {
-	sub, present := v.Object("seo", true)
-	if sub == nil {
-		return nil, present
-	}
-	seo = &Seo{}
-	for key, dst := range map[string]**string{"title": &seo.Title, "description": &seo.Description, "ogImage": &seo.OgImage} {
-		if s, ok := sub.String(key, false, false); ok {
-			*dst = &s
-		}
-	}
-	return seo, true
-}
-
 func (h handlers) create(ctx context.Context, r *api.Request) (*api.Response, error) {
 	v, err := api.NewValidator(r.Body)
 	if err != nil {
@@ -97,19 +83,19 @@ func (h handlers) create(ctx context.Context, r *api.Request) (*api.Response, er
 	if s, ok := v.String("title", false, false, api.MinLen(1)); ok {
 		in.title = s
 	}
-	if s, ok := v.String("slug", false, false, api.MinLen(1), api.MaxLen(maxSlugLength)); ok {
+	if s, ok := v.String("slug", false, false, api.MinLen(1), api.MaxLen(store.MaxSlugLength)); ok {
 		in.slug = &s
 	}
 	in.excerpt, _ = v.String("excerpt", false, false)
 	in.bodyMarkdown, _ = v.String("bodyMarkdown", false, false)
-	if tags, ok := v.StringArray("tags", false, -1); ok {
+	if tags, ok := v.StringArray("tags", false, false, -1); ok {
 		in.tags = tags
 	}
-	if ids, ok := v.StringArray("projectIds", false, maxProjectIDs, api.MinLen(1)); ok {
+	if ids, ok := v.StringArray("projectIds", false, false, maxProjectIDs, api.MinLen(1)); ok {
 		in.projectIDs = ids
 	}
 	in.coverImage, _ = v.NullableString("coverImage")
-	in.seo, _ = readSeoInput(v)
+	in.seo, _ = store.ReadSeoInput(v)
 	if err := v.Err(); err != nil {
 		return nil, err
 	}
@@ -147,14 +133,14 @@ func (h handlers) update(ctx context.Context, r *api.Request) (*api.Response, er
 	in := updateInput{
 		version:      int(version),
 		title:        strPtr(v, "title", api.MinLen(1)),
-		slug:         strPtr(v, "slug", api.MinLen(1), api.MaxLen(maxSlugLength)),
+		slug:         strPtr(v, "slug", api.MinLen(1), api.MaxLen(store.MaxSlugLength)),
 		excerpt:      strPtr(v, "excerpt"),
 		bodyMarkdown: strPtr(v, "bodyMarkdown"),
 	}
-	in.tags, _ = v.StringArray("tags", false, -1)
-	in.projectIDs, _ = v.StringArray("projectIds", false, maxProjectIDs, api.MinLen(1))
+	in.tags, _ = v.StringArray("tags", false, false, -1)
+	in.projectIDs, _ = v.StringArray("projectIds", false, false, maxProjectIDs, api.MinLen(1))
 	in.coverImage, in.setCover = v.NullableString("coverImage")
-	in.seo, in.setSeo = readSeoInput(v)
+	in.seo, in.setSeo = store.ReadSeoInput(v)
 	if err := v.Err(); err != nil {
 		return nil, err
 	}

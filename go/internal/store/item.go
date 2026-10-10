@@ -1,8 +1,10 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"maps"
 	"math"
 	"slices"
 	"strconv"
@@ -211,4 +213,74 @@ func LogCorrupt(log *slog.Logger, metrics *observability.Metrics) func(*api.Data
 		log.Warn("Skipping corrupt stored item", attrs...)
 		metrics.Add("DataIntegrityError", observability.Count, 1)
 	}
+}
+
+// Statuses are PostStatusSchema's values.
+var Statuses = []string{StatusDraft, StatusPublished, StatusDeleted}
+
+// Publishable reads PublishableMetaFieldsSchema; the stored flag is checked
+// but not returned, since reads recompute it.
+func (r *ItemReader) Publishable() Publishable {
+	p := Publishable{
+		Status:      r.Enum("status", Statuses...),
+		PublishedAt: r.OptStr("publishedAt", 0),
+		UpdatedAt:   r.Str("updatedAt", 1),
+		Version:     r.NonNegativeInt("version"),
+	}
+	r.OptBool("hasUnpublishedChanges")
+	return p
+}
+
+// Checked reads an attribute through the request validator read uses for
+// it, so a stored value meets the same schema as a request's.
+func (r *ItemReader) Checked(key string, read func(v *api.Validator) any) any {
+	av, ok := r.item[key]
+	if !ok {
+		r.bad(key, "missing")
+		return nil
+	}
+	body, err := json.Marshal(map[string]any{key: data.ToJSON(av)})
+	if err != nil {
+		r.bad(key, err.Error())
+		return nil
+	}
+	v, err := api.NewValidator(body)
+	if err != nil {
+		r.bad(key, err.Error())
+		return nil
+	}
+	out := read(v)
+	if err := v.Err(); err != nil {
+		var bad *api.BadRequestError
+		if errors.As(err, &bad) {
+			for _, field := range slices.Sorted(maps.Keys(bad.Fields)) {
+				r.bad(field, bad.Fields[field])
+			}
+		} else {
+			r.bad(key, err.Error())
+		}
+		return nil
+	}
+	return out
+}
+
+// NullStr is a required z.string().nullable(): nil for null.
+func (r *ItemReader) NullStr(key string, minLen int) *string {
+	if v, ok := r.item[key]; ok && isNullAttr(v) {
+		return nil
+	}
+	s, ok := r.str(key, true, minLen)
+	if !ok {
+		return nil
+	}
+	return &s
+}
+
+// NullEnum is a required enum's nullable(): nil for null.
+func (r *ItemReader) NullEnum(key string, values ...string) *string {
+	if v, ok := r.item[key]; ok && isNullAttr(v) {
+		return nil
+	}
+	s := r.Enum(key, values...)
+	return &s
 }

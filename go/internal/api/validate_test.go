@@ -69,3 +69,39 @@ func TestTrimJS(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestNestedObjectsAndRefinements(t *testing.T) {
+	check := func(v *Validator) {
+		v.ObjectArray("rows", true, 2, func(rv *Validator) {
+			start, _ := rv.String("start", true, false)
+			end, _ := rv.NullableEnum("end", "a", "b")
+			if rv.Clean() && end != nil && *end < start {
+				rv.Fail("end", CodeCustom)
+			}
+		})
+		if sv := v.Struct("meta", false); sv != nil {
+			sv.Int("year", true, MinInt(1900))
+		}
+	}
+	cases := []struct {
+		body string
+		want map[string]string
+	}{
+		{`{"rows":[]}`, map[string]string{}},
+		{`{}`, map[string]string{"rows": CodeInvalidType}},
+		{`{"rows":[1,{"start":"b","end":"a"},{"start":"a","end":null}]}`, map[string]string{
+			"rows": CodeTooBig, "rows.0": CodeInvalidType, "rows.1.end": CodeCustom,
+		}},
+		{`{"rows":[{"end":"c"}],"meta":null}`, map[string]string{
+			"rows.0.start": CodeInvalidType, "rows.0.end": CodeInvalidValue, "meta": CodeInvalidType,
+		}},
+		{`{"rows":[{"start":"b","end":"a","x":1}],"meta":{"year":1899}}`, map[string]string{
+			"rows.0.end": CodeCustom, "meta.year": CodeTooSmall,
+		}},
+	}
+	for _, c := range cases {
+		if got := fieldCodes(t, c.body, check); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: %v, want %v", c.body, got, c.want)
+		}
+	}
+}

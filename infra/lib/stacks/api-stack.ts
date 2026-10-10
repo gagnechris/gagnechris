@@ -53,6 +53,11 @@ import { GoLambda } from '../constructs/go-lambda.js';
 import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
 
 /** Admin routes the Go API serves, each behind the admin authorizer. */
+const publishVerbs = (base: string) =>
+  (['publish', 'unpublish', 'discard'] as const).map(
+    (verb) => [`${base}/${verb}`, [HttpMethod.POST]] as const,
+  );
+
 export const GO_ADMIN_ROUTES: ReadonlyArray<
   readonly [path: string, methods: readonly HttpMethod[]]
 > = [
@@ -61,9 +66,17 @@ export const GO_ADMIN_ROUTES: ReadonlyArray<
     '/api/admin/posts/{id}',
     [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
   ],
-  ['/api/admin/posts/{id}/publish', [HttpMethod.POST]],
-  ['/api/admin/posts/{id}/unpublish', [HttpMethod.POST]],
-  ['/api/admin/posts/{id}/discard', [HttpMethod.POST]],
+  ...publishVerbs('/api/admin/posts/{id}'),
+  ['/api/admin/projects', [HttpMethod.GET, HttpMethod.POST]],
+  [
+    '/api/admin/projects/{id}',
+    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
+  ],
+  ...publishVerbs('/api/admin/projects/{id}'),
+  ['/api/admin/home', [HttpMethod.GET, HttpMethod.PUT]],
+  ...publishVerbs('/api/admin/home'),
+  ['/api/admin/resume', [HttpMethod.GET, HttpMethod.PUT]],
+  ...publishVerbs('/api/admin/resume'),
   ['/api/admin/media/upload-url', [HttpMethod.POST]],
   ['/api/admin/media/objects/{key+}', [HttpMethod.PUT]],
 ];
@@ -168,7 +181,7 @@ export class ApiStack extends Stack {
     this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
       description:
-        'gagnechris HTTP API routes served by Go (health, contact, posts, media)',
+        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media)',
       cmd: 'api',
       memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
