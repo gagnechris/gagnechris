@@ -72,6 +72,24 @@ const type = (renderer: ReactTestRenderer, text: string) => {
   );
 };
 
+/** The same keystroke with the caret reported first, as iOS also does. */
+const typeCaretFirst = (renderer: ReactTestRenderer, text: string) => {
+  act(() =>
+    bodies(renderer)
+      .at(-1)!
+      .props.onSelectionChange({
+        nativeEvent: { selection: { start: text.length, end: text.length } },
+      }),
+  );
+  act(() => bodies(renderer).at(-1)!.props.onChangeText(text));
+};
+
+/** Task lines convert once typing pauses. */
+const pause = async () => {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+  await settle(10);
+};
+
 const press = async (renderer: ReactTestRenderer, label: string) => {
   await act(async () => byLabel(renderer, label).props.onPress());
 };
@@ -84,7 +102,8 @@ describe('note editor', () => {
     type(renderer, '[ ] Call Sam @mon !high');
     expect(server.state.taskStore.size).toBe(0);
     type(renderer, '[ ] Call Sam @mon !high\n');
-    await settle(10);
+    expect(server.state.taskStore.size).toBe(0);
+    await pause();
 
     const tasks = [...server.state.taskStore.values()];
     expect(tasks).toHaveLength(1);
@@ -112,28 +131,31 @@ describe('note editor', () => {
     );
   });
 
-  it('converts task lines typed faster than the text view takes the converted text', async () => {
+  it('converts every task line typed in one burst, once typing pauses', async () => {
     serve([makeNote(NOTE, '')]);
     const renderer = await renderNote();
 
-    type(renderer, '[ ] One');
-    type(renderer, '[ ] One\n');
-    // iOS drops the converted text while keystrokes are in flight, so the
-    // next ones still carry the line that became a task.
-    type(renderer, '[ ] One\n[ ] Two');
-    type(renderer, '[ ] One\n[ ] Two\n');
-    type(renderer, '[ ] One\n[ ] Two\n[ ] Three');
-    type(renderer, '[ ] One\n[ ] Two\n[ ] Three\n');
+    let text = '';
+    for (const char of '[ ] One\n[ ] Two\n[ ] Three\nDone') {
+      text += char;
+      typeCaretFirst(renderer, text);
+    }
     await settle(10);
+    expect(server.state.taskStore.size).toBe(0);
 
+    await pause();
     const titles = [...server.state.taskStore.values()].map((t) => t.title);
     expect(titles).toEqual(['One', 'Two', 'Three']);
-    expect(bodies(renderer).at(-1)!.props.value).toBe('');
+    expect(bodies(renderer).at(-1)!.props.value).toBe('Done');
+
+    // A keystroke iOS sent before it took the converted text.
+    typeCaretFirst(renderer, `${text}!`);
+    expect(bodies(renderer).at(-1)!.props.value).toBe('Done!');
     const ids = [...server.state.taskStore.keys()];
     await vi.waitFor(
       () =>
         expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(
-          ids.map((id) => `{{task:${id}}}\n`).join(''),
+          `${ids.map((id) => `{{task:${id}}}\n`).join('')}Done!`,
         ),
       { timeout: 3_000 },
     );
@@ -145,6 +167,7 @@ describe('note editor', () => {
 
     type(renderer, '[ ] One');
     type(renderer, '[ ] One\n');
+    await pause();
     type(renderer, '[ ] One');
     await settle(10);
 

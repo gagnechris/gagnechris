@@ -143,3 +143,41 @@ export const rebaseText = (
   }
   return { text: best.text, pending: best.pending };
 };
+
+/**
+ * Converts each `[line, text]` still holding `text`, as `convertTaskLine`
+ * does; null when none converts.
+ */
+export const convertTaskLines = (
+  markdown: string,
+  lines: Iterable<readonly [number, string]>,
+  today: string,
+  newId: () => string,
+): { markdown: string; creates: TaskEmbedCreate[] } | null => {
+  let current = markdown;
+  const creates: TaskEmbedCreate[] = [];
+  for (const [line, text] of lines) {
+    if (current.split('\n')[line] !== text) continue;
+    const result = convertTaskLine(current, line, today, newId);
+    if (!result) continue;
+    current = result.markdown;
+    creates.push(result.create);
+  }
+  return creates.length ? { markdown: current, creates } : null;
+};
+
+/** Lines of `after` that end at a line break typed or pasted into `before`. */
+export const endedLines = (before: string, after: string) => {
+  const limit = Math.min(before.length, after.length);
+  let same = 0;
+  while (same < limit && before[same] === after[same]) same += 1;
+  let end = 0;
+  while (end < limit - same && before.at(-1 - end) === after.at(-1 - end)) {
+    end += 1;
+  }
+  const lines: number[] = [];
+  for (let i = same; i < after.length - end; i += 1) {
+    if (after[i] === '\n') lines.push(after.slice(0, i).split('\n').length - 1);
+  }
+  return lines;
+};

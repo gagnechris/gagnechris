@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   convertTaskLine,
+  convertTaskLines,
+  endedLines,
   joinSegments,
   noteSegments,
   rebaseText,
@@ -101,5 +103,32 @@ describe('note segments', () => {
       text: '[ ] One\nx',
       pending: [],
     });
+  });
+
+  it('finds the lines a typed or pasted line break ends', () => {
+    expect(endedLines('[ ] One', '[ ] One\n')).toEqual([0]);
+    expect(endedLines('a\nb', 'a\nb\nc\nd')).toEqual([1, 2]);
+    expect(endedLines('a\nb', 'a\nbc')).toEqual([]);
+    expect(endedLines('ab', 'a\nb')).toEqual([0]);
+  });
+
+  it('converts the task lines that still read as queued', () => {
+    let n = 0;
+    const newId = () => `ID${(n += 1)}`;
+    const result = convertTaskLines(
+      '[ ] One\n[ ] Two\n[ ] Three',
+      [
+        [0, '[ ] One'],
+        [1, '[ ] Tw'],
+        [2, '[ ] Three'],
+      ],
+      '2026-10-02',
+      newId,
+    );
+    expect(result?.markdown).toBe('{{task:ID1}}\n[ ] Two\n{{task:ID2}}');
+    expect(result?.creates.map((c) => c.draft.title)).toEqual(['One', 'Three']);
+    expect(convertTaskLines('text', [[0, 'text']], '2026-10-02', newId)).toBe(
+      null,
+    );
   });
 });
