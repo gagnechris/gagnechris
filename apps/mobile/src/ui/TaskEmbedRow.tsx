@@ -6,6 +6,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from './Icon';
 
+const TITLE_LINE = 24;
+
 const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   high: 'High',
   med: null,
@@ -164,10 +166,14 @@ const styles = StyleSheet.create({
     alignContent: 'center',
     gap: tokens.space[2],
     minHeight: MIN_TARGET,
+    // The same space above and below every row, so a row whose pills wrap is
+    // spaced like a one-line row instead of touching the next one.
+    paddingVertical: (MIN_TARGET - TITLE_LINE) / 2,
   },
   title: {
     ...font.regular,
     fontSize: tokens.text.body,
+    lineHeight: TITLE_LINE,
     color: color.ink,
     flexShrink: 1,
   },

@@ -243,19 +243,35 @@ describe('note editor', () => {
       [makeTask(TASK, 'Ship it'), makeTask(SECOND, 'Tell Sam')],
     );
     const renderer = await renderNote();
-    const heights = () =>
+    const styles = () =>
       bodies(renderer).map(
         (input) =>
-          Object.assign({}, ...[input.props.style].flat(2)).height as unknown,
+          Object.assign({}, ...[input.props.style].flat(2)) as {
+            height?: number;
+            marginTop?: number;
+            marginBottom?: number;
+            zIndex?: number;
+          },
       );
-    expect(heights()).toEqual([8, 8, undefined]);
+    // Laid out, each strip takes 4 pt; it reaches 8 pt into the rows around
+    // it (not above the first row) and sits on top of them for taps.
+    const footprint = (s: ReturnType<typeof styles>[number]) =>
+      (s.height ?? 0) + (s.marginTop ?? 0) + (s.marginBottom ?? 0);
+    expect(styles().map((s) => s.height)).toEqual([12, 20, undefined]);
+    expect(styles().slice(0, 2).map(footprint)).toEqual([4, 4]);
+    expect(styles()[0]!.marginTop).toBeUndefined();
+    expect(
+      styles()
+        .slice(0, 2)
+        .map((s) => s.zIndex),
+    ).toEqual([1, 1]);
 
     act(() =>
       bodies(renderer)[1]!.props.onSelectionChange({
         nativeEvent: { selection: { start: 0, end: 0 } },
       }),
     );
-    expect(heights()).toEqual([8, undefined, undefined]);
+    expect(styles().map((s) => s.height)).toEqual([12, undefined, undefined]);
   });
 
   it('completes an embedded task everywhere, with a haptic', async () => {
