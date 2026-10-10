@@ -93,7 +93,7 @@ test.describe('the resume page', () => {
       expect(html).toContain(role.company);
       for (const bullet of role.bullets) {
         expect(html).toContain(
-          bullet.replace(/&/g, '&amp;').replace(/'/g, '&#39;'),
+          bullet.replace(/&/g, '&amp;').replace(/'/g, '&#x27;'),
         );
       }
     }
