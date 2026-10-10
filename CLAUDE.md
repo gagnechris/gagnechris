@@ -9,14 +9,13 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `apps/web` — React/Vite: public site (`gagnechris.com`), admin (`admin.`) and Notebook (`notebook.`) apps; three Vite targets via `WEB_APP`
 - `services/api` — Lambda HTTP API
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
-- `services/restore-test` — AWS Backup restore-test validator + leftover restore-table check
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
 - `packages/data` — DynamoDB keys, item schemas, DocumentClient, and Dynamo write helpers for API + publisher
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free admin hooks (autosave, versioned entity editor, TanStack Query resource factory)
 - `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
-- `go` — Go module for Go Lambdas: `cmd/<name>` per function, shared code under `internal/`; `go/tools` pins golangci-lint
+- `go` — Go module for Go Lambdas: `cmd/<name>` per function (`restore-test`: AWS Backup restore-test validator + leftover restore-table check), shared code under `internal/`; `internal/contract/contract.json` is generated from the TypeScript packages; `go/tools` pins golangci-lint
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
@@ -27,6 +26,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 
 - Build: `npm run build` (`tsc -b`, then the public, admin and Notebook Vite builds → `apps/web/dist`, `dist-admin`, `dist-notebook`; the public build fails if it bundles admin, Notebook or auth code)
 - Web shell guard: `npm run check:web-shells` (after build: GA in the public shell exactly when `GA_MEASUREMENT_ID` is set, never in the app shells, no inline script in any shell, no public entry asset beyond `PUBLIC_ENTRY_ASSETS`, demo code only in lazy chunks, no third-party script in the app shells)
+- Go contract drift: `npm run go:generate:check` (regenerates `go/internal/contract/contract.json` from `packages/shared` and `packages/data`: item JSON Schemas, key formats, restore-test constants, sample rows; fails on diff). `npm run go:fmt` formats Go
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
 - Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier); `npm run go:lint` (golangci-lint on `go/`, version pinned in `go/tools/go.mod`)
 - Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)

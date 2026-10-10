@@ -14,7 +14,6 @@ const workspaces = [
   'packages/public-ui',
   'services/api',
   'services/publisher',
-  'services/restore-test',
   'infra',
   'e2e',
 ];

@@ -28,7 +28,6 @@
   "devDependencies": {
     "@gagnechris/infra": "*",
     "@gagnechris/publisher": "*",
-    "@gagnechris/restore-test": "*",
     "@types/aws-lambda": "^8.10.164",
     "@types/node": "^22.20.5",
     "tsx": "^4.23.15",

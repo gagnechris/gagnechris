@@ -50,7 +50,10 @@
     "check:case-collisions": "node scripts/check-case-collisions.mjs",
     "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts",
     "go:lint": "go -C go tool -modfile=tools/go.mod golangci-lint run ./...",
-    "go:test": "go -C go test ./..."
+    "go:test": "go -C go test ./...",
+    "go:fmt": "go -C go tool -modfile=tools/go.mod golangci-lint fmt ./...",
+    "go:generate": "tsx scripts/generate-go-contract.ts",
+    "go:generate:check": "npm run go:generate && git diff --exit-code -- go/internal/contract/contract.json"
   },
   "engines": {
     "node": "^22.12.0"

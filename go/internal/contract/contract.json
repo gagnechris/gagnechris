@@ -1,0 +1,1978 @@
+{
+  "restoreTest": {
+    "serviceName": "gagnechris-restore-test",
+    "metricsNamespace": "gagnechris",
+    "metrics": {
+      "validationSucceeded": "RestoreValidationSucceeded",
+      "validationFailed": "RestoreValidationFailed",
+      "leftoverTables": "LeftoverRestoreTables",
+      "staleRecoveryPoint": "StaleRecoveryPoint",
+      "validationMissing": "RestoreValidationMissing",
+      "advancedBackupDisabled": "AdvancedDynamoDbBackupDisabled",
+      "backupCheckCompleted": "BackupCheckCompleted"
+    },
+    "tablePrefix": "awsbackup-restore-test-",
+    "schemaCheckedEntityTypes": [
+      "post",
+      "project",
+      "home",
+      "removedUser",
+      "resume",
+      "contact",
+      "note",
+      "task",
+      "dailyNoteClaim",
+      "dailyTemplate"
+    ],
+    "countFloorEntityTypes": [
+      "post",
+      "project",
+      "home",
+      "resume",
+      "contact",
+      "removedUser",
+      "note",
+      "task",
+      "dailyTemplate"
+    ],
+    "sourceCountAttributes": [
+      "pk",
+      "sk",
+      "entityType",
+      "createdAt",
+      "updatedAt"
+    ]
+  },
+  "keys": {
+    "SK_META": "META",
+    "SK_PUBLISHED": "PUBLISHED",
+    "postPk({postId})": "POST#{postId}",
+    "projectPk({projectId})": "PROJECT#{projectId}",
+    "homePk()": "HOME#current",
+    "resumePk()": "RESUME#current",
+    "contactPk({contactId})": "CONTACT#{contactId}",
+    "contactMsgSk()": "MSG",
+    "removedUsersPk()": "REMOVED_USERS",
+    "removedUserSk({userId})": "USER#{userId}",
+    "notePk({userId},{noteId})": "USER#{userId}#NOTE#{noteId}",
+    "noteMetaSk()": "META",
+    "taskPk({userId},{taskId})": "USER#{userId}#TASK#{taskId}",
+    "taskMetaSk()": "META",
+    "dailyNoteClaimPk({userId},{area},{date})": "USER#{userId}#DAILY#{area}#{date}",
+    "dailyNoteClaimSk()": "NOTE",
+    "dailyTemplatePk({userId},{area})": "USER#{userId}#DAILY_TEMPLATE#{area}",
+    "dailyTemplateSk()": "META"
+  },
+  "itemSchemas": {
+    "post": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "deleted"
+          ]
+        },
+        "publishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hasUnpublishedChanges": {
+          "type": "boolean"
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "post"
+        },
+        "postId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "bodyMarkdown": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "projectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverImage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seo": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ogImage": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gsi1pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi1sk": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "status",
+        "updatedAt",
+        "version",
+        "pk",
+        "sk",
+        "entityType",
+        "postId",
+        "slug",
+        "title",
+        "excerpt",
+        "bodyMarkdown",
+        "tags"
+      ]
+    },
+    "project": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "deleted"
+          ]
+        },
+        "publishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hasUnpublishedChanges": {
+          "type": "boolean"
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "project"
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pitch": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "idea",
+            "building",
+            "live"
+          ]
+        },
+        "stageNote": {
+          "type": "string"
+        },
+        "previewImage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bodyMarkdown": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "url"
+            ]
+          }
+        },
+        "demo": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "posts",
+                "notebook"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "href": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gsi1pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi1sk": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "status",
+        "updatedAt",
+        "version",
+        "pk",
+        "sk",
+        "entityType",
+        "projectId",
+        "slug",
+        "name",
+        "pitch",
+        "stage",
+        "stageNote",
+        "previewImage",
+        "bodyMarkdown",
+        "stack",
+        "links",
+        "demo",
+        "order",
+        "href"
+      ]
+    },
+    "home": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "deleted"
+          ]
+        },
+        "publishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hasUnpublishedChanges": {
+          "type": "boolean"
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "home"
+        },
+        "homeId": {
+          "default": "current",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "about": {
+          "type": "string"
+        },
+        "seo": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ogImage": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "updatedAt",
+        "version",
+        "pk",
+        "sk",
+        "entityType",
+        "name",
+        "title",
+        "about"
+      ]
+    },
+    "removedUser": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "removedUser"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": "string"
+        },
+        "previousLevel": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "full",
+                "cms",
+                "notebook"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "removedBy": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "userId",
+        "email",
+        "previousLevel",
+        "createdAt",
+        "removedBy"
+      ]
+    },
+    "resume": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "deleted"
+          ]
+        },
+        "publishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hasUnpublishedChanges": {
+          "type": "boolean"
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "resume"
+        },
+        "resumeId": {
+          "default": "current",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pdfPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "headline": {
+              "description": "Current role",
+              "type": "string"
+            },
+            "earlierRolesThrough": {
+              "description": "Roles that ended in or before this year are \"earlier roles\"",
+              "type": "integer",
+              "minimum": 1900,
+              "maximum": 2100
+            },
+            "summary": {
+              "type": "string"
+            },
+            "competencies": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "experience": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "company": {
+                    "type": "string"
+                  },
+                  "bullets": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "start": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                    "description": "YYYY-MM"
+                  },
+                  "end": {
+                    "description": "YYYY-MM; null means present",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                        "description": "YYYY-MM"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "company",
+                  "bullets"
+                ]
+              }
+            },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "education": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "institution": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "year": {
+                    "type": "string"
+                  },
+                  "degreeDetail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "institution",
+                  "location",
+                  "year"
+                ]
+              }
+            }
+          },
+          "required": [
+            "summary",
+            "competencies",
+            "experience",
+            "skills",
+            "education"
+          ]
+        },
+        "seo": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "ogImage": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "updatedAt",
+        "version",
+        "pk",
+        "sk",
+        "entityType",
+        "name",
+        "pdfPath",
+        "content"
+      ]
+    },
+    "contact": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "contact"
+        },
+        "contactId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sourceIp": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "emailStatus": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "sent",
+            "failed"
+          ]
+        },
+        "emailError": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "contactId",
+        "name",
+        "email",
+        "message",
+        "sourceIp",
+        "createdAt",
+        "emailStatus"
+      ]
+    },
+    "note": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "createHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "syncPk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "syncSk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ttl": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "gsi1pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi1sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi2pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi2sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "note"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "area": {
+          "type": "string",
+          "enum": [
+            "work",
+            "personal"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "daily",
+            "page"
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "bodyMarkdown": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "taskIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deleted",
+        "pk",
+        "sk",
+        "entityType",
+        "id",
+        "userId",
+        "area",
+        "type",
+        "date",
+        "title",
+        "bodyMarkdown",
+        "tags",
+        "pinned"
+      ]
+    },
+    "task": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "createHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "syncPk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "syncSk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ttl": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "gsi1pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi1sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi2pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gsi2sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "task"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "area": {
+          "type": "string",
+          "enum": [
+            "work",
+            "personal"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "med",
+            "high"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "todo",
+            "in_progress",
+            "done",
+            "dropped"
+          ]
+        },
+        "dueDate": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startDate": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "someday": {
+          "type": "boolean"
+        },
+        "completedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "noteId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deleted",
+        "pk",
+        "sk",
+        "entityType",
+        "id",
+        "userId",
+        "area",
+        "title",
+        "description",
+        "priority",
+        "status",
+        "dueDate",
+        "completedAt",
+        "noteId",
+        "tags"
+      ]
+    },
+    "dailyNoteClaim": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "dailyNoteClaim"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "area": {
+          "type": "string",
+          "enum": [
+            "work",
+            "personal"
+          ]
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "noteId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "userId",
+        "area",
+        "date",
+        "noteId"
+      ]
+    },
+    "dailyTemplate": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "dailyTemplate"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "area": {
+          "type": "string",
+          "enum": [
+            "work",
+            "personal"
+          ]
+        },
+        "isDefault": {
+          "type": "boolean"
+        },
+        "bodyMarkdown": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "userId",
+        "area",
+        "isDefault",
+        "bodyMarkdown",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "samples": {
+    "home": {
+      "pk": "HOME#current",
+      "sk": "META",
+      "entityType": "home",
+      "homeId": "current",
+      "name": "Chris Gagne",
+      "title": "Engineering Leader",
+      "about": "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.",
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1
+    },
+    "resume": {
+      "pk": "RESUME#current",
+      "sk": "META",
+      "entityType": "resume",
+      "resumeId": "current",
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "content": {
+        "headline": "Director of Software Engineering",
+        "earlierRolesThrough": 2012,
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro",
+            "start": "2019-07",
+            "end": null,
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player",
+            "start": "2017-03",
+            "end": "2019-07",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock",
+            "start": "2014-09",
+            "end": "2017-03",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom",
+            "start": "2014-09",
+            "end": "2015-04",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images",
+            "start": "2012-06",
+            "end": "2014-09",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack",
+            "start": "2010-08",
+            "end": "2012-06",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack",
+            "start": "2004-12",
+            "end": "2010-08",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation",
+            "start": "2000-07",
+            "end": "2004-12",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation",
+            "start": "1999-01",
+            "end": "2000-04",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      },
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1
+    },
+    "resumePublished": {
+      "pk": "RESUME#current",
+      "sk": "PUBLISHED",
+      "entityType": "resume",
+      "resumeId": "current",
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "content": {
+        "headline": "Director of Software Engineering",
+        "earlierRolesThrough": 2012,
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro",
+            "start": "2019-07",
+            "end": null,
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player",
+            "start": "2017-03",
+            "end": "2019-07",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock",
+            "start": "2014-09",
+            "end": "2017-03",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom",
+            "start": "2014-09",
+            "end": "2015-04",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images",
+            "start": "2012-06",
+            "end": "2014-09",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack",
+            "start": "2010-08",
+            "end": "2012-06",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack",
+            "start": "2004-12",
+            "end": "2010-08",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation",
+            "start": "2000-07",
+            "end": "2004-12",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation",
+            "start": "1999-01",
+            "end": "2000-04",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      },
+      "status": "published",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1
+    },
+    "resumeLegacy": {
+      "pk": "RESUME#current",
+      "sk": "META",
+      "entityType": "resume",
+      "resumeId": "current",
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "content": {
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro | July 2019 - Present",
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player | March 2017 - July 2019",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock | September 2014 - March 2017",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom | September 2014 - April 2015",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images | June 2012 - September 2014",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack | August 2010 - June 2012",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack | December 2004 - August 2010",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation | July 2000 - December 2004",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation | January 1999 - April 2000",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      },
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1
+    },
+    "resumeLegacyPublished": {
+      "pk": "RESUME#current",
+      "sk": "PUBLISHED",
+      "entityType": "resume",
+      "resumeId": "current",
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "content": {
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro | July 2019 - Present",
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player | March 2017 - July 2019",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock | September 2014 - March 2017",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom | September 2014 - April 2015",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images | June 2012 - September 2014",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack | August 2010 - June 2012",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack | December 2004 - August 2010",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation | July 2000 - December 2004",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation | January 1999 - April 2000",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      },
+      "status": "published",
+      "publishedAt": null,
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "seo": null,
+      "version": 1
+    },
+    "noteDaily": {
+      "pk": "USER#user-sub-1#NOTE#01NOTE",
+      "sk": "META",
+      "entityType": "note",
+      "id": "01NOTE",
+      "userId": "user-sub-1",
+      "area": "work",
+      "type": "daily",
+      "date": "2026-10-01",
+      "title": "Daily",
+      "bodyMarkdown": "private text",
+      "tags": [],
+      "pinned": false,
+      "taskIds": [],
+      "version": 3,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false,
+      "gsi1pk": "USER#user-sub-1#AREA#work",
+      "gsi1sk": "DATE#2026-10-01#NOTE#01NOTE"
+    },
+    "notePage": {
+      "pk": "USER#user-sub-1#NOTE#01PAGE",
+      "sk": "META",
+      "entityType": "note",
+      "id": "01PAGE",
+      "userId": "user-sub-1",
+      "area": "work",
+      "type": "page",
+      "date": null,
+      "title": "Page",
+      "bodyMarkdown": "private text",
+      "tags": [],
+      "pinned": false,
+      "taskIds": [],
+      "version": 3,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false,
+      "gsi1pk": "USER#user-sub-1#AREA#work",
+      "gsi1sk": "PAGE#2026-10-01T12:00:00.000Z#NOTE#01PAGE"
+    },
+    "task": {
+      "pk": "USER#user-sub-1#TASK#01TASK",
+      "sk": "META",
+      "entityType": "task",
+      "id": "01TASK",
+      "userId": "user-sub-1",
+      "area": "work",
+      "title": "Do it",
+      "description": "",
+      "priority": "med",
+      "status": "todo",
+      "dueDate": null,
+      "startDate": null,
+      "someday": false,
+      "completedAt": null,
+      "noteId": "01NOTE",
+      "tags": [],
+      "version": 1,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "deleted": false,
+      "gsi1pk": "USER#user-sub-1#AREA#work#STATUS#todo",
+      "gsi1sk": "UPDATED#2026-10-01T12:00:00.000Z#TASK#01TASK",
+      "gsi2pk": "USER#user-sub-1#NOTE#01NOTE#TASKS",
+      "gsi2sk": "TASK#01TASK"
+    },
+    "dailyNoteClaim": {
+      "pk": "USER#user-sub-1#DAILY#work#2026-10-01",
+      "sk": "NOTE",
+      "entityType": "dailyNoteClaim",
+      "userId": "user-sub-1",
+      "area": "work",
+      "date": "2026-10-01",
+      "noteId": "01NOTE"
+    },
+    "dailyTemplate": {
+      "pk": "USER#user-sub-1#DAILY_TEMPLATE#work",
+      "sk": "META",
+      "entityType": "dailyTemplate",
+      "userId": "user-sub-1",
+      "area": "work",
+      "isDefault": false,
+      "bodyMarkdown": "## Today",
+      "version": 2,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    "project": {
+      "pk": "PROJECT#01PROJECT",
+      "sk": "META",
+      "entityType": "project",
+      "projectId": "01PROJECT",
+      "slug": "notebook",
+      "name": "Notebook",
+      "pitch": "",
+      "stage": "building",
+      "stageNote": "",
+      "previewImage": null,
+      "bodyMarkdown": "",
+      "stack": [],
+      "links": [],
+      "demo": null,
+      "order": 0,
+      "href": null,
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "version": 2,
+      "hasUnpublishedChanges": false,
+      "gsi1pk": "PROJECT_STATUS#published",
+      "gsi1sk": "ORDER#000000#PROJECT#01PROJECT"
+    },
+    "projectPublished": {
+      "pk": "PROJECT#01PROJECT",
+      "sk": "PUBLISHED",
+      "entityType": "project",
+      "projectId": "01PROJECT",
+      "slug": "notebook",
+      "name": "Notebook",
+      "pitch": "",
+      "stage": "building",
+      "stageNote": "",
+      "previewImage": null,
+      "bodyMarkdown": "",
+      "stack": [],
+      "links": [],
+      "demo": null,
+      "order": 0,
+      "href": null,
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "version": 2
+    },
+    "postTagged": {
+      "pk": "POST#01POST",
+      "sk": "PUBLISHED",
+      "entityType": "post",
+      "postId": "01POST",
+      "slug": "hello",
+      "title": "Hello",
+      "excerpt": "",
+      "bodyMarkdown": "",
+      "tags": [],
+      "projectIds": [
+        "01PROJECT"
+      ],
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "coverImage": null,
+      "seo": null,
+      "version": 1
+    },
+    "postUntagged": {
+      "pk": "POST#01POST",
+      "sk": "PUBLISHED",
+      "entityType": "post",
+      "postId": "01POST",
+      "slug": "hello",
+      "title": "Hello",
+      "excerpt": "",
+      "bodyMarkdown": "",
+      "tags": [],
+      "status": "published",
+      "publishedAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z",
+      "coverImage": null,
+      "seo": null,
+      "version": 1
+    },
+    "contact": {
+      "pk": "CONTACT#01CONTACT",
+      "sk": "MSG",
+      "entityType": "contact",
+      "contactId": "01CONTACT",
+      "name": "Ada",
+      "email": "ada@example.com",
+      "message": "Hello",
+      "sourceIp": "203.0.113.1",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "emailStatus": "sent"
+    },
+    "removedUser": {
+      "pk": "REMOVED_USERS",
+      "sk": "USER#user-sub-2",
+      "entityType": "removedUser",
+      "userId": "user-sub-2",
+      "email": "old@example.com",
+      "previousLevel": null,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "removedBy": "user-sub-1"
+    }
+  }
+}
