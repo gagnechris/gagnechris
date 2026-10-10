@@ -1,13 +1,13 @@
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
-import {
-  projectPageView,
-  renderProjectPageBodyHtml,
-} from '@gagnechris/shared/render';
+import { projectPageView } from '@gagnechris/shared/render';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import type { Project } from '@gagnechris/shared';
-import ProjectPageBody from './ProjectPageBody';
+import type { Project, ProjectPageView } from '@gagnechris/shared';
+import { ProjectPageBody, PublicLinkContext } from '@gagnechris/public-ui';
+import { renderProjectPageBodyHtml } from '@gagnechris/public-ui/server';
+import SiteLink from '../components/SiteLink';
+import ProjectDemoSlot from './ProjectDemoSlot';
 import { projectPageViewFromDocument } from './publishedProject';
 
 const normalize = (html: string): string => {
@@ -64,9 +64,20 @@ const PAGES: Record<string, [Project, typeof LOG]> = {
   ],
 };
 
-describe('ProjectPageBody', () => {
+const InApp = ({ project }: { project: ProjectPageView }) => (
+  <MemoryRouter>
+    <PublicLinkContext.Provider value={SiteLink}>
+      <ProjectPageBody
+        project={project}
+        demoSlot={<ProjectDemoSlot project={project} />}
+      />
+    </PublicLinkContext.Provider>
+  </MemoryRouter>
+);
+
+describe('projectPageViewFromDocument', () => {
   test.each(Object.entries(PAGES))(
-    'renders the prerender markup for %s',
+    'reads back %s, which the app renders as published',
     (_name, [project, log]) => {
       const view = projectPageView(project, log);
       const prerender = renderProjectPageBodyHtml(view);
@@ -81,22 +92,14 @@ describe('ProjectPageBody', () => {
         })),
       });
 
-      const { container } = render(
-        <MemoryRouter>
-          <ProjectPageBody project={parsed} />
-        </MemoryRouter>,
-      );
+      const { container } = render(<InApp project={parsed} />);
       expect(container.innerHTML).toBe(normalize(prerender));
     },
   );
 
   test('no demo slot without a demo', () => {
     const { container } = render(
-      <MemoryRouter>
-        <ProjectPageBody
-          project={projectPageView({ ...notebook, demo: null })}
-        />
-      </MemoryRouter>,
+      <InApp project={projectPageView({ ...notebook, demo: null })} />,
     );
     expect(container.querySelector('.project-demo')).toBeNull();
     expect(container.textContent).not.toContain('Try it');

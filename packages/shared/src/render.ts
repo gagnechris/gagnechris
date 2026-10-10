@@ -69,6 +69,5 @@ export type {
 export {
   PROJECTS_INDEX_TITLE,
   projectPageView,
-  renderProjectPageBodyHtml,
   type ProjectsIndexItem,
 } from './project-html.js';

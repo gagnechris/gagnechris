@@ -11,7 +11,6 @@ import {
 } from '@gagnechris/shared';
 import {
   renderHomeAboutHtml,
-  renderProjectPageBodyHtml,
   renderResumeBodyHtml,
   renderResumeUnavailableBodyHtml,
   type Home,
@@ -25,6 +24,7 @@ import { ContactPageBody } from './pages/ContactPageBody.js';
 import { HomeBody } from './home/HomeBody.js';
 import { NotFoundBody } from './pages/NotFoundBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
+import { ProjectPageBody } from './projects/ProjectPageBody.js';
 import { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
 
 const thisYear = () => new Date().getFullYear();
@@ -110,6 +110,9 @@ export const renderProjectsIndexPrerenderHtml = (
     renderProjectsIndexBodyHtml(projects),
     year,
   );
+
+export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
+  renderToString(<ProjectPageBody project={view} />);
 
 export const renderProjectPagePrerenderHtml = (
   view: ProjectPageView,

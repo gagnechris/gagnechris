@@ -6,11 +6,11 @@ import {
   DEFAULT_RESUME,
   projectPageView,
   renderPostPageBodyHtml,
-  renderProjectPageBodyHtml,
   renderResumeBodyHtml,
 } from '@gagnechris/shared/render';
 import {
   renderHomeBodyHtml,
+  renderProjectPageBodyHtml,
   renderProjectsIndexBodyHtml,
 } from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';

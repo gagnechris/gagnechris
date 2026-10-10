@@ -330,6 +330,15 @@ describe('cold load: first React render matches the prerender', () => {
   test.each([
     ['with a demo slot and a Build log', PRERENDERS['/projects/posts']!],
     [
+      'with a preview image in the demo slot',
+      renderProjectPagePrerenderHtml(
+        projectPageView({
+          ...SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!,
+          previewImage: '/media/posts.png',
+        }),
+      ),
+    ],
+    [
       'with no demo and no posts',
       renderProjectPagePrerenderHtml(
         projectPageView({
@@ -339,11 +348,19 @@ describe('cold load: first React render matches the prerender', () => {
       ),
     ],
   ])(
-    '/projects/posts %s mounts the same DOM as the prerender',
+    '/projects/posts %s hydrates the published markup in place',
     async (_, html) => {
-      const loaded = await coldLoad('/projects/posts', html);
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        '/projects/posts',
+        `<!--prerender:start-->${html}<!--prerender:end-->`,
+        '',
+        onRecoverableError,
+      );
       unmount = loaded.unmount;
 
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
       expect(loaded.root.querySelector('.project-build-log')).not.toBeNull();
       expect(fetch).not.toHaveBeenCalled();

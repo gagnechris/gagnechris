@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
 import { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
-import { projectPageView, renderProjectPageBodyHtml } from './project-html.js';
 import { DEFAULT_RESUME } from './resume-default.js';
 import {
   renderResumeBodyHtml,
@@ -18,10 +16,6 @@ const post = {
 
 const BODIES: [string, string][] = [
   ['post', renderPostPageBodyHtml(post)],
-  [
-    'project',
-    renderProjectPageBodyHtml(projectPageView(SAMPLE_PROJECTS[0]!, [])),
-  ],
   ['resume', renderResumeBodyHtml(DEFAULT_RESUME)],
   ['resume unavailable', renderResumeUnavailableBodyHtml()],
 ];
