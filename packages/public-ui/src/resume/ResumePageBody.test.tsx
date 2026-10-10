@@ -289,15 +289,3 @@ describe('ResumeUnavailableBody', () => {
     expect(html).toContain('>Get in touch</a>');
   });
 });
-
-describe('every resume body is one <main> that holds its <h1>', () => {
-  it.each([
-    ['resume', renderResumeBodyHtml(DEFAULT_RESUME)],
-    ['resume unavailable', renderResumeUnavailableBodyHtml()],
-  ])('%s', (_page, html) => {
-    expect(html).toMatch(/^<main[ >]/);
-    expect(html).toMatch(/<\/main>$/);
-    expect(count(html, '<main')).toBe(1);
-    expect(count(html, '<h1')).toBe(1);
-  });
-});

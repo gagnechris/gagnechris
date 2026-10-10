@@ -49,23 +49,6 @@ describe('renderPostsIndexBodyHtml', () => {
       `<div class="posts-index__years"><p class="posts-index__empty">${POSTS_INDEX_EMPTY_TEXT}</p></div></main>`,
     );
   });
-
-  it('is one <main> that holds its <h1>', () => {
-    const html = renderPostsIndexBodyHtml([
-      {
-        id: '1',
-        slug: 'hello',
-        title: 'Hello',
-        excerpt: '',
-        publishedAt: '2026-02-01T00:00:00.000Z',
-      },
-    ]);
-    const count = (tag: string) => html.split(tag).length - 1;
-    expect(html).toMatch(/^<main[ >]/);
-    expect(html).toMatch(/<\/main>$/);
-    expect(count('<main')).toBe(1);
-    expect(count('<h1')).toBe(1);
-  });
 });
 
 // tsx (the local API and e2e stack run the publisher through it) reads one

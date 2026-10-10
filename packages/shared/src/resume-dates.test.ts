@@ -13,7 +13,7 @@ import {
   planResumeDateMigration,
   resumeRoleDates,
 } from './resume-dates.js';
-import { resumeIntro } from './resume-html.js';
+import { resumeIntro } from './resume-page.js';
 import { resumeView } from './resume-view.js';
 import {
   ResumeContentSchema,

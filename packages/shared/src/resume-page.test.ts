@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resumeSummaryExcerpt } from './resume-html.js';
+import { resumeSummaryExcerpt } from './resume-page.js';
 
 describe('resumeSummaryExcerpt', () => {
   it('collapses whitespace and truncates on a word boundary', () => {

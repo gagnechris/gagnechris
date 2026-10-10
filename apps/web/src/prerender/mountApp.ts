@@ -6,46 +6,29 @@ import {
   type RootOptions,
 } from 'react-dom/client';
 
-// Pages whose prerender comes from @gagnechris/public-ui. Every other page's
-// React twin only matches its string renderer after normalising, so it still
-// replaces the prerender.
-// A path with a slug group hydrates only when the selected element's
-// `data-slug` matches: another page's prerender would mismatch.
-const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
-  { path: /^\/$/, selector: 'main.home-page' },
-  { path: /^\/posts\/?$/, selector: 'main.posts-index' },
-  {
-    path: /^\/posts\/([^/]+)\/?$/,
-    selector: 'main.post-page > article[data-slug]',
-  },
-  { path: /^\/projects\/?$/, selector: 'main.projects-index' },
-  {
-    path: /^\/projects\/([^/]+)\/?$/,
-    selector: 'main.project-page[data-slug]',
-  },
-  { path: /^\/resume\/?$/, selector: 'main.resume-page' },
-  { path: /^\/contact\/?$/, selector: 'main.contact-page' },
-  // 404.html answers any path CloudFront has no object for.
-  { path: /^\//, selector: 'main.not-found' },
-  // Their pages load in a lazy chunk, so the published page is the chrome alone.
-  {
-    path: /^\/dont-feed-the-bears(?:\/(?:camp|wild))?\/?$/,
-    selector: 'header.site-header + footer.site-footer',
-  },
-];
+const PRERENDER_START = 'prerender:start';
+
+// A post or project prerender is reused only on its own slug's path: the
+// app would render another page and the hydration would mismatch.
+const SLUGGED_PRERENDER =
+  ':scope > main.project-page[data-slug], :scope > main.post-page > article[data-slug]';
+const pathSlug = (pathname: string) =>
+  /^\/(?:posts|projects)\/([^/]+)\/?$/.exec(pathname)?.[1];
 
 export const hydratesPrerender = (
   container: Element,
   pathname: string,
-): boolean =>
-  HYDRATED_PAGES.some(({ path, selector }) => {
-    const match = path.exec(pathname);
-    if (!match) return false;
-    const element = container.querySelector(`:scope > ${selector}`);
-    if (!element) return false;
-    const slug = match[1];
-    return slug === undefined || element.getAttribute('data-slug') === slug;
-  });
+): boolean => {
+  const first = container.firstChild;
+  if (
+    first?.nodeType !== Node.COMMENT_NODE ||
+    (first as Comment).data !== PRERENDER_START
+  ) {
+    return false;
+  }
+  const slugged = container.querySelector(SLUGGED_PRERENDER);
+  return !slugged || slugged.getAttribute('data-slug') === pathSlug(pathname);
+};
 
 export function mountApp(
   container: HTMLElement,

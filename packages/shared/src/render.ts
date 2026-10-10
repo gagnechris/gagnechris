@@ -32,12 +32,12 @@ export {
   type HomeLink,
   type HomeLinksSegment,
   type HomeRecentPost,
-} from './home-html.js';
+} from './home-page.js';
 export {
   postArticleView,
   type PostArticleFields,
   type PostArticleView,
-} from './post-html.js';
+} from './post-page.js';
 export {
   RESUME_ACTION_LINKS,
   RESUME_DOWNLOAD_FILENAME,
@@ -49,7 +49,7 @@ export {
   resumeSummaryExcerpt,
   type ResumeActionLink,
   type ResumeIntro,
-} from './resume-html.js';
+} from './resume-page.js';
 export {
   SITE_FOOTER_LINKS,
   SITE_HEADER_PHOTO_SIZE,
@@ -70,4 +70,4 @@ export {
   PROJECTS_INDEX_TITLE,
   projectPageView,
   type ProjectsIndexItem,
-} from './project-html.js';
+} from './project-page.js';
