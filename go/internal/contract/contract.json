@@ -302,6 +302,10 @@
     "dailyTemplateTaskMessage": "Templates can’t hold tasks, or a new one would be added every day. Use - [ ] for a checklist."
   },
   "sync": {
+    "changeTypes": [
+      "note",
+      "task"
+    ],
     "defaultPageLimit": 50,
     "minClientVersion": "0.0.0",
     "clientVersionHeader": "x-gagnechris-client-version",

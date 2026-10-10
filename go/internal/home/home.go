@@ -1,5 +1,5 @@
-// Package home serves the admin Home routes, writing the rows
-// services/api/src/home writes.
+// Package home serves the admin Home routes, writing the rows the
+// @gagnechris/data builders define.
 package home
 
 import (

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertIntegrationTableName,
+  createLocalDocClient,
   INTEGRATION_TABLE_PREFIX,
+  truncateTable,
 } from './support/dynamo-local.js';
 
 describe('assertIntegrationTableName', () => {
@@ -18,5 +20,13 @@ describe('assertIntegrationTableName', () => {
     expect(() => assertIntegrationTableName('gagnechris-test')).toThrow(
       /gagnechris-it-/,
     );
+  });
+});
+
+describe('truncateTable', () => {
+  it('refuses to operate on non gagnechris-it- tables', async () => {
+    await expect(
+      truncateTable(createLocalDocClient(), 'gagnechris-local'),
+    ).rejects.toThrow(/gagnechris-it-/);
   });
 });

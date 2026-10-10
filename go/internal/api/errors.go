@@ -8,8 +8,8 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/observability"
 )
 
-// Errors a handler returns; Dispatch turns each into the status and JSON
-// body the Node API sends for it.
+// Errors a handler returns; Dispatch turns each into its status and JSON
+// body.
 
 type BadRequestError struct {
 	Message string

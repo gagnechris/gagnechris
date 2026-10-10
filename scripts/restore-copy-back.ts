@@ -23,7 +23,7 @@ import {
   formatCopyBackPlan,
   planCopyBack,
   type CopyBackType,
-} from '@gagnechris/api/restore/copy-back';
+} from '@gagnechris/ops/copy-back';
 
 const { values } = parseArgs({
   options: {

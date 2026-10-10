@@ -119,6 +119,7 @@ jobs:
             api:
               - 'services/api/**'
               - 'packages/data/**'
+              - 'packages/ops/**'
               - 'packages/shared/**'
               - 'go/**'
               - 'package.json'
@@ -145,22 +146,11 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
         run: npx tsx scripts/local/wait-dynamodb.ts http://127.0.0.1:8001
 
-      - name: API integration tests
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: local
-          AWS_SECRET_ACCESS_KEY: local
-          AWS_REGION: us-east-1
-          AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
-          COMPOSE_PROJECT_NAME: gagnechris-ci
-          SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
-        run: npm run test:integration -w @gagnechris/api
-
       - name: Build the Go API
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
         run: go -C go build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
 
-      - name: API HTTP suite against the Go API
+      - name: API HTTP suite
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
         env:
           GO_API_BIN: ${{ runner.temp }}/gagnechris-api
@@ -170,8 +160,7 @@ jobs:
           AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
           COMPOSE_PROJECT_NAME: gagnechris-ci
           SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
-          API_SERVER_COMMAND: node --import tsx services/api/local/go-api.ts test
-        run: npm run test:http -w @gagnechris/api
+        run: npm run test:integration -w @gagnechris/api
 
       - name: Stop CI DynamoDB Local
         if: always() && (github.event_name == 'push' || steps.filter.outputs.api == 'true')
@@ -267,11 +256,8 @@ jobs:
             cp /var/cache/apt/archives/*.deb "$HOME/apt-debs/"
           fi
 
-      # Through the Go API, as in prod for the routes it serves.
       - name: Run e2e:browser
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
-        env:
-          API_SERVER: go
         run: npm run e2e:browser
 
       - name: Upload Playwright report

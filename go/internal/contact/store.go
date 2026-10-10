@@ -18,8 +18,7 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/keys"
 )
 
-// store is the contact rows and rate counters in the data table, written as
-// services/api/src/contact writes them.
+// store is the contact rows and rate counters in the data table.
 type store struct {
 	table *data.Table
 	now   func() time.Time

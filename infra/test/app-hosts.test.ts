@@ -615,7 +615,7 @@ describe('app hosts: API Gateway', () => {
   it('passes the two web client IDs and the iOS client ID to the Lambda', () => {
     const fn = Object.values(
       resourcesOf(built.api, 'AWS::Lambda::Function'),
-    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api')!;
+    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api-go')!;
     const vars = fn.Properties.Environment.Variables;
     expect(vars.ADMIN_WEB_CLIENT_ID).toEqual({
       Ref: expect.stringMatching(/cognitoadminwebclientid/),

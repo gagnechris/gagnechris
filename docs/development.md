@@ -44,13 +44,13 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 
 | Process                                     | Port (default) |
 | ------------------------------------------- | -------------- |
-| Local API (`services/api/local/server.ts`)  | `8787`         |
+| Local API (`services/api/local/api.ts`)     | `8787`         |
 | Static publisher origin                     | `4177`         |
 | Vite, public site                           | `5173`         |
 | Vite, admin app (`VITE_AUTH_MODE=local`)    | `5174`         |
 | Vite, Notebook app (`VITE_AUTH_MODE=local`) | `5175`         |
 
-`API_SERVER=go npm run local:dev` runs the Go API (`go/cmd/api`, built once, no watch) on `8787` instead, through `services/api/local/go-api.ts`: Go answers the routes it serves and proxies every other request to the Node local API on a private port, so the apps work whichever server owns a route. A small front server on `8787` (`services/api/local/site-hooks.ts`) runs the local stand-ins for the site bucket's media CORS rule and the publisher's stream trigger around both, so a publish rebuilds the local site whichever server answered it.
+The local API is the Go API (`go/cmd/api`). `services/api/local/api.ts` builds it once (no watch: restart `local:dev` to pick up Go changes; `GO_API_BIN` names a prebuilt binary instead) and runs it on a private port with `API_CLAIMS_MODE=local`, which turns a local `Bearer` token into the route's ID-token claims. A small front server on `8787` (`services/api/local/site-hooks.ts`) runs the local stand-ins for the site bucket's media CORS rule and the publisher's stream trigger around it, so a publish rebuilds the local site before the response returns.
 
 Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Local media upload URLs point at the local API, which answers the browser's CORS preflight for them the way the site bucket's CORS rule does in production. Fake local sign-in never uses Cognito or prod AWS.
 
@@ -75,9 +75,8 @@ Prefer `local:dev` unless you intentionally need the production API.
 ## Quality gates
 
 ```bash
-npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, api unit, publisher, infra); mobile: npm test --prefix apps/mobile
-npm run test:integration -w @gagnechris/api   # API over HTTP + in-process script tests on DynamoDB Local (Docker)
-npm run test:http -w @gagnechris/api          # only the black-box HTTP suite
+npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api unit, publisher, infra); mobile: npm test --prefix apps/mobile
+npm run test:integration -w @gagnechris/api   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
@@ -129,7 +128,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                       |
 | `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees) |
 
-Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: mail it sends (contact form, resume download) is logged, and appended as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`services/api/local/outbox.ts`). The Go API outside Lambda writes the same outbox (`go/internal/contact`).
+Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: outside Lambda the Go API logs the mail it sends (contact form, resume download) and appends it as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`contact.Outbox` in `go/internal/contact`).
 
 `scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
 
@@ -137,10 +136,10 @@ Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accident
 
 `npm run test:integration -w @gagnechris/api` **ignores** `DATA_TABLE_NAME`. Each file creates an ephemeral `gagnechris-it-*` table and deletes it afterward, so sourcing `env.sh` and running tests will not wipe `gagnechris-local`. Tables that do not start with `gagnechris-it-` are refused.
 
-The suite has two Vitest projects:
+`services/api` has two Vitest projects:
 
-- `http` (`services/api/test/http`): black-box tests of the API. Each file creates its table, starts the server under test on a free port and sends plain HTTP requests; it may seed and read rows in the table, but imports nothing from `services/api/src`. `API_SERVER_COMMAND` picks the server (default `node --import tsx services/api/local/test-server.ts`, the Lambda handler behind an API Gateway stand-in). The command runs from the repo root and must serve `DATA_TABLE_NAME` on `127.0.0.1:$PORT`. The tests send the authorizer's claims as JSON in `X-Test-Claims`, and the server passes them to the handler only on protected routes, as API Gateway's JWT authorizer does. `API_SERVER_COMMAND='node --import tsx services/api/local/go-api.ts test'` runs the suite against the Go API in front of the Node test server; build it once first and set `GO_API_BIN` to the binary (`go -C go build -o /tmp/gagnechris-api ./cmd/api`), or every file builds its own. CI runs the `http` project both ways.
-- `integration` (`services/api/test/integration`): in-process tests of code no route reaches: the restore copy-back and data migration scripts, cursor encoding and the test table guard.
+- `http` (`services/api/test/http`): black-box tests of the Go API. The global setup (`test/support/global-setup.ts`) builds `go/cmd/api` once, unless `GO_API_BIN` already names a binary. Each file creates its table, starts the binary on a free port with `API_CLAIMS_MODE=test` (`startApi` in `test/http/support/api.ts`, usually through `useApi` in `harness.ts`) and sends plain HTTP requests; it may seed and read rows in the table. The tests send the authorizer's claims as JSON in `X-Test-Claims` (`test/http/support/claims.ts` builds them), and the server passes them to the handler only on protected routes, as API Gateway's JWT authorizer does. The `ops-*.test.ts` files run the `@gagnechris/ops` copy-back and row migrations against a file's table, with the API serving it.
+- `unit` (in `npm test`): the test table guard and the DynamoDB Local lifecycle helpers.
 
 Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000. Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.
 
@@ -172,7 +171,7 @@ Ensure `npm run local:dev` (or export `VITE_AUTH_MODE=local`). A plain `npm run 
 
 ### Publish succeeds but `/posts/<slug>` looks stale
 
-Locally, confirm the static origin on `:4177` was rebuilt (API wrapper triggers publisher). Hard-refresh Vite; post HTML is loaded from `/__site/...`, not only the SPA bundle.
+Locally, confirm the static origin on `:4177` was rebuilt (the front server in `services/api/local/api.ts` triggers the publisher). Hard-refresh Vite; post HTML is loaded from `/__site/...`, not only the SPA bundle.
 
 ### Accidentally pointed at prod
 

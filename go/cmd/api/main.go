@@ -7,12 +7,12 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 
@@ -53,18 +53,8 @@ func main() {
 		mailer = &contact.Outbox{File: os.Getenv("LOCAL_OUTBOX_FILE"), Log: logger}
 	}
 
-	routes := api.Routes(table)
-	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
-	routes = append(routes, posts.Routes(table, nil)...)
-	routes = append(routes, projects.Routes(table, nil)...)
-	routes = append(routes, home.Routes(table, nil)...)
-	routes = append(routes, resume.Routes(table, nil)...)
-	routes = append(routes, search.Routes(table, nil)...)
-	routes = append(routes, notebook.Routes(table, nil)...)
-	routes = append(routes, users.Routes(users.Deps{Table: table, AWS: cfg})...)
-	routes = append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
 	app := api.NewApp(
-		api.NewRouter(routes),
+		api.NewRouter(allRoutes(table, mailer, cfg)),
 		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
@@ -76,8 +66,20 @@ func main() {
 	log.Fatal(serveHTTP(app, logger))
 }
 
-// serveHTTP reads API_CLAIMS_MODE (test or local) and API_FALLBACK_URL, the
-// server that answers routes Go doesn't serve yet.
+func allRoutes(table *data.Table, mailer contact.Mailer, cfg aws.Config) []api.Route {
+	routes := api.Routes(table)
+	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
+	routes = append(routes, posts.Routes(table, nil)...)
+	routes = append(routes, projects.Routes(table, nil)...)
+	routes = append(routes, home.Routes(table, nil)...)
+	routes = append(routes, resume.Routes(table, nil)...)
+	routes = append(routes, search.Routes(table, nil)...)
+	routes = append(routes, notebook.Routes(table, nil)...)
+	routes = append(routes, users.Routes(users.Deps{Table: table, AWS: cfg})...)
+	return append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
+}
+
+// serveHTTP reads API_CLAIMS_MODE (test or local).
 func serveHTTP(app *api.App, logger *slog.Logger) error {
 	table := os.Getenv("DATA_TABLE_NAME")
 	if table == "gagnechris-prod" {
@@ -96,14 +98,6 @@ func serveHTTP(app *api.App, logger *slog.Logger) error {
 	default:
 		log.Fatalf("API_CLAIMS_MODE %q is not test or local", mode)
 	}
-	var fallback *url.URL
-	if raw := os.Getenv("API_FALLBACK_URL"); raw != "" {
-		u, err := url.Parse(raw)
-		if err != nil {
-			return err
-		}
-		fallback = u
-	}
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8787"
@@ -111,7 +105,7 @@ func serveHTTP(app *api.App, logger *slog.Logger) error {
 	logger.Debug("serving", "port", port, "claims", string(mode))
 	server := &http.Server{
 		Addr:              "127.0.0.1:" + port,
-		Handler:           app.HTTPHandler(mode, fallback),
+		Handler:           app.HTTPHandler(mode),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return server.ListenAndServe()

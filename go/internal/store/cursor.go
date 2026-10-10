@@ -1,6 +1,6 @@
 // Package store is the API's shared DynamoDB patterns: opaque cursors,
 // paged queries, version-checked writes and the draft + PUBLISHED pair
-// behind every site-admin entity, as services/api/src/data has them.
+// behind every site-admin entity.
 package store
 
 import (

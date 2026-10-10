@@ -216,4 +216,27 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     expect((await call(legacy, 'GET', '/api/admin/posts')).status).toBe(403);
     expect(await rowKeys()).toEqual(before);
   });
+
+  it('GET /api/admin/me returns the site admin claims and refuses other tokens', async () => {
+    const me = await call(siteAdminOnly, 'GET', '/api/admin/me');
+    expect(me).toEqual({
+      status: 200,
+      body: { sub: SUB, email: `${SUB}@example.com`, username: SUB },
+    });
+    const {
+      email: _email,
+      'cognito:username': _username,
+      ...withoutProfile
+    } = siteAdminOnly;
+    const bare = await call(
+      { ...withoutProfile, username: 'plain' },
+      'GET',
+      '/api/admin/me',
+    );
+    expect(bare).toEqual({
+      status: 200,
+      body: { sub: SUB, username: 'plain' },
+    });
+    expect((await call(notebookOnly, 'GET', '/api/admin/me')).status).toBe(403);
+  });
 });

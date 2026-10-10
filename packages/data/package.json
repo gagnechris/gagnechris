@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "Shared DynamoDB keys, item schemas, mappers, and DocumentClient for API + publisher.",
+  "description": "Shared DynamoDB keys, item schemas, mappers, and DocumentClient for the publisher, ops tools and tests.",
   "exports": {
     ".": {
       "types": "./src/index.ts",

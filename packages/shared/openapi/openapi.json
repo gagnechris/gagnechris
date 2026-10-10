@@ -12,7 +12,7 @@
     },
     {
       "url": "http://localhost:8787",
-      "description": "Local API (services/api/local/server.ts)"
+      "description": "Local API (services/api/local/api.ts)"
     }
   ],
   "components": {

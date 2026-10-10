@@ -1,5 +1,5 @@
-// Package resume serves the admin Resume routes, writing the rows
-// services/api/src/resume writes.
+// Package resume serves the admin Resume routes, writing the rows the
+// @gagnechris/data builders define.
 package resume
 
 import (

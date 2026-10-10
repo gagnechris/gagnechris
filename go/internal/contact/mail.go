@@ -61,8 +61,8 @@ func (s SESMailer) Send(ctx context.Context, m Mail) error {
 }
 
 // Outbox stands in for SES outside Lambda: each message is logged and, when
-// File is set, appended to it as one JSON line in the shape
-// services/api/local/outbox.ts writes.
+// File is set, appended to it as one JSON line, which the HTTP suite and
+// e2e tests read.
 type Outbox struct {
 	File string
 	Log  *slog.Logger

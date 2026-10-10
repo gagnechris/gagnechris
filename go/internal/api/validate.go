@@ -12,8 +12,8 @@ import (
 )
 
 // Validator checks a JSON object body field by field and reports the first
-// problem per field with the zod issue code the Node API sends in `fields`,
-// so clients get the same 400 from either server. Nested fields are keyed by
+// problem per field with the zod issue code in `fields`, so clients get the
+// 400 the shared zod schemas describe. Nested fields are keyed by
 // their dotted path, as zod's issue paths are.
 type Validator struct {
 	fields map[string]json.RawMessage

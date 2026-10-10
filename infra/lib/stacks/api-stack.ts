@@ -25,7 +25,6 @@ import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
-import { join } from 'node:path';
 import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
@@ -50,76 +49,6 @@ export const USER_ADMIN_COGNITO_ACTIONS = [
 ] as const;
 import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
 import { GoLambda } from '../constructs/go-lambda.js';
-import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
-
-/** Admin routes the Go API serves, each behind the admin authorizer. */
-const publishVerbs = (base: string) =>
-  (['publish', 'unpublish', 'discard'] as const).map(
-    (verb) => [`${base}/${verb}`, [HttpMethod.POST]] as const,
-  );
-
-export const GO_ADMIN_ROUTES: ReadonlyArray<
-  readonly [path: string, methods: readonly HttpMethod[]]
-> = [
-  ['/api/admin/posts', [HttpMethod.GET, HttpMethod.POST]],
-  [
-    '/api/admin/posts/{id}',
-    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-  ],
-  ...publishVerbs('/api/admin/posts/{id}'),
-  ['/api/admin/projects', [HttpMethod.GET, HttpMethod.POST]],
-  [
-    '/api/admin/projects/{id}',
-    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-  ],
-  ...publishVerbs('/api/admin/projects/{id}'),
-  ['/api/admin/home', [HttpMethod.GET, HttpMethod.PUT]],
-  ...publishVerbs('/api/admin/home'),
-  ['/api/admin/resume', [HttpMethod.GET, HttpMethod.PUT]],
-  ...publishVerbs('/api/admin/resume'),
-  ['/api/admin/media/upload-url', [HttpMethod.POST]],
-  ['/api/admin/media/objects/{key+}', [HttpMethod.PUT]],
-  ['/api/admin/users', [HttpMethod.GET, HttpMethod.POST]],
-  ['/api/admin/users/{id}/access', [HttpMethod.PUT]],
-  ...[
-    'disable',
-    'enable',
-    'sign-out',
-    'remove',
-    'resend-invite',
-    'restore',
-  ].map(
-    (action) => [`/api/admin/users/{id}/${action}`, [HttpMethod.POST]] as const,
-  ),
-];
-
-/** Notebook routes the Go API serves, each behind the Notebook authorizer. */
-export const GO_NOTEBOOK_ROUTES: ReadonlyArray<
-  readonly [path: string, methods: readonly HttpMethod[]]
-> = [
-  ['/api/notebook/search', [HttpMethod.POST]],
-  ['/api/notebook/notes', [HttpMethod.GET, HttpMethod.POST]],
-  ['/api/notebook/notes/batch', [HttpMethod.POST]],
-  ['/api/notebook/notes/daily/{area}/{date}', [HttpMethod.GET, HttpMethod.PUT]],
-  ['/api/notebook/notes/daily/{area}/{date}/open', [HttpMethod.POST]],
-  [
-    '/api/notebook/notes/{id}',
-    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-  ],
-  ['/api/notebook/tasks', [HttpMethod.GET, HttpMethod.POST]],
-  ['/api/notebook/tasks/batch', [HttpMethod.POST]],
-  [
-    '/api/notebook/tasks/{id}',
-    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-  ],
-  ['/api/notebook/tasks/{id}/complete', [HttpMethod.POST]],
-  ['/api/notebook/tasks/{id}/reopen', [HttpMethod.POST]],
-  [
-    '/api/notebook/templates/daily/{area}',
-    [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-  ],
-  ['/api/notebook/sync/changes', [HttpMethod.GET]],
-];
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -134,9 +63,7 @@ export interface ApiStackProps extends StackProps {
 
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
-  readonly apiFunction: NodeLambda;
-  /** Serves the routes moved to Go; the Node function serves the rest. */
-  readonly goApiFunction: GoLambda;
+  readonly apiFunction: GoLambda;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -177,48 +104,10 @@ export class ApiStack extends Stack {
       siteBucketName,
     );
 
-    this.apiFunction = new NodeLambda(this, 'ApiFunction', {
-      functionName: `gagnechris-${config.name}-api`,
-      description:
-        'gagnechris HTTP API routes the Go API does not serve yet (shared data table)',
-      entry: join(REPO_ROOT, 'services/api/src/handler.ts'),
-      handler: 'handler',
-      // More memory is more CPU: cold-start init and JSON/zod work scale with it.
-      memorySize: 1024,
-      timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
-      powertoolsServiceName: API_SERVICE_NAME,
-      alertsTopic,
-      alarmNamePrefix: `gagnechris-${config.name}-api`,
-      iam5NagReason:
-        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity.',
-      iam5NagAppliesTo: [
-        'Resource::*',
-        'Action::s3:Abort*',
-        { regex: '/^Resource::.*/index*/g' },
-        { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/*/g' },
-      ],
-      environment: {
-        DATA_TABLE_NAME: dataTable.tableName,
-        SITE_BUCKET_NAME: siteBucketName,
-        CONTACT_TO_EMAIL: config.alertsEmail,
-        CONTACT_FROM_EMAIL: fromEmail,
-        SITE_APEX_DOMAIN: config.domainName,
-        ADMIN_WEB_CLIENT_ID: adminWebClientId,
-        NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
-        IOS_CLIENT_ID: iosClientId,
-      },
-    });
-
-    dataTable.grantReadWriteData(this.apiFunction);
-    // Presigned PUT only; objects are read via CloudFront OAC.
-    siteBucket.grantPut(this.apiFunction, 'media/*');
-    emailIdentity.grantSendEmail(this.apiFunction);
-    notifyEmailIdentity.grantSendEmail(this.apiFunction);
-
-    this.goApiFunction = new GoLambda(this, 'GoApiFunction', {
+    // Changing the construct id or function name would replace the function.
+    this.apiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
-      description:
-        'gagnechris HTTP API routes served by Go (health, contact, posts, projects, home, resume, media, users, Notebook)',
+      description: 'gagnechris HTTP API (shared data table)',
       cmd: 'api',
       memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
@@ -245,12 +134,13 @@ export class ApiStack extends Stack {
         USER_POOL_ID: userPool.userPoolId,
       },
     });
-    dataTable.grantReadWriteData(this.goApiFunction);
-    siteBucket.grantPut(this.goApiFunction, 'media/*');
-    emailIdentity.grantSendEmail(this.goApiFunction);
-    notifyEmailIdentity.grantSendEmail(this.goApiFunction);
+    dataTable.grantReadWriteData(this.apiFunction);
+    // Presigned PUT only; objects are read via CloudFront OAC.
+    siteBucket.grantPut(this.apiFunction, 'media/*');
+    emailIdentity.grantSendEmail(this.apiFunction);
+    notifyEmailIdentity.grantSendEmail(this.apiFunction);
     // Users & access. No delete: removing someone keeps their account and Notebook.
-    userPool.grant(this.goApiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
+    userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     // One authorizer per prefix so a token from the other web app's client
     // gets a gateway 401. The iOS app calls Notebook, so its client is in that
@@ -270,12 +160,8 @@ export class ApiStack extends Stack {
     );
 
     const integration = new HttpLambdaIntegration(
-      'ApiIntegration',
-      this.apiFunction,
-    );
-    const goIntegration = new HttpLambdaIntegration(
       'GoApiIntegration',
-      this.goApiFunction,
+      this.apiFunction,
     );
 
     this.httpApi = new HttpApi(this, 'HttpApi', {
@@ -350,7 +236,7 @@ export class ApiStack extends Stack {
     const healthRoutes = this.httpApi.addRoutes({
       path: '/api/health',
       methods: [HttpMethod.GET],
-      integration: goIntegration,
+      integration,
     });
     NagSuppressions.addResourceSuppressions(
       healthRoutes,
@@ -367,7 +253,7 @@ export class ApiStack extends Stack {
     const contactRoutes = this.httpApi.addRoutes({
       path: '/api/contact',
       methods: [HttpMethod.POST],
-      integration: goIntegration,
+      integration,
     });
     NagSuppressions.addResourceSuppressions(
       contactRoutes,
@@ -384,7 +270,7 @@ export class ApiStack extends Stack {
     const resumeNotifyRoutes = this.httpApi.addRoutes({
       path: '/api/resume/download',
       methods: [HttpMethod.POST],
-      integration: goIntegration,
+      integration,
     });
     NagSuppressions.addResourceSuppressions(
       resumeNotifyRoutes,
@@ -398,16 +284,6 @@ export class ApiStack extends Stack {
       true,
     );
 
-    // More specific than /api/admin/{proxy+}, so API Gateway sends these to
-    // Go and every other admin route to Node.
-    for (const [path, methods] of GO_ADMIN_ROUTES) {
-      this.httpApi.addRoutes({
-        path,
-        methods: [...methods],
-        integration: goIntegration,
-        authorizer: adminAuthorizer,
-      });
-    }
     this.httpApi.addRoutes({
       path: '/api/admin/{proxy+}',
       methods: [HttpMethod.ANY],
@@ -420,14 +296,6 @@ export class ApiStack extends Stack {
       integration,
       authorizer: adminAuthorizer,
     });
-    for (const [path, methods] of GO_NOTEBOOK_ROUTES) {
-      this.httpApi.addRoutes({
-        path,
-        methods: [...methods],
-        integration: goIntegration,
-        authorizer: notebookAuthorizer,
-      });
-    }
     this.httpApi.addRoutes({
       path: '/api/notebook/{proxy+}',
       methods: [HttpMethod.ANY],

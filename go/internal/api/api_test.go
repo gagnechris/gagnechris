@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -130,6 +129,17 @@ func TestRequestLog(t *testing.T) {
 	}
 	if _, ok := second["bundleReadyMs"]; ok {
 		t.Error("bundleReadyMs logged after the first request")
+	}
+
+	req := &Request{
+		Method:  "POST",
+		Headers: map[string]string{},
+		Query:   map[string]string{"q": "secret-term"},
+		Body:    []byte(`{"body":"secret-body"}`),
+	}
+	ta.app.Serve(context.Background(), req, "/api/health", nil)
+	if strings.Contains(ta.logs.String(), "secret-") {
+		t.Errorf("logs carry a query value or body: %s", ta.logs.String())
 	}
 }
 
@@ -341,15 +351,7 @@ func TestHandleLambda(t *testing.T) {
 	}
 }
 
-func TestHTTPHandlerClaimsAndFallback(t *testing.T) {
-	var fallbackHits []string
-	fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fallbackHits = append(fallbackHits, r.Method+" "+r.URL.RequestURI()+" "+r.Header.Get(testClaimsHeader))
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	defer fallback.Close()
-	target, _ := url.Parse(fallback.URL)
-
+func TestHTTPHandlerClaims(t *testing.T) {
 	ta := newTestApp(t,
 		Route{Method: "GET", Pattern: "/notebook/me", Auth: Notebook, Handler: func(_ context.Context, r *Request) (*Response, error) {
 			return JSON(200, map[string]string{"sub": r.UserID()}), nil
@@ -370,7 +372,7 @@ func TestHTTPHandlerClaimsAndFallback(t *testing.T) {
 		{ClaimsNone, testClaimsHeader, `{"sub":"t1"}`, 401, ""},
 	}
 	for _, c := range cases {
-		srv := httptest.NewServer(ta.app.HTTPHandler(c.mode, target))
+		srv := httptest.NewServer(ta.app.HTTPHandler(c.mode))
 		req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/notebook/me", nil)
 		if c.header != "" {
 			req.Header.Set(c.header, c.value)
@@ -387,28 +389,9 @@ func TestHTTPHandlerClaimsAndFallback(t *testing.T) {
 		}
 		srv.Close()
 	}
-
-	srv := httptest.NewServer(ta.app.HTTPHandler(ClaimsTest, target))
-	defer srv.Close()
-	for _, path := range []string{"/api/notebook/notes?x=1", "/api/health"} {
-		req, _ := http.NewRequest(http.MethodPost, srv.URL+path, nil)
-		req.Header.Set(testClaimsHeader, `{"sub":"t1"}`)
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = res.Body.Close()
-		if res.StatusCode != http.StatusTeapot {
-			t.Errorf("POST %s: %d, want the fallback's answer", path, res.StatusCode)
-		}
-	}
-	want := []string{`POST /api/notebook/notes?x=1 {"sub":"t1"}`, `POST /api/health {"sub":"t1"}`}
-	if strings.Join(fallbackHits, "|") != strings.Join(want, "|") {
-		t.Errorf("fallback saw %q", fallbackHits)
-	}
 }
 
-func TestLocalClaimsMatchNode(t *testing.T) {
+func TestLocalClaims(t *testing.T) {
 	t.Setenv("ADMIN_WEB_CLIENT_ID", "")
 	t.Setenv("IOS_CLIENT_ID", "")
 	now := time.Unix(1700000000, 0)

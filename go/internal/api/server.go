@@ -7,8 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -30,23 +28,10 @@ const (
 
 const testClaimsHeader = "X-Test-Claims"
 
-// HTTPHandler serves the API over plain HTTP. With a fallback, requests no
-// route owns go to that server instead, so the Go API can sit in front of
-// the Node one while routes move over.
-func (a *App) HTTPHandler(mode ClaimsMode, fallback *url.URL) http.Handler {
-	var proxy *httputil.ReverseProxy
-	if fallback != nil {
-		proxy = &httputil.ReverseProxy{Rewrite: func(r *httputil.ProxyRequest) {
-			r.SetURL(fallback)
-			r.Out.Host = r.In.Host
-		}}
-	}
+// HTTPHandler serves the API over plain HTTP.
+func (a *App) HTTPHandler(mode ClaimsMode) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawPath, _, _ := strings.Cut(r.RequestURI, "?")
-		if proxy != nil && !a.router.Owns(r.Method, rawPath) {
-			proxy.ServeHTTP(w, r)
-			return
-		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
