@@ -9,17 +9,22 @@ import {
 // Pages whose prerender comes from @gagnechris/public-ui. Every other page's
 // React twin only matches its string renderer after normalising, so it still
 // replaces the prerender.
+// A path with a slug group hydrates only when the selected element's
+// `data-slug` matches: another page's prerender would mismatch.
 const HYDRATED_PAGES: readonly { path: RegExp; selector: string }[] = [
   { path: /^\/$/, selector: 'main.home-page' },
   { path: /^\/posts\/?$/, selector: 'main.posts-index' },
   { path: /^\/projects\/?$/, selector: 'main.projects-index' },
-  { path: /^\/projects\/[^/]+\/?$/, selector: 'main.project-page' },
+  {
+    path: /^\/projects\/([^/]+)\/?$/,
+    selector: 'main.project-page[data-slug]',
+  },
   { path: /^\/contact\/?$/, selector: 'main.contact-page' },
   // 404.html answers any path CloudFront has no object for.
   { path: /^\//, selector: 'main.not-found' },
   // Their pages load in a lazy chunk, so the published page is the chrome alone.
   {
-    path: /^\/dont-feed-the-bears(\/(camp|wild))?\/?$/,
+    path: /^\/dont-feed-the-bears(?:\/(?:camp|wild))?\/?$/,
     selector: 'header.site-header + footer.site-footer',
   },
 ];
@@ -28,11 +33,14 @@ export const hydratesPrerender = (
   container: Element,
   pathname: string,
 ): boolean =>
-  HYDRATED_PAGES.some(
-    ({ path, selector }) =>
-      path.test(pathname) &&
-      container.querySelector(`:scope > ${selector}`) !== null,
-  );
+  HYDRATED_PAGES.some(({ path, selector }) => {
+    const match = path.exec(pathname);
+    if (!match) return false;
+    const element = container.querySelector(`:scope > ${selector}`);
+    if (!element) return false;
+    const slug = match[1];
+    return slug === undefined || element.getAttribute('data-slug') === slug;
+  });
 
 export function mountApp(
   container: HTMLElement,
