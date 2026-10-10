@@ -617,7 +617,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 ## Publisher
 
-`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention, Powertools env, and errors/throttles alarms.
+`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention and Powertools env; errors/throttles alarms come from `lambda-guardrails.ts`, which `GoLambda` uses too.
 
 **Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `services/api/src/sync/adapters.ts` lists it), `SyncCorruptRow` (the sync feed skipped a row that failed to parse; the warning log `Skipping corrupt stored item` names its `pk`/`sk`; fix the row through the API or a script that writes a newer `updatedAt` and `syncSk` so clients pick it up), publisher `DataIntegrityError`, resume-pdf, kvs-sync and `RebuildUnsettled` (a rebuild gave up after 4 passes while publishes kept landing; invoke `{"action":"republishAll"}` if the site looks stale), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 

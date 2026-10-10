@@ -23,8 +23,10 @@ import { TaskEmbedRow } from '../ui/TaskEmbedRow';
 import { createUlid } from '../ulid';
 import { NOTE_TOOLBAR_ID, NoteKeyboardToolbar } from './NoteKeyboardToolbar';
 import {
-  convertTaskLine,
+  convertTaskLines,
+  endedLines,
   lineAt,
+  rebaseText,
   noteSegments,
   offsetOf,
   removeSegment,
@@ -49,6 +51,8 @@ type Props = {
   /** Ids for tests; real ones are ULIDs. */
   newId?: () => string;
 };
+
+const CONVERT_AFTER_MS = 400;
 
 type Focus = { key: string; selection: Selection };
 type TextSegment = Extract<NoteSegment, { kind: 'text' }>;
@@ -94,6 +98,13 @@ export const NoteBodyEditor = ({
   // Typing reports the new text before the new caret; until the caret
   // arrives, the old offset points into the wrong line.
   const caretStale = useRef(false);
+  // iOS ignores a new value while keystrokes are in flight and reports
+  // them against the text it still shows, which holds converted lines.
+  const trims = useRef(new Map<string, string[]>());
+  // Lines left behind by Return or the caret, converted once typing pauses
+  // so the text view has taken every keystroke before its text changes.
+  const queued = useRef(new Map<number, string>());
+  const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useLatest({ markdown, segments, focus });
 
   const caretOf = (f: Focus) => {
@@ -103,17 +114,35 @@ export const NoteBodyEditor = ({
     return { line: segment.start + line, column };
   };
 
-  /** Converts `line` if it is a task line; the caret, if given, follows. */
-  const convert = (
-    line: number,
-    caret: { line: number; column: number } | null,
-  ) => {
-    const result = convertTaskLine(latest.current.markdown, line, today, newId);
-    if (!result) return false;
-    onCreate(result.create);
+  /** Converts the queued task lines; the caret, if given, follows. */
+  const flush = (caret: { line: number; column: number } | null) => {
+    if (idle.current) clearTimeout(idle.current);
+    idle.current = null;
+    const lines = [...queued.current].filter(([line]) => line !== caret?.line);
+    queued.current.clear();
+    const result = convertTaskLines(
+      latest.current.markdown,
+      lines,
+      today,
+      newId,
+    );
+    if (!result) return;
+    result.creates.forEach(onCreate);
     onChange(result.markdown);
+    const next = noteSegments(result.markdown);
+    const key = latest.current.focus?.key;
+    const before = key && textSegment(latest.current.segments, key);
+    const after = key && textSegment(next, key);
+    if (key && before && after) {
+      const from = segmentText(before);
+      const to = segmentText(after);
+      // The run keeps its key for the lines after the converted ones.
+      if (to !== from && from.endsWith(to)) {
+        const cut = from.slice(0, from.length - to.length);
+        trims.current.set(key, [...(trims.current.get(key) ?? []), cut]);
+      }
+    }
     if (caret) {
-      const next = noteSegments(result.markdown);
       const target = segmentAtLine(next, caret.line);
       if (target) {
         const offset = offsetOf(
@@ -133,8 +162,31 @@ export const NoteBodyEditor = ({
         text: result.markdown.split('\n')[caret.line] ?? '',
       };
     }
-    return true;
   };
+
+  const onIdle = useLatest(() => {
+    const { focus: current } = latest.current;
+    flush(current && !caretStale.current ? caretOf(current) : null);
+  });
+
+  const schedule = () => {
+    if (idle.current) clearTimeout(idle.current);
+    idle.current = queued.current.size
+      ? setTimeout(() => onIdle.current(), CONVERT_AFTER_MS)
+      : null;
+  };
+
+  const queue = (line: number, text: string) => {
+    queued.current.set(line, text);
+    schedule();
+  };
+
+  useEffect(
+    () => () => {
+      if (idle.current) clearTimeout(idle.current);
+    },
+    [],
+  );
 
   // A `[ ] …` line is converted once the caret is on another line; its text
   // must still be what it was, so a joined or deleted line is left alone.
@@ -148,7 +200,7 @@ export const NoteBodyEditor = ({
     if (!last || last.line === caret.line || lines[last.line] !== last.text) {
       return;
     }
-    convert(last.line, caret);
+    queue(last.line, last.text);
   });
   useEffect(() => onCaretMoved(), [focus, markdown]);
 
@@ -169,10 +221,14 @@ export const NoteBodyEditor = ({
     const line = caretStale.current
       ? caretLine.current?.line
       : caretOf(current)?.line;
+    if (line !== undefined) {
+      queued.current.set(line, latest.current.markdown.split('\n')[line]!);
+    }
+    flush(null);
     setFocus(null);
+    trims.current.clear();
     caretLine.current = null;
     caretStale.current = false;
-    if (line !== undefined) convert(line, null);
   };
 
   const onSelectionChange = (
@@ -192,6 +248,27 @@ export const NoteBodyEditor = ({
       pendingSelection.current = moved;
       setFocus(moved);
     }
+  };
+
+  const onChangeText = (key: string, typed: string) => {
+    const segment = textSegment(latest.current.segments, key);
+    if (!segment) return edit(key, typed);
+    const before = segmentText(segment);
+    const pending = trims.current.get(key);
+    let text = typed;
+    if (pending) {
+      const rebased = rebaseText(typed, before, pending);
+      if (rebased.pending.length) trims.current.set(key, rebased.pending);
+      else trims.current.delete(key);
+      text = rebased.text;
+    }
+    edit(key, text);
+    const lines = text.split('\n');
+    for (const line of endedLines(before, text)) {
+      queued.current.set(segment.start + line, lines[line]!);
+    }
+    // Every keystroke pushes conversion back until typing pauses.
+    schedule();
   };
 
   const onAction = (action: ToolbarAction) => {
@@ -302,7 +379,7 @@ export const NoteBodyEditor = ({
             }
             placeholderTextColor={color.muted}
             value={segmentText(segment)}
-            onChangeText={(text) => edit(segment.key, text)}
+            onChangeText={(text) => onChangeText(segment.key, text)}
             onSelectionChange={(event) => onSelectionChange(segment.key, event)}
             onBlur={() => onBlur(segment.key)}
             inputAccessoryViewID={NOTE_TOOLBAR_ID}

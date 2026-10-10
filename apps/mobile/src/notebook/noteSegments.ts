@@ -107,3 +107,77 @@ export const convertTaskLine = (
   lines[line] = parsed.indent + taskEmbedToken(id);
   return { markdown: lines.join('\n'), create: { id, draft: parsed.draft } };
 };
+
+const editSize = (a: string, b: string) => {
+  const limit = Math.min(a.length, b.length);
+  let same = 0;
+  while (same < limit && a[same] === b[same]) same += 1;
+  let end = 0;
+  while (end < limit - same && a.at(-1 - end) === b.at(-1 - end)) end += 1;
+  return a.length + b.length - 2 * (same + end);
+};
+
+/**
+ * Maps `text`, typed into a view that may not have dropped the latest `cuts`
+ * from its start yet, onto `current`. Whichever reading is the smaller edit
+ * of `current` wins; the cuts the view still hasn't taken stay pending.
+ */
+export const rebaseText = (
+  text: string,
+  current: string,
+  cuts: readonly string[],
+): { text: string; pending: string[] } => {
+  let best = { text, pending: [] as string[], size: editSize(text, current) };
+  for (let from = cuts.length - 1; from >= 0; from -= 1) {
+    let candidate: string | null = text;
+    for (const cut of cuts.slice(from)) {
+      candidate = candidate?.startsWith(cut)
+        ? candidate.slice(cut.length)
+        : null;
+    }
+    if (candidate === null) continue;
+    const size = editSize(candidate, current);
+    if (size < best.size) {
+      best = { text: candidate, pending: cuts.slice(from), size };
+    }
+  }
+  return { text: best.text, pending: best.pending };
+};
+
+/**
+ * Converts each `[line, text]` still holding `text`, as `convertTaskLine`
+ * does; null when none converts.
+ */
+export const convertTaskLines = (
+  markdown: string,
+  lines: Iterable<readonly [number, string]>,
+  today: string,
+  newId: () => string,
+): { markdown: string; creates: TaskEmbedCreate[] } | null => {
+  let current = markdown;
+  const creates: TaskEmbedCreate[] = [];
+  for (const [line, text] of lines) {
+    if (current.split('\n')[line] !== text) continue;
+    const result = convertTaskLine(current, line, today, newId);
+    if (!result) continue;
+    current = result.markdown;
+    creates.push(result.create);
+  }
+  return creates.length ? { markdown: current, creates } : null;
+};
+
+/** Lines of `after` that end at a line break typed or pasted into `before`. */
+export const endedLines = (before: string, after: string) => {
+  const limit = Math.min(before.length, after.length);
+  let same = 0;
+  while (same < limit && before[same] === after[same]) same += 1;
+  let end = 0;
+  while (end < limit - same && before.at(-1 - end) === after.at(-1 - end)) {
+    end += 1;
+  }
+  const lines: number[] = [];
+  for (let i = same; i < after.length - end; i += 1) {
+    if (after[i] === '\n') lines.push(after.slice(0, i).split('\n').length - 1);
+  }
+  return lines;
+};

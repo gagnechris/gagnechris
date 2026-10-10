@@ -16,6 +16,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/app-core` — UI-free admin hooks (autosave, versioned entity editor, TanStack Query resource factory)
 - `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
+- `go` — Go module for Go Lambdas: `cmd/<name>` per function, shared code under `internal/`; `go/tools` pins golangci-lint
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
@@ -27,20 +28,20 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Build: `npm run build` (`tsc -b`, then the public, admin and Notebook Vite builds → `apps/web/dist`, `dist-admin`, `dist-notebook`; the public build fails if it bundles admin, Notebook or auth code)
 - Web shell guard: `npm run check:web-shells` (after build: GA in the public shell exactly when `GA_MEASUREMENT_ID` is set, never in the app shells, no inline script in any shell, no public entry asset beyond `PUBLIC_ENTRY_ASSETS`, demo code only in lazy chunks, no third-party script in the app shells)
 - Typecheck: `npm run typecheck` (all workspaces with a typecheck script)
-- Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier)
+- Lint: `npm run lint` (ESLint for every workspace); `npm run format:check` (Prettier); `npm run go:lint` (golangci-lint on `go/`, version pinned in `go/tools/go.mod`)
 - Case collisions: `npm run check:case-collisions` (fails when two tracked paths, or two JS/TS module paths ignoring extension, differ only by case; CI runs it)
 - Dev (Vite only): `npm run dev` (public :5173, admin :5174, Notebook :5175; `npm run dev -- notebook` for one; API proxied to local by default)
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + API + publisher static + the three Vite apps; fake auth)
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
-- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`)
+- Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `go/`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list, KVS keys and slug cap, local publish-relevance routes and the publisher-owned S3 key list from publisher targets; fails on diff)
 - Local E2E: `npm run e2e:local` (publish lifecycle smoke: the Playwright `api` project, `e2e/tests/publish-lifecycle.spec.ts`, on its own stack)
 - Browser E2E: `npm run e2e:browser` (Playwright, Chromium + WebKit, own stack on free ports; `-- --ui` to debug); see `docs/local-e2e.md`
 - CDK: `npm run cdk -- synth` (prod only, region `us-east-1`; account from credentials / `CDK_ACCOUNT`; `ALERTS_EMAIL` for Guardrails)
 - Deploy web: `npm run deploy:web` (or CI on merge to `main`: build → each app to its own bucket → CloudFront invalidations; the apex sync deletes whatever the public build doesn't produce, except publisher-owned paths)
-- CI: lint/typecheck/test/build/synth; the **Local E2E smoke** job builds the web app and runs `e2e:browser`, whose `api` project (the publish lifecycle smoke) runs before the browser projects (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), iOS TestFlight builds from `ios-v*` tags (`ios-release.yml`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
+- CI: lint/typecheck/test/build/synth plus Go lint and test (the shared setup action installs Go from `go/go.mod`); the **Local E2E smoke** job builds the web app and runs `e2e:browser`, whose `api` project (the publish lifecycle smoke) runs before the browser projects (report, traces, screenshots, video uploaded as `playwright-report-*` on failure); OIDC CDK diff on PRs, deploy on main (read-only `plan` job, then `deploy`), iOS TestFlight builds from `ios-v*` tags (`ios-release.yml`), nightly drift, hourly deploy-lag check; a red `main`, a failed deploy or prod over 2 h behind `main` emails the alerts topic (`infra/RUNBOOK.md`, Deploy alerts). Every action is SHA-pinned and jobs with `id-token: write` install with `--ignore-scripts` (enforced by `infra/test/ci-workflows.test.ts`)
 - Branch protection: `scripts/apply-branch-protection.sh` applies the `Protect main` ruleset from `scripts/main-branch-ruleset.json` (require PR; required checks: **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**; block force-push/delete; PRs need not be up to date with `main` — a red `main` is emailed by `.github/workflows/main-ci-alert.yml` and blocks the deploy). Every required check reports on every PR (path filters run inside the job, never at workflow level), so re-run the script after changing the list
 - GitHub `prod` environment: `scripts/apply-github-environments.sh` (deployments from `main` only)
 
@@ -61,6 +62,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4, only in the production public build (`GA_MEASUREMENT_ID`, set by `scripts/deploy-web.sh`); local, preview and e2e builds load no GA
 - **Node**: requires Node.js 22.12+ (see `.nvmrc`)
+- **Go**: the version in `go/go.mod`; any Go 1.21+ fetches it (`GOTOOLCHAIN=auto`). CDK synth compiles the Go Lambdas, so synth and `npm test` (infra) need Go
 
 ## Code Style Guidelines
 

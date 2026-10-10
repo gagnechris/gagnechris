@@ -10,6 +10,7 @@ HEAD="${2:?head SHA}"
 CDK_PATTERNS=(
   'infra/*'
   'services/*'
+  'go/*'
   'packages/*'
   'package.json'
   'package-lock.json'

@@ -66,7 +66,7 @@ The CloudFront functions live as readable source in `infra/lib/cloudfront/`. The
 
 `admin.gagnechris.com` and `notebook.gagnechris.com` each have their own private bucket and distribution (`AppHost`): `/api/*` goes to the same HTTP API, `/media/*` (admin only) to the site bucket, and a viewer-request function rewrites every extensionless path outside `/api`, `/assets`, `/media` and `/.well-known` to `/index.html`. The site stack and `AppHost` build their buckets, `/media/*` and hashed-file behaviours, CSPs (`csp()`), security headers, 5xx alarms and distribution nag suppressions from `infra/lib/constructs/site-hosting.ts`.
 
-API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild bundling, log retention, Powertools env, standard alarms).
+API and publisher Lambdas share the `NodeLambda` CDK construct (arm64, esbuild bundling, log retention, Powertools env, standard alarms). Go Lambdas use `GoLambda` (`infra/lib/constructs/go-lambda.ts`): `provided.al2023` on arm64, a `bootstrap` binary built from `go/cmd/<name>` during synth (local `go`, or a `golang` container when Go is missing), the same log retention, env and alarms. Both get their alarms and cdk-nag suppressions from `lambda-guardrails.ts`. Go code logs and emits metrics through `go/internal/observability`, which writes Powertools' JSON log keys and its EMF namespace and `service` dimension, so log queries and metric alarms don't depend on a function's language.
 
 ## Draft vs published
 
