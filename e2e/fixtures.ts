@@ -179,6 +179,32 @@ export class Seed {
     return data ?? fail('daily note', error);
   }
 
+  /** Replaces the area's daily template; `''` starts new days blank. */
+  async dailyTemplate(area: Area, bodyMarkdown: string) {
+    const path = { params: { path: { area } } };
+    const current = await this.api.GET(
+      '/api/notebook/templates/daily/{area}',
+      path,
+    );
+    const { data, error } = await this.api.PUT(
+      '/api/notebook/templates/daily/{area}',
+      {
+        ...path,
+        body: {
+          version: current.data?.version ?? fail('template', current.error),
+          bodyMarkdown,
+        },
+      },
+    );
+    return data ?? fail('template', error);
+  }
+
+  /** New days in both areas start empty, as tests typing into a day expect. */
+  async blankDailyTemplates() {
+    await this.dailyTemplate('work', '');
+    await this.dailyTemplate('personal', '');
+  }
+
   async task(input: Partial<TaskInput> & { title: string }) {
     const { data, error } = await this.api.POST('/api/notebook/tasks', {
       body: { id: ulid(), area: 'work', noteId: null, ...input },

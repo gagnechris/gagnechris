@@ -71,6 +71,10 @@ import {
   UpsertDailyNoteRequestSchema,
 } from './schemas.js';
 import {
+  DailyTemplateSchema,
+  UpdateDailyTemplateRequestSchema,
+} from './daily-templates.js';
+import {
   InviteUserRequestSchema,
   InviteUserResponseSchema,
   ManagedUserIdSchema,
@@ -290,6 +294,62 @@ function registerNotebookEntityPaths(
       200: okWithEtag(entity, 'Soft-deleted'),
       400: r400,
       404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+}
+
+function registerDailyTemplatePaths(registry: OpenAPIRegistry) {
+  const base = { tags: ['Notebook'], security: [{ bearerAuth: [] }] };
+  const path = '/api/notebook/templates/daily/{area}';
+  const params = z.object({ area: NotebookAreaSchema });
+
+  registry.registerPath({
+    method: 'get',
+    path,
+    summary: "Get the area's daily note template (stored, or the built-in one)",
+    ...base,
+    request: { params },
+    responses: {
+      200: okWithEtag(DailyTemplateSchema, 'Daily template'),
+      400: r400,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path,
+    summary:
+      'Save the daily template; applies to days with no note yet, never to existing notes',
+    ...base,
+    request: {
+      params,
+      headers: IfMatchHeadersSchema,
+      body: jsonBody(UpdateDailyTemplateRequestSchema),
+    },
+    responses: {
+      200: okWithEtag(DailyTemplateSchema, 'Saved'),
+      400: r400,
+      413: r413,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path,
+    summary: 'Reset the daily template to the built-in one',
+    ...base,
+    request: { params, ...versionBody },
+    responses: {
+      200: okWithEtag(
+        DailyTemplateSchema,
+        'The built-in template, at a new version',
+      ),
+      400: r400,
       409: r409,
       ...versionedAuth,
     },
@@ -581,6 +641,11 @@ export function buildOpenApiDocument() {
   registry.register('EmptyDailyNote', EmptyDailyNoteSchema);
   registry.register('DailyNoteGetResponse', DailyNoteGetResponseSchema);
   registry.register('UpsertDailyNoteRequest', UpsertDailyNoteRequestSchema);
+  registry.register('DailyTemplate', DailyTemplateSchema);
+  registry.register(
+    'UpdateDailyTemplateRequest',
+    UpdateDailyTemplateRequestSchema,
+  );
   registry.register('Task', TaskSchema);
   registry.register('TaskListResponse', TaskListResponseSchema);
   registry.register('NotebookBatchRequest', NotebookBatchRequestSchema);
@@ -930,6 +995,8 @@ export function buildOpenApiDocument() {
       ...adminAuth,
     },
   });
+
+  registerDailyTemplatePaths(registry);
 
   registry.registerPath({
     method: 'get',

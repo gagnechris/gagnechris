@@ -1,13 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Plugin } from 'vite';
-import {
-  STATIC_PAGE_META,
-  applyNotFoundPageMeta,
-  applyStaticPageMeta,
-  outputRelativePath,
-} from './staticPageMeta.ts';
+import { runnerImport, type Plugin } from 'vite';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -19,7 +13,18 @@ export function staticPagesPlugin(): Plugin {
   return {
     name: 'static-page-meta',
     apply: 'build',
-    writeBundle() {
+    async writeBundle() {
+      // Through Vite, not Node: the prerenders come from public-ui's TSX.
+      const {
+        STATIC_PAGE_META,
+        applyNotFoundPageMeta,
+        applyStaticPageMeta,
+        outputRelativePath,
+      } = (
+        await runnerImport<typeof import('./staticPageMeta.ts')>(
+          path.join(appRoot, 'scripts/staticPageMeta.ts'),
+        )
+      ).module;
       const shellPath = path.join(appRoot, 'dist/index.html');
       if (!fs.existsSync(shellPath)) {
         throw new Error(

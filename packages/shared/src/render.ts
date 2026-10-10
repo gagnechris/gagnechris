@@ -30,7 +30,6 @@ export {
   renderHomeAboutHtml,
   renderHomeBodyHtml,
   renderHomeLinksSentenceHtml,
-  renderHomePrerenderHtml,
   renderHomeProjectsHtml,
   renderHomeRecentPostsHtml,
   selectHomeRecentPosts,
@@ -48,19 +47,14 @@ export {
   RESUME_UNAVAILABLE_TEXT,
   renderResumeBodyHtml,
   renderResumeIntroHtml,
-  renderResumePrerenderHtml,
   renderResumeSectionsHtml,
   renderResumeUnavailableBodyHtml,
-  renderResumeUnavailablePrerenderHtml,
   resumeIntro,
   resumeSummaryExcerpt,
   type ResumeActionLink,
   type ResumeIntro,
 } from './resume-html.js';
 export {
-  renderSiteFooterHtml,
-  renderSiteHeaderHtml,
-  renderSitePageHtml,
   SITE_FOOTER_LINKS,
   SITE_HEADER_PHOTO_SIZE,
   SITE_NAV_LINKS,
@@ -68,7 +62,7 @@ export {
   siteNavCurrent,
   type SiteFooterLink,
   type SiteNavHref,
-} from './site-chrome-html.js';
+} from './site-chrome.js';
 export type {
   Home,
   Resume,
@@ -81,8 +75,6 @@ export {
   renderProjectCardHtml,
   projectPageView,
   renderProjectPageBodyHtml,
-  renderProjectPagePrerenderHtml,
   renderProjectsIndexBodyHtml,
-  renderProjectsIndexPrerenderHtml,
   type ProjectsIndexItem,
 } from './project-html.js';

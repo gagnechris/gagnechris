@@ -288,7 +288,7 @@ export const NoteBodyEditor = ({
   const lastText = segments[segments.length - 1]!.key;
 
   return (
-    <View style={styles.body}>
+    <View>
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
@@ -312,6 +312,10 @@ export const NoteBodyEditor = ({
           );
         }
         const empty = segment.lines.length === 0;
+        // An empty run between tasks stays a thin strip to tap into, so a
+        // list of tasks reads like one.
+        const collapsed =
+          empty && segment.key !== lastText && focus?.key !== segment.key;
         return (
           <TextInput
             key={segment.key}
@@ -319,7 +323,11 @@ export const NoteBodyEditor = ({
               if (input) inputs.current.set(segment.key, input);
               else inputs.current.delete(segment.key);
             }}
-            style={[styles.text, empty && styles.gap]}
+            style={[
+              styles.text,
+              empty && styles.gap,
+              collapsed && styles.collapsed,
+            ]}
             accessibilityLabel="Note body"
             placeholder={
               segment.key === lastText && segments.length === 1
@@ -383,7 +391,6 @@ export const NoteBodyEditor = ({
 };
 
 const styles = StyleSheet.create({
-  body: { gap: tokens.space[1] },
   text: {
     ...font.regular,
     fontSize: tokens.text.body,
@@ -391,6 +398,12 @@ const styles = StyleSheet.create({
     color: color.ink,
   },
   gap: { minHeight: 24 },
+  collapsed: {
+    minHeight: 0,
+    height: tokens.space[2],
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
   error: {
     ...font.medium,
     fontSize: tokens.text.base,

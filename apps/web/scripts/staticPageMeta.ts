@@ -5,12 +5,14 @@ import {
   upsertCanonical,
 } from '@gagnechris/shared/html';
 import {
+  renderBearsShellHtml,
+  renderContactPageHtml,
+  renderNotFoundPageHtml,
+} from '@gagnechris/public-ui/server';
+import {
   NOT_FOUND_DESCRIPTION,
   NOT_FOUND_TITLE,
-  renderContactPrerenderBodyHtml,
-  renderNotFoundBodyHtml,
 } from '@gagnechris/shared/public-pages';
-import { renderSitePageHtml } from '@gagnechris/shared/site-chrome';
 import {
   pageTitle,
   SITE_AUTHOR_NAME,
@@ -126,26 +128,17 @@ export function applyStaticPageMeta(
 const prerender = (html: string): string =>
   `<!--prerender:start-->${html}<!--prerender:end-->`;
 
-/** `src/pages/NotFound.tsx` inside the site chrome. */
-export const NOT_FOUND_PRERENDER = prerender(
-  renderSitePageHtml(null, renderNotFoundBodyHtml()),
-);
+export const NOT_FOUND_PRERENDER = prerender(renderNotFoundPageHtml());
 
-/*
- * Home and Resume are prerendered by the publisher. The bears pages are lazy
- * chunks whose fallback renders nothing, so their first React render is the
- * chrome alone, the same as this.
- */
+/* Home and Resume are prerendered by the publisher. */
 export function staticPagePrerender(
   routePath: StaticPageMeta['routePath'],
 ): string | null {
   if (routePath === 'contact') {
-    return prerender(
-      renderSitePageHtml('/contact', renderContactPrerenderBodyHtml()),
-    );
+    return prerender(renderContactPageHtml());
   }
   if (routePath.startsWith('dont-feed-the-bears')) {
-    return prerender(renderSitePageHtml(null, ''));
+    return prerender(renderBearsShellHtml());
   }
   return null;
 }

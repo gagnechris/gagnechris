@@ -24,6 +24,7 @@ export type UpdateTaskRequest = components['schemas']['UpdateTaskRequest'];
 export type UpsertDailyNoteRequest =
   components['schemas']['UpsertDailyNoteRequest'];
 export type EmptyDailyNote = components['schemas']['EmptyDailyNote'];
+export type DailyTemplate = components['schemas']['DailyTemplate'];
 export type ExpectedVersionRequest =
   components['schemas']['ExpectedVersionRequest'];
 export type NotebookArea = Note['area'];
@@ -531,6 +532,40 @@ export const upsertDailyNote = async (
     body,
   });
   return unwrap(result, 'Could not save daily note');
+};
+
+export const fetchDailyTemplate = async (
+  client: ApiClient,
+  area: NotebookArea,
+): Promise<DailyTemplate> => {
+  const result = await client.GET('/api/notebook/templates/daily/{area}', {
+    params: { path: { area } },
+  });
+  return unwrap(result, 'Could not load the template');
+};
+
+export const updateDailyTemplate = async (
+  client: ApiClient,
+  area: NotebookArea,
+  body: { version: number; bodyMarkdown: string },
+): Promise<DailyTemplate> => {
+  const result = await client.PUT('/api/notebook/templates/daily/{area}', {
+    params: { path: { area } },
+    body,
+  });
+  return unwrap(result, 'Could not save the template');
+};
+
+export const resetDailyTemplate = async (
+  client: ApiClient,
+  area: NotebookArea,
+  version: number,
+): Promise<DailyTemplate> => {
+  const result = await client.DELETE('/api/notebook/templates/daily/{area}', {
+    params: { path: { area } },
+    body: { version },
+  });
+  return unwrap(result, 'Could not reset the template');
 };
 
 export type TasksPage = {

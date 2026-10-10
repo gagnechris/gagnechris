@@ -215,6 +215,20 @@ describe('All tasks', () => {
     expect(has(renderer.root, 'Reopen Old idea')).toBe(1);
   });
 
+  it('shows a deadline without a start date, and the priority', async () => {
+    serve(
+      [],
+      [
+        makeTask(E, 'File taxes', { dueDate: '2026-10-05', priority: 'high' }),
+        makeTask(A, 'Water plants', { priority: 'low' }),
+      ],
+    );
+    const renderer = await launch(TasksScreen);
+    expect(allText(renderer)).toContain('High');
+    expect(has(renderer.root, 'File taxes, due Mon, High priority')).toBe(1);
+    expect(has(renderer.root, 'Water plants, Low priority')).toBe(1);
+  });
+
   it('filters by show-on day', async () => {
     serve([], tasks);
     const renderer = await launch(TasksScreen);

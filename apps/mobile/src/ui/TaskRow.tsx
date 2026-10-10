@@ -10,6 +10,8 @@ type Props = {
   /** Under the title: where it came from, or the day it starts. */
   detail?: string;
   due?: TaskDue | null;
+  /** Shown when not the default medium. */
+  priority?: Task['priority'];
   onOpen: () => void;
   onOpenDetail?: () => void;
   /** Read-only rows (All areas) have no checkbox action, + Note or ⋯. */
@@ -25,6 +27,7 @@ export const TaskRow = ({
   task,
   detail,
   due,
+  priority,
   onOpen,
   onOpenDetail,
   onToggle,
@@ -33,6 +36,8 @@ export const TaskRow = ({
   moreLabel = 'Snooze or drop',
   onDoToday,
 }: Props) => {
+  const priorityText =
+    priority === 'high' ? 'High' : priority === 'low' ? 'Low' : null;
   const done = task.status === 'done';
   const closed = done || task.status === 'dropped';
   const actions = [
@@ -72,7 +77,12 @@ export const TaskRow = ({
       <View style={styles.text}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={[task.title, detail, due?.text]
+          accessibilityLabel={[
+            task.title,
+            detail,
+            due?.text,
+            priorityText && `${priorityText} priority`,
+          ]
             .filter(Boolean)
             .join(', ')}
           accessibilityHint="Opens the task"
@@ -89,7 +99,7 @@ export const TaskRow = ({
             {task.title}
           </Text>
         </Pressable>
-        {detail || due ? (
+        {detail || due || priorityText ? (
           <View style={styles.meta}>
             {detail ? (
               <Pressable
@@ -107,6 +117,14 @@ export const TaskRow = ({
                 accessibilityElementsHidden
               >
                 {due.text}
+              </Text>
+            ) : null}
+            {priorityText ? (
+              <Text
+                style={[styles.detail, priority === 'high' && styles.overdue]}
+                accessibilityElementsHidden
+              >
+                {priorityText}
               </Text>
             ) : null}
           </View>

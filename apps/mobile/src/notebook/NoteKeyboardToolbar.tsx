@@ -16,12 +16,14 @@ import type { ToolbarAction } from './toolbarEdits';
 
 export const NOTE_TOOLBAR_ID = 'note-keyboard-toolbar';
 
-const BUTTONS: {
-  action: ToolbarAction;
+export type ToolbarButton<A extends string = ToolbarAction> = {
+  action: A;
   label: string;
   icon?: SFSymbol;
   text?: string;
-}[] = [
+};
+
+const NOTE_BUTTONS: ToolbarButton[] = [
   { action: 'task', label: 'Task', icon: 'checkmark.square' },
   { action: 'date', label: 'Date', icon: 'calendar' },
   { action: 'priority', label: 'Priority', text: '!' },
@@ -30,20 +32,24 @@ const BUTTONS: {
   { action: 'link', label: 'Link', icon: 'link' },
 ];
 
-type Props = {
-  onAction: (action: ToolbarAction) => void;
+type Props<A extends string> = {
+  onAction: (action: A) => void;
   /** The date menu for the `@…` being typed on a task line, if any. */
-  dateMenu: { heading: string; items: TaskDateMenuItem[] } | null;
-  onPickDate: (item: TaskDateMenuItem) => void;
+  dateMenu?: { heading: string; items: TaskDateMenuItem[] } | null;
+  onPickDate?: (item: TaskDateMenuItem) => void;
+  buttons?: readonly ToolbarButton<A>[];
+  nativeID?: string;
 };
 
 /** Sits on the keyboard: the date chips while typing `@`, then the buttons. */
-export const NoteKeyboardToolbar = ({
+export const NoteKeyboardToolbar = <A extends string = ToolbarAction>({
   onAction,
   dateMenu,
   onPickDate,
-}: Props) => (
-  <InputAccessoryView nativeID={NOTE_TOOLBAR_ID}>
+  buttons = NOTE_BUTTONS as unknown as readonly ToolbarButton<A>[],
+  nativeID = NOTE_TOOLBAR_ID,
+}: Props<A>) => (
+  <InputAccessoryView nativeID={nativeID}>
     <View style={styles.bar}>
       {dateMenu ? (
         <View accessibilityRole="menu" accessibilityLabel={dateMenu.heading}>
@@ -61,7 +67,7 @@ export const NoteKeyboardToolbar = ({
                 accessibilityLabel={
                   item.detail ? `${item.label}, ${item.detail}` : item.label
                 }
-                onPress={() => onPickDate(item)}
+                onPress={() => onPickDate?.(item)}
                 style={({ pressed }) => [
                   styles.chip,
                   pressed && styles.pressed,
@@ -77,7 +83,7 @@ export const NoteKeyboardToolbar = ({
         </View>
       ) : null}
       <View style={styles.buttons} accessibilityRole="toolbar">
-        {BUTTONS.map((button) => (
+        {buttons.map((button) => (
           <Pressable
             key={button.action}
             accessibilityRole="button"
@@ -88,7 +94,15 @@ export const NoteKeyboardToolbar = ({
             {button.icon ? (
               <Icon name={button.icon} size={20} color={color.ink} />
             ) : (
-              <Text style={styles.buttonText}>{button.text}</Text>
+              <Text
+                style={
+                  button.text && button.text.length > 1
+                    ? styles.wordText
+                    : styles.buttonText
+                }
+              >
+                {button.text}
+              </Text>
             )}
           </Pressable>
         ))}
@@ -158,6 +172,12 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md,
   },
   buttonText: { ...font.bold, fontSize: tokens.text.body, color: color.ink },
+  wordText: {
+    ...font.semibold,
+    fontSize: tokens.text.base,
+    color: color.ink,
+    paddingHorizontal: tokens.space[2],
+  },
   pressed: { backgroundColor: color.fill },
   spacer: { flex: 1 },
 });

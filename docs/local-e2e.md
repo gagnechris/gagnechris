@@ -177,7 +177,7 @@ Publishing, unpublishing or deleting a post also rebuilds `.local-site/index.htm
 so its Recent posts list stays current; this works before Home is ever
 published (the page renders `DEFAULT_HOME`). The hero links sentence comes from
 shared `HOME_LINKS_SENTENCE`, and the site header and footer from
-`@gagnechris/shared/site-chrome` (React JSX + publisher HTML).
+`@gagnechris/public-ui` (rendered by the publisher, hydrated by the app).
 
 The publisher reads a pristine `_shell.html` template (never the home
 prerender in `index.html`) when building other pages. `publish-lifecycle.spec.ts`

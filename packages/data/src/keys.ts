@@ -261,6 +261,17 @@ export function dailyNoteClaimSk(): string {
   return SK_NOTE;
 }
 
+export function dailyTemplatePk(
+  userId: string,
+  area: NotebookArea | string,
+): string {
+  return `USER#${userId}#DAILY_TEMPLATE#${area}`;
+}
+
+export function dailyTemplateSk(): string {
+  return SK_META;
+}
+
 export function taskPk(userId: string, taskId: string): string {
   return `USER#${userId}#TASK#${taskId}`;
 }
@@ -485,5 +496,9 @@ export const keys = {
         sk: taskMetaSk(),
       }),
     },
+    dailyTemplate: (userId: string, area: string) => ({
+      pk: dailyTemplatePk(userId, area),
+      sk: dailyTemplateSk(),
+    }),
   },
 } as const;

@@ -1,11 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import {
-  projectPageView,
-  renderProjectPagePrerenderHtml,
-} from '@gagnechris/shared/render';
+import { projectPageView } from '@gagnechris/shared/render';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
+import { renderProjectPagePrerenderHtml } from '@gagnechris/public-ui/server';
 import ProjectPage from './ProjectPage';
 
 const notebook = SAMPLE_PROJECTS.find((p) => p.slug === 'notebook')!;

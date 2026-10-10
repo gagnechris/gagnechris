@@ -4,6 +4,7 @@ import {
   NOTEBOOK_AREA_LABELS,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
+import { useRouter } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useArea } from '../../../src/area';
 import { signOutWarning } from '../../../src/cache';
@@ -19,6 +20,7 @@ const MoreScreen = () => {
   const { user, signOut } = useSession();
   const { area } = useArea();
   const pickArea = useAreaPicker();
+  const router = useRouter();
   if (!user) return null;
   const level = accessLevelFromGroups(user.groups);
   const levelLabel = level ? ACCESS_LEVEL_LABELS[level] : null;
@@ -81,6 +83,12 @@ const MoreScreen = () => {
           detail={NOTEBOOK_AREA_LABELS[area]}
           accessibilityHint="Chooses Work, Personal or All"
           onPress={pickArea}
+          trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
+        />
+        <Row
+          title="Daily templates"
+          accessibilityHint="Edits what new Work and Personal daily notes start with"
+          onPress={() => router.push('/more/templates')}
           trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
         />
       </Section>

@@ -2119,6 +2119,10 @@
             "enum": [
               0
             ]
+          },
+          "templateMarkdown": {
+            "type": "string",
+            "description": "The area's daily template filled in for this date: the editor's starting text, not saved until edited"
           }
         },
         "required": [
@@ -2131,7 +2135,8 @@
           "bodyMarkdown",
           "tags",
           "pinned",
-          "version"
+          "version",
+          "templateMarkdown"
         ]
       },
       "DailyNoteGetResponse": {
@@ -2281,6 +2286,10 @@
                 "enum": [
                   0
                 ]
+              },
+              "templateMarkdown": {
+                "type": "string",
+                "description": "The area's daily template filled in for this date: the editor's starting text, not saved until edited"
               }
             },
             "required": [
@@ -2293,7 +2302,8 @@
               "bodyMarkdown",
               "tags",
               "pinned",
-              "version"
+              "version",
+              "templateMarkdown"
             ]
           }
         ]
@@ -2332,6 +2342,58 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "DailyTemplate": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "enum": [
+              "work",
+              "personal"
+            ]
+          },
+          "bodyMarkdown": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "True when the built-in template applies (never saved, or reset)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 until the template is first saved or reset"
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "area",
+          "bodyMarkdown",
+          "isDefault",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "UpdateDailyTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bodyMarkdown": {
+            "type": "string",
+            "description": "Up to 10 KB (UTF-8; larger → 413); no task lines or embeds"
+          }
+        },
+        "required": [
+          "bodyMarkdown"
         ]
       },
       "Task": {
@@ -17798,6 +17860,10 @@
                           "enum": [
                             0
                           ]
+                        },
+                        "templateMarkdown": {
+                          "type": "string",
+                          "description": "The area's daily template filled in for this date: the editor's starting text, not saved until edited"
                         }
                       },
                       "required": [
@@ -17810,7 +17876,8 @@
                         "bodyMarkdown",
                         "tags",
                         "pinned",
-                        "version"
+                        "version",
+                        "templateMarkdown"
                       ]
                     }
                   ]
@@ -18629,6 +18696,10 @@
                           "enum": [
                             0
                           ]
+                        },
+                        "templateMarkdown": {
+                          "type": "string",
+                          "description": "The area's daily template filled in for this date: the editor's starting text, not saved until edited"
                         }
                       },
                       "required": [
@@ -18641,7 +18712,8 @@
                         "bodyMarkdown",
                         "tags",
                         "pinned",
-                        "version"
+                        "version",
+                        "templateMarkdown"
                       ]
                     }
                   ]
@@ -23470,6 +23542,895 @@
                       "additionalProperties": {
                         "type": "string"
                       }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notebook/templates/daily/{area}": {
+      "get": {
+        "summary": "Get the area's daily note template (stored, or the built-in one)",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work",
+                "personal"
+              ]
+            },
+            "required": true,
+            "name": "area",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily template",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "area": {
+                      "type": "string",
+                      "enum": [
+                        "work",
+                        "personal"
+                      ]
+                    },
+                    "bodyMarkdown": {
+                      "type": "string"
+                    },
+                    "isDefault": {
+                      "type": "boolean",
+                      "description": "True when the built-in template applies (never saved, or reset)"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "0 until the template is first saved or reset"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "area",
+                    "bodyMarkdown",
+                    "isDefault",
+                    "version",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Save the daily template; applies to days with no note yet, never to existing notes",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work",
+                "personal"
+              ]
+            },
+            "required": true,
+            "name": "area",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+              "example": "\"3\""
+            },
+            "required": false,
+            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "bodyMarkdown": {
+                    "type": "string",
+                    "description": "Up to 10 KB (UTF-8; larger → 413); no task lines or embeds"
+                  }
+                },
+                "required": [
+                  "bodyMarkdown"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "area": {
+                      "type": "string",
+                      "enum": [
+                        "work",
+                        "personal"
+                      ]
+                    },
+                    "bodyMarkdown": {
+                      "type": "string"
+                    },
+                    "isDefault": {
+                      "type": "boolean",
+                      "description": "True when the built-in template applies (never saved, or reset)"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "0 until the template is first saved or reset"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "area",
+                    "bodyMarkdown",
+                    "isDefault",
+                    "version",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (may include `currentVersion` / `current`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "version_conflict",
+                        "deleted",
+                        "payload_mismatch",
+                        "slug_taken",
+                        "daily_taken"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition failed (`If-Match` version mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "precondition_failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A field is over its size limit (`payload_too_large`, with `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Reset the daily template to the built-in one",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work",
+                "personal"
+              ]
+            },
+            "required": true,
+            "name": "area",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+              "example": "\"3\""
+            },
+            "required": false,
+            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The built-in template, at a new version",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "area": {
+                      "type": "string",
+                      "enum": [
+                        "work",
+                        "personal"
+                      ]
+                    },
+                    "bodyMarkdown": {
+                      "type": "string"
+                    },
+                    "isDefault": {
+                      "type": "boolean",
+                      "description": "True when the built-in template applies (never saved, or reset)"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "0 until the template is first saved or reset"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "area",
+                    "bodyMarkdown",
+                    "isDefault",
+                    "version",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (may include `currentVersion` / `current`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "version_conflict",
+                        "deleted",
+                        "payload_mismatch",
+                        "slug_taken",
+                        "daily_taken"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition failed (`If-Match` version mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "precondition_failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
                     }
                   },
                   "required": [

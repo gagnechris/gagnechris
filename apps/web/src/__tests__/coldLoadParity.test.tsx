@@ -5,17 +5,19 @@ import {
   applyPageMeta,
   DEFAULT_RESUME,
   pageTitle,
-  renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   projectPageView,
+} from '@gagnechris/shared/render';
+import { selectHomeProjects } from '@gagnechris/shared';
+import {
+  renderHomePrerenderHtml,
+  renderPostsIndexBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
   renderResumePrerenderHtml,
   renderResumeUnavailablePrerenderHtml,
   renderSitePageHtml,
-} from '@gagnechris/shared/render';
-import { selectHomeProjects } from '@gagnechris/shared';
-import { renderPostsIndexBodyHtml } from '@gagnechris/public-ui/server';
+} from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
   applyNotFoundPageMeta,
@@ -201,6 +203,7 @@ async function coldLoad(
     text: text(root),
     html: root.innerHTML,
     main: root.querySelector('main'),
+    header: root.querySelector('header'),
     head: document.head.innerHTML,
     title: document.title,
   };
@@ -463,24 +466,39 @@ describe('cold load: first React render matches the prerender', () => {
     expect(fetch).toHaveBeenCalledWith('/posts/other-post/', expect.anything());
   });
   test.each(['/no-such-page', '/posts/missing', '/contact/typo'])(
-    '%s served the 404 page: same DOM, no section current, no fetch',
+    '%s served the 404 page hydrates it: same DOM, no section current, no fetch',
     async (path) => {
-      const prerender = withoutMarkers(NOT_FOUND_PRERENDER);
-      const loaded = await coldLoad(path, prerender, NOT_FOUND_HEAD);
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        path,
+        NOT_FOUND_PRERENDER,
+        NOT_FOUND_HEAD,
+        onRecoverableError,
+      );
       unmount = loaded.unmount;
 
-      expect(loaded.root.innerHTML).toBe(prerender);
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
+      expect(loaded.root.innerHTML).toBe(loaded.before.html);
       expect(document.head.innerHTML).toBe(loaded.before.head);
       expect(loaded.root.querySelector('[aria-current]')).toBeNull();
       expect(fetch).not.toHaveBeenCalled();
     },
   );
 
-  test('/contact keeps the prerendered chrome and heading, and adds the form below', async () => {
+  test('/contact hydrates the prerendered chrome and heading, then adds the form below', async () => {
+    const onRecoverableError = vi.fn();
     const prerender = withoutMarkers(staticPagePrerender('contact')!);
-    const loaded = await coldLoad('/contact', prerender, staticHead('contact'));
+    const loaded = await coldLoad(
+      '/contact',
+      staticPagePrerender('contact')!,
+      staticHead('contact'),
+      onRecoverableError,
+    );
     unmount = loaded.unmount;
 
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
     expect(document.head.innerHTML).toBe(loaded.before.head);
 
     const before = document.createElement('div');
@@ -505,16 +523,21 @@ describe('cold load: first React render matches the prerender', () => {
   });
 
   test.each(Object.entries(BEARS_PAGES))(
-    '%s: first render is the chrome-only prerender while the chunk loads',
+    '%s: hydrates the chrome-only prerender while the chunk loads',
     async (path, page) => {
       vi.doMock(page, () => new Promise(() => {}));
-      const prerender = withoutMarkers(
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        path,
         staticPagePrerender(path.slice(1) as 'dont-feed-the-bears')!,
+        '',
+        onRecoverableError,
       );
-      const loaded = await coldLoad(path, prerender);
       unmount = loaded.unmount;
 
-      expect(loaded.root.innerHTML).toBe(prerender);
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('header')).toBe(loaded.before.header);
+      expect(loaded.root.innerHTML).toBe(loaded.before.html);
       expect(text(loaded.root)).not.toMatch(/Loading/);
     },
   );

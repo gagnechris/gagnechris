@@ -8,10 +8,6 @@ import {
   renderProjectPageBodyHtml,
   renderProjectsIndexBodyHtml,
 } from './project-html.js';
-import {
-  renderContactPrerenderBodyHtml,
-  renderNotFoundBodyHtml,
-} from './public-pages-html.js';
 import { DEFAULT_RESUME } from './resume-default.js';
 import {
   renderResumeBodyHtml,
@@ -36,8 +32,6 @@ const BODIES: [string, string][] = [
   ],
   ['resume', renderResumeBodyHtml(DEFAULT_RESUME)],
   ['resume unavailable', renderResumeUnavailableBodyHtml()],
-  ['contact', renderContactPrerenderBodyHtml()],
-  ['404', renderNotFoundBodyHtml()],
 ];
 
 describe('every page body is one <main> that holds its <h1>', () => {

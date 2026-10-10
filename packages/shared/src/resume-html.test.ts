@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RESUME } from './resume-default.js';
 import {
-  renderResumePrerenderHtml,
+  renderResumeBodyHtml,
   renderResumeSectionsHtml,
-  renderResumeUnavailablePrerenderHtml,
+  renderResumeUnavailableBodyHtml,
   resumeSummaryExcerpt,
 } from './resume-html.js';
 import type { Resume, ResumeContent } from './schemas.js';
@@ -214,9 +214,9 @@ describe('renderResumeSectionsHtml', () => {
   });
 });
 
-describe('renderResumePrerenderHtml', () => {
+describe('renderResumeBodyHtml', () => {
   it('renders the intro: title, italic headline, summary, Download PDF, LinkedIn, Get in touch', () => {
-    const html = renderResumePrerenderHtml(resume());
+    const html = renderResumeBodyHtml(resume());
     expect(html).toContain(
       '<main class="resume-page resume-page-prerender"><header class="resume-intro">' +
         '<h1 class="resume-intro__title">Resume</h1>' +
@@ -234,12 +234,12 @@ describe('renderResumePrerenderHtml', () => {
       '<a class="resume-intro__link" href="/contact">Get in touch</a>',
     );
     expect(html).toContain('<div class="resume-body">');
-    expect(html).toMatch(/<\/div><\/main><footer class="site-footer">/);
+    expect(html).toMatch(/<\/div><\/main>$/);
   });
 
   it('omits the headline line when it is unset or blank', () => {
     for (const headline of [undefined, '  ']) {
-      const html = renderResumePrerenderHtml(
+      const html = renderResumeBodyHtml(
         resume({
           content: content(headline === undefined ? {} : { headline }),
         }),
@@ -250,7 +250,7 @@ describe('renderResumePrerenderHtml', () => {
   });
 
   it("preserves $$, $&, $`, $' in headline and summary", () => {
-    const html = renderResumePrerenderHtml(
+    const html = renderResumeBodyHtml(
       resume({
         content: content({
           headline: "Making $$$ with $$ and $& and $` and $'",
@@ -263,14 +263,14 @@ describe('renderResumePrerenderHtml', () => {
   });
 
   it('escapes quotes in the pdf link', () => {
-    const html = renderResumePrerenderHtml(resume({ pdfPath: '/a"b.pdf' }));
+    const html = renderResumeBodyHtml(resume({ pdfPath: '/a"b.pdf' }));
     expect(html).toContain('href="/a&quot;b.pdf"');
   });
 });
 
-describe('renderResumeUnavailablePrerenderHtml', () => {
+describe('renderResumeUnavailableBodyHtml', () => {
   it('says the resume is available on request, with no download', () => {
-    const html = renderResumeUnavailablePrerenderHtml();
+    const html = renderResumeUnavailableBodyHtml();
     expect(html).toContain('resume-page-unavailable');
     expect(html).toContain(
       '<p class="resume-intro__summary">Resume available on request.</p>',

@@ -26,7 +26,6 @@ import {
   type ProjectPageView,
 } from './projects.js';
 import type { Project } from './schemas.js';
-import { renderSitePageHtml } from './site-chrome-html.js';
 
 export const PROJECTS_INDEX_TITLE = 'Projects';
 
@@ -225,19 +224,3 @@ export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
   buildLogHtml(view.name, view.buildLog) +
   `</div>` +
   `</main>`;
-
-export const renderProjectsIndexPrerenderHtml = (
-  projects: readonly ProjectsIndexItem[],
-  year?: number | string,
-): string =>
-  renderSitePageHtml(
-    PROJECTS_PATH,
-    renderProjectsIndexBodyHtml(projects),
-    year,
-  );
-
-export const renderProjectPagePrerenderHtml = (
-  view: ProjectPageView,
-  year?: number | string,
-): string =>
-  renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(view), year);
