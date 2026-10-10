@@ -107,3 +107,39 @@ export const convertTaskLine = (
   lines[line] = parsed.indent + taskEmbedToken(id);
   return { markdown: lines.join('\n'), create: { id, draft: parsed.draft } };
 };
+
+const editSize = (a: string, b: string) => {
+  const limit = Math.min(a.length, b.length);
+  let same = 0;
+  while (same < limit && a[same] === b[same]) same += 1;
+  let end = 0;
+  while (end < limit - same && a.at(-1 - end) === b.at(-1 - end)) end += 1;
+  return a.length + b.length - 2 * (same + end);
+};
+
+/**
+ * Maps `text`, typed into a view that may not have dropped the latest `cuts`
+ * from its start yet, onto `current`. Whichever reading is the smaller edit
+ * of `current` wins; the cuts the view still hasn't taken stay pending.
+ */
+export const rebaseText = (
+  text: string,
+  current: string,
+  cuts: readonly string[],
+): { text: string; pending: string[] } => {
+  let best = { text, pending: [] as string[], size: editSize(text, current) };
+  for (let from = cuts.length - 1; from >= 0; from -= 1) {
+    let candidate: string | null = text;
+    for (const cut of cuts.slice(from)) {
+      candidate = candidate?.startsWith(cut)
+        ? candidate.slice(cut.length)
+        : null;
+    }
+    if (candidate === null) continue;
+    const size = editSize(candidate, current);
+    if (size < best.size) {
+      best = { text: candidate, pending: cuts.slice(from), size };
+    }
+  }
+  return { text: best.text, pending: best.pending };
+};

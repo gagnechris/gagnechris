@@ -3,6 +3,7 @@ import {
   convertTaskLine,
   joinSegments,
   noteSegments,
+  rebaseText,
   removeSegment,
   replaceSegmentText,
 } from './noteSegments';
@@ -75,5 +76,30 @@ describe('note segments', () => {
     expect(convertTaskLine('Call Sam', 0, '2026-10-02', id)).toBeNull();
     expect(convertTaskLine('[ ] ', 0, '2026-10-02', id)).toBeNull();
     expect(convertTaskLine('```\n[ ] x\n```', 1, '2026-10-02', id)).toBeNull();
+  });
+
+  it('drops converted lines a stale keystroke still carries', () => {
+    expect(rebaseText('[ ] One\n[', '', ['[ ] One\n'])).toEqual({
+      text: '[',
+      pending: ['[ ] One\n'],
+    });
+    expect(
+      rebaseText('[ ] One\n[ ] Two\n[', '', ['[ ] One\n', '[ ] Two\n']),
+    ).toEqual({ text: '[', pending: ['[ ] One\n', '[ ] Two\n'] });
+    expect(rebaseText('[ ] Two\n[', '', ['[ ] One\n', '[ ] Two\n'])).toEqual({
+      text: '[',
+      pending: ['[ ] Two\n'],
+    });
+  });
+
+  it('takes a keystroke as typed once the view has the converted text', () => {
+    expect(rebaseText('[ ] One', '[ ] On', ['[ ] One\n'])).toEqual({
+      text: '[ ] One',
+      pending: [],
+    });
+    expect(rebaseText('[ ] One\nx', '[ ] One\n', ['[ ] One\n'])).toEqual({
+      text: '[ ] One\nx',
+      pending: [],
+    });
   });
 });

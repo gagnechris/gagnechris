@@ -112,6 +112,46 @@ describe('note editor', () => {
     );
   });
 
+  it('converts task lines typed faster than the text view takes the converted text', async () => {
+    serve([makeNote(NOTE, '')]);
+    const renderer = await renderNote();
+
+    type(renderer, '[ ] One');
+    type(renderer, '[ ] One\n');
+    // iOS drops the converted text while keystrokes are in flight, so the
+    // next ones still carry the line that became a task.
+    type(renderer, '[ ] One\n[ ] Two');
+    type(renderer, '[ ] One\n[ ] Two\n');
+    type(renderer, '[ ] One\n[ ] Two\n[ ] Three');
+    type(renderer, '[ ] One\n[ ] Two\n[ ] Three\n');
+    await settle(10);
+
+    const titles = [...server.state.taskStore.values()].map((t) => t.title);
+    expect(titles).toEqual(['One', 'Two', 'Three']);
+    expect(bodies(renderer).at(-1)!.props.value).toBe('');
+    const ids = [...server.state.taskStore.keys()];
+    await vi.waitFor(
+      () =>
+        expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(
+          ids.map((id) => `{{task:${id}}}\n`).join(''),
+        ),
+      { timeout: 3_000 },
+    );
+  });
+
+  it('keeps a task line typed again after its twin became a task', async () => {
+    serve([makeNote(NOTE, '')]);
+    const renderer = await renderNote();
+
+    type(renderer, '[ ] One');
+    type(renderer, '[ ] One\n');
+    type(renderer, '[ ] One');
+    await settle(10);
+
+    expect(server.state.taskStore.size).toBe(1);
+    expect(bodies(renderer).at(-1)!.props.value).toBe('[ ] One');
+  });
+
   it('leaves a task line alone when a backspace pulls it up', async () => {
     serve([makeNote(NOTE, 'a\n\n[ ] B')]);
     const renderer = await renderNote();

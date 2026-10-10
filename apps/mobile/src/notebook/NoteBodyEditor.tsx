@@ -25,6 +25,7 @@ import { NOTE_TOOLBAR_ID, NoteKeyboardToolbar } from './NoteKeyboardToolbar';
 import {
   convertTaskLine,
   lineAt,
+  rebaseText,
   noteSegments,
   offsetOf,
   removeSegment,
@@ -94,6 +95,11 @@ export const NoteBodyEditor = ({
   // Typing reports the new text before the new caret; until the caret
   // arrives, the old offset points into the wrong line.
   const caretStale = useRef(false);
+  // iOS ignores a new value while keystrokes are in flight and reports
+  // them against the text it still shows, which holds converted lines.
+  const trims = useRef(new Map<string, string[]>());
+  // The caret that follows such a keystroke counts from that stale start.
+  const caretShift = useRef<{ key: string; by: number } | null>(null);
   const latest = useLatest({ markdown, segments, focus });
 
   const caretOf = (f: Focus) => {
@@ -112,8 +118,20 @@ export const NoteBodyEditor = ({
     if (!result) return false;
     onCreate(result.create);
     onChange(result.markdown);
+    const next = noteSegments(result.markdown);
+    const key = latest.current.focus?.key;
+    const before = key && textSegment(latest.current.segments, key);
+    const after = key && textSegment(next, key);
+    if (key && before && after) {
+      const from = segmentText(before);
+      const to = segmentText(after);
+      // The run keeps its key for the lines after the converted one.
+      if (to !== from && from.endsWith(to)) {
+        const cut = from.slice(0, from.length - to.length);
+        trims.current.set(key, [...(trims.current.get(key) ?? []), cut]);
+      }
+    }
     if (caret) {
-      const next = noteSegments(result.markdown);
       const target = segmentAtLine(next, caret.line);
       if (target) {
         const offset = offsetOf(
@@ -170,6 +188,8 @@ export const NoteBodyEditor = ({
       ? caretLine.current?.line
       : caretOf(current)?.line;
     setFocus(null);
+    trims.current.clear();
+    caretShift.current = null;
     caretLine.current = null;
     caretStale.current = false;
     if (line !== undefined) convert(line, null);
@@ -179,7 +199,10 @@ export const NoteBodyEditor = ({
     key: string,
     event: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
   ) => {
-    const { start, end } = event.nativeEvent.selection;
+    const shift = caretShift.current?.key === key ? caretShift.current.by : 0;
+    caretShift.current = null;
+    const start = Math.max(0, event.nativeEvent.selection.start - shift);
+    const end = Math.max(0, event.nativeEvent.selection.end - shift);
     caretStale.current = false;
     setFocus({ key, selection: { start, end } });
   };
@@ -192,6 +215,17 @@ export const NoteBodyEditor = ({
       pendingSelection.current = moved;
       setFocus(moved);
     }
+  };
+
+  const onChangeText = (key: string, text: string) => {
+    const pending = trims.current.get(key);
+    const segment = textSegment(latest.current.segments, key);
+    if (!pending || !segment) return edit(key, text);
+    const rebased = rebaseText(text, segmentText(segment), pending);
+    if (rebased.pending.length) trims.current.set(key, rebased.pending);
+    else trims.current.delete(key);
+    caretShift.current = { key, by: text.length - rebased.text.length };
+    edit(key, rebased.text);
   };
 
   const onAction = (action: ToolbarAction) => {
@@ -294,7 +328,7 @@ export const NoteBodyEditor = ({
             }
             placeholderTextColor={color.muted}
             value={segmentText(segment)}
-            onChangeText={(text) => edit(segment.key, text)}
+            onChangeText={(text) => onChangeText(segment.key, text)}
             onSelectionChange={(event) => onSelectionChange(segment.key, event)}
             onBlur={() => onBlur(segment.key)}
             inputAccessoryViewID={NOTE_TOOLBAR_ID}
