@@ -36,6 +36,7 @@ import {
   nativeRetrySignals,
   useIsOnline,
 } from '../../../src/net';
+import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { PickDateModal } from '../../../src/notebook/PickDateModal';
 import { ConflictPanel } from '../../../src/notebook/ConflictPanel';
 import { saveLabel } from '../../../src/notebook/saveLabel';
@@ -81,6 +82,7 @@ const showsOnText = (draft: TaskDraft, today: string) =>
 const TaskScreen = ({ onReload }: { onReload: () => void }) => {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const routes = useDetailRoutes();
   const insets = useSafeAreaInsets();
   const online = useIsOnline();
   const today = useLocalToday();
@@ -189,7 +191,7 @@ const TaskScreen = ({ onReload }: { onReload: () => void }) => {
     <ConflictPanel
       entityId={id}
       onResolved={(after) => {
-        if (after.type === 'open') router.replace(`/tasks/${after.id}`);
+        if (after.type === 'open') router.replace(routes.taskPath(after.id));
         else if (after.type === 'close') router.back();
         else onReload();
       }}
@@ -379,7 +381,7 @@ const TaskScreen = ({ onReload }: { onReload: () => void }) => {
               taskId={entity.id}
               homeNoteId={entity.noteId}
               today={today}
-              onOpenNote={(noteId) => router.push(`/notes/${noteId}`)}
+              onOpenNote={routes.openNote}
             />
           </>
         )}

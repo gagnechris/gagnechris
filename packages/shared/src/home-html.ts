@@ -1,9 +1,8 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
-import { formatPostDate, postDateAttribute } from './post-date.js';
 import { comparePostsNewestFirst } from './posts-index.js';
 import { PROJECTS_PATH } from './projects.js';
-import type { Home, Post } from './schemas.js';
+import type { Post } from './schemas.js';
 import {
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
@@ -74,23 +73,6 @@ export const selectHomeRecentPosts = (
 
 export const homePostHref = (slug: string): string => `/posts/${slug}`;
 
-const renderHomeLinkHtml = (link: HomeLink): string => {
-  const label = escapeHtml(link.label);
-  const href = escapeHtml(link.href);
-  return link.kind === 'external'
-    ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`
-    : `<a href="${href}">${label}</a>`;
-};
-
-export const renderHomeLinksSentenceHtml = (): string =>
-  `<p class="home-hero__links">` +
-  HOME_LINKS_SENTENCE.map((segment) =>
-    typeof segment === 'string'
-      ? escapeHtml(segment)
-      : renderHomeLinkHtml(segment),
-  ).join('') +
-  `</p>`;
-
 export const renderHomeAboutHtml = (about: string): string =>
   about
     .split(/\n\s*\n/)
@@ -101,80 +83,9 @@ export const renderHomeAboutHtml = (about: string): string =>
     )
     .join('');
 
-const renderHomeRecentPostHtml = (post: HomeRecentPost): string => {
-  const date = formatPostDate(post.publishedAt);
-  const dateTime = postDateAttribute(post.publishedAt);
-  return (
-    `<li class="home-post" data-id="${escapeHtml(post.id)}">` +
-    `<h3 class="home-post__title"><a href="${escapeHtml(homePostHref(post.slug))}">${escapeHtml(post.title)}</a></h3>` +
-    (post.excerpt
-      ? `<p class="home-post__excerpt">${escapeHtml(post.excerpt)}</p>`
-      : '') +
-    (date
-      ? `<time class="home-post__date"${dateTime ? ` datetime="${escapeHtml(dateTime)}"` : ''}>${escapeHtml(date)}</time>`
-      : '') +
-    `</li>`
-  );
-};
-
-/** Empty when there are no posts: the section has no empty state. */
-export const renderHomeRecentPostsHtml = (
-  posts: readonly HomeRecentPost[],
-): string =>
-  posts.length === 0
-    ? ''
-    : `<section class="home-section" aria-labelledby="${HOME_RECENT_POSTS_HEADING_ID}">` +
-      `<div class="home-section__head">` +
-      `<h2 class="home-section__label" id="${HOME_RECENT_POSTS_HEADING_ID}">${HOME_RECENT_POSTS_HEADING}</h2>` +
-      `<a class="home-section__more" href="/posts">${HOME_ALL_POSTS_LABEL}</a>` +
-      `</div>` +
-      `<ul class="home-posts">${posts.map(renderHomeRecentPostHtml).join('')}</ul>` +
-      `</section>`;
-
 export const HOME_PROJECTS_HEADING = 'What I’m building';
 export const HOME_PROJECTS_HEADING_ID = 'home-projects';
 export const HOME_ALL_PROJECTS_LABEL = 'All projects';
-
-/**
- * `cardsHtml` is each card's `<li>`, rendered by `@gagnechris/public-ui`.
- * Empty when nothing but ideas is published.
- */
-export const renderHomeProjectsHtml = (cardsHtml: readonly string[]): string =>
-  cardsHtml.length === 0
-    ? ''
-    : `<section class="home-section" aria-labelledby="${HOME_PROJECTS_HEADING_ID}">` +
-      `<div class="home-section__head">` +
-      `<h2 class="home-section__label" id="${HOME_PROJECTS_HEADING_ID}">${escapeHtml(HOME_PROJECTS_HEADING)}</h2>` +
-      `<a class="home-section__more" href="${PROJECTS_PATH}">${HOME_ALL_PROJECTS_LABEL}</a>` +
-      `</div>` +
-      `<ul class="project-list project-list--home">${cardsHtml.join('')}</ul>` +
-      `</section>`;
-
-/**
- * Classes match `apps/web/src/App.css`. `home-page-prerender` and the data
- * attributes are what the SPA parses back on a cold load; React renders the
- * same markup (App.test.tsx compares the two DOMs).
- */
-export const renderHomeBodyHtml = (
-  home: Home,
-  recentPosts: readonly HomeRecentPost[] = [],
-  projectCardsHtml: readonly string[] = [],
-): string => {
-  const name = escapeHtml(home.name);
-  const title = escapeHtml(home.title);
-  return (
-    `<main class="home-page home-page-prerender" data-name="${name}" data-title="${title}">` +
-    `<header class="home-hero">` +
-    `<h1 class="home-hero__name">${name}</h1>` +
-    `<p class="home-hero__title">${title}</p>` +
-    `<div class="home-hero__about">${renderHomeAboutHtml(home.about)}</div>` +
-    renderHomeLinksSentenceHtml() +
-    `</header>` +
-    renderHomeRecentPostsHtml(recentPosts) +
-    renderHomeProjectsHtml(projectCardsHtml) +
-    `</main>`
-  );
-};
 
 export const homeAboutExcerpt = (about: string, max = 200): string =>
   textExcerpt(about, max);

@@ -39,6 +39,12 @@ import {
   dailyTemplatePk,
   dailyTemplateSk,
   homePk,
+  metaToHome,
+  metaToNote,
+  metaToPost,
+  metaToProject,
+  metaToResume,
+  metaToTask,
   noteMetaSk,
   notePk,
   postPk,
@@ -52,6 +58,8 @@ import {
 import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
+  HomeSchema,
+  NoteSchema,
   POWERTOOLS_METRICS_NAMESPACE,
   RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES,
   RESTORE_TEST_METRICS,
@@ -59,6 +67,11 @@ import {
   RESTORE_TEST_SERVICE_NAME,
   RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
   RESTORE_TEST_TABLE_PREFIX,
+  PostSchema,
+  ProjectSchema,
+  ResumeSchema,
+  SyncChangeSchema,
+  TaskSchema,
   type Project,
 } from '@gagnechris/shared';
 import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
@@ -258,6 +271,78 @@ for (const [name, item] of Object.entries(SAMPLES)) {
   }
 }
 
+const apiNote = metaToNote(
+  SAMPLES.noteDaily as Parameters<typeof metaToNote>[0],
+);
+const apiTask = {
+  ...metaToTask(SAMPLES.task as Parameters<typeof metaToTask>[0]),
+  id: '01K6G0000000000000000TASK0',
+};
+
+// API response bodies; Go decodes and re-encodes each to prove its generated
+// types carry every field.
+const API_SAMPLES: Record<string, [z.ZodType, unknown]> = {
+  post: [
+    PostSchema,
+    metaToPost(taggedPost as Parameters<typeof metaToPost>[0], true),
+  ],
+  project: [
+    ProjectSchema,
+    metaToProject(SAMPLES.project as Parameters<typeof metaToProject>[0]),
+  ],
+  home: [
+    HomeSchema,
+    metaToHome(SAMPLES.home as Parameters<typeof metaToHome>[0]),
+  ],
+  resume: [
+    ResumeSchema,
+    metaToResume(SAMPLES.resume as Parameters<typeof metaToResume>[0]),
+  ],
+  note: [NoteSchema, apiNote],
+  task: [TaskSchema, apiTask],
+  syncNote: [
+    SyncChangeSchema,
+    {
+      type: 'note',
+      id: apiNote.id,
+      version: apiNote.version,
+      updatedAt: apiNote.updatedAt,
+      deleted: false,
+      entity: apiNote,
+    },
+  ],
+  syncTask: [
+    SyncChangeSchema,
+    {
+      type: 'task',
+      id: apiTask.id,
+      version: apiTask.version,
+      updatedAt: apiTask.updatedAt,
+      deleted: false,
+      entity: apiTask,
+    },
+  ],
+  syncTaskDeleted: [
+    SyncChangeSchema,
+    {
+      type: 'task',
+      id: apiTask.id,
+      version: apiTask.version + 1,
+      updatedAt: apiTask.updatedAt,
+      deleted: true,
+    },
+  ],
+};
+
+for (const [name, [schema, body]] of Object.entries(API_SAMPLES)) {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new Error(
+      `api sample ${name} does not parse: ${parsed.error.message}`,
+    );
+  }
+}
+
 const contract = {
   restoreTest: {
     serviceName: RESTORE_TEST_SERVICE_NAME,
@@ -279,6 +364,9 @@ const contract = {
     ]),
   ),
   samples: SAMPLES,
+  apiSamples: Object.fromEntries(
+    Object.entries(API_SAMPLES).map(([name, [, body]]) => [name, body]),
+  ),
 };
 
 writeFileSync(OUT, `${JSON.stringify(contract, null, 2)}\n`);

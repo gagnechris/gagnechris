@@ -1,0 +1,21 @@
+# Types only (npm run go:generate).
+package: apitypes
+output: apitypes.gen.go
+generate:
+  models: true
+compatibility:
+  old-aliasing: true
+output-options:
+  skip-prune: true
+  name-normalizer: ToCamelCaseWithInitialisms
+  generate-types-for-anonymous-schemas: true
+  nullable-type: true
+  # The API's timestamps and dates are strings it compares and echoes as
+  # written; time.Time would re-encode them differently.
+  type-mapping:
+    string:
+      formats:
+        date-time: { type: string }
+        date: { type: string }
+        email: { type: string }
+        uri: { type: string }

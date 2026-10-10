@@ -26,6 +26,7 @@ import {
   nativeRetrySignals,
   useIsOnline,
 } from '../../../src/net';
+import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { NoteBodyEditor } from '../../../src/notebook/NoteBodyEditor';
 import {
   deleteNoteMessage,
@@ -50,6 +51,7 @@ const DELETE_PROMPT = 'delete-note';
 const NoteScreen = ({ onReload }: { onReload: () => void }) => {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const routes = useDetailRoutes();
   const online = useIsOnline();
   const today = useLocalToday();
   const [preview, setPreview] = useState(false);
@@ -100,10 +102,7 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
     note: embedNote,
     today,
   });
-  const openTask = useCallback(
-    (taskId: string) => router.push(`/tasks/${taskId}`),
-    [router],
-  );
+  const { openTask } = routes;
 
   const setTitle = useCallback(
     (title: string) => updateDraft((prev) => ({ ...prev, title })),
@@ -161,7 +160,7 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
     <ConflictPanel
       entityId={id}
       onResolved={(after) => {
-        if (after.type === 'open') router.replace(`/notes/${after.id}`);
+        if (after.type === 'open') router.replace(routes.notePath(after.id));
         else if (after.type === 'close') router.back();
         else onReload();
       }}

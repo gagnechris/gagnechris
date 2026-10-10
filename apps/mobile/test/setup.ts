@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from 'react';
 import { beforeEach, vi } from 'vitest';
 import { notebookServer } from './notebookServer';
-import { searchParams } from './router';
+import { searchParams, segments } from './router';
 
 /**
  * react-native ships Flow sources Node can't load, so screen tests render
@@ -121,11 +121,12 @@ const StackScreen = ({
   );
 
 vi.mock('expo-router', async () => {
-  const { router, searchParams } = await import('./router');
+  const { router, searchParams, segments } = await import('./router');
   return {
     useRouter: () => router,
     useLocalSearchParams: () => searchParams.current,
     Redirect: host('Redirect'),
+    useSegments: () => segments.current,
     Stack: Object.assign(host('Stack'), { Screen: StackScreen }),
   };
 });
@@ -133,6 +134,7 @@ vi.mock('expo-router', async () => {
 beforeEach(() => {
   vi.stubGlobal('fetch', notebookServer([]).fetch);
   searchParams.current = {};
+  segments.current = [];
 });
 
 vi.mock('@react-native-community/netinfo', async () => ({

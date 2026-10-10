@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_PROJECTS } from './fixtures/sample-projects.js';
-import { DEFAULT_HOME } from './home-default.js';
-import { renderHomeBodyHtml } from './home-html.js';
 import { renderPostArticleHtml, renderPostPageBodyHtml } from './post-html.js';
 import { projectPageView, renderProjectPageBodyHtml } from './project-html.js';
 import { DEFAULT_RESUME } from './resume-default.js';
@@ -19,7 +17,6 @@ const post = {
 };
 
 const BODIES: [string, string][] = [
-  ['home', renderHomeBodyHtml(DEFAULT_HOME)],
   ['post', renderPostPageBodyHtml(post)],
   [
     'project',

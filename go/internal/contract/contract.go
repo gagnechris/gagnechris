@@ -38,6 +38,8 @@ type Contract struct {
 	ItemSchemas map[string]json.RawMessage `json:"itemSchemas"`
 	// Samples are rows built by the TypeScript item builders.
 	Samples map[string]map[string]any `json:"samples"`
+	// APISamples are API response bodies built by the TypeScript converters.
+	APISamples map[string]json.RawMessage `json:"apiSamples"`
 }
 
 // Data is the generated contract.

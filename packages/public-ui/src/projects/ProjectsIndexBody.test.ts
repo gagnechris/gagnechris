@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HOME, type Project } from '@gagnechris/shared';
+import type { Project } from '@gagnechris/shared';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import { projectCardViews } from '@gagnechris/shared';
-import { renderHomeBodyHtml, renderProjectsIndexBodyHtml } from '../server.js';
+import { renderProjectsIndexBodyHtml } from '../server.js';
 
 const base: Project = {
   id: '01A',
@@ -85,23 +84,6 @@ describe('projects index', () => {
     expect(html).toMatch(/^<main /);
     expect(html).toContain(
       '<img alt="" width="240" height="160" loading="lazy" src="/media/a.png"/>',
-    );
-  });
-});
-
-describe('Home', () => {
-  it('lists the cards under What I’m building with h3 names', () => {
-    const html = renderHomeBodyHtml(
-      DEFAULT_HOME,
-      [],
-      projectCardViews(SAMPLE_PROJECTS).slice(0, 2),
-    );
-    expect(html.match(/<h3 class="project-card__name">[^<]+/g)).toEqual([
-      '<h3 class="project-card__name">Posts',
-      '<h3 class="project-card__name">Notebook',
-    ]);
-    expect(html).toContain(
-      '<ul class="project-list project-list--home"><li class="project-card"',
     );
   });
 });

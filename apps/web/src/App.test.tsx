@@ -184,7 +184,7 @@ describe('App', () => {
     expect(document.querySelector('.home-section')).toBeNull();
   });
 
-  test('renders the same markup as the publisher prerender', async () => {
+  test('renders the published Home it reads back as the publisher printed it', async () => {
     stubSite({ home: publishedHome, items: POSTS, projects: HOME_PROJECTS });
 
     const { container } = renderWithProviders(<App />);

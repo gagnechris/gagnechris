@@ -1,10 +1,9 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import {
-  renderHomeRecentPostsHtml,
-  renderPostArticleHtml,
-} from '@gagnechris/shared/render';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { HomeRecentPosts } from '@gagnechris/public-ui';
+import { renderPostArticleHtml } from '@gagnechris/shared/render';
 import PostsDemo from '.';
 import {
   POSTS_DEMO_CAPTIONS,
@@ -122,7 +121,9 @@ describe('PostsDemo', () => {
     ).toBeVisible();
     expect(screen.getByText(POSTS_DEMO_CAPTIONS.draft)).toBeInTheDocument();
     const home = document.createElement('div');
-    home.innerHTML = renderHomeRecentPostsHtml([WELCOME_POST]);
+    home.innerHTML = renderToStaticMarkup(
+      <HomeRecentPosts posts={[WELCOME_POST]} />,
+    );
     expect(page()!.innerHTML).toBe(home.innerHTML);
 
     await show('Post page');

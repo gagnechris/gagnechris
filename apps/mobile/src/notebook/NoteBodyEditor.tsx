@@ -337,7 +337,7 @@ export const NoteBodyEditor = ({
           {error}
         </Text>
       ) : null}
-      {segments.map((segment) => {
+      {segments.map((segment, index) => {
         if (segment.kind === 'embed') {
           const state = stateOf(segment.id);
           const title = state.kind === 'task' ? state.task.title : 'Task';
@@ -370,6 +370,7 @@ export const NoteBodyEditor = ({
               styles.text,
               empty && styles.gap,
               collapsed && styles.collapsed,
+              collapsed && index > 0 && styles.collapsedBelowRow,
             ]}
             accessibilityLabel="Note body"
             placeholder={
@@ -433,6 +434,9 @@ export const NoteBodyEditor = ({
   );
 };
 
+const STRIP = tokens.space[1];
+const STRIP_OVERLAP = tokens.space[2];
+
 const styles = StyleSheet.create({
   text: {
     ...font.regular,
@@ -441,11 +445,19 @@ const styles = StyleSheet.create({
     color: color.ink,
   },
   gap: { minHeight: 24 },
+  // The strip reaches into the padding of the task rows around it and sits
+  // above them, so it is easy to tap without spreading the rows apart.
   collapsed: {
     minHeight: 0,
-    height: tokens.space[2],
+    height: STRIP + STRIP_OVERLAP,
+    marginBottom: -STRIP_OVERLAP,
     paddingTop: 0,
     paddingBottom: 0,
+    zIndex: 1,
+  },
+  collapsedBelowRow: {
+    height: STRIP + 2 * STRIP_OVERLAP,
+    marginTop: -STRIP_OVERLAP,
   },
   error: {
     ...font.medium,

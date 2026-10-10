@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../../../src/area';
 import { PickDateModal } from '../../../src/notebook/PickDateModal';
 import { showSnoozeOrDrop } from '../../../src/notebook/taskActionSheets';
+import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { TodayNote } from '../../../src/notebook/TodayNote';
 import { TodaySheet } from '../../../src/notebook/TodaySheet';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
@@ -31,6 +32,7 @@ const NO_IDS: ReadonlySet<string> = new Set();
 const TodayScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { openTask, openNote } = useDetailRoutes();
   const today = useLocalToday();
   const { area } = useArea();
   // Null follows the device's day, so midnight moves it on.
@@ -78,7 +80,6 @@ const TodayScreen = () => {
   const snoozeFrom = snoozeBaseDay(date, today);
   const canAddToNote = writingArea !== null && date === today;
 
-  const openTask = (id: string) => router.push(`/tasks/${id}`);
   const addToNote = (task: Task) => {
     appendEmbedRef.current?.(task.id);
     setSheetOpen(false);
@@ -230,7 +231,7 @@ const TodayScreen = () => {
         }}
         onOpenNote={(noteId) => {
           setSheetOpen(false);
-          router.push(`/notes/${noteId}`);
+          openNote(noteId);
         }}
         onMore={showMore}
         onAddToNote={canAddToNote ? addToNote : undefined}

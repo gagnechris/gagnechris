@@ -760,9 +760,10 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 `Api-prod`: HTTP API + arm64 Node.js 24 Lambda (1024 MB, X-Ray active tracing) behind CloudFront `/api/*`. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
-OpenAPI contract: `packages/shared/openapi/openapi.json` and client types
-`packages/api-client/src/schema.d.ts`. Regenerate both with `npm run openapi`; CI runs
-`npm run openapi:check` and fails on drift.
+OpenAPI contract: `packages/shared/openapi/openapi.json`, client types
+`packages/api-client/src/schema.d.ts` and Go types `go/internal/apitypes/apitypes.gen.go`.
+Regenerate all three with `npm run openapi`; CI runs `npm run openapi:check` and
+`npm run go:generate:check` and fails on drift.
 
 ```bash
 export ALERTS_EMAIL='you@example.com'

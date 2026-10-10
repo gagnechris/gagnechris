@@ -24,6 +24,7 @@ WEB_PATTERNS=(
   'apps/web/*'
   'packages/api-client/*'
   'packages/app-core/*'
+  'packages/public-ui/*'
   'packages/shared/*'
   'packages/tokens/*'
   'package.json'
