@@ -20,7 +20,8 @@ export type PublicLinkProps = {
   onClick?: () => void;
 };
 
-const PlainLink = ({
+/** The publisher's link: a plain anchor with no click handling. */
+export const PlainLink = ({
   href,
   className,
   children,

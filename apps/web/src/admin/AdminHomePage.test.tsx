@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { renderHomePrerenderHtml } from '@gagnechris/public-ui/server';
 import { PAST_AUTOSAVE_MS, QueryClientTestProvider } from '../test-utils';
 import AdminHomePage from './AdminHomePage';
+import { withPublicUrls } from './publicUrl';
 import { adminApi } from '../mockAdminApi';
 
 const { GET: get, PUT: put, POST: post } = adminApi;
@@ -244,6 +246,51 @@ describe('AdminHomePage publish', () => {
     });
     expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  });
+});
+
+describe('AdminHomePage preview', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockResolvedValue({
+      data: { ...baseHome },
+      error: undefined,
+      response: { status: 200 },
+    });
+  });
+
+  // The published page as the publisher prints it, links and images pointed
+  // at the public site.
+  const publishedMain = (home: typeof baseHome) =>
+    new DOMParser()
+      .parseFromString(
+        withPublicUrls(renderHomePrerenderHtml(home)),
+        'text/html',
+      )
+      .querySelector('main.home-page')!.outerHTML;
+  const previewMain = (container: HTMLElement) =>
+    container.querySelector('.admin-home-preview main.home-page')?.outerHTML;
+
+  test('matches the published Home and follows the draft', async () => {
+    const { container } = renderHome();
+    await screen.findByRole('link', { name: 'View live' });
+    expect(previewMain(container)).toBe(publishedMain(baseHome));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Christopher Gagne' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /^About Me/ }), {
+      target: { value: 'First.\n\nSecond.' },
+    });
+    await waitFor(() =>
+      expect(previewMain(container)).toBe(
+        publishedMain({
+          ...baseHome,
+          name: 'Christopher Gagne',
+          about: 'First.\n\nSecond.',
+        }),
+      ),
+    );
   });
 });
 

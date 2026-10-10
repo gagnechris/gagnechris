@@ -279,13 +279,22 @@ describe('cold load: first React render matches the prerender', () => {
     expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
   });
 
-  test('/ mounts the same DOM as the prerender, Recent posts and What I’m building included', async () => {
-    const loaded = await coldLoad('/', PRERENDERS['/']);
+  test.each([
+    ['with Recent posts and What I’m building', PRERENDERS['/']!],
+    ['with no posts or projects', renderHomePrerenderHtml(PUBLISHED_HOME)],
+  ])('/ %s hydrates the published markup in place', async (_, html) => {
+    const onRecoverableError = vi.fn();
+    const loaded = await coldLoad(
+      '/',
+      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      '',
+      onRecoverableError,
+    );
     unmount = loaded.unmount;
 
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
-    expect(loaded.root.querySelectorAll('.home-post')).toHaveLength(2);
-    expect(loaded.root.querySelectorAll('.project-card')).toHaveLength(2);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -353,15 +362,6 @@ describe('cold load: first React render matches the prerender', () => {
       '/projects/notebook/',
       expect.anything(),
     );
-  });
-
-  test('/ with no posts has no Recent posts heading before or after mount', async () => {
-    const loaded = await coldLoad('/', renderHomePrerenderHtml(PUBLISHED_HOME));
-    unmount = loaded.unmount;
-
-    expect(loaded.before.text).not.toContain('Recent posts');
-    expect(loaded.root.innerHTML).toBe(loaded.before.html);
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   test.each(['/posts', '/posts/hello-world'])(

@@ -7,7 +7,11 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  renderHomeRecentPostsHtml,
+  HomeRecentPosts,
+  PlainLink,
+  PublicLinkContext,
+} from '@gagnechris/public-ui';
+import {
   renderPostArticleHtml,
   selectHomeRecentPosts,
 } from '@gagnechris/shared/render';
@@ -167,44 +171,45 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
   const { published } = state;
   const postPath = `/posts/${published?.slug ?? demoPostSlug(state.draft.title)}`;
 
-  const html = useMemo(() => {
-    if (view === 'home') {
-      return renderHomeRecentPostsHtml(
-        selectHomeRecentPosts(
-          published
-            ? [
-                {
-                  id: DEMO_POST_ID,
-                  slug: published.slug,
-                  title: published.title,
-                  excerpt: '',
-                  publishedAt: published.publishedAt,
-                  updatedAt: published.publishedAt,
-                },
-                WELCOME_POST,
-              ]
-            : [WELCOME_POST],
-        ),
-      );
-    }
-    // Under the slot's "Try it" h2 and inside the project page's <main>: no
-    // second h1 and no author note.
-    return published
-      ? `<div class="post-page">${renderPostArticleHtml(
-          {
-            slug: published.slug,
-            title: published.title,
-            excerpt: '',
-            publishedAt: published.publishedAt,
-            bodyMarkdown: published.bodyMarkdown,
-          },
-          [],
-          3,
-        )}</div>`
-      : null;
-  }, [view, published]);
+  const recentPosts = useMemo(
+    () =>
+      selectHomeRecentPosts(
+        published
+          ? [
+              {
+                id: DEMO_POST_ID,
+                slug: published.slug,
+                title: published.title,
+                excerpt: '',
+                publishedAt: published.publishedAt,
+                updatedAt: published.publishedAt,
+              },
+              WELCOME_POST,
+            ]
+          : [WELCOME_POST],
+      ),
+    [published],
+  );
+  // Under the slot's "Try it" h2 and inside the project page's <main>: no
+  // second h1 and no author note.
+  const postHtml = useMemo(
+    () =>
+      published &&
+      renderPostArticleHtml(
+        {
+          slug: published.slug,
+          title: published.title,
+          excerpt: '',
+          publishedAt: published.publishedAt,
+          bodyMarkdown: published.bodyMarkdown,
+        },
+        [],
+        3,
+      ),
+    [published],
+  );
 
-  // The rendered links point at real site paths; keep the visitor in the demo.
+  // The links point at real site paths; keep the visitor in the demo.
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     const link = (event.target as Element).closest('a');
     if (!link) return;
@@ -228,7 +233,7 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
         </span>
       </header>
       <div className="posts-demo__page">
-        {html === null ? (
+        {view === 'post' && !postHtml ? (
           <p className="posts-demo__missing">
             Nothing at {postPath} yet. Publish to put it here.
           </p>
@@ -238,8 +243,20 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
             data-flash={flash ? '' : undefined}
             onClick={onClick}
             onAnimationEnd={() => setFlashed(state.publishes)}
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          >
+            {view === 'home' ? (
+              // Plain anchors, so the click handler above can keep the
+              // visitor in the demo before the router sees the click.
+              <PublicLinkContext.Provider value={PlainLink}>
+                <HomeRecentPosts posts={recentPosts} />
+              </PublicLinkContext.Provider>
+            ) : (
+              <div
+                className="post-page"
+                dangerouslySetInnerHTML={{ __html: postHtml ?? '' }}
+              />
+            )}
+          </div>
         )}
       </div>
       <div className="posts-demo__views" role="group" aria-label="Public page">

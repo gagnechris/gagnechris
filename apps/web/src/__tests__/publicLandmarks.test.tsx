@@ -5,12 +5,14 @@ import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
   projectPageView,
-  renderHomeBodyHtml,
   renderPostPageBodyHtml,
   renderProjectPageBodyHtml,
   renderResumeBodyHtml,
 } from '@gagnechris/shared/render';
-import { renderProjectsIndexBodyHtml } from '@gagnechris/public-ui/server';
+import {
+  renderHomeBodyHtml,
+  renderProjectsIndexBodyHtml,
+} from '@gagnechris/public-ui/server';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import { routes } from '../routes';
 
