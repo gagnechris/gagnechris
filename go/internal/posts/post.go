@@ -7,10 +7,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode"
-	"unicode/utf8"
-
-	"golang.org/x/text/unicode/norm"
 
 	"github.com/gagnechris/gagnechris/go/internal/api"
 	"github.com/gagnechris/gagnechris/go/internal/data"
@@ -18,22 +14,16 @@ import (
 	"github.com/gagnechris/gagnechris/go/internal/store"
 )
 
-type Seo struct {
-	Title       *string `json:"title,omitempty"`
-	Description *string `json:"description,omitempty"`
-	OgImage     *string `json:"ogImage,omitempty"`
-}
-
 type Post struct {
-	ID           string   `json:"id"`
-	Slug         string   `json:"slug"`
-	Title        string   `json:"title"`
-	Excerpt      string   `json:"excerpt"`
-	BodyMarkdown string   `json:"bodyMarkdown"`
-	Tags         []string `json:"tags"`
-	ProjectIDs   []string `json:"projectIds"`
-	CoverImage   *string  `json:"coverImage"`
-	Seo          *Seo     `json:"seo"`
+	ID           string     `json:"id"`
+	Slug         string     `json:"slug"`
+	Title        string     `json:"title"`
+	Excerpt      string     `json:"excerpt"`
+	BodyMarkdown string     `json:"bodyMarkdown"`
+	Tags         []string   `json:"tags"`
+	ProjectIDs   []string   `json:"projectIds"`
+	CoverImage   *string    `json:"coverImage"`
+	Seo          *store.Seo `json:"seo"`
 	store.Publishable
 }
 
@@ -87,14 +77,6 @@ var slugClaims = &store.SlugClaims{
 	RedirectEntityType: "slugRedirect",
 }
 
-func readSeo(r *store.ItemReader) *Seo {
-	m := r.OptMap("seo")
-	if m == nil {
-		return nil
-	}
-	return &Seo{Title: m.OptStr("title", 0), Description: m.OptStr("description", 0), OgImage: m.OptStr("ogImage", 0)}
-}
-
 // parseMeta reads a META or PUBLISHED row as PostMetaItemSchema does.
 func parseMeta(item data.Item) (Post, error) {
 	r := store.ReadItem(item)
@@ -110,7 +92,7 @@ func parseMeta(item data.Item) (Post, error) {
 		Tags:         r.StrList("tags"),
 		ProjectIDs:   r.OptStrList("projectIds"),
 		CoverImage:   r.OptStr("coverImage", 0),
-		Seo:          readSeo(r),
+		Seo:          store.ReadSeo(r),
 		Publishable: store.Publishable{
 			Status:      r.Enum("status", statuses...),
 			PublishedAt: r.OptStr("publishedAt", 0),
@@ -153,16 +135,6 @@ func parseSummary(item data.Item) (listRow, error) {
 	return row, r.Err(label)
 }
 
-func seoItem(seo *Seo) data.Item {
-	m := data.Item{}
-	for k, v := range map[string]*string{"title": seo.Title, "description": seo.Description, "ogImage": seo.OgImage} {
-		if v != nil {
-			m[k] = data.S(*v)
-		}
-	}
-	return m
-}
-
 func baseItem(p Post) data.Item {
 	item := data.Key(keys.PostPk(p.ID), keys.SKMeta)
 	item["entityType"] = data.S("post")
@@ -179,7 +151,7 @@ func baseItem(p Post) data.Item {
 	item["coverImage"] = data.OptS(p.CoverImage)
 	item["seo"] = data.Null
 	if p.Seo != nil {
-		item["seo"] = data.M(seoItem(p.Seo))
+		item["seo"] = data.M(store.SeoItem(p.Seo))
 	}
 	item["version"] = data.N(int64(p.Version))
 	return item
@@ -213,81 +185,11 @@ func publishedItem(p Post) data.Item {
 	return item
 }
 
-func optEqual(a, b *string) bool {
-	return (a == nil) == (b == nil) && (a == nil || *a == *b)
-}
-
-func seoEqual(a, b *Seo) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return optEqual(a.Title, b.Title) && optEqual(a.Description, b.Description) && optEqual(a.OgImage, b.OgImage)
-}
-
 func contentEqual(a, b Post) bool {
 	return a.Slug == b.Slug && a.Title == b.Title && a.Excerpt == b.Excerpt &&
 		a.BodyMarkdown == b.BodyMarkdown && slices.Equal(a.Tags, b.Tags) &&
-		slices.Equal(a.ProjectIDs, b.ProjectIDs) && optEqual(a.CoverImage, b.CoverImage) &&
-		seoEqual(a.Seo, b.Seo)
-}
-
-const maxSlugLength = 120
-
-var (
-	nonSlugRun     = regexp.MustCompile(`[^a-z0-9]+`)
-	edgeHyphens    = regexp.MustCompile(`^-+|-+$`)
-	trailingHyphen = regexp.MustCompile(`-+$`)
-)
-
-// slugify is packages/data's slugify, falling back to "untitled".
-func slugify(input string) string {
-	decomposed := strings.Map(func(r rune) rune {
-		if r >= 0x300 && r <= 0x36f {
-			return -1
-		}
-		return r
-	}, norm.NFKD.String(input))
-	slug := edgeHyphens.ReplaceAllString(nonSlugRun.ReplaceAllString(api.TrimJS(jsLower(decomposed)), "-"), "")
-	if len(slug) > maxSlugLength {
-		slug = slug[:maxSlugLength]
-	}
-	if slug = trailingHyphen.ReplaceAllString(slug, ""); slug == "" {
-		return "untitled"
-	}
-	return slug
-}
-
-// jsLower is String.toLowerCase, which unlike strings.ToLower applies the
-// unconditional and final-sigma special casings.
-func jsLower(s string) string {
-	if !strings.ContainsAny(s, "\u0130\u03a3") {
-		return strings.ToLower(s)
-	}
-	var b strings.Builder
-	for i, r := range s {
-		switch r {
-		case '\u0130':
-			b.WriteString("i\u0307")
-		case '\u03a3':
-			if finalSigma(s, i) {
-				b.WriteRune('\u03c2')
-			} else {
-				b.WriteRune('\u03c3')
-			}
-		default:
-			b.WriteRune(unicode.ToLower(r))
-		}
-	}
-	return b.String()
-}
-
-// finalSigma is Unicode's Final_Sigma condition, with letters standing in
-// for cased characters.
-func finalSigma(s string, i int) bool {
-	before, after := s[:i], s[i+len("\u03a3"):]
-	prev, _ := utf8.DecodeLastRuneInString(before)
-	next, _ := utf8.DecodeRuneInString(after)
-	return before != "" && unicode.IsLetter(prev) && (after == "" || !unicode.IsLetter(next))
+		slices.Equal(a.ProjectIDs, b.ProjectIDs) && store.OptEqual(a.CoverImage, b.CoverImage) &&
+		store.SeoEqual(a.Seo, b.Seo)
 }
 
 var whitespaceRun = regexp.MustCompile(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
@@ -298,7 +200,7 @@ func normalizeTags(tags []string) []string {
 	out := []string{}
 	seen := map[string]bool{}
 	for _, raw := range tags {
-		t := whitespaceRun.ReplaceAllString(jsLower(api.TrimJS(raw)), "-")
+		t := whitespaceRun.ReplaceAllString(store.JSLower(api.TrimJS(raw)), "-")
 		if t == "" || seen[t] {
 			continue
 		}
@@ -324,15 +226,15 @@ func uniq(ids []string) []string {
 // matchesQuery is postMatchesQuery: a case-insensitive substring of the
 // title, slug or a tag.
 func matchesQuery(row listRow, query string) bool {
-	needle := jsLower(api.TrimJS(query))
+	needle := store.JSLower(api.TrimJS(query))
 	if needle == "" {
 		return true
 	}
-	if strings.Contains(jsLower(row.Title), needle) || strings.Contains(jsLower(row.Slug), needle) {
+	if strings.Contains(store.JSLower(row.Title), needle) || strings.Contains(store.JSLower(row.Slug), needle) {
 		return true
 	}
 	for _, t := range row.Tags {
-		if strings.Contains(jsLower(t), needle) {
+		if strings.Contains(store.JSLower(t), needle) {
 			return true
 		}
 	}

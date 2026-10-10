@@ -198,3 +198,68 @@ func (t *Table) BatchGet(ctx context.Context, keys []Item, consistent bool) ([]I
 	}
 	return out, nil
 }
+
+// FromJSON marshals a decoded JSON value as the DocumentClient does: arrays
+// are lists, objects maps, and numbers are written as JavaScript prints them.
+func FromJSON(v any) types.AttributeValue {
+	switch v := v.(type) {
+	case nil:
+		return Null
+	case bool:
+		return Bool(v)
+	case string:
+		return S(v)
+	case float64:
+		return &types.AttributeValueMemberN{Value: strconv.FormatFloat(v, 'f', -1, 64)}
+	case []any:
+		l := make([]types.AttributeValue, len(v))
+		for i, e := range v {
+			l[i] = FromJSON(e)
+		}
+		return &types.AttributeValueMemberL{Value: l}
+	case map[string]any:
+		m := make(map[string]types.AttributeValue, len(v))
+		for k, e := range v {
+			m[k] = FromJSON(e)
+		}
+		return &types.AttributeValueMemberM{Value: m}
+	}
+	panic(fmt.Sprintf("FromJSON: unsupported %T", v))
+}
+
+// ToJSON is FromJSON's inverse; string sets read as arrays.
+func ToJSON(av types.AttributeValue) any {
+	switch av := av.(type) {
+	case *types.AttributeValueMemberNULL:
+		return nil
+	case *types.AttributeValueMemberBOOL:
+		return av.Value
+	case *types.AttributeValueMemberS:
+		return av.Value
+	case *types.AttributeValueMemberN:
+		f, err := strconv.ParseFloat(av.Value, 64)
+		if err != nil {
+			return av.Value
+		}
+		return f
+	case *types.AttributeValueMemberL:
+		l := make([]any, len(av.Value))
+		for i, e := range av.Value {
+			l[i] = ToJSON(e)
+		}
+		return l
+	case *types.AttributeValueMemberM:
+		m := make(map[string]any, len(av.Value))
+		for k, e := range av.Value {
+			m[k] = ToJSON(e)
+		}
+		return m
+	case *types.AttributeValueMemberSS:
+		l := make([]any, len(av.Value))
+		for i, e := range av.Value {
+			l[i] = e
+		}
+		return l
+	}
+	return nil
+}

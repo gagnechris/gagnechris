@@ -205,7 +205,7 @@ type createInput struct {
 	slug                         *string
 	tags, projectIDs             []string
 	coverImage                   *string
-	seo                          *Seo
+	seo                          *store.Seo
 }
 
 func (r *repo) create(ctx context.Context, in createInput) (Post, error) {
@@ -219,7 +219,7 @@ func (r *repo) create(ctx context.Context, in createInput) (Post, error) {
 	}
 	return r.InsertDraft(ctx, Post{
 		ID:           ulid.Make().String(),
-		Slug:         slugify(slugSource),
+		Slug:         store.Slugify(slugSource),
 		Title:        title,
 		Excerpt:      in.excerpt,
 		BodyMarkdown: in.bodyMarkdown,
@@ -244,7 +244,7 @@ type updateInput struct {
 	tags, projectIDs      []string
 	setCover, setSeo      bool
 	coverImage            *string
-	seo                   *Seo
+	seo                   *store.Seo
 }
 
 func (r *repo) update(ctx context.Context, id string, in updateInput) (Post, error) {
@@ -253,7 +253,7 @@ func (r *repo) update(ctx context.Context, id string, in updateInput) (Post, err
 			p.Title = *in.title
 		}
 		if in.slug != nil && *in.slug != "" {
-			p.Slug = slugify(*in.slug)
+			p.Slug = store.Slugify(*in.slug)
 		}
 		if in.excerpt != nil {
 			p.Excerpt = *in.excerpt

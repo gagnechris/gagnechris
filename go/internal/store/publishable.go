@@ -61,6 +61,8 @@ type PublishableConfig[T any] struct {
 	// PublishedIDSet is the site publish row's id set this entity is listed
 	// in while it has a PUBLISHED row; "" for singletons.
 	PublishedIDSet string
+	// ValidatePublish refuses a publish with an error, or returns nil.
+	ValidatePublish func(T) error
 	// ExtraItems join every draft mutation's transaction.
 	ExtraItems func(before, after T, opts PersistOptions[T]) []types.TransactWriteItem
 }
@@ -321,6 +323,11 @@ func (s *PublishableStore[T]) PublishLoaded(ctx context.Context, pair *Pair[T], 
 	existing := s.Flag(pair.Draft, pair.Published)
 	if err := s.assertVersion(existing, expected); err != nil {
 		return existing, err
+	}
+	if s.cfg.ValidatePublish != nil {
+		if err := s.cfg.ValidatePublish(existing); err != nil {
+			return existing, err
+		}
 	}
 	if s.cfg.State(&existing).Status == StatusPublished && pair.Published != nil && s.cfg.ContentEqual(existing, *pair.Published) {
 		return s.Flag(existing, pair.Published), nil

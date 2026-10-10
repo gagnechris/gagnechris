@@ -2,13 +2,18 @@
 // defines; keys_test.go holds them to the generated contract.
 package keys
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	SKMeta      = "META"
 	SKPublished = "PUBLISHED"
 	skMsg       = "MSG"
 	skNote      = "NOTE"
+	SKRedirect  = "REDIRECT"
+	skProject   = "PROJECT"
 
 	homeID   = "current"
 	resumeID = "current"
@@ -17,6 +22,18 @@ const (
 func PostPk(postID string) string { return "POST#" + postID }
 
 func ProjectPk(projectID string) string { return "PROJECT#" + projectID }
+
+func ProjectSlugPk(slug string) string { return "PROJECT_SLUG#" + slug }
+
+func ProjectSlugClaimSk() string { return skProject }
+
+func SlugRedirectSk() string { return SKRedirect }
+
+func ProjectStatusGSI1Pk(status string) string { return "PROJECT_STATUS#" + status }
+
+func ProjectOrderGSI1Sk(order int, projectID string) string {
+	return fmt.Sprintf("ORDER#%06d#PROJECT#%s", order, projectID)
+}
 
 func HomePk() string { return "HOME#" + homeID }
 

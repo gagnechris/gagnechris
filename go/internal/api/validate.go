@@ -30,6 +30,7 @@ const (
 	CodeTooSmall      = "too_small"
 	CodeTooBig        = "too_big"
 	CodeInvalidFormat = "invalid_format"
+	CodeCustom        = "custom"
 )
 
 // NewValidator reads body as a JSON object; an empty body is {}. Anything
@@ -67,6 +68,20 @@ func (v *Validator) fail(key, code string) {
 	if _, ok := v.codes[v.prefix+key]; !ok {
 		v.codes[v.prefix+key] = code
 	}
+}
+
+// Fail records a refinement's issue on key.
+func (v *Validator) Fail(key, code string) { v.fail(key, code) }
+
+// Clean is true while nothing under this validator has failed; zod runs an
+// object's refinements only then.
+func (v *Validator) Clean() bool {
+	for key := range v.codes {
+		if strings.HasPrefix(key, v.prefix) {
+			return false
+		}
+	}
+	return true
 }
 
 // Err is the 400 for every failed field, or nil.
@@ -109,6 +124,26 @@ func MaxLen(n int) StringRule {
 	return func(s string) string {
 		if utf8.RuneCountInString(s) > n {
 			return CodeTooBig
+		}
+		return ""
+	}
+}
+
+// Matches is z.string().regex(re).
+func Matches(re *regexp.Regexp) StringRule {
+	return func(s string) string {
+		if !re.MatchString(s) {
+			return CodeInvalidFormat
+		}
+		return ""
+	}
+}
+
+// Refine is z.string().refine(ok).
+func Refine(ok func(string) bool) StringRule {
+	return func(s string) string {
+		if !ok(s) {
+			return CodeCustom
 		}
 		return ""
 	}
@@ -193,8 +228,8 @@ func (v *Validator) Enum(key string, required bool, values ...string) (string, b
 }
 
 // StringArray reads an array of strings; maxItems < 0 means no limit.
-// Element issues are keyed `key.i`.
-func (v *Validator) StringArray(key string, required bool, maxItems int, rules ...StringRule) ([]string, bool) {
+// Element issues are keyed `key.i`; trim applies to each element.
+func (v *Validator) StringArray(key string, required, trim bool, maxItems int, rules ...StringRule) ([]string, bool) {
 	raw, ok := v.raw(key)
 	if !ok {
 		if required && !v.notObject {
@@ -210,7 +245,7 @@ func (v *Validator) StringArray(key string, required bool, maxItems int, rules .
 	out := make([]string, 0, len(elems))
 	valid := true
 	for i, elem := range elems {
-		s, ok := v.checkString(key+"."+strconv.Itoa(i), elem, false, rules)
+		s, ok := v.checkString(key+"."+strconv.Itoa(i), elem, trim, rules)
 		valid = valid && ok
 		out = append(out, s)
 	}
@@ -237,7 +272,76 @@ func (v *Validator) Object(key string, nullable bool) (sub *Validator, present b
 		v.fail(key, CodeInvalidType)
 		return nil, true
 	}
-	return &Validator{fields: fields, codes: v.codes, prefix: v.prefix + key + "."}, true
+	return v.sub(key, fields), true
+}
+
+// NullableEnum reads an enum's nullable().optional(): present is false only
+// when the field is missing, and the value is nil for null.
+func (v *Validator) NullableEnum(key string, values ...string) (value *string, present bool) {
+	raw, ok := v.raw(key)
+	if !ok {
+		return nil, false
+	}
+	if isNull(raw) {
+		return nil, true
+	}
+	s, valid := v.Enum(key, true, values...)
+	if !valid {
+		return nil, true
+	}
+	return &s, true
+}
+
+func (v *Validator) sub(key string, fields map[string]json.RawMessage) *Validator {
+	return &Validator{fields: fields, codes: v.codes, prefix: v.prefix + key + "."}
+}
+
+// Struct reads a nested object that may not be null; nil unless the field
+// holds an object.
+func (v *Validator) Struct(key string, required bool) *Validator {
+	raw, ok := v.raw(key)
+	if !ok {
+		if required && !v.notObject {
+			v.fail(key, CodeInvalidType)
+		}
+		return nil
+	}
+	var fields map[string]json.RawMessage
+	if raw[0] != '{' || json.Unmarshal(raw, &fields) != nil {
+		v.fail(key, CodeInvalidType)
+		return nil
+	}
+	return v.sub(key, fields)
+}
+
+// ObjectArray reads an array of objects, passing each to elem through a
+// validator keyed `key.i`; maxItems < 0 means no limit.
+func (v *Validator) ObjectArray(key string, required bool, maxItems int, elem func(*Validator)) bool {
+	raw, ok := v.raw(key)
+	if !ok {
+		if required && !v.notObject {
+			v.fail(key, CodeInvalidType)
+		}
+		return false
+	}
+	var elems []json.RawMessage
+	if raw[0] != '[' || json.Unmarshal(raw, &elems) != nil {
+		v.fail(key, CodeInvalidType)
+		return false
+	}
+	for i, e := range elems {
+		k := key + "." + strconv.Itoa(i)
+		var fields map[string]json.RawMessage
+		if e[0] != '{' || json.Unmarshal(e, &fields) != nil {
+			v.fail(k, CodeInvalidType)
+			continue
+		}
+		elem(v.sub(k, fields))
+	}
+	if maxItems >= 0 && len(elems) > maxItems {
+		v.fail(key, CodeTooBig)
+	}
+	return true
 }
 
 // IntRule returns the issue code for a value that fails it, or "".
@@ -255,6 +359,15 @@ func NonNegative(n int64) string {
 		return CodeTooSmall
 	}
 	return ""
+}
+
+func MinInt(limit int64) IntRule {
+	return func(n int64) string {
+		if n < limit {
+			return CodeTooSmall
+		}
+		return ""
+	}
 }
 
 func MaxInt(limit int64) IntRule {
