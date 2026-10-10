@@ -33,6 +33,7 @@ func (a *App) HandleLambda(ctx context.Context, event events.APIGatewayV2HTTPReq
 		Query:     event.QueryStringParameters,
 		Headers:   lowerKeys(event.Headers),
 		RequestID: event.RequestContext.RequestID,
+		SourceIP:  event.RequestContext.HTTP.SourceIP,
 	}
 	if req.Query == nil {
 		req.Query = map[string]string{}

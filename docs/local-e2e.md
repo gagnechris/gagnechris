@@ -137,7 +137,7 @@ action was handled (a later request, a rendered state), or for
 
 The **Local E2E smoke** job builds the web app, then installs
 cached Chromium + WebKit (`~/.cache/ms-playwright`, keyed by Playwright
-version) and runs `npm run e2e:browser`, which runs the `api` project first. On failure it uploads the
+version) and runs `npm run e2e:browser` with `API_SERVER=go`, so requests go through the Go API as in prod, and it runs the `api` project first. On failure it uploads the
 `playwright-report-<attempt>` artifact: HTML report, `test-results/`
 (traces, screenshots, video) and stack logs. Open a trace with
 `npx playwright show-trace <trace.zip>` or the HTML report's trace viewer.

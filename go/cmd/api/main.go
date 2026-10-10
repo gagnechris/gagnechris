@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,8 +13,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 
 	"github.com/gagnechris/gagnechris/go/internal/api"
+	"github.com/gagnechris/gagnechris/go/internal/contact"
 	"github.com/gagnechris/gagnechris/go/internal/contract"
 	"github.com/gagnechris/gagnechris/go/internal/data"
 	"github.com/gagnechris/gagnechris/go/internal/observability"
@@ -22,27 +25,43 @@ import (
 var processStart = time.Now()
 
 func main() {
-	table, err := data.FromEnv(context.Background())
+	inLambda := os.Getenv("AWS_LAMBDA_RUNTIME_API") != ""
+	cfg, err := data.LoadAWS(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	table, err := data.TableFromEnv(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 	c := contract.Data.API
+	logger := observability.NewLogger(os.Stdout, c.ServiceName)
+
+	// Mail leaves only from Lambda; anywhere else it goes to the outbox.
+	var mailer contact.Mailer = contact.SESMailer{Client: sesv2.NewFromConfig(cfg)}
+	if !inLambda {
+		contact.UseLocalAddresses()
+		mailer = &contact.Outbox{File: os.Getenv("LOCAL_OUTBOX_FILE"), Log: logger}
+	}
+
+	routes := api.Routes(table)
+	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
 	app := api.NewApp(
-		api.NewRouter(api.Routes(table)),
-		observability.NewLogger(os.Stdout, c.ServiceName),
+		api.NewRouter(routes),
+		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
 	)
-	if os.Getenv("AWS_LAMBDA_RUNTIME_API") != "" {
+	if inLambda {
 		lambda.Start(app.HandleLambda)
 		return
 	}
-	log.Fatal(serveHTTP(app))
+	log.Fatal(serveHTTP(app, logger))
 }
 
 // serveHTTP reads API_CLAIMS_MODE (test or local) and API_FALLBACK_URL, the
 // server that answers routes Go doesn't serve yet.
-func serveHTTP(app *api.App) error {
+func serveHTTP(app *api.App, logger *slog.Logger) error {
 	table := os.Getenv("DATA_TABLE_NAME")
 	if table == "gagnechris-prod" {
 		log.Fatal("Refusing to serve gagnechris-prod over local HTTP")
@@ -72,6 +91,7 @@ func serveHTTP(app *api.App) error {
 	if port == "" {
 		port = "8787"
 	}
+	logger.Debug("serving", "port", port, "claims", string(mode))
 	server := &http.Server{
 		Addr:              "127.0.0.1:" + port,
 		Handler:           app.HTTPHandler(mode, fallback),

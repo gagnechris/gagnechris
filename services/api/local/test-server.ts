@@ -1,6 +1,7 @@
 // The Node API as the HTTP integration suite sees it. The suite sends the
 // claims API Gateway's JWT authorizer would pass as JSON in X-Test-Claims;
-// they reach the handler only on protected routes, as in production.
+// they reach the handler only on protected routes, as in production. Mail
+// goes to the local outbox (LOCAL_OUTBOX_FILE), never SES.
 import { createServer } from 'node:http';
 import type { APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { handler } from '../src/handler.js';
@@ -12,12 +13,15 @@ import {
   readBody,
   writeResult,
 } from './gateway.js';
+import { installLocalOutbox } from './outbox.js';
 
 const TEST_CLAIMS_HEADER = 'x-test-claims';
 
 if (!process.env.DATA_TABLE_NAME?.startsWith('gagnechris-it-')) {
   throw new Error('The test API only serves gagnechris-it-* tables');
 }
+
+installLocalOutbox();
 
 const server = createServer(async (req, res) => {
   try {

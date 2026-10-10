@@ -4,6 +4,7 @@ import {
   APEX_DOMAIN,
   ContactRequestSchema,
   ContactResponseSchema,
+  MIN_CONTACT_SUBMIT_MS,
   ResumeDownloadNotifyRequestSchema,
   ResumeDownloadNotifyResponseSchema,
 } from '@gagnechris/shared';
@@ -14,7 +15,7 @@ import { json } from '../http.js';
 import { logger, metrics } from '../observability.js';
 import { defineRoute, type RouteDef } from '../router.js';
 
-export const MIN_CONTACT_SUBMIT_MS = 2_000;
+export { MIN_CONTACT_SUBMIT_MS };
 
 function sourceIp(event: APIGatewayProxyEventV2): string {
   return event.requestContext?.http?.sourceIp?.trim() || 'unknown';

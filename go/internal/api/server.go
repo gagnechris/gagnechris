@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -68,6 +69,7 @@ func (a *App) HTTPHandler(mode ClaimsMode, fallback *url.URL) http.Handler {
 			Headers:   headers,
 			Body:      body,
 			RequestID: newRequestID(),
+			SourceIP:  remoteHost(r.RemoteAddr),
 		}
 		if auth := a.router.AuthFor(r.Method, rawPath); auth != Public {
 			req.Claims, err = requestClaims(mode, r, auth)
@@ -123,6 +125,13 @@ func stringClaims(raw map[string]any) map[string]string {
 		}
 	}
 	return out
+}
+
+func remoteHost(addr string) string {
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	return addr
 }
 
 func newRequestID() string {

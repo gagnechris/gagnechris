@@ -199,6 +199,7 @@ jobs:
               - 'services/api/**'
               - 'services/publisher/**'
               - 'packages/**'
+              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'
@@ -266,8 +267,11 @@ jobs:
             cp /var/cache/apt/archives/*.deb "$HOME/apt-debs/"
           fi
 
+      # Through the Go API, as in prod for the routes it serves.
       - name: Run e2e:browser
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        env:
+          API_SERVER: go
         run: npm run e2e:browser
 
       - name: Upload Playwright report

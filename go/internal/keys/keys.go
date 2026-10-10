@@ -2,6 +2,8 @@
 // defines; keys_test.go holds them to the generated contract.
 package keys
 
+import "time"
+
 const (
 	SKMeta      = "META"
 	SKPublished = "PUBLISHED"
@@ -47,3 +49,25 @@ func DailyTemplatePk(userID, area string) string {
 }
 
 func DailyTemplateSk() string { return SKMeta }
+
+func RateContactIPPk(ip string) string { return "RATE#contact#ip#" + ip }
+
+func RateResumeIPPk(ip string) string { return "RATE#resume#ip#" + ip }
+
+func RateSESGlobalPk() string { return "RATE#ses#global" }
+
+func RateHourSk(at time.Time) string { return "HOUR#" + at.UTC().Format("2006-01-02T15") }
+
+func RateDaySk(at time.Time) string { return "DAY#" + at.UTC().Format("2006-01-02") }
+
+// TTLEndOfUTCHour is the end of at's UTC hour plus an hour for clock skew,
+// in epoch seconds.
+func TTLEndOfUTCHour(at time.Time) int64 {
+	return at.UTC().Truncate(time.Hour).Add(2 * time.Hour).Unix()
+}
+
+// TTLEndOfUTCDay is the end of at's UTC day plus a day, in epoch seconds.
+func TTLEndOfUTCDay(at time.Time) int64 {
+	y, m, d := at.UTC().Date()
+	return time.Date(y, m, d+2, 0, 0, 0, 0, time.UTC).Unix()
+}
