@@ -540,6 +540,30 @@ describe('NotebookTodayPage', () => {
     expect(back).toHaveValue('first second third');
   });
 
+  test('the calendar browses months without changing the day', async () => {
+    const user = userEvent.setup();
+    const { router } = renderToday();
+    await screen.findByRole('heading', { level: 1, name: /October 2/ });
+
+    await user.click(screen.getByText('Calendar'));
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+
+    expect(screen.getByRole('grid', { name: 'September 2026' })).toBeVisible();
+    expect(router.state.location.search).toContain('date=2026-10-02');
+    expect(
+      screen.getByRole('heading', { level: 1, name: /October 2/ }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('gridcell', { name: /September 30, 2026/ }),
+    );
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /September 30/ }),
+    ).toBeInTheDocument();
+    expect(router.state.location.search).toContain('date=2026-09-30');
+    expect(screen.queryByRole('grid')).not.toBeVisible();
+  });
+
   test('Back steps through the days visited', async () => {
     const user = userEvent.setup();
     const { router } = renderToday();

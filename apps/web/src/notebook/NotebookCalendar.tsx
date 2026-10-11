@@ -26,21 +26,39 @@ function dayLabel(date: string, marked: boolean): string {
   return marked ? `${label}, has a note` : label;
 }
 
+/** The same day of the month in `month`, or its last day if shorter. */
+function sameDayIn(month: string, date: string): string {
+  const { to } = monthBounds(month);
+  const day = `${month.slice(0, 8)}${date.slice(-2)}`;
+  return day > to ? to : day;
+}
+
 export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
-  const month = startOfMonth(selected);
+  // Browsing months only changes what's shown; choosing a day selects it.
+  const [month, setMonth] = useState(() => startOfMonth(selected));
+  const [shownFor, setShownFor] = useState(selected);
+  if (shownFor !== selected) {
+    setShownFor(selected);
+    setMonth(startOfMonth(selected));
+  }
   const cells = monthGrid(month);
   const rows = Array.from({ length: cells.length / 7 }, (_, i) =>
     cells.slice(i * 7, i * 7 + 7),
   );
   const today = useLocalToday();
   const { to: lastDay } = monthBounds(month);
-  const previousMonth = () => onSelect(addDays(month, -1));
-  const nextMonth = () => onSelect(addDays(lastDay, 1));
+  const previousMonth = () => setMonth(startOfMonth(addDays(month, -1)));
+  const nextMonth = () => setMonth(addDays(lastDay, 1));
 
   const [focused, setFocused] = useState<string | null>(null);
-  // Arrow keys stay inside the month shown; the selected day is the one tab stop
-  // whenever the focused day belongs to another month.
-  const active = focused && cells.includes(focused) ? focused : selected;
+  // Arrow keys stay inside the month shown. The one tab stop is the focused
+  // day, else the selected day, else the month's first day.
+  const active =
+    focused && cells.includes(focused)
+      ? focused
+      : cells.includes(selected)
+        ? selected
+        : month;
   const cellRefs = useRef(new Map<string, HTMLDivElement>());
   const moved = useRef(false);
 
@@ -76,9 +94,13 @@ export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
     }
     if (e.key === 'PageUp' || e.key === 'PageDown') {
       e.preventDefault();
+      const next =
+        e.key === 'PageUp'
+          ? startOfMonth(addDays(month, -1))
+          : addDays(lastDay, 1);
+      setMonth(next);
       moved.current = true;
-      if (e.key === 'PageUp') previousMonth();
-      else nextMonth();
+      setFocused(sameDayIn(next, date));
       return;
     }
     if (e.key === 'Enter' || e.key === ' ') {
