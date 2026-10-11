@@ -5,6 +5,7 @@
     "apexDomain": "gagnechris.com",
     "contactPerIpPerHour": 3,
     "sesGlobalDailyCap": 100,
+    "resumeNotifySesDailyCap": 50,
     "minContactSubmitMs": 2000
   },
   "restoreTest": {

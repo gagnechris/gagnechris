@@ -302,7 +302,11 @@ the publisher stream filter (`sk = PUBLISHED`) ignores these writes.
 
 Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
 client-controlled**: a bot can omit or inflate the value. The hard caps are
-the per-IP contact rate limit and the global SES daily cap.
+the per-IP contact rate limit and the global SES daily cap
+(`SES_GLOBAL_DAILY_CAP`, one counter for contact mail and resume-download
+notices). Resume notices stop once that counter reaches
+`RESUME_NOTIFY_SES_DAILY_CAP`, so the rest of the day's mail is left for the
+contact form.
 
 #### `CONTACT#<ulid>` / `MSG`
 

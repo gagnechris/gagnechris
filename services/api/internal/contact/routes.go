@@ -33,8 +33,18 @@ func Routes(d Deps) []api.Route {
 	}
 }
 
+// backend is the contact rows and rate counters; store keeps them in the data table.
+type backend interface {
+	consumeContactIP(ctx context.Context, ip string) (bool, error)
+	save(ctx context.Context, name, email, message, sourceIP string) (string, error)
+	consumeSESSend(ctx context.Context) (bool, error)
+	consumeResumeSESSend(ctx context.Context) (bool, error)
+	claimResumeNotifyIP(ctx context.Context, ip string) (bool, error)
+	updateEmailStatus(ctx context.Context, contactID, status, emailError string) error
+}
+
 type handlers struct {
-	store store
+	store backend
 	mail  Mailer
 	now   func() time.Time
 }
@@ -124,6 +134,8 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 	if ok, err := h.store.consumeSESSend(ctx); err != nil {
 		return nil, err
 	} else if !ok {
+		r.Log.Warn("Daily email cap reached; contact message saved but not mailed", "contactId", contactID)
+		r.Metrics.Add("SesCapReached", observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", errSESDailyLimit)
 		return nil, &api.RateLimitedError{Message: errSESDailyLimit}
 	}
@@ -140,6 +152,8 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 		}, "\n"),
 	})
 	if err != nil {
+		r.Log.Error("Contact email failed", "contactId", contactID, "errMessage", err.Error())
+		r.Metrics.Add("ContactEmailFailed", observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", err.Error())
 		return api.JSON(http.StatusBadGateway, map[string]string{
 			"error":   "email_failed",
@@ -178,9 +192,10 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 	if !first {
 		return ok, nil
 	}
-	if underCap, err := h.store.consumeSESSend(ctx); err != nil {
+	if underCap, err := h.store.consumeResumeSESSend(ctx); err != nil {
 		return nil, err
 	} else if !underCap {
+		r.Log.Info("Resume download notice skipped: its share of the daily email cap is used")
 		return ok, nil
 	}
 
@@ -192,7 +207,7 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 		ua = "(none)"
 	}
 	// Best effort: the download already happened in the browser.
-	_ = h.mail.Send(ctx, Mail{
+	err = h.mail.Send(ctx, Mail{
 		Subject: "[" + apexDomain() + "] Resume downloaded",
 		Text: strings.Join([]string{
 			"A visitor downloaded the resume PDF.",
@@ -201,5 +216,8 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 			"User-Agent: " + ua,
 		}, "\n"),
 	})
+	if err != nil {
+		r.Log.Warn("Resume download email failed", "errMessage", err.Error())
+	}
 	return ok, nil
 }

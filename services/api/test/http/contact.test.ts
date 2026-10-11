@@ -6,6 +6,7 @@ import { GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import {
   CONTACT_PER_IP_PER_HOUR,
   MIN_CONTACT_SUBMIT_MS,
+  RESUME_NOTIFY_SES_DAILY_CAP,
   SES_GLOBAL_DAILY_CAP,
 } from '@gagnechris/shared';
 import { useApi } from './support/harness.js';
@@ -300,6 +301,31 @@ describe('POST /api/resume/download', () => {
     });
     expect(res.status).toBe(200);
     expect(sentMail()).toEqual([]);
+  });
+
+  it('stops at its own lower cap so contact messages still mail', async () => {
+    await h.doc.send(
+      new PutCommand({
+        TableName: h.tableName,
+        Item: {
+          pk: 'RATE#ses#global',
+          sk: `DAY#${utcDay()}`,
+          count: RESUME_NOTIFY_SES_DAILY_CAP,
+          entityType: 'rateLimit',
+        },
+      }),
+    );
+    const res = await h.api.request('POST', '/api/resume/download', {
+      body: {},
+    });
+    expect(res.status).toBe(200);
+    expect(sentMail()).toEqual([]);
+
+    const contact = await h.api.request('POST', '/api/contact', {
+      body: valid,
+    });
+    expect(contact.status).toBe(200);
+    expect(sentMail()).toHaveLength(1);
   });
 
   it('rejects a bad referrer', async () => {

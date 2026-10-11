@@ -134,6 +134,7 @@ import {
   ProjectSchema,
   ResumeSchema,
   SES_GLOBAL_DAILY_CAP,
+  RESUME_NOTIFY_SES_DAILY_CAP,
   SYNC_DEFAULT_PAGE_LIMIT,
   SYNC_MIN_CLIENT_VERSION,
   SYNC_CHANGE_TYPES,
@@ -509,6 +510,7 @@ const contract = {
     apexDomain: APEX_DOMAIN,
     contactPerIpPerHour: CONTACT_PER_IP_PER_HOUR,
     sesGlobalDailyCap: SES_GLOBAL_DAILY_CAP,
+    resumeNotifySesDailyCap: RESUME_NOTIFY_SES_DAILY_CAP,
     minContactSubmitMs: MIN_CONTACT_SUBMIT_MS,
   },
   restoreTest: {

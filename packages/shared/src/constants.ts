@@ -8,6 +8,8 @@ export const RESTORE_TEST_SERVICE_NAME = 'gagnechris-restore-test' as const;
 export const CONTACT_PER_IP_PER_HOUR = 3;
 /** Shared by contact + resume notify; well under the SES sandbox 200/day. */
 export const SES_GLOBAL_DAILY_CAP = 100;
+/** Resume notices stop once the shared count reaches this, leaving the rest for contact messages. */
+export const RESUME_NOTIFY_SES_DAILY_CAP = 50;
 /** Contact submits faster than this are treated as bots. */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
 

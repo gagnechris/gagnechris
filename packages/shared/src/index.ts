@@ -13,6 +13,7 @@ export {
   RESTORE_TEST_SERVICE_NAME,
   RESTORE_TEST_TABLE_PREFIX,
   SES_GLOBAL_DAILY_CAP,
+  RESUME_NOTIFY_SES_DAILY_CAP,
 } from './constants.js';
 export {
   pageTitle,

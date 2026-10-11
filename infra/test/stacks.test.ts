@@ -549,6 +549,18 @@ describe('stack Template assertions', () => {
       MetricName: 'SyncCorruptRow',
       AlarmActions: Match.anyValue(),
     });
+    for (const [AlarmName, MetricName] of [
+      ['gagnechris-prod-api-contact-email-failed', 'ContactEmailFailed'],
+      ['gagnechris-prod-api-ses-cap-reached', 'SesCapReached'],
+    ]) {
+      template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+        AlarmName,
+        Namespace: 'gagnechris',
+        MetricName,
+        Dimensions: [{ Name: 'service', Value: 'gagnechris-api' }],
+        AlarmActions: alarmActions,
+      });
+    }
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-gateway-5xx',
       AlarmActions: alarmActions,
