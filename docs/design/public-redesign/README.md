@@ -285,8 +285,10 @@ the label uses the desktop #7a5a12 and only the dot is amber.
 | Body       | Newsreader 19px / 1.65 (31.4px lines) | 52px from the last excerpt line |
 | Paragraphs | 1em apart (50.5px line to line)       | —                               |
 
-The Phone · Post artboard also draws a Text size / share bar at the bottom of
-the screen; the site does not have it.
+At 480px and below, a post has the Phone · Post reading bar fixed at the
+bottom of the screen, above the home indicator: smaller and larger text (four
+steps, 0.9× to 1.3× the body size, remembered in `localStorage`) and Share
+(the share sheet, or a copied link where Web Share is missing).
 
 ### Project
 
