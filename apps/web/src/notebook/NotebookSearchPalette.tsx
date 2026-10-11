@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
-  useCachedTasks,
-  useNotebookSearchQuery,
+  useDebouncedNotebookSearch,
   useTaskToggle,
 } from '@gagnechris/app-core';
 import {
@@ -23,7 +22,6 @@ type Props = {
 type Scope = 'area' | 'all';
 
 const GROUPS = ['Notes', 'Tasks'] as const;
-const SEARCH_DEBOUNCE_MS = 200;
 const SCOPE_OPTIONS = [
   { value: 'area', label: 'This area' },
   { value: 'all', label: 'All areas' },
@@ -38,25 +36,11 @@ function highlight(text: string, matches: TextRange[]) {
 
 export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
   const [q, setQ] = useState('');
-  const [query, setQuery] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(q), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [q]);
-  const typing = q.trim() !== query.trim();
   const [scope, setScope] = useState<Scope>('area');
   const area = scope === 'area' ? areaQueryParam(areaFilter) : undefined;
 
-  const search = useNotebookSearchQuery(
-    { q: query, area, limit: 12 },
-    query.trim().length > 0,
-  );
-  const taskIds = useMemo(
-    () => (search.data?.tasks ?? []).map((t) => t.id),
-    [search.data],
-  );
-  // Hits carry status; a check-off made here updates the cached task first.
-  const cachedTasks = useCachedTasks(taskIds);
+  const search = useDebouncedNotebookSearch(q, { area, limit: 12 });
+  const { query } = search;
   const { toggle, error: toggleError } = useTaskToggle();
 
   const hits: SearchHit[] = [];
@@ -67,7 +51,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
       {showArea ? <span className="admin-badge">{hitArea}</span> : null}
     </>
   );
-  for (const h of search.data?.notes ?? []) {
+  for (const h of search.notes) {
     hits.push({
       key: `note-${h.id}`,
       group: 'Notes',
@@ -81,14 +65,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
       detail: highlight(h.snippet, h.matches),
     });
   }
-  for (const [i, h] of (search.data?.tasks ?? []).entries()) {
-    const cached = cachedTasks[i]?.data;
-    const live =
-      cached && !cached.deleted
-        ? cached
-        : h.status !== undefined && h.version !== undefined
-          ? { id: h.id, title: h.title, status: h.status, version: h.version }
-          : undefined;
+  for (const { hit: h, live } of search.tasks) {
     hits.push({
       key: `task-${h.id}`,
       group: 'Tasks',
@@ -131,13 +108,11 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
           {!q.trim() ? (
             <p className="admin-hint">Type to search. Esc to close.</p>
           ) : null}
-          {typing || search.isFetching ? (
-            <p className="admin-hint">Searching…</p>
-          ) : null}
-          {q.trim() && !typing && !search.isFetching && hits.length === 0 ? (
+          {search.pending ? <p className="admin-hint">Searching…</p> : null}
+          {q.trim() && !search.pending && hits.length === 0 ? (
             <p className="admin-hint">No matches.</p>
           ) : null}
-          {taskIds.length > 0 ? (
+          {search.tasks.length > 0 ? (
             <p className="admin-hint">
               ⌘⏎ / Ctrl+Enter checks off the selected task.
             </p>

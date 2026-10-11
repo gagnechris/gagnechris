@@ -6,7 +6,7 @@ import TodayScreen from '../app/(tabs)/today/index';
 import { databases } from '../test/expoSqlite';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
-import { router, segments } from '../test/router';
+import { router, searchParams, segments } from '../test/router';
 import { stopOutbox } from './outbox';
 
 const YESTERDAY_NOTE = '01YESTERDAYNOTE00000000000';
@@ -94,6 +94,22 @@ const yesterdaysNote = makeNote(YESTERDAY_NOTE, `{{task:${A}}}`, {
 });
 
 describe('Today', () => {
+  it('opens the day and area a daily note link names', async () => {
+    serve([]);
+    searchParams.current = { date: '2026-09-28', area: 'personal' };
+    const renderer = await launch();
+    expect(labelled(renderer, 'Monday, September 28')).toHaveLength(1);
+    expect(
+      server.state.requests.some((r) =>
+        r.includes('/notes/daily/personal/2026-09-28'),
+      ),
+    ).toBe(true);
+    expect(router.setParams).toHaveBeenCalledWith({
+      date: undefined,
+      area: undefined,
+    });
+  });
+
   it('shows an unchecked task from yesterday’s note as Still open, without writing anything', async () => {
     serve([yesterdaysNote], [yesterdaysTask]);
     const renderer = await launch();

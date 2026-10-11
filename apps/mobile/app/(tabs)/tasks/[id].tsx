@@ -379,7 +379,7 @@ const TaskScreen = ({ onReload }: { onReload: () => void }) => {
               taskId={entity.id}
               homeNoteId={entity.noteId}
               today={today}
-              onOpenNote={routes.openNote}
+              onOpenNote={routes.openListedNote}
             />
           </>
         )}

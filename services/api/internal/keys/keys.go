@@ -13,6 +13,7 @@ const (
 	SKPublished = "PUBLISHED"
 	skMsg       = "MSG"
 	skNote      = "NOTE"
+	skPost      = "POST"
 	SKRedirect  = "REDIRECT"
 	skProject   = "PROJECT"
 
@@ -21,6 +22,18 @@ const (
 )
 
 func PostPk(postID string) string { return "POST#" + postID }
+
+func SlugPk(slug string) string { return "SLUG#" + slug }
+
+func SlugPostSk() string { return skPost }
+
+func TagPk(tag string) string { return "TAG#" + tag }
+
+func TagSk(publishedAt, postID string) string { return "TS#" + publishedAt + "#POST#" + postID }
+
+func StatusGSI1Pk(status string) string { return "STATUS#" + status }
+
+func StatusGSI1Sk(sortTS, postID string) string { return "TS#" + sortTS + "#POST#" + postID }
 
 func ProjectPk(projectID string) string { return "PROJECT#" + projectID }
 
@@ -43,6 +56,10 @@ func ResumePk() string { return "RESUME#" + resumeID }
 func ContactPk(contactID string) string { return "CONTACT#" + contactID }
 
 func ContactMsgSk() string { return skMsg }
+
+func SitePublishPk() string { return "SITE#publish" }
+
+func SitePublishSk() string { return SKMeta }
 
 func RemovedUsersPk() string { return "REMOVED_USERS" }
 

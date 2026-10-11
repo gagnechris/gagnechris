@@ -300,7 +300,12 @@ export {
   type TaskResourceParams,
   type TaskVersionVars,
 } from './query/tasks.js';
-export { useNotebookSearchQuery } from './query/search.js';
+export {
+  SEARCH_DEBOUNCE_MS,
+  useDebouncedNotebookSearch,
+  useNotebookSearchQuery,
+  type LiveTaskHit,
+} from './query/search.js';
 export { taskActionError } from './query/taskActionError.js';
 export { taskRequestFromDraft } from './query/taskRequest.js';
 export { useTaskToggle } from './query/useTaskToggle.js';
