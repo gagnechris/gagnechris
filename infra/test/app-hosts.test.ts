@@ -462,11 +462,9 @@ describe('app hosts: Cognito', () => {
     const props = client('ios');
     expect(props.CallbackURLs).toEqual([
       'https://notebook.gagnechris.com/ios/auth/callback',
-      'gagnechris://auth/callback',
     ]);
     expect(props.LogoutURLs).toEqual([
       'https://notebook.gagnechris.com/ios/auth/signed-out',
-      'gagnechris://',
     ]);
   });
 

@@ -16,7 +16,7 @@
 | Tokens           | `expo-secure-store` with `keychainAccessible: AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, one item per token. Single-flight refresh that writes the rotated refresh token before releasing waiters.                                          |
 | Refresh lifetime | 30 days from sign-in, with rotation on. Rotation does not extend it. No change for iOS.                                                                                                                                                |
 | Face ID          | No Face ID unlock in v1.                                                                                                                                                                                                               |
-| Auth callback    | `gagnechris://auth/callback` in simulator and dev builds now. `https://notebook.gagnechris.com/ios/auth/callback` before the first TestFlight build, and the custom scheme is removed from the `ios` client then.                      |
+| Auth callback    | `https://notebook.gagnechris.com/ios/auth/callback` only. The `ios` client registers no custom scheme, so simulator and dev builds sign in with local auth.                                                                            |
 | API audience     | The `/api/notebook` JWT authorizer and router accept the `ios` client when sign-in ships. `/api/admin` does not, until the Admin space.                                                                                                |
 | Later outbox     | Persistent FIFO outbox in expo-sqlite with per-entity coalescing and dependencies; 412 is field merge for tasks and server-wins plus a kept local copy for note bodies; 410 never drops pending edits; 426 pauses writes.              |
 
@@ -137,24 +137,23 @@ The TanStack Query cache is persisted as one JSON value (`createAsyncStoragePers
 
 ## 5. Auth callback
 
-### Now: custom scheme
+### Session
 
-- `expo-auth-session` (PKCE, `S256`) with `expo-web-browser`'s `ASWebAuthenticationSession`, `preferEphemeralSession: true`, so no managed-login cookie stays in the session after sign-out. Passkey sign-in in an ephemeral session is checked when sign-in is built; if it fails, the session is shared and sign-out also calls `/logout`.
-- Redirect `gagnechris://auth/callback`, already on the `ios` client.
-- The risk it carries: the `ios` client ID is public, and `ASWebAuthenticationSession` returns the callback to whichever app opened the session, so another app could run its own flow with our client and scheme. PKCE stops interception of our flow, not that. It's accepted for simulator and dev builds only.
+- `expo-auth-session` (PKCE, `S256`) with `expo-web-browser`'s `ASWebAuthenticationSession`, `preferEphemeralSession: true`, so no managed-login cookie stays in the session after sign-out.
+- A custom scheme was rejected for release builds: the `ios` client ID is public, and `ASWebAuthenticationSession` returns a scheme callback to whichever app opened the session, so another app could run its own flow with our client and scheme. PKCE stops interception of our flow, not that.
 
-### Before the first TestFlight build: HTTPS callback
+### HTTPS callback
 
-TestFlight needs the Apple Team ID, and so does the HTTPS callback, so they ship together:
+The HTTPS callback needs the Apple Team ID:
 
 1. The notebook host's AASA (`apps/web/public-notebook/.well-known/apple-app-site-association`) gets the real Team ID and a `webcredentials` entry for the app. An HTTPS callback is verified through the callback host's `webcredentials` association, not `applinks`, and iOS gives no error when it's missing: the sign-in sheet just closes. `applinks` stay as they are, so a stray link to the callback path opens the notebook website, where the code is useless without the app's PKCE verifier.
 2. `app.json` gets `webcredentials:notebook.gagnechris.com` and `applinks:notebook.gagnechris.com`. `applinks:gagnechris.com` matches no paths and goes.
-3. The `ios` client's callbacks become `https://notebook.gagnechris.com/ios/auth/callback` and its logout URL `https://notebook.gagnechris.com/ios/auth/signed-out`; the inherited apex `https://gagnechris.com/auth/callback` and `/` go. `gagnechris://auth/callback` and `gagnechris://` stay only until the app's sign-in passes `preferUniversalLinks: true`, so dev builds keep signing in during the switch, and are removed before the first TestFlight build.
+3. The `ios` client's callbacks become `https://notebook.gagnechris.com/ios/auth/callback` and its logout URL `https://notebook.gagnechris.com/ios/auth/signed-out`; the inherited apex `https://gagnechris.com/auth/callback` and `/` go.
 4. `promptAsync` passes `preferUniversalLinks: true`. expo-web-browser 57 then uses `ASWebAuthenticationSession.Callback.https(host:path:)`, which completes only for an app associated with that host, and exists only on iOS 17.4 or later; below that, or without the option, it falls back to scheme matching. `expo-build-properties` sets the deployment target to 17.4, so the fallback never runs.
 
 ### API audience
 
-When sign-in ships, the `/api/notebook` authorizer's `jwtAudience` and the router's client check accept the `ios` client ID, and `/api/admin` doesn't until the Admin space exists. This replaces the rule that the `ios` client stays out of every API audience until universal links ([ADR 0002](./0002-admin-notebook-subdomains.md), the comment in `infra/lib/stacks/api-stack.ts`): simulator sign-in against prod needs it, and the custom-scheme exposure lasts only until the first TestFlight build.
+When sign-in ships, the `/api/notebook` authorizer's `jwtAudience` and the router's client check accept the `ios` client ID, and `/api/admin` doesn't until the Admin space exists. This replaces the rule that the `ios` client stays out of every API audience until universal links ([ADR 0002](./0002-admin-notebook-subdomains.md), the comment in `infra/lib/stacks/api-stack.ts`).
 
 ## 6. Later milestone: offline outbox
 
