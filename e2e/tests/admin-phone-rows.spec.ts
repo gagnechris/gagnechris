@@ -49,7 +49,7 @@ test('on a phone, a user row opens Edit access', async ({
   const invite = page.getByRole('dialog', { name: 'Invite user' });
   await invite.getByLabel('Name').fill(name);
   await invite.getByLabel('Email').fill(`${prefix}-row@e2e.test`);
-  await invite.getByRole('button', { name: 'Send invite' }).click();
+  await invite.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(invite).toBeHidden();
 
   await page.getByRole('row').getByText(`${prefix}-row@e2e.test`).click();
