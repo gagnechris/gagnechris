@@ -44,6 +44,37 @@ test.describe('a published post', () => {
       .toBe(200);
   });
 
+  test('phone: the reading bar resizes the text and copies the link', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.addInitScript(() => {
+      // Desktop browsers have no share sheet to drive; take the copy path.
+      Object.defineProperty(navigator, 'share', { value: undefined });
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${site()}/posts/${slug}`);
+    const body = page.locator('.post-content').first();
+    const size = () =>
+      body.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    const before = await size();
+    await page.getByRole('button', { name: 'Larger text' }).click();
+    expect(await size()).toBeCloseTo(before * 1.15, 0);
+
+    await page.reload();
+    expect(await size()).toBeCloseTo(before * 1.15, 0);
+
+    const bar = page.locator('.reading-bar');
+    const box = await bar.boundingBox();
+    expect(box!.y + box!.height).toBeCloseTo(844, 0);
+    await page.getByRole('button', { name: 'Share' }).click();
+    await expect(page.getByRole('status')).toHaveText('Link copied');
+
+    await page.setViewportSize({ width: 1024, height: 844 });
+    await expect(bar).toBeHidden();
+  });
+
   test('desktop: 60–80 characters a line, nested headings, underlined links', async ({
     page,
   }) => {
