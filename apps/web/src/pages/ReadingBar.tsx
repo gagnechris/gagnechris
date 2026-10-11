@@ -57,7 +57,9 @@ export const ReadingBar = ({ title }: { title: string }) => {
     if (!hydrated) return;
     const root = document.documentElement;
     root.style.setProperty('--post-text-scale', String(TEXT_SCALES[step]));
-    return () => root.style.removeProperty('--post-text-scale');
+    return () => {
+      root.style.removeProperty('--post-text-scale');
+    };
   }, [hydrated, step]);
 
   if (!hydrated) return null;
