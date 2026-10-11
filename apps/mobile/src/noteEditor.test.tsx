@@ -1,7 +1,11 @@
 import { clearPendingFlushes, useTasksQuery } from '@gagnechris/app-core';
 import * as Haptics from 'expo-haptics';
 import { ActionSheetIOS, Alert, AppState, Share, Text } from 'react-native';
-import { act, type ReactTestRenderer } from 'react-test-renderer';
+import {
+  act,
+  type ReactTestInstance,
+  type ReactTestRenderer,
+} from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NoteScreen from '../app/(tabs)/notes/[id]';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
@@ -90,8 +94,28 @@ const pause = async () => {
   await settle(10);
 };
 
+/** The keyboard toolbar iOS shows over `input`. */
+const toolbarOf = (renderer: ReactTestRenderer, input: ReactTestInstance) =>
+  renderer.root.find(
+    (node) =>
+      (node.type as string) === 'InputAccessoryView' &&
+      node.props.nativeID === input.props.inputAccessoryViewID,
+  );
+
+/** Presses `label`, from the last text run's toolbar when every run has one. */
 const press = async (renderer: ReactTestRenderer, label: string) => {
-  await act(async () => byLabel(renderer, label).props.onPress());
+  const matches = (root: ReactTestInstance) =>
+    root.findAll(
+      (node) =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityLabel === label,
+    );
+  const all = matches(renderer.root);
+  const target =
+    all.length === 1
+      ? all[0]!
+      : matches(toolbarOf(renderer, bodies(renderer).at(-1)!))[0]!;
+  await act(async () => target.props.onPress());
 };
 
 describe('note editor', () => {
@@ -236,6 +260,37 @@ describe('note editor', () => {
     expect(bodies(renderer).at(-1)!.props.value).toBe('# [ ] Call Sam !');
   });
 
+  it('gives every text run its own keyboard toolbar', async () => {
+    serve(
+      [makeNote(NOTE, `Before\n{{task:${TASK}}}\nAfter`)],
+      [makeTask(TASK, 'Ship it')],
+    );
+    const renderer = await renderNote();
+    type(renderer, 'After\n[ ] Call Sam\n');
+    await pause();
+
+    const runs = bodies(renderer);
+    expect(runs.length).toBeGreaterThanOrEqual(3);
+    const ids = runs.map((input) => input.props.inputAccessoryViewID);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const input of runs) {
+      const toolbar = toolbarOf(renderer, input);
+      expect(
+        toolbar.find((node) => node.props.accessibilityRole === 'toolbar'),
+      ).toBeTruthy();
+    }
+
+    // The date chips show on the run being typed in, not the others.
+    type(renderer, '[ ] Call Sam back @');
+    const withChips = bodies(renderer).filter(
+      (input) =>
+        toolbarOf(renderer, input).findAll(
+          (node) => node.props.accessibilityRole === 'menuitem',
+        ).length > 0,
+    );
+    expect(withChips).toEqual([bodies(renderer).at(-1)]);
+  });
+
   it('keeps an empty line between tasks a thin strip until it has the caret', async () => {
     const SECOND = '01HTASKBBBBBBBBBBBBBBBBBBB';
     serve(
@@ -336,7 +391,7 @@ describe('note editor', () => {
   it('gives VoiceOver the toolbar and the task rows', async () => {
     serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
     const renderer = await renderNote();
-    const toolbar = renderer.root.find(
+    const toolbar = toolbarOf(renderer, bodies(renderer).at(-1)!).find(
       (node) => node.props.accessibilityRole === 'toolbar',
     );
     const buttons = toolbar
