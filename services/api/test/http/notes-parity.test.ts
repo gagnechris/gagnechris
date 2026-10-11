@@ -299,6 +299,28 @@ describe('notes parity over HTTP (DynamoDB Local)', () => {
       version: 2,
     });
 
+    // Writes to a tombstone answer the shape the iOS outbox restores from.
+    const deletedConflict = {
+      error: 'deleted',
+      message: `note ${PAGE_ID} was deleted`,
+      currentVersion: 2,
+      current: expect.objectContaining({ id: PAGE_ID, deleted: true }),
+    };
+    const put = await call('PUT', `/api/notebook/notes/${PAGE_ID}`, {
+      body: { version: 1, title: 'Edited offline' },
+    });
+    expect(put.status).toBe(409);
+    expect(put.body).toEqual(deletedConflict);
+    const replayedDelete = await call(
+      'DELETE',
+      `/api/notebook/notes/${PAGE_ID}`,
+      {
+        body: { version: 1 },
+      },
+    );
+    expect(replayedDelete.status).toBe(409);
+    expect(replayedDelete.body).toEqual(deletedConflict);
+
     const sync = await call('GET', '/api/notebook/sync/changes');
     expect(sync.status).toBe(200);
     expect(sync.body.changes).toEqual([

@@ -370,7 +370,7 @@ func (s *versioned[T, P]) createAttempt(ctx context.Context, e T, retried bool, 
 	}
 	v := P(&existing).ver()
 	if P(&existing).isDeleted() {
-		return e, &api.ConflictError{Message: s.label + " " + id + " was deleted", Code: api.CodeDeleted, CurrentVersion: &v, Current: existing}
+		return e, s.deletedConflict(id, existing)
 	}
 	// A row without createHash cannot prove what it was created with.
 	if !createHashMatches(store.OptString(raw, "createHash"), s.createHash(e)) {
@@ -397,10 +397,20 @@ func (s *versioned[T, P]) readForWrite(ctx context.Context, userID, id string) (
 	if err != nil {
 		return nil, zero, err
 	}
-	if owner, _ := P(&existing).ident(); owner != userID || P(&existing).isDeleted() {
+	if owner, _ := P(&existing).ident(); owner != userID {
 		return nil, zero, s.notFound(id)
 	}
+	if P(&existing).isDeleted() {
+		return nil, zero, s.deletedConflict(id, existing)
+	}
 	return raw, existing, nil
+}
+
+// deletedConflict carries the tombstone so an offline client can tell
+// "deleted elsewhere" from a missing id and offer to restore its copy.
+func (s *versioned[T, P]) deletedConflict(id string, tombstone T) error {
+	v := P(&tombstone).ver()
+	return &api.ConflictError{Message: s.label + " " + id + " was deleted", Code: api.CodeDeleted, CurrentVersion: &v, Current: tombstone}
 }
 
 func (s *versioned[T, P]) versionConflict(ctx context.Context, userID, id string, expected int) error {
