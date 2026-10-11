@@ -1,10 +1,10 @@
 import { Outlet, useMatch } from 'react-router-dom';
+import { USER_ADMIN_GROUP } from '@gagnechris/shared';
 import WorkspaceShell, {
   WorkspaceFrame,
   type ShellNavSection,
 } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
-import { USER_ADMIN_GROUP } from '../workspace/access';
 import AdminSearchPalette from './AdminSearchPalette';
 
 export type AdminOutletContext = { user: AuthUser };

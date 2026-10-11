@@ -2,6 +2,11 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  ACCESS_GROUPS,
+  ACCESS_LEVEL_LABELS,
+  accessLevelFromGroups,
+} from '@gagnechris/shared';
 import { accessLevel } from './access';
 import type { AuthUser } from './auth/session';
 import { WorkspaceFrame, type ShellNavSection } from './WorkspaceShell';
@@ -200,9 +205,25 @@ describe('WorkspaceFrame', () => {
 
 describe('accessLevel', () => {
   test('names the access each group set gives', () => {
-    expect(accessLevel(['site-admin', 'notebook'])).toBe('Full Admin');
+    expect(accessLevel(['site-admin', 'notebook', 'user-admin'])).toBe(
+      'Full Admin',
+    );
+    expect(accessLevel(['site-admin', 'notebook'])).toBe('Public CMS');
     expect(accessLevel(['site-admin'])).toBe('Public CMS');
     expect(accessLevel(['notebook'])).toBe('Notebook only');
     expect(accessLevel([])).toBe('No access');
+  });
+
+  test('matches the level the Users page shows for every group set', () => {
+    const sets = ACCESS_GROUPS.reduce<string[][]>(
+      (subsets, group) => [...subsets, ...subsets.map((s) => [...s, group])],
+      [[]],
+    );
+    for (const groups of sets) {
+      const level = accessLevelFromGroups(groups);
+      expect(accessLevel(groups)).toBe(
+        level ? ACCESS_LEVEL_LABELS[level] : 'No access',
+      );
+    }
   });
 });

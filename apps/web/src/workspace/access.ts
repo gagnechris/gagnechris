@@ -1,12 +1,17 @@
+import {
+  ACCESS_LEVEL_LABELS,
+  accessLevelFromGroups,
+  NOTEBOOK_GROUP,
+  SITE_ADMIN_GROUP,
+} from '@gagnechris/shared';
+
 export type WorkspaceAppName = 'admin' | 'notebook';
 
 /** Cognito group each app's API routes require. */
 export const APP_GROUP: Record<WorkspaceAppName, string> = {
-  admin: 'site-admin',
-  notebook: 'notebook',
+  admin: SITE_ADMIN_GROUP,
+  notebook: NOTEBOOK_GROUP,
 };
-
-export const USER_ADMIN_GROUP = 'user-admin';
 
 export const APP_TITLE: Record<WorkspaceAppName, string> = {
   admin: 'Admin',
@@ -28,10 +33,6 @@ export const appHost = (app: WorkspaceAppName): string =>
   new URL(appOrigin(app)).host;
 
 export function accessLevel(groups: readonly string[]): string {
-  const site = groups.includes(APP_GROUP.admin);
-  const notebook = groups.includes(APP_GROUP.notebook);
-  if (site && notebook) return 'Full Admin';
-  if (site) return 'Public CMS';
-  if (notebook) return 'Notebook only';
-  return 'No access';
+  const level = accessLevelFromGroups(groups);
+  return level ? ACCESS_LEVEL_LABELS[level] : 'No access';
 }

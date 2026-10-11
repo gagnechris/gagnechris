@@ -4,9 +4,9 @@ import {
   ACCESS_LEVEL_LABELS,
   type AccessLevel,
   type ManagedUser,
+  USER_ADMIN_GROUP,
 } from '@gagnechris/shared';
 import { useUserActionMutation, useUsersQuery } from '@gagnechris/app-core';
-import { USER_ADMIN_GROUP } from '../../workspace/access';
 import { getAuthTime } from '../../workspace/auth/session';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import type { AdminOutletContext } from '../AdminLayout';
