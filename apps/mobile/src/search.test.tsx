@@ -79,11 +79,36 @@ describe('Search', () => {
     const renderer = await launch();
     await type(renderer, 'passport');
     expect(hits(renderer)).toEqual([
-      'Travel, Trip prep - [ ] Renew passport',
-      'Renew passport, Renew passport',
+      'Travel, Trip prep Renew passport',
+      'Renew passport',
     ]);
     expect(allText(renderer)).toContain('NOTES');
     expect(allText(renderer)).toContain('TASKS');
+  });
+
+  it('reads a task hit whose snippet is only its title once', async () => {
+    const server = notebookServer(notes, tasks);
+    vi.stubGlobal('fetch', async (input: Request) => {
+      const res = await server.fetch(input);
+      if (!input.url.endsWith('/api/notebook/search')) return res;
+      const body = (await res.json()) as {
+        tasks: { title: string; snippet: string }[];
+      };
+      for (const hit of body.tasks) hit.snippet = hit.title;
+      return Response.json(body);
+    });
+    const renderer = await render(
+      <Providers store={memoryStore().store}>
+        <SearchScreen />
+      </Providers>,
+    );
+    mounted.push(renderer);
+    await settle();
+    await type(renderer, 'renew');
+    expect(hits(renderer)).toEqual([
+      'Travel, Trip prep Renew passport',
+      'Renew passport',
+    ]);
   });
 
   it('never shows an embed token', async () => {

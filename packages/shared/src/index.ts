@@ -147,6 +147,7 @@ export { byNewest } from './by-newest.js';
 export { parseTagsText } from './tags-text.js';
 export {
   highlightParts,
+  searchHitDetail,
   wordMatches,
   type TextRange,
 } from './search-highlight.js';
@@ -251,6 +252,7 @@ export {
   scanFences,
   type FenceBlock,
 } from './markdown-fences.js';
+export { markdownPlainText } from './markdown-text.js';
 export {
   isSafeLinkHref,
   isSitePath,

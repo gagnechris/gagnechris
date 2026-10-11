@@ -1,6 +1,6 @@
 // Package notebook reads Notebook notes and tasks, with the text helpers
-// packages/shared gives every client: fenced code blocks, task embed lines
-// and calendar days.
+// packages/shared gives every client: fenced code blocks, task embed lines,
+// calendar days and markdown as plain text.
 package notebook
 
 import (
@@ -234,6 +234,55 @@ func DailyTemplateHasTasks(markdown string) bool {
 	fences := ScanFences(lines)
 	for i, line := range lines {
 		if !InFence(fences, i) && templateTaskLine.MatchString(line) {
+			return true
+		}
+	}
+	return false
+}
+
+var (
+	plainRule         = regexp.MustCompile(`^[ \t]*(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$`)
+	plainTableDivider = regexp.MustCompile(`^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$`)
+	plainTableRow     = regexp.MustCompile(`^[ \t]*\|`)
+	plainLineMarkers  = regexp.MustCompile(`^[ \t]*(?:>[ \t]*)*(?:#{1,6}(?:[ \t]+|$)|(?:[-*+]|\d+[.)])(?:[ \t]+|$)(?:\[[ xX]\](?:[ \t]+|$))?|\[[ xX]\](?:[ \t]+|$))?`)
+	plainImageOrLink  = regexp.MustCompile(`!?\[([^\]\n]*)\]\([^)\n]*\)`)
+	plainWikiLink     = regexp.MustCompile(`\[\[([^\]\n]*)\]\]`)
+	plainEmphasis     = regexp.MustCompile("\\*\\*|__|~~|[*`]")
+)
+
+// MarkdownPlainText is markdown read as prose, line for line: block markers,
+// emphasis and link syntax go; fenced code stays verbatim without its fences.
+func MarkdownPlainText(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSuffix(line, "\r")
+	}
+	fences := ScanFences(lines)
+	for i, line := range lines {
+		if InFence(fences, i) {
+			if isFenceLine(fences, i) {
+				lines[i] = ""
+			}
+			continue
+		}
+		if plainRule.MatchString(line) || plainTableDivider.MatchString(line) {
+			lines[i] = ""
+			continue
+		}
+		text := plainLineMarkers.ReplaceAllString(line, "")
+		if plainTableRow.MatchString(text) {
+			text = strings.ReplaceAll(text, "|", " ")
+		}
+		text = plainWikiLink.ReplaceAllString(text, "$1")
+		text = plainImageOrLink.ReplaceAllString(text, "$1")
+		lines[i] = plainEmphasis.ReplaceAllString(text, "")
+	}
+	return strings.Join(lines, "\n")
+}
+
+func isFenceLine(blocks []FenceBlock, line int) bool {
+	for _, b := range blocks {
+		if b.Open == line || b.Close == line {
 			return true
 		}
 	}

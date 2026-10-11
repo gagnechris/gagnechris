@@ -7,6 +7,7 @@ import {
   areaQueryParam,
   highlightParts,
   NOTEBOOK_AREA_LABELS,
+  searchHitDetail,
   wordMatches,
   type NotebookSearchHit,
   type TextRange,
@@ -129,6 +130,7 @@ const SearchScreen = () => {
   ) => {
     const check = task ? task.status === 'done' : undefined;
     const tags = showArea ? ` · ${NOTEBOOK_AREA_LABELS[hit.area]}` : '';
+    const detail = searchHitDetail(hit);
     return (
       <View key={hit.id} style={[styles.hit, index > 0 && styles.divider]}>
         {check !== undefined ? (
@@ -150,7 +152,7 @@ const SearchScreen = () => {
         ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${hit.title}${tags}, ${hit.snippet}`}
+          accessibilityLabel={`${hit.title}${tags}${detail ? `, ${detail}` : ''}`}
           accessibilityHint={
             hit.type === 'task' ? 'Opens the task' : 'Opens the note'
           }
@@ -165,9 +167,9 @@ const SearchScreen = () => {
             />
             {tags ? <Text style={styles.hitArea}>{tags}</Text> : null}
           </Text>
-          {hit.snippet ? (
+          {detail ? (
             <Highlighted
-              text={hit.snippet}
+              text={detail}
               ranges={hit.matches}
               style={styles.snippet}
               lines={3}

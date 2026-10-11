@@ -67,7 +67,10 @@ const search = async (body: Record<string, unknown>) => {
 
 describe('POST /api/notebook/search', () => {
   it('ranks title, then tags, then body, with a bonus for a leading or word-start match', async () => {
-    const reship = await note({ title: 'Reship plan' });
+    const reship = await note({
+      title: 'Reship plan',
+      bodyMarkdown: '## Dates\n\nShip it **Friday**.',
+    });
     const ship = await note({ title: 'Ship plan' });
     const body = await note({ title: 'Notes', bodyMarkdown: 'we ship' });
     const tagged = await note({ title: 'Tagged', tags: ['shipping', 'x'] });
@@ -82,16 +85,16 @@ describe('POST /api/notebook/search', () => {
         id: ship.id,
         area: 'work',
         title: 'Ship plan',
-        snippet: 'Ship plan',
-        matches: [{ start: 0, end: 4 }],
+        snippet: '',
+        matches: [],
       },
       {
         type: 'note',
         id: reship.id,
         area: 'work',
         title: 'Reship plan',
-        snippet: 'Reship plan',
-        matches: [{ start: 2, end: 6 }],
+        snippet: 'Dates Ship it Friday.',
+        matches: [{ start: 6, end: 10 }],
       },
       {
         type: 'note',
@@ -115,12 +118,15 @@ describe('POST /api/notebook/search', () => {
     ).toEqual([ship.id, reship.id]);
   });
 
-  it('cuts a snippet around the first match, collapsing whitespace, in UTF-16 offsets', async () => {
+  it('cuts a snippet around the first match, collapsing whitespace, in UTF-16 offsets, or from the body start for a title hit', async () => {
     const long = await note({
       title: 'Long',
       bodyMarkdown: `${'x'.repeat(100)} Ship   it\n\nnow ${'y'.repeat(100)}`,
     });
-    const emoji = await note({ title: '🚀 Launch day' });
+    const emoji = await note({
+      title: '🚀 Launch day',
+      bodyMarkdown: `- [ ] ${'Book the hall. '.repeat(10)}`,
+    });
     const split = await note({
       title: 'Split',
       bodyMarkdown: `rocket!${'😀'.repeat(40)}`,
@@ -135,8 +141,8 @@ describe('POST /api/notebook/search', () => {
     expect((await search({ q: 'launch' })).notes).toEqual([
       expect.objectContaining({
         id: emoji.id,
-        snippet: '🚀 Launch day',
-        matches: [{ start: 3, end: 9 }],
+        snippet: `${'Book the hall. '.repeat(8).trimEnd()}…`,
+        matches: [],
       }),
     ]);
     // The cut lands inside an emoji, leaving half of it, as JSON.stringify writes it.
@@ -149,7 +155,7 @@ describe('POST /api/notebook/search', () => {
     ]);
   });
 
-  it('reads embedded tasks as checklist lines and daily notes by their day', async () => {
+  it('reads markdown and embedded tasks as plain text, and daily notes by their day', async () => {
     const done = await task({ title: 'Call Sam', status: 'done' });
     const dropped = await task({ title: 'Email Sam', status: 'dropped' });
     const gone = await task({ title: 'Text Sam' });
@@ -177,14 +183,14 @@ describe('POST /api/notebook/search', () => {
     expect(sam.notes).toEqual([
       expect.objectContaining({
         id: standup.id,
-        snippet: 'Follow up - [x] Call Sam - [ ] ~~Email Sam~~ (dropped)',
-        matches: [{ start: 21, end: 24 }],
+        snippet: 'Follow up Call Sam Email Sam (dropped)',
+        matches: [{ start: 15, end: 18 }],
       }),
     ]);
     expect((await search({ q: '{{task:' })).notes).toEqual([
       expect.objectContaining({
         id: fenced.id,
-        snippet: `\`\`\` {{task:${done.id}}} \`\`\``,
+        snippet: `{{task:${done.id}}}`,
       }),
     ]);
     expect(sam.tasks.map((t) => [t.id, t.status, t.version])).toEqual([
@@ -200,8 +206,8 @@ describe('POST /api/notebook/search', () => {
         area: 'personal',
         title: 'Saturday, Sep 19',
         date: '2026-09-19',
-        snippet: 'Saturday, Sep 19',
-        matches: [{ start: 0, end: 8 }],
+        snippet: 'garden beds',
+        matches: [],
       },
     ]);
     expect((await search({ q: 'garden', area: 'work' })).notes).toEqual([]);

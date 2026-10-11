@@ -105,6 +105,7 @@ import {
   carriedInMarkdown,
   dailyTemplateHasTasks,
   fillDailyTemplate,
+  markdownPlainText,
   taskEmbedIds,
   DEFAULT_HOME,
   DEFAULT_RESUME,
@@ -517,6 +518,14 @@ const TEXT_CASES = {
     `~~~\n{{task:${EMBED_ID}}}\n~~~`,
     '[x] not a task line',
   ].map((input) => ({ input, want: dailyTemplateHasTasks(input) })),
+  markdownPlainText: [
+    '## Focus\r\nPrep for the **roadmap** review. See [[Project notes]].\n- [ ] Review the Q4 plan\n  * [x] done _em_ ~~gone~~ `code`',
+    '> quote\n1. one\n2) two\n10.\n#hashtag\n####### seven\n[ ] bare task\n[x]\n-',
+    '[a link](https://example.com) and ![alt](img.png), [ref] [[a]] [[]]',
+    '---\n* * *\n___\n| A | B |\n|:--|--:|\n| 1 | 2 |\na | b',
+    '```js\n## kept **as** code\n```\n~~~~\n- [ ] still code\n~~~\nopen',
+    '\u00a0## not a heading\n\t- tabbed\n   ### indented\n😀 **é**',
+  ].map((input) => ({ input, want: markdownPlainText(input) })),
 };
 
 const contract = {

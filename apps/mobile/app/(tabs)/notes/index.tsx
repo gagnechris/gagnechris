@@ -15,6 +15,7 @@ import {
   noteOpenTaskCount,
   noteSections,
   noteTitle,
+  searchHitDetail,
   type NotebookSearchHit,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -303,7 +304,7 @@ const NotesScreen = () => {
             <CardRow first={first} last={last}>
               <Row
                 title={hit.title}
-                detail={hit.snippet}
+                detail={searchHitDetail(hit)}
                 divider={!first}
                 onPress={() =>
                   open({
