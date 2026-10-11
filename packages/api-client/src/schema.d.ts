@@ -7555,6 +7555,8 @@ export interface paths {
                     startBefore?: string;
                     /** @description Only someday tasks (true) or only scheduled tasks (false) */
                     someday?: "true" | "false";
+                    /** @description Only tasks with no startDate that are not someday */
+                    undated?: "true";
                     /** @description Tasks linked to a note */
                     noteId?: string;
                     /** @description Only todo and in_progress tasks; done and dropped are closed (ignored when status is set) */
@@ -10772,6 +10774,11 @@ export interface components {
              * @enum {string}
              */
             someday?: "true" | "false";
+            /**
+             * @description Only tasks with no startDate that are not someday
+             * @enum {string}
+             */
+            undated?: "true";
             /** @description Tasks linked to a note */
             noteId?: string;
             /**

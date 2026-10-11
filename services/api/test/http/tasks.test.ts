@@ -266,4 +266,49 @@ describe('tasks (DynamoDB Local)', () => {
       '2026-10-16',
     ]);
   });
+
+  it('undated reads only open tasks with no show-on date', async () => {
+    const base = {
+      area: 'personal',
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      tags: [],
+    };
+    await createTask(USER_A, {
+      ...base,
+      id: '01ARZ3NDEKTSV4RRFFQ69G5TD1',
+      title: 'undated',
+    });
+    await createTask(USER_A, {
+      ...base,
+      id: '01ARZ3NDEKTSV4RRFFQ69G5TD2',
+      title: 'dated',
+      startDate: '2026-10-05',
+    });
+    await createTask(USER_A, {
+      ...base,
+      id: '01ARZ3NDEKTSV4RRFFQ69G5TD3',
+      title: 'someday',
+      someday: true,
+    });
+    expect(
+      await listIds(USER_A, {
+        area: 'personal',
+        open: 'true',
+        undated: 'true',
+      }),
+    ).toEqual(['01ARZ3NDEKTSV4RRFFQ69G5TD1']);
+
+    for (const conflict of <Record<string, string>[]>[
+      { someday: 'true' },
+      { startOn: '2026-10-05' },
+      { startBefore: '2026-10-05' },
+    ]) {
+      const res = await call(USER_A, 'GET', '/api/notebook/tasks', {
+        query: { undated: 'true', ...conflict },
+      });
+      expect(res.status, JSON.stringify(conflict)).toBe(400);
+    }
+  });
 });

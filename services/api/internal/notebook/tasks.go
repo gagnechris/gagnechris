@@ -190,6 +190,7 @@ type listTasksQuery struct {
 	area, status, priority, dueOn, dueBefore     string
 	startOn, startOnOrBefore, startAfter, before string
 	someday                                      *bool
+	undated                                      bool
 	noteID                                       string
 	open                                         bool
 	today, cursor                                string
@@ -204,6 +205,8 @@ func scheduleRanges(q listTasksQuery) []*skRange {
 	switch {
 	case q.someday != nil && *q.someday:
 		return []*skRange{prefixRange("SOMEDAY#")}
+	case q.undated:
+		return []*skRange{prefixRange("UPDATED#")}
 	case q.startOn != "":
 		return []*skRange{{"START#" + q.startOn + "#", afterDay(q.startOn)}}
 	case q.startOnOrBefore != "":
@@ -235,6 +238,7 @@ func (q listTasksQuery) matches(t Task) bool {
 		q.dueOn != "" && (t.DueDate == nil || *t.DueDate != q.dueOn),
 		q.dueBefore != "" && (t.DueDate == nil || *t.DueDate >= q.dueBefore),
 		q.someday != nil && *q.someday != t.Someday,
+		q.undated && (t.Someday || t.StartDate != nil),
 		q.startOn != "" && (t.StartDate == nil || *t.StartDate != q.startOn),
 		q.startOnOrBefore != "" && !showsOn(t, q.startOnOrBefore),
 		q.startAfter != "" && (t.Someday || t.StartDate == nil || *t.StartDate <= q.startAfter),
